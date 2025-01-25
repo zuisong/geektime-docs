@@ -1,0 +1,6391 @@
+<!--geek time docs 🚀, MIT license-->
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="极客时间在线文档">
+      
+      
+        <meta name="author" content="zkep">
+      
+      
+      
+        <link rel="prev" href="../25%20-%20Spark%203.0%EF%BC%88%E4%BA%8C%EF%BC%89%EF%BC%9ADPP%E7%89%B9%E6%80%A7%E8%AF%A5%E6%80%8E%E4%B9%88%E7%94%A8%EF%BC%9F/">
+      
+      
+        <link rel="next" href="../27%20-%20%E5%A4%A7%E8%A1%A8Join%E5%B0%8F%E8%A1%A8%EF%BC%9A%E5%B9%BF%E6%92%AD%E5%8F%98%E9%87%8F%E5%AE%B9%E4%B8%8D%E4%B8%8B%E5%B0%8F%E8%A1%A8%E6%80%8E%E4%B9%88%E5%8A%9E%EF%BC%9F/">
+      
+      
+      <link rel="icon" href="../../../None">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.50">
+    
+    
+      
+        <title>26 Join Hints指南：不同场景下，如何选择Join策略？ - Geek Time Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.a40c8224.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../stylesheets/style.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#join" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            
+
+
+          </div>
+          
+        </aside>
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Geek Time Docs" class="md-header__button md-logo" aria-label="Geek Time Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Geek Time Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              26   Join Hints指南：不同场景下，如何选择Join策略？
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/uaxe/geektime-docs" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    uaxe/geektime-docs
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
+          
+  
+    
+  
+  AI-大数据
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../%E4%BA%A7%E5%93%81-%E8%BF%90%E8%90%A5/" class="md-tabs__link">
+          
+  
+    
+  
+  产品-运营
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../%E5%89%8D%E7%AB%AF-%E7%A7%BB%E5%8A%A8/" class="md-tabs__link">
+          
+  
+    
+  
+  前端-移动
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../%E5%90%8E%E7%AB%AF-%E6%9E%B6%E6%9E%84/" class="md-tabs__link">
+          
+  
+    
+  
+  后端-架构
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../%E7%AE%A1%E7%90%86-%E6%88%90%E9%95%BF/" class="md-tabs__link">
+          
+  
+    
+  
+  管理-成长
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9F%BA%E7%A1%80/" class="md-tabs__link">
+          
+  
+    
+  
+  计算机基础
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../%E8%BF%90%E7%BB%B4-%E6%B5%8B%E8%AF%95/" class="md-tabs__link">
+          
+  
+    
+  
+  运维-测试
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Geek Time Docs" class="md-nav__button md-logo" aria-label="Geek Time Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Geek Time Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/uaxe/geektime-docs" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    uaxe/geektime-docs
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    AI-大数据
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            AI-大数据
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../A-B%E6%B5%8B%E8%AF%95%E4%BB%8E0%E5%88%B01/A-B%E6%B5%8B%E8%AF%95%E4%BB%8E0%E5%88%B01/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    A-B测试从0到1
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../AI%E5%A4%A7%E6%A8%A1%E5%9E%8B%E4%B9%8B%E7%BE%8E/AI%E5%A4%A7%E6%A8%A1%E5%9E%8B%E4%B9%8B%E7%BE%8E/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    AI大模型之美
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../AI%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%AE%9E%E6%88%98%E9%AB%98%E6%89%8B%E8%AF%BE/AI%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%AE%9E%E6%88%98%E9%AB%98%E6%89%8B%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    AI大模型实战高手课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../AI%E5%A4%A7%E6%A8%A1%E5%9E%8B%E7%B3%BB%E7%BB%9F%E5%AE%9E%E6%88%98/AI%E5%A4%A7%E6%A8%A1%E5%9E%8B%E7%B3%BB%E7%BB%9F%E5%AE%9E%E6%88%98/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    AI大模型系统实战
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../AI%E5%A4%A7%E6%A8%A1%E5%9E%8B%E9%A1%B9%E7%9B%AE%E8%90%BD%E5%9C%B0%E5%AE%9E%E6%88%98/AI%E5%A4%A7%E6%A8%A1%E5%9E%8B%E9%A1%B9%E7%9B%AE%E8%90%BD%E5%9C%B0%E5%AE%9E%E6%88%98/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    AI大模型项目落地实战
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../AI%E6%8A%80%E6%9C%AF%E5%86%85%E5%8F%82/AI%E6%8A%80%E6%9C%AF%E5%86%85%E5%8F%82/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    AI技术内参
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../AI%E7%BB%98%E7%94%BB%E6%A0%B8%E5%BF%83%E6%8A%80%E6%9C%AF%E4%B8%8E%E5%AE%9E%E6%88%98/AI%E7%BB%98%E7%94%BB%E6%A0%B8%E5%BF%83%E6%8A%80%E6%9C%AF%E4%B8%8E%E5%AE%9E%E6%88%98/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    AI绘画核心技术与实战
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../LLM%20%26%20RAG%E5%BF%AB%E9%80%9F%E5%BA%94%E7%94%A8%E5%B0%8F%E5%86%8C/LLM%20%26%20RAG%E5%BF%AB%E9%80%9F%E5%BA%94%E7%94%A8%E5%B0%8F%E5%86%8C/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    LLM & RAG快速应用小册
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../LLaMA%203%E5%89%8D%E6%B2%BF%E6%A8%A1%E5%9E%8B%E5%AE%9E%E6%88%98%E8%AF%BE/LLaMA%203%E5%89%8D%E6%B2%BF%E6%A8%A1%E5%9E%8B%E5%AE%9E%E6%88%98%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    LLaMA 3前沿模型实战课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../LangChain%E5%AE%9E%E6%88%98%E8%AF%BE/LangChain%E5%AE%9E%E6%88%98%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    LangChain实战课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../PyTorch%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%E5%AE%9E%E6%88%98/PyTorch%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%E5%AE%9E%E6%88%98/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    PyTorch深度学习实战
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../RAG%E5%BF%AB%E9%80%9F%E5%BC%80%E5%8F%91%E5%AE%9E%E6%88%98/RAG%E5%BF%AB%E9%80%9F%E5%BC%80%E5%8F%91%E5%AE%9E%E6%88%98/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    RAG快速开发实战
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../RAG%E7%B3%BB%E7%BB%9F%E5%AE%9E%E6%88%98%E8%AF%BE/RAG%E7%B3%BB%E7%BB%9F%E5%AE%9E%E6%88%98%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    RAG系统实战课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_15" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_1_15" id="__nav_1_15_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Spark性能调优实战
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_15_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1_15">
+            <span class="md-nav__icon md-icon"></span>
+            Spark性能调优实战
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Spark%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98%E5%AE%9E%E6%88%98/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Spark性能调优实战
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E5%BC%80%E7%AF%87%E8%AF%8D%20-%20Spark%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98%EF%BC%8C%E4%BD%A0%E8%AF%A5%E6%8E%8C%E6%8F%A1%E8%BF%99%E4%BA%9B%E2%80%9C%E5%A5%97%E8%B7%AF%E2%80%9D/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    开篇词   Spark性能调优，你该掌握这些“套路”
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01%20-%20%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98%E7%9A%84%E5%BF%85%E8%A6%81%E6%80%A7%EF%BC%9ASpark%E6%9C%AC%E8%BA%AB%E5%B0%B1%E5%BE%88%E5%BF%AB%EF%BC%8C%E4%B8%BA%E5%95%A5%E8%BF%98%E9%9C%80%E8%A6%81%E6%88%91%E8%B0%83%E4%BC%98%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    01   性能调优的必要性：Spark本身就很快，为啥还需要我调优？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02%20-%20%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98%E7%9A%84%E6%9C%AC%E8%B4%A8%EF%BC%9A%E8%B0%83%E4%BC%98%E7%9A%84%E6%89%8B%E6%AE%B5%E4%BA%94%E8%8A%B1%E5%85%AB%E9%97%A8%EF%BC%8C%E8%AF%A5%E4%BB%8E%E5%93%AA%E9%87%8C%E5%85%A5%E6%89%8B%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    02   性能调优的本质：调优的手段五花八门，该从哪里入手？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03%20-%20RDD%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E4%BD%A0%E5%BF%85%E9%A1%BB%E8%A6%81%E7%90%86%E8%A7%A3%E5%BC%B9%E6%80%A7%E5%88%86%E5%B8%83%E5%BC%8F%E6%95%B0%E6%8D%AE%E9%9B%86%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    03   RDD：为什么你必须要理解弹性分布式数据集？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04%20-%20DAG%E4%B8%8E%E6%B5%81%E6%B0%B4%E7%BA%BF%EF%BC%9A%E5%88%B0%E5%BA%95%E5%95%A5%E5%8F%AB%E2%80%9C%E5%86%85%E5%AD%98%E8%AE%A1%E7%AE%97%E2%80%9D%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    04   DAG与流水线：到底啥叫“内存计算”？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05%20-%20%E8%B0%83%E5%BA%A6%E7%B3%BB%E7%BB%9F%EF%BC%9A%E2%80%9C%E6%95%B0%E6%8D%AE%E4%B8%8D%E5%8A%A8%E4%BB%A3%E7%A0%81%E5%8A%A8%E2%80%9D%E5%88%B0%E5%BA%95%E6%98%AF%E4%BB%80%E4%B9%88%E6%84%8F%E6%80%9D%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    05   调度系统：“数据不动代码动”到底是什么意思？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06%20-%20%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%EF%BC%9A%E7%A9%BA%E9%97%B4%E6%8D%A2%E6%97%B6%E9%97%B4%EF%BC%8C%E8%BF%98%E6%98%AF%E6%97%B6%E9%97%B4%E6%8D%A2%E7%A9%BA%E9%97%B4%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    06   存储系统：空间换时间，还是时间换空间？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07%20-%20%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E5%9F%BA%E7%A1%80%EF%BC%9ASpark%E5%A6%82%E4%BD%95%E9%AB%98%E6%95%88%E5%88%A9%E7%94%A8%E6%9C%89%E9%99%90%E7%9A%84%E5%86%85%E5%AD%98%E7%A9%BA%E9%97%B4%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    07   内存管理基础：Spark如何高效利用有限的内存空间？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08%20-%20%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E4%B8%89%E5%8E%9F%E5%88%99%EF%BC%9A%E5%A6%82%E4%BD%95%E6%8B%93%E5%B1%95%E8%87%AA%E5%B7%B1%E7%9A%84%E5%BC%80%E5%8F%91%E8%BE%B9%E7%95%8C%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    08   应用开发三原则：如何拓展自己的开发边界？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09%20-%20%E8%B0%83%E4%BC%98%E4%B8%80%E7%AD%B9%E8%8E%AB%E5%B1%95%EF%BC%8C%E9%85%8D%E7%BD%AE%E9%A1%B9%E9%80%9F%E6%9F%A5%E6%89%8B%E5%86%8C%E8%AE%A9%E4%BD%A0%E4%BA%8B%E5%8D%8A%E5%8A%9F%E5%80%8D%EF%BC%81%EF%BC%88%E4%B8%8A%EF%BC%89/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    09   调优一筹莫展，配置项速查手册让你事半功倍！（上）
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10%20-%20%E8%B0%83%E4%BC%98%E4%B8%80%E7%AD%B9%E8%8E%AB%E5%B1%95%EF%BC%8C%E9%85%8D%E7%BD%AE%E9%A1%B9%E9%80%9F%E6%9F%A5%E6%89%8B%E5%86%8C%E8%AE%A9%E4%BD%A0%E4%BA%8B%E5%8D%8A%E5%8A%9F%E5%80%8D%EF%BC%81%EF%BC%88%E4%B8%8B%EF%BC%89/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    10   调优一筹莫展，配置项速查手册让你事半功倍！（下）
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11%20-%20%E4%B8%BA%E4%BB%80%E4%B9%88%E8%AF%B4Shuffle%E6%98%AF%E4%B8%80%E6%97%B6%E6%97%A0%E4%B8%A4%E7%9A%84%E6%80%A7%E8%83%BD%E6%9D%80%E6%89%8B%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    11   为什么说Shuffle是一时无两的性能杀手？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../12%20-%20%E5%B9%BF%E6%92%AD%E5%8F%98%E9%87%8F%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9A%E5%85%8B%E5%88%B6Shuffle%EF%BC%8C%E5%A6%82%E4%BD%95%E4%B8%80%E6%8B%9B%E5%88%B6%E8%83%9C%EF%BC%81/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    12   广播变量（一）：克制Shuffle，如何一招制胜！
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../13%20-%20%E5%B9%BF%E6%92%AD%E5%8F%98%E9%87%8F%EF%BC%88%E4%BA%8C%EF%BC%89%EF%BC%9A%E5%A6%82%E4%BD%95%E8%AE%A9Spark%20SQL%E9%80%89%E6%8B%A9Broadcast%20Joins%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    13   广播变量（二）：如何让Spark SQL选择Broadcast Joins？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../14%20-%20CPU%E8%A7%86%E8%A7%92%EF%BC%9A%E5%A6%82%E4%BD%95%E9%AB%98%E6%95%88%E5%9C%B0%E5%88%A9%E7%94%A8CPU%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    14   CPU视角：如何高效地利用CPU？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../15%20-%20%E5%86%85%E5%AD%98%E8%A7%86%E8%A7%92%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9A%E5%A6%82%E4%BD%95%E6%9C%80%E5%A4%A7%E5%8C%96%E5%86%85%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8%E6%95%88%E7%8E%87%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    15   内存视角（一）：如何最大化内存的使用效率？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../16%20-%20%E5%86%85%E5%AD%98%E8%A7%86%E8%A7%92%EF%BC%88%E4%BA%8C%EF%BC%89%EF%BC%9A%E5%A6%82%E4%BD%95%E6%9C%89%E6%95%88%E9%81%BF%E5%85%8DCache%E6%BB%A5%E7%94%A8%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    16   内存视角（二）：如何有效避免Cache滥用？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../17%20-%20%E5%86%85%E5%AD%98%E8%A7%86%E8%A7%92%EF%BC%88%E4%B8%89%EF%BC%89%EF%BC%9AOOM%E9%83%BD%E6%98%AF%E8%B0%81%E7%9A%84%E9%94%85%EF%BC%9F%E6%80%8E%E4%B9%88%E7%A0%B4%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    17   内存视角（三）：OOM都是谁的锅？怎么破？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../18%20-%20%E7%A3%81%E7%9B%98%E8%A7%86%E8%A7%92%EF%BC%9A%E5%A6%82%E6%9E%9C%E5%86%85%E5%AD%98%E6%97%A0%E9%99%90%E5%A4%A7%EF%BC%8C%E7%A3%81%E7%9B%98%E8%BF%98%E6%9C%89%E7%94%A8%E6%AD%A6%E4%B9%8B%E5%9C%B0%E5%90%97%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    18   磁盘视角：如果内存无限大，磁盘还有用武之地吗？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../19%20-%20%E7%BD%91%E7%BB%9C%E8%A7%86%E8%A7%92%EF%BC%9A%E5%A6%82%E4%BD%95%E6%9C%89%E6%95%88%E9%99%8D%E4%BD%8E%E7%BD%91%E7%BB%9C%E5%BC%80%E9%94%80%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    19   网络视角：如何有效降低网络开销？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../20%20-%20RDD%E5%92%8CDataFrame%EF%BC%9A%E6%97%A2%E7%94%9F%E7%91%9C%EF%BC%8C%E4%BD%95%E7%94%9F%E4%BA%AE%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    20   RDD和DataFrame：既生瑜，何生亮？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../21%20-%20Catalyst%E9%80%BB%E8%BE%91%E8%AE%A1%E5%88%92%EF%BC%9A%E4%BD%A0%E7%9A%84SQL%E8%AF%AD%E5%8F%A5%E6%98%AF%E6%80%8E%E4%B9%88%E8%A2%AB%E4%BC%98%E5%8C%96%E7%9A%84%EF%BC%9F%EF%BC%88%E4%B8%8A%EF%BC%89/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    21   Catalyst逻辑计划：你的SQL语句是怎么被优化的？（上）
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../22%20-%20Catalyst%E7%89%A9%E7%90%86%E8%AE%A1%E5%88%92%EF%BC%9A%E4%BD%A0%E7%9A%84SQL%E8%AF%AD%E5%8F%A5%E6%98%AF%E6%80%8E%E4%B9%88%E8%A2%AB%E4%BC%98%E5%8C%96%E7%9A%84%EF%BC%88%E4%B8%8B%EF%BC%89%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    22   Catalyst物理计划：你的SQL语句是怎么被优化的（下）？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../23%20-%20%E9%92%A8%E4%B8%9D%E8%AE%A1%E5%88%92%EF%BC%9ATungsten%E7%BB%99%E5%BC%80%E5%8F%91%E8%80%85%E5%B8%A6%E6%9D%A5%E4%BA%86%E5%93%AA%E4%BA%9B%E7%A6%8F%E6%8A%A5%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    23   钨丝计划：Tungsten给开发者带来了哪些福报？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../24%20-%20Spark%203.0%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AAQE%E7%9A%843%E4%B8%AA%E7%89%B9%E6%80%A7%E6%80%8E%E4%B9%88%E6%89%8D%E8%83%BD%E7%94%A8%E5%A5%BD%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    24   Spark 3.0（一）：AQE的3个特性怎么才能用好？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../25%20-%20Spark%203.0%EF%BC%88%E4%BA%8C%EF%BC%89%EF%BC%9ADPP%E7%89%B9%E6%80%A7%E8%AF%A5%E6%80%8E%E4%B9%88%E7%94%A8%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    25   Spark 3.0（二）：DPP特性该怎么用？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    26   Join Hints指南：不同场景下，如何选择Join策略？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    26   Join Hints指南：不同场景下，如何选择Join策略？
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#join" class="md-nav__link">
+    <span class="md-ellipsis">
+      Join的实现方式详解
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Join的实现方式详解">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nlj" class="md-nav__link">
+    <span class="md-ellipsis">
+      NLJ的工作原理
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smj" class="md-nav__link">
+    <span class="md-ellipsis">
+      SMJ的工作原理
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hj" class="md-nav__link">
+    <span class="md-ellipsis">
+      HJ的工作原理
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#join_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      分布式环境下的Join
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sparkjoin" class="md-nav__link">
+    <span class="md-ellipsis">
+      Spark如何选择Join策略？
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Spark如何选择Join策略？">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#joinsparkjoin" class="md-nav__link">
+    <span class="md-ellipsis">
+      等值Join下，Spark如何选择Join策略？
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#joinsparkjoin_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      不等值Join下，Spark如何选择Join策略？
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      开发者能做些什么？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      每日一练
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../27%20-%20%E5%A4%A7%E8%A1%A8Join%E5%B0%8F%E8%A1%A8%EF%BC%9A%E5%B9%BF%E6%92%AD%E5%8F%98%E9%87%8F%E5%AE%B9%E4%B8%8D%E4%B8%8B%E5%B0%8F%E8%A1%A8%E6%80%8E%E4%B9%88%E5%8A%9E%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    27   大表Join小表：广播变量容不下小表怎么办？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../28%20-%20%E5%A4%A7%E8%A1%A8Join%E5%A4%A7%E8%A1%A8%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9A%E4%BB%80%E4%B9%88%E6%98%AF%E2%80%9C%E5%88%86%E8%80%8C%E6%B2%BB%E4%B9%8B%E2%80%9D%E7%9A%84%E8%B0%83%E4%BC%98%E6%80%9D%E8%B7%AF%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    28   大表Join大表（一）：什么是“分而治之”的调优思路？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../29%20-%20%E5%A4%A7%E8%A1%A8Join%E5%A4%A7%E8%A1%A8%EF%BC%88%E4%BA%8C%EF%BC%89%EF%BC%9A%E4%BB%80%E4%B9%88%E6%98%AF%E8%B4%9F%E9%9A%85%E9%A1%BD%E6%8A%97%E7%9A%84%E8%B0%83%E4%BC%98%E6%80%9D%E8%B7%AF%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    29   大表Join大表（二）：什么是负隅顽抗的调优思路？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../30-%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%EF%BC%9A%E5%8C%97%E4%BA%AC%E5%B8%82%E5%B0%8F%E5%AE%A2%E8%BD%A6%EF%BC%88%E6%B1%BD%E6%B2%B9%E8%BD%A6%EF%BC%89%E6%91%87%E5%8F%B7%E8%B6%8B%E5%8A%BF%E5%88%86%E6%9E%90/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    30 应用开发：北京市小客车（汽油车）摇号趋势分析
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../31%20-%20%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98%EF%BC%9A%E6%89%8B%E6%8A%8A%E6%89%8B%E5%B8%A6%E4%BD%A0%E6%8F%90%E5%8D%87%E5%BA%94%E7%94%A8%E7%9A%84%E6%89%A7%E8%A1%8C%E6%80%A7%E8%83%BD/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    31   性能调优：手把手带你提升应用的执行性能
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Spark%20UI%EF%BC%88%E4%B8%8A%EF%BC%89-%20%E6%B7%B1%E5%85%A5%E8%A7%A3%E8%AF%BBSpark%E4%BD%9C%E4%B8%9A%E7%9A%84%E2%80%9C%E4%BD%93%E6%A3%80%E6%8A%A5%E5%91%8A%E2%80%9D/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Spark UI（上）  深入解读Spark作业的“体检报告”
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Spark%20UI%EF%BC%88%E4%B8%8B%EF%BC%89%EF%BC%9A%E6%B7%B1%E5%85%A5%E8%A7%A3%E8%AF%BBSpark%E4%BD%9C%E4%B8%9A%E7%9A%84%E2%80%9C%E4%BD%93%E6%A3%80%E6%8A%A5%E5%91%8A%E2%80%9D/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Spark UI（下）：深入解读Spark作业的“体检报告”
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E6%9C%9F%E6%9C%AB%E8%80%83%E8%AF%95%20-%20%E2%80%9CSpark%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98%E2%80%9D100%E5%88%86%E8%AF%95%E5%8D%B7%E7%AD%89%E4%BD%A0%E6%9D%A5%E6%8C%91%E6%88%98%EF%BC%81/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    期末考试   “Spark性能调优”100分试卷等你来挑战！
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E7%BB%93%E6%9D%9F%E8%AF%AD%20-%20%E5%9C%A8%E6%97%B6%E9%97%B4%E9%9D%A2%E5%89%8D%EF%BC%8C%E5%81%9A%E4%B8%80%E4%B8%AA%E7%AC%83%E5%AE%9A%E5%AD%A6%E4%B9%A0%E7%9A%84%E4%BA%BA/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    结束语   在时间面前，做一个笃定学习的人
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E4%B8%AD%E5%9B%BD%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD%E6%88%90%E7%86%9F%E5%BA%A6%E6%A8%A1%E5%9E%8B%E6%8A%A5%E5%91%8A/%E4%B8%AD%E5%9B%BD%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD%E6%88%90%E7%86%9F%E5%BA%A6%E6%A8%A1%E5%9E%8B%E6%8A%A5%E5%91%8A/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    中国人工智能成熟度模型报告
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD%E5%9F%BA%E7%A1%80%E8%AF%BE/%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD%E5%9F%BA%E7%A1%80%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    人工智能基础课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E4%BB%8E0%E5%BC%80%E5%A7%8B%E5%AD%A6%E5%A4%A7%E6%95%B0%E6%8D%AE/%E4%BB%8E0%E5%BC%80%E5%A7%8B%E5%AD%A6%E5%A4%A7%E6%95%B0%E6%8D%AE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    从0开始学大数据
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E5%A4%A7%E6%95%B0%E6%8D%AE%E7%BB%8F%E5%85%B8%E8%AE%BA%E6%96%87%E8%A7%A3%E8%AF%BB/%E5%A4%A7%E6%95%B0%E6%8D%AE%E7%BB%8F%E5%85%B8%E8%AE%BA%E6%96%87%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    大数据经典论文解读
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E5%AE%9E%E6%88%98/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E5%AE%9E%E6%88%98/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    大模型应用开发实战
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E5%A4%A7%E8%A7%84%E6%A8%A1%E6%95%B0%E6%8D%AE%E5%A4%84%E7%90%86%E5%AE%9E%E6%88%98/%E5%A4%A7%E8%A7%84%E6%A8%A1%E6%95%B0%E6%8D%AE%E5%A4%84%E7%90%86%E5%AE%9E%E6%88%98/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    大规模数据处理实战
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E5%AE%9E%E7%94%A8%E5%AF%86%E7%A0%81%E5%AD%A6/%E5%AE%9E%E7%94%A8%E5%AF%86%E7%A0%81%E5%AD%A6/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    实用密码学
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E6%89%8B%E6%8A%8A%E6%89%8B%E5%B8%A6%E4%BD%A0%E6%90%AD%E5%BB%BA%E6%8E%A8%E8%8D%90%E7%B3%BB%E7%BB%9F/%E6%89%8B%E6%8A%8A%E6%89%8B%E5%B8%A6%E4%BD%A0%E6%90%AD%E5%BB%BA%E6%8E%A8%E8%8D%90%E7%B3%BB%E7%BB%9F/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    手把手带你搭建推荐系统
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E6%8E%A8%E8%8D%90%E7%B3%BB%E7%BB%9F%E4%B8%89%E5%8D%81%E5%85%AD%E5%BC%8F/%E6%8E%A8%E8%8D%90%E7%B3%BB%E7%BB%9F%E4%B8%89%E5%8D%81%E5%85%AD%E5%BC%8F/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    推荐系统三十六式
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E6%95%B0%E6%8D%AE%E5%88%86%E6%9E%90%E5%AE%9E%E6%88%9845%E8%AE%B2/%E6%95%B0%E6%8D%AE%E5%88%86%E6%9E%90%E5%AE%9E%E6%88%9845%E8%AE%B2/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    数据分析实战45讲
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E6%95%B0%E6%8D%AE%E5%88%86%E6%9E%90%E6%80%9D%E7%BB%B4%E8%AF%BE/%E6%95%B0%E6%8D%AE%E5%88%86%E6%9E%90%E6%80%9D%E7%BB%B4%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    数据分析思维课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A040%E8%AE%B2/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A040%E8%AE%B2/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    机器学习40讲
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E6%A3%80%E7%B4%A2%E6%8A%80%E6%9C%AF%E6%A0%B8%E5%BF%8320%E8%AE%B2/%E6%A3%80%E7%B4%A2%E6%8A%80%E6%9C%AF%E6%A0%B8%E5%BF%8320%E8%AE%B2/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    检索技术核心20讲
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%E6%8E%A8%E8%8D%90%E7%B3%BB%E7%BB%9F%E5%AE%9E%E6%88%98/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%E6%8E%A8%E8%8D%90%E7%B3%BB%E7%BB%9F%E5%AE%9E%E6%88%98/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    深度学习推荐系统实战
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E7%A8%8B%E5%BA%8F%E5%91%98%E7%9A%84AI%E5%BC%80%E5%8F%91%E7%AC%AC%E4%B8%80%E8%AF%BE/%E7%A8%8B%E5%BA%8F%E5%91%98%E7%9A%84AI%E5%BC%80%E5%8F%91%E7%AC%AC%E4%B8%80%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    程序员的AI开发第一课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E9%9B%B6%E5%9F%BA%E7%A1%80GPT%E5%BA%94%E7%94%A8%E5%85%A5%E9%97%A8%E8%AF%BE/%E9%9B%B6%E5%9F%BA%E7%A1%80GPT%E5%BA%94%E7%94%A8%E5%85%A5%E9%97%A8%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    零基础GPT应用入门课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E9%9B%B6%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8Spark/%E9%9B%B6%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8Spark/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    零基础入门Spark
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E9%9B%B6%E5%9F%BA%E7%A1%80%E5%AE%9E%E6%88%98%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%9B%B6%E5%9F%BA%E7%A1%80%E5%AE%9E%E6%88%98%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    零基础实战机器学习
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../../%E4%BA%A7%E5%93%81-%E8%BF%90%E8%90%A5/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    产品-运营
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../../%E5%89%8D%E7%AB%AF-%E7%A7%BB%E5%8A%A8/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    前端-移动
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../../%E5%90%8E%E7%AB%AF-%E6%9E%B6%E6%9E%84/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    后端-架构
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../../%E7%AE%A1%E7%90%86-%E6%88%90%E9%95%BF/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    管理-成长
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../../%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9F%BA%E7%A1%80/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    计算机基础
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../../%E8%BF%90%E7%BB%B4-%E6%B5%8B%E8%AF%95/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    运维-测试
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#join" class="md-nav__link">
+    <span class="md-ellipsis">
+      Join的实现方式详解
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Join的实现方式详解">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nlj" class="md-nav__link">
+    <span class="md-ellipsis">
+      NLJ的工作原理
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smj" class="md-nav__link">
+    <span class="md-ellipsis">
+      SMJ的工作原理
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hj" class="md-nav__link">
+    <span class="md-ellipsis">
+      HJ的工作原理
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#join_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      分布式环境下的Join
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sparkjoin" class="md-nav__link">
+    <span class="md-ellipsis">
+      Spark如何选择Join策略？
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Spark如何选择Join策略？">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#joinsparkjoin" class="md-nav__link">
+    <span class="md-ellipsis">
+      等值Join下，Spark如何选择Join策略？
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#joinsparkjoin_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      不等值Join下，Spark如何选择Join策略？
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      开发者能做些什么？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      每日一练
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/uaxe/geektime-docs/AI-大数据/Spark性能调优实战/26 - Join Hints指南：不同场景下，如何选择Join策略？.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+  <h1>26   Join Hints指南：不同场景下，如何选择Join策略？</h1>
+
+<p>你好，我是吴磊。</p>
+<p>在数据分析领域，数据关联可以说是最常见的计算场景了。因为使用的频率很高，所以Spark为我们准备了非常丰富的关联形式，包括Inner Join、Left Join、Right Join、Anti Join、Semi Join等等。</p>
+<p>搞懂不同关联形式的区别与作用，可以让我们快速地实现业务逻辑。不过，这只是基础，要想提高数据关联场景下Spark应用的执行性能，更为关键的是我们要能够深入理解Join的实现原理。</p>
+<p>所以今天这一讲，我们先来说说，单机环境中Join都有哪几种实现方式，它们的优劣势分别是什么。理解了这些实现方式，我们再结合它们一起探讨，分布式计算环境中Spark都支持哪些Join策略。对于不同的Join策略，Spark是怎么做取舍的。</p>
+<h2 id="join">Join的实现方式详解</h2>
+<p>到目前为止，数据关联总共有3种Join实现方式。按照出现的时间顺序，分别是嵌套循环连接（NLJ，Nested Loop Join ）、排序归并连接（SMJ，Shuffle Sort Merge Join）和哈希连接（HJ，Hash Join）。接下来，我们就借助一个数据关联的场景，来分别说一说这3种Join实现方式的工作原理。</p>
+<p>假设，现在有事实表orders和维度表users。其中，users表存储用户属性信息，orders记录着用户的每一笔交易。两张表的Schema如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>// 订单表orders关键字段
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>userId, Int
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>itemId, Int
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>price, Float
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>quantity, Int
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>// 用户表users关键字段
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>id, Int
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>name, String
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>type, String //枚举值，分为头部用户和长尾用户
+</code></pre></div>
+<p>我们的任务是要基于这两张表做内关联（Inner Join），同时把用户名、单价、交易额等字段投影出来。具体的SQL查询语句如下表：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>//SQL查询语句
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>select orders.quantity, orders.price, orders.userId, users.id, users.name
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>from orders inner join users on orders.userId = users.id
+</code></pre></div>
+<p>那么，对于这样一个关联查询，在3种不同的Join实现方式下，它是如何完成计算的呢？</p>
+<h3 id="nlj">NLJ的工作原理</h3>
+<p>对于参与关联的两张数据表，我们通常会根据它们扮演的角色来做区分。其中，体量较大、主动扫描数据的表，我们把它称作外表或是驱动表；体量较小、被动参与数据扫描的表，我们管它叫做内表或是基表。那么，NLJ是如何关联这两张数据表的呢？</p>
+<p><strong>NLJ是采用“嵌套循环”的方式来实现关联的。</strong> 也就是说，NLJ会使用内、外两个嵌套的for循环依次扫描外表和内表中的数据记录，判断关联条件是否满足，比如例子中的orders.userId = users.id，如果满足就把两边的记录拼接在一起，然后对外输出。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/be/13/be0774ffca24f9c20caa2ef6bd88d013.jpg?wh=2829*1431" /></p>
+<p>在这个过程中，外层的for循环负责遍历外表中的每一条数据，如图中的步骤1所示。而对于外表中的每一条数据记录，内层的for循环会逐条扫描内表的所有记录，依次判断记录的Join Key是否满足关联条件，如步骤2所示。假设，外表有M行数据，内表有N行数据，那么 <strong>NLJ算法的计算复杂度是O(M * N)</strong>。不得不说，尽管NLJ实现方式简单而又直接，但它的执行效率实在让人不敢恭维。</p>
+<h3 id="smj">SMJ的工作原理</h3>
+<p>正是因为NLJ极低的执行效率，所以在它推出之后没多久之后，就有人用排序、归并的算法代替NLJ实现了数据关联，这种算法就是SMJ。 <strong>SMJ的思路是先排序、再归并。</strong> 具体来说，就是参与Join的两张表先分别按照Join Key做升序排序。然后，SMJ会使用两个独立的游标对排好序的两张表完成归并关联。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/e2/b2/e2a8f8d1b2572ff456fa83a3f25ccbb2.jpg?wh=1183*1048" /></p>
+<p>SMJ刚开始工作的时候，内外表的游标都会先锚定在两张表的第一条记录上，然后再对比游标所在记录的Join Key。对比结果以及后续操作主要分为3种情况：</p>
+<ol>
+<li>外表Join Key等于内表Join Key，满足关联条件，把两边的数据记录拼接并输出，然后把外表的游标滑动到下一条记录</li>
+<li>外表Join Key小于内表Join Key，不满足关联条件，把外表的游标滑动到下一条记录</li>
+<li>外表Join Key大于内表Join Key，不满足关联条件，把内表的游标滑动到下一条记录</li>
+</ol>
+<p>SMJ正是基于这3种情况，不停地向下滑动游标，直到某张表的游标滑到头，即宣告关联结束。对于SMJ中外表的每一条记录，由于内表按Join Key升序排序，且扫描的起始位置为游标所在位置，因此 <strong>SMJ算法的计算复杂度为O(M + N)</strong>。</p>
+<p>不过，SMJ计算复杂度的降低，仰仗的是两张表已经事先排好序。要知道，排序本身就是一项非常耗时的操作，更何况，为了完成归并关联，参与Join的两张表都需要排序。因此，SMJ的计算过程我们可以用“先苦后甜”来形容。苦的是要先花费时间给两张表做排序，甜的是有序表的归并关联能够享受到线性的计算复杂度。</p>
+<h3 id="hj">HJ的工作原理</h3>
+<p>考虑到SMJ对排序的要求比较苛刻，所以后来又有人提出了效率更高的关联算法：HJ。HJ的设计初衷非常明确： <strong>把内表扫描的计算复杂度降低至O(1)</strong>。把一个数据集合的访问效率提升至O(1)，也只有Hash Map能做到了。也正因为Join的关联过程引入了Hash计算，所以它叫HJ。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/5c/e4/5c81d814591eba9d08e6a3174ffe22e4.jpg?wh=3960*1659" /></p>
+<p>HJ的计算分为两个阶段，分别是Build阶段和Probe阶段。在Build阶段，基于内表，算法使用既定的哈希函数构建哈希表，如上图的步骤1所示。哈希表中的Key是Join Key应用（Apply）哈希函数之后的哈希值，表中的Value同时包含了原始的Join Key和Payload。</p>
+<p>在Probe阶段，算法遍历每一条数据记录，先是使用同样的哈希函数，以动态的方式（On The Fly）计算Join Key的哈希值。然后，用计算得到的哈希值去查询刚刚在Build阶段创建好的哈希表。如果查询失败，说明该条记录与维度表中的数据不存在关联关系；如果查询成功，则继续对比两边的Join Key。如果Join Key一致，就把两边的记录进行拼接并输出，从而完成数据关联。</p>
+<h2 id="join_1">分布式环境下的Join</h2>
+<p>掌握了这3种最主要的数据关联实现方式的工作原理之后，在单机环境中，无论是面对常见的Inner Join、Left Join、Right Join，还是不常露面的Anti Join、Semi Join，你都能对数据关联的性能调优做到游刃有余了。</p>
+<p>不过，你也可能会说：“Spark毕竟是个分布式系统，光学单机实现有什么用呀？”</p>
+<p>所谓万变不离其宗，实际上， <strong>相比单机环境，分布式环境中的数据关联在计算环节依然遵循着NLJ、SMJ和HJ这3种实现方式，只不过是增加了网络分发这一变数</strong>。在Spark的分布式计算环境中，数据在网络中的分发主要有两种方式，分别是Shuffle和广播。那么，不同的网络分发方式，对于数据关联的计算又都有哪些影响呢？</p>
+<p>如果采用Shuffle的分发方式来完成数据关联，那么外表和内表都需要按照Join Key在集群中做全量的数据分发。因为只有这样，两个数据表中Join Key相同的数据记录才能分配到同一个Executor进程，从而完成关联计算，如下图所示。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/b1/28/b1b2a574eb7ef33e2315f547ecdc0328.jpg?wh=5124*1599" /></p>
+<p>如果采用广播机制的话，情况会大有不同。在这种情况下，Spark只需要把内表（基表）封装到广播变量，然后在全网进行分发。由于广播变量中包含了内表的 <strong>全量数据</strong>，因此体量较大的外表只要“待在原地、保持不动”，就能轻松地完成关联计算，如下图所示。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/b3/2a/b3c5ab392c2303bf7923488623b4022a.jpg?wh=5094*1695" /></p>
+<p>不难发现，结合Shuffle、广播这两种网络分发方式和NLJ、SMJ、HJ这3种计算方式，对于分布式环境下的数据关联，我们就能组合出6种Join策略，如下图所示。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/e9/48/e9bf1720ac13289a9e49e0f33a334548.jpg?wh=1989*1149" /></p>
+<p>这6种Join策略，对应图中6个青色圆角矩形，从上到下颜色依次变浅，它们分别是Cartesian Product Join、Shuffle Sort Merge Join和Shuffle Hash Join。也就是采用Shuffle机制实现的NLJ、SMJ和HJ，以及Broadcast Nested Loop Join、Broadcast Sort Merge Join和Broadcast Hash Join。</p>
+<p><strong>从执行性能来说，6种策略从上到下由弱变强。</strong> 相比之下，CPJ的执行效率是所有实现方式当中最差的，网络开销、计算开销都很大，因而在图中的颜色也是最深的。BHJ是最好的分布式数据关联机制，网络开销和计算开销都是最小的，因而颜色也最浅。此外，你可能也注意到了，Broadcast Sort Merge Join被标记成了灰色，这是因为Spark并没有选择支持Broadcast + Sort Merge Join这种组合方式。</p>
+<p>那么问题来了，明明是6种组合策略，为什么Spark偏偏没有支持这一种呢？要回答这个问题，我们就要回过头来对比SMJ与HJ实现方式的差异与优劣势。</p>
+<p>相比SMJ，HJ并不要求参与Join的两张表有序，也不需要维护两个游标来判断当前的记录位置，只要基表在Build阶段构建的哈希表可以放进内存，HJ算法就可以在Probe阶段遍历外表，依次与哈希表进行关联。</p>
+<p>当数据能以广播的形式在网络中进行分发时，说明被分发的数据，也就是基表的数据足够小，完全可以放到内存中去。这个时候，相比NLJ、SMJ，HJ的执行效率是最高的。因此，在可以采用HJ的情况下，Spark自然就没有必要再去用SMJ这种前置开销比较大的方式去完成数据关联。</p>
+<h2 id="sparkjoin">Spark如何选择Join策略？</h2>
+<p>那么，在不同的数据关联场景中，对于这5种Join策略来说，也就是CPJ、BNLJ、SHJ、SMJ以及BHJ，Spark会基于什么逻辑取舍呢？我们来分两种情况进行讨论，分别是等值Join，和不等值Join。</p>
+<h3 id="joinsparkjoin">等值Join下，Spark如何选择Join策略？</h3>
+<p>等值Join是指两张表的Join Key是通过等值条件连接在一起的。在日常的开发中，这种Join形式是最常见的，如t1 inner join t2 on <strong>t1.id = t2.id</strong>。</p>
+<p><strong>在等值数据关联中，Spark会尝试按照BHJ &gt; SMJ &gt; SHJ的顺序依次选择Join策略。</strong> 在这三种策略中，执行效率最高的是BHJ，其次是SHJ，再次是SMJ。其中，SMJ和SHJ策略支持所有连接类型，如全连接、Anti Join等等。BHJ尽管效率最高，但是有两个前提条件：一是连接类型不能是全连接（Full Outer Join）；二是基表要足够小，可以放到广播变量里面去。</p>
+<p>那为什么SHJ比SMJ执行效率高，排名却不如SMJ靠前呢？这是个非常好的问题。我们先来说结论，相比SHJ，Spark优先选择SMJ的原因在于，SMJ的实现方式更加稳定，更不容易OOM。</p>
+<p>回顾HJ的实现机制，在Build阶段，算法根据内表创建哈希表。在Probe阶段，为了让外表能够成功“探测”（Probe）到每一个Hash Key，哈希表要全部放进内存才行。坦白说，这个前提还是蛮苛刻的，仅这一点要求就足以让Spark对其望而却步。要知道，在不同的计算场景中，数据分布的多样性很难保证内表一定能全部放进内存。</p>
+<p>而且在Spark中，SHJ策略要想被选中必须要满足两个先决条件，这两个条件都是对数据尺寸的要求。 <strong>首先，外表大小至少是内表的3倍。其次，内表数据分片的平均大小要小于广播变量阈值。</strong> 第一个条件的动机很好理解，只有当内外表的尺寸悬殊到一定程度时，HJ的优势才会比SMJ更显著。第二个限制的目的是，确保内表的每一个数据分片都能全部放进内存。</p>
+<p>和SHJ相比，SMJ没有这么多的附加条件，无论是单表排序，还是两表做归并关联，都可以借助磁盘来完成。内存中放不下的数据，可以临时溢出到磁盘。单表排序的过程，我们可以参考Shuffle Map阶段生成中间文件的过程。在做归并关联的时候，算法可以把磁盘中的有序数据用合理的粒度，依次加载进内存完成计算。这个粒度可大可小，大到以数据分片为单位，小到逐条扫描。</p>
+<p>正是考虑到这些因素，相比SHJ，Spark SQL会优先选择SMJ。事实上，在配置项spark.sql.join.preferSortMergeJoin默认为True的情况下，Spark SQL会用SMJ策略来兜底，确保作业执行的稳定性，压根就不会打算去尝试SHJ。开发者如果想通过配置项来调整Join策略，需要把这个参数改为False，这样Spark SQL才有可能去尝试SHJ。</p>
+<h3 id="joinsparkjoin_1">不等值Join下，Spark如何选择Join策略？</h3>
+<p>接下来，我们再来说说不等值Join，它指的是两张表的Join Key是通过不等值条件连接在一起的。不等值Join其实我们在以前的例子中也见过，比如像查询语句t1 inner join t2 on <strong>t1.date &gt; t2.beginDate and t1.date &lt;= t2.endDate</strong>，其中的关联关系是依靠不等式连接在一起的。</p>
+<p><strong>由于不等值Join只能使用NLJ来实现，因此Spark SQL可选的Join策略只剩下BNLJ和CPJ。</strong> 在同一种计算模式下，相比Shuffle，广播的网络开销更小。显然，在两种策略的选择上，Spark SQL一定会按照BNLJ &gt; CPJ的顺序进行尝试。当然，BNLJ生效的前提自然是内表小到可以放进广播变量。如果这个条件不成立，那么Spark SQL只好委曲求全，使用笨重的CPJ策略去完成关联计算。</p>
+<h2 id="_1">开发者能做些什么？</h2>
+<p>最后，我们再来聊聊，面对上述的5种Join策略，开发者还能做些什么呢？通过上面的分析，我们不难发现，Spark SQL对于这些策略的取舍也基于一些既定的规则。所谓计划赶不上变化，预置的规则自然很难覆盖多样且变化无常的计算场景。因此，当我们掌握了不同Join策略的工作原理，结合我们对于业务和数据的深刻理解，完全可以自行决定应该选择哪种Join策略。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/94/b8/9436f0f9352ffa381b238be57d2ecdb8.jpeg?wh=1920*1080" /></p>
+<p>在最新发布的3.0版本中，Spark为开发者提供了多样化的Join Hints，允许你把专家经验凌驾于Spark SQL的选择逻辑之上。 <strong>在满足前提条件的情况下，如等值条件、连接类型、表大小等等，Spark会优先尊重开发者的意愿，去选取开发者通过Join Hints指定的Join策略。</strong> 关于Spark 3.0支持的Join Hints关键字，以及对应的适用场景，我把它们总结到了如上的表格中，你可以直接拿来参考。</p>
+<p>简单来说，你可以使用两种方式来指定Join Hints，一种是通过SQL结构化查询语句，另一种是使用DataFrame的DSL语言，都很方便。至于更全面的讲解，你可以去 <a href="https://time.geekbang.org/column/article/360837">第13讲</a> 看看，这里我就不多说了。</p>
+<h2 id="_2">小结</h2>
+<p>这一讲，我们从数据关联的实现原理，到Spark SQL不同Join策略的适用场景，掌握这些关键知识点，对于数据关联场景中的性能调优至关重要。</p>
+<p>首先，你需要掌握3种Join实现机制的工作原理。为了方便你对比，我把它们总结在了下面的表格里。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/86/bc/86bb13a5b7b96da4f5128df8b54b96bc.jpeg?wh=1920*864" /></p>
+<p>掌握了3种关联机制的实现原理，你就能更好地理解Spark SQL的Join策略。结合数据的网络分发方式（Shuffle和广播），Spark SQL支持5种Join策略，按照执行效率排序就是BHJ &gt; SHJ &gt; SMJ &gt; BNLJ &gt; CPJ。同样，为了方便对比，你也可以直接看下面的表格。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/7b/9e/7be7f01b383463f804a2db74a68d5e9e.jpeg?wh=1920*716" /></p>
+<p>最后，当你掌握了不同Join策略的工作原理，结合对于业务和数据的深刻理解，实际上你可以自行决定应该选择哪种Join策略，不必完全依赖Spark SQL的判断。</p>
+<p>Spark为开发者提供了多样化的Join Hints，允许你把专家经验凌驾于Spark SQL的选择逻辑之上。比如，当你确信外表比内表大得多，而且内表数据分布均匀，使用SHJ远比默认的SMJ效率高得多的时候，你就可以通过指定Join Hints来强制Spark SQL按照你的意愿去选择Join策略。</p>
+<h2 id="_3">每日一练</h2>
+<ol>
+<li>如果关联的场景是事实表Join事实表，你觉得我们今天讲的Sort Merge Join实现方式还适用吗？如果让你来设计算法的实现步骤，你会怎么做？</li>
+<li>你觉得，不等值Join可以强行用Sort Merge Join和Hash Join两种机制来实现吗？为什么？</li>
+</ol>
+<p>期待在留言区看到你的思考和答案，我们下一讲见！</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../25%20-%20Spark%203.0%EF%BC%88%E4%BA%8C%EF%BC%89%EF%BC%9ADPP%E7%89%B9%E6%80%A7%E8%AF%A5%E6%80%8E%E4%B9%88%E7%94%A8%EF%BC%9F/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 25   Spark 3.0（二）：DPP特性该怎么用？">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                25   Spark 3.0（二）：DPP特性该怎么用？
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../27%20-%20%E5%A4%A7%E8%A1%A8Join%E5%B0%8F%E8%A1%A8%EF%BC%9A%E5%B9%BF%E6%92%AD%E5%8F%98%E9%87%8F%E5%AE%B9%E4%B8%8D%E4%B8%8B%E5%B0%8F%E8%A1%A8%E6%80%8E%E4%B9%88%E5%8A%9E%EF%BC%9F/" class="md-footer__link md-footer__link--next" aria-label="Next: 27   大表Join小表：广播变量容不下小表怎么办？">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                27   大表Join小表：广播变量容不下小表怎么办？
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright © 2025-Present zkep
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["content.action.edit", "content.code.annotate", "content.code.copy", "content.tooltips", "toc.follow", "navigation.top", "navigation.tabs", "navigation.tabs.sticky", "navigation.prune", "navigation.footer", "navigation.tracking", "navigation.instant", "navigation.instant.progress", "navigation.indexes", "content.tabs.link"], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.60a45f97.min.js"></script>
+      
+        <script src="../../../javascript/extra.js"></script>
+      
+        <script src="../../../javascript/giscus.js"></script>
+      
+    
+  </body>
+</html>

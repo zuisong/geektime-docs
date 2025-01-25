@@ -1,0 +1,5661 @@
+<!--geek time docs 🚀, MIT license-->
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="极客时间在线文档">
+      
+      
+        <meta name="author" content="zkep">
+      
+      
+      
+        <link rel="prev" href="../20%20%E5%88%86%E6%9E%90%E7%AF%87%20-%20%E5%A6%82%E4%BD%95%E5%88%86%E6%9E%90CPU%E5%88%A9%E7%94%A8%E7%8E%87%E9%A3%99%E9%AB%98%E9%97%AE%E9%A2%98%20%EF%BC%9F/">
+      
+      
+        <link rel="next" href="../%E7%BB%93%E6%9D%9F%E8%AF%AD%20-%20%E7%AC%AC%E4%B8%80%E6%AC%A1%E7%9C%8B%E5%86%85%E6%A0%B8%E4%BB%A3%E7%A0%81%EF%BC%8C%E6%88%91%E4%B9%9F%E5%BE%88%E6%87%B5%E9%80%BC/">
+      
+      
+      <link rel="icon" href="../../../None">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.50">
+    
+    
+      
+        <title>加餐 我是如何使用tracepoint来分析内核Bug的？ - Geek Time Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.a40c8224.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../stylesheets/style.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#tracepoint" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            
+
+
+          </div>
+          
+        </aside>
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Geek Time Docs" class="md-header__button md-logo" aria-label="Geek Time Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Geek Time Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              加餐   我是如何使用tracepoint来分析内核Bug的？
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/uaxe/geektime-docs" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    uaxe/geektime-docs
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../AI-%E5%A4%A7%E6%95%B0%E6%8D%AE/" class="md-tabs__link">
+          
+  
+    
+  
+  AI-大数据
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../%E4%BA%A7%E5%93%81-%E8%BF%90%E8%90%A5/" class="md-tabs__link">
+          
+  
+    
+  
+  产品-运营
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../%E5%89%8D%E7%AB%AF-%E7%A7%BB%E5%8A%A8/" class="md-tabs__link">
+          
+  
+    
+  
+  前端-移动
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../%E5%90%8E%E7%AB%AF-%E6%9E%B6%E6%9E%84/" class="md-tabs__link">
+          
+  
+    
+  
+  后端-架构
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../%E7%AE%A1%E7%90%86-%E6%88%90%E9%95%BF/" class="md-tabs__link">
+          
+  
+    
+  
+  管理-成长
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9F%BA%E7%A1%80/" class="md-tabs__link">
+          
+  
+    
+  
+  计算机基础
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
+          
+  
+    
+  
+  运维-测试
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Geek Time Docs" class="md-nav__button md-logo" aria-label="Geek Time Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Geek Time Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/uaxe/geektime-docs" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    uaxe/geektime-docs
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../../AI-%E5%A4%A7%E6%95%B0%E6%8D%AE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    AI-大数据
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../../%E4%BA%A7%E5%93%81-%E8%BF%90%E8%90%A5/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    产品-运营
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../../%E5%89%8D%E7%AB%AF-%E7%A7%BB%E5%8A%A8/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    前端-移动
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../../%E5%90%8E%E7%AB%AF-%E6%9E%B6%E6%9E%84/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    后端-架构
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../../%E7%AE%A1%E7%90%86-%E6%88%90%E9%95%BF/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    管理-成长
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../../%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9F%BA%E7%A1%80/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    计算机基础
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    运维-测试
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            运维-测试
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../AI%E9%87%8D%E5%A1%91%E4%BA%91%E5%8E%9F%E7%94%9F%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E5%AE%9E%E6%88%98/AI%E9%87%8D%E5%A1%91%E4%BA%91%E5%8E%9F%E7%94%9F%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E5%AE%9E%E6%88%98/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    AI重塑云原生应用开发实战
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../DevOps%E5%AE%9E%E6%88%98%E7%AC%94%E8%AE%B0/DevOps%E5%AE%9E%E6%88%98%E7%AC%94%E8%AE%B0/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    DevOps实战笔记
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../Kubernetes%E5%85%A5%E9%97%A8%E5%AE%9E%E6%88%98%E8%AF%BE/Kubernetes%E5%85%A5%E9%97%A8%E5%AE%9E%E6%88%98%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    Kubernetes入门实战课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7_5" id="__nav_7_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Linux内核技术实战课
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7_5">
+            <span class="md-nav__icon md-icon"></span>
+            Linux内核技术实战课
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Linux%E5%86%85%E6%A0%B8%E6%8A%80%E6%9C%AF%E5%AE%9E%E6%88%98%E8%AF%BE/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Linux内核技术实战课
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E5%BC%80%E7%AF%87%E8%AF%8D%20-%20%E5%A6%82%E4%BD%95%E8%AE%A9Linux%E5%86%85%E6%A0%B8%E6%9B%B4%E5%A5%BD%E5%9C%B0%E6%9C%8D%E5%8A%A1%E5%BA%94%E7%94%A8%E7%A8%8B%E5%BA%8F%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    开篇词   如何让Linux内核更好地服务应用程序？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01%20%E5%9F%BA%E7%A1%80%E7%AF%87%20-%20%E5%A6%82%E4%BD%95%E7%94%A8%E6%95%B0%E6%8D%AE%E8%A7%82%E6%B5%8BPage%20Cache%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    01 基础篇   如何用数据观测Page Cache？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02%20%E5%9F%BA%E7%A1%80%E7%AF%87%20-%20Page%20Cache%E6%98%AF%E6%80%8E%E6%A0%B7%E4%BA%A7%E7%94%9F%E5%92%8C%E9%87%8A%E6%94%BE%E7%9A%84%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    02 基础篇   Page Cache是怎样产生和释放的？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03%20%E6%A1%88%E4%BE%8B%E7%AF%87%20-%20%E5%A6%82%E4%BD%95%E5%A4%84%E7%90%86Page%20Cache%E9%9A%BE%E4%BB%A5%E5%9B%9E%E6%94%B6%E4%BA%A7%E7%94%9F%E7%9A%84load%E9%A3%99%E9%AB%98%E9%97%AE%E9%A2%98%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    03 案例篇   如何处理Page Cache难以回收产生的load飙高问题？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04%20%E6%A1%88%E4%BE%8B%E7%AF%87%20-%20%E5%A6%82%E4%BD%95%E5%A4%84%E7%90%86Page%20Cache%E5%AE%B9%E6%98%93%E5%9B%9E%E6%94%B6%E5%BC%95%E8%B5%B7%E7%9A%84%E4%B8%9A%E5%8A%A1%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    04 案例篇   如何处理Page Cache容易回收引起的业务性能问题？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05%20%E5%88%86%E6%9E%90%E7%AF%87%20-%20%E5%A6%82%E4%BD%95%E5%88%A4%E6%96%AD%E9%97%AE%E9%A2%98%E6%98%AF%E5%90%A6%E7%94%B1Page%20Cache%E4%BA%A7%E7%94%9F%E7%9A%84%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    05 分析篇   如何判断问题是否由Page Cache产生的？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06%20%20%E5%9F%BA%E7%A1%80%E7%AF%87%20-%20%E8%BF%9B%E7%A8%8B%E7%9A%84%E5%93%AA%E4%BA%9B%E5%86%85%E5%AD%98%E7%B1%BB%E5%9E%8B%E5%AE%B9%E6%98%93%E5%BC%95%E8%B5%B7%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    06  基础篇   进程的哪些内存类型容易引起内存泄漏？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07%20%E6%A1%88%E4%BE%8B%E7%AF%87%20-%20%E5%A6%82%E4%BD%95%E9%A2%84%E9%98%B2%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E5%AF%BC%E8%87%B4%E7%9A%84%E7%B3%BB%E7%BB%9F%E5%81%87%E6%AD%BB%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    07 案例篇   如何预防内存泄漏导致的系统假死？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08%20%E6%A1%88%E4%BE%8B%E7%AF%87%20-%20Shmem%EF%BC%9A%E8%BF%9B%E7%A8%8B%E6%B2%A1%E6%9C%89%E6%B6%88%E8%80%97%E5%86%85%E5%AD%98%EF%BC%8C%E5%86%85%E5%AD%98%E5%93%AA%E5%8E%BB%E4%BA%86%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    08 案例篇   Shmem：进程没有消耗内存，内存哪去了？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09%20%E5%88%86%E6%9E%90%E7%AF%87%20-%20%E5%A6%82%E4%BD%95%E5%AF%B9%E5%86%85%E6%A0%B8%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E5%81%9A%E4%BA%9B%E5%9F%BA%E7%A1%80%E7%9A%84%E5%88%86%E6%9E%90%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    09 分析篇   如何对内核内存泄漏做些基础的分析？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10%20%E5%88%86%E6%9E%90%E7%AF%87%20-%20%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%97%B6%EF%BC%8C%E6%88%91%E4%BB%AC%E8%AF%A5%E5%A6%82%E4%BD%95%E4%B8%80%E6%AD%A5%E6%AD%A5%E6%89%BE%E5%88%B0%E6%A0%B9%E5%9B%A0%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    10 分析篇   内存泄漏时，我们该如何一步步找到根因？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11%20%E5%9F%BA%E7%A1%80%E7%AF%87%20-%20TCP%E8%BF%9E%E6%8E%A5%E7%9A%84%E5%BB%BA%E7%AB%8B%E5%92%8C%E6%96%AD%E5%BC%80%E5%8F%97%E5%93%AA%E4%BA%9B%E7%B3%BB%E7%BB%9F%E9%85%8D%E7%BD%AE%E5%BD%B1%E5%93%8D%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    11 基础篇   TCP连接的建立和断开受哪些系统配置影响？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../12%20%E5%9F%BA%E7%A1%80%E7%AF%87%20-%20TCP%E6%94%B6%E5%8F%91%E5%8C%85%E8%BF%87%E7%A8%8B%E4%BC%9A%E5%8F%97%E5%93%AA%E4%BA%9B%E9%85%8D%E7%BD%AE%E9%A1%B9%E5%BD%B1%E5%93%8D%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    12 基础篇   TCP收发包过程会受哪些配置项影响？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../13%20%E6%A1%88%E4%BE%8B%E7%AF%87%20-%20TCP%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6%E6%98%AF%E5%A6%82%E4%BD%95%E5%AF%BC%E8%87%B4%E4%B8%9A%E5%8A%A1%E6%80%A7%E8%83%BD%E6%8A%96%E5%8A%A8%E7%9A%84%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    13 案例篇   TCP拥塞控制是如何导致业务性能抖动的？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../14%20%E6%A1%88%E4%BE%8B%E7%AF%87%20-%20%20TCP%E7%AB%AF%E5%88%B0%E7%AB%AF%E6%97%B6%E5%BB%B6%E5%8F%98%E5%A4%A7%EF%BC%8C%E6%80%8E%E6%A0%B7%E5%88%A4%E6%96%AD%E6%98%AF%E5%93%AA%E9%87%8C%E5%87%BA%E7%8E%B0%E4%BA%86%E9%97%AE%E9%A2%98%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    14 案例篇    TCP端到端时延变大，怎样判断是哪里出现了问题？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../15%20%E5%88%86%E6%9E%90%E7%AF%87%20-%20%E5%A6%82%E4%BD%95%E9%AB%98%E6%95%88%E5%9C%B0%E5%88%86%E6%9E%90TCP%E9%87%8D%E4%BC%A0%E9%97%AE%E9%A2%98%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    15 分析篇   如何高效地分析TCP重传问题？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../16%20%E5%A5%97%E8%B7%AF%E7%AF%87%20-%20%E5%A6%82%E4%BD%95%E5%88%86%E6%9E%90%E5%B8%B8%E8%A7%81%E7%9A%84TCP%E9%97%AE%E9%A2%98%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    16 套路篇   如何分析常见的TCP问题？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../17%20%E5%9F%BA%E7%A1%80%E7%AF%87%20-%20CPU%E6%98%AF%E5%A6%82%E4%BD%95%E6%89%A7%E8%A1%8C%E4%BB%BB%E5%8A%A1%E7%9A%84%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    17 基础篇   CPU是如何执行任务的？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../18%20%E6%A1%88%E4%BE%8B%E7%AF%87%20-%20%E4%B8%9A%E5%8A%A1%E6%98%AF%E5%90%A6%E9%9C%80%E8%A6%81%E4%BD%BF%E7%94%A8%E9%80%8F%E6%98%8E%E5%A4%A7%E9%A1%B5%EF%BC%9A%E6%B0%B4%E5%8F%AF%E8%BD%BD%E8%88%9F%EF%BC%8C%E4%BA%A6%E5%8F%AF%E8%A6%86%E8%88%9F%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    18 案例篇   业务是否需要使用透明大页：水可载舟，亦可覆舟？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../19%20%E6%A1%88%E4%BE%8B%E7%AF%87%20-%20%E7%BD%91%E7%BB%9C%E5%90%9E%E5%90%90%E9%AB%98%E7%9A%84%E4%B8%9A%E5%8A%A1%E6%98%AF%E5%90%A6%E9%9C%80%E8%A6%81%E5%BC%80%E5%90%AF%E7%BD%91%E5%8D%A1%E7%89%B9%E6%80%A7%E5%91%A2%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    19 案例篇   网络吞吐高的业务是否需要开启网卡特性呢？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../20%20%E5%88%86%E6%9E%90%E7%AF%87%20-%20%E5%A6%82%E4%BD%95%E5%88%86%E6%9E%90CPU%E5%88%A9%E7%94%A8%E7%8E%87%E9%A3%99%E9%AB%98%E9%97%AE%E9%A2%98%20%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    20 分析篇   如何分析CPU利用率飙高问题 ？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    加餐   我是如何使用tracepoint来分析内核Bug的？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    加餐   我是如何使用tracepoint来分析内核Bug的？
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tracepoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      炫技般存在的tracepoint内核源码
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      内存申请在慢速路径上为什么会失败
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      逐一排查可能的情况
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="逐一排查可能的情况">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gfp-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      GFP flags
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#current-flag" class="md-nav__link">
+    <span class="md-ellipsis">
+      进程标记current-&gt;flag
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reclaimcompact" class="md-nav__link">
+    <span class="md-ellipsis">
+      reclaim和compact无法满足需求
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tracepoint_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用tracepoint分析生产环境
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      解决方案
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E7%BB%93%E6%9D%9F%E8%AF%AD%20-%20%E7%AC%AC%E4%B8%80%E6%AC%A1%E7%9C%8B%E5%86%85%E6%A0%B8%E4%BB%A3%E7%A0%81%EF%BC%8C%E6%88%91%E4%B9%9F%E5%BE%88%E6%87%B5%E9%80%BC/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    结束语   第一次看内核代码，我也很懵逼
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E6%9D%A5%E9%A2%86%E5%A5%96%E5%95%A6%EF%BC%81%E4%BD%A0%E5%A1%AB%E5%86%99%E6%AF%95%E4%B8%9A%E9%97%AE%E5%8D%B7%E4%BA%86%E5%90%97%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    来领奖啦！你填写毕业问卷了吗？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E6%AF%95%E4%B8%9A%E9%97%AE%E5%8D%B7%E8%8E%B7%E5%A5%96%E7%94%A8%E6%88%B7%E5%90%8D%E5%8D%95/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    毕业问卷获奖用户名单
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E7%BB%93%E8%AF%BE%E6%B5%8B%E8%AF%95%20-%20%E8%BF%99%E4%BA%9BLinux%E5%86%85%E6%A0%B8%E6%8A%80%E6%9C%AF%E5%AE%9E%E6%88%98%E6%8A%80%E8%83%BD%E4%BD%A0%E9%83%BD%E6%8E%8C%E6%8F%A1%E4%BA%86%E5%90%97%EF%BC%9F/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    结课测试   这些Linux内核技术实战技能你都掌握了吗？
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../Linux%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E5%AE%9E%E6%88%98/Linux%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E5%AE%9E%E6%88%98/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    Linux性能优化实战
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../SRE%E5%AE%9E%E6%88%98%E6%89%8B%E5%86%8C/SRE%E5%AE%9E%E6%88%98%E6%89%8B%E5%86%8C/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    SRE实战手册
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../SRE%E5%AE%9E%E8%B7%B5%EF%BC%9A%E6%9C%8D%E5%8A%A1%E5%8F%AF%E9%9D%A0%E6%80%A7%E6%A1%88%E4%BE%8B%E8%AF%BE/SRE%E5%AE%9E%E8%B7%B5%EF%BC%9A%E6%9C%8D%E5%8A%A1%E5%8F%AF%E9%9D%A0%E6%80%A7%E6%A1%88%E4%BE%8B%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    SRE实践：服务可靠性案例课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../Serverless%E8%BF%9B%E9%98%B6%E5%AE%9E%E6%88%98%E8%AF%BE/Serverless%E8%BF%9B%E9%98%B6%E5%AE%9E%E6%88%98%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    Serverless进阶实战课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../Web%E6%BC%8F%E6%B4%9E%E6%8C%96%E6%8E%98%E5%AE%9E%E6%88%98/Web%E6%BC%8F%E6%B4%9E%E6%8C%96%E6%8E%98%E5%AE%9E%E6%88%98/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    Web漏洞挖掘实战
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../eBPF%E6%A0%B8%E5%BF%83%E6%8A%80%E6%9C%AF%E4%B8%8E%E5%AE%9E%E6%88%98/eBPF%E6%A0%B8%E5%BF%83%E6%8A%80%E6%9C%AF%E4%B8%8E%E5%AE%9E%E6%88%98/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    eBPF核心技术与实战
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E4%BA%91%E5%8E%9F%E7%94%9F%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84%E5%AE%9E%E6%88%98%E8%AF%BE/%E4%BA%91%E5%8E%9F%E7%94%9F%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84%E5%AE%9E%E6%88%98%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    云原生基础架构实战课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E5%8F%8D%E7%88%AC%E8%99%AB%E5%85%B5%E6%B3%95%E6%BC%94%E7%BB%8E20%E8%AE%B2/%E5%8F%8D%E7%88%AC%E8%99%AB%E5%85%B5%E6%B3%95%E6%BC%94%E7%BB%8E20%E8%AE%B2/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    反爬虫兵法演绎20讲
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E5%AE%89%E5%85%A8%E6%94%BB%E9%98%B2%E6%8A%80%E8%83%BD30%E8%AE%B2/%E5%AE%89%E5%85%A8%E6%94%BB%E9%98%B2%E6%8A%80%E8%83%BD30%E8%AE%B2/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    安全攻防技能30讲
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E5%AE%B9%E5%99%A8%E5%AE%9E%E6%88%98%E9%AB%98%E6%89%8B%E8%AF%BE/%E5%AE%B9%E5%99%A8%E5%AE%9E%E6%88%98%E9%AB%98%E6%89%8B%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    容器实战高手课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E9%AB%98%E6%89%8B%E8%AF%BE/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E9%AB%98%E6%89%8B%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    性能优化高手课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E6%80%A7%E8%83%BD%E6%B5%8B%E8%AF%95%E5%AE%9E%E6%88%9830%E8%AE%B2/%E6%80%A7%E8%83%BD%E6%B5%8B%E8%AF%95%E5%AE%9E%E6%88%9830%E8%AE%B2/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    性能测试实战30讲
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E6%8C%81%E7%BB%AD%E4%BA%A4%E4%BB%9836%E8%AE%B2/%E6%8C%81%E7%BB%AD%E4%BA%A4%E4%BB%9836%E8%AE%B2/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    持续交付36讲
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E6%8E%A5%E5%8F%A3%E6%B5%8B%E8%AF%95%E5%85%A5%E9%97%A8%E8%AF%BE/%E6%8E%A5%E5%8F%A3%E6%B5%8B%E8%AF%95%E5%85%A5%E9%97%A8%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    接口测试入门课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90Kubernetes/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90Kubernetes/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    深入剖析Kubernetes
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E4%BA%91%E8%AE%A1%E7%AE%97/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E4%BA%91%E8%AE%A1%E7%AE%97/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    深入浅出云计算
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E7%A8%8B%E5%BA%8F%E5%91%98%E7%9A%84%E6%B5%8B%E8%AF%95%E8%AF%BE/%E7%A8%8B%E5%BA%8F%E5%91%98%E7%9A%84%E6%B5%8B%E8%AF%95%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    程序员的测试课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E7%BD%91%E7%BB%9C%E6%8E%92%E6%9F%A5%E6%A1%88%E4%BE%8B%E8%AF%BE/%E7%BD%91%E7%BB%9C%E6%8E%92%E6%9F%A5%E6%A1%88%E4%BE%8B%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    网络排查案例课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95%E9%AB%98%E6%89%8B%E8%AF%BE/%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95%E9%AB%98%E6%89%8B%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    自动化测试高手课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E8%AF%B4%E9%80%8F%E6%95%8F%E6%8D%B7/%E8%AF%B4%E9%80%8F%E6%95%8F%E6%8D%B7/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    说透敏捷
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E8%B5%B5%E6%88%90%E7%9A%84%E8%BF%90%E7%BB%B4%E4%BD%93%E7%B3%BB%E7%AE%A1%E7%90%86%E8%AF%BE/%E8%B5%B5%E6%88%90%E7%9A%84%E8%BF%90%E7%BB%B4%E4%BD%93%E7%B3%BB%E7%AE%A1%E7%90%86%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    赵成的运维体系管理课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%9552%E8%AE%B2/%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%9552%E8%AE%B2/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    软件测试52讲
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E8%BF%90%E7%BB%B4%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9F%E5%AE%9E%E6%88%98%E7%AC%94%E8%AE%B0/%E8%BF%90%E7%BB%B4%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9F%E5%AE%9E%E6%88%98%E7%AC%94%E8%AE%B0/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    运维监控系统实战笔记
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E9%9B%B6%E5%9F%BA%E7%A1%80%E6%8B%BF%E4%B8%8B%E4%BA%91%E5%8E%9F%E7%94%9FCKA%E8%AE%A4%E8%AF%81/%E9%9B%B6%E5%9F%BA%E7%A1%80%E6%8B%BF%E4%B8%8B%E4%BA%91%E5%8E%9F%E7%94%9FCKA%E8%AE%A4%E8%AF%81/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    零基础拿下云原生CKA认证
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../%E9%AB%98%E6%A5%BC%E7%9A%84%E6%80%A7%E8%83%BD%E5%B7%A5%E7%A8%8B%E5%AE%9E%E6%88%98%E8%AF%BE/%E9%AB%98%E6%A5%BC%E7%9A%84%E6%80%A7%E8%83%BD%E5%B7%A5%E7%A8%8B%E5%AE%9E%E6%88%98%E8%AF%BE/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    高楼的性能工程实战课
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tracepoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      炫技般存在的tracepoint内核源码
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      内存申请在慢速路径上为什么会失败
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      逐一排查可能的情况
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="逐一排查可能的情况">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gfp-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      GFP flags
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#current-flag" class="md-nav__link">
+    <span class="md-ellipsis">
+      进程标记current-&gt;flag
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reclaimcompact" class="md-nav__link">
+    <span class="md-ellipsis">
+      reclaim和compact无法满足需求
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tracepoint_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用tracepoint分析生产环境
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      解决方案
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/uaxe/geektime-docs/运维-测试/Linux内核技术实战课/加餐 - 我是如何使用tracepoint来分析内核Bug的？.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+  <h1>加餐   我是如何使用tracepoint来分析内核Bug的？</h1>
+
+<p>你好，我是邵亚方。</p>
+<p>我们这个系列课程的目标受众是应用开发者和运维人员，所以，你可以看到课程里的案例在分析应用问题的时候，都在尽量避免分析内核bug，避免把内核代码拿过来逐个函数地解析为什么会这样。我希望这个课程可以降低内核的门槛，让更多人可以更加容易地了解内核机制，从而更好地解决应用难题、提升应用性能。</p>
+<p>不过，在我们这个课程的学习者中还是有一些内核开发者的，因此，我写了这篇加餐来分析内核bug，希望能把分析内核bug的一些经验分享给这些内核开发者们。</p>
+<p>通过对课程的学习，你应该能发现，我对tracepoint和ftrace是极其推崇的。我对它推崇备至不是没有道理的，这节课我就带你来看下我是如何借助tracepoint来分析内核bug的。</p>
+<h2 id="tracepoint">炫技般存在的tracepoint内核源码</h2>
+<p>如果你看过tracepoint的内核代码，相信你一定对它炫技般存在的 <a href="https://elixir.bootlin.com/linux/v5.9-rc6/source/include/linux/tracepoint.h#L229">宏定义</a> 印象深刻。我在第一眼看到这些宏定义时，也是一脸懵逼，不知从何下手，但是很快我就看懂了。为了证明我看懂了，我还特意给tracepoint的这些宏定义 <a href="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?h=v5.9-rc8&amp;id=163363455b42a1cf833742177149d1352dfe673e">又增加了一些定义</a>，我增加的这个宏定义，其关键部分如下：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/51/5e/51b5c43325b69edae6ae5a73cd20b75e.png?wh=1206*840" /></p>
+<p>如果你能看明白这些，那就说明你对这些tracepoint宏的工作机制一清二楚了。当然，这节课我不是来剖析tracepoint内核源码的。如果你不懂tracepoint内核源码，也不妨碍你使用它，不过这对一名内核开发者而言终究是一件憾事。</p>
+<p>因为我经常使用tracepoint，所以我对tracepoint的一些功能也比较上心。比如，最近在我的推动下，tracepoint模块的maintainer Steven Rostedt <a href="https://lore.kernel.org/linux-mm/20200925211206.423598568@goodmis.org/">又给tracepoint增加了一个宏定义</a>。我之所以推动Steven增加该宏，是为了让tracepoint函数可以在头文件中使用，以减少因为额外函数调用而带来的开销。有了这个新增的宏之后，你就可以方便地在头文件中使用tracepoint了。</p>
+<p>接下来我要讲的这个内核bug，就是借助tracepoint来分析的。</p>
+<h2 id="_1">内存申请在慢速路径上为什么会失败</h2>
+<p>有一次，业务人员反馈说他们在启动程序时会偶然失败，我查看内核日志后发现了下面这些报错信息（这个系统为CentOS-7，对应的内核版本为3.10）：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kworker/31:0: page allocation failure: order:5, mode:0x104050
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>CPU: 31 PID: 635928 Comm: kworker/31:0 Tainted: G
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>0000000000104050 000000009a44a60e ffff882016b93808 ffffffff81686b13
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>ffff882016b93898 ffffffff81187010 0000000000000000 ffff88207ffd8000
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>0000000000000005 0000000000104050 ffff882016b93898 000000009a44a60e
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a> Call Trace:
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>[&lt;ffffffff81686b13&gt;] dump_stack+0x19/0x1b
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>[&lt;ffffffff81187010&gt;] warn_alloc_failed+0x110/0x180
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>[&lt;ffffffff816826a7&gt;] __alloc_pages_slowpath+0x6b7/0x725
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>[&lt;ffffffff8118b5c5&gt;] __alloc_pages_nodemask+0x405/0x420
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>[&lt;ffffffff811cf77a&gt;] alloc_pages_current+0xaa/0x170
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>[&lt;ffffffff81185eee&gt;] __get_free_pages+0xe/0x50
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>[&lt;ffffffff811db01e&gt;] kmalloc_order_trace+0x2e/0xa0
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>[&lt;ffffffff811e05d9&gt;] __kmalloc_track_caller+0x219/0x230
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>[&lt;ffffffff8119f78f&gt;] krealloc+0x4f/0xa0
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>[&lt;ffffffffa07eebe6&gt;] osdmap_set_max_osd+0x76/0x1d0 [libceph]
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>[&lt;ffffffffa07f14f6&gt;] ceph_osdmap_decode+0x216/0x600 [libceph]
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>[&lt;ffffffffa07ecce4&gt;] handle_one_map+0x224/0x250 [libceph]
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>[&lt;ffffffffa07ed98f&gt;] ceph_osdc_handle_map+0x6cf/0x720 [libceph]
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>[&lt;ffffffffa07e3340&gt;] dispatch+0x350/0x7c0 [libceph]
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>[&lt;ffffffffa07deecf&gt;] try_read+0x4df/0x1260 [libceph]
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>[&lt;ffffffffa07dfd09&gt;] ceph_con_workfn+0xb9/0x650 [libceph]
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>[&lt;ffffffff810a845b&gt;] process_one_work+0x17b/0x470
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>[&lt;ffffffff810a9296&gt;] worker_thread+0x126/0x410
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>[&lt;ffffffff810b0a4f&gt;] kthread+0xcf/0xe0
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>[&lt;ffffffff81697118&gt;] ret_from_fork+0x58/0x90
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>Mem-Info:
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>active_anon:13891624 inactive_anon:358552 isolated_anon:0#012 active_file:1652146 inactive_file:14520052 isolated_file:0#012 unevictable:0 dirty:472 writeback:0 unstable:0#012 slab_reclaimable:1071185 slab_unreclaimable:201037#012 mapped:53234 shmem:1046930 pagetables:31965 bounce:0#012 free:966225 free_pcp:185 free_cma:0
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>Node 0 DMA free:15864kB min:48kB low:60kB high:72kB active_anon:0kB inactive_anon:0kB active_file:0kB inactive_file:0kB unevictable:0kB isolated(anon):0kB isolated(file):0kB present:15948kB managed:15864kB mlocked:0kB dirty:0kB writeback:0kB mapped:0kB shmem:0kB slab_reclaimable:0kB slab_unreclaimable:0kB kernel_stack:0kB pagetables:0kB unstable:0kB bounce:0kB free_pcp:0kB local_pcp:0kB free_cma:0kB writeback_tmp:0kB pages_scanned:0 all_unreclaimable? yes
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a> lowmem_reserve[]: 0 1700 64161 64161
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>Node 0 DMA32 free:261328kB min:5412kB low:6764kB high:8116kB active_anon:303220kB inactive_anon:2972kB active_file:51840kB inactive_file:239320kB unevictable:0kB isolated(anon):0kB isolated(file):0kB present:1952512kB managed:1741564kB mlocked:0kB dirty:0kB writeback:0kB mapped:1160kB shmem:15968kB slab_reclaimable:687588kB slab_unreclaimable:183756kB kernel_stack:6640kB pagetables:724kB unstable:0kB bounce:0kB free_pcp:0kB local_pcp:0kB free_cma:0kB writeback_tmp:0kB pages_scanned:0 all_unreclaimable? no
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>lowmem_reserve[]: 0 0 62460 62460
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>Node 0 Normal free:272880kB min:198808kB low:248508kB high:298212kB active_anon:26813396kB inactive_anon:912660kB active_file:2646440kB inactive_file:30619568kB unevictable:0kB isolated(anon):0kB isolated(file):0kB present:65011712kB managed:63960000kB mlocked:0kB dirty:36kB writeback:0kB mapped:144152kB shmem:2567180kB slab_reclaimable:1870364kB slab_unreclaimable:262608kB kernel_stack:12880kB pagetables:45840kB unstable:0kB bounce:0kB free_pcp:652kB local_pcp:0kB free_cma:0kB writeback_tmp:0kB pages_scanned:32 all_unreclaimable? no
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>lowmem_reserve[]: 0 0 0 0
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>Node 1 Normal free:3315332kB min:205324kB low:256652kB high:307984kB active_anon:28449880kB inactive_anon:518576kB active_file:3910304kB inactive_file:27221320kB unevictable:0kB isolated(anon):0kB isolated(file):0kB present:67108864kB managed:66056916kB mlocked:0kB dirty:1852kB writeback:0kB mapped:67624kB shmem:1604572kB slab_reclaimable:1726788kB slab_unreclaimable:357784kB kernel_stack:18928kB pagetables:81296kB unstable:0kB bounce:0kB free_pcp:0kB local_pcp:0kB free_cma:0kB writeback_tmp:0kB pages_scanned:0 all_unreclaimable? no
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>lowmem_reserve[]: 0 0 0 0
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>Node 0 DMA: 0*4kB 1*8kB (U) 1*16kB (U) 1*32kB (U) 1*64kB (U) 1*128kB (U) 1*256kB (U) 0*512kB 1*1024kB (U) 1*2048kB (M) 3*4096kB (M) = 15864kB
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>Node 0 DMA32: 36913*4kB (UEM) 14087*8kB (UEM) 44*16kB (UEM) 17*32kB (UEM) 0*64kB 0*128kB 0*256kB 0*512kB 0*1024kB 0*2048kB 0*4096kB = 261596kB
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>Node 0 Normal: 69629*4kB (UEM) 411*8kB (UEM) 1*16kB (E) 3*32kB (E) 0*64kB 0*128kB 0*256kB 0*512kB 0*1024kB 0*2048kB 0*4096kB = 281916kB
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>Node 1 Normal: 241701*4kB (UEM) 240734*8kB (UEM) 24010*16kB (UEM) 990*32kB (UEM) 175*64kB (UEM) 20*128kB (UEM) 3*256kB (EM) 0*512kB 0*1024kB 0*2048kB 0*4096kB = 3323044kB
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>Node 0 hugepages_total=0 hugepages_free=0 hugepages_surp=0 hugepages_size=1048576kB
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>Node 0 hugepages_total=0 hugepages_free=0 hugepages_surp=0 hugepages_size=2048kB
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>Node 1 hugepages_total=0 hugepages_free=0 hugepages_surp=0 hugepages_size=1048576kB
+</code></pre></div>
+<p>从上面的日志可以看出，这是在__alloc_pages_slowpath()分配内存失败，所以有了这个打印:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>__alloc_pages_slowpath
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>{
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    ...
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>nopage:
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    // 这里打印的错误日志
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    warn_alloc_failed(gfp_mask, order, NULL);
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    return NULL;
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>}
+</code></pre></div>
+<p>此时申请的内存大小是order 5，也就是32个连续页。紧接着，我们可以看到各个node具体内存使用情况的打印，该机器共有2个node：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Node 0 DMA free:15864kB min:48kB
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Node 0 DMA32 free:261328kB min:5412kB
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>Node 0 Normal free:272880kB min:198808kB
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>Node 1 Normal free:3315332kB min:205324kB
+</code></pre></div>
+<p>从中我们可以发现，各个zone的free内存都大于min，而且相差不止32个page。也就是说，从free内存的大小来看，各个zone都是可以满足需求的。那么，为什么此时会申请内存失败呢？</p>
+<p>接下来，我们一起分析失败的原因。</p>
+<h2 id="_2">逐一排查可能的情况</h2>
+<p>对于3.10版本的内核而言，在内存分配慢速路径里失败，原因可以分为以下三种情况：</p>
+<ul>
+<li>特殊的GFP flags导致；</li>
+<li>进程自身的状态；</li>
+<li>reclaim和compact无法满足需求。</li>
+</ul>
+<p>现在，我们来逐一排查究竟是哪种情况导致的。</p>
+<h4 id="gfp-flags">GFP flags</h4>
+<p>此时的GFP flags是0x104050，对应于下面这几项：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>#define ___GFP_WAIT             0x10u
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>#define ___GFP_IO               0x40u
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>#define ___GFP_COMP             0x4000u
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>#define ___GFP_KMEMCG           0x100000u
+</code></pre></div>
+<p>看到这里，你是否思考过：为什么不直接在内核日志里打印出这些GFP flags呢？如果你思考了，那么恭喜你，你具备内核开发者的特质；如果你没有思考过，那么你需要加强这方面的思考：我觉得内核这里有点不好，我得改变它。</p>
+<p>我觉得内核日志里打印这些数字不如直接打印对应的GFP flags好，然后我就去查看最新的内核代码，发现这部分已经在新版本的内核里被修改过了，看来其他的内核开发者与我的想法一致。当然，这也说明了使用老版本的内核做开发是一件多么憋屈的事，因为你会发现你在老版本内核里分析清楚的内核bug，早已在新版本中被别人给fix了，这大大限制了我们的发挥空间。</p>
+<p>通过前面的调用栈，我们可以知道申请内存是在osdmap_set_max_osd()这个函数中进行的，它对应的内核代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>osdmap_set_max_osd
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    addr = krealloc(map-&gt;osd_addr, max*sizeof(*addr), GFP_NOFS);
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    if (!addr)
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        return -ENOMEM;
+</code></pre></div>
+<p>我们看到这里的GFP flags为GFP_NOFS，它的定义如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>#define GFP_NOFS        (__GFP_WAIT | __GFP_IO)
+</code></pre></div>
+<p>这与内核日志里的GFP flags是对得上的。然后我们去比较 <code>goto nopage;</code> 的情况，可以发现这几个flag不会导致这种情况，也就是不会导致nopage。</p>
+<p>关于GFP_NOFS的作用，我在这里大致说明一下。它的作用是为了防止某些路径上触发直接内存回收时，回收到正在进行I/O的page从而引起死锁。那什么情况下可能会引起死锁呢？你可以参考一下我尚未完成的 <a href="https://lore.kernel.org/linux-mm/1592222181-9832-1-git-send-email-laoar.shao@gmail.com/">PATCH：xfs: avoid deadlock when trigger memory reclaim in -&gt;writepages</a>。这个链接里描述的问题在3.10版本以及最新版本的内核上都存在，之所以我还没有完成该PATCH，是因为它依赖于我的另外一组PATCH，而我目前很少有精力去写它们。具体的逻辑你可以看下这个PATCH的代码以及描述，我就不在这里细说了。</p>
+<p>现在，我们排除了GFP flags产生nopage的可能，接下来继续看看另外两种情况。</p>
+<h4 id="current-flag">进程标记current-&gt;flag</h4>
+<p>在warn_alloc_failed里，我们可以看到，如果是因为进程自身的状态有问题（比如正在退出，或者正在oom过程中等），那么 <code>SHOW_MEM_FILTER_NODES</code> 这个标记位就会被清掉，然后各个zone的具体内存信息就不会被打印出来了。</p>
+<p>因此，内存申请在慢速路径上失败也不是因为这个原因。</p>
+<h4 id="reclaimcompact">reclaim和compact无法满足需求</h4>
+<p>现在就只有“reclaim和compact无法满足需求”这一种情况了。</p>
+<p>根据前面的信息我们可以知道，此时free的内存其实挺多，可以排除reclaim无法满足需求的情况。所以，只剩下compcat这个因素了。也就是说，由于申请的是连续页，而系统中没有足够的连续页，所以compact也满足不了需求，进而导致分配内存失败。</p>
+<p>那么，在什么情况下compact会失败呢？我们继续来看代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>try_to_compact_pages
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    int may_enter_fs = gfp_mask &amp; __GFP_FS;
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    int may_perform_io = gfp_mask &amp; __GFP_IO;
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    if (!order || !may_enter_fs || !may_perform_io)
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>      return rc;
+</code></pre></div>
+<p>我们可以看到 <code>__GFP_FS</code> 没有被设置，无法进行compaction，直接返回了 <code>COMPACT_SKIPPED</code>。</p>
+<p>明白了问题所在后，我们需要在生产环境上验证一下，看看到底是不是这个原因。</p>
+<h2 id="tracepoint_1">使用tracepoint分析生产环境</h2>
+<p>tracepoint是一种性能开销比较小的追踪手段，在生产环境上使用它，不会给业务带来明显的性能影响。</p>
+<p>在使用tracepoint分析前，我们需要明确它可以追踪什么事件。</p>
+<p>因为我们目前的问题是compact fail，所以我们需要去追踪direct compact这个事件。新版本的内核里有compact相关的tracepoint，我们直接打开对应的tracepoint就可以了。不过，3.10版本的内核没有compact相关的tracepoint，这个时候我们就需要借助kprobe机制了，最简单的方式是利用ftrace提供的kprobe_events功能或者是ftrace的function tracer功能。我们以function tracer为例来追踪direct compact：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$ echo function &gt; /sys/kernel/debug/tracing/current_tracer
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>$ echo __alloc_pages_direct_compact &gt; /sys/kernel/debug/tracing/set_ftrace_filter
+</code></pre></div>
+<p>这样，当发生direct compact时，在trace_pipe中就会有相应的信息输出。不过，这显示不了compact的细节，我们还需要结合其他手段查看是否进行了compact。方式有很多，在这里，我们结合源码来看一种比较简单的方式：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a> __alloc_pages_direct_compact
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>   try_to_compact_pages
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>     /* Check if the GFP flags allow compaction */
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>     if (!order || !may_enter_fs || !may_perform_io)
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>       return rc;
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>      // 如果可以进行direct compact的话，会有COMPACTSTALL事件
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>      count_compact_event(COMPACTSTALL);
+</code></pre></div>
+<p>从源码中我们能看到，如果可以进行direct compact的话，会有相应的COMPACTSTALL事件，而该事件会统计在/proc/vmstat中：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$ cat /proc/vmstat | grep compact
+</code></pre></div>
+<p>这样我们就可以知道调用__alloc_pages_direct_compact时，有没有真正进行compact的行为。另外，在compact的过程中还会伴随着direct reclaim，我们也需要看下direct reclaim的细节，看看direct claim能否成功回收内存。我们可以借助direct reclaim的tracepoint来查看，该tracepoint在3.10版本的内核里已经有了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$ echo 1 &gt; /sys/kernel/debug/tracing/events/vmscan/mm_vmscan_direct_reclaim_begin/enable
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>$ echo 1 &gt; /sys/kernel/debug/tracing/events/vmscan/mm_vmscan_direct_reclaim_end/enable
+</code></pre></div>
+<p>在追踪这些事件之后，我们就可以看到direct compact前后的信息了。</p>
+<p>direct compact前的vmstat指标为：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>$ cat /proc/vmstat | grep compact
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>compact_migrate_scanned 690141298
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>compact_free_scanned 186406569096
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>comoact_isolated 332972232
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>compact_stall 87914
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>compact_fail 40935
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>compact_success 46979
+</code></pre></div>
+<p>compact过程中的事件：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/3e/78/3ed8e4629bfbbb0a39b4cdb65f31da78.png?wh=2506*224" /></p>
+<p>compact结束后的vmstat指标为：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$ cat /proc/vmstat | grep compact
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>compact_migrate_scanned 690141298
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>compact_free_scanned 186406569096
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>comoact_isolated 332972232
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>compact_stall 87914
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>compact_fail 40935
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>compact_success 46979
+</code></pre></div>
+<p>我们可以看到，在compact前后，compcat_stall这个指标没有任何变化，也就是说try_to_compact_pages中没有进行真正的compact行为；从direct reclaim事件中的nr_reclaimed=3067可以看到，此时可以回收到足够的page，也就是说direct reclaim没有什么问题；同样，direct reclaim的“order=5, gfp_flags=GFP_NOFS|GFP_COMP” 也与之前日志里的信息吻合。因此，这些追踪数据进一步印证了我们之前的猜测： <code>__GFP_FS</code> 没有被设置，无法进行compaction。</p>
+<p>我们现在再次观察申请内存失败时的日志，可以发现，此时free list上其实有当前order的内存（因为没有GFP_DMA，所以会先从NORMAL zone申请内存）：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>Node 0 Normal: 69629*4kB (UEM) 411*8kB (UEM) 1*16kB (E) 3*32kB (E) 0*64kB 0*128kB 0*256kB 0*512kB 0*1024kB 0*2048kB 0*4096kB = 281916kB
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>Node 1 Normal: 241701*4kB (UEM) 240734*8kB (UEM) 24010*16kB (UEM) 990*32kB (UEM) 175*64kB (UEM) 20*128kB (UEM) 3*256kB (EM) 0*512kB 0*1024kB 0*2048kB 0*4096kB = 3323044kB
+</code></pre></div>
+<p>我们能看到node 1大于order 5（即128K）的连续物理内存有很多，那为什么不能从这些zone-&gt;free_area[order]里分配内存呢？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>答案就在于该zone的水位不满足要求（见__zone_watermark_ok()）：
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>__zone_watermark_ok
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>{
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    ...
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    for (o = 0; o &lt; order; o++) {
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>        free_pages -= z-&gt;free_area[o].nr_free &lt;&lt; o;
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>        min &gt;&gt;= 1;
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>        if (free_pages &lt;= min)
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>            return false;
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>    }
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>}
+</code></pre></div>
+<p>对于node 1而言，4K/8K/16K/32K/64K内存和为3319716kB，该zone的watermark min为205324kB，该node的总内存为3323044KB，我们可以简单地进行如下比较：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>(3323044-3319716) 为3328KB
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>(205324kB &gt;&gt; 5) 为6416KB
+</code></pre></div>
+<p>因此，order 5无法满足水位。</p>
+<p>根据上述这些追踪信息，我们可以得出这样的结论：在内存分配慢速路径上失败，是因为当前的内存申请请求无法进行碎片整理，而系统中low order的内存又太多，从而导致了该order的内存申请失败。</p>
+<h2 id="_3">解决方案</h2>
+<p>因为此时normal zone的order=5的free page依然有很多，而整体的watermark又满足需求，所以不应该让order=5的内存申请失败，这是一个内核缺陷。我去查看upstream的最新代码时，发现该缺陷已经被修改过了。你可以看到，使用老版本的内核做开发的确是一件很憋屈的事。</p>
+<p>关于upstream的修改方案，你可以参考这个patch以及它的一些依赖：</p>
+<p><a href="https://github.com/torvalds/linux/commit/97a16fc82a7c5b0cfce95c05dfb9561e306ca1b1">mm, page_alloc: only enforce watermarks for order-0 allocations</a></p>
+<p>如果你无法通过修改内核来解决这一问题的话，那就采取一些规避措施。</p>
+<ul>
+<li>规避方案一：</li>
+</ul>
+<p>通过drop_caches清理掉pagecache，不过这种做法也有很多缺陷，具体你可以参考我们这个课程的pagecache模块，我在这里就不细说了。
+- 规避方案二：</p>
+<p>调整碎片指数，确保紧急情况下能够申请到连续页。内存碎片指数对应的文件是 <code>/proc/sys/vm/extfrag_threshold</code>，它的默认值是500 ，我们可以适当降低该值，不过在这种情况下，降低它的效果并不会很明显。
+- 规避方案三：</p>
+<p>手动compact，你可以通过写入/proc/sys/vm/compact_memory来触发compact。
+- 规避方案四：</p>
+<p>调整 vm.vfs_cache_pressure，降低它的值，让pagecache被回收得更多，以此来减少freelist中order为0的page个数。</p>
+<p>至此，我们这个问题的分析就结束了。</p>
+<h2 id="_4">总结</h2>
+<p>在比较新的内核上，我们也可以通过eBPF来分析内核bug，比如在我们的生产环境中，我就通过eBPF追踪过fadvise的内核bug引起的业务抖动问题，具体bug你可以看看我贡献给内核的这个 <a href="https://ozlabs.org/~akpm/mmots/broken-out/mm-fadvise-improve-the-expensive-remote-lru-cache-draining-after-fadv_dontneed.patch">PATCH: mm,fadvise: improve the expensive remote LRU cache draining after FADV_DONTNEED</a>，这也再次印证了我的观点：内核开发者只有在新版本的内核里做开发，才会有更多的发挥空间。</p>
+<p>另外，虽然eBPF很强大，但是它依然难以替代ftrace在我心中的地位。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../20%20%E5%88%86%E6%9E%90%E7%AF%87%20-%20%E5%A6%82%E4%BD%95%E5%88%86%E6%9E%90CPU%E5%88%A9%E7%94%A8%E7%8E%87%E9%A3%99%E9%AB%98%E9%97%AE%E9%A2%98%20%EF%BC%9F/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 20 分析篇   如何分析CPU利用率飙高问题 ？">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                20 分析篇   如何分析CPU利用率飙高问题 ？
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../%E7%BB%93%E6%9D%9F%E8%AF%AD%20-%20%E7%AC%AC%E4%B8%80%E6%AC%A1%E7%9C%8B%E5%86%85%E6%A0%B8%E4%BB%A3%E7%A0%81%EF%BC%8C%E6%88%91%E4%B9%9F%E5%BE%88%E6%87%B5%E9%80%BC/" class="md-footer__link md-footer__link--next" aria-label="Next: 结束语   第一次看内核代码，我也很懵逼">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                结束语   第一次看内核代码，我也很懵逼
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright © 2025-Present zkep
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["content.action.edit", "content.code.annotate", "content.code.copy", "content.tooltips", "toc.follow", "navigation.top", "navigation.tabs", "navigation.tabs.sticky", "navigation.prune", "navigation.footer", "navigation.tracking", "navigation.instant", "navigation.instant.progress", "navigation.indexes", "content.tabs.link"], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.60a45f97.min.js"></script>
+      
+        <script src="../../../javascript/extra.js"></script>
+      
+        <script src="../../../javascript/giscus.js"></script>
+      
+    
+  </body>
+</html>
