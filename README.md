@@ -10,7 +10,6 @@
 
 ###  markdown 在线文档
 
- * [cloudflare & vercel](https://gk.uaxe.tech/)
  * [netlify](https://geektime-docs.netlify.app/)
  * [github](https://uaxe.github.io/geektime-docs/)
 
