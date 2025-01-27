@@ -8,10 +8,14 @@
 * 看 pdf文档，推荐: https://github.com/uaxe/geektime-pdfs 🌟🌟🌟
 * 看 音视频，推荐: https://github.com/zkep/mygeektime 🌟🌟🌟🌟🌟
 
-### [在线 markdown 文档](https://uaxe.github.io/geektime-docs/)
+###  markdown 在线文档
 
+ * [netlify](https://geektime-docs.netlify.app/)
+ * [github](https://uaxe.github.io/geektime-docs/)
 
-### 本地 markdown 文档
+> tips: 在线文档支持 PC 浏览器，也支持移动端浏览器
+
+### markdown 本地文档
 
 ```shell
 git clone https://github.com/uaxe/geektime-docs.git  --depth 1
