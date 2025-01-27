@@ -10,9 +10,10 @@
 
 ###  markdown 在线文档
 
+ * [cloudflare & vercel](https://gk.uaxe.tech/)
  * [netlify](https://geektime-docs.netlify.app/)
  * [github](https://uaxe.github.io/geektime-docs/)
- * [vercel](https://zkep.vercel.app/)
+
 
 > tips: 在线文档支持 PC 浏览器，也支持移动端浏览器
 
