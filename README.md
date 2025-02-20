@@ -31,6 +31,83 @@ mkdocs serve
 浏览器访问：<http://127.0.0.1:8000/>
 
 
-### 本项目markdown文档全部由[mygeektime](https://github.com/zkep/mygeektime)生成
+#### 本项目markdown文档全部由 [mygeektime](https://github.com/zkep/mygeektime) 生成
+
+
+### 问题汇总
+
+#### 1. http Referer导致的裂图，图片不显示 
+
+方案1： 某鱼买7天会员，部署mygeektime服务，缓存对应的VIP课程 
+
+方案2： 推荐本地使用中间代理人服务，拦截请求，改写 http 请求的 Referer 的思路
+
+[go-mitmproxy](https://github.com/lqqyt2423/go-mitmproxy/blob/main/examples/http-add-header/main.go)
+
+```go 
+package main
+
+import (
+	"github.com/lqqyt2423/go-mitmproxy/proxy"
+	"log"
+	"path/filepath"
+	"strings"
+)
+
+type AddHeader struct {
+	proxy.BaseAddon
+}
+
+func (a *AddHeader) Requestheaders(f *proxy.Flow) {
+	log.Println("AddHeader", f.Request.URL.String())
+	host := f.Request.URL.Host
+	if strings.Contains(host, ":") {
+		host = host[:strings.Index(host, ":")]
+	}
+	matched, _ := filepath.Match("static001.geekbang.org", host)
+	if matched {
+		f.Request.Header.Add("Referer", f.Request.URL.String())
+	}
+}
+
+func main() {
+	opts := &proxy.Options{
+		Addr:              ":9080",
+		StreamLargeBodies: 1024 * 1024 * 5,
+	}
+
+	p, err := proxy.NewProxy(opts)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	p.AddAddon(&AddHeader{})
+
+	log.Fatal(p.Start())
+}
+
+```
+   
+[mitmproxy](https://github.com/mitmproxy/mitmproxy/blob/main/examples/addons/http-add-header.py)
+```python
+"""Add an HTTP header to each request."""
+
+class AddHeader:
+    def __init__(self):
+        self.num = 0
+
+    def request(self, flow):
+        if flow.request.host.startswith('static001.geekbang.org'):
+            flow.request.headers["Referer"] = flow.request.url
+
+
+addons = [AddHeader()]
+```
+   
+
+   
+
+
+
 
 
