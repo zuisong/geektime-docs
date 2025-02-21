@@ -6,9 +6,9 @@
 
 ```
 static class Router implements ResourceRouter {
-    private Runtime runtime;
+    private Runtime runtime;        
     private List<Resource> rootResources;
-
+        
     public Router(Runtime runtime, List<Resource> rootResources) {
         this.runtime = runtime;
         this.rootResources = rootResources;
@@ -26,7 +26,6 @@ static class Router implements ResourceRouter {
         }
     }
 }
-
 ```
 
 ## 视频演示
@@ -35,8 +34,7 @@ static class Router implements ResourceRouter {
 
 到此为止，我们完成了Spike的工作，目前的架构愿景为：
 
-![](https://static001.geekbang.org/resource/image/59/24/59ee2d534a4ae87623a736157e848924.jpg?wh=2284x1285)
-
+![](https://static001.geekbang.org/resource/image/59/24/59ee2d534a4ae87623a736157e848924.jpg?wh=2284x1285)  
 ![](https://static001.geekbang.org/resource/image/2e/a4/2ef7e84ba450b36d1df67cfce9e61da4.jpg?wh=2284x1285)
 
 ## 思考题

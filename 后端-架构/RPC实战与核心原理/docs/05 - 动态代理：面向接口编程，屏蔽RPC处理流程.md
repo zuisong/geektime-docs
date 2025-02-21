@@ -11,196 +11,25 @@
 ## 远程调用的魔法
 
 我说个具体的场景，你可能就明白了。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/10/0f/bf/ee93c4cf.jpg" width="30px"><span>雨霖铃声声慢</span> 👍（35） 💬（2）<div>如果没有动态代理帮我们完成方法调用拦截，那么就需要使用静态代理来实现，就需要用户对原始类中所有的方法都重新实现一遍，并且为每个方法附加相似的代码逻辑，如果在RPC中，这种需要代理的类有很多个，就需要针对每个类都创建一个代理类。</div>2020-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7b/98/8f1aecf4.jpg" width="30px"><span>楼下小黑哥</span> 👍（15） 💬（1）<div>没有动态代理的情况下，最简单的情况，
+服务消费者将类信息序列化---》按照协议拼接报文----》调用网络程序发送报文----》收到提供者返回信息----》根据协议解析出返回信息-----》再反序列化成返回结果。
+上面每一步都挺复杂的，RPC 框架使用动态代理帮我们屏蔽这种细节。
 
-在项目中，当我们要使用 RPC 的时候，我们一般的做法是先找服务提供方要接口，通过 Maven 或者其他的工具把接口依赖到我们项目中。我们在编写业务逻辑的时候，如果要调用提供方的接口，我们就只需要通过依赖注入的方式把接口注入到项目中就行了，然后在代码里面直接调用接口的方法 。
+</div>2020-03-06</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKhuGLVRYZibOTfMumk53Wn8Q0Rkg0o6DzTicbibCq42lWQoZ8lFeQvicaXuZa7dYsr9URMrtpXMVDDww/132" width="30px"><span>hello</span> 👍（14） 💬（1）<div>Byte Buddy，老师这个后起之秀，是怎么完成动态代理的，能否剖析下，多谢！</div>2020-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f2/62/f873cd8f.jpg" width="30px"><span>tongmin_tsai</span> 👍（5） 💬（1）<div>老师，可以理解为，动态代理生成的类，就是stub吗？</div>2020-04-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/ca/82/85f6a1a2.jpg" width="30px"><span>番茄炒西红柿</span> 👍（3） 💬（1）<div>为什么不用静态代理？aspectJ之类的。提前把代理类在编译的时候创建？</div>2020-04-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/da/36/ac0ff6a7.jpg" width="30px"><span>wusiration</span> 👍（3） 💬（4）<div>如果没有动态代理完成方法拦截，那么被调用方需要有调用方的接口实现，就失去了面向接口编程的意义</div>2020-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/54/9a/76c0af70.jpg" width="30px"><span>每天晒白牙</span> 👍（3） 💬（3）<div>如果没有动态代理类帮我们完成方法调用拦截，需要用户自己加入远程调用的逻辑，这样就麻烦，且使用不方便了</div>2020-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c2/fe/038a076e.jpg" width="30px"><span>阿卧</span> 👍（2） 💬（1）<div>从动态代理的原理和特点出发。动态代理帮我们生成代理类，屏蔽具体实现细节，在代理方法前实现统一封装。
+如果没有动态代理，就需要手动实现每个接口类的远程调用细节了。
+被面试官问到这个问题，没有回答上来...</div>2020-03-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/ef/27/c48a8fb6.jpg" width="30px"><span>Json Dumps</span> 👍（2） 💬（1）<div>看到过，GRPC，通过proto接口，生成了客户端静态代理代码。
+与动态代理相比，接口变化除了更新接口文件，还要重新生成静态代理代码，并更新。
+为什么非要动态代理呢？优点是什么？</div>2020-03-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3b/47/f6c772a1.jpg" width="30px"><span>Jackey</span> 👍（2） 💬（1）<div>动态代理真是个神奇的技术，没有它的话用户就得自己写远程调用的实现了。
+ps：SpringAOP也无从谈起了</div>2020-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c5/6a/7f858f1f.jpg" width="30px"><span>白不吃</span> 👍（0） 💬（6）<div>很难想象去年4月份就有人指出的单词错误，到现在还没修正</div>2022-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a6/56/abb7bfe3.jpg" width="30px"><span>云韵</span> 👍（0） 💬（2）<div>何老师，可不可以提供一下本节的代码，ClassLoaderUtils这个类找不到，想自己debug一下流程</div>2020-04-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/22/2d/b3b9aaf4.jpg" width="30px"><span>小兜</span> 👍（0） 💬（1）<div>如果没有动态代理，我们就需要自己手动的实现调用，使开发不能只关注业务了。</div>2020-04-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/04/fb/40f298bb.jpg" width="30px"><span>小罗希冀</span> 👍（0） 💬（1）<div>如果没有代理完成方法的调用拦截的话，那么业务代码会跟调用、解析RPC请求的代码耦合在一起</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/01/37/12e4c9c9.jpg" width="30px"><span>高源</span> 👍（0） 💬（1）<div>请教老师，例如算法和开源框架源代码，你是如何学习深入理解的，毕竟我的想法自己能够灵活运用，个人能力有限的</div>2020-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/53/ae/26faa892.jpg" width="30px"><span>邵邵</span> 👍（123） 💬（14）<div>这一节RPC讲解重度依赖java知识，希望老师在后续的文章中多提炼一些跨语言层面的原理，或者用一些伪代码的方式讲解，谢谢</div>2020-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/e7/76/79c1f23a.jpg" width="30px"><span>李玥</span> 👍（101） 💬（12）<div>我在工作中有幸看了不少小锋老师的代码，京东很多的基础类库中，都有小峰老师的代码。从中学到了很多。包括文章中提到的对调用方尽量屏蔽实现细节的思想，以及通过定义扩展点来剥离实现等等。</div>2020-02-29</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epY2JtiahsBz4LK1k00DbYoR2Zk56wnYaoBfP63v5X3Xu1kuH1ethAnMOMu6vT9eKQSqHqn3HrTK9Q/132" width="30px"><span>Geek_7d1d6d</span> 👍（54） 💬（0）<div>感觉这节课的通用型不好，语言选型太侧重java，以后能不能使用伪代码讲流程呢？非常感谢老师</div>2020-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/23/3a/df/ea0fc831.jpg" width="30px"><span>周天航</span> 👍（24） 💬（1）<div>这个文章的名字应该叫《Java 中使用rpc和原理》</div>2021-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/03/5b/3cdbc9fa.jpg" width="30px"><span>宁悦</span> 👍（7） 💬（0）<div>补充一个动态代理实现RPC的简单例子，可以辅助理解。例子来源于隔壁王争老师的《设计模式之美》专栏。
+https:&#47;&#47;github.com&#47;wangzheng0822&#47;codedesign&#47;tree&#47;master&#47;com&#47;xzg&#47;cd&#47;rpc</div>2020-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/81/0e/ec667c01.jpg" width="30px"><span>Wallace Pang</span> 👍（6） 💬（0）<div>其实在 Java 领域，除了 JDK 默认的 nvocationHandler 能完成代理功能，应该是InvocationHandler</div>2020-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/03/5b/3cdbc9fa.jpg" width="30px"><span>宁悦</span> 👍（6） 💬（4）<div>我的jdk版本中找不到ClassLoaderUtils这个类，只能找到ClassLoader这个类，发现用下面的代码也能实现老师文中的例子。
+ ClassLoader classLoader = ClassLoader.getSystemClassLoader();</div>2020-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（5） 💬（0）<div>请你设想一下，如果没有动态代理帮我们完成方法调用拦截，用户该怎么完成 RPC 调用？
+1：使用静态代理实现
+2：远程调度的代码和业务处理逻辑写在一块，序列化、编码、网络建连、网络传输、网络断连、以及负载均衡、失败重试等等都需要写出来，这块大家都重复造轮子，上线一个RPC调用功能现在是一天之后可能是一个月
 
-我们都知道，接口里并不会包含真实的业务逻辑，业务逻辑都在服务提供方应用里，但我们通过调用接口方法，确实拿到了想要的结果，是不是感觉有点神奇呢？想一下，在 RPC 里面，我们是怎么完成这个魔术的。
+代理模式我觉得很神奇，尤其是动态代理，真像魔法一样，许多代码你看不到不是因为他不存在而是她隐藏了起来，在代码运行的时候才出现，但是计算机不可能平白无故的运行的，你不告诉它怎么运行它是不知道怎么走的。</div>2020-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/cb/44/22d65cf1.jpg" width="30px"><span>winy</span> 👍（4） 💬（1）<div>1.静态代理的效率是远高于动态代理的
+2.类似于lombok我们可以用注解处理器现实静态代理
+3.因为是编译时生成的字节码，调试的时候方法间调用逻辑更简单清晰
 
-**这里面用到的核心技术就是前面说的动态代理。** RPC 会自动给接口生成一个代理类，当我们在项目中注入接口的时候，运行过程中实际绑定的是这个接口生成的代理类。这样在接口方法被调用的时候，它实际上是被生成代理类拦截到了，这样我们就可以在生成的代理类里面，加入远程调用逻辑。
-
-通过这种“偷梁换柱”的手法，就可以帮用户屏蔽远程调用的细节，实现像调用本地一样地调用远程的体验，整体流程如下图所示：
-
-![](https://static001.geekbang.org/resource/image/05/53/05cd18e7e33c5937c7c39bf8872c5753.jpg?wh=2508*1568)
-
-## 实现原理
-
-动态代理在 RPC 里面的作用，就像是个魔术。现在我不妨给你揭秘一下，我们一起看看这是怎么实现的。之后，学以致用自然就不难了。
-
-我们以 Java 为例，看一个具体例子，代码如下所示：
-
-```
-/**
- * 要代理的接口
- */
-public interface Hello {
-    String say();
-}
-
-/**
- * 真实调用对象
- */
-public class RealHello {
-
-    public String invoke(){
-        return "i'm proxy";
-    }
-}
-
-/**
- * JDK代理类生成
- */
-public class JDKProxy implements InvocationHandler {
-    private Object target;
-
-    JDKProxy(Object target) {
-        this.target = target;
-    }
-
-    @Override
-    public Object invoke(Object proxy, Method method, Object[] paramValues) {
-        return ((RealHello)target).invoke();
-    }
-}
-
-/**
- * 测试例子
- */
-public class TestProxy {
-
-    public static void main(String[] args){
-        // 构建代理器
-        JDKProxy proxy = new JDKProxy(new RealHello());
-        ClassLoader classLoader = ClassLoaderUtils.getCurrentClassLoader();
-        // 把生成的代理类保存到文件
-System.setProperty("sun.misc.ProxyGenerator.saveGeneratedFiles","true");
-        // 生成代理类
-        Hello test = (Hello) Proxy.newProxyInstance(classLoader, new Class[]{Hello.class}, proxy);
-        // 方法调用
-        System.out.println(test.say());
-    }
-}
-
-```
-
-这段代码想表达的意思就是：给 Hello 接口生成一个动态代理类，并调用接口 say() 方法，但真实返回的值居然是来自 RealHello 里面的 invoke() 方法返回值。你看，短短50行的代码，就完成了这个功能，是不是还挺有意思的？
-
-那既然重点是代理类的生成，那我们就去看下 Proxy.newProxyInstance 里面究竟发生了什么？
-
-一起看下下面的流程图，具体代码细节你可以对照着 JDK 的源码看（上文中有类和方法，可以直接定位），我是按照 1.7.X 版本梳理的。
-
-![](https://static001.geekbang.org/resource/image/50/41/5042cf1b79e6b9233f2152e1e0aca741.jpg?wh=4442*926)
-
-在生成字节码的那个地方，也就是 ProxyGenerator.generateProxyClass() 方法里面，通过代码我们可以看到，里面是用参数 saveGeneratedFiles 来控制是否把生成的字节码保存到本地磁盘。同时为了更直观地了解代理的本质，我们需要把参数 saveGeneratedFiles 设置成true，但这个参数的值是由key为“sun.misc.ProxyGenerator.saveGeneratedFiles”的Property来控制的，动态生成的类会保存在工程根目录下的 com/sun/proxy 目录里面。现在我们找到刚才生成的 $Proxy0.class，通过反编译工具打开class文件，你会看到这样的代码：
-
-```
-package com.sun.proxy;
-
-import com.proxy.Hello;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
-import java.lang.reflect.UndeclaredThrowableException;
-
-public final class $Proxy0 extends Proxy implements Hello {
-  private static Method m3;
-
-  private static Method m1;
-
-  private static Method m0;
-
-  private static Method m2;
-
-  public $Proxy0(InvocationHandler paramInvocationHandler) {
-    super(paramInvocationHandler);
-  }
-
-  public final String say() {
-    try {
-      return (String)this.h.invoke(this, m3, null);
-    } catch (Error|RuntimeException error) {
-      throw null;
-    } catch (Throwable throwable) {
-      throw new UndeclaredThrowableException(throwable);
-    }
-  }
-
-  public final boolean equals(Object paramObject) {
-    try {
-      return ((Boolean)this.h.invoke(this, m1, new Object[] { paramObject })).booleanValue();
-    } catch (Error|RuntimeException error) {
-      throw null;
-    } catch (Throwable throwable) {
-      throw new UndeclaredThrowableException(throwable);
-    }
-  }
-
-  public final int hashCode() {
-    try {
-      return ((Integer)this.h.invoke(this, m0, null)).intValue();
-    } catch (Error|RuntimeException error) {
-      throw null;
-    } catch (Throwable throwable) {
-      throw new UndeclaredThrowableException(throwable);
-    }
-  }
-
-  public final String toString() {
-    try {
-      return (String)this.h.invoke(this, m2, null);
-    } catch (Error|RuntimeException error) {
-      throw null;
-    } catch (Throwable throwable) {
-      throw new UndeclaredThrowableException(throwable);
-    }
-  }
-
-  static {
-    try {
-      m3 = Class.forName("com.proxy.Hello").getMethod("say", new Class[0]);
-      m1 = Class.forName("java.lang.Object").getMethod("equals", new Class[] { Class.forName("java.lang.Object") });
-      m0 = Class.forName("java.lang.Object").getMethod("hashCode", new Class[0]);
-      m2 = Class.forName("java.lang.Object").getMethod("toString", new Class[0]);
-      return;
-    } catch (NoSuchMethodException noSuchMethodException) {
-      throw new NoSuchMethodError(noSuchMethodException.getMessage());
-    } catch (ClassNotFoundException classNotFoundException) {
-      throw new NoClassDefFoundError(classNotFoundException.getMessage());
-    }
-  }
-}
-
-```
-
-我们可以看到 $Proxy0 类里面有一个跟 Hello 一样签名的 say() 方法，其中 this.h 绑定的是刚才传入的 JDKProxy 对象，所以当我们调用 Hello.say() 的时候，其实它是被转发到了JDKProxy.invoke()。到这儿，整个魔术过程就透明了。
-
-## 实现方法
-
-其实在 Java 领域，除了JDK 默认的InvocationHandler能完成代理功能，我们还有很多其他的第三方框架也可以，比如像 Javassist、Byte Buddy 这样的框架。
-
-单纯从代理功能上来看，JDK 默认的代理功能是有一定的局限性的，它要求被代理的类只能是接口。原因是因为生成的代理类会继承 Proxy 类，但Java 是不支持多重继承的。
-
-这个限制在RPC应用场景里面还是挺要紧的，因为对于服务调用方来说，在使用RPC的时候本来就是面向接口来编程的，这个我们刚才在前面已经讨论过了。使用JDK默认的代理功能，最大的问题就是性能问题。它生成后的代理类是使用反射来完成方法调用的，而这种方式相对直接用编码调用来说，性能会降低，但好在JDK8及以上版本对反射调用的性能有很大的提升，所以还是可以期待一下的。
-
-相对 JDK 自带的代理功能，Javassist的定位是能够操纵底层字节码，所以使用起来并不简单，要生成动态代理类恐怕是有点复杂了。但好的方面是，通过Javassist生成字节码，不需要通过反射完成方法调用，所以性能肯定是更胜一筹的。在使用中，我们要注意一个问题，通过Javassist生成一个代理类后，此 CtClass 对象会被冻结起来，不允许再修改；否则，再次生成时会报错。
-
-Byte Buddy 则属于后起之秀，在很多优秀的项目中，像Spring、Jackson都用到了Byte Buddy来完成底层代理。相比Javassist，Byte Buddy提供了更容易操作的API，编写的代码可读性更高。更重要的是，生成的代理类执行速度比Javassist更快。
-
-虽然以上这三种框架使用的方式相差很大，但核心原理却是差不多的，区别就只是通过什么方式生成的代理类以及在生成的代理类里面是怎么完成的方法调用。同时呢，也正是因为这些细小的差异，才导致了不同的代理框架在性能方面的表现不同。因此，我们在设计RPC框架的时候，还是需要进行一些比较的，具体你可以综合它们的优劣以及你的场景需求进行选择。
-
-## 总结
-
-今天我们介绍了动态代理在RPC里面的应用，虽然它只是一种具体实现的技术，但我觉得只有理解了方法调用是怎么被拦截的，才能厘清在RPC里面我们是怎么做到面向接口编程，帮助用户屏蔽RPC调用细节的，最终呈现给用户一个像调用本地一样去调用远程的编程体验。
-
-既然动态代理是一种具体的技术框架，那就会涉及到选型。我们可以从这样三个角度去考虑：
-
-- 因为代理类是在运行中生成的，那么代理框架生成代理类的速度、生成代理类的字节码大小等等，都会影响到其性能——生成的字节码越小，运行所占资源就越小。
-- 还有就是我们生成的代理类，是用于接口方法请求拦截的，所以每次调用接口方法的时候，都会执行生成的代理类，这时生成的代理类的执行效率就需要很高效。
-- 最后一个是从我们的使用角度出发的，我们肯定希望选择一个使用起来很方便的代理类框架，比如我们可以考虑：API设计是否好理解、社区活跃度、还有就是依赖复杂度等等。
-
-最后，我想再强调一下。动态代理在RPC里面，虽然看起来只是一个很小的技术点，但就是这个创新使得用户可以不用关注细节了。其实，我们在日常设计接口的时候也是一样的，我们会想尽一切办法把细节对调用方屏蔽，让调用方的接入尽可能的简单。这就好比，让你去设计一个商品发布的接口，你并不需要暴露给用户一些细节，比如，告诉他们商品数据是怎么存储的。
-
-## 课后思考
-
-请你设想一下，如果没有动态代理帮我们完成方法调用拦截，用户该怎么完成RPC调用？
-
-欢迎留言和我分享你的答案，也欢迎你把文章分享给你的朋友，邀请他加入学习。我们下节课再见！
+所以我一直不明白为什么大家都用动态代理，很多框架组合起来用一层层代理下去，在调试的时候真的令人头大2333</div>2020-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c6/cb/c7541d52.jpg" width="30px"><span>cwfighter</span> 👍（4） 💬（0）<div>不太明白为啥要用运行时动态生成这么损耗性能的方式，在c&#47;c++里面都是autogen自动生成框架代码以及对应的stub调用封装，业务也不需要关心rpc调用，这种静态的方式不是更好？</div>2020-06-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/1b/be/525e05ae.jpg" width="30px"><span>NiceBlueChai</span> 👍（2） 💬（0）<div>本来以为讲rpc的，你来了个Java和AOP，太具体了，能抽象一点吗</div>2022-11-20</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIQMh5jMlvAibnTgiaVXmsb333JBjpdvLVcptc232zQey5wkBOEPiauepQpv8UlRcOFqnTyhEQiadaHMA/132" width="30px"><span>winfield</span> 👍（2） 💬（1）<div>我呆的两家大厂，目前都是用静态代理，每个 rpc 的客户端都要生成代码</div>2021-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/82/3d/356fc3d6.jpg" width="30px"><span>忆水寒</span> 👍（2） 💬（1）<div>其实也是看需求的。如果没有动态代理，那么调用双方可以通过定义一套消息id和消息结构（才有protobuf定义），也是可以完成远程调用的。</div>2020-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/48/f3/65c7e3ef.jpg" width="30px"><span>cricket1981</span> 👍（2） 💬（0）<div>没有动态代理的话就只能用静态代理了</div>2020-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2c/6b/6c/3e80afaf.jpg" width="30px"><span>HappyHasson</span> 👍（1） 💬（0）<div>看完这篇文章，我的第一件事是去查了一下Java的AOP原理，它到底相当于我用的C++和Go中的什么内容。我觉得这种学习方式很慢。所以感觉老师应该站在更高的层次去讲解这个概念，不应该依赖具体语言的具体实现。</div>2023-07-02</li><br/>
+</ul>

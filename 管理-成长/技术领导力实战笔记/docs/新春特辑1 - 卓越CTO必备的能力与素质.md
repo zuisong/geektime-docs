@@ -8,32 +8,21 @@
 
 今天专辑的主题是“卓越CTO必备的能力与素质”，希望你看完之后能有所收获，也欢迎留言选出你最喜欢的文章，或是分享你对于CTO必备能力与素质的观点。
 
-[![](https://static001.geekbang.org/resource/image/75/88/75fadc34ed0fe3ad712b118d36890a88.jpg?wh=949*463)](https://time.geekbang.org/column/article/6257)
-
-[![](https://static001.geekbang.org/resource/image/7b/42/7b3800353526c0b11ee12984bd913e42.jpg?wh=949*463)](https://time.geekbang.org/column/article/6374)
-
-[![](https://static001.geekbang.org/resource/image/91/f3/91e8a7c392886eed5818e57d839fe4f3.jpg?wh=949*463)](https://time.geekbang.org/column/article/6399)
-
-[![](https://static001.geekbang.org/resource/image/fd/fd/fd2c65875e853d80592a45ab5f30d7fd.jpg?wh=949*463)](https://time.geekbang.org/column/article/6581)
-
-[![](https://static001.geekbang.org/resource/image/65/fb/6573a0c475e2dcbe9e4cac0afdd5a8fb.jpg?wh=949*463)](https://time.geekbang.org/column/article/6585)
-
-[![](https://static001.geekbang.org/resource/image/cb/04/cbbb2f888d5901ded73f3140d669e904.jpg?wh=949*463)](https://time.geekbang.org/column/article/6656)
-
-[![](https://static001.geekbang.org/resource/image/a4/67/a4674df83038f293aaa29e69ce476467.jpg?wh=949*463)](https://time.geekbang.org/column/article/9426)
-
-[![](https://static001.geekbang.org/resource/image/36/ef/36e080389c6bdd98c4471382f86008ef.jpg?wh=949*463)](https://time.geekbang.org/column/article/10154)
-
-[![](https://static001.geekbang.org/resource/image/86/03/86916db73d10f80ca26147aa06963903.jpg?wh=949*463)](https://time.geekbang.org/column/article/12246)
-
-[![](https://static001.geekbang.org/resource/image/3f/bc/3f0a4e2e6ab86ae2d9ba042f32d4efbc.jpg?wh=949*463)](https://time.geekbang.org/column/article/12378)
-
-[![](https://static001.geekbang.org/resource/image/9c/87/9c19f06035aac28dd1f8b57468f62487.jpg?wh=949*463)](https://time.geekbang.org/column/article/74338)
-
-[![](https://static001.geekbang.org/resource/image/4c/be/4ccb6db91735b0184e2122ca0a2e8bbe.jpg?wh=949*463)](https://time.geekbang.org/column/article/75341)
-
-[![](https://static001.geekbang.org/resource/image/bd/21/bd33e29204f5197b4ea8c952e3774621.jpg?wh=949*463)](https://time.geekbang.org/column/article/79774)
-
-[![](https://static001.geekbang.org/resource/image/3a/1c/3a2a5f71b8b7090991544156f447ed1c.jpg?wh=949*463)](https://time.geekbang.org/column/article/6297)
-
-[![](https://static001.geekbang.org/resource/image/23/79/23ce1ca0b690f0e142f7aed0029bb979.jpg?wh=949*463)](https://time.geekbang.org/column/article/42080)
+[![](https://static001.geekbang.org/resource/image/75/88/75fadc34ed0fe3ad712b118d36890a88.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/6257)  
+[![](https://static001.geekbang.org/resource/image/7b/42/7b3800353526c0b11ee12984bd913e42.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/6374)  
+[![](https://static001.geekbang.org/resource/image/91/f3/91e8a7c392886eed5818e57d839fe4f3.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/6399)  
+[![](https://static001.geekbang.org/resource/image/fd/fd/fd2c65875e853d80592a45ab5f30d7fd.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/6581)  
+[![](https://static001.geekbang.org/resource/image/65/fb/6573a0c475e2dcbe9e4cac0afdd5a8fb.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/6585)  
+[![](https://static001.geekbang.org/resource/image/cb/04/cbbb2f888d5901ded73f3140d669e904.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/6656)  
+[![](https://static001.geekbang.org/resource/image/a4/67/a4674df83038f293aaa29e69ce476467.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/9426)  
+[![](https://static001.geekbang.org/resource/image/36/ef/36e080389c6bdd98c4471382f86008ef.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/10154)  
+[![](https://static001.geekbang.org/resource/image/86/03/86916db73d10f80ca26147aa06963903.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/12246)  
+[![](https://static001.geekbang.org/resource/image/3f/bc/3f0a4e2e6ab86ae2d9ba042f32d4efbc.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/12378)  
+[![](https://static001.geekbang.org/resource/image/9c/87/9c19f06035aac28dd1f8b57468f62487.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/74338)  
+[![](https://static001.geekbang.org/resource/image/4c/be/4ccb6db91735b0184e2122ca0a2e8bbe.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/75341)  
+[![](https://static001.geekbang.org/resource/image/bd/21/bd33e29204f5197b4ea8c952e3774621.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/79774)  
+[![](https://static001.geekbang.org/resource/image/3a/1c/3a2a5f71b8b7090991544156f447ed1c.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/6297)  
+[![](https://static001.geekbang.org/resource/image/23/79/23ce1ca0b690f0e142f7aed0029bb979.jpg?wh=949%2A463)](https://time.geekbang.org/column/article/42080)
+<div><strong>精选留言（7）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/10/12/3b/969eedf2.jpg" width="30px"><span>robincoin</span> 👍（4） 💬（0）<div>这个真的不错，有索引方便查询</div>2019-02-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7a/08/4d3e47dd.jpg" width="30px"><span>Aaron Cheung</span> 👍（2） 💬（0）<div>很不错的总结</div>2020-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e4/39/a06ade33.jpg" width="30px"><span>极客雷</span> 👍（1） 💬（0）<div>index</div>2020-03-28</li><br/><li><img src="" width="30px"><span>侯凯杰</span> 👍（0） 💬（0）<div>很不错的总结</div>2023-03-17</li><br/><li><img src="" width="30px"><span>Geek_a7059c</span> 👍（0） 💬（0）<div>赞</div>2022-12-30</li><br/><li><img src="" width="30px"><span>张昆</span> 👍（0） 💬（0）<div>这个真的不错，有索引方便查询</div>2022-11-14</li><br/><li><img src="" width="30px"><span>刘广</span> 👍（0） 💬（0）<div>受益匪浅</div>2022-09-06</li><br/>
+</ul>

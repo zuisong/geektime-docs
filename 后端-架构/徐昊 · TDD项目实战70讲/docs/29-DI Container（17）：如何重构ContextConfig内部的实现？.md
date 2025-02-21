@@ -102,7 +102,7 @@ class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
     }
 }
 
-Context.java:
+Context.java: 
 
 package geektime.tdd.di;
 import java.lang.annotation.Annotation;
@@ -229,17 +229,17 @@ public class ContextConfig {
         }
     }
 }
-
 ```
 
 任务列表的状态为：
 
 - 无需构造的组件——组件实例
-
 - 如果注册的组件不可实例化，则抛出异常
+  
   - 抽象类
   - 接口
 - 构造函数注入
+  
   - 无依赖的组件应该通过默认构造函数生成组件实例
   - 有依赖的组件，通过Inject标注的构造函数生成组件实例
   - 如果所依赖的组件也存在依赖，那么需要对所依赖的组件也完成依赖注入
@@ -248,16 +248,19 @@ public class ContextConfig {
   - 如果组件需要的依赖不存在，则抛出异常
   - 如果组件间存在循环依赖，则抛出异常
 - 字段注入
+  
   - 通过Inject标注将字段声明为依赖组件
   - 如果字段为final则抛出异常
   - 依赖中应包含Inject Field声明的依赖
 - 方法注入
+  
   - 通过Inject标注的方法，其参数为依赖组件
   - 通过Inject标注的无参数方法，会被调用
   - 按照子类中的规则，覆盖父类中的Inject方法
   - 如果方法定义类型参数，则抛出异常
   - 依赖中应包含Inject Method声明的依赖
 - 对Provider类型的依赖
+  
   - 从容器中取得组件的Provider（新增任务）
   - 注入构造函数中可以声明对于Provider的依赖
   - 注入字段中可以声明对于Provider的依赖
@@ -266,49 +269,41 @@ public class ContextConfig {
   - 将字段中的Provider加入依赖（新增任务）
   - 将方法中的Provider加入依赖（新增任务）
 - 自定义Qualifier的依赖
+  
   - 注册组件时，可额外指定Qualifier
+    
     - 针对instance指定一个Qualifieri（新增任务）
     - 针对组件指定一个Qualiifer（新增任务）
     - 针对instance指定多个Qualifieri（新增任务）
     - 针对组件指定多个Qualiifer（新增任务）
   - 注册组件时，如果不是合法的Qualifier，则不接受组件注册（新增任务）
-
   - 寻找依赖时，需同时满足类型与自定义Qualifier标注
+    
     - 在检查依赖时使用Qualifier（新增任务）
-
     - 在检查循环依赖时使用Qualifier（新增任务）
-
     - 构造函数注入可以使用Qualifier声明依赖（新增任务）
+      
       - 如果不是合法的Qualifier，则组件非法
     - 字段注入可以使用Qualifier声明依赖（新增任务）
+      
       - 如果不是合法的Qualifier，则组件非法
     - 函数注入可以使用Qualifier声明依赖（新增任务）
+      
       - 如果不是合法的Qualifier，则组件非法
   - 支持默认Qualifier——Named（不需要）
-
   - 注册组件时，可从类对象上提取Qualifier（不需要）
 - Singleton生命周期
+  
   - 注册组件时，可额外指定是否为Singleton
   - 注册组件时，可从类对象上提取Singleton标注
   - 对于包含Singleton标注的组件，在容器范围内提供唯一实例
   - 容器组件默认不是Single生命周期
 - 自定义Scope标注
+  
   - 可向容器注册自定义Scope标注的回调
-
-## 视频演示
-
-让我们进入今天的部分：
-
-## 思考题
-
-当我们增补依赖缺失和循环依赖的测试时，会给代码带来什么样的改变？
-
-**编辑来信**：
-
-> 第二期“TDD·代码评点”活动启动啦！为了帮助你更平滑地过渡到第三个实战项目，徐老师发起了代码评点活动。
->
-> 你可以填写 [学习问卷](https://jinshuju.net/f/fnh84B) 提交项目代码，而后，徐老师会一一查看，并进行评点与答疑。关于评点的详细内容，我们也将制成加餐展示在专栏里，供其他同学学习与参考。
->
-> 请注意，此次收集时间截至5月27日晚上12点。此外，我也会从中选出1-2位同学，送出《重构与模式》一书。请抓紧上车，入股不亏哦！
-
-欢迎把你的想法分享在留言区，也欢迎把你的项目代码的链接分享出来。相信经过你的思考与实操，学习效果会更好！
+<div><strong>精选留言（3）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/14/2d/93/0f1cbf44.jpg" width="30px"><span>枫中的刀剑</span> 👍（3） 💬（0）<div>当对未来重构后的代码结构有清楚的认识同时又有足够的测试覆盖时，可以不比严格按照TDD的节奏来进行重构。
+好处是可以节省大量的平行实现。
+这相当于你对这块代码有足够的信心，可以加大前进步伐。即使出问题也在可控范围之内。
+因此我们在使用TDD时并不是始终保持一个不变的节奏，实际情况下根据你对当前情况的认知会做出相应的调整，信心充分就可以加大步伐，信心不足就严格执行，小步前进。这是非常灵活的。</div>2022-05-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（0）<div>少了30多个测试项目链接 https:&#47;&#47;github.com&#47;wyyl1&#47;geektime-tdd-di-container&#47;branches</div>2022-05-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e9/22/7606c6ba.jpg" width="30px"><span>张铁林</span> 👍（0） 💬（0）<div>跟着做了2小时，已经完成，在master分支上有代码。</div>2022-05-17</li><br/>
+</ul>

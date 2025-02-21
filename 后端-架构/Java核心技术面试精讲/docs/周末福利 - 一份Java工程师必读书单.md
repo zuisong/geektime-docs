@@ -7,79 +7,11 @@
 另外，这两本书的部分内容已经多少有点过时了，尤其是《Java编程思想》。例如，目前很少会需要学习Java桌面图形类库等，较新的语法和API当然也没有包含，我的建议是尽管忽略过时内容，适当补充Java新技术的学习。
 
 提到经典，自然也少不了 **《Effective Java》**，这本书的英文第三版已经在国内上市，涵盖了Java 7到Java 9的各种新特性。严格来说，这本书不算是一本基础书籍，但当你有一定基础后，还是非常建议通读一下的。关于这本书的阅读，我的建议是边学习边回顾，在吸收书中的经验时，多去想想自己在实际应用中是如何处理的。虽然《Effective Java》的具体章节可能是从某个点出发，但可以说都是对Java、JVM、面向对象等各种知识的综合运用，对于设计和实现高质量的代码很有帮助。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/13/18/f6/2ff7bc7a.jpg" width="30px"><span>轻歌赋</span> 👍（5） 💬（1）<div>有个问题，关于书籍方面，老师您是从什么方面了解到合适的书籍清单的呢？</div>2019-02-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/20/39/3168c4ca.jpg" width="30px"><span>二木🐶</span> 👍（3） 💬（2）<div>晓峰老师请问下您怎么看转语言呢？ 我最近找工作拿到了一个手机行业国内vivo的offer待遇也还不错，不过需要去深圳那边，我现在在广州定居了，老婆小孩都在广州，另外一个选择就是在当前公司调岗去做php，不知道Java如果转php会不会影响以后的职业发展呢</div>2018-08-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/9c/86/5b01be8f.jpg" width="30px"><span>€流年￡</span> 👍（2） 💬（1）<div>坚持不懈的快学完老师的章节了  虽然有些很吃力 但是依旧感觉收获很大 </div>2019-02-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/82/3d/356fc3d6.jpg" width="30px"><span>忆水寒</span> 👍（156） 💬（5）<div>关于设计模式，我推荐一本书《设计模式之蝉》，我觉得比《Head first设计模式》要好很多。
+</div>2018-07-28</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaELZPnUAiajaR5C25EDLWeJURggyiaOP5GGPe2qlwpQcm5e3ybib8OsP4tvddFDLVRSNNGL5I3SFPJHsA/132" width="30px"><span>null</span> 👍（97） 💬（3）<div>看的书越多，自己却越迷茫。总在问自己：为什么我懂得那么少</div>2018-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1a/f3/41d5ba7d.jpg" width="30px"><span>iLeGeND</span> 👍（60） 💬（2）<div>我竟然都看过</div>2018-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/59/c9/f44cb7f3.jpg" width="30px"><span>爪哇夜未眠</span> 👍（32） 💬（0）<div>《Java8 实战》</div>2018-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/97/46/fe1f21d8.jpg" width="30px"><span>北风一叶</span> 👍（30） 💬（3）<div>那本Java虚拟机的前九章看了三遍</div>2018-08-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/88/d8/fdd2cecd.jpg" width="30px"><span>孤鹜齐飞</span> 👍（26） 💬（0）<div>关于看书，我时常不能做到深入。由于工作经验尚浅，对书中所表述的内容不是很懂，但是经过一段时间的积淀，往往能对书中某些部分产生共鸣，所以看书还是要看的，关键在于坚持，慢工出细活。不懂就多看几遍，厚积才能薄发^0^，感谢杨老师分享~</div>2018-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/29/9e/380a01ea.jpg" width="30px"><span>tracer</span> 👍（20） 💬（3）<div>关于设计模式我也向大家推荐一本图解设计模式，真的不错</div>2018-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/98/ea/ab7c9d19.jpg" width="30px"><span>arryontheway</span> 👍（15） 💬（1）<div>effective java买了第二版还没看呢，第三版就出来了..</div>2018-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/38/ba6a106f.jpg" width="30px"><span>Phoenix</span> 👍（14） 💬（4）<div>大型分布式网站架构，深入分布式缓存，这两本书看完了，简直是垃圾，不明白你推荐的理由是什么？400多页的书，一半都是xx软件的安装流程和截图，甚至一个截图占一整页的情况，真是浪费精力又浪费时间</div>2019-07-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/dd/33/4562472d.jpg" width="30px"><span>蓓岑2015</span> 👍（14） 💬（1）<div>Head first设计模式这本书太简单了，废话过多，例子一定也不生动，反而觉得很牵强，一个设计模式用十几页篇幅来讲解，看起来很多，其实都是图片，浪费纸张空间，看着恶心牵强的例子，感觉一点都学不会。
+我在这里推荐一个人的博客，某度搜索“java_my_life”，应该能搜索到这个人的博客。</div>2018-08-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/35/ff/47b59893.jpg" width="30px"><span>Page</span> 👍（10） 💬（0）<div>还有一本书也挺好的《java解惑》里面介绍了Java开发各种问题以及导致的问题的原因，可以验证自己是否对Java掌握透了，得到预期结果。</div>2018-08-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/f3/129d6dfe.jpg" width="30px"><span>李二木</span> 👍（10） 💬（0）<div>设计模式这本武功秘籍，有些这招式看过几遍。遇到强敌准备使招时，感觉又忘记了招式。悟性太差啊</div>2018-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/44/03/460fda52.jpg" width="30px"><span>bills</span> 👍（8） 💬（0）<div>看留言的数量发现坚持到最后的人不多😄，有些困惑，看书的时候理解的差不多，但到实际的时候找不到切入点，没法融入到实践中，老师能给指点下吗？</div>2018-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/75/c9/52a2751a.jpg" width="30px"><span>Chrome</span> 👍（6） 💬（0）<div>重构那本书也很棒……</div>2018-09-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/23/fb/cd22f046.jpg" width="30px"><span>craftsman</span> 👍（5） 💬（1）<div>我觉得我们不光要看一些技术方面的书， 横向的去扩展我们对世界的认识也是尤为重要的  ， 推荐一本《黑客与画家》</div>2020-12-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/13/0c/ed643e5e.jpg" width="30px"><span>小馨</span> 👍（5） 💬（2）<div>再问一下 这些书 有卖二手书的吗，哈哈哈哈哈。</div>2018-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9b/2f/b7a3625e.jpg" width="30px"><span>Len</span> 👍（4） 💬（0）<div>读专栏，做笔记，一篇没落下，感谢老师分享。</div>2018-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/17/81/b7b07da7.jpg" width="30px"><span>爱吃芒果的董先森</span> 👍（4） 💬（0）<div>有些问题感觉深追下去就是和操作系统相关了。linux 内核简单的一些工作方式，tcp，ip协议的实现等。突然感觉真的有好多需要了解的。</div>2018-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/9c/53/ade0afb0.jpg" width="30px"><span>ub8</span> 👍（3） 💬（0）<div>很多书 看一遍真的和没看没多大区别 第一遍粗看 第二遍细看总结问题总结文档 第三遍看自己的文档回忆，先把书读厚了，再把书读薄</div>2021-05-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0c/d3/f310be14.jpg" width="30px"><span>talen</span> 👍（3） 💬（0）<div>深入理解JAVA虚拟机已经有第三版了，建议看看，增加了内容，netty实战比较简单，觉得还是极客课程的好</div>2019-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/17/27/ec30d30a.jpg" width="30px"><span>Jxin</span> 👍（3） 💬（2）<div>&lt;重构&gt;，&lt;领域驱动设计实战&gt;，&lt;码出高效&gt;，&lt;阿里开发手册&gt;。致力于写优雅代码前来报道。</div>2019-06-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/85/f5/10275c0a.jpg" width="30px"><span>yien</span> 👍（3） 💬（0）<div>打算慢慢买齐，大家觉得电子书和纸质的，哪种好些？</div>2019-01-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/53/9b/d0a21378.jpg" width="30px"><span>时代先锋</span> 👍（1） 💬（0）<div>2018-06-09
 
-![](https://static001.geekbang.org/resource/image/bf/06/bf6e3f87d162595ddaa5d0786c0ed806.jpg?wh=200*254)
-
-﻿
-
-**《Head First设计模式》** 这本书就不用我再费笔墨去介绍了吧，能把设计模式用这种轻松的形式展现本身已经十分不易了，章节之间的联系让你可以反复加深印象，加上生动的表达方式和丰富的习题更容易沉浸其中。
-
-![](https://static001.geekbang.org/resource/image/17/0e/17ed56811412ccab5024a119511e0f0e.jpg?wh=200*230)
-
-这本书非常适合对面向对象和设计模式基础有限的同学。设计模式不是银弹，实践中也莫要为了模式而模式，掌握典型模式，能够举一反三就很好了，就当作是程序员之间沟通的“方言”。
-
-谈过了Java基础，接下来聊聊 **并发和虚拟机** 的参考书。
-
-**《Java并发编程实战》**，作者全是响当当的人物，比如Brian Goetz，我多次在专栏里引用他的观点，众多强力作者也保证了书的质量。抛开作者光环，这本书的内容全部建立在理论之上，先讲清道理再谈实践，可以真正让你知其然也知其所以然。这本书更加侧重并发编程中有哪些问题，如何来深刻地理解和定义问题，如何利用可靠的手段指导工程实践，并没有过分纠结于并发类库的源码层面。
-
-![](https://static001.geekbang.org/resource/image/04/3f/0432ac1e431256fb894144aa2e66b03f.jpg?wh=200*258)
-
-这本书的我的学习建议是，尽量充分利用其中提供的样例代码，结合自己的业务实践去深入学习，毕竟这本书的内容有些偏理论，可能并不适合你快速掌握所谓并发“核心”技术。
-
-﻿
-
-关于JVM的学习，不用我多说了吧，看过专栏的同学肯定都知道，我经常推荐 **周志明的《深入理解Java虚拟机》**，可以说是国内最好的JVM书籍之一。
-
-![](https://static001.geekbang.org/resource/image/98/5f/98d02b66e1d3fdf8cc1f7f7c6f974b5f.jpg?wh=200*260)
-
-我这里并没有单独推荐类似GC算法等书籍，它们对于大多数Java工程师的价值也许有限。
-
-关于性能优化，我推荐 **Charlie Hunt和Binu John所著的《Java性能优化权威指南》（Java Performance）**，也是我上次在直播时向大家推荐的。Java之父James Gosling，也力荐这本参考书。
-
-![](https://static001.geekbang.org/resource/image/c9/10/c9fae97c8a4954cb91b59dc7e59ab710.jpg?wh=200*249)
-
-但这本书也存在着不足，里面过于偏重Solaris等商业操作系统和相关工具，我建议你在阅读的时候，尽量体会其思路和原理，更加侧重于Linux等主流开放平台。
-
-还有一些如开源软件和互联网架构相关的图书可以作为扩展阅读，你可以参考下面这几本。
-
-《Spring实战》
-
-![](https://static001.geekbang.org/resource/image/75/61/7559562971dc2eadd8fd03f02980a461.jpg?wh=200*250)
-
-可以说Spring等相关框架已经成为业务开发的事实标准，系统性地掌握Spring框架的设计和实践，是必需的技能之一。
-
-《Netty实战》
-
-![](https://static001.geekbang.org/resource/image/f8/d9/f8b11bdcb1559e472b77e23fcf184dd9.jpg?wh=200*251)
-
-Netty在性能、可扩展性等方面的突出表现，已经得到充分验证，作为基础的通信框架，已经广泛应用在各种互联网架构、游戏等领域，甚至可以说，如果没有仔细分析过Netty，对NIO等方面的理解很可能还在很肤浅的阶段。
-
-《Cloud Native Java》
-
-![](https://static001.geekbang.org/resource/image/d2/12/d286554382cbba791f85e667ea124e12.jpg?wh=200*261)
-
-Java应用程序架构处于飞快的演进之中，微服务等新的架构应用越来越广泛，即使未必是使用Spring Boot、Spring Cloud等框架，但是系统的学习其设计思想和实践技术，绝对是有必要的。当然如果你在实践中使用Dubbo等框架，也可以选择相关书籍。
-
-前沿领域的变化非常快，很多风靡一时的开源软件，在实践中逐渐被证明存在各种弊端，或者厂商停止维护。所以这部分的学习，我建议不要盲目追新，最好是关注于分布式设计中的问题和解决的思路，做到触类旁通，并且注重书籍之外的学习渠道。
-
-下面两本并不算是Java书籍，但Java程序员进阶少不了对互联网主流架构的学习，了解分布式架构、缓存、消息中间件等令人眼花缭乱的技术，对于有志于成为架构师的Java工程师来说非常有帮助。
-
-《大型分布式网站架构设计与实践》
-
-![](https://static001.geekbang.org/resource/image/4a/4f/4ab17456a34278a8ca18de54fea76f4f.jpg?wh=200*253)
-
-这本书总结了作者在构建安全、可稳定性、高扩展性、高并发的分布式网站方面的心得。
-
-《深入分布式缓存：从原理到实践》
-
-![](https://static001.geekbang.org/resource/image/3d/b8/3d70890354f556d1b3acbc2f2fdd99b8.jpg?wh=200*298)
-
-这本书融合了原理、架构和一线互联网公司的案例实践，值得参考。
-
-* * *
-
-下面给入选精选留言的同学送出15元学习奖励礼券。专栏即将进入尾声，希望所有订阅的同学能够坚持到底，也欢迎大家留言分享自己学习或面试的心得体会。
-
-![](https://static001.geekbang.org/resource/image/35/bf/35c9a5cab69eae467adb7d85d76d41bf.jpg?wh=900*1929)
-
-* * *
+看评论都能涨知识，希望评论提供交互功能
+</div>2020-03-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/3d/15/7f5fd6d3.jpg" width="30px"><span>清风</span> 👍（1） 💬（0）<div>感谢老师的分享</div>2018-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fd/88/58adc5c3.jpg" width="30px"><span>fullstack徐</span> 👍（1） 💬（0）<div>试一下</div>2018-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/24/9d/ba45ff4a.jpg" width="30px"><span>陈道恒</span> 👍（1） 💬（0）<div>有好几本，我也买了，的确都是好书，剩下的也会慢慢买齐。谢谢杨老师分享。</div>2018-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/55/2b/b7927cc4.jpg" width="30px"><span>超超超超超帅耶🌴</span> 👍（0） 💬（0）<div>只看过三本，还要继续努力啊</div>2022-03-13</li><br/>
+</ul>

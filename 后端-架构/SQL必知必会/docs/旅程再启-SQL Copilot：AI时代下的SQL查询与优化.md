@@ -11,16 +11,13 @@
 **目前拟定增加的话题如下：**
 
 1. Text to SQL：自然语言写SQL查询
-
 2. SQL实战：银行场景的数据查询与优化
-
 3. SQL实战：保险场景的数据查询与优化
-
 4. SQL实战：证券场景的数据查询与优化
-
 5. SQL实战：新能源车企的数据查询与优化
-
 6. SQL实战：快消场景的数据查询与优化
 
-
 如果你有更多想要了解的内容，也欢迎在留言区写下你的问题，我们共同探讨！加更的部分，每周二和周四0点更新，敬请期待。
+<div><strong>精选留言（2）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/15/6d/07/50a7d11c.jpg" width="30px"><span>Lynn</span> 👍（3） 💬（0）<div>期待更新😁</div>2024-12-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/25/67/6e/ec7299ec.jpg" width="30px"><span>达芬奇</span> 👍（1） 💬（0）<div>期待</div>2025-01-21</li><br/>
+</ul>

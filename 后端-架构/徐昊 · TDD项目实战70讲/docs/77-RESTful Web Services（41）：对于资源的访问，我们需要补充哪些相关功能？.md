@@ -2,13 +2,13 @@
 
 ## 回顾架构愿景与任务列表
 
-![](https://static001.geekbang.org/resource/image/c1/bd/c1a8d4b80fcf2c009a448d996594b6bd.jpg?wh=2284x1264)
-
+![](https://static001.geekbang.org/resource/image/c1/bd/c1a8d4b80fcf2c009a448d996594b6bd.jpg?wh=2284x1264)  
 ![](https://static001.geekbang.org/resource/image/fd/06/fd32fcbe73cb3d406f7473a0798a8d06.jpg?wh=2284x1285)
 
 目前的任务列表：
 
 - Resource/RootResource/ResourceMethods
+  
   - 使用默认构造函数转换matrix、form、header、cookie
   - 使用默认构造函数转换List、Set、SortSet、Arrary
 
@@ -227,15 +227,4 @@ class ResourceHandler implements ResourceRouter.Resource {
         return uriTemplate;
     }
 }
-
 ```
-
-## 视频演示
-
-进入今天的环节：
-
-## 思考题
-
-我们的缺陷出在了什么地方？
-
-欢迎把你的思考和想法分享在留言区，咱们下节课再见！

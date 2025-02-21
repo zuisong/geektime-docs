@@ -12,112 +12,27 @@
 
 ## RESTful风格接口关我什么事？
 
-看到这里，你是不是一脸困惑： **RESTful是一个接口的封装风格，和我们测试人员有什么关系呢？**
+看到这里，你是不是一脸困惑：**RESTful是一个接口的封装风格，和我们测试人员有什么关系呢？**
+<div><strong>精选留言（25）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/1b/c2/00/5d59b46c.jpg" width="30px"><span>我</span> 👍（25） 💬（1）<div>万能螺丝刀柄比喻restful接口，家具拆装必须序列化和反序列化，很好理解。</div>2020-02-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/cd/cd/3b4aadf8.jpg" width="30px"><span>Leo</span> 👍（4） 💬（3）<div>老师，有没有推荐的测试平台，支持web方式展示测试用例，用例的执行是调用背后开发的代码，支持定义测试集，支持多个测试环境，生成测试报告，提供restful接口集成CI流水线等？</div>2020-02-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIuRNfbtL5Skq3m4JW9CZv3dyicUibPXbrS0mugoVbXDB0nicdbaQuxBicGxVPf5jIeOCbzYwiccInhV9w/132" width="30px"><span>AllWin</span> 👍（4） 💬（2）<div>银行业中有些单个接口就有几百个参数，这几百个参数也不是都有联系的，会按场景分成很多参数组合，请问这样的设计是什么风格，我不理解银行为什么会有这样高复杂度的接口设计</div>2020-02-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b0/30/1343b0c3.jpg" width="30px"><span>沛野</span> 👍（4） 💬（1）<div>RESTful 风格的 HTTP 接口是什么意思呀？ 还有什么其他的接口么？这个是按什么分类的呀</div>2020-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3d/58/377289a8.jpg" width="30px"><span>陈磊@Criss</span> 👍（4） 💬（1）<div>序列化是指把对象转换为字节序列的过程，而反序列化是指把字节序列恢复为对象的过程。</div>2020-02-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3f/39/a4c2154b.jpg" width="30px"><span>小昭</span> 👍（0） 💬（1）<div>百度了一下RESTful风格HTTP协议接口的详细介绍，发现自己之前对HTTP协议的接口的认知就是RESTful风格的……
 
-要想理解它和我们测试工程师的关系，你就要先知道RESTful风格的接口到底有什么好。
+老师总能找到生活中的例子来讲一些晦涩的概念，厉害厉害</div>2021-03-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/e9/34/83025564.jpg" width="30px"><span>-_-</span> 👍（0） 💬（2）<div>使用json格式的数据，post请求的参数要改为json=xxx吗，还是data=json格式的数据也可。
+如果是用json=是要再写一个post方法吧</div>2020-07-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/2f/f4/2dede51a.jpg" width="30px"><span>小老鼠</span> 👍（0） 💬（1）<div>RestFul中的delete、put.…等用的就是http协议中的delete、put⋯方法吧？</div>2020-04-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/c3/6c/d24a23a7.jpg" width="30px"><span>彦鋆</span> 👍（0） 💬（1）<div>老师，rest风格的接口我们在设计测试用例和断言的时候预期返回要和接口返回的内容完全一样还是判断返回值中的某些重要的key-value一样就行了？</div>2020-04-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/95/bd/20ec9f4c.jpg" width="30px"><span>深瞳</span> 👍（0） 💬（1）<div>思路有了，但是需要填充的内容还需要大量的学习</div>2020-04-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/96/d5/23fecf33.jpg" width="30px"><span>Hy</span> 👍（0） 💬（1）<div>最后delete函数的注解好像有问题，if params is not None，后面提示用Put方法，另外如果delete方法没参数请问为什么写成了res = requests.put(url)，请老师赐教</div>2020-02-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/da/f1/bf74a792.jpg" width="30px"><span>Map</span> 👍（0） 💬（2）<div>老师这个框架源码有项目地址可以下载么
+</div>2020-02-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/d1/d3/5dfc36c0.jpg" width="30px"><span>王德发</span> 👍（0） 💬（1）<div>老师，这个python的测试框架，怎么做的切换环境，比如说，我现在有三个环境测试、仿真、预发布，不同的环境数据库、redis等这些配置都不一样，如何在测试框架运行的时候能动态切换不同的配置文件呢？比如像java里，可以用maven的插件来做。</div>2020-02-18</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJJXlflPMj9Ct9ia5G8ia51YZpdAuvSokWZoJlXPpk0rkwVrRQ1LzZIlNMBqRaTibAH09JBIeEysDwLQ/132" width="30px"><span>Geek_f644f9</span> 👍（0） 💬（1）<div>复制代码段存在语法错误，不能识别is not
+</div>2020-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/cc/65/4e4e376e.jpg" width="30px"><span>Angela</span> 👍（0） 💬（1）<div>还比如 socket、udp TCP 接口与restful接口有啥区别</div>2020-02-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/cc/65/4e4e376e.jpg" width="30px"><span>Angela</span> 👍（0） 💬（1）<div>还是不太懂 restful Api 和http API的关系和区别 能再详述一下么</div>2020-02-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/a4/6a/7e7bf408.jpg" width="30px"><span>张胜坡</span> 👍（0） 💬（1）<div>可以写一个测试的实例吗？参数是data或者json 格式，如何在测试框架中怎么兼容？</div>2020-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/c1/14/659c8ca2.jpg" width="30px"><span>7F</span> 👍（0） 💬（2）<div>这里的风格是指入参全部定义成json格式？然后不需要在代码中在去写入参了么？</div>2020-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/4e/fe/838a5835.jpg" width="30px"><span>Watermelon</span> 👍（3） 💬（0）<div>还是不懂RESTful风格接口跟普通HTTP接口有什么区别。。。传输数据的话，普通接口也用json传啊</div>2021-01-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（2） 💬（1）<div>过，迭代抽象封装。</div>2020-02-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/4c/b5/fcede1a9.jpg" width="30px"><span>IT小村</span> 👍（1） 💬（0）<div>restful其实就是更好区分接口方法的用途</div>2022-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/dc/33/a68c6b26.jpg" width="30px"><span>捷后愚生</span> 👍（1） 💬（0）<div>RESTful 风格 HTTP 接口的产生
+简单系统可以使用单体结构，用一个 Tomcat 来做中间件就可搞定。随着系统急剧扩大，已经无法只用一个 Web 中间件独立对外提供服务，它们之间都也是通过相互调用来完成业务逻辑的，这里面既包含了服务端和服务端的调用，也包含了前端和服务端的调用，这就催生了 RESTful 风格的 HTTP 接口。
 
-如果你用螺丝、钉子和板材等一系列原材料组装过家具，那么你肯定见到过各种千奇百怪的螺丝，比如一字的、十字的、三角形的、六角形的和海星形的等等，为了加固这些各式各样的螺丝，你就要准备各式各样的螺丝刀，因此，你的工具箱就会被不同规格和大小的螺丝刀填满。
 
-不知道你是不是也和我一样，面对塞满螺丝刀的、乱七八糟的工具箱，心里非常急躁。但后来我在宜家看到一款螺丝刀，它只有一个刀柄，但给你提供了一整套各种形状、各种大小的螺丝刀刀头。
+RESTful 风格 HTTP 接口的特点
+每一个接口只面向一种特定的资源，而不需要关心其他接口的处理方式，接口简单、轻便。
+ESTful 风格接口同样是一种 HTTP 协议的接口，而主要是以 JSON 格式来进行数据交换，且不只会使用get、post方法，还会使用put、detele方法。
 
-这样你在使用时，只要根据螺丝规格的不同，选择替换同形状的刀头就可以了；与此同时，它们放在工具箱里面又会显得很整齐，而不会七零八落。而且，如果你后续需要使用其它特殊形状的螺丝刀，你只要买和刀柄连接口一样的刀头就可以了，而不用再买一个完整的螺丝刀了。
 
-如果你理解了上面这个场景，也就能很好地理解RESTful风格的接口了。 **它主要就是一组设计原则和约束条件，本质上就是让消费者依据URI就可以找到资源，并通过简单的服务输入输出完成服务的交互。**
+封装可以测试RESTful风格接口地测试框架
+引入JSON库，拼凑参数已经无法满足需求，需要使用 JSON 字符串和代码对象实体的转换，也就是序列化和反序列化。
+加入 Delete 和 Put 方法的支持。
+</div>2020-11-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/77/92/65f2b654.jpg" width="30px"><span>Chaos</span> 👍（0） 💬（0）<div>https:&#47;&#47;www.xinzhiweike.com&#47;wenda&#47;1630979493140646</div>2022-04-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/43/2e/2a5d0f3e.jpg" width="30px"><span>Past</span> 👍（0） 💬（0）<div>原文：商家把衣柜拆成各个零件、然后打包的这个过程就是“序列化”，在代码中，就是将一些程序对象转换成 JSON 等格式的字符串的过程。接下来，你用这些零件再重新组装成一个衣柜，这个过程就是“反序列化”，在代码中，就是 JSON 等格式的字符串转换成程序的对象的过程。
 
-它所约束的每一个URI，都是独一无二的一个资源，通过HTTP的方法进行资源操作，实现表现层的状态转化。这就和螺丝刀刀头一样，待解决的问题就像螺丝，每一个接口只面向一种特定的资源，而不需要关心其他接口的处理方式，这样，你就能够一目了然地知道，该用哪种螺丝刀头拧哪种螺丝了，这就降低了接口开发的复杂度。
-
-软件开发人员只要遵循RESTful的实践标准，按照一定的内部定义开发外接口，就会形成类似螺丝刀刀头一样轻便的接口，对外提供服务。现在的很多项目，无论是服务端和服务端的调用，还是前端和服务端的调用，都采用了这一种方式来设计接口。
-
-对于我们测试工程师来说，RESTful风格的接口还是之前的访问模式，它同样是一种HTTP协议的接口，同样可以使用我们上节课一起封装的框架完成接口测试的任务。
-
-但是，它和我们之前讲过的HTTP协议的接口测试还是有一些区别，这些区别导致了你现在的框架还需要做一些修改，这样才能让它支持RESTful风格的接口测试。
-
-## 让你的框架可以测试一个RESTful风格接口
-
-现在，你知道RESTful接口和你的接口测试有很大关系了，那么，RESTful接口的测试和原始的HTTP协议接口的测试，又有什么区别呢？
-
-这里面有两部分需要你特别关注： **数据交换的承载方式和操作方式**。
-
-我先说说数据交换的承载方式，RESTful风格的接口主要是以JSON格式来进行数据交换，如果你还记得我之前提过的“Battle”这个系统（你可以回到 [03](https://time.geekbang.org/column/article/193912) 中查看它），那么你一定在它的Readme.md中，看到了Request和Response对数据部分的一些定义，那就是JSON。虽然“战场”不能算是一个严格的RESTful接口的系统，但是，在数据交接的承载方式上，它模仿了RESTful的样子。
-
-另外一个部分是操作方式，在“战场”系统中，我们用了HTTP协议的Get和Post，其实HTTP协议有很多方法，但是我们仅仅用了这两种，而RESTful的规定，使HTTP的很多方法都被利用到了，比如说，Get方法用来获取资源，Post方法用来新建资源（或者更新资源）；再比如说，Put方法用来更新资源、Delete方法用来删除资源等等。
-
-在明白RESTful风格的接口和普通的HTTP协议接口的区别后，我们现在来想一想，你自己的框架需要添加什么内容，才能支持RESTful风格的接口呢？ **这里我总结了两个方法：借助外力和自己封装。**
-
-### 借助外力
-
-这里，我们RESTful的第一个数据交换的承载方式是JSON，我们的框架在之前的“战场”系统中就已经使用了它，虽然全部的操作都是参数拼凑的过程，但这已经满足了我们的需求。
-
-这时如果你仍要拼凑很多复杂的数据，就需要使用JSON字符串和代码对象实体的转换，它有一个专业的叫法： **序列化和反序列化**。这个词语听着就很难理解，所以现在，我用一个生活中的小例子来告诉你，这个晦涩难懂的概念到底是什么意思。
-
-如果你在商场看中了一款衣柜，但它很大，为了方便运输，就必须要先把它拆掉，运到家后再重新组装。你和商家协商好了，由他们为你把这个衣柜拆成可重组的零件运到家里，然后由你自己把这些零件重新组装成一个衣柜。
-
-那么在这里，商家把衣柜拆成各个零件、然后打包的这个过程就是“序列化”，在代码中，就是将一些程序对象转换成JSON等格式的字符串的过程。接下来，你用这些零件再重新组装成一个衣柜，这个过程就是“反序列化”，在代码中，就是JSON等格式的字符串转换成程序的对象的过程。
-
-为了能让你的框架可以快速完成序列化和反序列化，我建议你在代码中引入一个外部支持的库，就像Python有JSON库、Java有Fastjson库。这些公开的库其实都不需要做任何的修改，就可以拿来使用，所以，无论你使用哪种技术栈，这样的基础库都是存在的，你只需要在网上找一下，然后花几分钟看一下怎么使用，就可以拿到自己的框架里使用了。
-
-### 自己封装
-
-现在，我们已经可以借助开源库，解决数据交换的事情了，但是，RESTful风格接口和普通HTTP接口相比，还有一个明显的区别，那就是RESTful规定了HTTP的每一个方法都做固定的事情，可我们原来框架中的Common类却只支持Get和Post方法，因此，你需要在Common类中加入Delete和Put方法的支持。具体的操作你可以依据下面这个代码段来完成：
-
-```
-  def put(self,uri,params=None):
-    '''
-    封装你自己的put方法，uri是访问路由，params是put请求需要传递的参数，如果没有参数这里为空
-    :param uri: 访问路由
-    :param params: 传递参数，string类型，默认为None
-    :return: 此次访问的response
-    '''
-    url = self.url_root+uri
-    if params is not None:
-      # 如果有参数，那么通过put方式访问对应的url，并将参数赋值给requests.put默认参数data
-      # 返回request的Response结果，类型为requests的Response类型
-      res = requests.put(url, data=params)
-   else:
-
-      # 如果无参数，访问方式如下
-
-      # 返回request的Response结果，类型为requests的Response类型
-
-      res = requests.put(url)
-
-   return res
-
-def delete(self,uri,params=None):
-  '''
-  封装你自己的delete方法，uri是访问路由，params是delete请求需要传递的参数，如果没有参数这里为空
-  :param uri: 访问路由
-  :param params: 传递参数，string类型，默认为None
-  :return: 此次访问的response
-  '''
-  url = self.url_root + uri
-  if params is not None:
-    # 如果有参数，那么通过delete方式访问对应的url，并将参数赋值给requests.delete默认参数data
-    # 返回request的Response结果，类型为requests的Response类型
-    res = requests.delete(url, data=params)
-  else:
-    # 如果无参数，访问方式如下
-    # 返回request的Response结果，类型为requests的Response类型
-    res = requests.delete(url)
-  return res
-
-```
-
-在上面的代码中，你可以看到，我们为了实现HTTP协议的Put和Delete方法，自己封装了put()函数和delete()函数。其实，要实现RESTful风格的接口测试，你只要封装HTTP协议对应的Method方法就可以了，这样，你的框架就能完美的支持RESTful风格的接口了。完成了这个操作后，我们的Common类就既可以完成HTTP协议接口的测试，也可以完成RESTful接口的测试了。
-
-## 总结
-
-到这里，我们已经结束了今天的课程了。我们今天主要完成了RESTful风格接口的测试，对比之前的例子以及你自己的测试框架，针对框架中RESTful里缺失的部分，我为你提供了对应的解决方法。
-
-在文中我讲了很多内容，但是完成RESTful风格接口测试，主要是通过两步操作，来为你的测试框架添加对应接口的测试能力的：
-
-1. 借助外力。目前网上已经有很多成熟的、各式各样的支持库，你要尽量拿来为己所用，而不要从零建设，这样，既弥补了我们开发能力不强的短板，也能提高我们的研发效率。
-2. 自己封装。你要注意的是，自己封装和借助外力并不互相冲突，你要借助外力，然后将它封装到你自己的框架中，这是一个借力打力的好方法。
-
-随着我们的课程的不断深入以及内容的不断丰富，我相信，你最终会获得一个完全适合你自己，又可以解决实际工作任务的测试框架，这也是你自己的接口测试武器仓库，里面有解决各种接口测试问题的方法。它会是一个私有仓库，里面每一个武器都是为你自己量身定制的，因此，每一件武器你用起来都会更得心应手。
-
-## 思考题
-
-我今天讲了RESTful接口测试，并为你的私有测试框架添加了各式各样的新武器，那么，你能用你现在的新武器，解决一个你负责的RESTful的接口测试吗？在今天的框架中，随着你实际工作的使用，你又有了什么样的新设计呢？
-
-我是陈磊，欢迎你在留言区留言分享你的观点，如果这篇文章让你有新的启发，也欢迎你把文章分享给你的朋友，我们一起探讨和学习。
+序列化和反序列化的例子挺有意思的，和Modrem调制解调器原理有点类似，调制(数字信号--&gt;模拟信号)和解调原理(模拟信号--&gt;数字信号)，同时也让我想起了老师一个搞笑的解释，把整条萝卜切割成小块处理，是处理调制的过程，那么解调原理是再把小块小块的萝卜组合成完整的萝卜，保持原特性。
+</div>2020-03-25</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/etbNBmR5PEicra7jbaV9pRsCaibXZ3ichB6JicMOnYowP65W5QMKb8Zicud19jicmEGAGh8ylwDXoYM3SHVU6hf6dFpQ/132" width="30px"><span>roychris</span> 👍（0） 💬（0）<div>序列化和反序列化的具体例子后面有例子讲解吗？</div>2020-02-10</li><br/>
+</ul>

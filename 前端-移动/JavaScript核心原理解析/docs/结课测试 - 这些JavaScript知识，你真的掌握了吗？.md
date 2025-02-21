@@ -23,11 +23,14 @@
   D：with ({eval}) eval('var x = 100')
 
 参考《JavaScript核心原理解析》第22讲。
-
 ```
 
 接下来的这套测试题中共有 20 道题目，包括19道单选题，1道多选题，满分 100 分，系统会自动评分。
 
 点击下面按钮，马上开始测试吧！
 
-[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142*201)](http://time.geekbang.org/quiz/intro?act_id=186&exam_id=434)
+[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142%2A201)](http://time.geekbang.org/quiz/intro?act_id=186&exam_id=434)
+<div><strong>精选留言（3）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/17/38/05/7beecd5d.jpg" width="30px"><span>Aiming</span> 👍（4） 💬（2）<div>关于这套题（全套22题）的解题说明在这里：
+https:&#47;&#47;www.yuque.com&#47;aimingoo&#47;public&#47;js22</div>2020-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/25/2c/8f61089f.jpg" width="30px"><span>宗麒麟</span> 👍（1） 💬（0）<div>感谢老师把对 js 的理解加深了一个层次</div>2020-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/89/5b/d8f78c1e.jpg" width="30px"><span>孜孜</span> 👍（1） 💬（0）<div>也很感谢老师很认真的回复留言。</div>2020-06-24</li><br/>
+</ul>

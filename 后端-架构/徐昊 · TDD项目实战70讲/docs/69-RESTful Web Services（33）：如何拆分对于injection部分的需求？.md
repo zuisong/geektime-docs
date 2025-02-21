@@ -2,13 +2,13 @@
 
 ## 回顾架构愿景与任务列表
 
-![](https://static001.geekbang.org/resource/image/c1/bd/c1a8d4b80fcf2c009a448d996594b6bd.jpg?wh=2284x1264)
-
+![](https://static001.geekbang.org/resource/image/c1/bd/c1a8d4b80fcf2c009a448d996594b6bd.jpg?wh=2284x1264)  
 ![](https://static001.geekbang.org/resource/image/fd/06/fd32fcbe73cb3d406f7473a0798a8d06.jpg?wh=2284x1285)
 
 目前的任务列表：
 
 - Resource/RootResource/ResourceMethods
+  
   - 当HEAD方法映射到GET方法时，忽略GET的返回值
   - 当没有OPTIONS方法时，提供默认实现
 
@@ -60,7 +60,7 @@ class DefaultResourceRouter implements ResourceRouter {
                 Collections.list(request.getHeaders(HttpHeaders.ACCEPT)).toArray(String[]::new), resourceContext, uri);
     }
 }
-
+    
 class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
     private String httpMethod;
     private UriTemplate uriTemplate;
@@ -203,7 +203,7 @@ class ResourceHandler implements ResourceRouter.Resource {
     private ResourceMethods resourceMethods;
     private SubResourceLocators subResourceLocators;
     private Function<ResourceContext, Object> resource;
-
+    
     public ResourceHandler(Class<?> resourceClass) {
         this(resourceClass, new PathTemplate(getTemplate(resourceClass)), rc -> rc.getResource(resourceClass));
     }
@@ -232,7 +232,6 @@ class ResourceHandler implements ResourceRouter.Resource {
         return uriTemplate;
     }
 }
-
 ```
 
 ## 视频演示
@@ -244,3 +243,8 @@ class ResourceHandler implements ResourceRouter.Resource {
 接下来是否要开始重构？如何重构？
 
 欢迎把你的想法分享在留言区，也欢迎把你的项目代码分享出来。相信经过你的思考与实操，学习效果会更好！
+<div><strong>精选留言（1）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（0）<div>老师先添加另一个纬度的 QueryParam 的测试是因为下列原因吗：
+1、验证自己的想法是否可行，快速试错，避免 pahtParam 的测试全部写完了，发现 QueryParam 或其他纬度的实现方法与自己预期的相差太远
+2、不同纬度的第一版实现代码会存在很多坏味道，有了测试做保障，接下来就可以先重构，使代码变得更易于修改。在整洁的代码下开发剩余功能会更简单、更轻松、更愉快</div>2022-08-30</li><br/>
+</ul>

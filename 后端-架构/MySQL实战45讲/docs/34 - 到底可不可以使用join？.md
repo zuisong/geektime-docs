@@ -1,9 +1,7 @@
 在实际生产中，关于join语句使用的问题，一般会集中在以下两类：
 
 1. 我们DBA不让使用join，使用join有什么问题呢？
-
 2. 如果有两个大小不同的表做join，应该用哪个表做驱动表呢？
-
 
 今天这篇文章，我就先跟你说说join语句到底是怎么执行的，然后再来回答这两个问题。
 
@@ -34,7 +32,6 @@ call idata();
 
 create table t1 like t2;
 insert into t1 (select * from t2 where id<=100)
-
 ```
 
 可以看到，这两个表都有一个主键索引id和一个索引a，字段b上无索引。存储过程idata()往表t2里插入了1000行数据，在表t1里插入的是100行数据。
@@ -45,283 +42,49 @@ insert into t1 (select * from t2 where id<=100)
 
 ```
 select * from t1 straight_join t2 on (t1.a=t2.a);
-
 ```
 
 如果直接使用join语句，MySQL优化器可能会选择表t1或t2作为驱动表，这样会影响我们分析SQL语句的执行过程。所以，为了便于分析执行过程中的性能问题，我改用straight\_join让MySQL使用固定的连接方式执行查询，这样优化器只会按照我们指定的方式去join。在这个语句里，t1 是驱动表，t2是被驱动表。
 
 现在，我们来看一下这条语句的explain结果。
 
-![](https://static001.geekbang.org/resource/image/4b/90/4b9cb0e0b83618e01c9bfde44a0ea990.png?wh=1394*163)
+![](https://static001.geekbang.org/resource/image/4b/90/4b9cb0e0b83618e01c9bfde44a0ea990.png?wh=1394%2A163)
 
 图1 使用索引字段join的 explain结果
 
 可以看到，在这条语句里，被驱动表t2的字段a上有索引，join过程用上了这个索引，因此这个语句的执行流程是这样的：
-
-1. 从表t1中读入一行数据 R；
-
-2. 从数据行R中，取出a字段到表t2里去查找；
-
-3. 取出表t2中满足条件的行，跟R组成一行，作为结果集的一部分；
-
-4. 重复执行步骤1到3，直到表t1的末尾循环结束。
-
-
-这个过程是先遍历表t1，然后根据从表t1中取出的每行数据中的a值，去表t2中查找满足条件的记录。在形式上，这个过程就跟我们写程序时的嵌套查询类似，并且可以用上被驱动表的索引，所以我们称之为“Index Nested-Loop Join”，简称NLJ。
-
-它对应的流程图如下所示：
-
-![](https://static001.geekbang.org/resource/image/d8/f6/d83ad1cbd6118603be795b26d38f8df6.jpg?wh=1142*880)
-
-图2 Index Nested-Loop Join算法的执行流程
-
-在这个流程里：
-
-1. 对驱动表t1做了全表扫描，这个过程需要扫描100行；
-
-2. 而对于每一行R，根据a字段去表t2查找，走的是树搜索过程。由于我们构造的数据都是一一对应的，因此每次的搜索过程都只扫描一行，也是总共扫描100行；
-
-3. 所以，整个执行流程，总扫描行数是200。
-
-
-现在我们知道了这个过程，再试着回答一下文章开头的两个问题。
-
-先看第一个问题： **能不能使用join?**
-
-假设不使用join，那我们就只能用单表查询。我们看看上面这条语句的需求，用单表查询怎么实现。
-
-1. 执行 `select * from t1`，查出表t1的所有数据，这里有100行；
-
-2. 循环遍历这100行数据：
-   - 从每一行R取出字段a的值$R.a；
-   - 执行 `select * from t2 where a=$R.a`；
-   - 把返回的结果和R构成结果集的一行。
-
-可以看到，在这个查询过程，也是扫描了200行，但是总共执行了101条语句，比直接join多了100次交互。除此之外，客户端还要自己拼接SQL语句和结果。
-
-显然，这么做还不如直接join好。
-
-我们再来看看第二个问题： **怎么选择驱动表？**
-
-在这个join语句执行过程中，驱动表是走全表扫描，而被驱动表是走树搜索。
-
-假设被驱动表的行数是M。每次在被驱动表查一行数据，要先搜索索引a，再搜索主键索引。每次搜索一棵树近似复杂度是以2为底的M的对数，记为log2M，所以在被驱动表上查一行的时间复杂度是 2\*log2M。
-
-假设驱动表的行数是N，执行过程就要扫描驱动表N行，然后对于每一行，到被驱动表上匹配一次。
-
-因此整个执行过程，近似复杂度是 N + N\*2\*log2M。
-
-显然，N对扫描行数的影响更大，因此应该让小表来做驱动表。
-
-> 如果你没觉得这个影响有那么“显然”， 可以这么理解：N扩大1000倍的话，扫描行数就会扩大1000倍；而M扩大1000倍，扫描行数扩大不到10倍。
-
-到这里小结一下，通过上面的分析我们得到了两个结论：
-
-1. 使用join语句，性能比强行拆成多个单表执行SQL语句的性能要好；
-
-2. 如果使用join语句的话，需要让小表做驱动表。
-
-
-但是，你需要注意，这个结论的前提是“可以使用被驱动表的索引”。
-
-接下来，我们再看看被驱动表用不上索引的情况。
-
-# Simple Nested-Loop Join
-
-现在，我们把SQL语句改成这样：
-
-```
-select * from t1 straight_join t2 on (t1.a=t2.b);
-
-```
-
-由于表t2的字段b上没有索引，因此再用图2的执行流程时，每次到t2去匹配的时候，就要做一次全表扫描。
-
-你可以先设想一下这个问题，继续使用图2的算法，是不是可以得到正确的结果呢？如果只看结果的话，这个算法是正确的，而且这个算法也有一个名字，叫做“Simple Nested-Loop Join”。
-
-但是，这样算来，这个SQL请求就要扫描表t2多达100次，总共扫描100\*1000=10万行。
-
-这还只是两个小表，如果t1和t2都是10万行的表（当然了，这也还是属于小表的范围），就要扫描100亿行，这个算法看上去太“笨重”了。
-
-当然，MySQL也没有使用这个Simple Nested-Loop Join算法，而是使用了另一个叫作“Block Nested-Loop Join”的算法，简称BNL。
-
-# Block Nested-Loop Join
-
-这时候，被驱动表上没有可用的索引，算法的流程是这样的：
-
-1. 把表t1的数据读入线程内存join\_buffer中，由于我们这个语句中写的是select \*，因此是把整个表t1放入了内存；
-
-2. 扫描表t2，把表t2中的每一行取出来，跟join\_buffer中的数据做对比，满足join条件的，作为结果集的一部分返回。
-
-
-这个过程的流程图如下：
-
-![](https://static001.geekbang.org/resource/image/15/73/15ae4f17c46bf71e8349a8f2ef70d573.jpg?wh=1142*880)
-
-图3 Block Nested-Loop Join 算法的执行流程
-
-对应地，这条SQL语句的explain结果如下所示：
-
-![](https://static001.geekbang.org/resource/image/67/e1/676921fa0883e9463dd34fb2bc5e87e1.png?wh=1763*164)
-
-图4 不使用索引字段join的 explain结果
-
-可以看到，在这个过程中，对表t1和t2都做了一次全表扫描，因此总的扫描行数是1100。由于join\_buffer是以无序数组的方式组织的，因此对表t2中的每一行，都要做100次判断，总共需要在内存中做的判断次数是：100\*1000=10万次。
-
-前面我们说过，如果使用Simple Nested-Loop Join算法进行查询，扫描行数也是10万行。因此，从时间复杂度上来说，这两个算法是一样的。但是，Block Nested-Loop Join算法的这10万次判断是内存操作，速度上会快很多，性能也更好。
-
-接下来，我们来看一下，在这种情况下，应该选择哪个表做驱动表。
-
-假设小表的行数是N，大表的行数是M，那么在这个算法里：
-
-1. 两个表都做一次全表扫描，所以总的扫描行数是M+N；
-
-2. 内存中的判断次数是M\*N。
-
-
-可以看到，调换这两个算式中的M和N没差别，因此这时候选择大表还是小表做驱动表，执行耗时是一样的。
-
-然后，你可能马上就会问了，这个例子里表t1才100行，要是表t1是一个大表，join\_buffer放不下怎么办呢？
-
-join\_buffer的大小是由参数join\_buffer\_size设定的，默认值是256k。 **如果放不下表t1的所有数据话，策略很简单，就是分段放。** 我把join\_buffer\_size改成1200，再执行：
-
-```
-select * from t1 straight_join t2 on (t1.a=t2.b);
-
-```
-
-执行过程就变成了：
-
-1. 扫描表t1，顺序读取数据行放入join\_buffer中，放完第88行join\_buffer满了，继续第2步；
-
-2. 扫描表t2，把t2中的每一行取出来，跟join\_buffer中的数据做对比，满足join条件的，作为结果集的一部分返回；
-
-3. 清空join\_buffer；
-
-4. 继续扫描表t1，顺序读取最后的12行数据放入join\_buffer中，继续执行第2步。
-
-
-执行流程图也就变成这样：
-
-![](https://static001.geekbang.org/resource/image/69/c4/695adf810fcdb07e393467bcfd2f6ac4.jpg?wh=1142*880)
-
-图5 Block Nested-Loop Join -- 两段
-
-图中的步骤4和5，表示清空join\_buffer再复用。
-
-这个流程才体现出了这个算法名字中“Block”的由来，表示“分块去join”。
-
-可以看到，这时候由于表t1被分成了两次放入join\_buffer中，导致表t2会被扫描两次。虽然分成两次放入join\_buffer，但是判断等值条件的次数还是不变的，依然是(88+12)\*1000=10万次。
-
-我们再来看下，在这种情况下驱动表的选择问题。
-
-假设，驱动表的数据行数是N，需要分K段才能完成算法流程，被驱动表的数据行数是M。
-
-注意，这里的K不是常数，N越大K就会越大，因此把K表示为λ\*N，显然λ的取值范围是(0,1)。
-
-所以，在这个算法的执行过程中：
-
-1. 扫描行数是 N+λ\*N\*M；
-
-2. 内存判断 N\*M次。
-
-
-显然，内存判断次数是不受选择哪个表作为驱动表影响的。而考虑到扫描行数，在M和N大小确定的情况下，N小一些，整个算式的结果会更小。
-
-所以结论是，应该让小表当驱动表。
-
-当然，你会发现，在N+λ\*N\*M这个式子里，λ才是影响扫描行数的关键因素，这个值越小越好。
-
-刚刚我们说了N越大，分段数K越大。那么，N固定的时候，什么参数会影响K的大小呢？（也就是λ的大小）答案是join\_buffer\_size。join\_buffer\_size越大，一次可以放入的行越多，分成的段数也就越少，对被驱动表的全表扫描次数就越少。
-
-这就是为什么，你可能会看到一些建议告诉你，如果你的join语句很慢，就把join\_buffer\_size改大。
-
-理解了MySQL执行join的两种算法，现在我们再来试着 **回答文章开头的两个问题**。
-
-第一个问题：能不能使用join语句？
-
-1. 如果可以使用Index Nested-Loop Join算法，也就是说可以用上被驱动表上的索引，其实是没问题的；
-
-2. 如果使用Block Nested-Loop Join算法，扫描行数就会过多。尤其是在大表上的join操作，这样可能要扫描被驱动表很多次，会占用大量的系统资源。所以这种join尽量不要用。
-
-
-所以你在判断要不要使用join语句时，就是看explain结果里面，Extra字段里面有没有出现“Block Nested Loop”字样。
-
-第二个问题是：如果要使用join，应该选择大表做驱动表还是选择小表做驱动表？
-
-1. 如果是Index Nested-Loop Join算法，应该选择小表做驱动表；
-
-2. 如果是Block Nested-Loop Join算法：
-   - 在join\_buffer\_size足够大的时候，是一样的；
-   - 在join\_buffer\_size不够大的时候（这种情况更常见），应该选择小表做驱动表。
-
-所以，这个问题的结论就是，总是应该使用小表做驱动表。
-
-当然了，这里我需要说明下， **什么叫作“小表”**。
-
-我们前面的例子是没有加条件的。如果我在语句的where条件加上 t2.id<=50这个限定条件，再来看下这两条语句：
-
-```
-select * from t1 straight_join t2 on (t1.b=t2.b) where t2.id<=50;
-select * from t2 straight_join t1 on (t1.b=t2.b) where t2.id<=50;
-
-```
-
-注意，为了让两条语句的被驱动表都用不上索引，所以join字段都使用了没有索引的字段b。
-
-但如果是用第二个语句的话，join\_buffer只需要放入t2的前50行，显然是更好的。所以这里，“t2的前50行”是那个相对小的表，也就是“小表”。
-
-我们再来看另外一组例子：
-
-```
-select t1.b,t2.* from  t1  straight_join t2 on (t1.b=t2.b) where t2.id<=100;
-select t1.b,t2.* from  t2  straight_join t1 on (t1.b=t2.b) where t2.id<=100;
-
-```
-
-这个例子里，表t1 和 t2都是只有100行参加join。但是，这两条语句每次查询放入join\_buffer中的数据是不一样的：
-
-- 表t1只查字段b，因此如果把t1放到join\_buffer中，则join\_buffer中只需要放入b的值；
-- 表t2需要查所有的字段，因此如果把表t2放到join\_buffer中的话，就需要放入三个字段id、a和b。
-
-这里，我们应该选择表t1作为驱动表。也就是说在这个例子里，“只需要一列参与join的表t1”是那个相对小的表。
-
-所以，更准确地说， **在决定哪个表做驱动表的时候，应该是两个表按照各自的条件过滤，过滤完成之后，计算参与join的各个字段的总数据量，数据量小的那个表，就是“小表”，应该作为驱动表。**
-
-# 小结
-
-今天，我和你介绍了MySQL执行join语句的两种可能算法，这两种算法是由能否使用被驱动表的索引决定的。而能否用上被驱动表的索引，对join语句的性能影响很大。
-
-通过对Index Nested-Loop Join和Block Nested-Loop Join两个算法执行过程的分析，我们也得到了文章开头两个问题的答案：
-
-1. 如果可以使用被驱动表的索引，join语句还是有其优势的；
-
-2. 不能使用被驱动表的索引，只能使用Block Nested-Loop Join算法，这样的语句就尽量不要使用；
-
-3. 在使用join的时候，应该让小表做驱动表。
-
-
-最后，又到了今天的问题时间。
-
-我们在上文说到，使用Block Nested-Loop Join算法，可能会因为join\_buffer不够大，需要对被驱动表做多次全表扫描。
-
-我的问题是，如果被驱动表是一个大表，并且是一个冷数据表，除了查询过程中可能会导致IO压力大以外，你觉得对这个MySQL服务还有什么更严重的影响吗？（这个问题需要结合上一篇文章的知识点）
-
-你可以把你的结论和分析写在留言区，我会在下一篇文章的末尾和你讨论这个问题。感谢你的收听，也欢迎你把这篇文章分享给更多的朋友一起阅读。
-
-# 上期问题时间
-
-我在上一篇文章最后留下的问题是，如果客户端由于压力过大，迟迟不能接收数据，会对服务端造成什么严重的影响。
-
-这个问题的核心是，造成了“长事务”。
-
-至于长事务的影响，就要结合我们前面文章中提到的锁、MVCC的知识点了。
-
-- 如果前面的语句有更新，意味着它们在占用着行锁，会导致别的语句更新被锁住；
-- 当然读的事务也有问题，就是会导致undo log不能被回收，导致回滚段空间膨胀。
-
-评论区留言点赞板：
-
-> @老杨同志 提到了更新之间会互相等锁的问题。同一个事务，更新之后要尽快提交，不要做没必要的查询，尤其是不要执行需要返回大量数据的查询；
->
-> @长杰 同学提到了undo表空间变大，db服务堵塞，服务端磁盘空间不足的例子。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/14/02/66/4ab9225e.jpg" width="30px"><span>没时间了ngu</span> 👍（117） 💬（9）<div>join这种用的多的，看完还是有很大收获的。像之前讲的锁之类，感觉好抽象，老是记不住，唉。</div>2019-01-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/e5/39/951f89c8.jpg" width="30px"><span>信信</span> 👍（376） 💬（19）<div>老师好，回答本期问题：如果驱动表分段，那么被驱动表就被多次读，而被驱动表又是大表，循环读取的间隔肯定得超1秒，这就会导致上篇文章提到的：“数据页在LRU_old的存在时间超过1秒，就会移到young区”。最终结果就是把大部分热点数据都淘汰了，导致“Buffer pool hit rate”命中率极低，其他请求需要读磁盘，因此系统响应变慢，大部分请求阻塞。</div>2019-01-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/ea/9a/02d589f9.jpg" width="30px"><span>斜面镜子 Bill</span> 👍（238） 💬（6）<div>因为 join_buffer 不够大，需要对被驱动表做多次全表扫描，也就造成了“长事务”。除了老师上节课提到的导致undo log 不能被回收，导致回滚段空间膨胀问题，还会出现：1. 长期占用DML锁，引发DDL拿不到锁堵慢连接池； 2. SQL执行socket_timeout超时后业务接口重复发起，导致实例IO负载上升出现雪崩；3. 实例异常后，DBA kill SQL因繁杂的回滚执行时间过长，不能快速恢复可用；4. 如果业务采用select *作为结果集返回，极大可能出现网络拥堵，整体拖慢服务端的处理；5. 冷数据污染buffer pool，block nested-loop多次扫描，其中间隔很有可能超过1s，从而污染到lru 头部，影响整体的查询体验。</div>2019-01-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/03/f7/3a493bec.jpg" width="30px"><span>老杨同志</span> 👍（67） 💬（1）<div>对被驱动表进行全表扫描，会把冷数据的page加入到buffer pool.,并且block nested-loop要扫描多次，两次扫描的时间可能会超过1秒，使lru的那个优化失效，把热点数据从buffer pool中淘汰掉，影响正常业务的查询效率</div>2019-01-30</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIu1n1DhUGGKTjelrQaLYOSVK2rsFeia0G8ASTIftib5PTOx4pTqdnfwb0NiaEFGRgS661nINyZx9sUg/132" width="30px"><span>Zzz</span> 👍（46） 💬（7）<div>林老师，我没想清楚为什么会进入young区域。假设大表t大小是M页&gt;old区域N页，由于Block Nested-Loop Join需要对t进行k次全表扫描。第一次扫描时，1~N页依次被放入old区域，访问N+1页时淘汰1页，放入N+1页，以此类推，第一次扫描结束后old区域存放的是M-N+1~M页。第二次扫描开始，访问1页，淘汰M-N+1页，放入1页。可以把M页想象成一个环，N页想象成在这个环上滑动的窗口，由于M&gt;N，不管是哪次扫描，需要访问的页都不会在滑动窗口上，所以不会存在“被访问的时候数据页在 LRU 链表中存在的时间超过了 1 秒“而被放入young的情况。我能想到的会被放入young区域的情况是，在当次扫描中，由于一页上有多行数据，需要对该页访问多次，超过了1s，不管这种情况就和t大小没关系了，而是由于page size太大，而一行数据太少。</div>2019-01-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/df/87/0e05dadd.jpg" width="30px"><span>清风浊酒</span> 👍（45） 💬（2）<div>老师您好，left join 和 right join 会固定驱动表吗？</div>2019-01-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/f1/0e/e9b57b9b.jpg" width="30px"><span>泡泡爱dota</span> 👍（38） 💬（4）<div>explain select * from t1 straight_join t2 on (t1.a=t2.a) where t1.a &lt; 50; 
+老师, 这条sql为什么t1.a的索引没有用上, t1还是走全表
+</div>2019-01-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/69/d9/968df259.jpg" width="30px"><span>郝攀刚จุ๊บ</span> 👍（28） 💬（7）<div>业务逻辑关系，一个SQL中left join7，8个表。这我该怎么优化。每次看到这些脑壳就大！</div>2019-01-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/57/96/b65bdf43.jpg" width="30px"><span>萤火虫</span> 👍（25） 💬（14）<div>年底了有一种想跳槽的冲动 身在武汉的我想出去看看 可一想到自身的能力和学历 又不敢去了 苦恼... </div>2019-01-30</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Nic2zzpAuiadVibETy3Um3IcjOa4O9gr8zVagG6tCbMlFF8O3tNmwMJicEEsA9pibcxgibtyKhl1ZicXYX8kLfXs6AMmg/132" width="30px"><span>呵呵</span> 👍（19） 💬（1）<div>老师，新年好！
+优化器会自动选择小表作为驱动表，那么我们人为把小表写成驱动表还有意义吗？ </div>2019-02-11</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/NhbRicjvf8v3K6D3v1FtOicxOciaPZQsCjCmuGCqea4vJeRVaLicKLpAcFQlcTgLvczBWY7SYDkeOtibxXj1PGl7Nug/132" width="30px"><span>柚子</span> 👍（14） 💬（5）<div>join在热点表操作中，join查询是一次给两张表同时加锁吧，会不会增大锁冲突的几率？
+业务中肯定要使用被驱动表的索引，通常我们是先在驱动表查出结果集，然后再通过in被驱动表索引字段，分两步查询，这样是否比直接join委托点？</div>2019-01-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c6/ac/60d1fd42.jpg" width="30px"><span>抽离の❤️</span> 👍（14） 💬（1）<div>早上听老师一节课感觉获益匪浅</div>2019-01-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/49/8b/3596a3e2.jpg" width="30px"><span>403</span> 👍（13） 💬（1）<div>用那个作为驱动表，mysql会自己优化么？</div>2019-02-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/RNO4yZyBvic914hewmNNE8iblYDcfv5yGHZ9OnKuCuZXNmGR0F5qV3icKLT2xpMt66GyEpicZVvrmz8A6TIqt92MQg/132" width="30px"><span>啊啊啊哦哦</span> 👍（12） 💬（1）<div>NLJ join算法下。  驱动表假设全表先扫描。  这个全表扫描的数据存放在哪。 buffer bool中还是。全表扫描到单独的read buffer中？ 我的理解是。 驱动表全表扫描的数据。是从buffer bool中找驱动表的数据到 read buffer中。如果buffer bool 没有。那么从磁盘。到buffer bool 然后在到read buffer 中。 我的理解对吗。 </div>2019-03-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/dd/40/a185dfcb.jpg" width="30px"><span>思考特～</span> 👍（12） 💬（6）<div>老师，这边想请教一个困扰很久的问题，用mysql经常会制定这么一个规则，不允许多表join。从实际情况看，几乎不太可能遵守这个规则，有个交易的业务场景涉及 用户表 300W、订单表 900W、支付表 900W，每次需要查一个用户下面的订单信息可能就有点慢了，但是还能接受，如果是查询一个团体的订单信息，这个量就非常可观了,查询有时候根本返回不了结果。根本无法避免多表Join，所以想问问老师，在这种需要多表Join业务场景下，如何设计表，来提升性能？或者有这方面推荐的资料可以参考的</div>2019-03-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/40/5e/b8fada94.jpg" width="30px"><span>Ryoma</span> 👍（12） 💬（1）<div>上文中使用索引时扫描行数为200，但是根据字段a去做树搜索时，由于字段a是普通索引，在找到匹配值后还会继续匹配，实际上每个循环都做了至少两次的行扫描。
+老师，这么理解对么？</div>2019-01-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/92/cd/d39e568c.jpg" width="30px"><span>felix</span> 👍（11） 💬（1）<div>不让用join，那用什么呢，用逗号分隔两表？
+join有多个条件的话，写在on后面和where后面有什么区别吗？</div>2019-01-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/f3/69/7039d03f.jpg" width="30px"><span>渔村蓝</span> 👍（9） 💬（2）<div>但是，Block Nested-Loop Join 算法的这 10 万次判断是内存操作，速度上会快很多，性能也更好。
+那Simple那种是直接在引擎里面计算吗？但是计算不都应该在内存吗？所以不理解为什么这里会更快，难得一次抢到这么早的留言，请老师指教，谢谢。</div>2019-01-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/93/c7/86352ccc.jpg" width="30px"><span>1024</span> 👍（8） 💬（4）<div>文中解释NLJ和BNL时间复杂度相同，都是M*N。但是对于BNL性能好于NLJ的原因只是提到:&quot;BNL的判断是在内存中操作，速度上会快很多，性能也更好&quot;。请问老师？这句话的言外之意是: NLJ的判断不是在内存中操作吗？不将数据加载到内存，CPU如何进行判断呢?</div>2019-02-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/0d/a9/8ddbfcd9.jpg" width="30px"><span>Franis</span> 👍（7） 💬（2）<div>老师，想问一下，如果是“一对多”的多个表进行join的话，应该选择“多”的表作为驱动表，还是选择“一”的表作为驱动表呢？</div>2019-03-03</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/3XbCueYYVWTiclv8T5tFpwiblOxLphvSZxL4ujMdqVMibZnOiaFK2C5nKRGv407iaAsrI0CDICYVQJtiaITzkjfjbvrQ/132" width="30px"><span>有铭</span> 👍（7） 💬（1）<div>今天这篇看了犹如醍醐灌顶一般，以前一直没搞明白当表数据比较大的时候join_buf是如何工作的，原来是分段载入的</div>2019-01-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ed/1a/269eb3d6.jpg" width="30px"><span>cfanbo</span> 👍（7） 💬（1）<div>explain select * from t1 straight_join t2 on (t1.b=t2.b) where t2.id&lt;=50;
+explain select * from t2 straight_join t1 on (t1.b=t2.b) where t2.id&lt;=50;
+看两个sql的分析结果的 rows列数量，数量小的作为驱动表。而对于记录个数一样的，则采用存放 到 join buffer 里的字段数量来决定。
+这样理解对么？</div>2019-01-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/14/98/0251b8fd.jpg" width="30px"><span>Cy190622</span> 👍（6） 💬（1）<div>专栏已经更新完毕，首先谢谢老师；有以下几个小问题，希望老师有时间能够看到。
+1.普通的join查询是被执行器优化执行过的吧？但是优化执行是否做到最好呢？怎么验证一下优化过程用的是那种方式呢？是用两个表互换explain一下吗？
+2.这种查询优化在Mysql哪个版本中做了较大的加强。
+3.SELECT * FROM t1 STRAIGHT_JOIN t2 ON (t1.a=t2.b);  （t1是以a为索引的100行数据，t2中b非索引1000条数据）t1做了驱动表，属于BNL情形；如果用t2作为驱动表，t1的a索引就可以用，属于NLJ情形，选择哪个表作为驱动表更好呢？
+</div>2019-03-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/0d/a9/8ddbfcd9.jpg" width="30px"><span>Franis</span> 👍（5） 💬（2）<div>如果我产品表有十条数据，订单表有一万条数据。
+为什么我用订单表作为驱动表会比用产品表作为驱动表速度快呢？</div>2019-03-04</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIu1n1DhUGGKTjelrQaLYOSVK2rsFeia0G8ASTIftib5PTOx4pTqdnfwb0NiaEFGRgS661nINyZx9sUg/132" width="30px"><span>Zzz</span> 👍（5） 💬（1）<div>林老师，关于课后问题，很多留言都提到大表数据会进入LRU young区域，这个是一定发生的吗？如果大表数据少于LRU old区域的大小，那所有大表数据都会进入young区域没问题。如果大表数据多于old区域的大小，下次扫描的时候早进入old区域的page都已经被淘汰出去，所以不会因为超过1s而进入young区域，导致的结果就是old区域hit很低，读取新一页都需要从磁盘读取到内存。</div>2019-01-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/05/d4/e06bf86d.jpg" width="30px"><span>长杰</span> 👍（5） 💬（2）<div>我们在上文说到，使用 Block Nested-Loop Join 算法，可能会因为 join_buffer 不够大，需要对被驱动表做多次全表扫描。
+在这个情况下，由于被驱动表是冷表，被多次全表扫描，LRU算法虽然做了优化分为yong区和old区，但是join_buffer不够大，驱动表被分成多个block，被驱动表要查多次，会占用young区，导致bp命中率下降。</div>2019-01-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/00/f0/08409e78.jpg" width="30px"><span>一大只😴</span> 👍（4） 💬（1）<div>老师，我想问下，如果使用的是Index Nested-Loop Join，是不是就不会使用join_buffer了？直接将循环结果放到net_buffer_length中，边读边发哈？</div>2019-01-31</li><br/><li><img src="" width="30px"><span>700</span> 👍（4） 💬（1）<div>老师，您好。看完文章后有如下问题请教：
+1）文章内容「可以看到，在这个查询过程，也是扫描了 200 行，但是总共执行了 101 条语句，比直接 join 多了 100 次交互。除此之外，客户端还要自己拼接 SQL 语句和结果。」
+这个有没有啥方法来仅通过1次交互就将这101条语句发到服务端执行？
+
+2）文章内容「每次搜索一棵树近似复杂度是以 2 为底的 M 的对数，记为 log2M，所以在被驱动表上查一行的时间复杂度是 2*log2M。」
+这个复杂度的计算难理解，为什么是这么计算？
+假设 M = 256，则搜索树的复杂度为8？
+
+3）文章内容「因此整个执行过程，近似复杂度是 N + N*2*log2M。」
+驱动表的复杂度直接记为 N？
+
+4）文中提到索引扫描需扫1行数据，全表扫描需扫1000行数据。这是由统计信息决定的？
+
+提前感谢老师！</div>2019-01-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/77/fd/c6619535.jpg" width="30px"><span>XD</span> 👍（4） 💬（3）<div>老师，三个表关联的执行流程也是一样的吗？记得阿里的mysql规范里有一条不允许3个及以上表进行join操作，这个原因是？</div>2019-01-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/b0/37/d654fbac.jpg" width="30px"><span>几近虚年</span> 👍（3） 💬（1）<div>    看了老师的课程，现在看到34讲，前面的锁、索引等基础常用的东西，因为我是Java开发嘛，有普通的SQL操作经验，所以看了以后很有收获。 但是到了分库分表、读写分离的课程，看着就很吃力了，之前没有做过类似的东西。
+    但是总的来说，收获超级大，这是我进极客时间买的第一个课程，也是现在最有价值的课程，真的非常感谢老师的辛苦码字和把技术表达。
+    看完这个课程，然后继续看老师推荐的书籍《高性能MySQL》。等跳槽后，把现在所学的基础类型的知识都应用一遍，然后分库那些再看有环境的话实践实践，最后再回过头，反复看老师中间段课程的知识点，到时候相信收获肯定也很大。
+    感谢老师。</div>2019-02-21</li><br/>
+</ul>

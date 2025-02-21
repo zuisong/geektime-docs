@@ -12,11 +12,11 @@ Serverless的大热，表面上看好像是一件技术的事情，其实背后�
 
 具体内容上，专栏共分为三大部分，基础篇、进阶篇和实战篇。
 
-**基础篇：** 带你理解Serverless要解决什么问题，以及Serverless的边界和定义。搞清楚了来龙去脉后会进入动手环节，通过一个例子给你讲解Serverless引擎盖下的工作原理，以及FaaS的一些应用场景。
+**基础篇：**带你理解Serverless要解决什么问题，以及Serverless的边界和定义。搞清楚了来龙去脉后会进入动手环节，通过一个例子给你讲解Serverless引擎盖下的工作原理，以及FaaS的一些应用场景。
 
-**进阶篇：** 专注FaaS的后端解决方案BaaS，以及现有的后端应用如何BaaS化。为了更好地展现Serverless的发展历程和背后的思考，这部分还设有一个基于Node.js的待办任务的Web应用，帮助你动手实践。点击获取 [GitHub地址](https://github.com/pusongyang/todolist-backend)。
+**进阶篇：**专注FaaS的后端解决方案BaaS，以及现有的后端应用如何BaaS化。为了更好地展现Serverless的发展历程和背后的思考，这部分还设有一个基于Node.js的待办任务的Web应用，帮助你动手实践。点击获取 [GitHub地址](https://github.com/pusongyang/todolist-backend)。
 
-**实战篇：** 通过Google开源的Kubernetes向你演示本地化Serverless环境如何搭建，并结合作者的经验，带你了解Serverless架构应该如何选型，以及目前Serverless开发的最佳实践。
+**实战篇：**通过Google开源的Kubernetes向你演示本地化Serverless环境如何搭建，并结合作者的经验，带你了解Serverless架构应该如何选型，以及目前Serverless开发的最佳实践。
 
 # 学习路径图
 

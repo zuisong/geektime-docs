@@ -2,13 +2,13 @@
 
 ## 回顾架构愿景与任务列表
 
-![](https://static001.geekbang.org/resource/image/c1/bd/c1a8d4b80fcf2c009a448d996594b6bd.jpg?wh=2284x1264)
-
+![](https://static001.geekbang.org/resource/image/c1/bd/c1a8d4b80fcf2c009a448d996594b6bd.jpg?wh=2284x1264)  
 ![](https://static001.geekbang.org/resource/image/fd/06/fd32fcbe73cb3d406f7473a0798a8d06.jpg?wh=2284x1285)
 
 目前的任务列表：
 
 - Resource/RootResource/ResourceMethods
+  
   - 当HEAD方法映射到GET方法时，忽略GET的返回值
   - 当没有OPTIONS方法时，提供默认实现
 
@@ -67,7 +67,7 @@ class DefaultResourceRouter implements ResourceRouter {
                 Collections.list(request.getHeaders(HttpHeaders.ACCEPT)).toArray(String[]::new), resourceContext, uri);
     }
 }
-
+    
 class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
     private String httpMethod;
     private UriTemplate uriTemplate;
@@ -131,7 +131,7 @@ class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
             return values -> converter.apply(values.get(0));
         }
     }
-
+    
     @Override
     public String toString() {
         return method.getDeclaringClass().getSimpleName() + "." + method.getName();
@@ -309,7 +309,6 @@ class ResourceHandler implements ResourceRouter.Resource {
         return uriTemplate;
     }
 }
-
 ```
 
 ## 视频演示
@@ -321,3 +320,7 @@ class ResourceHandler implements ResourceRouter.Resource {
 如何重构并复用测试？
 
 欢迎把你的思考和想法分享在留言区，咱们下节课再见！
+<div><strong>精选留言（1）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（0）<div>看到开头想起了姚琪琳老师在微信讨论群中说的一句话:
+static 说明当前类没有依赖,是一个可以移出去的信号</div>2022-09-04</li><br/>
+</ul>

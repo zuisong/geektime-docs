@@ -4,4 +4,4 @@
 
 [![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png)](http://time.geekbang.org/quiz/intro?act_id=1188&exam_id=3234)
 
-最后，我很希望听听你学习这个课程的感受。这里我为你准备了一份 [毕业问卷](https://jinshuju.net/f/vasdJg)，题目不多，希望你可以花两分钟填一下。
+最后，我很希望听听你学习这个课程的感受。这里我为你准备了一份[毕业问卷](https://jinshuju.net/f/vasdJg)，题目不多，希望你可以花两分钟填一下。

@@ -13,7 +13,7 @@
 
 实际上，尽管它们是表示不同的意思的术语，所指向的几乎是同一部分知识，那就是函数执行过程相关的知识。我们可以简单看一下图。
 
-![](https://static001.geekbang.org/resource/image/68/52/68f50c00d475a7d6d8c7eef6a91b2152.png?wh=745*481)
+![](https://static001.geekbang.org/resource/image/68/52/68f50c00d475a7d6d8c7eef6a91b2152.png?wh=745%2A481)
 
 看着也许会有点晕，别着急，我会和你共同理一下它们之间的关系。
 
@@ -24,222 +24,127 @@
 闭包翻译自英文单词closure，这是个不太好翻译的词，在计算机领域，它就有三个完全不相同的意义：编译原理中，它是处理语法产生式的一个步骤；计算几何中，它表示包裹平面点集的凸多边形（翻译作凸包）；而在编程语言领域，它表示一种函数。
 
 闭包这个概念第一次出现在1964年的《The Computer Journal》上，由P. J. Landin在《The mechanical evaluation of expressions》一文中提出了applicative expression和closure的概念。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/15/19/2b/6337e969.jpg" width="30px"><span>麦哲伦</span> 👍（32） 💬（12）<div>老师能解释下这个么？
+var b = 10;
+(function b(){
+b = 20;
+console.log(b); &#47;&#47; [Function: b]
+})();</div>2019-02-27</li><br/><li><img src="" width="30px"><span>Geek_f51da4</span> 👍（7） 💬（9）<div>老师，闭包我是这样理解的，函数里边的函数，这样的理解对吗</div>2019-06-12</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/lIN14g64kVO1Y8AC5hpKOrpTQiagL9O3zqbgmdDWO8V6FSOZd7ZhqH0v4AQHLy4OWjvMcP2WnUmt7AHzo4cHsLQ/132" width="30px"><span>张祥儒</span> 👍（7） 💬（2）<div>winter大大，我觉得应该用global object，和active object 来解释这个闭包，作用域，执行器上下文。</div>2019-02-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b7/97/1f792153.jpg" width="30px"><span>beilunyang</span> 👍（4） 💬（1）<div>闭包其实是一个绑定了执行环境的函数。
+var foo = &#39;foo&#39;;
+function printFoo() {
+    console.log(foo);
+}
+printFoo();
 
-![](https://static001.geekbang.org/resource/image/9b/0c/9b6c6693afe654b4cfdbf16852b82a0c.png?wh=1153*645)
+所以printFoo这个函数是一个闭包，对吗</div>2019-10-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/6f/10/bfbf81dc.jpg" width="30px"><span>海绵薇薇</span> 👍（1） 💬（1）<div>老师您好，对于 --- JavaScript 中跟闭包对应的概念就是“函数” 这句话我还是理解不够。
+说是闭包和执行上下文没关系，但是词法作用域，不就和执行上下文相关吗？用到的标识符在作用域链上，作用域链不是在执行上下文里吗？</div>2019-09-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/dc/08/64f5ab52.jpg" width="30px"><span>陈斌</span> 👍（1） 💬（1）<div>我查看另一篇博客资料：
+执行上下文同时包含变量环境组件（VariableEnvironment）和词法环境组件（LexicalEnvironment），这两个组件多数情况下都指向相同的词法环境（Lexical Environment）。
+一般情况下一个执行上下文内的Variable Environment和Lexical Environment指向同一个词法环境，之所以要区分两个组件，主要是为了实现块级作用域的同时不影响var声明及函数声明。
+和老师您如下介绍的是否有点冲突？
+lexical environment：词法环境，当获取变量或者 this 值时使用。
+variable environment：变量环境，当声明变量时使用。
+我觉得我看了上面的博客之后，理解不了您的意思了？</div>2019-08-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e2/eb/a11560a8.jpg" width="30px"><span>J</span> 👍（0） 💬（1）<div>小白有点懵逼，老师可以解答下几个问题吗
 
-在上世纪60年代，主流的编程语言是基于lambda演算的函数式编程语言，所以这个最初的闭包定义，使用了大量的函数式术语。一个不太精确的描述是“带有一系列信息的λ表达式”。对函数式语言而言，λ表达式其实就是函数。
+&gt; 
+var 把 b 声明到哪里；
+b 表示哪个变量；
+b 的原型是哪个对象；
+let 把 c 声明到哪里；
+this 指向哪个对象。
 
-我们可以这样简单理解一下，闭包其实只是一个绑定了执行环境的函数，这个函数并不是印在书本里的一条简单的表达式，闭包与普通函数的区别是，它携带了执行的环境，就像人在外星中需要自带吸氧的装备一样，这个函数也带有在程序中生存的环境。
+&gt; var b = {} 这样一句对两个域产生了作用
+? 两个域是指哪两个
 
-这个古典的闭包定义中，闭包包含两个部分。
-
-- 环境部分
-  - 环境
-  - 标识符列表
-- 表达式部分
-
-当我们把视角放在JavaScript的标准中，我们发现，标准中并没有出现过closure这个术语，但是，我们却不难根据古典定义，在JavaScript中找到对应的闭包组成部分。
-
-- 环境部分
-  - 环境：函数的词法环境（执行上下文的一部分）
-  - 标识符列表：函数中用到的未声明的变量
-- 表达式部分：函数体
-
-至此，我们可以认为，JavaScript中的函数完全符合闭包的定义。它的环境部分是函数词法环境部分组成，它的标识符列表是函数中用到的未声明变量，它的表达式部分就是函数体。
-
-这里我们容易产生一个常见的概念误区，有些人会把JavaScript执行上下文，或者作用域（Scope，ES3中规定的执行上下文的一部分）这个概念当作闭包。
-
-实际上JavaScript中跟闭包对应的概念就是“函数”，可能是这个概念太过于普通，跟闭包看起来又没什么联系，所以大家才不自觉地把这个概念对应到了看起来更特别的“作用域”吧（其实我早年也是这么理解闭包，直到后来被朋友纠正，查了资料才改正过来）。
-
-### 执行上下文：执行的基础设施
-
-相比普通函数，JavaScript函数的主要复杂性来自于它携带的“环境部分”。当然，发展到今天的JavaScript，它所定义的环境部分，已经比当初经典的定义复杂了很多。
-
-JavaScript中与闭包“环境部分”相对应的术语是“词法环境”，但是JavaScript函数比λ函数要复杂得多，我们还要处理this、变量声明、with等等一系列的复杂语法，λ函数中可没有这些东西，所以，在JavaScript的设计中，词法环境只是JavaScript执行上下文的一部分。
-
-JavaScript标准把一段代码（包括函数），执行所需的所有信息定义为：“执行上下文”。
-
-因为这部分术语经历了比较多的版本和社区的演绎，所以定义比较混乱，这里我们先来理一下JavaScript中的概念。
-
-**执行上下文在ES3中**，包含三个部分。
-
-- scope：作用域，也常常被叫做作用域链。
-- variable object：变量对象，用于存储变量的对象。
-- this value：this值。
-
-**在ES5中**，我们改进了命名方式，把执行上下文最初的三个部分改为下面这个样子。
-
-- lexical environment：词法环境，当获取变量时使用。
-- variable environment：变量环境，当声明变量时使用。
-- this value：this值。
-
-**在ES2018中**，执行上下文又变成了这个样子，this值被归入lexical environment，但是增加了不少内容。
-
-- lexical environment：词法环境，当获取变量或者this值时使用。
-- variable environment：变量环境，当声明变量时使用。
-- code evaluation state：用于恢复代码执行位置。
-- Function：执行的任务是函数时使用，表示正在被执行的函数。
-- ScriptOrModule：执行的任务是脚本或者模块时使用，表示正在被执行的代码。
-- Realm：使用的基础库和内置对象实例。
-- Generator：仅生成器上下文有这个属性，表示当前生成器。
-
-我们在这里介绍执行上下文的各个版本定义，是考虑到你可能会从各种网上的文章中接触这些概念，如果不把它们理清楚，我们就很难分辨对错。如果是我们自己使用，我建议统一使用最新的ES2018中规定的术语定义。
-
-尽管我们介绍了这些定义，但我并不打算按照JavaScript标准的思路，从实现的角度去介绍函数的执行过程，这是不容易被理解的。
-
-我想试着从代码实例出发，跟你一起推导函数执行过程中需要哪些信息，它们又对应着执行上下文中的哪些部分。
-
-比如，我们看以下的这段JavaScript代码：
-
-```
-var b = {}
-let c = 1
-this.a = 2;
-
-```
-
-要想正确执行它，我们需要知道以下信息：
-
-1. var 把 b 声明到哪里；
-2. b 表示哪个变量；
-3. b 的原型是哪个对象；
-4. let 把 c 声明到哪里；
-5. this 指向哪个对象。
-
-这些信息就需要执行上下文来给出了，这段代码出现在不同的位置，甚至在每次执行中，会关联到不同的执行上下文，所以，同样的代码会产生不一样的行为。
-
-在这两篇文章中，我会基本覆盖执行上下文的组成部分，本篇我们先讲var声明与赋值，let，realm三个特性来分析上下文提供的信息，分析执行上下文中提供的信息。
-
-### var 声明与赋值
-
-我们来分析一段代码：
-
-```
-var b = 1
-
-```
-
-通常我们认为它声明了b，并且为它赋值为1，var声明作用域函数执行的作用域。也就是说，var会穿透for 、if等语句。
-
-在只有var，没有let的旧JavaScript时代，诞生了一个技巧，叫做：立即执行的函数表达式（IIFE），通过创建一个函数，并且立即执行，来构造一个新的域，从而控制var的范围。
-
-由于语法规定了function关键字开头是函数声明，所以要想让函数变成函数表达式，我们必须得加点东西，最常见的做法是加括号。
-
-```
-(function(){
-    var a;
-    //code
-}());
-
-(function(){
-    var a;
-    //code
-})();
-
-```
-
-但是，括号有个缺点，那就是如果上一行代码不写分号，括号会被解释为上一行代码最末的函数调用，产生完全不符合预期，并且难以调试的行为，加号等运算符也有类似的问题。所以一些推荐不加分号的代码风格规范，会要求在括号前面加上分号。
-
-```
-;(function(){
-    var a;
-    //code
-}())
-
-;(function(){
-    var a;
-    //code
-})()
-
-```
-
-我比较推荐的写法是使用void关键字。也就是下面的这种形式。
-
-```
+&gt; 分析了一些执行上下文中所需要的信息，并从var、let、对象字面量等语法中，推导出了词法作用域、变量作用域、Realm的设计。
+? 执行上下文需要的信息是哪些
+? 在哪里推导了，两个作用域在哪里</div>2019-10-30</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKS4a1IwJOrnOGqCVAQSPWQeW6KTAPPGichBa53tyD3aJ3MmMIq8oueVSFLlkSTp2MHStseAkCDtBw/132" width="30px"><span>泡泡</span> 👍（0） 💬（1）<div>老师，已经读了十几篇了，感觉知识讲的太深，专业词汇较多，读起来比较生涩</div>2019-03-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/32/45/3ac375a1.jpg" width="30px"><span>追梦</span> 👍（0） 💬（1）<div>请问老师，这个例子，是如何得出“可以看到，在 Global function with 三个环境中，b 的值都不一样”这个结论的？
+var b;
 void function(){
-    var a;
-    //code
+    var env = {b:1};
+    b = 1;
+    console.log(&quot;In function b:&quot;, b);
+    with(env) {
+        var b = 1;
+        console.log(&quot;In with b:&quot;, b);
+    }
 }();
+console.log(&quot;Global b:&quot;, b);
+</div>2019-02-28</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/eEBwOT9gbj3gRtD79LsFQUW0F0Pph3m3RoW0QL5O9fXogicG8xicciaj6qcpvbhwv3iapWe0R7iazDugMzK61v2GNNg/132" width="30px"><span>Geek_56013e</span> 👍（300） 💬（3）<div>老师您的专业知识太强了，文中包含很多专业术语，在介绍某专业术语时带上了其他专业术语，而这些带上的专业术语部分在网上搜也是解释不清，导致很多地方看不懂、看起来比较费劲、只能猜测大意。比如对于「realm」的描述，只提了中文意思是“国度”“领域”“范围”和“包含一组完整的内置对象，而且是复制关系”，看完文章后，在js领域还是不清楚具体「realm」是什么含义，只能大概猜测。希望老师后续文章如果解释某专业术语时带上的其他专业术语时，能以日常常见代码为例解释。</div>2019-02-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/39/ab/42622d70.jpg" width="30px"><span>James Bond</span> 👍（183） 💬（24）<div>说了半天闭包是什么呢？跟普通函数有什么区别呢！</div>2019-03-12</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/s0bx4WXQNkAJ3c3map0g6dlt3sKDgTtN7Ria96YoufjQcVVI8Shv5CN1jnK1ZTImNnlPcibRqvyiaUuhpIvV1TpnQ/132" width="30px"><span>wingsico</span> 👍（59） 💬（2）<div>在JS中，函数其实就是闭包，不管该函数内部是否使用外部变量，它都是一个闭包。如闭包定义的那样，由环境和表达式组成，作为js函数，环境为词法环境，而表达式就是函数本身。而词法环境是执行上下文的一部分，执行上下文包括 this 绑定, 词法环境和变量环境。词法环境是随着执行上下文一起创建的，在函数&#47;脚本&#47;eval执行时创建。
 
-```
+理解闭包，首先需要理解闭包是什么类型的东西，闭包实际上指的是函数，搞清楚问题的对象究竟是谁，而很多人会把环境&#47;作用域等其他的东西当做闭包，是对闭包的概念类型的错误理解。那么知道了闭包是函数，那么闭包应该是什么样的函数呢？也就是含有环境的函数，很明显，在js中，任何一个函数都有着自己的环境，这个环境让我们可以去找到定义的变量内部的this、外部作用域。
 
-这有效避免了语法问题，同时，语义上void运算表示忽略后面表达式的值，变成undefined，我们确实不关心IIFE的返回值，所以语义也更为合理。
+很多人认为，要让一个函数能去访问某个应该被回收的内存空间，但由于函数存在对该内存空间的变量的引用而不可回收，这样才形成了闭包。那么试问一下，这里你到底是把这个内存空间当做闭包呢？还是引用这块内存空间的函数当闭包呢？假如是前者，则和把环境当闭包的人犯了同样的错误，假如是后者，现在的这个函数实际上和你定义的普通函数本质上没有区别，都含有自己的环境，只不过这个函数的环境多了一些，但本质没有区别。理解了这点，你才能从上面的错误理解中解脱出来。</div>2020-04-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/2b/d6/945f0d82.jpg" width="30px"><span>_(:з」∠)_</span> 👍（40） 💬（7）<div>let 和 var 都不好用，98%的情况都是用 const</div>2019-04-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/16/06/cffd605d.jpg" width="30px"><span>水瓶瓶盖盖</span> 👍（26） 💬（4）<div>希望讲解能给通俗易懂一些。专业词汇太多，生涩</div>2019-03-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/bb/01/568ac2d6.jpg" width="30px"><span>K4SHIFZ</span> 👍（16） 💬（3）<div>凡是{}包裹的代码都会产生let&#47;const作用域吧？除了文中提到的for等，还有while，do while，代码块等</div>2019-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/6c/18/850a0797.jpg" width="30px"><span>Zach</span> 👍（11） 💬（2）<div>老师，关于realm最后一个示例
 
-值得特别注意的是，有时候var的特性会导致声明的变量和被赋值的变量是两个b，JavaScript中有特例，那就是使用with的时候：
+var iframe = document.createElement(&#39;iframe&#39;)
+document.documentElement.appendChild(iframe)
+iframe.src=&quot;javascript:var b = {};&quot;
+var b1 = iframe.contentWindow.b;
+var b2 = {};
+console.log(typeof b1, typeof b2); &#47;&#47;object object
+console.log(b1 instanceof Object, b2 instanceof Object); &#47;&#47;false true
 
-```
+应该有点问题，typeof b1 的结果在chrome和Firefox中都显示为 undefined object</div>2019-04-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c0/99/259a412f.jpg" width="30px"><span>Geeker</span> 👍（6） 💬（0）<div>老师，可否稍加解释一下执行上下文的分类? 网络上的文章说“ JS 中可执行的代码可分为三种类型：全局代码、函数代码、eval 代码，对应三种执行上下文（全局执行上下文、函数执行上下文、eval 执行上下文），在 ECMAScript 2018 中没有找到这种说法的依据。我的意思是，我不太清楚这些文章的说法是否正确，是否不够全面。</div>2019-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/41/a5/16c615cc.jpg" width="30px"><span>乃乎</span> 👍（6） 💬（1）<div>更喜欢 const 哈哈</div>2019-02-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/8d/0e/5e97bbef.jpg" width="30px"><span>半橙汁</span> 👍（5） 💬（0）<div>闭包指的是那些引用了另一个函数作用域中变量的函数，通常是在嵌套函数中实现的。---高程4中的解释
+好多问题，结合着书籍来看，就没那么晦涩难懂了~
+书中自有黄金屋，书中自有颜如玉~</div>2020-10-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/e7/34/66289bd6.jpg" width="30px"><span>Tokiomi</span> 👍（4） 💬（0）<div>看晕了。。
+http:&#47;&#47;www.ruanyifeng.com&#47;blog&#47;2009&#47;08&#47;learning_javascript_closures.html
+阮一峰的闭包定义: 
+&quot;各种专业文献上的&quot;闭包&quot;（closure）定义非常抽象，很难看懂。我的理解是，闭包就是能够读取其他函数内部变量的函数。
+由于在Javascript语言中，只有函数内部的子函数才能读取局部变量，因此可以把闭包简单理解成&quot;定义在一个函数内部的函数&quot;。
+所以，在本质上，闭包就是将函数内部和函数外部连接起来的一座桥梁。&quot;
+所以Winter大佬的定义和阮一峰的定义哪个对。。。</div>2020-07-15</li><br/><li><img src="" width="30px"><span>比利利</span> 👍（4） 💬（2）<div>我认为在目前的环境下，var已经没有存在的必要了，所有以前用var的情况都可以通过let和const代替，而且let和const更加符合大多数编程语言的习惯，而且现在有babel的话，写ES6语法也非常安全。</div>2019-03-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/39/1b/bcabd223.jpg" width="30px"><span>Snow同學</span> 👍（4） 💬（5）<div>函数就是闭包，这个理解对吗？</div>2019-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/94/56/4b8395f6.jpg" width="30px"><span>CC</span> 👍（4） 💬（0）<div>今天是自己第一次结构性整理清楚 JavaScript 的函数部分。原来它除了函数体之外，还包括了函数所处的环境，而其中的词法环境，其实只是执行上下文七个部分中的的一支。
+
+个人感觉 var 声明在不同的执行上下文中相对 let 更容易出错，同时也会增加冗余的临时变量。比如在 for loop 中，会遇到需要为不同的 loop 声明 i、j、k 变量。
+
+代码不仅是写给机器看，也是写给同行看的。let 会使代码更加简洁易读。
+</div>2019-02-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/1e/a2/083412c6.jpg" width="30px"><span>疯羊先生</span> 👍（3） 💬（0）<div>看完评论，我觉得闭包待分成广义的和狭义的了，简直了，婆说婆有理的感觉。。。广义--闭包就是函数函数就是闭包，狭义闭包就是引用另一个函数内部变量的函数。。。懵逼树上懵逼果，懵逼树下你和我</div>2020-12-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/71/69/f7ae97c8.jpg" width="30px"><span>霍光传不可不读</span> 👍（3） 💬（5）<div>仔细看了下维基百科上面闭包的定义：闭包是一个record，它存储了一个函数和它的环境，这个环境存储了该函数的自由变量，js的函数完全符合这个定义，所以说js的函数其实就是闭包。倒是普通函数有点特别，我自己理解，这样的函数才是普通函数：
+function(a, b) {
+    const c = 10
+    return a + b + c;
+}
+这个函数只访问了自己的函数作用域内部的变量和参数，这样的函数才是所谓的普通函数，不知道这样理解对不对？</div>2019-04-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/9d/59/1c084632.jpg" width="30px"><span>Ron</span> 👍（2） 💬（0）<div>很少见到用void写IIFE，感觉大多时候我们还是需要引用IIFE返回的东西，可以参考一下https:&#47;&#47;developer.mozilla.org&#47;en-US&#47;docs&#47;Glossary&#47;IIFE</div>2019-05-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/8c/d5/398b31fe.jpg" width="30px"><span>木棉</span> 👍（2） 💬（1）<div>var b;
+            void function(){
+                var env = {b:1};
+                b=2;
+                console.log(b);
+                with(env){
+                    var b=3;
+                    console.log(b);
+                }
+            }();
+            console.log(b);
+这块的执行结果是：2，3，undefined，不懂为什么，希望老是可以详细解答一下。
+作用域这块的内容经常被问到，尤其是面试的时候做题，变量提升，闭包，立即执行的函数表达式等不同情况不同输出结果，总是各种被绕晕，希望老师可以帮忙梳理一下，谢谢</div>2019-04-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（2） 💬（5）<div>老师 我这有个问题：对于这段代码；
 var b;
 void function(){
     var env = {b:1};
     b = 2;
-    console.log("In function b:", b);
+    console.log(&quot;In function start b:&quot;, b);
     with(env) {
         var b = 3;
-        console.log("In with b:", b);
+        console.log(&quot;In with b:&quot;, b);
     }
+	console.log(&quot;In function end b:&quot;, b);
 }();
-console.log("Global b:", b);
+console.log(&quot;Global b:&quot;, b);
 
-```
+打印结果是这样的：
+In function start b: 2
+In with b: 3
+In function end b: 2
+Global b: 10
 
-在这个例子中，我们利用立即执行的函数表达式（IIFE）构造了一个函数的执行环境，并且在里面使用了我们一开头的代码。
+不知道是怎得出老师文章中结论的，我看下面有好多评论也是这样的疑问，麻烦老师解答一下呢</div>2019-03-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/27/01/c3/3b5fe59e.jpg" width="30px"><span>飞鸟</span> 👍（1） 💬（0）<div>任何一个函数都是闭包。当一个函数对象从内部穿透到外部，为了保证满足闭包的要求，引擎就会需要把上级的函数对象环境也保留，使用不当，就可能会导致内存泄漏。</div>2023-01-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/0a/75/aac066a2.jpg" width="30px"><span>张小🐶</span> 👍（1） 💬（0）<div>关于VariableEnvironment和LexicalEnvironment，看了一下标准里的说法（https:&#47;&#47;262.ecma-international.org&#47;11.0&#47;#sec-execution-contexts）：
+- LexicalEnvironment： Identifies the Lexical Environment used to resolve identifier references made by code within this execution context.
+- VariableEnvironment： Identifies the Lexical Environment whose EnvironmentRecord holds bindings created by VariableStatements within this execution context.
+- The LexicalEnvironment and VariableEnvironment components of an execution context are always Lexical Environments.
 
-可以看到，在Global function with三个环境中，b的值都不一样，而在function环境中，并没有出现var b，这说明with内的var b作用到了function这个环境当中。
+我的理解是：
+1. VariableEnvironment持有var声明的变量
+2. LexicalEnvironment持有let、const等声明的变量
+3. VariableEnvironment和LexicalEnvironment都是Lexical Environments类型的对象。（Lexical Environments和LexicalEnvironment不是一回事）
 
-var b = {} 这样一句对两个域产生了作用，从语言的角度是个非常糟糕的设计，这也是一些人坚定地反对在任何场景下使用with的原因之一。
+但是关于老师讲的：“LexicalEnvironment获取变量时使用，VariableEnvironment声明变量时使用”。还是不太理解。想问一下这个说法在标准里的依据是哪里？可以再深入解读一下吗？
 
-### let
-
-let是 ES6开始引入的新的变量声明模式，比起var的诸多弊病，let做了非常明确的梳理和规定。
-
-为了实现let，JavaScript在运行时引入了块级作用域。也就是说，在let出现之前，JavaScript的 if for 等语句皆不产生作用域。
-
-我简单统计了下，以下语句会产生let使用的作用域：
-
-- for；
-- if；
-- switch；
-- try/catch/finally。
-
-### Realm
-
-在最新的标准（9.0）中，JavaScript引入了一个新概念Realm，它的中文意思是“国度”“领域”“范围”。这个英文的用法就有点比喻的意思，几个翻译都不太适合JavaScript语境，所以这里就不翻译啦。
-
-我们继续来看这段代码：
-
-```
-var b = {}
-
-```
-
-在 ES2016 之前的版本中，标准中甚少提及{}的原型问题。但在实际的前端开发中，通过iframe等方式创建多window环境并非罕见的操作，所以，这才促成了新概念Realm的引入。
-
-Realm中包含一组完整的内置对象，而且是复制关系。
-
-对不同Realm中的对象操作，会有一些需要格外注意的问题，比如 instanceOf 几乎是失效的。
-
-以下代码展示了在浏览器环境中获取来自两个Realm的对象，它们跟本土的Object做instanceOf时会产生差异：
-
-```
-var iframe = document.createElement('iframe')
-document.documentElement.appendChild(iframe)
-iframe.src="javascript:var b = {};"
-
-var b1 = iframe.contentWindow.b;
-var b2 = {};
-
-console.log(typeof b1, typeof b2); //object object
-
-console.log(b1 instanceof Object, b2 instanceof Object); //false true
-
-```
-
-可以看到，由于b1、 b2由同样的代码“ {} ”在不同的Realm中执行，所以表现出了不同的行为。
-
-## 结语
-
-在今天的课程中，我帮你梳理了一些概念：有编程语言的概念闭包，也有各个版本中的JavaScript标准中的概念：执行上下文、作用域、this值等等。
-
-之后我们又从代码的角度，分析了一些执行上下文中所需要的信息，并从 `var`、 `let`、对象字面量等语法中，推导出了词法作用域、变量作用域、Realm的设计。
-
-最后留给你一个问题：你喜欢使用let还是var？听过今天的课程，你的想法是否有改变呢？为什么？
+感谢。</div>2021-04-21</li><br/>
+</ul>

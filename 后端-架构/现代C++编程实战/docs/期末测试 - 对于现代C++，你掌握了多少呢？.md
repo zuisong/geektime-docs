@@ -4,4 +4,7 @@
 
 为了让你更好地检测自己的学习成果，我特意做了一套期末测试题。题目共有20道，满分为100分，快来检测一下吧！
 
-[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142*201)](http://time.geekbang.org/quiz/intro?act_id=136&exam_id=293)
+[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142%2A201)](http://time.geekbang.org/quiz/intro?act_id=136&exam_id=293)
+<div><strong>精选留言（4）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/30/db/86/51ec4c41.jpg" width="30px"><span>李云龙</span> 👍（1） 💬（1）<div>老师的题太难啦，C++真的太难啦</div>2023-11-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/c9/e3/28c16afa.jpg" width="30px"><span>三味</span> 👍（0） 💬（1）<div>一顿操作猛如虎，回头一看五十五。知识不用，就记不住啊。</div>2023-05-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/33/a2/6c0ffc15.jpg" width="30px"><span>皮皮侠</span> 👍（0） 💬（1）<div>老师，刚才听你的讲座啦，哈</div>2021-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/bc/75/a32fa3e3.jpg" width="30px"><span>每天进步一点点</span> 👍（0） 💬（0）<div>通读第一遍完成，受益匪浅！！！ 感谢吴老师的分享</div>2021-11-25</li><br/>
+</ul>

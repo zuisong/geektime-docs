@@ -16,10 +16,9 @@
 function foo(){
     // code
 }
-
 ```
 
-**第二种，箭头函数：用 =\> 运算符定义的函数。**
+**第二种，箭头函数：用 =&gt; 运算符定义的函数。**
 
 示例:
 
@@ -27,7 +26,6 @@ function foo(){
 const foo = () => {
     // code
 }
-
 ```
 
 **第三种，方法：在class中定义的函数。**
@@ -40,10 +38,9 @@ class C {
         //code
     }
 }
-
 ```
 
-**第四种，生成器函数：用function \* 定义的函数。**
+**第四种，生成器函数：用function * 定义的函数。**
 
 示例：
 
@@ -51,7 +48,6 @@ class C {
 function* foo(){
     // code
 }
-
 ```
 
 **第五种，类：用class定义的类，实际上也是函数。**
@@ -64,7 +60,6 @@ class Foo {
         //code
     }
 }
-
 ```
 
 **第六/七/八种，异步函数：普通函数、箭头函数和生成器函数加上async关键字。**
@@ -81,72 +76,13 @@ const foo = async () => {
 async function foo*(){
     // code
 }
-
 ```
 
 ES6以来，大量加入的新语法极大地方便了我们编程的同时，也增加了很多我们理解的心智负担。要想认识这些函数的执行上下文切换，我们必须要对它们行为上的区别有所了解。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/15/3c/b0/37a7c84d.jpg" width="30px"><span>飞</span> 👍（33） 💬（3）<div>老师，这个例子中的最后一行代码o.showThis(); &#47;&#47; global
+好像写错了，应该是C的实例o吧。
 
-对普通变量而言，这些函数并没有本质区别，都是遵循了“继承定义时环境”的规则，它们的一个行为差异在于this关键字。
-
-那么，this关键字是什么呢，我们一起来看一看。
-
-## this关键字的行为
-
-this是JavaScript中的一个关键字，它的使用方法类似于一个变量（但是this跟变量的行为有很多不同，上一节课我们讲了一些普通变量的行为和机制，也就是var声明和赋值、let的内容）。
-
-**this是执行上下文中很重要的一个组成部分。同一个函数调用方式不同，得到的this值也不同**，我们看一个例子：
-
-```
-function showThis(){
-    console.log(this);
-}
-
-var o = {
-    showThis: showThis
-}
-
-showThis(); // global
-o.showThis(); // o
-
-```
-
-在这个例子中，我们定义了函数showThis，我们把它赋值给一个对象o的属性，然后尝试分别使用两个引用来调用同一个函数，结果得到了不同的this值。
-
-普通函数的this值由“调用它所使用的引用”决定，其中奥秘就在于：我们获取函数的表达式，它实际上返回的并非函数本身，而是一个Reference类型（记得我们在类型一章讲过七种标准类型吗，正是其中之一）。
-
-Reference类型由两部分组成：一个对象和一个属性值。不难理解 o.showThis 产生的Reference类型，即由对象o和属性“showThis”构成。
-
-当做一些算术运算（或者其他运算时），Reference类型会被解引用，即获取真正的值（被引用的内容）来参与运算，而类似函数调用、delete等操作，都需要用到Reference类型中的对象。
-
-在这个例子中，Reference类型中的对象被当作this值，传入了执行函数时的上下文当中。
-
-至此，我们对this的解释已经非常清晰了： **调用函数时使用的引用，决定了函数执行时刻的this值。**
-
-实际上从运行时的角度来看，this跟面向对象毫无关联，它是与函数调用时使用的表达式相关。
-
-这个设计来自JavaScript早年，通过这样的方式，巧妙地模仿了Java的语法，但是仍然保持了纯粹的“无类”运行时设施。
-
-如果，我们把这个例子稍作修改，换成箭头函数，结果就不一样了：
-
-```
-const showThis = () => {
-    console.log(this);
-}
-
-var o = {
-    showThis: showThis
-}
-
-showThis(); // global
-o.showThis(); // global
-
-```
-
-**我们看到，改为箭头函数后，不论用什么引用来调用它，都不影响它的this值。**
-
-接下来我们看看“方法”，它的行为又不一样了：
-
-```
 class C {
     showThis() {
         console.log(this);
@@ -155,159 +91,225 @@ class C {
 var o = new C();
 var showThis = o.showThis;
 
-showThis(); // undefined
-o.showThis(); // o
+showThis(); &#47;&#47; undefined
+o.showThis(); &#47;&#47; global
+</div>2019-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/76/e9/73ed6cc1.jpg" width="30px"><span>x</span> 👍（5） 💬（1）<div>es6中箭头函数是没有this的吧，所以他不能用作构造函数，他的this取决于外部环境</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/0b/61/882eb821.jpg" width="30px"><span>奋奋</span> 👍（2） 💬（1）<div>老师我这样对Reference的理解对吗？？？
+showThis();               &#47;&#47; Reference中的对象是global
+(false || showThis)()   &#47;&#47;  Reference由于运算而被解引用，
+                                    然后触发this机制[[thisMode]]私有属性的global取值
+</div>2019-10-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/6e/98/44e278ff.jpg" width="30px"><span>dennisleung</span> 👍（0） 💬（1）<div>&gt; 我们可以看到，仅普通函数和类能够跟 new 搭配使用，这倒是给我们省去了不少麻烦。
+
+老师请问这里是省去了什么麻烦呢？</div>2019-08-06</li><br/><li><img src="" width="30px"><span>lsy</span> 👍（0） 💬（1）<div>[[ThisMode]] 是 global （普通函数）的时候，是从哪里取的 this 值呢</div>2019-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/77/33/121176bb.jpg" width="30px"><span>东</span> 👍（0） 💬（1）<div>var o = {
+     foo: function() {console.log(11111)}
+}
+new o.foo() &#47;&#47;11111
+对象方法用new 调用不会报错呢？</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/9c/d0/f0dc43c2.jpg" width="30px"><span>咲夜</span> 👍（0） 💬（2）<div>不太能理解为何下面这段代码中 showThis 为 undefined
+
+class C {
+    showThis() {
+        console.log(this);
+    }
+}
+var o = new C();
+var showThis = o.showThis;
+
+showThis(); &#47;&#47; undefined
+o.showThis(); &#47;&#47; o</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/a4/cf/a082eae7.jpg" width="30px"><span>令狐洋葱</span> 👍（0） 💬（1）<div>老师，我想问下 ThisMode 和 ThisBindingStatus 这些只是的获取来源是哪里？是从es标准中查阅的么。</div>2019-06-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/0e/04/d710d928.jpg" width="30px"><span>奥斯特洛夫斯基</span> 👍（110） 💬（23）<div>var a = 1;
+foo();
+
+在别处定义了 foo：
+
+var b = 2;
+function foo(){
+    console.log(b); &#47;&#47; 2
+    console.log(a); &#47;&#47; error
+}
+为什么我执行出来是undefined ，1</div>2019-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/b0/1a/7e8ab46e.jpg" width="30px"><span>Geek_gfnho0</span> 👍（89） 💬（2）<div>关于this，Kyle Simpson有四条总结：
+1. 由new调用? 绑定到新创建的对象。
+2. 由call或者apply(或者bind)调用? 绑定到指定的对象。
+3. 由上下文对象调用? 绑定到那个上下文对象。
+4. 默认:在严格模式下绑定到undefined，否则绑定到全局对象。
+例外：箭头函数不适用以上四条规则，它会继承外层函数调用的 this 绑定(无论 this 绑定到什么)。</div>2019-02-28</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/XSnxM4uP67kdzzCRW8KxhS5jkHiaaSrgkuLh1Z5BxawvQase46pbGAL4Bngmd3eFHckQml6zexyukFoWpeNENTg/132" width="30px"><span>Rushan-Chen</span> 👍（30） 💬（4）<div>老师写的 &quot;在别处定义了foo&quot; 的意思是，这句话上下两部分的代码，不在同一个文件哒~
+已经有同学贴了代码，是这样的：
+```js
+&#47;&#47; 这是 foo.js 文件里的代码
+var b = 2;
+module.exports = function() { &#47;&#47; 导出function
+  console.log(b);
+  console.log(a);
+};
+```
+```js
+&#47;&#47; 这是test.js 文件里的代码
+var foo = require(&quot;.&#47;foo.js&quot;); &#47;&#47; 引入function 为foo
+var a = 1;
+foo();
+&#47;&#47; node 执行 test.js 输出：
+&#47;&#47; -&gt; 2
+&#47;&#47; -&gt; ReferenceError: a is not defined
+```</div>2019-03-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/35/d0/f2ac6d91.jpg" width="30px"><span>阿成</span> 👍（25） 💬（0）<div>这里先说声抱歉，之前可能误导了大家...
+这里更新一下答案😅
+@Rushan-Chen（虽然你并不能收到，希望极客时间赶紧增加@或者评论的功能，至少也展示个邮箱啊...不然找人都找不到，影响大家交流）
+--------------分割线-------------------
+文中，winter老师所说的“在别处定义”的意思，应该就是指在另一个模块中定义，即：
+
+在另一个模块中定义...这样引入这个模块时，b就定义且初始化了，而且在这个模块中访问不到变量a...
+&#47;&#47; module a.js
+import {foo} from &#39;b.js&#39;
+var a = 1
+foo()
+
+&#47;&#47; module b.js
+var b = 2;
+export function foo () {
+  console.log(b); &#47;&#47; 2
+  console.log(a); &#47;&#47; error
+}
+
+其实，只要foo访问不到变量a就可以了嘛:
+var b = 2;
+function foo () {
+  console.log(b); &#47;&#47; 2
+  console.log(a); &#47;&#47; error
+}
+
+void function () {
+	var a = 1
+	foo()
+}()</div>2019-03-16</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/nD10dsXDZ07WyBbqheDtflyxqaR7QsuznhEgtTia0Pticf5fSjQhgSKUUTbibBozY5h2QAD0oYoBCNbvLGpHVeTow/132" width="30px"><span>TY</span> 👍（17） 💬（3）<div>晕得一塌糊涂... 结合上一章的 let var 来看, js 这门语言居然还能火成这样, 世界实在是太奇妙了😥</div>2019-03-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/06/a8/5223644a.jpg" width="30px"><span>Thomas Cho</span> 👍（14） 💬（1）<div>我发现啊，不能只看文中代码结果，还是得自己跑一下，我看了文章后很是疑惑，跑了一下[[Environment]]下方那段代码后，打印出来的是 undefined和1。而不是2和error，不知为何</div>2019-02-28</li><br/><li><img src="" width="30px"><span>DXYF2E</span> 👍（11） 💬（8）<div>觉得没看懂的同学，我觉得可以结合李兵老师的「浏览器工作原理与实践」中的第10、11节课一起阅读，可能理解程度会好一些</div>2019-12-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/e5/2b/47a48b9b.jpg" width="30px"><span>柳林博弈</span> 👍（8） 💬（1）<div>切换上下文
+let b = 2;
+function foo () {
+  console.log(b); &#47;&#47; 2
+  console.log(a); &#47;&#47; error
+}
+
+{
+  let a = 1
+  foo()
+}</div>2020-04-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7a/fa/abb7bfe3.jpg" width="30px"><span>dingtingli</span> 👍（5） 💬（1）<div>能把复杂的事情讲得清晰明了也是需要天赋的。这门课只感受到了老师的知识面很广，完全无法清晰地理解讲的内容。</div>2020-12-14</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIEODRricvc32UpO3PxoPrFBDgmoGXdiagcibNh0outmZicXFg1icV4c5ibSknc4be3PWUPsIa3OjdMmlwA/132" width="30px"><span>study</span> 👍（5） 💬（0）<div>@奥斯特洛夫斯基
+var和function，只是提升声明，代码提升完成是下面的代码：
+var a,b;
+function foo(){};
+a = 1;
+foo();
+b = 2;
+所以a的值为1，b为undefined</div>2019-05-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJ26xdibLibk37rdrIA3zStsayOo9b0SGiasibNGfic6n2EIJiba1ptZOtWqV797wkszdjDM8aQkz1A2vibw/132" width="30px"><span>jacklovepdf</span> 👍（4） 💬（0）<div>按照老师的理解，应该少了一种，类的方法也是可以加async的，亲测有效。</div>2019-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d7/72/deec1d6b.jpg" width="30px"><span>我五岁了呀</span> 👍（3） 💬（2）<div>没太理解，外层词法环境（outer lexical environment）是指的什么？</div>2020-07-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/06/67/a78a98fe.jpg" width="30px"><span>肉卷</span> 👍（3） 💬（1）<div>var a = 1;
+foo();
+
+在别处定义了 foo：
+
+var b = 2;
+function foo(){
+    console.log(b); &#47;&#47; 2
+    console.log(a); &#47;&#47; error
+}
+这个例子，改成如下例子应该更容易让人理解一些：
+var a = 1
+  function test() {
+    var b = 2
+
+    test1()
+  }
+  function test1() {
+    console.log(2, a, b);
+  }
+  test()</div>2019-12-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/be/4c/8d19d90a.jpg" width="30px"><span>存</span> 👍（3） 💬（0）<div>var a = 1;
+foo();
+
+在别处定义了 foo：
+
+var b = 2;
+function foo(){
+    console.log(b); &#47;&#47; 2
+    console.log(a); &#47;&#47; error
+}
+为什么我执行出来是2，1</div>2019-03-18</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/pTZS48zWWAhI0zGXrib8s124HSenCS2FTDD0r4SKCqw2ub4adicI4x2wTeH7bHdlsl8QwxeVmzTGs1PIImURxxPg/132" width="30px"><span>itgou</span> 👍（3） 💬（0）<div>var a = 1;
+foo();
+
+在别处定义了 foo：
+
+var b = 2;
+function foo(){
+    console.log(b); &#47;&#47; 2
+    console.log(a); &#47;&#47; error
+}
+这段代码我在chrome上执行出来是undefined,1.
+我是写在一个js文件中，然后通过HTML的script引入，不知道老师说的在别处定义是什么意思，是写在两个js文件吗？
+
+如果是两个文件，HTML中引入文件的顺序不同，会有不同的结果，一种报错，一种两个值都正常打印，我都试了的，总之怎么也不会有老师说的那种结果。
+
+请老师看看是不是我哪里理解错了，还是老师写错了</div>2019-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/48/3f/3ff67fb2.jpg" width="30px"><span>Geek_376ed4</span> 👍（3） 💬（0）<div>&#47;&#47; foo.js
+var b=2;
+module.exports = function() {
+ console.log(b);&#47;&#47;2
+ console.log(a);&#47;&#47;error
+
+};
+
+var foo = require(&quot;.&#47;foo.js&quot;);
+
+var a=1;
+
+foo();
+
+</div>2019-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/1a/8c/d91b01a6.jpg" width="30px"><span>zhangbao</span> 👍（3） 💬（1）<div>老师，您好，看完文章后，我有几个问题：
+
+1.  代码段
 
 ```
+class C {
+    showThis() {
+        console.log(this);
+    }
+}
+var o = new C();
 
-这里我们创建了一个类C，并且实例化出对象o，再把o的方法赋值给了变量showThis。
+o.showThis(); &#47;&#47; 这里打印的 this 应该是 o 吗？
+```
 
-这时候，我们使用showThis这个引用去调用方法时，得到了undefined。
+2. 介绍函数时提到了“方法”，定义是“在 class 中定义的函数”。但是举代码例子时，举了对象方法的例子。方法定义成“作为属性值的函数”，是不是更贴切一点呢？
 
-所以，在方法中，我们看到this的行为也不太一样，它得到了undefined的结果。
-
-按照我们上面的方法，不难验证出：生成器函数、异步生成器函数和异步普通函数跟普通函数行为是一致的，异步箭头函数与箭头函数行为是一致的。
-
-## this关键字的机制
-
-说完了this行为，我们再来简单谈谈在JavaScript内部，实现this这些行为的机制，让你对这部分知识有一个大概的认知。
-
-函数能够引用定义时的变量，如上文分析，函数也能记住定义时的this，因此，函数内部必定有一个机制来保存这些信息。
-
-在JavaScript标准中，为函数规定了用来保存定义时上下文的私有属性\[\[Environment\]\]。
-
-当一个函数执行时，会创建一条新的执行环境记录，记录的外层词法环境（outer lexical environment）会被设置成函数的\[\[Environment\]\]。
-
-这个动作就是 **切换上下文** 了，我们假设有这样的代码：
+3. 执行代码段
 
 ```
 var a = 1;
 foo();
 
-在别处定义了foo：
+&#47;&#47; 在别处定义了 foo：
 
 var b = 2;
 function foo(){
-    console.log(b); // 2
-    console.log(a); // error
+    console.log(b); &#47;&#47; 2
+    console.log(a); &#47;&#47; error
 }
-
 ```
 
-这里的foo能够访问b（定义时词法环境），却不能访问a（执行时的词法环境），这就是执行上下文的切换机制了。
+后，控制台，打印出的 b 是 undefined，a 是 1。跟老师描述的不一样，是我理解错了吗？
 
-JavaScript用一个栈来管理执行上下文，这个栈中的每一项又包含一个链表。如下图所示：
+麻烦老师您解答一下，谢谢啦！</div>2019-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/29/7b/864f593c.jpg" width="30px"><span>答案</span> 👍（1） 💬（0）<div>奥斯特洛夫斯基的懵</div>2020-10-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c5/dd/5a482cab.jpg" width="30px"><span>杜森垚</span> 👍（1） 💬（0）<div>  function cutThis()
+  {
+    var b = 2;
+    function foo()
+    {
+      console.log(b); &#47;&#47; 2
+      console.log(a); &#47;&#47; error
+    }
 
-![](https://static001.geekbang.org/resource/image/e8/31/e8d8e96c983a832eb646d6c17ff3df31.jpg?wh=916*489)
-
-当函数调用时，会入栈一个新的执行上下文，函数调用结束时，执行上下文被出栈。
-
-而this则是一个更为复杂的机制，JavaScript标准定义了 \[\[thisMode\]\] 私有属性。
-
-\[\[thisMode\]\] 私有属性有三个取值。
-
-- lexical：表示从上下文中找this，这对应了箭头函数。
-- global：表示当this为undefined时，取全局对象，对应了普通函数。
-- strict：当严格模式时使用，this严格按照调用时传入的值，可能为null或者undefined。
-
-非常有意思的是，方法的行为跟普通函数有差异，恰恰是因为class设计成了默认按strict模式执行。
-
-我们可以用strict达成与上一节中方法的例子一样的效果:
-
-```
-"use strict"
-function showThis(){
-    console.log(this);
-}
-
-var o = {
-    showThis: showThis
-}
-
-showThis(); // undefined
-o.showThis(); // o
-
-```
-
-函数创建新的执行上下文中的词法环境记录时，会根据\[\[thisMode\]\]来标记新纪录的\[\[ThisBindingStatus\]\]私有属性。
-
-代码执行遇到this时，会逐层检查当前词法环境记录中的\[\[ThisBindingStatus\]\]，当找到有this的环境记录时获取this的值。
-
-这样的规则的实际效果是，嵌套的箭头函数中的代码都指向外层this，例如：
-
-```
-var o = {}
-o.foo = function foo(){
-    console.log(this);
-    return () => {
+    void function()
+    {
+      var a = 1;
+      foo();
+    }();
+  }</div>2020-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/f1/a0/bb40ff4f.jpg" width="30px"><span>呜呼千里快哉风</span> 👍（1） 💬（0）<div>哈哈</div>2020-02-19</li><br/><li><img src="" width="30px"><span>Geek_fc1551</span> 👍（1） 💬（1）<div>winter老师普通函数不是方法吗？</div>2019-11-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/04/92/345d2382.jpg" width="30px"><span>孙郅竣</span> 👍（1） 💬（0）<div>class C {
+    showThis() {
         console.log(this);
-        return () => console.log(this);
     }
 }
+var o = new C();
+var showThis = o.showThis;
 
-o.foo()()(); // o, o, o
-
-```
-
-这个例子中，我们定义了三层嵌套的函数，最外层为普通函数，两层都是箭头函数。
-
-这里调用三个函数，获得的this值是一致的，都是对象o。
-
-JavaScript还提供了一系列函数的内置方法来操纵this值，下面我们来了解一下。
-
-## 操作this的内置函数
-
-Function.prototype.call 和 Function.prototype.apply 可以指定函数调用时传入的this值，示例如下：
-
-```
-function foo(a, b, c){
-    console.log(this);
-    console.log(a, b, c);
-}
-foo.call({}, 1, 2, 3);
-foo.apply({}, [1, 2, 3]);
-
-```
-
-这里call和apply作用是一样的，只是传参方式有区别。
-
-此外，还有 Function.prototype.bind 它可以生成一个绑定过的函数，这个函数的this值固定了参数：
-
-```
-function foo(a, b, c){
-    console.log(this);
-    console.log(a, b, c);
-}
-foo.bind({}, 1, 2, 3)();
-
-```
-
-有趣的是，call、bind和apply用于不接受this的函数类型如箭头、class都不会报错。
-
-这时候，它们无法实现改变this的能力，但是可以实现传参。
-
-## 结语
-
-在这一节课程中，我们认识了ES2018中规定的各种函数，我一共简单介绍了8种函数。
-
-我们围绕this这个中心，介绍了函数的执行上下文切换机制。同时我们还讲解了this中的一些相关知识。包括了操作this的内置函数。
-
-最后，留给你一个问题，你在日常开发中用过哪些函数类型呢？欢迎给我留言，我们一起讨论。
-
-* * *
-
-## 补充阅读：new与this
-
-我们在之前的对象部分已经讲过new的执行过程，我们再来看一下：
-
-- 以构造器的 prototype 属性（注意与私有字段\[\[prototype\]\]的区分）为原型，创建新对象；
-- 将 this 和调用参数传给构造器，执行；
-- 如果构造器返回的是对象，则返回，否则返回第一步创建的对象。
-
-显然，通过new调用函数，跟直接调用的this取值有明显区别。那么我们今天讲的这些函数跟new搭配又会产生什么效果呢？
-
-这里我整理了一张表：
-
-![](https://static001.geekbang.org/resource/image/6a/da/6a9f0525b713a903c6c94f52afaea3da.png?wh=462*452)
-
-我们可以看到，仅普通函数和类能够跟new搭配使用，这倒是给我们省去了不少麻烦。
+showThis(); &#47;&#47; undefined
+o.showThis(); &#47;&#47; o
+&#47;*************************提问***********************************************&#47;
+showThis(); &#47;&#47; 输出undefined 是因为这里的this指向全局，但是class为严格模式，所以输出undefined吗</div>2019-10-14</li><br/>
+</ul>

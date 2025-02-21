@@ -22,27 +22,27 @@ import static org.mockito.Mockito.when;
 public class InjectionTest {
     private Dependency dependency = mock(Dependency.class);
     private Context context = mock(Context.class);
-
+    
     @BeforeEach
     public void setup() {
         when(context.get(eq(Dependency.class))).thenReturn(Optional.of(dependency));
     }
-
+    
     @Nested
     public class ConstructorInjection {
-
+    
         @Nested
         class Injection {
-
+        
             static class DefaultConstructor {
             }
-
+            
             @Test
             public void should_call_default_constructor_if_no_inject_constructor() {
                 DefaultConstructor instance = new ConstructorInjectionProvider<>(DefaultConstructor.class).get(context);
                 assertNotNull(instance);
             }
-
+            
             static class InjectConstructor {
                 Dependency dependency;
                 @Inject
@@ -50,20 +50,20 @@ public class InjectionTest {
                     this.dependency = dependency;
                 }
             }
-
+            
             @Test
             public void should_inject_dependency_via_inject_constructor() {
                 InjectConstructor instance = new ConstructorInjectionProvider<>(InjectConstructor.class).get(context);
                 assertSame(dependency, instance.dependency);
             }
-
+            
             @Test
             public void should_include_dependency_from_inject_constructor() {
                 ConstructorInjectionProvider<InjectConstructor> provider = new ConstructorInjectionProvider<>(InjectConstructor.class);
                 assertArrayEquals(new Class<?>[]{Dependency.class}, provider.getDependencies().toArray(Class<?>[]::new));
             }
         }
-
+        
         @Nested
         class IllegalInjectConstructors {
             abstract class AbstractComponent implements Component {
@@ -229,7 +229,6 @@ public class InjectionTest {
         }
     }
 }
-
 ```
 
 待重构的ContainerTest是这样的：
@@ -343,17 +342,17 @@ class DependencyDependedOnAnotherDependency implements Dependency {
         this.anotherDependency = anotherDependency;
     }
 }
-
 ```
 
 任务列表没有改变，目前的状态为：
 
 - 无需构造的组件——组件实例
-
 - 如果注册的组件不可实例化，则抛出异常
+  
   - 抽象类
   - 接口
 - 构造函数注入
+  
   - 无依赖的组件应该通过默认构造函数生成组件实例
   - 有依赖的组件，通过Inject标注的构造函数生成组件实例
   - 如果所依赖的组件也存在依赖，那么需要对所依赖的组件也完成依赖注入
@@ -362,40 +361,46 @@ class DependencyDependedOnAnotherDependency implements Dependency {
   - 如果组件需要的依赖不存在，则抛出异常
   - 如果组件间存在循环依赖，则抛出异常
 - 字段注入
+  
   - 通过Inject标注将字段声明为依赖组件
   - 如果字段为final则抛出异常
   - 依赖中应包含Inject Field声明的依赖
 - 方法注入
+  
   - 通过Inject标注的方法，其参数为依赖组件
   - 通过Inject标注的无参数方法，会被调用
   - 按照子类中的规则，覆盖父类中的Inject方法
   - 如果方法定义类型参数，则抛出异常
   - 依赖中应包含Inject Method声明的依赖
 - 对Provider类型的依赖
+  
   - 注入构造函数中可以声明对于Provider的依赖
   - 注入字段中可以声明对于Provider的依赖
   - 注入方法中可声明对于Provider的依赖
 - 自定义Qualifier的依赖
+  
   - 注册组件时，可额外指定Qualifier
   - 注册组件时，可从类对象上提取Qualifier
   - 寻找依赖时，需同时满足类型与自定义Qualifier标注
   - 支持默认Qualifier——Named
 - Singleton生命周期
+  
   - 注册组件时，可额外指定是否为Singleton
   - 注册组件时，可从类对象上提取Singleton标注
   - 对于包含Singleton标注的组件，在容器范围内提供唯一实例
   - 容器组件默认不是Single生命周期
+<div><strong>精选留言（6）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/0f/fe/fa/2a046821.jpg" width="30px"><span>人间四月天</span> 👍（7） 💬（2）<div>非常感谢，讲解让工程师可以写出高质量的代码，测试驱动，测试驱动设计，让中国工程师摆脱curd，容器的例子很好，需求明确，需求有复杂性，测试如何驱动功能实现，保证代码的正确性，设计的合理性。有个问题，先实现原型功能，我认为没问题，可是对于复杂需求，是不是要模块化设计一下，把职责非常明确的类和方法先设计好，然后再结合经典和伦敦两种学派，更高效？如何用老师的方法，都是发现类的职责不单一了，然后再重构，为什么不能开始就想到，设计好？例如spring容器，注册和构建组件，本身就是很复杂的，为什么最早就把构建和使用分离？
 
-自定义Scope标注
-
-- 可向容器注册自定义Scope标注的回调
-
-## 视频演示
-
-让我们进入今天的部分：
-
-## 思考题
-
-剩余任务在现有代码结构下，要如何实现？
-
-欢迎把你的想法分享在留言区，也欢迎把你的项目代码的链接分享出来。相信经过你的思考与实操，学习效果会更好！
+</div>2022-05-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e9/22/7606c6ba.jpg" width="30px"><span>张铁林</span> 👍（1） 💬（3）<div>23敲好的代码
+https:&#47;&#47;github.com&#47;vfbiby&#47;tdd-di-container
+</div>2022-05-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/04/41/082e2706.jpg" width="30px"><span>keep_curiosity</span> 👍（0） 💬（1）<div>Class.getMethods() 方法好像默认就包含了子类覆盖父类方法的逻辑，可以省掉自己过滤的逻辑。测试也都没问题。</div>2022-05-04</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJUCiacuh59wMbq1icuB8U1T7Vpic8FjKFdanvdt9bzClBmYqFUXmtKmh2Zibn9Dic6A8pjdoBiaia1LCrnA/132" width="30px"><span>tdd学徒</span> 👍（1） 💬（1）<div>ContainerTest 文档化之后62个测试能对得上
+Component应该要加下面一点修改
+interface Component {
+    default Dependency dependency() {
+        return null;
+    }
+}</div>2022-05-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fe/fa/2a046821.jpg" width="30px"><span>人间四月天</span> 👍（0） 💬（1）<div>内部类不能有静态的声明，老师为什么不报错，typebinding本身是内部类，他的成员有静态的内部类</div>2022-05-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（0）<div>收获：
+经过梳理之后得到可执行的测试文档
+通过抽取方法起到注释的作用</div>2022-05-05</li><br/>
+</ul>

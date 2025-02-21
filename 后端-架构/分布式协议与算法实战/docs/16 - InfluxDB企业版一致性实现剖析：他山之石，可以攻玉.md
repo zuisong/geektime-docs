@@ -9,133 +9,31 @@
 今天这一讲，我就以InfluxDB企业版为例，带你看一看系统是如何实现一致性的。有的同学可能会问了：为什么是InfluxDB企业版呢？因为它是排名第一的时序数据库，相比其他分布式系统（比如KV存储），时序数据库更加复杂，因为我们要分别设计2个完全不一样的一致性模型。当你理解了这样一个复杂的系统实现后，就能更加得心应手地处理简单系统的问题了。
 
 那么为了帮你达到这个目的。我会先介绍一下时序数据库的背景知识，因为技术是用来解决实际场景的问题的，正如我之前常说的“要根据场景特点，权衡折中来设计系统”。所以当你了解了这些背景知识后，就能更好的理解为什么要这么设计了。
+<div><strong>精选留言（27）</strong></div><ul>
+<li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKrzZT06vXeP6IfR9iasoiaaDeYiaUmmN6pgwvNUpLhrauiasU9acvNcdSuicrhicMmBhvEufcjPTS7ZXRA/132" width="30px"><span>Geek_3894f9</span> 👍（21） 💬（2）<div>课后思考题，答案是QNWR，Wn，R1。wn是因为对写入的时间要求不高，r1是因为可以读取任意一节点，读性能好。</div>2020-03-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c3/5d/ced9b5c2.jpg" width="30px"><span>Michael Tesla</span> 👍（15） 💬（3）<div>我觉得思考题的场景特点是：读多写少，读的性能要求高，数据要保证强一致性。
 
-## 什么是时序数据库？
+如果使用 Raft 算法 保证强一致性，那么读写操作都应该在领导者节点上进行。这样的话，读的性能相当于单机，不是很理想。
 
-你可以这么理解，时序数据库，就是存储时序数据的数据库，就像MySQL是存储关系型数据的数据库。而时序数据，就是按照时间顺序记录系统、设备状态变化的数据，比如CPU利用率、某一时间的环境温度等，就像下面的样子：
+应该采用 Quorum NWR 技术，设置 W = N，R = 1。每次都要写入全部节点，写操作的性能会比较差。但是，因为写操作比较少，所以这个缺点可以忍受。而读操作只需要读任意一个节点就能返回最新的数据，性能非常高。</div>2020-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/99/27/47aa9dea.jpg" width="30px"><span>阿卡牛</span> 👍（9） 💬（5）<div>这个实战太企业了，新手完全无从下门，有没有些入门的课程</div>2020-03-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/03/1c/c9fe6738.jpg" width="30px"><span>Kvicii.Y</span> 👍（5） 💬（1）<div>1.META节点是Raft算法实现，那是不是存在这如果节点过多消息同步慢的问题呢？存在的话如何解决呢？(只能减少Raft节点？)
+2.思考题使用quorum nwr可以达到最终一致性，这里说的强一致是最终一致的意思吗？</div>2020-03-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/7d/31/b630e3a1.jpg" width="30px"><span>Following U</span> 👍（3） 💬（1）<div>hello，讲师好，influxdb 企业版你这边的分布式版本的github 地址吗？</div>2020-07-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/54/9a/76c0af70.jpg" width="30px"><span>每天晒白牙</span> 👍（3） 💬（2）<div>感觉自己对这些知识理解的还是不够，更不能进行实战应用，还得好好学学。
 
-```
-> insert cpu_usage,host=server01,location=cn-sz user=23.0,system=57.0
-> select * from cpu_usage
-name: cpu_usage
-time                host     location system user
-----                ----     -------- ------ ----
-1557834774258860710 server01 cn-sz    55     25
->
+对于思考题，首先要求强一致性，读多写少，那是不是可以像  META 节点一样，采用 Raft 算法实现强一致性。但这样对性能可能就有影响了，不过这个 KV 系统是读多写少，应该也可以
 
-```
+然后就是从性能考虑，可以在 AP 系统中实现强一致性。根据文中提示，可以采用 Quorun NWR 实现
+</div>2020-03-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/43/56/62c38c36.jpg" width="30px"><span>欧阳</span> 👍（2） 💬（2）<div>除了quorum NWR。kfk的分区是不是也是一种思路</div>2020-03-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/b3/57/2d92cf9a.jpg" width="30px"><span>姜川</span> 👍（2） 💬（1）<div>老师，raft要实现强一致是不是就需要收到所有节点的ACK才可以，半数以上那种只能是最终一致性吧，因为会有短暂的不一致发生</div>2020-03-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/57/6e/b6795c44.jpg" width="30px"><span>夜空中最亮的星</span> 👍（2） 💬（1）<div>喜欢案例，让案例来的更猛烈些吧</div>2020-03-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/d9/ff/b23018a6.jpg" width="30px"><span>Heaven</span> 👍（1） 💬（1）<div>读多写少啊,只需要保证在每次都必须要写入到每一个节点上就可以了,然后读的时候直接去读,自然是最新的
+</div>2020-08-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/19/89/20488013.jpg" width="30px"><span>hanazawakana</span> 👍（1） 💬（1）<div>hinted-handoff是直接邮寄的一种实现方式吗</div>2020-06-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/df/6c/5af32271.jpg" width="30px"><span>Dylan</span> 👍（1） 💬（1）<div>可以在AP模型中，引入QNWR</div>2020-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/25/00/3afbab43.jpg" width="30px"><span>88591</span> 👍（1） 💬（1）<div>1、存储系统，数据肯定要冗余
+2、可以使用WNR 模型
+          1、写不多 ，全写
+          2、读多，一个读</div>2020-04-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/52/40/e57a736e.jpg" width="30px"><span>pedro</span> 👍（1） 💬（1）<div>前面的十几讲都在为这一讲做铺垫，快更新，看看后面的实战部分😃</div>2020-03-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ea/8b/613c162e.jpg" width="30px"><span>nomoshen</span> 👍（0） 💬（1）<div>关于最后的堆砌开源软件这个观点我其实有点不能认同；的确在influxdb场景上的存储不断的优化是值得鼓励，并且觉得这就是它的门槛和优势；但是在一些时序场景上加入内存数据库、消息队列、流式引擎来解决时序场景上的一些难点我觉得也是可以的；</div>2020-10-19</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/YicovLZyvibpkfJwuAib1FEyibVDN6Oia1Wsg7jibT0uTj0UDH75KAX6vfSvstjy1IHTW7WpNbMlZZO9SnGoPj3AE2DQ/132" width="30px"><span>要努力的兵长</span> 👍（0） 💬（1）<div>它使用 Raft 算法实现 META 节点的一致性（一般推荐 3 节点的集群配置）   ------------ Raft算法  来实现强一致性？？？  Raft算法不是只可 最终一致性吗？</div>2020-09-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/19/89/20488013.jpg" width="30px"><span>hanazawakana</span> 👍（0） 💬（1）<div>请问这个Quorum NWR是influxdb enterprise才有的吗？influxdb 1.0版本和2.0版本没有吗？</div>2020-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/83/39/f9623363.jpg" width="30px"><span>竹马彦四郎的好朋友影法師</span> 👍（0） 💬（1）<div>&quot;因为查询时就会出现访问节点数过多而延迟大的问题。&quot; 这句话感觉是不是想表达的是如果AP系统包含节点过多，因为要达到最终一致性，会导致同步时间比较长，所以读到最新数据延迟长~</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/83/39/f9623363.jpg" width="30px"><span>竹马彦四郎的好朋友影法師</span> 👍（0） 💬（1）<div>我觉得这是老师对前面的知识的一个串讲~ 感觉很好~ 赞！</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/15/d7/96e77edd.jpg" width="30px"><span>问心</span> 👍（0） 💬（1）<div>存储使用Raft，可能的话对数据进行分区分片，或者使用Quorun NWR进行查询，尽可能的将热数据加载到缓存</div>2020-03-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/87/30/4626c8c0.jpg" width="30px"><span>Fs</span> 👍（0） 💬（1）<div>AP型的实现大框架是类似的，influxDB的介绍和Cassandra的实现非常相似。那么支持时序这一特点，influxDB有什么不一样的设计呢</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/fe/f1/4f1632f8.jpg" width="30px"><span>Scream!</span> 👍（0） 💬（1）<div>多来点实战案例</div>2020-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/00/4e/be2b206b.jpg" width="30px"><span>吴小智</span> 👍（0） 💬（1）<div>懵懵懂懂，似懂非懂，还是要多学习。</div>2020-03-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/3e/d2/5f9d3fa7.jpg" width="30px"><span>羽翼1982</span> 👍（0） 💬（1）<div>在AP的系统中，使用Quorum NWR理论
+如果写少读多，假设有3个副本，可以将策略调整为3个副本写成功才返回，读则可以只读取一个副本的内容；如果网络不稳定，3副本写成功到时失败率高，99线的延迟大，可以退一步使用2写2读的策略；不过很少在实际系统上看到类似3副本，允许1副本写不成功时缓存本地等待Hinted-handoff后续同步这样的策略，InfluxDB中不太清楚，至少Cassandra里面没有
 
-在我看来，时序数据最大的特点是数据量很大，可以不夸张地说是海量。时序数据主要来自监控（监控被称为业务之眼），而且在不影响业务运行的前提下，监控埋点是越多越好，这样才能及时发现问题、复盘故障。
+PS: 我们公司今年刚刚把时序数据库从InfluxDB转到VictoriaMetrics上，据说性能更高，与Promeheus的适配也更好，不知道老师对VM是否有研究可以简单分享下
+</div>2020-03-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKhuGLVRYZibOTfMumk53Wn8Q0Rkg0o6DzTicbibCq42lWQoZ8lFeQvicaXuZa7dYsr9URMrtpXMVDDww/132" width="30px"><span>hello</span> 👍（0） 💬（1）<div>给老师大大的赞，对实战部分很是期待，我现在就希望快点更新！</div>2020-03-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/47/31/f35367c8.jpg" width="30px"><span>小晏子</span> 👍（0） 💬（1）<div>课后思考：这个里面有几个点是设计这个系统的关键，读请求（百万级）远大于写请求（千级），要求读的强一致性。
+因为写请求很低，可以仿照influxDB的设计，分成meta节点和data节点，meta节点使用cp模型，使用raft算法，data节点使用ap模型，使用quorum NWR和反墒算法保证强一致性，因为写少，所以只要少量meta节点即可满足要求，比如三个，对于大量读请求，data节点可以保障一致性和百万级请求。</div>2020-03-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/22/f4/9fd6f8f0.jpg" width="30px"><span>核桃</span> 👍（0） 💬（0）<div>这里关于InfluxDB的副本机制,因为这里的数据是监控数据的话,其实没必要实现主副本那种,但是在其他场景中,例如分布式文件系统里面,就需要了,因为修复数据的难度更大了.
+当然这里关于副本数据传输,有一个优化点的,使用两个缓存队列来实现.
+第一队列就是正常接受到数据的时候正常串行发送.
+如果节点发送Data数据到其他节点上失败了,那么在简单重试后还是失败,就应该放到第二缓存队列中.
+在第二队列的任务都是那些有问题的需要不断重试的,这时候可以上报到Meta集群里面了.进行其他的处理.
 
-**那么作为时序数据库，InfluxDB企业版的架构是什么样子呢？**
-
-你可能已经了解过，它是由META节点和DATA节点2个逻辑单元组成的，而且这两个节点是2个单独的程序。那你也许会问了，为什么不能合成到一个程序呢？答案是场景不同。
-
-- META节点存放的是系统运行的关键元信息，比如数据库（Database）、表（Measurement）、保留策略（Retention policy）等。它的特点是一致性敏感，但读写访问量不高，需要一定的容错能力。
-- DATA节点存放的是具体的时序数据。它有这样几个特点：最终一致性、面向业务、性能越高越好，除了容错，还需要实现水平扩展，扩展集群的读写性能。
-
-我想说的是，对于META节点来说，节点数的多少代表的是容错能力，一般3个节点就可以了，因为从实际系统运行观察看，能容忍一个节点故障就可以了。但对DATA节点而言，节点数的多少则代表了读写性能，一般而言，在一定数量以内（比如10个节点）越多越好，因为节点数越多，读写性能也越高，但节点数量太多也不行，因为查询时就会出现访问节点数过多而延迟大的问题。
-
-所以，基于不同场景特点的考虑，2个单独程序更合适。如果META节点和DATA节点合并为一个程序，因读写性能需要，设计了一个10节点的DATA节点集群，这就意味着META节点集群（Raft集群）也是10个节点。在学了Raft算法之后，你应该知道，这时就会出现消息数多、日志提交慢的问题，肯定不行了。（对Raft日志复制不了解的同学，可以回顾一下 [08讲](https://time.geekbang.org/column/article/205784)）
-
-现在你了解时序数据库，以及InfluxDB企业版的META节点和DATA节点了吧？那么怎么实现META节点和DATA节点的一致性呢？
-
-## 如何实现META节点一致性？
-
-你可以这样想象一下，META节点存放的是系统运行的关键元信息，那么当写操作发生后，就要立即读取到最新的数据。比如，创建了数据库“telegraf”，如果有的DATA节点不能读取到这个最新信息，那就会导致相关的时序数据写失败，肯定不行。
-
-所以，META节点需要强一致性，实现CAP中的CP模型（对CAP理论不熟悉的同学，可以先回顾下 [02讲](https://time.geekbang.org/column/article/195675)）。
-
-那么，InfluxDB企业版是如何实现的呢？
-
-因为InflxuDB企业版是闭源的商业软件，通过 [官方文档](https://docs.influxdata.com/enterprise_influxdb/v1.7/concepts/clustering/#architectural-overview)，我们可以知道它使用Raft算法实现META节点的一致性（一般推荐3节点的集群配置）。那么说完META节点的一致性实现之后，我接着说一说DATA节点的一致性实现。
-
-## 如何实现DATA节点一致性？
-
-我们刚刚提到，DATA节点存放的是具体的时序数据，对一致性要求不高，实现最终一致性就可以了。但是，DATA节点也在同时作为接入层直接面向业务，考虑到时序数据的量很大，要实现水平扩展，所以必须要选用CAP中的AP模型，因为AP模型不像CP模型那样采用一个算法（比如Raft算法）就可以实现了，也就是说，AP模型更复杂，具体有这样几个实现步骤。
-
-### 自定义副本数
-
-首先，你需要考虑冗余备份，也就是同一份数据可能需要设置为多个副本，当部分节点出问题时，系统仍然能读写数据，正常运行。
-
-那么，该如何设置副本呢？答案是实现自定义副本数。
-
-关于自定义副本数的实现，我们在 [12讲](https://time.geekbang.org/column/article/209130) 介绍了，在这里就不啰嗦了。不过，我想补充一点，相比Raft算法节点和副本必须一一对应，也就是说，集群中有多少个节点就必须有多少个副本，你看，自定义副本数，是不是更灵活呢？
-
-学到这里，有同学可能已经想到了，当集群支持多副本时，必然会出现一个节点写远程节点时，RPC通讯失败的情况，那么怎么处理这个问题呢？
-
-### Hinted-handoff
-
-我想说的是，一个节点接收到写请求时，需要将写请求中的数据转发一份到其他副本所在的节点，那么在这个过程中，远程RPC通讯是可能会失败的，比如网络不通了，目标节点宕机了，等等，就像下图的样子。
-
-![](https://static001.geekbang.org/resource/image/d1/85/d1ee3381b7ae527cbc9d607d1a1f8385.jpg?wh=1142*696)
-
-那么如何处理这种情况呢？答案是实现Hinted-handoff。在InfluxDB企业版中，Hinted-handoff是这样实现的:
-
-- 写失败的请求，会缓存到本地硬盘上;
-- 周期性地尝试重传;
-- 相关参数信息，比如缓存空间大小(max-szie)、缓存周期（max-age）、尝试间隔（retry-interval）等，是可配置的。
-
-在这里我想补充一点，除了网络故障、节点故障外，在实际场景中，临时的突发流量也会导致系统过载，出现RPC通讯失败的情况，这时也需要Hinted-handoff能力。
-
-虽然Hinted-handoff可以通过重传的方式来处理数据不一致的问题，但当写失败请求的数据大于本地缓存空间时，比如某个节点长期故障，写请求的数据还是会丢失的，最终的节点的数据还是不一致的，那么怎么实现数据的最终一致性呢？答案是反熵。
-
-### 反熵
-
-需要你注意的是，时序数据虽然一致性不敏感，能容忍短暂的不一致，但如果查询的数据长期不一致的话，肯定就不行了，因为这样就会出现“Flapping Dashboard”的现象，也就是说向不同节点查询数据，生成的仪表盘视图不一样，就像图2和图3的样子。
-
-![](https://static001.geekbang.org/resource/image/53/3c/535208a278935bc490e0d4f50f2ca13c.png?wh=1142*477)
-
-![](https://static001.geekbang.org/resource/image/7c/21/7cc5f061f62854caa1d31aed586c8321.png?wh=1142*477)
-
-从上面的2个监控视图中你可以看到，同一份数据，查询不同的节点，生成的视图是不一样的。那么，如何实现最终一致性呢？
-
-答案就是咱们刚刚说的反熵，而我在 [11讲](https://time.geekbang.org/column/article/208182) 以自研InfluxDB系统为例介绍过反熵的实现，InfluxDB企业版类似，所以在这里就不啰嗦了。
-
-不过有的同学可能会存在这样的疑问，实现反熵是以什么为准来修复数据的不一致呢？我想说的是，时序数据像日志数据一样，创建后就不会再修改了，一直存放在那里，直到被删除。
-
-所以，数据副本之间的数据不一致，是因为数据写失败导致数据丢失了，也就是说，存在的都是合理的，缺失的就是需要修复的。这时我们可以采用两两对比、添加缺失数据的方式，来修复各数据副本的不一致了。
-
-### Quorum NWR
-
-最后，有同学可能会说了，我要在公司官网上展示的监控数据的仪表板（Dashboard），是不能容忍视图不一致的情况的，也就是无法容忍任何“Flapping Dashboard”的现象。那么怎么办呢？这时我们就要实现强一致性（Werner Vogels提到的强一致性），也就是每次读操作都要能读取最新数据，不能读到旧数据。
-
-那么在一个AP型的分布式系统中，如何实现强一致性呢？
-
-答案是实现Quorum NWR。同样，关于Quorum NWR的实现，我们在12讲已介绍，在这里也就不啰嗦了。
-
-最后我想说的是，你可以看到，实现AP型分布式系统，比实现CP型分布式要复杂的。另外，通过上面的内容学习，我希望你能注意到，技术是用来解决场景需求的，没有十全十美的技术，在实际工作中，需要我们深入研究场景特点，提炼场景需求，然后根据场景特点权衡折中，设计出适合该场景特点的分布式系统。
-
-## 内容小结
-
-本节课我主要带你了解时序数据库、META节点一致性的实现、DATA节点一致性的实现。以一个复杂的实际系统为例，带你将前面学习到的理论串联起来，让你知道它们如何在实际场景中使用。我希望你明确的重点如下：
-
-1. CAP理论是一把尺子，能辅助我们分析问题、总结归纳问题，指导我们如何做妥协折中。所以，我建议你在实践中多研究多思考，一定不能认为某某技术“真香”，十全十美了，要根据场景特点活学活用技术。
-
-2. 通过Raft算法，我们能实现强一致性的分布式系统，能保证写操作完成后，后续所有的读操作，都能读取到最新的数据。
-
-3. 通过自定义副本数、Hinted-handoff、反熵、Quorum NWR等技术，我们能实现AP型分布式系统，还能通过水平扩展，高效扩展集群的读写能力。
-
-
-最后，我想再强调下，技术是用来解决场景的需求的，只有当你吃透技术，深刻理解场景的需求，才能开发出适合这个场景的分布式系统。另外我还想让你知道的是，InfluxDB企业版一年的License费高达1.5万美刀，为什么它值这个价钱？就是因为技术带来的高性能和成本优势。比如：
-
-- 相比OpenTSDB，InfluxDB的写性能是它的9.96倍，存储效率是它的8.69倍，查询效率是它的7.38倍。
-- 相比Graphite，InfluxDB的写性能是它的12倍，存储效率是6.3倍，查询效率是9倍。
-
-在这里我想说的是，数倍或者数量级的性能优势其实就是钱，而且业务规模越大，省钱效果越突出。
-
-另外我想说的是，尽管influxdb-comparisons的测试比较贴近实际场景，比如它的DevOps测试模型，与我们观察到常见的实际场景是一致的。但从实际效果看，InfluxDB的优势更加明显，成本优势更加突出。因为传统的时序数据库不仅仅是性能低，而且在海量数据场景下，接入和查询的痛点突出。为了缓解这些痛点，引入和堆砌了更多的开源软件。比如：
-
-- 往往需要引入Kafka来缓解，因突发接入流量导致的丢数据问题；
-- 需要引入Storm、Flink来缓解，时序数据库计算性能差的问题；
-- 需要做热数据的内存缓存，来解决查询超时的问题。
-
-所以在实施中，除了原有的时序数据库会被替换掉，还有大量的开源软件会被省掉，成本优势突出。在这里我想说的是，从实际实施看（自研InfluxDB系统），性能优势和成本优势也是符合这个预期的。
-
-最后我想说的是，我反对堆砌开源软件，建议谨慎引入Kafka等缓存中间件。老话说，在计算机中，任何问题都可以通过引入一个中间层来解决。这句话是正确的，但背后的成本是不容忽视的，尤其是在海量系统中。 **我的建议是直面问题，通过技术手段在代码和架构层面解决它，而不是引入和堆砌更多的开源软件。** 其实，InfluxDB团队也是这么做，比如他们两次重构存储引擎。
-
-## 课堂思考
-
-我提到没有十全十美的技术，而是需要根据场景特点，权衡折中，设计出适合场景特点的分布式系统。那么你试着思考一下，假设有这样一个场景，一个存储系统，访问它的写请求不多（比如 1K QPS），但访问它的读请求很多（比如1M QPS），而且客户端查询时，对数据的一致性敏感，也就是需要实现强一致性，那么我们该如何设计这个系统呢？为什么呢？欢迎在留言区分享你的看法，与我一同讨论。
-
-最后，感谢你的阅读，如果这篇文章让你有所收获，也欢迎你将它分享给更多的朋友。
+总的来说,因为本人是做分布式文件系统的,这里真的有很多很多相似的地方,但是文件系统需要考虑修复和数据重平衡等很多很多问题.</div>2022-01-09</li><br/>
+</ul>

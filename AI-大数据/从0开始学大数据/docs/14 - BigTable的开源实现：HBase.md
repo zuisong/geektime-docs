@@ -1,69 +1,42 @@
 我们知道，Google发表GFS、MapReduce、BigTable三篇论文，号称“三驾马车”，开启了大数据的时代。那和这“三驾马车”对应的有哪些开源产品呢？我们前面已经讲过了GFS对应的Hadoop分布式文件系统HDFS，以及MapReduce对应的Hadoop分布式计算框架MapReduce，今天我们就来领略一下BigTable对应的NoSQL系统HBase，看看它是如何大规模处理海量数据的。
 
-在计算机数据存储领域，一直是关系数据库（RDBMS）的天下，以至于在传统企业的应用领域，许多应用系统设计都是面向数据库设计，也就是 **先设计数据库然后设计程序**，从而导致 **关系模型绑架对象模型**，并由此引申出旷日持久的业务对象贫血模型与充血模型之争。
+在计算机数据存储领域，一直是关系数据库（RDBMS）的天下，以至于在传统企业的应用领域，许多应用系统设计都是面向数据库设计，也就是**先设计数据库然后设计程序**，从而导致**关系模型绑架对象模型**，并由此引申出旷日持久的业务对象贫血模型与充血模型之争。
 
 业界为了解决关系数据库的不足，提出了诸多方案，比较有名的是对象数据库，但是这些数据库的出现似乎只是进一步证明关系数据库的优越而已。直到人们遇到了关系数据库难以克服的缺陷——糟糕的海量数据处理能力及僵硬的设计约束，局面才有所改善。从Google的BigTable开始，一系列的可以进行海量数据存储与访问的数据库被设计出来，更进一步说，NoSQL这一概念被提了出来。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/0f/6e/bd/b83ad32d.jpg" width="30px"><span>shangyu</span> 👍（22） 💬（6）<div>内存写操作 如何保证突然掉电的话不丢数据呢</div>2018-11-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/df/73/4a4ce2b5.jpg" width="30px"><span>足迹</span> 👍（11） 💬（2）<div>HBase是基于HDFS存储的，那实际应用中是不是应该每台DataNode节点安装一个Region?</div>2018-12-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epLLXBLBLgticobxvBYRezd304Y66Q8ibYCl7mG9dvTHGrx9obRcn7ZmJBcib3ibsQPIX3xIbNYiaAUrOA/132" width="30px"><span>Geek_c991e0</span> 👍（8） 💬（2）<div>老是，所有的请求都会先到HMaster，HMaster是不是也要多台机器才行，要不压力太大吧。如果多台主从是不是又会有同步的问题</div>2019-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0d/c1/d36816df.jpg" width="30px"><span>M</span> 👍（8） 💬（3）<div>老师文中的读写都是通过HMaster获取HRegionServer的地址，再进行读写操作。怎么和我在其他地方学的不一样。不是应该通过zk查询的吗？</div>2018-11-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/28/9c/73e76b19.jpg" width="30px"><span>姜戈</span> 👍（6） 💬（1）<div>针对问题：是不是列族不能太多，会影响IO</div>2018-11-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ef/b4/61fb4dba.jpg" width="30px"><span>胡家鹏</span> 👍（2） 💬（1）<div>“HRegion 是 HBase 负责数据存储的主要进程，应用程序对数据的读写操作都是通过和 HRetion 通信完成。”没有看到HRetion</div>2018-11-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（1） 💬（1）<div>一台HRegionServer上可以有多个HRegion实例。
 
-NoSQL，主要指非关系的、分布式的、支持海量数据存储的数据库设计模式。也有许多专家将 NoSQL解读为Not Only SQL，表示NoSQL只是关系数据库的补充，而不是替代方案。其中，HBase是这一类NoSQL系统的杰出代表。
+那请问：
+1.一台HRegion 上 有多少个HFile啊？
+2.HFile随着HRegion的迁移而迁移，意思是像HDFS的分片数据一样，复制在其他Data Node节点上一样，复制在其他HRegionServer上的HRegion上吗？
 
-HBase之所以能够具有海量数据处理能力，其根本在于和传统关系型数据库设计的不同思路。传统关系型数据库对存储在其上的数据有很多约束，学习关系数据库都要学习数据库设计范式，事实上，是在数据存储中包含了一部分业务逻辑。而NoSQL数据库则简单暴力地认为，数据库就是存储数据的，业务逻辑应该由应用程序去处理，有时候不得不说，简单暴力也是一种美。
+老师可以简单解释一下嘛？
 
-## HBase可伸缩架构
+</div>2018-11-30</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eou1BMETumU21ZI4yiaLenOMSibzkAgkw944npIpsJRicmdicxlVQcgibyoQ00rdGk9Htp1j0dM5CP2Fibw/132" width="30px"><span>寥若晨星</span> 👍（0） 💬（1）<div>google发表这三个论文的时候只有理论吗，内部没有已经实现的项目？</div>2024-08-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/73/30/fd602742.jpg" width="30px"><span>大马猴</span> 👍（102） 💬（5）<div>提一个建议，大家尽量发一些跟技术主题相关的评论，这才是对作者劳动成果的尊重，也请作者少放那些吹捧和自说自话的评论，提高阅读体验。</div>2018-11-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fd/d6/71e1cc29.jpg" width="30px"><span>Kaer</span> 👍（84） 💬（0）<div>1:列族不好查询，没有传统sql那样按照不同字段方便，只能根据rowkey查询，范围查询scan性能低。2:查询也没有mysql一样的走索引优化，因为列不固定 3:列族因为不固定，所以很难做一些业务约束，比如uk等等。4:做不了事务控制</div>2018-11-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/eb/99/5b6d689c.jpg" width="30px"><span>special</span> 👍（37） 💬（3）<div>看了十多篇文章了，大都是从大数据领域相关技术的特点，原理及应用场景等方面来阐述，讲得很不错，不过有不少内容需要具备一定的大数据实践及理论基础才能很好的吸收，文章没有针对大数据相关框架或工具的实践介绍，比如环境搭建，操作使用等。这也可以理解，这些放在文章中进行介绍也不大合适。
+我最近学习了大数据快一年了，对于大数据领域的常用工具，如hdfs,hbase,mapreduce,yarn,hive,sqoop,pig,flume,storm,spark等的实践内容，如环境搭建，架构原理，基本操作，Java基本编程等，做了总结，全部以文章的形式发表在个人公众号里:程序猿的修身养性，有兴趣的朋友可以关注下，一起交流学习！</div>2018-12-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/26/df/b56721f0.jpg" width="30px"><span>夏一Sunny</span> 👍（31） 💬（1）<div>对于LSM树的合并和高效，还是不太理解。</div>2018-11-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1e/e5/140b334e.jpg" width="30px"><span>纯齐</span> 👍（21） 💬（5）<div>文中提到hbase数据的修改在内存中处理，就是说如果机器断电的话数据会丢失，请问hbase有没有措施来保证数据不丢失？</div>2018-11-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/00/f4/cc5f0896.jpg" width="30px"><span>Jowin</span> 👍（17） 💬（0）<div>列族数据组织方式的缺点：
+1）在需要读取整条记录的时候，需要访问多个列族组合数据，效率会降低，可以通过字段冗余来解决一些问题。
+2）只能提供Key值和全表扫描两种访问方式，很多情况下需要自己建耳机索引。
+3）数据是非结构化，或者说是半结构化的，应用在处理数据时要费点心，不像关系数据库那么省心。
 
-我们先来看看HBase的架构设计。HBase为可伸缩海量数据储存而设计，实现面向在线业务的实时数据访问延迟。HBase的伸缩性主要依赖其可分裂的HRegion及可伸缩的分布式文件系统HDFS实现。
+在数据完全结构化，很少变动，需要事务的场景使用Mysql等关系数据库比较合适。</div>2018-12-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/23/29/fe0242da.jpg" width="30px"><span>why</span> 👍（12） 💬（0）<div>1，什么是HBASE？
+Google三驾马车之BigTable的开源实现，配合HDFS，实现了数据的分布式海量存储。
+2，为什么会出现HBASE？
+传统关系型数据库，关系模型绑架对象模型、僵硬的约束设计及设计范式使得存储数据包含了一部分业务逻辑，而且糟糕的海量数据处理能力引出了各种NoSql设计，HBASE简单粗暴，数据库就是存储数据，业务由应用去处理。
+3，HBASE设计特点？
+a，可伸缩
+HBASE以key的区域进行分片形成HRegion（HBASE数据管理的基本单位），一个HRegion中数据量超过阈值，会一分为二，并在集群中进行负载均衡。
+数据读写：application Zookeeper  HMaster HRegionServer HRegion HFile
+b，可扩展数据模型
+列族设计，具体字段（column）在写入时指定，轻松支持百万字段的扩展
+c，高性能存储
+数据写入时通过log连续写入，异步与磁盘上的多个LSM树进行合并。
+数据写操作（i，u，d）都在内存中进行（也是一颗排序树），超过内存阈值，与磁盘上最新的LSM树合并</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f7/9d/be04b331.jpg" width="30px"><span>落叶飞逝的恋</span> 👍（12） 💬（2）<div>其实所谓的列组就是相当于定义一个范围宽泛一点的名称定义的JSON。比如课程成绩。就是一个宽泛的定义，使用这种就是能方便的进行动态扩展。不像传统的关系型数据库就需要定义数学成绩、英语成绩等具体科目字段。但是虽然列祖能解决动态扩展，但是对于查询不友好，特别是查询单科成绩，需要解析这个课程成绩的JSON，再筛选出单科。而传统关系型数据库就能精准快速的查询出来。这两个可以互取长处使用。</div>2018-11-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/6d/9c/beaf7642.jpg" width="30px"><span>伊森</span> 👍（11） 💬（0）<div>李老师，hbase对olap的分析场景支持不行吧？这也是我正想问的问题，一般都咋么解决，那种可变化的数据的实时统计分析场景的？</div>2018-11-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/df/73/4a4ce2b5.jpg" width="30px"><span>足迹</span> 👍（5） 💬（0）<div>hbase不支持二级索引，只能通过类似es这样的组件来实现。还是就是事务处理。所以一般oltp还是选择关系型数据库。</div>2018-11-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1f/9c/6e37e32b.jpg" width="30px"><span>simon</span> 👍（3） 💬（0）<div>hbase在hdfs之前，那是不是hbase的读写也是走hdfs的流程，先去namenode查询，再访问对应的datanode，如果是，那速度会不会很慢？如果不是，那其实没有完全用hdfs而只是简单利用hdfs相同的文件格式存储数据？</div>2019-10-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/11/a2/33be69a6.jpg" width="30px"><span>毛毛</span> 👍（3） 💬（0）<div>外行人强答一下。
+我记得parquet文件的大小和列数有很大关系。如果可以随便增加列，文件会变得很大，增加的列可能包含的数据很少。
+个人感觉这种可拓展性强的数据库更适合类似于电商的情况多变的业务。</div>2018-11-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/da/ec/779c1a78.jpg" width="30px"><span>往事随风，顺其自然</span> 👍（3） 💬（0）<div>LSM树的合并过程是咋样的，还有分区是怎么分的，存储到不同节点上</div>2018-11-29</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKrAnvnf7bm30wuzkns2eLt15libqTv5ardAAQZNx67NuHPzib0kVXaFHGHE7IE19IiargjtWJgC9D9g/132" width="30px"><span>Geek_6580e3</span> 👍（2） 💬（0）<div>OLTP更适合mysql数据库，hbase只有在根据rowkey查询的时候效率才高，使用中需要借助es建立二级索引来加速</div>2021-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/08/1c/ef15e661.jpg" width="30px"><span> 臣馟飞扬</span> 👍（2） 💬（3）<div>hadoop中已经存在hdfs了，应用程序读写直接跟hdfs交互就可以了，为什么还会再出现hbase呢？</div>2020-02-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/8b/3c/0462eca7.jpg" width="30px"><span>Tomcat</span> 👍（2） 💬（0）<div>批处理是对历史大量数据的离线计算处理，而流计算则是对实时流入的数据进行实时响应。
 
-![](https://static001.geekbang.org/resource/image/9f/f7/9f4220274ef0a6bcf253e8d012a6d4f7.png?wh=1396*454)
+Storm模仿消息队列的处理方式，并进行了也许和技术的抽象，使得业务和技术分离，这是一种典型的架构设计方式。而且，storm 也采用了主从架构默契，很好的贯彻了分布式的典型思路。
 
-HRegion是HBase负责数据存储的主要进程，应用程序对数据的读写操作都是通过和HRegion通信完成。上面是HBase架构图，我们可以看到在HBase中，数据以HRegion为单位进行管理，也就是说应用程序如果想要访问一个数据，必须先找到HRegion，然后将数据读写操作提交给HRegion，由 HRegion完成存储层面的数据操作。
+Spark Stream 主要是使用了Spark Stream 的数据分段作用，如果在分片的时间足够短，那么数据就不会太大，然后将分段分片后的少量数据，提交给Spark 处理，就会在毫秒级得到结果。
 
-HRegionServer是物理服务器，每个HRegionServer上可以启动多个HRegion实例。当一个 HRegion中写入的数据太多，达到配置的阈值时，一个HRegion会分裂成两个HRegion，并将HRegion在整个集群中进行迁移，以使HRegionServer的负载均衡。
-
-每个HRegion中存储一段Key值区间\[key1, key2)的数据，所有HRegion的信息，包括存储的Key值区间、所在HRegionServer地址、访问端口号等，都记录在HMaster服务器上。为了保证HMaster的高可用，HBase会启动多个HMaster，并通过ZooKeeper选举出一个主服务器。
-
-下面是一张调用时序图，应用程序通过ZooKeeper获得主HMaster的地址，输入Key值获得这个Key所在的HRegionServer地址，然后请求HRegionServer上的HRegion，获得所需要的数据。
-
-![](https://static001.geekbang.org/resource/image/9f/ab/9fd982205b06ecd43053202da2ae08ab.png?wh=1406*600)
-
-数据写入过程也是一样，需要先得到HRegion才能继续操作。HRegion会把数据存储在若干个HFile格式的文件中，这些文件使用HDFS分布式文件系统存储，在整个集群内分布并高可用。当一个HRegion中数据量太多时，这个HRegion连同HFile会分裂成两个HRegion，并根据集群中服务器负载进行迁移。如果集群中有新加入的服务器，也就是说有了新的HRegionServer，由于其负载较低，也会把HRegion迁移过去并记录到HMaster，从而实现HBase的线性伸缩。
-
-先小结一下上面的内容，HBase的核心设计目标是解决海量数据的分布式存储，和Memcached这类分布式缓存的路由算法不同，HBase的做法是按Key的区域进行分片，这个分片也就是HRegion。应用程序通过HMaster查找分片，得到HRegion所在的服务器HRegionServer，然后和该服务器通信，就得到了需要访问的数据。
-
-## HBase可扩展数据模型
-
-传统的关系数据库为了保证关系运算（通过SQL语句）的正确性，在设计数据库表结构的时候，需要指定表的schema也就是字段名称、数据类型等，并要遵循特定的设计范式。这些规范带来了一个问题，就是僵硬的数据结构难以面对需求变更带来的挑战，有些应用系统设计者通过预先设计一些冗余字段来应对，但显然这种设计也很糟糕。
-
-那有没有办法能够做到可扩展的数据结构设计呢？不用修改表结构就可以新增字段呢？当然有的，许多NoSQL数据库使用的列族（ColumnFamily）设计就是其中一个解决方案。列族最早在Google的BigTable中使用，这是一种面向列族的稀疏矩阵存储格式，如下图所示。
-
-![](https://static001.geekbang.org/resource/image/74/6f/74b3aac940abae8a571cc94f2226656f.png?wh=1188*210)
-
-这是一个学生的基本信息表，表中不同学生的联系方式各不相同，选修的课程也不同，而且将来还会有更多联系方式和课程加入到这张表里，如果按照传统的关系数据库设计，无论提前预设多少冗余字段都会捉襟见肘、疲于应付。
-
-而使用支持列族结构的NoSQL数据库，在创建表的时候，只需要指定列族的名字，无需指定字段（Column）。那什么时候指定字段呢？可以在数据写入时再指定。通过这种方式，数据表可以包含数百万的字段，这样就可以随意扩展应用程序的数据结构了。并且这种数据库在查询时也很方便，可以通过指定任意字段名称和值进行查询。
-
-HBase这种列族的数据结构设计，实际上是把字段的名称和字段的值，以Key-Value的方式一起存储在HBase中。实际写入的时候，可以随意指定字段名称，即使有几百万个字段也能轻松应对。
-
-## HBase的高性能存储
-
-还记得专栏第5期讲RAID时我留给你的思考题吗？当时很多同学答得都很棒。传统的机械式磁盘的访问特性是 **连续读写很快，随机读写很慢**。这是因为机械磁盘靠电机驱动访问磁盘上的数据，电机要将磁头落到数据所在的磁道上，这个过程需要较长的寻址时间。如果数据不连续存储，磁头就要不停地移动，浪费了大量的时间。
-
-为了提高数据写入速度，HBase使用了一种叫作 **LSM树** 的数据结构进行数据存储。LSM树的全名是Log Structed Merge Tree，翻译过来就是Log结构合并树。数据写入的时候以Log方式连续写入，然后异步对磁盘上的多个LSM树进行合并。
-
-![](https://static001.geekbang.org/resource/image/5f/3b/5fbd17a9c0b9f1a10347a4473d00ad3b.jpg?wh=4411*1911)
-
-LSM树可以看作是一个N阶合并树。数据写操作（包括插入、修改、删除）都在内存中进行，并且都会创建一个新记录（修改会记录新的数据值，而删除会记录一个删除标志）。这些数据在内存中仍然还是一棵排序树，当数据量超过设定的内存阈值后，会将这棵排序树和磁盘上最新的排序树合并。当这棵排序树的数据量也超过设定阈值后，会和磁盘上下一级的排序树合并。合并过程中，会用最新更新的数据覆盖旧的数据（或者记录为不同版本）。
-
-在需要进行读操作时，总是从内存中的排序树开始搜索，如果没有找到，就从磁盘 上的排序树顺序查找。
-
-在LSM树上进行一次数据更新不需要磁盘访问，在内存即可完成。当数据访问以写操作为主，而读操作则集中在最近写入的数据上时，使用LSM树可以极大程度地减少磁盘的访问次数，加快访问速度。
-
-## 小结
-
-最后，总结一下我们今天讲的内容。HBase作为Google BigTable的开源实现，完整地继承了BigTable的优良设计。架构上通过数据分片的设计配合HDFS，实现了数据的分布式海量存储；数据结构上通过列族的设计，实现了数据表结构可以在运行期自定义；存储上通过LSM树的方式，使数据可以通过连续写磁盘的方式保存数据，极大地提高了数据写入性能。
-
-这些优良的设计结合Apache开源社区的高质量开发，使得HBase在NoSQL众多竞争产品中保持领先优势，逐步成为NoSQL领域最具影响力的产品。
-
-## 思考题
-
-HBase的列族数据结构虽然有灵活的优势，但是也有缺点。请你思考一下，列族结构的缺点有哪些？如何在应用开发的时候克服这些缺点？哪些场景最好还是使用MySQL这类关系数据库呢？
-
-欢迎你写下自己的思考或疑问，与我和其他同学一起讨论。如果你学完今天的内容有所收获的话，也欢迎你点击“请朋友读”，把今天的文章分享给你的朋友。
+Flink的主要思想则跟Spark 反过来，也就是说，在Flink的世界里，流是一等公民，而批处理只能退而其次。</div>2019-04-12</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKugZjntLzMGvDicZaX7pAuwNw3aneI2zZlicKh0fqsmmlJ9VRrSjBBJc1m8K6CPuV6WQuHic4zNZT8Q/132" width="30px"><span>Geek_vqdpe4</span> 👍（2） 💬（1）<div>根据老师的说法，LSM数据先是存储在内存中，当到达阈值的时候才会和磁盘合并（个人理解为序列化），当时如何保证断电的时候，内存中的数据会丢失的问题？</div>2018-12-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/43/96/5bbfc853.jpg" width="30px"><span>superMO潼</span> 👍（1） 💬（0）<div>实际应用中，为了列的动态扩展，一张表是不是只有一个列族。如果有多个列族，难免有当前列族不能包含新列的含义，能否动态增加列族</div>2020-09-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d9/71/9c134b18.jpg" width="30px"><span>李印</span> 👍（1） 💬（0）<div>列族存储，对于复杂的条件查询、数据筛选支持不足。还有就是数据的分组聚合、求和等的操作。</div>2018-12-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/63/a8/013965d6.jpg" width="30px"><span>风中有个肉做的人</span> 👍（1） 💬（0）<div>传统业务还是使用关系数据库，列结构没啥使用经验，想想聚合计算不方便</div>2018-12-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/cb/50/66d0bd7f.jpg" width="30px"><span>杰之7</span> 👍（1） 💬（0）<div>通过本节学习了代表NoSQL的Hbase,Hbase可通过HDFS分区对海量数据进行分布式存储，具有可伸缩的特性。同时，具有MySQL等关系数据库不具备的可拓展模型。Hbase通过LSM树结构满足高性能储存。最后，我认为关系数据库发展到今天依然是数据库的主流，具备了其他类型的数据库不具有的特征，所以NoSQL数据库是关系数据库的补充，而不是替代。</div>2018-12-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0e/cc/766a0e62.jpg" width="30px"><span>Q_x H!</span> 👍（1） 💬（1）<div>我也想知道lsm树是怎么合并的</div>2018-11-29</li><br/>
+</ul>

@@ -16,7 +16,6 @@ int main()
 {
   int a[sqr(3)];
 }
-
 ```
 
 想一想，这个代码合法吗？
@@ -34,7 +33,6 @@ int main()
   const int n = sqr(3);
   int a[n];
 }
-
 ```
 
 还有这个？
@@ -51,7 +49,6 @@ int main()
 {
   std::array<int, sqr(3)> a;
 }
-
 ```
 
 此外，我们前面模板元编程里的那些类里的 `static const int` 什么的，你认为它们能用在上面的几种情况下吗？
@@ -59,47 +56,18 @@ int main()
 如果以上问题你都知道正确的答案，那恭喜你，你对 C++ 的理解已经到了一个不错的层次了。但问题依然在那里：这些问题的答案不直观。并且，我们需要一个比模板元编程更方便的进行编译期计算的方法。
 
 在 C++11 引入、在 C++14 得到大幅改进的 `constexpr` 关键字就是为了解决这些问题而诞生的。它的字面意思是 constant expression，常量表达式。存在两类 `constexpr` 对象：
+<div><strong>精选留言（21）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/11/09/5c/b5d79d20.jpg" width="30px"><span>李亮亮</span> 👍（12） 💬（1）<div>我觉得我学习这个专栏只是为了能看懂这些新特性，写是写不出来，规则太多太复杂了。</div>2019-12-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/af/a6/3f15ba2f.jpg" width="30px"><span>czh</span> 👍（10） 💬（2）<div>老师好，有个小疑问，文中提到：
 
-- `constexpr` 变量（唉……😓）
-- `constexpr` 函数
+“上一讲的结尾，我们给出了一个在类型参数 C 没有 reserve 成员函数时不能编译的代码：”
 
-一个 `constexpr` 变量是一个编译时完全确定的常数。一个 `constexpr` 函数至少对于某一组实参可以在编译期间产生一个编译期常数。
 
-注意一个 `constexpr` 函数不保证在所有情况下都会产生一个编译期常数（因而也是可以作为普通函数来使用的）。编译器也没法通用地检查这点。编译器唯一强制的是：
+这里提到使用 if constexpr，可以解决上述问题。这里没有过多的解释，我理解是：使用if constexpr之后，如果没有reserve成员，那就会在编译期跳过这个if中的内容，因此不会检查container.reserve()。
 
-- `constexpr` 变量必须立即初始化
-- 初始化只能使用字面量或常量表达式，后者不允许调用任何非 `constexpr` 函数
+不知道理解是否正确？</div>2020-02-04</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/NyFOEueITjaGLpakMEuWAqVQjo1uDIXlpDdpCxXGfaWiaXzibLQ3WgOFCe8D9FvCmyjsGT7jDsLUbkt8jt2aVs9g/132" width="30px"><span>geek</span> 👍（2） 💬（2）<div>试着回答一下两个思考问题：
+1 我认为不用consexpr,就要用enable_if，类似于上一节的append方法那样，在有两种可能情况时，要写两个方法，做标签分发。这种方式的一个推广就是：有多少种可能，就要写多少个对应的分发方法。
+2 不用constexpr的缺点，就是代码冗余而且不易读。那么用constexpr的优点就是代码无冗余，易读。</div>2021-03-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/cd/a6/96cee976.jpg" width="30px"><span>Jerry Tan</span> 👍（2） 💬（5）<div>您好老师, 请问想学C++ 您有什么比较好的推荐的开发工具吗  谢谢 </div>2019-12-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/92/7c/12c571b6.jpg" width="30px"><span>Slience-0°C</span> 👍（1） 💬（1）<div>常量区分编译期？和运行期？</div>2022-02-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/92/7c/12c571b6.jpg" width="30px"><span>Slience-0°C</span> 👍（1） 💬（1）<div>老师好，现代C++如何优雅的定义字符串常量？直接使用const std::string var = &quot;xxxx &quot;有些静态代码检查工具会提示可能会抛出无法捕获的异常！</div>2022-02-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/c2/da/5818c896.jpg" width="30px"><span>心态正常</span> 👍（1） 💬（1）<div>吴老师，您好，有个问题想请教一下，文章开头的两个示例我在centos8上使用g++ 8.3.1的编译器编译通过了，因为没有用到constexpr的特性，预期在int a[n]这一行会报错，但是实际上并没有给出错误，这是编译器做了优化处理吗？</div>2021-04-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/f4/2b/f74346da.jpg" width="30px"><span>清水</span> 👍（1） 💬（1）<div>吴老师，你好，请教个问题
 
-`constexpr` 的实际规则当然稍微更复杂些，而且随着 C++ 标准的演进也有着一些变化，特别是对 `constexpr` 函数如何实现的要求在慢慢放宽。要了解具体情况包括其在不同 C++ 标准中的限制，可以查看参考资料 \[1\]。下面我们也会回到这个问题略作展开。
-
-拿 `constexpr` 来改造开头的例子，下面的代码就完全可以工作了：
-
-```c++
-#include <array>
-
-constexpr int sqr(int n)
-{
-  return n * n;
-}
-
-int main()
-{
-  constexpr int n = sqr(3);
-  std::array<int, n> a;
-  int b[n];
-}
-
-```
-
-要检验一个 `constexpr` 函数能不能产生一个真正的编译期常量，可以把结果赋给一个 `constexpr` 变量。成功的话，我们就确认了，至少在这种调用情况下，我们能真正得到一个编译期常量。
-
-## constexpr 和编译期计算
-
-上面这些当然有点用。但如果只有这点用的话，就不值得我专门来写一讲了。更强大的地方在于，使用编译期常量，就跟我们之前的那些类模板里的 `static const int` 变量一样，是可以进行编译期计算的。
-
-以 [\[第 13 讲\]](https://time.geekbang.org/column/article/181608) 提到的阶乘函数为例，和那个版本基本等价的写法是：
-
-```c++
 constexpr int factorial(int n)
 {
   if (n == 0) {
@@ -108,407 +76,99 @@ constexpr int factorial(int n)
     return n * factorial(n - 1);
   }
 }
-
-```
-
-然后，我们用下面的代码可以验证我们确实得到了一个编译期常量：
-
-```c++
-int main()
-{
-  constexpr int n = factorial(10);
-  printf("%d\n", n);
-}
-
-```
-
-编译可以通过，同时，如果我们看产生的汇编代码的话，一样可以直接看到常量 3628800。
-
-这里有一个问题：在这个 `constexpr` 函数里，是不能写 `static_assert(n >= 0)` 的。一个 `constexpr` 函数仍然可以作为普通函数使用——显然，传入一个普通 `int` 是不能使用静态断言的。替换方法是在 `factorial` 的实现开头加入：
-
-```c++
-  if (n < 0) {
-    throw std::invalid_argument(
-      "Arg must be non-negative");
-  }
-
-```
-
-如果你在 `main` 里写 `constexpr int n = factorial(-1);` 的话，就会看到编译器报告抛出异常导致无法得到一个常量表达式。建议你自己尝试一下。
-
-## constexpr 和 const
-
-初学 `constexpr` 时，一个很可能有的困惑是，它跟 `const` 用法上的区别到底是什么。产生这种困惑是正常的，毕竟 `const` 是个重载了很多不同含义的关键字。
-
-`const` 的原本和基础的含义，自然是表示它修饰的内容不会变化，如：
-
-```c++
-const int n = 1:
-n = 2;  // 出错！
-
-```
-
-注意 `const` 在类型声明的不同位置会产生不同的结果。对于常见的 `const char*` 这样的类型声明，意义和 `char const*` 相同，是指向常字符的指针，指针指向的内容不可更改；但和 `char * const` 不同，那代表指向字符的常指针，指针本身不可更改。本质上， `const` 用来表示一个 **运行时常量**。
-
-在 C++ 里， `const` 后面渐渐带上了现在的 `constexpr` 用法，也代表 **编译期常数**。现在——在有了 `constexpr` 之后——我们应该使用 `constexpr` 在这些用法中替换 `const` 了。从编译器的角度，为了向后兼容性， `const` 和 `constexpr` 在很多情况下还是等价的。但有时候，它们也有些细微的区别，其中之一为是否内联的问题。
-
-### 内联变量
-
-C++17 引入了内联（inline）变量的概念，允许在头文件中定义内联变量，然后像内联函数一样，只要所有的定义都相同，那变量的定义出现多次也没有关系。对于类的静态数据成员， `const` 缺省是不内联的，而 `constexpr` 缺省就是内联的。这种区别在你用 `&` 去取一个 `const int` 值的地址、或将其传到一个形参类型为 `const int&` 的函数去的时候（这在 C++ 文档里的行话叫 ODR-use），就会体现出来。
-
-下面是个合法的完整程序：
-
-```c++
-#include <iostream>
-
-struct magic {
-  static const int number = 42;
-};
-
-int main()
-{
-  std::cout << magic::number
-            << std::endl;
-}
-
-```
-
-我们稍微改一点：
-
-```c++
-#include <iostream>
-#include <vector>
-
-struct magic {
-  static const int number = 42;
-};
-
-int main()
-{
-  std::vector<int> v;
-  // 调用 push_back(const T&)
-  v.push_back(magic::number);
-  std::cout << v[0] << std::endl;
-}
-
-```
-
-程序在链接时就会报错了，说找不到 `magic::number`（注意：MSVC 缺省不报错，但使用标准模式—— `/Za` 命令行选项——也会出现这个问题）。这是因为 ODR-use 的类静态常量也需要有一个定义，在没有内联变量之前需要在某一个源代码文件（非头文件）中这样写：
-
-```c++
-const int magic::number;
-
-```
-
-必须正正好好一个，多了少了都不行，所以叫 one definition rule。内联函数，现在又有了内联变量，以及模板，则不受这条规则限制。
-
-修正这个问题的简单方法是把 `magic` 里的 `static const` 改成 `static constexpr` 或 `static inline const`。前者可行的原因是，类的静态 constexpr 成员变量默认就是内联的。const 常量和类外面的 constexpr 变量不默认内联，需要手工加 `inline` 关键字才会变成内联。
-
-### constexpr 变量模板
-
-变量模板是 C++14 引入的新概念。之前我们需要用类静态数据成员来表达的东西，使用变量模板可以更简洁地表达。 `constexpr` 很合适用在变量模板里，表达一个和某个类型相关的编译期常量。由此，type traits 都获得了一种更简单的表示方式。再看一下我们在 [\[第 13 讲\]](https://time.geekbang.org/column/article/181608) 用过的例子：
-
-```c++
-template <class T>
-inline constexpr bool
-  is_trivially_destructible_v =
-    is_trivially_destructible<
-      T>::value;
-
-```
-
-了解了变量也可以是模板之后，上面这个代码就很容易看懂了吧？这只是一个小小的语法糖，允许我们把 `is_trivially_destructible<T>::value` 写成 `is_trivially_destructible_v<T>`。
-
-### constexpr 变量仍是 const
-
-一个 `constexpr` 变量仍然是 const 常类型。需要注意的是，就像 `const char*` 类型是指向常量的指针、自身不是 const 常量一样，下面这个表达式里的 `const` 也是不能缺少的：
-
-```c++
+如果constexpr 修饰函数 这样是编译不过的，提示not a return-statement (至少c++11不行)
+没有尝试过是否其他编译器 多行编译 通过
+如果修改为一行表达式是没问题的，那么这是constexpr关键字 用法要求还是其他原因导致？</div>2021-01-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/9b/ee/211e86cd.jpg" width="30px"><span>talor</span> 👍（1） 💬（1）<div>您好，
 constexpr int a = 42;
-constexpr const int& b = a;
+constexpr const int&amp; b = a;
+这个例子编译不过，编译器是gcc 10.2.1</div>2020-08-30</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIQz0Micjv7w7z4vFcXvLSSzI3dVZLBDG83zfDWhMiaQqtkHzIWWSL276GqHGBRKWrR3xP5JjmhPpnA/132" width="30px"><span>g_boshu</span> 👍（1） 💬（1）<div>吴老师您好，我对以下代码有点儿疑惑：
 
-```
+&#47;&#47; Type trait to detect std::pair
+template &lt;typename T&gt;
+struct is_pair : std::false_type {};
+template &lt;typename T, typename U&gt;
+struct is_pair&lt;std::pair&lt;T, U&gt;&gt;
+  : std::true_type {};
+template &lt;typename T&gt;
+inline constexpr bool is_pair_v =
+  is_pair&lt;T&gt;::value;
 
-第二行里， `constexpr` 表示 `b` 是一个编译期常量， `const` 表示这个引用是常量引用。去掉这个 `const` 的话，编译器就会认为你是试图将一个普通引用绑定到一个常数上，报一个类似下面的错误信息：
+template &lt;typename T, typename U&gt;
+struct is_pair&lt;std::pair&lt;T, U&gt;&gt;: std::true_type {}; 看着应该是一个偏特化，模板的参数却变多了，一般偏特化不应该是参数变少吗？谢谢</div>2020-04-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/bc/25/1c92a90c.jpg" width="30px"><span>tt</span> 👍（1） 💬（1）<div>文中一开始用constexpr
+改造的例子，之所以可以，一定是在使用constexpr的地方“就地”调用了赋值运算符右侧的函数，这样才能得到一个编译期的常量，所以，“内联”是constexpr的应有之意。但是在类外，必须加上inline才可以。
 
-> **error:** binding reference of type ‘ **int&**’ to ‘ **const int**’ discards qualifiers
+const本质是一个运行时常量，constexpr才是编译期常数，除了内联展开这个含义，再根据文中ODR的表述，说明constexpr变量是切实分配了内存空间的，是一个左值对象。综合上面的考虑，constexpr意味着被声明的对象是存放在数据段里面的。
 
-如果按照 const 位置的规则， `constexpr const int& b` 实际该写成 `const int& constexpr b`。不过， `constexpr` 不需要像 `const` 一样有复杂的组合，因此永远是写在类型前面的。
 
-## constexpr 构造函数和字面类型
+constexpr 变量模板表达一个和某个类型相关的编译期常量，让变量也可以是模板，这句话在本课中，我觉得理解成“把模板对象用一个变量命名”更合适，即把所有符号都绑定到了一个实体上，这样if constexpr才变得可行。解决了上一讲中说的c++中不能像Python一样写代码的问题。</div>2019-12-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2e/4c/08/96c8318a.jpg" width="30px"><span>Chillstep</span> 👍（0） 💬（1）<div>老师您好，这一段我发现有一些疑问：&quot;这是因为 ODR-use 的类静态常量也需要有一个定义，在没有内联变量之前需要在某一个源代码文件（非头文件）中这样写：const int magic::number = 42;  &quot;这一段我实验了下发现并不能过编译，我认为number已经是const的，应该是没办法在赋值的了，这里应该只需要const int magic::number;即可，这样是可以过编译的。</div>2022-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/36/2e/376a3551.jpg" width="30px"><span>ano</span> 👍（0） 💬（1）<div>老师，我想请教一下。一个 function 标记为 inline, 但如果 function body 中有循环的话，编译器就不会在这个函数的调用处 inline? 编译器是出于什么考虑，不做这个 inline?</div>2021-10-18</li><br/><li><img src="" width="30px"><span>常振华</span> 👍（0） 💬（1）<div>
+&#47;&#47; Type trait to detect std::pair
+template &lt;typename T&gt;
+struct is_pair : std::false_type {};
+template &lt;typename T, typename U&gt;
+struct is_pair&lt;std::pair&lt;T, U&gt;&gt;
+  : std::true_type {};
+template &lt;typename T&gt;
+inline constexpr bool is_pair_v =
+  is_pair&lt;T&gt;::value;
 
-一个合理的 `constexpr` 函数，应当至少对于某一组编译期常量的输入，能得到编译期常量的结果。为此，对这个函数也是有些限制的：
-
-- 最早， `constexpr` 函数里连循环都不能有，但在 C++14 放开了。
-- 目前， `constexpr` 函数仍不能有 `try … catch` 语句和 `asm` 声明，但到 C++20 会放开。
-- `constexpr` 函数里不能使用 `goto` 语句。
-- 等等。
-
-一个有意思的情况是一个类的构造函数。如果一个类的构造函数里面只包含常量表达式、满足对 `constexpr` 函数的限制的话（这也意味着，里面不可以有任何动态内存分配），并且类的析构函数是平凡的，那这个类就可以被称为是一个字面类型。换一个角度想，对 `constexpr` 函数——包括字面类型构造函数——的要求是，得让编译器能在编译期进行计算，而不会产生任何“副作用”，比如内存分配、输入、输出等等。
-
-为了全面支持编译期计算，C++14 开始，很多标准类的构造函数和成员函数已经被标为 `constexpr`，以便在编译期使用。当然，大部分的容器类，因为用到了动态内存分配，不能成为字面类型。下面这些不使用动态内存分配的字面类型则可以在常量表达式中使用：
-
-- `array`
-- `initializer_list`
-- `pair`
-- `tuple`
-- `string_view`
-- `optional`
-- `variant`
-- `bitset`
-- `complex`
-- `chrono::duration`
-- `chrono::time_point`
-- …
-
-下面这个玩具例子，可以展示上面的若干类及其成员函数的行为：
-
-```c++
-#include <array>
-#include <iostream>
-#include <memory>
-#include <string_view>
-
-using namespace std;
+is_pair模板并没有定义value成员啊，为什么可以::value？</div>2021-10-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/7d/a1/46c5293c.jpg" width="30px"><span>yuchen</span> 👍（0） 💬（2）<div>template &lt;typename T&gt;
+struct is_pair : std::false_type {};
+template &lt;typename T, typename U&gt;
+struct is_pair&lt;std::pair&lt;T, U&gt;&gt;
+  : std::true_type {};
+template &lt;typename T&gt;
+inline constexpr bool is_pair_v =
+  is_pair&lt;T&gt;::value;
+吴老师好，请问这里template &lt;typename T, typename U&gt;
+struct is_pair&lt;std::pair&lt;T, U&gt;&gt;是特化还是偏特化呢？</div>2020-08-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/7c/34/cd10f00b.jpg" width="30px"><span>O</span> 👍（0） 💬（1）<div>老师好，我想问一下，想容器嵌套类似vector&lt;vector&lt;&gt;&gt;之类的，output如何判断</div>2020-07-16</li><br/><li><img src="" width="30px"><span>zKerry</span> 👍（0） 💬（1）<div>
+int sqr(int n)
+{
+  return n * n;
+}
 
 int main()
 {
-  constexpr string_view sv{"hi"};
-  constexpr pair pr{sv[0], sv[1]};
-  constexpr array a{pr.first, pr.second};
-  constexpr int n1 = a[0];
-  constexpr int n2 = a[1];
-  cout << n1 << ' ' << n2 << '\n';
+  const int n = sqr(3);
+  int a[n)];
+}
+其中：int a[n)] 没有问题？</div>2020-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/21/4d/90ea92f8.jpg" width="30px"><span>光城~兴</span> 👍（0） 💬（3）<div>对老师的输出函数进行修改：如下
+
+template&lt;typename T, typename Cont&gt;
+auto output_element(std::ostream &amp;os, const T &amp;element,
+                    const Cont &amp;)
+-&gt; typename std::enable_if&lt;is_pair&lt;typename Cont::value_type&gt;::value, bool&gt;::type {
+    os &lt;&lt; element.first &lt;&lt; &quot; =&gt; &quot; &lt;&lt; element.second;
+    return true;
 }
 
-```
-
-编译器可以在编译期即决定 `n1` 和 `n2` 的数值；从最后结果的角度，上面程序就是输出了两个整数而已。
-
-## if constexpr
-
-上一讲的结尾，我们给出了一个在类型参数 `C` 没有 `reserve` 成员函数时不能编译的代码：
-
-```c++
-template <typename C, typename T>
-void append(C& container, T* ptr,
-            size_t size)
-{
-  if (has_reserve<C>::value) {
-    container.reserve(
-      container.size() + size);
-  }
-  for (size_t i = 0; i < size;
-       ++i) {
-    container.push_back(ptr[i]);
-  }
+template&lt;typename T, typename Cont&gt;
+auto output_element(std::ostream &amp;os, const T &amp;element,
+                    const Cont &amp;)
+-&gt; typename std::enable_if&lt;!is_pair&lt;typename Cont::value_type&gt;::value, bool&gt;::type {
+    os &lt;&lt; element;
+    return false;
 }
 
+调用处：
+output_element(os, elem, container);
+
+这个方法学习自老师之前讲过的SFINAE！
+
+另外，针对老师的代码有些疑问：
+老师代码调用处：
+output_element(os, *it, container, is_pair&lt;element_type&gt;());
+实际上在这里就确定了element_type是不是pair，也就是这里传递进去直接就是true_type或者false_type，针对,map&#47;vector&#47;set等直接就可以区分开来，不需要写：std::declval&lt;typename Cont::key_type&gt;()。
+也是可以正常完成输出的，但是当传递的是true_type且容器没有key_type的时候就是SFINAE问题，调用另一个重载函数。
+问题是，一个容器元素是pair，那么is_pair&lt;element_type&gt;()就是true_type，而既然是pair了，也就有了key_type，所以这个必然成立，也就是写与不写都可以。另外，当不是pair，就是false_type，肯定调false_type的output_element重载咯，所以我得出这里写这个std::declval&lt;typename Cont::key_type&gt;()没有啥子用，并且代码测试过确实可以不写，望老师指点！</div>2020-01-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/21/4d/90ea92f8.jpg" width="30px"><span>光城~兴</span> 👍（0） 💬（1）<div>constexpr变量仍是const这一块的例子：
+```cpp
+constexpr int a = 42;
+constexpr const int&amp; b = a;
 ```
-
-在 C++17 里，我们只要在 `if` 后面加上 `constexpr`，代码就能工作了 \[2\]。当然，它要求括号里的条件是个编译期常量。满足这个条件后，标签分发、 `enable_if` 那些技巧就不那么有用了。显然，使用 `if constexpr` 能比使用其他那些方式，写出更可读的代码……
-
-## output\_container.h 解读
-
-到了今天，我们终于把 output\_container.h（\[3\]）用到的 C++ 语法特性都讲过了，我们就拿里面的代码来讲解一下，让你加深对这些特性的理解。
-
-```c++
-// Type trait to detect std::pair
-template <typename T>
-struct is_pair : std::false_type {};
-template <typename T, typename U>
-struct is_pair<std::pair<T, U>>
-  : std::true_type {};
-template <typename T>
-inline constexpr bool is_pair_v =
-  is_pair<T>::value;
-
-```
-
-这段代码利用模板特化（ [\[第 12 讲\]](https://time.geekbang.org/column/article/179363) 、 [\[第 14 讲\]](https://time.geekbang.org/column/article/181636)）和 `false_type`、 `true_type` 类型（ [\[第 13 讲\]](https://time.geekbang.org/column/article/181608)），定义了 `is_pair`，用来检测一个类型是不是 `pair`。随后，我们定义了内联 `constexpr` 变量（本讲） `is_pair_v`，用来简化表达。
-
-```c++
-// Type trait to detect whether an
-// output function already exists
-template <typename T>
-struct has_output_function {
-  template <class U>
-  static auto output(U* ptr)
-    -> decltype(
-      std::declval<std::ostream&>()
-        << *ptr,
-      std::true_type());
-  template <class U>
-  static std::false_type
-  output(...);
-  static constexpr bool value =
-    decltype(
-      output<T>(nullptr))::value;
-};
-template <typename T>
-inline constexpr bool
-  has_output_function_v =
-    has_output_function<T>::value;
-
-```
-
-这段代码使用 SFINAE 技巧（ [\[第 14 讲\]](https://time.geekbang.org/column/article/181636)），来检测模板参数 `T` 的对象是否已经可以直接输出到 `ostream`。然后，一样用一个内联 `constexpr` 变量来简化表达。
-
-```c++
-// Output function for std::pair
-template <typename T, typename U>
-std::ostream& operator<<(
-  std::ostream& os,
-  const std::pair<T, U>& pr);
-
-```
-
-再然后我们声明了一个 `pair` 的输出函数（标准库没有提供这个功能）。我们这儿只是声明，是因为我们这儿有两个输出函数，且可能互相调用。所以，我们要先声明其中之一。
-
-下面会看到， `pair` 的通用输出形式是“(x, y)”。
-
-```c++
-// Element output function for
-// containers that define a key_type
-// and have its value type as
-// std::pair
-template <typename T, typename Cont>
-auto output_element(
-  std::ostream& os,
-  const T& element, const Cont&,
-  const std::true_type)
-  -> decltype(
-    std::declval<
-      typename Cont::key_type>(),
-    os);
-// Element output function for other
-// containers
-template <typename T, typename Cont>
-auto output_element(
-  std::ostream& os,
-  const T& element, const Cont&,
-  ...) -> decltype(os);
-
-```
-
-对于容器成员的输出，我们也声明了两个不同的重载。我们的意图是，如果元素的类型是 `pair` 并且容器定义了一个 `key_type` 类型，我们就认为遇到了关联容器，输出形式为“x => y”（而不是“(x, y)”）。
-
-```c++
-// Main output function, enabled
-// only if no output function
-// already exists
-template <
-  typename T,
-  typename = std::enable_if_t<
-    !has_output_function_v<T>>>
-auto operator<<(std::ostream& os,
-                const T& container)
-  -> decltype(container.begin(),
-              container.end(), os)
-…
-
-```
-
-主输出函数的定义。注意这儿这个函数的启用有两个不同的 SFINAE 条件：
-
-- 用 `decltype` 返回值的方式规定了被输出的类型必须有 `begin()` 和 `end()` 成员函数。
-- 用 `enable_if_t` 规定了只在被输出的类型没有输出函数时才启用这个输出函数。否则，对于 `string` 这样的类型，编译器发现有两个可用的输出函数，就会导致编译出错。
-
-我们可以看到，用 `decltype` 返回值的方式比较简单，不需要定义额外的模板。但表达否定的条件还是要靠 `enable_if`。此外，因为此处是需要避免有二义性的重载，constexpr 条件语句帮不了什么忙。
-
-```c++
-  using element_type =
-    decay_t<decltype(
-      *container.begin())>;
-  constexpr bool is_char_v =
-    is_same_v<element_type, char>;
-  if constexpr (!is_char_v) {
-    os << "{ ";
-  }
-
-```
-
-对非字符类型，我们在开始输出时，先输出“{ ”。这儿使用了 `decay_t`，是为了把类型里的引用和 const/volatile 修饰去掉，只剩下值类型。如果容器里的成员是 `char`，这儿会把 `char&` 和 `const char&` 还原成 `char`。
-
-后面的代码就比较简单了。可能唯一需要留意的是下面这句：
-
-```c++
-  output_element(
-    os, *it, container,
-    is_pair<element_type>());
-
-```
-
-这儿我们使用了标签分发技巧来输出容器里的元素。要记得， `output_element` 不纯粹使用标签分发，还会检查容器是否有 `key_type` 成员类型。
-
-```c++
-template <typename T, typename Cont>
-auto output_element(
-  std::ostream& os,
-  const T& element, const Cont&,
-  const std::true_type)
-  -> decltype(
-    std::declval<
-      typename Cont::key_type>(),
-    os)
-{
-  os << element.first << " => "
-     << element.second;
-  return os;
-}
-
-template <typename T, typename Cont>
-auto output_element(
-  std::ostream& os,
-  const T& element, const Cont&,
-  ...) -> decltype(os)
-{
-  os << element;
-  return os;
-}
-
-```
-
-`output_element` 的两个重载的实现都非常简单，应该不需要解释了。
-
-```c++
-template <typename T, typename U>
-std::ostream& operator<<(
-  std::ostream& os,
-  const std::pair<T, U>& pr)
-{
-  os << '(' << pr.first << ", "
-     << pr.second << ')';
-  return os;
-}
-
-```
-
-同样， `pair` 的输出的实现也非常简单。
-
-唯一需要留意的，是上面三个函数的输出内容可能还是容器，因此我们要将其实现放在后面，确保它能看到我们的通用输出函数。
-
-要看一下用到 output\_container 的例子，可以回顾 [\[第 4 讲\]](https://time.geekbang.org/column/article/173167) 和 [\[第 5 讲\]](https://time.geekbang.org/column/article/174434)。
-
-## 内容小结
-
-本讲我们介绍了编译期常量表达式和编译期条件语句，可以看到，这两种新特性对编译期编程有了很大的改进，可以让代码变得更直观。最后我们讨论了我们之前用到的容器输出函数 output\_container 的实现，里面用到了多种我们目前讨论过的编译期编程技巧。
-
-## 课后思考
-
-请你仔细想一想：
-
-1. 如果没有 constexpr 条件语句，这个容器输出函数需要怎样写？
-2. 这种不使用 constexpr 的写法有什么样的缺点？推而广之，constexpr 条件语句的意义是什么？
-
-## 参考资料
-
-\[1\] cppreference.com, “constexpr specifier”. [https://en.cppreference.com/w/cpp/language/constexpr](https://en.cppreference.com/w/cpp/language/constexpr)
-
-\[1a\] cppreference.com, “constexpr 说明符”. [https://zh.cppreference.com/w/cpp/language/constexpr](https://zh.cppreference.com/w/cpp/language/constexpr)
-
-\[2\] cppreference.com, “if statement”, section “constexpr if”. [https://en.cppreference.com/w/cpp/language/if](https://en.cppreference.com/w/cpp/language/if)
-
-\[2a\] cppreference.com, “if 语句”, “constexpr if” 部分. [https://zh.cppreference.com/w/cpp/language/if](https://zh.cppreference.com/w/cpp/language/if)
-
-\[3\] 吴咏炜, output\_container. [https://github.com/adah1972/output\_container/blob/geektime/output\_container.h](https://github.com/adah1972/output_container/blob/geektime/output_container.h)
+第二行会报错 需要一个常量表达式
+去掉constexpr是不是更好？ 貌似对这一块解释没影响～
+</div>2020-01-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c4/eb/2285a345.jpg" width="30px"><span>花晨少年</span> 👍（0） 💬（2）<div>为什么文章开头提到的两个例子，都是合法的吗，编译运行都没问题。
+第一个例子理所当然的像应该有问题，但是仔细想了下，为什么要有问题呢，数据大小为什么就要编译器确定呢，运行期确定不行吗。而结果是确实没有问题，这里面的玄机是什么呢
+第二个例子应该是 int a[n];吧
+第二个例子是因为const常量的原因，编译器会强制sqr函数编译器运行特定参数吗
+</div>2020-01-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/6c/ea/e03fec22.jpg" width="30px"><span>泰伦卢</span> 👍（0） 💬（1）<div>如果没有consrexpr条件语句那输出函数就应该写两个吧，也是用sfinae，用那种enable_if形式，true or false</div>2019-12-30</li><br/>
+</ul>

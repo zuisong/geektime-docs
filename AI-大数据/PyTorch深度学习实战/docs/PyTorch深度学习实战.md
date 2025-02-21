@@ -14,8 +14,7 @@ PyTorch 框架发展迅猛，仅用了一年多的时间，几乎占据深度学
 
 ## 课程设计
 
-遵循由浅入深的原则，整个专栏共分为以下三个模块：
-
+遵循由浅入深的原则，整个专栏共分为以下三个模块：  
 ![](https://static001.geekbang.org/resource/image/03/70/035d86f2611c184d3e01baaceef14a70.jpg)
 
 **基础篇**：夯实基础，详解 PyTorch 基础知识。通过这部分内容，你将学习 PyTorch 中两大重要知识点—— NumPy 与Tensor 的用法。

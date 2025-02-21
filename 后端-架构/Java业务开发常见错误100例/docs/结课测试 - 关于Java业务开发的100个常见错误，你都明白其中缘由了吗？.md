@@ -6,4 +6,7 @@
 
 还等什么，点击下面按钮开始测试吧！
 
-[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142*201)](http://time.geekbang.org/quiz/intro?act_id=162&exam_id=368)
+[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142%2A201)](http://time.geekbang.org/quiz/intro?act_id=162&exam_id=368)
+<div><strong>精选留言（7）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/12/7b/57/a9b04544.jpg" width="30px"><span>QQ怪</span> 👍（4） 💬（0）<div>第一次70分有点低，时间感觉有点不够，后面飞快答题错了不少，还有很多不足，会继续加油！</div>2020-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/62/d5/1f5c5ab6.jpg" width="30px"><span>大大大熊myeh</span> 👍（3） 💬（0）<div>完结撒花🎉</div>2020-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/26/38/ef063dc2.jpg" width="30px"><span>Darren</span> 👍（2） 💬（0）<div>80分，还需要抽时间在多看2遍，😂</div>2020-06-01</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/zGUSFibP0OGFW9a3QSic1DZLr5B4kPoNmt3RibzLNYSOxN3mUZibBMkGHpwcYPFYWJ7v61wsMvyIKzpBuQJWD2hVOg/132" width="30px"><span>九时四</span> 👍（2） 💬（0）<div>需要反复学习理解，加强记忆，要不就白学了</div>2020-05-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2e/27/b4/df65c0f7.jpg" width="30px"><span>| ~浑蛋~</span> 👍（0） 💬（0）<div>85</div>2022-09-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/53/3d/1189e48a.jpg" width="30px"><span>微思</span> 👍（0） 💬（0）<div>75分，不满意～</div>2021-08-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/8b/4b/15ab499a.jpg" width="30px"><span>风轻扬</span> 👍（0） 💬（1）<div>老师是如何看待技术的深度和广度的？什么时间增加广度，什么时间增加深度呢？我是做项目业务的，遇到的问题很多，总想着能多增长点见识，后期再积累深度。老师怎么看？</div>2020-10-23</li><br/>
+</ul>

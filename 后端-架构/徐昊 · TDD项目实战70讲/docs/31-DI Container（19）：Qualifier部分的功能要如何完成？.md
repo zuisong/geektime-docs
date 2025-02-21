@@ -251,17 +251,17 @@ class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
         return context.get(ComponentRef.of(type)).get();
     }
 }
-
 ```
 
 任务列表的状态为：
 
 - 无需构造的组件——组件实例
-
 - 如果注册的组件不可实例化，则抛出异常
+  
   - 抽象类
   - 接口
 - 构造函数注入
+  
   - 无依赖的组件应该通过默认构造函数生成组件实例
   - 有依赖的组件，通过Inject标注的构造函数生成组件实例
   - 如果所依赖的组件也存在依赖，那么需要对所依赖的组件也完成依赖注入
@@ -270,16 +270,19 @@ class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
   - 如果组件需要的依赖不存在，则抛出异常
   - 如果组件间存在循环依赖，则抛出异常
 - 字段注入
+  
   - 通过Inject标注将字段声明为依赖组件
   - 如果字段为final则抛出异常
   - 依赖中应包含Inject Field声明的依赖
 - 方法注入
+  
   - 通过Inject标注的方法，其参数为依赖组件
   - 通过Inject标注的无参数方法，会被调用
   - 按照子类中的规则，覆盖父类中的Inject方法
   - 如果方法定义类型参数，则抛出异常
   - 依赖中应包含Inject Method声明的依赖
 - 对Provider类型的依赖
+  
   - 从容器中取得组件的Provider（新增任务）
   - 注入构造函数中可以声明对于Provider的依赖
   - 注入字段中可以声明对于Provider的依赖
@@ -288,48 +291,41 @@ class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
   - 将字段中的Provider加入依赖（新增任务）
   - 将方法中的Provider加入依赖（新增任务）
 - 自定义Qualifier的依赖
+  
   - 注册组件时，可额外指定Qualifier
+    
     - 针对instance指定一个Qualifieri（新增任务）
     - 针对组件指定一个Qualiifer（新增任务）
     - 针对instance指定多个Qualifieri（新增任务）
     - 针对组件指定多个Qualiifer（新增任务）
   - 注册组件时，如果不是合法的Qualifier，则不接受组件注册（新增任务）
   - 寻找依赖时，需同时满足类型与自定义Qualifier标注
+    
     - 在检查依赖时使用Qualifier（新增任务）
     - 在检查循环依赖时使用Qualifier（新增任务）
     - 构造函数注入可以使用Qualifier声明依赖（新增任务）
+      
       - 依赖中包含Qualifier（新增任务）
       - 如果不是合法的Qualifier，则组件非法
     - 字段注入可以使用Qualifier声明依赖（新增任务）
+      
       - 依赖中包含Qualifier（新增任务）
       - 如果不是合法的Qualifier，则组件非法
     - 函数注入可以使用Qualifier声明依赖（新增任务）
+      
       - 依赖中包含Qualifier（新增任务）
       - 如果不是合法的Qualifier，则组件非法
   - 支持默认Qualifier——Named（不需要）
   - 注册组件时，可从类对象上提取Qualifier（不需要）
 - Singleton生命周期
+  
   - 注册组件时，可额外指定是否为Singleton
   - 注册组件时，可从类对象上提取Singleton标注
   - 对于包含Singleton标注的组件，在容器范围内提供唯一实例
   - 容器组件默认不是Single生命周期
 - 自定义Scope标注
+  
   - 可向容器注册自定义Scope标注的回调
-
-## 视频演示
-
-让我们进入今天的部分：
-
-## 思考题
-
-要如何对代码和测试进行重构？
-
-**编辑来信**：
-
-> 第二期“TDD·代码评点”活动启动啦！为了帮助你更平滑地过渡到第三个实战项目，徐老师发起了代码评点活动。
->
-> 你可以填写 [学习问卷](https://jinshuju.net/f/fnh84B) 提交项目代码，而后，徐老师会一一查看，并进行评点与答疑。关于评点的详细内容，我们也将制成加餐展示在专栏里，供其他同学学习与参考。
->
-> 请注意，此次收集时间截至5月27日晚上12点。此外，我也会从中选出1-2位同学，送出《重构与模式》一书。请抓紧上车，入股不亏哦！
-
-欢迎把你的想法分享在留言区，也欢迎把你的项目代码的链接分享出来。相信经过你的思考与实操，学习效果会更好！
+<div><strong>精选留言（2）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/10/65/21/101a7075.jpg" width="30px"><span>davix</span> 👍（0） 💬（0）<div>contructor&#47;field&#47;method有時test case都幾乎一樣，copy&#47;paste再改改就行，老師總還是手敲，是有意的嗎？</div>2022-08-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（0）<div>原来修改代码的时候选择简单方便的就行，不用严格遵守规范（视频中最后一个示例）</div>2022-05-22</li><br/>
+</ul>

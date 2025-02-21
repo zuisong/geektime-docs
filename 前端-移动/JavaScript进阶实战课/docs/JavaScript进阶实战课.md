@@ -1,12 +1,12 @@
 现在，JavaScript早已不是当年的一个脚本语言，随着Web应用和Node.js的兴起、函数式编程的复兴，以及响应式编程开始进入人们视野，让JavaScript看上去更“专业”了。虽然和十几年前相比较，JavaScript也加入了很多功能和语法糖，但是它的核心原理并没有太大变化。
 
-可即使没有太多本质上的变化，JavaScript也仍然具有 **容易入门但难以进阶** 的问题。
+可即使没有太多本质上的变化，JavaScript也仍然具有**容易入门但难以进阶**的问题。
 
 造成这个问题的原因主要有两个：一是早期写JavaScript的很多程序员的编程基础并不扎实，知识点很杂，导致大家对JS的理解不够深入；二是后来入局的一些大咖，很多都是从其它语言转来的，他们认为一些知识没法分享和讲解。
 
-这就使得JavaScript的开发者两极分化很严重， **一部分一直停留在入门级，一部分出道即巅峰。**
+这就使得JavaScript的开发者两极分化很严重，**一部分一直停留在入门级，一部分出道即巅峰。**
 
-所以，我们邀请了 [JavaScript Patterns and Anti-Patterns](http://shichuan.github.io/javascript-patterns/) 等开源项目的创建者石川老师，来帮你化解学习难题。石川设计这门课的初衷，就是让学习JavaScript的你，能够对这个一开始比较不那么“专业”的语言，有一个系统的专业理解。帮助你一步一个脚印，把点连成线，把线连成面，把面搭建起一座空间立体的“思维大厦”。
+所以，我们邀请了[JavaScript Patterns and Anti-Patterns](http://shichuan.github.io/javascript-patterns/)等开源项目的创建者石川老师，来帮你化解学习难题。石川设计这门课的初衷，就是让学习JavaScript的你，能够对这个一开始比较不那么“专业”的语言，有一个系统的专业理解。帮助你一步一个脚印，把点连成线，把线连成面，把面搭建起一座空间立体的“思维大厦”。
 
 ![](https://static001.geekbang.org/resource/image/11/4d/1178f724ae7909fdb7fbb8170856e44d.jpg)
 

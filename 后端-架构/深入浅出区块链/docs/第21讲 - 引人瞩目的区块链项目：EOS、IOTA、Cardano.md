@@ -33,11 +33,11 @@ DPoS其实是BM参照现实世界中的议会制度而设计的共识算法。DP
 如何促进呢？BM在EOS中强化了DPoS算法的投票机制，并首次提出了区块链宪法的概念，我们可以直接引用EOS技术白皮书中的内容来一探究竟。
 
 > EOS.IO 应用使得区块链创建了一个点对点的服务条款协议或者绑定用户到一个合约，这都需要用户对其签名，简称“宪法”。
->
+> 
 > 宪法的内容定义了仅仅依靠代码无法在用户间履行义务，同时通过建立管辖权和可选的法律来解决相互间的争端。
->
+> 
 > 每个在网络广播的交易都必须将宪法的哈希值作为签名的一部分，从而显性地将签名者绑定在合约中。
->
+> 
 > 宪法还定义了人类可读意图的源代码协议。 这个意图是用来识别错误和功能之间的差异，当错误发生时，引导社区对什么是适当或不当修复。
 
 可以看出区块链宪法是一种非代码强制执行的规则，有点像我们安装软件时的“同意”协议，所以它更像是一种人为承诺，为了弥补DPoS较弱的抵抗恶意规则的缺陷。
@@ -57,87 +57,16 @@ BM对此也给了回应，BM表示自己的目标是降低创建社区的准入�
 他也认为善良是主观的，而且每个社区都能定义持有什么样的价值观是好人，并积极驱逐他们所认为的坏人。
 
 Vitalik和BM都相互发文怒“怼”对方，但是总的来说，Vitalik和BM这种公开讨论推进了区块链行业的发展，给人们带来了更多哲学和设计原则上的思考。我在附录中给出了社区翻译版文章，你可以进行查询。
-
-## 埃欧塔IOTA
-
-IOTA是一个为了物联网（IoT)而生的区块链项目。严格来说，IOTA不是“区块链”，因为它没有区块，也不是链式结构。
-
-IOTA提出了一种基于有向无环图（DAG）的分布式账本结构，这种结构IOTA将其命名为The Tangle，探戈。
-
-![](https://static001.geekbang.org/resource/image/62/8c/62120dfb723cb9fc0920a6875aec598c.png?wh=474*410)
-
-上图是常见区块链账本结构，而下图展示了Tangle的账本结构。
-
-![](https://static001.geekbang.org/resource/image/32/30/32890808ef65fffee1ee0d975f595830.png?wh=1196*534)
-
-我们来看看这两张图的区别，首先区块链账本结构的打包单位是区块，而Tangle直接就是交易，或者或“交易引用”。
-
-任意交易Tx-black会引用过去的两条交易记录，这样被引用的交易Tx-purple相当于有了一次确认，间接地证明了合法性，随着一次又一次的被引用，Tx-purple会转变成Tx-green。
-
-1. Tx-black相当于图种的黑色图块，代表未确认的交易；
-2. Tx-purple相当于紫色图块，代表已确认但还未成熟的交易；
-3. Tx-green相当于是绿色图块，代表已确认已成熟的交易，是可信的。
-
-也就是说，我们发送交易的目标是成本绿色部分的交易，成为绿色部分的交易，可信度是可以计算的，面对不同的交易场景，可信度可以设置为51%，90%或者百分之百。
-
-那么说，如何计算这种可信度呢？
-
-IOTA上的共识算法叫做MCMC算法，它可以任意选择黑色部分的两笔交易，进行引用。
-
-我们回到DAG的结构中，我们发现每一个绿色的交易都会有一条从黑色起始位置通往它的路径，那么你这笔交易的可信程度就可以很容易计算。
-
-例如我们执行MCMC算法N次，这笔交易被全网接受的概率就是M/N，其中M就是能从底部通往这笔交易的数量。
-
-Tangle结构和MCMC共识是非常具有吸引力的，它也带来了以下特性。
-
-1. 0交易费：由于没有记账节点，目前没有考虑设置交易费。
-2. 水平扩容：由于Tangle的结构不涉及记账节点，交易吞吐可以随着规模大容量也跟着提升。
-3. 分区再合并：由于不是单链结构，私下记账以后也可以合并到Tangle账本中，不存在分叉这一说。
-
-IOTA的Tangle账本结构，为区块链技术带来了新的视角，这也是它吸引人的关键。
-
-## 卡尔达诺Cardano
-
-卡尔达诺（Cardano）也是一个正在开发中的新一代区块链智能合约平台。
-
-卡尔达诺项目最大的特色是由理论研究主导，严格采用数学形式化验证的来证明严谨、安全性的区块链。
-
-卡尔达诺认为现阶段基础公链在无论在可规模化性（Scalability）、可互操作性（Interoperability）和可持续发展性（Sustainability）均存在不足，卡尔达诺希望进行概念和技术上的创新，最终解决上述三个方面问题。
-
-卡尔达诺的团队认为目前区块链面临着两个比较突出的问题：
-
-1.区块链协议的升级将会导致区块链分叉；
-2.区块链的水平扩容和垂直扩容能力不足。
-
-所以Cardano提出了分层架构理念，这似乎与传统IT架构模式：分层式架构模式有点像，卡尔达诺由两个层次组成。
-
-1. Settlement Layer清算层：卡尔达诺的代币ADA在该层流动，是整个系统的支付和清算的基础。
-2. Computation Layer 计算层：卡尔达诺将在计算层提供智能合约、身份认证、消息通信等等功能。
-
-相比于概念创新，卡尔达诺的团队研究了一种被命名为 Ouroboros 的算法，它其实也是PoS共识算法的变种，不同的是卡尔达诺团队为此提供了数学形式化证明，证明了它是高效、安全的共识算法。
-
-卡尔达诺是一种理论研究驱动实践的尝试，无论是两层设计，还是Ouroboros算法，都为区块链技术的发展提供了值得参考的视角。
-
-## 总结
-
-今天，我们介绍了EOS、IOTA、ADA三个受人瞩目的区块链项目，EOS和ADA都是致力于区块链去中心化的应用平台，IOTA致力于为物联网提供分布式账本。这些项目引领了区块链的发展方向，无论是技术层面还是市场层面，他们都是非常出色的。
-
-所以，你还可以想到那些技术或者市场做得出色的区块链项目呢？快来分享一下吧。感谢你的收听，我们下次再见。
-
-### 参考链接：
-
-1. [EOS.IO 技术白皮书](https://github.com/EOSIO/Documentation/blob/master/zh-CN/TechnicalWhitePaper.md)
-
-2. [https://github.com/EOSIO/eos/wiki](https://github.com/EOSIO/eos/wiki)
-
-3. [BM回怼V神：加密经济治理有局限，所以我选DPOS](https://mp.weixin.qq.com/s?__biz=MzU5MzQ5MDk5MA==&mid=2247483719&idx=1&sn=c225cd7ed63434b24255e5bc35b11622&chksm=fe0ee406c9796d1009ff002712fc9019cf4b2373cac89b28e0d8f7dbfde478648436db9a1fe3&scene=21#wechat_redirect)
-
-4. [V神回应BM：你说的没错，但我必须要提醒你](https://mp.weixin.qq.com/s?__biz=MzU5MzQ5MDk5MA==&mid=2247483727&idx=1&sn=09819643108cee1fdf117958b4963916&chksm=fe0ee40ec9796d18dc4a07240c94b3cd1fb1c9a00234861e057ed990502fcf349e0668668c6a&scene=21#wechat_redirect)
-
-5. [https://steemit.com/cn/@niking/iota](https://steemit.com/cn/@niking/iota)
-
-6. [https://docs.iota.org/introduction](https://docs.iota.org/introduction)
-
-7. [https://whycardano.com/cn/](https://whycardano.com/cn/)
-
-8. [https://iohk.io/blog/ouroboros-at-crypto-2017/](https://iohk.io/blog/ouroboros-at-crypto-2017/)
+<div><strong>精选留言（11）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/0f/94/d6/7a94e7e0.jpg" width="30px"><span>荔荔要去看世界</span> 👍（2） 💬（1）<div>只是介绍了基本情况。如果能更深度分析就更好了。自己再看的话，应该要结合白皮书</div>2018-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/50/95/824f60ae.jpg" width="30px"><span>小白</span> 👍（1） 💬（1）<div>技术白皮书宪法这一部分的翻译是用的 EOSLaomao 的版本吧，我参与了这个翻译，据我所知这段翻译还没有被 merge 到 EOS 的主分支上。</div>2018-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/62/ef/3874147e.jpg" width="30px"><span>徐蓒会   金鸟科技</span> 👍（1） 💬（1）<div>因为是小白一枚，一直默默听陈总讲课，今天是太兴奋了，有一种拔开云雾的感觉，谢谢！💐</div>2018-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/62/0a/26d00cb9.jpg" width="30px"><span>花子翁</span> 👍（1） 💬（1）<div>很棒的一篇文章，学习了、</div>2018-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7f/10/84a4caf6.jpg" width="30px"><span>徐威</span> 👍（1） 💬（1）<div>cosmos</div>2018-05-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/2f/f4/2dede51a.jpg" width="30px"><span>小老鼠</span> 👍（0） 💬（1）<div>EOS是不是有种中心化趋势了</div>2019-12-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/dd/1c/6ce66b48.jpg" width="30px"><span>Ricky</span> 👍（0） 💬（1）<div>除了EOS外，IOTA和ADA都持有。不知道为啥，总是觉得EOS有点虚</div>2018-08-20</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJicnNKApqG9U1eGs7TyNGVMOOLEwSV7fvaFM2F5VwS21XxT2yuW9VDianJbjW1WgyiaSc4baJtCCZ0w/132" width="30px"><span>尼古拉斯德彪</span> 👍（1） 💬（0）<div>概念太多了，有点消化不过来</div>2022-04-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/62/54/cd487e91.jpg" width="30px"><span>有风的林子</span> 👍（1） 💬（0）<div>宪法～～一个有意思的设计。</div>2018-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b8/3c/1a294619.jpg" width="30px"><span>Panda</span> 👍（0） 💬（0）<div>EOS 现在依然不火,  是因为他违反了区块链的共识  去中心化   P2P   而不是民主代议</div>2021-05-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/g1icQRbcv1QvJ5U8Cqk0ZqMH5PcMTXcZ8TpS5utE4SUzHcnJA3FYGelHykpzTfDh55ehE8JO9Zg9VGSJW7Wxibxw/132" width="30px"><span>杨家荣</span> 👍（0） 💬（0）<div>极客时间第二期
+21天打卡行动 19&#47;21
+&lt;&lt;深入浅出区块链21&gt;&gt;EOS、IOTA、Cardano
+今日所学:
+1,EOS 全称 EOS.IO 软件，EOS 也是 EOS.IO 上的平台代币缩写，它暂时没有准确的中文翻译，中文社区把 EOS 叫柚子，这一点其实得益于 EOS 的发音与水果“柚子”相近。
+2,EOS 是一个以太坊的竞争型区块链，它提供了全新的区块链架构，使得去中心化平台水平扩容和垂直扩容都成为了可能;
+3,DPoS 其实是 BM 参照现实世界中的议会制度而设计的共识算法。DPoS 的核心理念其实是投票，它的设计理念是延迟性惩罚，它假设参与者绝大部分都是没有恶意的。
+4,EOS 的争议:Vitalik 针对 EOS 超级节点竞选发表过意见。他认为 21 个节点的 DPoS 虽然引入了治理结构，但也很容易受到选民和持币大户的操纵，最终导致“财阀统治型”的治理结构;
+5,埃欧塔 IOTA;IOTA 是一个为了物联网（IoT) 而生的区块链项目。严格来说，IOTA 不是“区块链”，因为它没有区块，也不是链式结构。
+6,Tangle 结构和 MCMC 共识是非常具有吸引力的，它也带来了以下特性:0 交易费,水平扩容,分区再合并;
+7,卡尔达诺 Cardano项目最大的特色是由理论研究主导，严格采用数学形式化验证的来证明严谨、安全性的区块链。</div>2020-01-24</li><br/>
+</ul>

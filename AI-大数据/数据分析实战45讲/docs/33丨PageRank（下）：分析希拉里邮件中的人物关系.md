@@ -3,11 +3,8 @@
 今天我们就来做一个关于PageRank算法的实战，在这之前，你需要思考三个问题：
 
 1. 如何使用工具完成PageRank算法，包括使用工具创建网络图，设置节点、边、权重等，并通过创建好的网络图计算节点的PR值；
-
 2. 对于一个实际的项目，比如希拉里的9306封邮件（工具包中邮件的数量），如何使用PageRank算法挖掘出有影响力的节点，并且绘制网络图；
-
 3. 如何对创建好的网络图进行可视化，如果网络中的节点数较多，如何筛选重要的节点进行可视化，从而得到精简的网络关系图。
-
 
 ## 如何使用工具实现PageRank算法
 
@@ -15,198 +12,140 @@ PageRank算法工具在sklearn中并不存在，我们需要找到新的工具�
 
 上节课，我举了一个网页权重的例子，假设一共有4个网页A、B、C、D，它们之间的链接信息如图所示：
 
-![](https://static001.geekbang.org/resource/image/47/ea/47e5f21d16b15a98d4a32a73ebd477ea.png?wh=1711*1171)
-
+![](https://static001.geekbang.org/resource/image/47/ea/47e5f21d16b15a98d4a32a73ebd477ea.png?wh=1711%2A1171)  
 针对这个例子，我们看下用NetworkX如何计算A、B、C、D四个网页的PR值，具体代码如下：
+<div><strong>精选留言（18）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/0f/a4/5a/e708e423.jpg" width="30px"><span>third</span> 👍（7） 💬（1）<div>pagerank 值是： {&#39;C&#39;: 0.22514635472743896, &#39;A&#39;: 0.3245609358176832, &#39;D&#39;: 0.22514635472743894, &#39;B&#39;: 0.22514635472743896}
 
-```
 import networkx as nx
 # 创建有向图
 G = nx.DiGraph()
 # 有向图之间边的关系
-edges = [("A", "B"), ("A", "C"), ("A", "D"), ("B", "A"), ("B", "D"), ("C", "A"), ("D", "B"), ("D", "C")]
+edges = [(&quot;A&quot;, &quot;B&quot;), (&quot;A&quot;, &quot;C&quot;), (&quot;A&quot;, &quot;D&quot;), (&quot;B&quot;, &quot;A&quot;), (&quot;B&quot;, &quot;D&quot;), (&quot;C&quot;, &quot;A&quot;), (&quot;D&quot;, &quot;B&quot;), (&quot;D&quot;, &quot;C&quot;)]
 for edge in edges:
     G.add_edge(edge[0], edge[1])
-pagerank_list = nx.pagerank(G, alpha=1)
-print("pagerank值是：", pagerank_list)
-
-```
-
-NetworkX工具把中间的计算细节都已经封装起来了，我们直接调用PageRank函数就可以得到结果：
-
-```
-pagerank值是： {'A': 0.33333396911621094, 'B': 0.22222201029459634, 'C': 0.22222201029459634, 'D': 0.22222201029459634}
-
-```
-
-我们通过NetworkX创建了一个有向图之后，设置了节点之间的边，然后使用PageRank函数就可以求得节点的PR值，结果和上节课中我们人工模拟的结果一致。
-
-好了，运行完这个例子之后，我们来看下NetworkX工具都有哪些常用的操作。
-
-**1.关于图的创建**
-
-图可以分为无向图和有向图，在NetworkX中分别采用不同的函数进行创建。无向图指的是不用节点之间的边的方向，使用nx.Graph() 进行创建；有向图指的是节点之间的边是有方向的，使用nx.DiGraph()来创建。在上面这个例子中，存在A→D的边，但不存在D→A的边。
-
-**2.关于节点的增加、删除和查询**
-
-如果想在网络中增加节点，可以使用G.add\_node(‘A’)添加一个节点，也可以使用G.add\_nodes\_from(\[‘B’,‘C’,‘D’,‘E’\])添加节点集合。如果想要删除节点，可以使用G.remove\_node(node)删除一个指定的节点，也可以使用G.remove\_nodes\_from(\[‘B’,‘C’,‘D’,‘E’\])删除集合中的节点。
-
-那么该如何查询节点呢？
-
-如果你想要得到图中所有的节点，就可以使用G.nodes()，也可以用G.number\_of\_nodes()得到图中节点的个数。
-
-**3.关于边的增加、删除、查询**
-
-增加边与添加节点的方式相同，使用G.add\_edge(“A”, “B”)添加指定的“从A到B”的边，也可以使用add\_edges\_from函数从边集合中添加。我们也可以做一个加权图，也就是说边是带有权重的，使用add\_weighted\_edges\_from函数从带有权重的边的集合中添加。在这个函数的参数中接收的是1个或多个三元组\[u,v,w\]作为参数，u、v、w分别代表起点、终点和权重。
-
-另外，我们可以使用remove\_edge函数和remove\_edges\_from函数删除指定边和从边集合中删除。
-
-另外可以使用edges()函数访问图中所有的边，使用number\_of\_edges()函数得到图中边的个数。
-
-以上是关于图的基本操作，如果我们创建了一个图，并且对节点和边进行了设置，就可以找到其中有影响力的节点，原理就是通过PageRank算法，使用nx.pagerank(G)这个函数，函数中的参数G代表创建好的图。
-
-## 如何用PageRank揭秘希拉里邮件中的人物关系
-
-了解了NetworkX工具的基础使用之后，我们来看一个实际的案例：希拉里邮件人物关系分析。
-
-希拉里邮件事件相信你也有耳闻，对这个数据的背景我们就不做介绍了。你可以从GitHub上下载这个数据集： [https://github.com/cystanford/PageRank](https://github.com/cystanford/PageRank)。
-
-整个数据集由三个文件组成：Aliases.csv，Emails.csv和Persons.csv，其中Emails文件记录了所有公开邮件的内容，发送者和接收者的信息。Persons这个文件统计了邮件中所有人物的姓名及对应的ID。因为姓名存在别名的情况，为了将邮件中的人物进行统一，我们还需要用Aliases文件来查询别名和人物的对应关系。
-
-整个数据集包括了9306封邮件和513个人名，数据集还是比较大的。不过这一次我们不需要对邮件的内容进行分析，只需要通过邮件中的发送者和接收者（对应Emails.csv文件中的MetadataFrom和MetadataTo字段）来绘制整个关系网络。因为涉及到的人物很多，因此我们需要通过PageRank算法计算每个人物在邮件关系网络中的权重，最后筛选出来最有价值的人物来进行关系网络图的绘制。
-
-了解了数据集和项目背景之后，我们来设计到执行的流程步骤：
-
-![](https://static001.geekbang.org/resource/image/72/c9/72132ffbc1209301f0876178c75927c9.jpg?wh=2411*1106)
-
-1. 首先我们需要加载数据源；
-
-2. 在准备阶段：我们需要对数据进行探索，在数据清洗过程中，因为邮件中存在别名的情况，因此我们需要统一人物名称。另外邮件的正文并不在我们考虑的范围内，只统计邮件中的发送者和接收者，因此我们筛选MetadataFrom和MetadataTo这两个字段作为特征。同时，发送者和接收者可能存在多次邮件往来，需要设置权重来统计两人邮件往来的次数。次数越多代表这个边（从发送者到接收者的边）的权重越高；
-
-3. 在挖掘阶段：我们主要是对已经设置好的网络图进行PR值的计算，但邮件中的人物有500多人，有些人的权重可能不高，我们需要筛选PR值高的人物，绘制出他们之间的往来关系。在可视化的过程中，我们可以通过节点的PR值来绘制节点的大小，PR值越大，节点的绘制尺寸越大。
-
-
-设置好流程之后，实现的代码如下：
-
-```
-# -*- coding: utf-8 -*-
-# 用 PageRank 挖掘希拉里邮件中的重要任务关系
-import pandas as pd
-import networkx as nx
-import numpy as np
-from collections import defaultdict
-import matplotlib.pyplot as plt
-# 数据加载
-emails = pd.read_csv("./input/Emails.csv")
-# 读取别名文件
-file = pd.read_csv("./input/Aliases.csv")
-aliases = {}
-for index, row in file.iterrows():
-    aliases[row['Alias']] = row['PersonId']
-# 读取人名文件
-file = pd.read_csv("./input/Persons.csv")
-persons = {}
-for index, row in file.iterrows():
-    persons[row['Id']] = row['Name']
-# 针对别名进行转换
-def unify_name(name):
-    # 姓名统一小写
-    name = str(name).lower()
-    # 去掉, 和 @后面的内容
-    name = name.replace(",","").split("@")[0]
-    # 别名转换
-    if name in aliases.keys():
-        return persons[aliases[name]]
-    return name
-# 画网络图
-def show_graph(graph, layout='spring_layout'):
-    # 使用 Spring Layout 布局，类似中心放射状
-    if layout == 'circular_layout':
-        positions=nx.circular_layout(graph)
-    else:
-        positions=nx.spring_layout(graph)
-    # 设置网络图中的节点大小，大小与 pagerank 值相关，因为 pagerank 值很小所以需要 *20000
-    nodesize = [x['pagerank']*20000 for v,x in graph.nodes(data=True)]
-    # 设置网络图中的边长度
-    edgesize = [np.sqrt(e[2]['weight']) for e in graph.edges(data=True)]
-    # 绘制节点
-    nx.draw_networkx_nodes(graph, positions, node_size=nodesize, alpha=0.4)
-    # 绘制边
-    nx.draw_networkx_edges(graph, positions, edge_size=edgesize, alpha=0.2)
-    # 绘制节点的 label
-    nx.draw_networkx_labels(graph, positions, font_size=10)
-    # 输出希拉里邮件中的所有人物关系图
-    plt.show()
-# 将寄件人和收件人的姓名进行规范化
-emails.MetadataFrom = emails.MetadataFrom.apply(unify_name)
-emails.MetadataTo = emails.MetadataTo.apply(unify_name)
-# 设置遍的权重等于发邮件的次数
-edges_weights_temp = defaultdict(list)
-for row in zip(emails.MetadataFrom, emails.MetadataTo, emails.RawText):
-    temp = (row[0], row[1])
-    if temp not in edges_weights_temp:
+pagerank_list = nx.pagerank(G, alpha=0.85)
+print(&quot;pagerank 值是：&quot;, pagerank_list)
+</div>2019-02-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ca/83/684361be.jpg" width="30px"><span>永降不息之雨</span> 👍（5） 💬（4）<div>老师关于希拉里邮件的案例，这一段一直看不懂。
+我print(temp)只有得到两个人名，
+但是我print(edges_weights_temp)后
+除了人名，后面还多了一个数字，
+老师这数字是怎么来的，这段语法能帮忙解释一下吗？
+    temp=(rew[0],row[1])
+if temp not in edges_weights_temp:
         edges_weights_temp[temp] = 1
     else:
         edges_weights_temp[temp] = edges_weights_temp[temp] + 1
-# 转化格式 (from, to), weight => from, to, weight
-edges_weights = [(key[0], key[1], val) for key, val in edges_weights_temp.items()]
-# 创建一个有向图
-graph = nx.DiGraph()
-# 设置有向图中的路径及权重 (from, to, weight)
-graph.add_weighted_edges_from(edges_weights)
-# 计算每个节点（人）的 PR 值，并作为节点的 pagerank 属性
-pagerank = nx.pagerank(graph)
+</div>2019-07-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/a3/f9/9180d6d1.jpg" width="30px"><span>szm</span> 👍（4） 💬（1）<div>有2个问题：
+第一个：pagerank已经是字典类型了，为什么还要用pagerank_list = {node: rank for node, rank in pagerank.items()}将其转换为字典呢？是不是删掉这个语句也没关系？
+第二个：阈值大于0.005的图仍有很多重叠在一起，无法观看，请问怎样才能让画出来的图像美观呢？</div>2019-03-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/e4/4a/63e46022.jpg" width="30px"><span>WS</span> 👍（2） 💬（1）<div>老师，怎么筛选出某个人物的有向图？</div>2019-08-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0c/0f/93d1c8eb.jpg" width="30px"><span>mickey</span> 👍（2） 💬（1）<div>import networkx as nx
+# 创建有向图
+G = nx.DiGraph()
+# 有向图之间边的关系
+edges = [(&quot;A&quot;, &quot;B&quot;), (&quot;A&quot;, &quot;C&quot;), (&quot;A&quot;, &quot;D&quot;), (&quot;B&quot;, &quot;A&quot;), (&quot;B&quot;, &quot;D&quot;), (&quot;C&quot;, &quot;A&quot;), (&quot;D&quot;, &quot;B&quot;), (&quot;D&quot;, &quot;C&quot;)]
+for edge in edges:
+    G.add_edge(edge[0], edge[1])
+pagerank_list = nx.pagerank(G) #alpha为阻尼因子，默认值：0.85
+print(&quot;pagerank值是：&quot;, pagerank_list)
+
+pagerank值是： {&#39;A&#39;: 0.3245609358176831, &#39;B&#39;: 0.22514635472743894, &#39;C&#39;: 0.22514635472743894, &#39;D&#39;: 0.22514635472743894}</div>2019-03-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7d/05/4bad0c7c.jpg" width="30px"><span>Geek_hve78z</span> 👍（2） 💬（1）<div>1、pagerank_list=nx.pagerank(G,alpha=1)理解
+参考链接：https:&#47;&#47;networkx.github.io&#47;documentation&#47;networkx-1.10&#47;reference&#47;generated&#47;networkx.algorithms.link_analysis.pagerank_alg.pagerank.html
+alpha指的是阻尼因子。根据公式了解到，这因子代表用户按照跳转链接来上网的概率。
+题目说15%的概率随机跳转，所以阻尼因子为0.85
+
+2、代码
+import networkx as nx
+# 创建有向图
+G=nx.DiGraph()
+# 有向图之间边的关系
+edges = [(&quot;A&quot;, &quot;B&quot;), (&quot;A&quot;, &quot;C&quot;), (&quot;A&quot;, &quot;D&quot;), (&quot;B&quot;, &quot;A&quot;), (&quot;B&quot;, &quot;D&quot;), (&quot;C&quot;, &quot;A&quot;), (&quot;D&quot;, &quot;B&quot;), (&quot;D&quot;, &quot;C&quot;)]
+for edge in edges:
+    G.add_edge(edge[0],edge[1])
+pagerank_list=nx.pagerank(G,alpha=0.85)
+print(&#39;pagerank 值是: &#39;, pagerank_list)
+
+3、结果
+pagerank 值是:  {&#39;A&#39;: 0.3245609358176831, &#39;B&#39;: 0.22514635472743894, &#39;C&#39;: 0.22514635472743894, &#39;D&#39;: 0.22514635472743894}
+
+</div>2019-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/aa/d1/076482f3.jpg" width="30px"><span>白夜</span> 👍（2） 💬（1）<div>默认阻尼就是0.85，alpha去掉完事、、
+pagerank 值是： {&#39;A&#39;: 0.3245609358176831, &#39;B&#39;: 0.22514635472743894, &#39;C&#39;: 0.22514635472743894, &#39;D&#39;: 0.22514635472743894}</div>2019-02-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/86/d7/46842f90.jpg" width="30px"><span>小晨</span> 👍（1） 💬（2）<div>#!&#47;usr&#47;bin&#47;env python
+# -*- coding:utf-8 -*-
+# Author:Peter
+
+import networkx as nx
+import matplotlib.pyplot as plt
+
+def show_graph(graph):
+    # 使用Sprint Layout布局，类似中心放射状
+
+    positions = nx.spring_layout(graph)
+    # 设置网格图中的节点大小，大小与pagerank无关，因为pagerank值很小所以需要*20000
+    nodesize = [x[&#39;pagerank&#39;] * 20000 for v , x in graph.nodes(data=True)]
+    # 设置网络图中的边长度
+    # edgesize = [np.sqrt(e[2][&#39;weight&#39;]) for e in graph.edges(data=True)]
+    # 绘制节点
+    nx.draw_networkx_nodes(graph , positions , node_size=nodesize , alpha=0.4)
+    # 绘制边
+    nx.draw_networkx_edges(graph , positions  , alpha=0.2)
+    # 绘制节点的 label
+    nx.draw_networkx_labels(graph , positions , font_size=10)
+    #所有人物关系的关系图
+    plt.show()
+
+# 创建有向图
+G = nx.DiGraph()
+# 有向图之间边的关系
+edges = [(&quot;A&quot;, &quot;B&quot;), (&quot;A&quot;, &quot;C&quot;), (&quot;A&quot;, &quot;D&quot;), (&quot;B&quot;, &quot;A&quot;), (&quot;B&quot;, &quot;D&quot;), (&quot;C&quot;, &quot;A&quot;), (&quot;D&quot;, &quot;B&quot;), (&quot;D&quot;, &quot;C&quot;)]
+for edge in edges:
+    G.add_edge(edge[0],edge[1])
+pagerank = nx.pagerank(G)
+print(&#39;Pagerank值：&#39;,pagerank)
+# 获取每个节点的pagerank数值
+pagerank_list = {node: rank for node, rank in pagerank.items()}
 # 将 pagerank 数值作为节点的属性
-nx.set_node_attributes(graph, name = 'pagerank', values=pagerank)
+nx.set_node_attributes(G, name = &#39;pagerank&#39;, values = pagerank)
 # 画网络图
-show_graph(graph)
+show_graph(G)</div>2021-02-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/97/8f/ccce7df1.jpg" width="30px"><span>小匚</span> 👍（1） 💬（1）<div>老师好，我在跑的时候发现提示没有这个 edge_size 参数，我直接去掉了也跑出了和文章中相同的结果。nx.draw_networkx_edges(graph, positions, alpha=0.2)</div>2021-02-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/26/fa/266bcb89.jpg" width="30px"><span>等待</span> 👍（1） 💬（3）<div>老师您好，想询问以下就是，在分析希拉里的邮件人物关系的过程中，阻尼因子为0.85是什么意思呢？什么情况之下才要阻尼因子为1呢？
+麻烦老师了</div>2020-03-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a3/87/c415e370.jpg" width="30px"><span>滢</span> 👍（1） 💬（1）<div>%15跳转概率，对应的阻尼因子是0.85 ， 阻尼因子默认就是0.85，所以在创建的时候可以直接省略啊alpha参数的设定。
+import networkx
+#创建有向图
+digraph = networkx.DiGraph()
+#有向图之间边的关系
+edges = [(&quot;A&quot;, &quot;B&quot;), (&quot;A&quot;, &quot;C&quot;), (&quot;A&quot;, &quot;D&quot;), (&quot;B&quot;, &quot;A&quot;), (&quot;B&quot;, &quot;D&quot;), (&quot;C&quot;, &quot;A&quot;), (&quot;D&quot;, &quot;B&quot;), (&quot;D&quot;, &quot;C&quot;)]
+for edge in edges:
+    digraph.add_edge(edge[0],edge[1])
+pagerank_list = networkx.pagerank(digraph)
+print(&#39;PageRank 值是：&#39;,pagerank_list)
+输出结果：
+PageRank 值是： {&#39;A&#39;: 0.3245609358176831, &#39;B&#39;: 0.22514635472743894, &#39;C&#39;: 0.22514635472743894, &#39;D&#39;: 0.22514635472743894}</div>2019-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/69/92/69c2c135.jpg" width="30px"><span>厚积薄发</span> 👍（0） 💬（1）<div>老师，问一下哈，edges_weights_temp = defaultdict(list)这行代码 使用list 是不是可以换成int,换成int,我试了一下也是可以的，使用defaultdict(list) 有什么特殊的用吗？</div>2020-10-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/b5/98/ffaf2aca.jpg" width="30px"><span>Ronnyz</span> 👍（0） 💬（1）<div>将alpha=0.85
+pagerank值为： {&#39;A&#39;: 0.3245609358176831, &#39;B&#39;: 0.22514635472743894, &#39;C&#39;: 0.22514635472743894, &#39;D&#39;: 0.22514635472743894}</div>2019-11-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a4/5a/e708e423.jpg" width="30px"><span>third</span> 👍（1） 💬（0）<div>提问：
+ UserWarning: Pandas doesn&#39;t allow columns to be created via a new attribute name - see https:&#47;&#47;pandas.pydata.org&#47;pandas-docs&#47;stable&#47;indexing.html#attribute-access
 
-# 将完整的图谱进行精简
-# 设置 PR 值的阈值，筛选大于阈值的重要核心节点
-pagerank_threshold = 0.005
-# 复制一份计算好的网络图
-small_graph = graph.copy()
-# 剪掉 PR 值小于 pagerank_threshold 的节点
-for n, p_rank in graph.nodes(data=True):
-    if p_rank['pagerank'] < pagerank_threshold:
-        small_graph.remove_node(n)
-# 画网络图,采用circular_layout布局让筛选出来的点组成一个圆
-show_graph(small_graph, 'circular_layout')
+不允许列被新属性创建？？？
 
-```
+点击网页进去，也没有找到这个警告。
+需要修改或者别的什么东西吗？</div>2019-02-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/86/79/066a062a.jpg" width="30px"><span>非同凡想</span> 👍（0） 💬（0）<div>import networkx as nx
 
-运行结果如下：
 
-![](https://static001.geekbang.org/resource/image/41/b1/419f7621392045f07bcd03f9e4c7c8b1.png?wh=1728*1028)
+def test_page_rank():
+    G = nx.DiGraph()
+    edges = [(&quot;A&quot;, &quot;B&quot;), (&quot;A&quot;, &quot;C&quot;), (&quot;A&quot;, &quot;D&quot;), (&quot;B&quot;, &quot;A&quot;), (&quot;B&quot;, &quot;D&quot;), (&quot;C&quot;, &quot;A&quot;), (&quot;D&quot;, &quot;B&quot;), (&quot;D&quot;, &quot;C&quot;)]
 
-![](https://static001.geekbang.org/resource/image/3f/e1/3f08f61360e8a82a23a16e44d2b973e1.png?wh=519*376)
+    for edge in edges:
+        G.add_edge(edge[0], edge[1])
+    pagerank_list = nx.pagerank(G, alpha=0.85)
+    print(pagerank_list)
 
-针对代码中的几个模块我做个简单的说明：
+test_page_rank()
 
-**1.函数定义**
+{&#39;A&#39;: 0.3245609358176831, &#39;B&#39;: 0.22514635472743894, &#39;C&#39;: 0.22514635472743894, &#39;D&#39;: 0.22514635472743894}</div>2020-11-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/33/07/8f351609.jpg" width="30px"><span>JustDoDT</span> 👍（0） 💬（0）<div>交作业，好累啊，
+https:&#47;&#47;github.com&#47;LearningChanging&#47;Data-analysis-in-action&#47;tree&#47;master&#47;33-PageRank%EF%BC%88%E4%B8%8B%EF%BC%89%EF%BC%9A%E5%88%86%E6%9E%90%E5%B8%8C%E6%8B%89%E9%87%8C%E9%82%AE%E4%BB%B6%E4%B8%AD%E7%9A%84%E4%BA%BA%E7%89%A9%E5%85%B3%E7%B3%BB</div>2020-04-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/dc/68/006ba72c.jpg" width="30px"><span>Untitled</span> 👍（0） 💬（0）<div>结果：
+{&#39;A&#39;: 0.32456093581768314, &#39;B&#39;: 0.22514635472743894, &#39;D&#39;: 0.2251463547274389, &#39;C&#39;: 0.22514635472743894}
 
-人物的名称需要统一，因此我设置了unify\_name函数，同时设置了show\_graph函数将网络图可视化。NetworkX提供了多种可视化布局，这里我使用spring\_layout布局，也就是呈中心放射状。
-
-除了spring\_layout外，NetworkX还有另外三种可视化布局，circular\_layout（在一个圆环上均匀分布节点），random\_layout（随机分布节点 ），shell\_layout（节点都在同心圆上）。
-
-**2.计算边权重**
-
-邮件的发送者和接收者的邮件往来可能不止一次，我们需要用两者之间邮件往来的次数计算这两者之间边的权重，所以我用edges\_weights\_temp数组存储权重。而上面介绍过在NetworkX中添加权重边（即使用add\_weighted\_edges\_from函数）的时候，接受的是u、v、w的三元数组，因此我们还需要对格式进行转换，具体转换方式见代码。
-
-**3.PR值计算及筛选**
-
-我使用nx.pagerank(graph)计算了节点的PR值。由于节点数量很多，我们设置了PR值阈值，即pagerank\_threshold=0.005，然后遍历节点，删除小于PR值阈值的节点，形成新的图small\_graph，最后对small\_graph进行可视化（对应运行结果的第二张图）。
-
-## 总结
-
-在上节课中，我们通过矩阵乘法求得网页的权重，这节课我们使用NetworkX可以得到相同的结果。
-
-另外我带你用PageRank算法做了一次实战，我们将一个复杂的网络图，通过PR值的计算、筛选，最终得到了一张精简的网络图。在这个过程中我们学习了NetworkX工具的使用，包括创建图、节点、边及PR值的计算。
-
-实际上掌握了PageRank的理论之后，在实战中往往就是一行代码的事。但项目与理论不同，项目中涉及到的数据量比较大，你会花80%的时间（或80%的代码量）在预处理过程中，比如今天的项目中，我们对别名进行了统一，对边的权重进行计算，同时还需要把计算好的结果以可视化的方式呈现。
-
-![](https://static001.geekbang.org/resource/image/30/42/307055050e005ba5092028a074a5c142.png?wh=1636*794)
-
-今天我举了一个网页权重的例子，假设一共有4个网页A、B、C、D。它们之间的链接信息如文章中的图示。我们假设用户有15%的概率随机跳转，请你编写代码重新计算这4个节点的PR值。
-
-欢迎你在评论区与我分享你的答案，也欢迎点击“请朋友读”，把这篇文章分享给你的朋友或者同事。
+代码：
+import networkx as nx
+edges = [(&#39;A&#39;,&#39;B&#39;),(&#39;A&#39;,&#39;D&#39;),(&#39;A&#39;,&#39;C&#39;),(&#39;B&#39;,&#39;A&#39;),(&#39;B&#39;,&#39;D&#39;),(&#39;C&#39;,&#39;A&#39;),(&#39;D&#39;,&#39;B&#39;),(&#39;D&#39;,&#39;C&#39;)]
+G1 = nx.DiGraph()
+G1.add_edges_from(edges)
+pagerank_list = nx.pagerank(G1, alpha=0.85)</div>2020-03-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/d3/d2/2cf975ea.jpg" width="30px"><span>S.Mona</span> 👍（0） 💬（0）<div>pagerank计算的影响力，搜索结果按照影响力评分排序，这个和ElasticSearch的相关度评分排序搜索排序搜索结果有什么异同？</div>2019-10-16</li><br/>
+</ul>

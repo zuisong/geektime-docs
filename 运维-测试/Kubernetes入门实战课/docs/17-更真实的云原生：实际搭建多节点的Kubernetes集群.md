@@ -6,364 +6,134 @@
 
 不过在那之前，我们还需要有一个比minikube更真实的Kubernetes环境，它应该是一个多节点的Kubernetes集群，这样更贴近现实中的生产系统，能够让我们尽快地拥有实际的集群使用经验。
 
-所以在今天的这节课里，我们就来暂时忘掉minikube，改用kubeadm（ [https://kubernetes.io/zh/docs/reference/setup-tools/kubeadm/](https://kubernetes.io/zh/docs/reference/setup-tools/kubeadm/)）搭建出一个新的Kubernetes集群，一起来看看更真实的云原生环境。
+所以在今天的这节课里，我们就来暂时忘掉minikube，改用kubeadm（[https://kubernetes.io/zh/docs/reference/setup-tools/kubeadm/](https://kubernetes.io/zh/docs/reference/setup-tools/kubeadm/)）搭建出一个新的Kubernetes集群，一起来看看更真实的云原生环境。
 
 ## 什么是kubeadm
 
 前面的几节课里我们使用的都是minikube，它非常简单易用，不需要什么配置工作，就能够在单机环境里创建出一个功能完善的Kubernetes集群，给学习、开发、测试都带来了极大的便利。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/30/65/d6/20670fd5.jpg" width="30px"><span>Obscure</span> 👍（51） 💬（5）<div>不需要写脚本来下载镜像啊，一条命令搞定：
+kubeadm init \
+--apiserver-advertise-address=192.168.137.100 \
+--image-repository registry.aliyuncs.com&#47;google_containers \
+--kubernetes-version v1.23.6 \
+--service-cidr=10.96.0.0&#47;12 \
+--pod-network-cidr=10.244.0.0&#47;16</div>2022-09-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/cd/e0/c85bb948.jpg" width="30px"><span>朱雯</span> 👍（16） 💬（1）<div>终于跑起来了，提醒大家一件事，那就是新节点如何加入到k8s集群中，第一遍执行有提示，后续的话，可以执行kubeadm token create --print-join-command这条命令显示加入方式</div>2022-08-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5d/11/e1f36640.jpg" width="30px"><span>怀朔</span> 👍（15） 💬（6）<div>本章质量略显不足 .主要如下几点
+1、已经在考虑多节点不如把多集群考虑进去 这样才是真正的线上环境？
+2、因为网络问题 考虑仓库不足 如何直接引用国内云厂商镜像仓库？ 讲解如何把海外镜像复制国内镜像岂不是更好？
+3、生产中明显最关键是网络插件问题 和cidr块 网络冲突问题 通篇没有讲 令人略显单薄</div>2022-07-29</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJo05FofKFWYN3joX4OyCfVrU2kK7xvKdZ4Ho7bof893fE0jXk1OcB5sKLk4C1SviaNlibAiaCtp8aww/132" width="30px"><span>努力学习不准懈怠</span> 👍（14） 💬（2）<div>一定要关闭swap，不然kubelet无法启动！！！</div>2022-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2c/82/ec/99b480e8.jpg" width="30px"><span>hiDaLao</span> 👍（13） 💬（1）<div>1. 装环境时可先装一台然后克隆；
+2. kubeadm init时指定的apiserver的ip需要是自己环境上master节点的ip地址，如果指定错误，可通过sudo kubeadm reset重置；
+3. kube-flannel.yml 文件在仓库的Documentation目录下，只用copy到环境上修改下net-config.json里面的Network的地址即可；
+4. 执行scp ~&#47;.kube&#47;config到console节点时，需要先在console节点上通过mkdir ~&#47;.kube创建下目录</div>2022-07-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2e/06/ff/047a7150.jpg" width="30px"><span>项**</span> 👍（12） 💬（1）<div>1. --apiserver-advertise-address 参数指定成master的ip地址，不然初始化阶段会超时
+找这个问题找了很久
 
-不过minikube还是太“迷你”了，方便的同时也隐藏了很多细节，离真正生产环境里的计算集群有一些差距，毕竟许多需求、任务只有在多节点的大集群里才能够遇到，相比起来，minikube真的只能算是一个“玩具”。
+2.初始话失败再重新尝试需要清空环境
+#重置
+sudo kubeadm reset
+#干掉kubelet进程
+ps -ef|grep kubelet
+sudo kill -9 进程id
+#删掉配置目录
+sudo rm -rf  &#47;etc&#47;kubernetes&#47;manifests&#47;
+</div>2022-11-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/95/8a/d74cdda5.jpg" width="30px"><span>这里的人都叫我八进制</span> 👍（10） 💬（7）<div>work节点NotReady解决办法
 
-那么，多节点的Kubernetes集群是怎么从无到有地创建出来的呢？
+KubeletNotReady runtime network not ready: NetworkReady=false reason:NetworkPluginNotReady message:docker: network plugin is not ready: cni config uninitialized
+1.  mkdir -p &#47;etc&#47;cni&#47;net.d
 
-[第10讲](https://time.geekbang.org/column/article/529800) 说过Kubernetes是很多模块构成的，而实现核心功能的组件像apiserver、etcd、scheduler等本质上都是可执行文件，所以也可以采用和其他系统差不多的方式，使用Shell脚本或者Ansible等工具打包发布到服务器上。
+2. vi 10-flannel.conflist
 
-不过Kubernetes里的这些组件的配置和相互关系实在是太复杂了，用Shell、Ansible来部署的难度很高，需要具有相当专业的运维管理知识才能配置、搭建好集群，而且即使这样，搭建的过程也非常麻烦。
-
-为了简化Kubernetes的部署工作，让它能够更“接地气”，社区里就出现了一个专门用来在集群中安装Kubernetes的工具，名字就叫“ **kubeadm**”，意思就是“Kubernetes管理员”。
-
-![图片](https://static001.geekbang.org/resource/image/f2/88/f27c7938cba21215621ac33635d63288.jpg?wh=1044x640)
-
-kubeadm，原理和minikube类似，也是用容器和镜像来封装Kubernetes的各种组件，但它的目标不是单机部署，而是要能够轻松地在集群环境里部署Kubernetes，并且让这个集群接近甚至达到生产级质量。
-
-而在保持这个高水准的同时，kubeadm还具有了和minikube一样的易用性，只要很少的几条命令，如 `init`、 `join`、 `upgrade`、 `reset` 就能够完成Kubernetes集群的管理维护工作，这让它不仅适用于集群管理员，也适用于开发、测试人员。
-
-## 实验环境的架构是什么样的
-
-在使用kubeadm搭建实验环境之前，我们先来看看集群的架构设计，也就是说要准备好集群所需的硬件设施。
-
-这里我画了一张系统架构图，图里一共有3台主机，当然它们都是使用虚拟机软件VirtualBox/VMWare虚拟出来的，下面我来详细说明一下：
-
-![图片](https://static001.geekbang.org/resource/image/yy/3e/yyf5db64d398b4d5dyyd5e8e23ece53e.jpg?wh=1920x1294)
-
-所谓的多节点集群，要求服务器应该有两台或者更多，为了简化我们只取最小值，所以这个Kubernetes集群就只有两台主机，一台是Master节点，另一台是Worker节点。当然，在完全掌握了kubeadm的用法之后，你可以在这个集群里添加更多的节点。
-
-Master节点需要运行apiserver、etcd、scheduler、controller-manager等组件，管理整个集群，所以对配置要求比较高，至少是2核CPU、4GB的内存。
-
-![图片](https://static001.geekbang.org/resource/image/d1/3c/d19a8ceafd4db10a5yy35c623384ba3c.png?wh=1504x920)
-
-而Worker节点没有管理工作，只运行业务应用，所以配置可以低一些，为了节省资源我给它分配了1核CPU和1GB的内存，可以说是低到不能再低了。
-
-![图片](https://static001.geekbang.org/resource/image/ee/f3/eeee60b6e29d7b6c4c74f913ac663ef3.png?wh=1504x1024)
-
-基于模拟生产环境的考虑，在Kubernetes集群之外还需要有一台起辅助作用的服务器。
-
-它的名字叫Console，意思是控制台，我们要在上面安装命令行工具kubectl，所有对Kubernetes集群的管理命令都是从这台主机发出去的。这也比较符合实际情况，因为安全的原因，集群里的主机部署好之后应该尽量少直接登录上去操作。
-
-要提醒你的是，Console这台主机只是逻辑上的概念，不一定要是独立，你在实际安装部署的时候完全可以复用之前minikube的虚拟机，或者直接使用Master/Worker节点作为控制台。
-
-这3台主机共同组成了我们的实验环境，所以在配置的时候要注意它们的网络选项，必须是在同一个网段，你可以再回顾一下 [课前准备](https://time.geekbang.org/column/article/528614)，保证它们使用的是同一个“Host-Only”（VirtualBox）或者“自定”（VMWare Fusion）网络。
-
-## 安装前的准备工作
-
-不过有了架构图里的这些主机之后，我们还不能立即开始使用kubeadm安装Kubernetes，因为Kubernetes对系统有一些特殊要求，我们必须还要在Master和Worker节点上做一些准备。
-
-这些工作的详细信息你都可以在Kubernetes的官网上找到，但它们分散在不同的文档里，比较凌乱，所以我把它们整合到了这里，包括改主机名、改Docker配置、改网络设置、改交换分区这四步。
-
-第一，由于Kubernetes使用主机名来区分集群里的节点，所以每个节点的hostname必须不能重名。你需要修改“ **/etc/hostname**”这个文件，把它改成容易辨识的名字，比如Master节点就叫 `master`，Worker节点就叫 `worker`：
-
-```plain
-sudo vi /etc/hostname
-
-```
-
-第二，虽然Kubernetes目前支持多种容器运行时，但Docker还是最方便最易用的一种，所以我们仍然继续使用Docker作为Kubernetes的底层支持，使用 `apt` 安装Docker Engine（可参考 [第1讲](https://time.geekbang.org/column/article/528619)）。
-
-安装完成后需要你再对Docker的配置做一点修改，在“ **/etc/docker/daemon.json**”里把cgroup的驱动程序改成 `systemd` ，然后重启Docker的守护进程，具体的操作我列在了下面：
-
-```bash
-cat <<EOF | sudo tee /etc/docker/daemon.json
 {
-  "exec-opts": ["native.cgroupdriver=systemd"],
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "100m"
-  },
-  "storage-driver": "overlay2"
+  &quot;name&quot;: &quot;cbr0&quot;,
+  &quot;plugins&quot;: [
+    {
+      &quot;type&quot;: &quot;flannel&quot;,
+      &quot;delegate&quot;: {
+        &quot;hairpinMode&quot;: true,
+        &quot;isDefaultGateway&quot;: true
+      }
+    },
+    {
+      &quot;type&quot;: &quot;portmap&quot;,
+      &quot;capabilities&quot;: {
+        &quot;portMappings&quot;: true
+      }
+    }
+  ]
 }
+
+
+3.
+
+systemctl daemon-reload
+
+systemctl restart kubelet</div>2022-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/72/67/aa52812a.jpg" width="30px"><span>stark</span> 👍（6） 💬（1）<div>终于弄好了，坑不少 总结写在这里了 希望对朋友们有帮助https:&#47;&#47;blog.csdn.net&#47;xuezhiwu001&#47;article&#47;details&#47;128444657?spm=1001.2014.3001.5501</div>2022-12-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/7a/27/791d0f5e.jpg" width="30px"><span>小林子</span> 👍（6） 💬（1）<div>老师为啥不用 Calico 网络插件了</div>2022-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/99/f0/d9343049.jpg" width="30px"><span>星亦辰</span> 👍（4） 💬（1）<div>cat &lt;&lt;EOF | sudo tee &#47;etc&#47;yum.repos.d&#47;kubernetes.repo
+[kubernetes] 
+name=Kubernetes 
+baseurl=https:&#47;&#47;mirrors.aliyun.com&#47;kubernetes&#47;yum&#47;repos&#47;kubernetes-el7-x86_64 
+enabled=1 
+gpgcheck=0 
+repo_gpgcheck=0 
 EOF
 
-sudo systemctl enable docker
-sudo systemctl daemon-reload
-sudo systemctl restart docker
-
-```
-
-第三，为了让Kubernetes能够检查、转发网络流量，你需要修改iptables的配置，启用“br\_netfilter”模块：
-
-```bash
-cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-br_netfilter
-EOF
-
-cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-ip6tables = 1
-net.bridge.bridge-nf-call-iptables = 1
-net.ipv4.ip_forward=1 # better than modify /etc/sysctl.conf
-EOF
-
-sudo sysctl --system
-
-```
-
-第四，你需要修改“ **/etc/fstab**”，关闭Linux的swap分区，提升Kubernetes的性能：
-
-```plain
-sudo swapoff -a
-sudo sed -ri '/\sswap\s/s/^#?/#/' /etc/fstab
-
-```
-
-完成之后，最好记得重启一下系统，然后给虚拟机拍个快照做备份，避免后续的操作失误导致重复劳动。
-
-## 安装kubeadm
-
-好，现在我们就要安装kubeadm了，在Master节点和Worker节点上都要做这一步。
-
-kubeadm可以直接从Google自己的软件仓库下载安装，但国内的网络不稳定，很难下载成功，需要改用其他的软件源，这里我选择了国内的某云厂商：
-
-```plain
-sudo apt install -y apt-transport-https ca-certificates curl
-
-curl https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg | sudo apt-key add -
-
-cat <<EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
-deb https://mirrors.aliyun.com/kubernetes/apt/ kubernetes-xenial main
-EOF
-
-sudo apt update
-
-```
-
-更新了软件仓库，我们就可以用 `apt install` 获取kubeadm、kubelet和kubectl这三个安装必备工具了。apt默认会下载最新版本，但我们也可以指定版本号，比如使用和minikube相同的“1.23.3”：
-
-```plain
-sudo apt install -y kubeadm=1.23.3-00 kubelet=1.23.3-00 kubectl=1.23.3-00
-
-```
-
-安装完成之后，你可以用 `kubeadm version`、 `kubectl version` 来验证版本是否正确：
-
-```plain
-kubeadm version
-kubectl version --client
-
-```
-
-![图片](https://static001.geekbang.org/resource/image/72/c9/72d79f46d9132af0dca110d982eff1c9.png?wh=1408x306)
-
-另外按照Kubernetes官网的要求，我们最好再使用命令 `apt-mark hold` ，锁定这三个软件的版本，避免意外升级导致版本错误：
-
-```plain
-sudo apt-mark hold kubeadm kubelet kubectl
-
-```
-
-## 下载Kubernetes组件镜像
-
-前面我说过，kubeadm把apiserver、etcd、scheduler等组件都打包成了镜像，以容器的方式启动Kubernetes，但这些镜像不是放在Docker Hub上，而是放在Google自己的镜像仓库网站gcr.io，而它在国内的访问很困难，直接拉取镜像几乎是不可能的。
-
-所以我们需要采取一些变通措施，提前把镜像下载到本地。
-
-使用命令 `kubeadm config images list` 可以查看安装Kubernetes所需的镜像列表，参数 `--kubernetes-version` 可以指定版本号：
-
-```plain
-kubeadm config images list --kubernetes-version v1.23.3
-
-k8s.gcr.io/kube-apiserver:v1.23.3
-k8s.gcr.io/kube-controller-manager:v1.23.3
-k8s.gcr.io/kube-scheduler:v1.23.3
-k8s.gcr.io/kube-proxy:v1.23.3
-k8s.gcr.io/pause:3.6
-k8s.gcr.io/etcd:3.5.1-0
-k8s.gcr.io/coredns/coredns:v1.8.6
-
-```
-
-知道了镜像的名字和标签就好办了，我们有两种方法可以比较容易地获取这些镜像。
-
-第一种方法是利用minikube。因为minikube本身也打包了Kubernetes的组件镜像，所以完全可以从它的节点里把这些镜像导出之后再拷贝过来。
-
-具体做法也很简单，先启动minikube，然后 `minikube ssh` 登录进虚拟节点，用 `docker save -o` 命令把相应版本的镜像都保存下来，再用 `minikube cp` 拷贝到本地，剩下的事情就不用我多说了：
-
-![图片](https://static001.geekbang.org/resource/image/66/4f/6609a62525bbf5d77eb7331f9835244f.png?wh=1848x484)
-
-这种方法安全可靠，不过操作上麻烦了些，所以就有了第二种方法，从国内的镜像网站下载然后再用 `docker tag` 改名，能够使用Shell编程实现自动化：
-
-```plain
-repo=registry.aliyuncs.com/google_containers
-
-for name in `kubeadm config images list --kubernetes-version v1.23.3`; do
-
-    src_name=${name#k8s.gcr.io/}
-    src_name=${src_name#coredns/}
-
-    docker pull $repo/$src_name
-
-    docker tag $repo/$src_name $name
-    docker rmi $repo/$src_name
-done
-
-```
-
-第二种方法速度快，但也有隐患，万一网站不提供服务，或者改动了镜像就比较危险了。
-
-所以你可以把这两种方法结合起来，先用脚本从国内镜像仓库下载，然后再用minikube里的镜像做对比，只要IMAGE ID是一样就说明镜像是正确的。
-
-这张截图就是Kubernetes 1.23.3的镜像列表（amd64/arm64），你在安装时可以参考：
-
-![图片](https://static001.geekbang.org/resource/image/11/5c/11d9d4c91b08d95e82e75406a4d3aa5c.png?wh=1920x353)
-
-![图片](https://static001.geekbang.org/resource/image/52/6c/528d9913620015f594988e648eeac66c.png?wh=1920x420)
-
-## 安装Master节点
-
-准备工作都做好了，现在就可以开始正式安装Kubernetes了，我们先从Master节点开始。
-
-kubeadm的用法非常简单，只需要一个命令 `kubeadm init` 就可以把组件在Master节点上运行起来，不过它还有很多参数用来调整集群的配置，你可以用 `-h` 查看。这里我只说一下我们实验环境用到的3个参数：
-
-- **--pod-network-cidr**，设置集群里Pod的IP地址段。
-- **--apiserver-advertise-address**，设置apiserver的IP地址，对于多网卡服务器来说很重要（比如VirtualBox虚拟机就用了两块网卡），可以指定apiserver在哪个网卡上对外提供服务。
-- **--kubernetes-version**，指定Kubernetes的版本号。
-
-下面的这个安装命令里，我指定了Pod的地址段是“10.10.0.0/16”，apiserver的服务地址是“192.168.10.210”，Kubernetes的版本号是“1.23.3”：
-
-```plain
-sudo kubeadm init \
-    --pod-network-cidr=10.10.0.0/16 \
-    --apiserver-advertise-address=192.168.10.210 \
-    --kubernetes-version=v1.23.3
-
-```
-
-因为我们已经提前把镜像下载到了本地，所以kubeadm的安装过程很快就完成了，它还会提示出接下来要做的工作：
-
-```plain
-To start using your cluster, you need to run the following as a regular user:
-
-  mkdir -p $HOME/.kube
-  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-  sudo chown $(id -u):$(id -g) $HOME/.kube/config
-
-```
-
-意思是要在本地建立一个“ **.kube**”目录，然后拷贝kubectl的配置文件，你只要原样拷贝粘贴就行。
-
-另外还有一个很重要的“ **kubeadm join**”提示，其他节点要加入集群必须要用指令里的token和ca证书，所以这条命令务必拷贝后保存好：
-
-```plain
-Then you can join any number of worker nodes by running the following on each as root:
-
-kubeadm join 192.168.10.210:6443 --token tv9mkx.tw7it9vphe158e74 \
-	--discovery-token-ca-cert-hash sha256:e8721b8630d5b562e23c010c70559a6d3084f629abad6a2920e87855f8fb96f3
-
-```
-
-安装完成后，你就可以使用 `kubectl version`、 `kubectl get node` 来检查Kubernetes的版本和集群的节点状态了：
-
-```plain
-kubectl version
-kubectl get node
-
-```
-
-![图片](https://static001.geekbang.org/resource/image/c6/09/c63ce96bfyy0e1bc2927d575a66ee209.png?wh=1482x366)
-
-你会注意到Master节点的状态是“NotReady”，这是由于还缺少网络插件，集群的内部网络还没有正常运作。
-
-## 安装Flannel网络插件
-
-Kubernetes定义了CNI标准，有很多网络插件，这里我选择最常用的 **Flannel**，可以在它的GitHub仓库里（ [https://github.com/flannel-io/flannel/](https://github.com/flannel-io/flannel/)）找到相关文档。
-
-它安装也很简单，只需要使用项目的“ **kube-flannel.yml**”在Kubernetes里部署一下就好了。不过因为它应用了Kubernetes的网段地址，你需要修改文件里的“ **net-conf.json**”字段，把 `Network` 改成刚才kubeadm的参数 `--pod-network-cidr` 设置的地址段。
-
-比如在这里，就要修改成“10.10.0.0/16”：
-
-```plain
-  net-conf.json: |
-    {
-      "Network": "10.10.0.0/16",
-      "Backend": {
-        "Type": "vxlan"
-      }
-    }
-
-```
-
-改好后，你就可以用 `kubectl apply` 来安装Flannel网络了：
-
-```plain
-kubectl apply -f kube-flannel.yml
-
-```
-
-稍等一小会，等镜像拉取下来并运行之后，你就可以执行 `kubectl get node` 来看节点状态：
-
-```plain
-kubectl get node
-
-```
-
-![图片](https://static001.geekbang.org/resource/image/6a/7a/6a3c852abe5b193a6997b154163ed67a.png?wh=1434x184)
-
-这时你应该能够看到Master节点的状态是“Ready”，表明节点网络也工作正常了。
-
-## 安装Worker节点
-
-如果你成功安装了Master节点，那么Worker节点的安装就简单多了，只需要用之前拷贝的那条 `kubeadm join` 命令就可以了，记得要用 `sudo` 来执行：
-
-```plain
-sudo \
-kubeadm join 192.168.10.210:6443 --token tv9mkx.tw7it9vphe158e74 \
-	--discovery-token-ca-cert-hash sha256:e8721b8630d5b562e23c010c70559a6d3084f629abad6a2920e87855f8fb96f3
-
-```
-
-它会连接Master节点，然后拉取镜像，安装网络插件，最后把节点加入集群。
-
-当然，这个过程中同样也会遇到拉取镜像的问题，你可以如法炮制，提前把镜像下载到Worker节点本地，这样安装过程中就不会再有障碍了。
-
-Worker节点安装完毕后，执行 `kubectl get node` ，就会看到两个节点都是“Ready”状态：
-
-![图片](https://static001.geekbang.org/resource/image/f7/26/f756ece9e81af80a7204243f15777026.png?wh=1430x246)
-
-现在让我们用 `kubectl run` ，运行Nginx来测试一下：
-
-```plain
-kubectl run ngx --image=nginx:alpine
-kubectl get pod -o wide
-
-```
-
-![图片](https://static001.geekbang.org/resource/image/73/e9/73651e5f178e2daf6eaf7ac262e230e9.png?wh=1584x188)
-
-会看到Pod运行在Worker节点上，IP地址是“10.10.1.2”，表明我们的Kubernetes集群部署成功。
-
-## 小结
-
-好了，把Master节点和Worker节点都安装好，我们今天的任务就算是基本完成了。
-
-后面Console节点的部署工作更加简单，它只需要安装一个kubectl，然后复制“config”文件就行，你可以直接在Master节点上用“scp”远程拷贝，例如：
-
-```plain
-scp `which kubectl` chrono@192.168.10.208:~/
-scp ~/.kube/config chrono@192.168.10.208:~/.kube
-
-```
-
-今天的过程多一些，要点我列在了下面：
-
-1. kubeadm是一个方便易用的Kubernetes工具，能够部署生产级别的Kubernetes集群。
-2. 安装Kubernetes之前需要修改主机的配置，包括主机名、Docker配置、网络设置、交换分区等。
-3. Kubernetes的组件镜像存放在gcr.io，国内下载比较麻烦，可以考虑从minikube或者国内镜像网站获取。
-4. 安装Master节点需要使用命令 `kubeadm init`，安装Worker节点需要使用命令 `kubeadm join`，还要部署Flannel等网络插件才能让集群正常工作。
-
-因为这些操作都是各种Linux命令，全手动敲下来确实很繁琐，所以我把这些步骤都做成了Shell脚本放在了GitHub上（ [https://github.com/chronolaw/k8s\_study/tree/master/admin](https://github.com/chronolaw/k8s_study/tree/master/admin)），你可以下载后直接运行。
-
-## 课下作业
-
-最后的课下作业是实际动手操作，请你多花费一些时间，用虚拟机创建出集群节点，再用kubeadm部署出这个多节点的Kubernetes环境，在接下来的“中级篇”和“高级篇”里我们就会在这个Kubernetes集群里做实验。
-
-安装部署过程中有任何疑问，欢迎在留言区留言，我会第一时间回复你。如果觉得有帮助，也欢迎分享给自己身边的朋友一起学习，下节课见。
-
-![图片](https://static001.geekbang.org/resource/image/d3/41/d3d76937e5f4eb6545a07b96bc731e41.jpg?wh=1920x2513)
+补充一个 Yum 的源 
+</div>2022-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/89/ad/4efd929a.jpg" width="30px"><span>老荀</span> 👍（3） 💬（3）<div>master 节点能显示正常
+$ kubectl get node
+NAME     STATUS   ROLES                  AGE     VERSION
+master   Ready    control-plane,master   21m     v1.23.3
+worker   Ready    &lt;none&gt;                 3m56s   v1.23.3
+
+但是 worker 节点就显示
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+
+上面的教程里，worker 节点不就是提前下好镜像和 使用 join 加入集群吗？也没说要 拷贝 什么 配置文件啊，而且 worker 节点下 &#47;etc&#47;kubernetes 下也只有 kubelet.conf 这个配置文件，和 master 节点的不一样（admin.conf) 求助老师</div>2022-10-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/94/25/3bf277e5.jpg" width="30px"><span>陈四丰</span> 👍（3） 💬（1）<div>安装成功！
+中间遇到一个“坑”，提醒同学们。
+在运行https:&#47;&#47;github.com&#47;chronolaw&#47;k8s_study&#47;blob&#47;master&#47;admin&#47;master.sh的时候，一定要把注释掉的# --apiserver-advertise-address=192.168.10.210 换成自己的IP地址，并添加进去，否则会以10.0.x.x的IP运行。
+感谢罗老师，祝同学们学习顺利！</div>2022-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/25/87/f3a69d1b.jpg" width="30px"><span>peter</span> 👍（3） 💬（2）<div>请教老师几个问题：
+Q1：脚本为什么对src_name两次赋值？
+       脚本的for循环里面有如下两行：
+       src_name=${name#k8s.gcr.io&#47;}    
+       src_name=${src_name#coredns&#47;}
+       为什么对同一个src_name两次赋值？
+
+Q2：同一个虚拟机上是否可以同时按照minikube和kubeadm？
+Q3：apiserver的IP应该是自己的虚拟机的IP，Pod地址段和虚拟机IP无关，采用私有地址段即可，
+        是这样吗？
+        文中提到：“apiserver 的服务地址是“192.168.10.210””，这个地址是作者自己虚拟机的IP，
+        读者应该换成自己虚拟机的IP，是这样吗？
+        文中提到：“我指定了 Pod 的地址段是“10.10.0.0&#47;16””，Pod的IP段和虚拟机无关，读者的环境
+        也可以采用，对吗？</div>2022-07-31</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLoxAjJG76r6Qib0G1rcQvVOmPc70biapxg6ny3RFX7L5KKaJdib6zUIEicvYmhyiaQeHScVMc8KjHTHIQ/132" width="30px"><span>Geek_8497e1</span> 👍（3） 💬（1）<div>请问，生产环境，老师建议用二进制还是kubeadmin</div>2022-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f8/25/06c86919.jpg" width="30px"><span>rexzhao</span> 👍（3） 💬（2）<div>kube-flannel.yml 文件是在哪个位置？是从哪来的？ 修改的内容对吗好像不是 yml 文件格式。</div>2022-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/74/d5/56b3a879.jpg" width="30px"><span>poettian</span> 👍（2） 💬（2）<div>master node 为啥会运行 kubelet 等组件呢？看前面的教程，这些组件不应该是只在 worker node 上运行的，毕竟master node上不会启动pod</div>2023-01-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2c/2b/22/441c4e51.jpg" width="30px"><span>逐書寄年</span> 👍（2） 💬（3）<div>感謝老師詳盡的解說！我有的問題是：
+當我部屬完cluster，也成功加入 woker node 後，想嘗試啟動 nginx pod，使用 `kubectl get pod -o wide` 檢查狀態後，卻發現一直處於 `ContainerCreating` 的狀態。不知道有沒有線索可以知道從何 debug 呢？</div>2022-10-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/d6/2f5cb85c.jpg" width="30px"><span>xmr</span> 👍（2） 💬（1）<div>sudo kubeadm init \
+    --pod-network-cidr=10.10.0.0&#47;16 \
+    --apiserver-advertise-address=192.168.10.210 \
+    --kubernetes-version=v1.23.3
+
+--apiserver-advertise-address=192.168.10.210要改为master虚拟机的ip，否则会报错</div>2022-09-07</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/ibZVAmmdAibBeVpUjzwId8ibgRzNk7fkuR5pgVicB5mFSjjmt2eNadlykVLKCyGA0GxGffbhqLsHnhDRgyzxcKUhjg/132" width="30px"><span>pyhhou</span> 👍（2） 💬（4）<div>老师，在配置 Master 节点的时候有问题，报错如下
+
+ppeng@master:~$ sudo kubeadm init \
+    --pod-network-cidr=10.10.0.0&#47;16 \
+    --apiserver-advertise-address=192.168.10.210 \
+    --kubernetes-version=v1.23.3
+[sudo] password for ppeng:
+[init] Using Kubernetes version: v1.23.3
+[preflight] Running pre-flight checks
+error execution phase preflight: [preflight] Some fatal errors occurred:
+	[ERROR Port-10259]: Port 10259 is in use
+	[ERROR Port-10257]: Port 10257 is in use
+	[ERROR FileAvailable--etc-kubernetes-manifests-kube-apiserver.yaml]: &#47;etc&#47;kubernetes&#47;manifests&#47;kube-apiserver.yaml already exists
+	[ERROR FileAvailable--etc-kubernetes-manifests-kube-controller-manager.yaml]: &#47;etc&#47;kubernetes&#47;manifests&#47;kube-controller-manager.yaml already exists
+	[ERROR FileAvailable--etc-kubernetes-manifests-kube-scheduler.yaml]: &#47;etc&#47;kubernetes&#47;manifests&#47;kube-scheduler.yaml already exists
+	[ERROR FileAvailable--etc-kubernetes-manifests-etcd.yaml]: &#47;etc&#47;kubernetes&#47;manifests&#47;etcd.yaml already exists
+	[ERROR Port-10250]: Port 10250 is in use
+[preflight] If you know what you are doing, you can make a check non-fatal with `--ignore-preflight-errors=...`
+To see the stack trace of this error execute with --v=5 or higher
+
+前面的步骤都已成功，docker 也成功拉取了镜像，不清楚这里报错的原因是什么</div>2022-08-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/b3/d9/cf061262.jpg" width="30px"><span>新时代农民工</span> 👍（2） 💬（1）<div>老师请问下，成功按文中操作搭建集群，在测试运行 Nginx 的时候，通过expose 端口在NodePort， 为何只能在worker的node上访问， 而在master节点上，通过本地ip访问不了呢</div>2022-08-01</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqF6ViaDyAibEKbcKfWoGXe8lCbb8wqes5g3JezHWNLf4DIl92QwXX43HWv408BxzkOKmKb2HpKJuIw/132" width="30px"><span>Geek_b537b2</span> 👍（2） 💬（1）<div>入门好教程</div>2022-07-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/36/1d/f5486ffe.jpg" width="30px"><span>你的笑忘书</span> 👍（2） 💬（1）<div>希望老师补充下生产中，使用 kubeadm 部署集群的话，有哪些务必需要注意的点。</div>2022-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/b9/8b/d0763d9a.jpg" width="30px"><span>进击的土豆</span> 👍（2） 💬（1）<div>老师，kubeadm和rke的区别是什么</div>2022-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/27/ff/e4/927547a9.jpg" width="30px"><span>无名无姓</span> 👍（2） 💬（1）<div>理解起来很方便</div>2022-07-29</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKx6EdicYYuYK745brMa9yAlkZs2YmzxRAm4BQ2kw9GbtcC8ebnQlyBfIJnGjH57ib4HVlQIpSbTrBw/132" width="30px"><span>dst</span> 👍（2） 💬（1）<div>终于到中级篇了，老师讲得很好，比较全面，尤其是画图的思维导图总结很实用</div>2022-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f7/b1/982ea185.jpg" width="30px"><span>美妙的代码</span> 👍（2） 💬（4）<div>为什么到目前为止，各大云计算公司大厂都没有做一个gcr.io  k8s的同步镜像站呢</div>2022-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/d0/51/f1c9ae2d.jpg" width="30px"><span>Sports</span> 👍（2） 💬（1）<div>还是挺翔实的搭建教程!</div>2022-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/06/7e/735968e2.jpg" width="30px"><span>西门吹牛</span> 👍（2） 💬（2）<div>云原生三个字怎么理解</div>2022-07-29</li><br/><li><img src="" width="30px"><span>Geek_e47add</span> 👍（1） 💬（1）<div>init k8s 成功后使用 kubectl get node 显示error: no server found for cluster &quot;minikube&quot;，请问这是什么原因，然后我启动miniukube查kubectl get node只显示minikube这个节点
+</div>2023-08-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/b8/dd/37726c34.jpg" width="30px"><span>小马哥</span> 👍（1） 💬（1）<div>和我一样在虚拟机安装master节点, 然后通过克隆方式创建worker节点的小伙伴, 可能会遇到和我一样的问题: 在一切配置完成之后, 启动测试一个pod(nginx:alpine)会遇到该pod一直在创建中.
+执行kubectl describe pod ngx, 发现&quot;Failed to create pod sandbox: rpc error:  ..........failed to set bridge addr: 
+&quot;cni0&quot; already has an IP address different from 10.10.1.1&#47;24&quot; 总之就是nginx所在的pod一直pending中.
+
+问题解决方法: 查看一下master与worker节点的cni0的网卡ip是否相同, 因为在可控worker节点的时候, 没有修改改节点IP. 修改完成, ngx所在po的的status马上恢复RUNNING.
+
+好像是看到留言中有个小伙伴类似问题, 应该也是克隆导致的. 
+另外我使用的VMWare虚拟机软件+Centos7.6的环境, kubernetes使用的1.23.6, 和老师的都不一样, 算是好好的踩了一下坑, 锻炼一下不同的解决问题的过程.</div>2023-05-27</li><br/>
+</ul>

@@ -4,166 +4,46 @@
 
 这些内容，是我们接下来系统学习构建Flutter应用的基础，可以帮助我们更好地掌握Flutter的核心概念和技术。
 
-在第4篇文章“ [Flutter区别于其他方案的关键技术是什么？](https://time.geekbang.org/column/article/105703)”中，我和你分享了一张来自Flutter官方的架构图，不难看出Widget是整个视图描述的基础。这张架构图很重要，所以我在这里又放了一次。
+在第4篇文章“[Flutter区别于其他方案的关键技术是什么？](https://time.geekbang.org/column/article/105703)”中，我和你分享了一张来自Flutter官方的架构图，不难看出Widget是整个视图描述的基础。这张架构图很重要，所以我在这里又放了一次。
 
-![](https://static001.geekbang.org/resource/image/ac/2f/ac7d1cec200f7ea7cb6cbab04eda252f.png?wh=2274*1186)
+![](https://static001.geekbang.org/resource/image/ac/2f/ac7d1cec200f7ea7cb6cbab04eda252f.png?wh=2274%2A1186)
 
 图1 Flutter架构图
 
-备注：此图引自 [Flutter System Overview](https://flutter.dev/docs/resources/technical-overview)
+备注：此图引自[Flutter System Overview](https://flutter.dev/docs/resources/technical-overview)
 
 那么，Widget到底是什么呢？
 
 Widget是Flutter功能的抽象描述，是视图的配置信息，同样也是数据的映射，是Flutter开发框架中最基本的概念。前端框架中常见的名词，比如视图（View）、视图控制器（View Controller）、活动（Activity）、应用（Application）、布局（Layout）等，在Flutter中都是Widget。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/ajNVdqHZLLBKSykSmNnspVs5OvAUGLecibeiczo7sQYJ4XoJXNa2jWUwvwiaHz8yM3iak0ErUSUIJrGfzNUJ7P79Rg/132" width="30px"><span>竹之同学</span> 👍（66） 💬（2）<div>如果用 Vue 来比喻的话，Widget 就是 Vue 的 template；Element 就是 virtual DOM；RenderObject 就是DOM，不知道这种想法对不？</div>2019-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/64/52a5863b.jpg" width="30px"><span>大土豆</span> 👍（24） 💬（2）<div>React：JSX-&gt;虚拟DOM-&gt;浏览器DOM
+React Native：JSX-&gt;虚拟DOM-&gt;Android&#47;iOS原生控件
+flutter：Widget-&gt;Element（类似虚拟DOM，只是一种数据结构）-&gt; RenderObject 交给底层渲染
+</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/91/ed/a0d244bb.jpg" width="30px"><span>KrystalJake</span> 👍（13） 💬（3）<div>您好：
+我看有的文档(flutter in action)会说一个Widget会对应多个Element，因为Element是根据Widget创建的，您的分享里说一个渲染点对应可能对应多个Widget，还是不太理解Widget，Element，RenderObject之间的关系，什么情况下一对一，一对多或多对一，希望能详细讲解一下，谢谢</div>2019-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/4f/15/463fcaf1.jpg" width="30px"><span>丁某某</span> 👍（10） 💬（1）<div>flutter 将Widget设计成不可变，怎么理解？</div>2019-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/83/e8/f726c635.jpg" width="30px"><span>加温后的啤酒</span> 👍（8） 💬（1）<div>在iOS中，UIView相当于Element，CALayer相当于renderObject。 老师 我的理解对吗？</div>2019-07-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0b/a7/6ef32187.jpg" width="30px"><span>Keep-Moving</span> 👍（7） 💬（1）<div>文中提到的绘制和渲染的区别是什么呢？</div>2019-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/dc/77/05b119eb.jpg" width="30px"><span>Tony</span> 👍（4） 💬（1）<div>Element 则是 Widget 的一个实例化对象是什么含义</div>2019-09-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/3a/58/494a6aca.jpg" width="30px"><span>Paradise</span> 👍（4） 💬（1）<div>一个Widget可以对应多个Element，因为Widget是不可变的配置信息，而一个Element对应一个RenderObject</div>2019-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9d/f4/7d74c9bb.jpg" width="30px"><span>Longwei243</span> 👍（3） 💬（1）<div>listview想要通过代码滑动到某个item有什么办法吗？item的高度都是不固定的</div>2019-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/49/ba/23c9246a.jpg" width="30px"><span>mαnajay</span> 👍（2） 💬（1）<div>我想问下 flutter 关于GPU 离屏渲染 这块有和iOS之类的不一样的地方吗？ 
+比如圆角 ，阴影， mask ，不透明多层合并 等 处理</div>2019-07-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/6a/01/d9cb531d.jpg" width="30px"><span>这得从我捡到一个鼠标垫开始说起</span> 👍（1） 💬（3）<div>你是如何理解 Widget、Element 和 Render？
+答：Widget描述了整个布局，从而构建出一棵树。flutter遍历这棵树的每一个widget，从而构造出对应的Element对象，Element对象再构造出对应的RenderObject对象。由于Widget是不可变的，而Element可变。每当Widget变化的时候，这个Widget会被重新创建，Element发现Widget重新创建后，就改变自身对应的部分同时也改变RenderObject对应的部分。通过阅读这篇文章，我的理解是，他们确实是一一对应的。</div>2019-08-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8c/18/7cbc34eb.jpg" width="30px"><span>davidzhou</span> 👍（1） 💬（1）<div>在iOS里面UIKit的UIView，对应widget，core animation的CALayer对应element，core graphics的context对应renderobject，不知道有没有理解到位</div>2019-07-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/da/66/5858322e.jpg" width="30px"><span>满大大</span> 👍（0） 💬（2）<div>RenderObjectWidget 本身并不负责这些对象的创建与更新，拿它有啥用啊</div>2019-11-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/89/a7/82827b76.jpg" width="30px"><span>outman</span> 👍（0） 💬（1）<div>请教个问题。RenderObjectWidget是通过RenderObject来进行布局绘制。那么继承StatefulWidget&#47;StatelessWidget的，是怎么进行布局绘制的呢，他们会创建ComponentElement，而不是RenderObjectElement，好像不会创建RenderObject。</div>2019-10-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/76/a7/374e86a7.jpg" width="30px"><span>欢乐的小马驹</span> 👍（0） 💬（1）<div>iOS中，大部分情况没有Widhet。但是NavigationBar对应Element，NavigationBarItem对应Widget。可以这样理解吗？老师</div>2019-10-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/XktNguBOU1CyXt2QoNtY6TAHnfA1QEqXZmdn7whTZggeKSiaibnbRwnHR1T1XqPDQrVJDbUicFw4bXBzlNby71a1g/132" width="30px"><span>夜色下云淡风轻</span> 👍（0） 💬（1）<div>有界面的Widget会生成Element，Element生成对应的RenderObject进行实际的布局绘制工作；而如果没有界面就不会生成Element自然也就没有RenderObject，Element和RenderObject必定是对应的这样理解对吗？</div>2019-09-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/2d/c9/0d8983f3.jpg" width="30px"><span>张简</span> 👍（0） 💬（1）<div>widget是数据的映射，数据来源于state(可变widget)和初始化数据(不可变widget)。可以这么理解吗？</div>2019-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/83/b2/e83dd93c.jpg" width="30px"><span>🌙</span> 👍（0） 💬（1）<div>widget是保存的控件的属性值吗？element是该控件对应的对象？能不能举个例子来说明一下，不是很懂</div>2019-08-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/58/27/1188e017.jpg" width="30px"><span>Egos</span> 👍（0） 💬（4）<div>Android 里面View 相当于Widget、Window 相当于Element、Surface 相当于RenderObject。</div>2019-07-19</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqr5ibqxYwcSgqPA7s49MZb1vEKKXT4mPTojwiclXkJf3ug26NuzTa6A5gbicR2rAUHdEkUAn13Rr2KQ/132" width="30px"><span>吴小安</span> 👍（0） 💬（2）<div>如果 Widget 的配置数据发生了改变，那么持有该 Widget 的 Element 节点也会被标记为 dirty。 
+widget按照文中所说widget是被element持有，那widget变化了是怎样找到对应的element？widget也持有element？</div>2019-07-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eoibW0Cougnv3Hjl8n1EWoUHloXu5lMicuPm1FcJ0qyXWEaqwXv4Z09ARaeDRicbicL9RTIXnoNARibSxw/132" width="30px"><span>mq</span> 👍（0） 💬（1）<div>数据驱动UI构建的话，感觉数据与UI层耦合程度会很高，是不是很难进行重用界面？如果有一个界面几乎一样，但是数据不一样的话是不是要做重复的UI？</div>2019-07-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eoibW0Cougnv3Hjl8n1EWoUHloXu5lMicuPm1FcJ0qyXWEaqwXv4Z09ARaeDRicbicL9RTIXnoNARibSxw/132" width="30px"><span>mq</span> 👍（0） 💬（1）<div>widget的渲染成本很低，意思是不是说ListView中类似的Cell可以不用进行重用了？</div>2019-07-18</li><br/><li><img src="" width="30px"><span>Miracle_</span> 👍（0） 💬（1）<div>有一点不理解，在Android中布局叠加嵌套会影响绘制性能，为什么Flutter中叠加不会呢？</div>2019-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/56/b0/5f5ec445.jpg" width="30px"><span>六号先生117</span> 👍（17） 💬（0）<div>推荐一篇好文，读完之后回头再翻这一篇很容易理解了。https:&#47;&#47;mp.weixin.qq.com&#47;s&#47;6ckRnyAALbCsXfZu56kTDw</div>2020-05-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/04/d8/21885ced.jpg" width="30px"><span>puppy_love</span> 👍（13） 💬（0）<div>flutter渲染原理相关文章看了太多了，但是大部分都是根据图一的flutter架构图重复描述（就好像Android的架构图反复叙述没有意义），刚开始看到这张图的时候以为又是一篇雷同文章，没想到后面的阐述这么清晰生动，让我对flutter的渲染原理有了一个立体的理解，也对flutter更有信心了</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/a0/88/a4ffd85e.jpg" width="30px"><span>樊不烦</span> 👍（12） 💬（0）<div>在iOS中，感觉没有Widget对应的概念，它更像是每个UIView控件中的属性，而Element就相当于UIView，RenderObject就像是CALayer。因为Widget是只读的所以当我们修改某一属性的时候就会重新生成一个Widget，然后在对应的Element中去更新，就相当于更新UIView中的属性，然后在通过RenderObject也就是类似于CALayer的去重新计算和布局。请问老师不知道我理解的是否有偏差</div>2020-01-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/87/66/31629628.jpg" width="30px"><span>MaO</span> 👍（1） 💬（0）<div>如果 Widget 的配置数据发生了改变，那么持有该 Widget 的 Element 节点也会被标记为 dirty。在下一个周期的绘制时，Flutter 就会触发 Element 树的更新，并使用最新的 Widget 数据更新自身以及关联的 RenderObject 对象
 
-事实上， **Flutter的核心设计思想便是“一切皆Widget”**。所以，我们学习Flutter，首先得从学会使用Widget开始。
+-----？
+这个知识点有更详细的参考资料吗？</div>2019-12-29</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaEK5icO2A4K7HYTYfQoagTz7VbtgxfS2ibBqLnKVWwQZgsePibZWFvFJEhPT8BtpQSaFx9IEodyp6c0dw/132" width="30px"><span>Geek_jg3r26</span> 👍（0） 💬（0）<div>类似iOS中 cleanmemory 和dirtymemory的概念
+</div>2024-10-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8f/c9/833d5060.jpg" width="30px"><span>玉皇大亮</span> 👍（0） 💬（0）<div>来自于 ChatGPT:
 
-那么，在今天的这篇文章中，我会带着你一起学习Widget在Flutter中的设计思路和基本原理，以帮助你深入理解Flutter的视图构建过程。
+在 Flutter 中，Widget、Element 和 RenderObject 是构建 UI 的三个核心概念，并且它们是紧密相连但不是一一对应的。
 
-## Widget渲染过程
+Widget: Widget 是 Flutter 中用于描述用户界面部分的不可变配置数据。它们类似于 Android 中的 View 或 iOS 中的 UIView 的概念，但与之不同的是，Widget 本身并不是 UI 控件，而是对 UI 控件的描述。在 Web 开发中，Widget 可以看作是 DOM 节点的声明。Widgets 是声明式的，它们定义了应该展示什么。当 Widget 的状态改变时，Flutter 框架会创建一个新的 Widget 实例。
 
-在进行App开发时，我们往往会关注的一个问题是：如何结构化地组织视图数据，提供给渲染引擎，最终完成界面显示。
+Element: Element 是 Widget 在渲染树中的实例。每一个 Element 对象都是一个特定类型的 Widget 的具体化。它们是 Widget 树到 RenderObject 树的桥梁。在 Android 或 iOS 中，没有直接对应的概念，但可以把 Element 想象成是 View 或 UIView 的控制器（Controller），它持有 Widget 的配置并且负责组织 RenderObject 的创建和更新。在 Web 开发中，Element 对应于 DOM 节点的实际实例。
 
-通常情况下，不同的UI框架中会以不同的方式去处理这一问题，但无一例外地都会用到视图树（View Tree）的概念。而Flutter将视图树的概念进行了扩展，把视图数据的组织和渲染抽象为三部分，即Widget，Element和 RenderObject。
+RenderObject: RenderObject 是用于在屏幕上绘制内容的对象。它定义了布局、绘制和命中测试的算法。每个 RenderObject 都对应着屏幕上的一部分，并且与其他 RenderObject 协作以构建 UI。在 Android 中，这个概念类似于 Canvas 上的绘制操作，而在 iOS 中，则类似于 CALayer。在 Web 开发中，RenderObject 可以理解为浏览器的渲染引擎最终处理和渲染的像素。
 
-这三部分之间的关系，如下所示：
+Widget、Element 和 RenderObject 之间的关系是：
 
-![](https://static001.geekbang.org/resource/image/b4/c9/b4ae98fe5b4c9a7a784c916fd140bbc9.png?wh=774*72)
+每个 Widget 都可以对应一个或多个 Element，这取决于 Widget 的类型。例如，StatelessWidget 和 StatefulWidget 的实例在树中通常只对应一个 Element，而像 ListView 这样的组合 Widget 可能对应多个 Element。
 
-图2 Widget，Element与RenderObject
+每个 Element 都对应一个 Widget，但并非所有 Element 都有一个 RenderObject。只有继承自 RenderObjectWidget 的 Widget 会创建一个 RenderObject，如 Container、Text 等。
 
-### Widget
+每个 RenderObject 都对应一个 Element。
 
-Widget是Flutter世界里对视图的一种结构化描述，你可以把它看作是前端中的“控件”或“组件”。Widget是控件实现的基本逻辑单位，里面存储的是有关视图渲染的配置信息，包括布局、渲染属性、事件响应信息等。
-
-在页面渲染上， **Flutter将“Simple is best”这一理念做到了极致**。为什么这么说呢？Flutter将Widget设计成不可变的，所以当视图渲染的配置信息发生变化时，Flutter会选择重建Widget树的方式进行数据更新，以数据驱动UI构建的方式简单高效。
-
-但，这样做的缺点是，因为涉及到大量对象的销毁和重建，所以会对垃圾回收造成压力。不过，Widget本身并不涉及实际渲染位图，所以它只是一份轻量级的数据结构，重建的成本很低。
-
-另外，由于Widget的不可变性，可以以较低成本进行渲染节点复用，因此在一个真实的渲染树中可能存在不同的Widget对应同一个渲染节点的情况，这无疑又降低了重建UI的成本。
-
-### Element
-
-Element是Widget的一个实例化对象，它承载了视图构建的上下文数据，是连接结构化的配置信息到完成最终渲染的桥梁。
-
-Flutter渲染过程，可以分为这么三步：
-
-- 首先，通过Widget树生成对应的Element树；
-- 然后，创建相应的RenderObject并关联到Element.renderObject属性上；
-- 最后，构建成RenderObject树，以完成最终的渲染。
-
-可以看到，Element同时持有Widget和RenderObject。而无论是Widget还是Element，其实都不负责最后的渲染，只负责发号施令，真正去干活儿的只有RenderObject。那你可能会问， **既然都是发号施令，那为什么需要增加中间的这层Element树呢？直接由Widget命令RenderObject去干活儿不好吗？**
-
-答案是，可以，但这样做会极大地增加渲染带来的性能损耗。
-
-因为Widget具有不可变性，但Element却是可变的。实际上，Element树这一层将Widget树的变化（类似React 虚拟DOM diff）做了抽象，可以只将真正需要修改的部分同步到真实的RenderObject树中，最大程度降低对真实渲染视图的修改，提高渲染效率，而不是销毁整个渲染视图树重建。
-
-这，就是Element树存在的意义。
-
-### RenderObject
-
-从其名字，我们就可以很直观地知道，RenderObject是主要负责实现视图渲染的对象。
-
-在前面的第4篇文章“ [Flutter区别于其他方案的关键技术是什么？](https://time.geekbang.org/column/article/105703)”中，我们提到，Flutter通过控件树（Widget树）中的每个控件（Widget）创建不同类型的渲染对象，组成渲染对象树。
-
-而渲染对象树在Flutter的展示过程分为四个阶段，即布局、绘制、合成和渲染。 其中，布局和绘制在RenderObject中完成，Flutter采用深度优先机制遍历渲染对象树，确定树中各个对象的位置和尺寸，并把它们绘制到不同的图层上。绘制完毕后，合成和渲染的工作则交给Skia搞定。
-
-Flutter通过引入Widget、Element与RenderObject这三个概念，把原本从视图数据到视图渲染的复杂构建过程拆分得更简单、直接，在易于集中治理的同时，保证了较高的渲染效率。
-
-## RenderObjectWidget介绍
-
-通过第5篇文章“ [从标准模板入手，体会Flutter代码是如何运行在原生系统上的](https://time.geekbang.org/column/article/106199)”的介绍，你应该已经知道如何使用StatelessWidget和StatefulWidget了。
-
-不过，StatelessWidget和StatefulWidget只是用来组装控件的容器，并不负责组件最后的布局和绘制。在Flutter中，布局和绘制工作实际上是在Widget的另一个子类RenderObjectWidget内完成的。
-
-所以，在今天这篇文章的最后，我们再来看一下RenderObjectWidget的源码，来看看如何使用Element和RenderObject完成图形渲染工作。
-
-```
-abstract class RenderObjectWidget extends Widget {
-  @override
-  RenderObjectElement createElement();
-  @protected
-  RenderObject createRenderObject(BuildContext context);
-  @protected
-  void updateRenderObject(BuildContext context, covariant RenderObject renderObject) { }
-  ...
-}
-
-```
-
-RenderObjectWidget是一个抽象类。我们通过源码可以看到，这个类中同时拥有创建Element、RenderObject，以及更新RenderObject的方法。
-
-但实际上， **RenderObjectWidget本身并不负责这些对象的创建与更新**。
-
-对于Element的创建，Flutter会在遍历Widget树时，调用createElement去同步Widget自身配置，从而生成对应节点的Element对象。而对于RenderObject的创建与更新，其实是在RenderObjectElement类中完成的。
-
-```
-abstract class RenderObjectElement extends Element {
-  RenderObject _renderObject;
-
-  @override
-  void mount(Element parent, dynamic newSlot) {
-    super.mount(parent, newSlot);
-    _renderObject = widget.createRenderObject(this);
-    attachRenderObject(newSlot);
-    _dirty = false;
-  }
-
-  @override
-  void update(covariant RenderObjectWidget newWidget) {
-    super.update(newWidget);
-    widget.updateRenderObject(this, renderObject);
-    _dirty = false;
-  }
-  ...
-}
-
-```
-
-在Element创建完毕后，Flutter会调用Element的mount方法。在这个方法里，会完成与之关联的RenderObject对象的创建，以及与渲染树的插入工作，插入到渲染树后的Element就可以显示到屏幕中了。
-
-如果Widget的配置数据发生了改变，那么持有该Widget的Element节点也会被标记为dirty。在下一个周期的绘制时，Flutter就会触发Element树的更新，并使用最新的Widget数据更新自身以及关联的RenderObject对象，接下来便会进入Layout和Paint的流程。而真正的绘制和布局过程，则完全交由RenderObject完成：
-
-```
-abstract class RenderObject extends AbstractNode with DiagnosticableTreeMixin implements HitTestTarget {
-  ...
-  void layout(Constraints constraints, { bool parentUsesSize = false }) {...}
-
-  void paint(PaintingContext context, Offset offset) { }
-}
-
-```
-
-布局和绘制完成后，接下来的事情就交给Skia了。在VSync信号同步时直接从渲染树合成Bitmap，然后提交给GPU。这部分内容，我已经在之前的“ [Flutter区别于其他方案的关键技术是什么](https://time.geekbang.org/column/article/105703)？”中与你介绍过了，这里就不再赘述了。
-
-接下来，我以下面的界面示例为例，与你说明Widget、Element与RenderObject在渲染过程中的关系。在下面的例子中，一个Row容器放置了4个子Widget，左边是Image，而右边则是一个Column容器下排布的两个Text。
-
-![](https://static001.geekbang.org/resource/image/f4/b9/f4d2ac98728cf4f24b0237958d0ce0b9.png?wh=422*222)
-
-图3 界面示例
-
-那么，在Flutter遍历完Widget树，创建了各个子Widget对应的Element的同时，也创建了与之关联的、负责实际布局和绘制的RenderObject。
-
-![](https://static001.geekbang.org/resource/image/35/6d/3536bd7bc00b42b220ce18ba86c2a26d.png?wh=1622*448)
-
-图4 示例界面生成的“三棵树”
-
-## 总结
-
-好了，今天关于Widget的设计思路和基本原理的介绍，我们就先进行到这里。接下来，我们一起回顾下今天的主要内容吧。
-
-首先，我与你介绍了Widget渲染过程，学习了在Flutter中视图数据的组织和渲染抽象的三个核心概念，即Widget、 Element和RenderObject。
-
-其中，Widget是Flutter世界里对视图的一种结构化描述，里面存储的是有关视图渲染的配置信息；Element则是Widget的一个实例化对象，将Widget树的变化做了抽象，能够做到只将真正需要修改的部分同步到真实的Render Object树中，最大程度地优化了从结构化的配置信息到完成最终渲染的过程；而RenderObject，则负责实现视图的最终呈现，通过布局、绘制完成界面的展示。
-
-最后，在对Flutter Widget渲染过程有了一定认识后，我带你阅读了RenderObjectWidget的代码，理解Widget、Element与RenderObject这三个对象之间是如何互相配合，实现图形渲染工作的。
-
-熟悉了Widget、Element与RenderObject这三个概念，相信你已经对组件的渲染过程有了一个清晰而完整的认识。这样，我们后续再学习常用的组件和布局时，就能够从不同的视角去思考框架设计的合理性了。
-
-不过在日常开发学习中，绝大多数情况下，我们只需要了解各种Widget特性及使用方法，而无需关心Element及RenderObject。因为Flutter已经帮我们做了大量优化工作，因此我们只需要在上层代码完成各类Widget的组装配置，其他的事情完全交给Flutter就可以了。
-
-## 思考题
-
-你是如何理解Widget、Element和RenderObject这三个概念的？它们之间是一一对应的吗？你能否在Android/iOS/Web中找到对应的概念呢？
-
-欢迎你在评论区给我留言分享你的观点，我会在下一篇文章中等待你！感谢你的收听，也欢迎你把这篇文章分享给更多的朋友一起阅读。
+总的来说，在 Flutter 中，Widget 定义了配置，Element 代表了 Widget 在树中的具体化，并且管理了 Widget 的生命周期和状态，而 RenderObject 负责实际的布局和绘制工作。这个分层设计使得 Flutter 能够高效地更新 UI，并且保持代码的灵活性和可扩展性。</div>2024-02-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/2c/9f/265106fb.jpg" width="30px"><span>Geek_自来也大人</span> 👍（0） 💬（0）<div>复习复习</div>2023-10-14</li><br/>
+</ul>

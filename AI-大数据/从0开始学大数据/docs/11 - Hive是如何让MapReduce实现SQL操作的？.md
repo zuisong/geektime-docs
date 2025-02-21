@@ -8,99 +8,78 @@
 
 ```
 SELECT pageid, age, count(1) FROM pv_users GROUP BY pageid, age;
-
 ```
 
-错过这期内容的同学可以先返回 [第7期文章](http://time.geekbang.org/column/article/67968) 思考一下这个问题，思考之余也可以看看其他同学给出的方案，我看留言很多同学的思路都是正确的，我们来详细看看MapReduce实现SQL的原理。
+错过这期内容的同学可以先返回[第7期文章](http://time.geekbang.org/column/article/67968)思考一下这个问题，思考之余也可以看看其他同学给出的方案，我看留言很多同学的思路都是正确的，我们来详细看看MapReduce实现SQL的原理。
 
 这是一条非常常见的SQL统计分析语句，统计不同年龄的用户访问不同网页的兴趣偏好，对于产品运营和设计很有价值。具体数据输入和执行结果请看下面的图示。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/0f/65/d5/88beb15a.jpg" width="30px"><span>李志博</span> 👍（52） 💬（3）<div>技术嫁接，我还真搞过2个，1个是selenium + 网上找的代码改本机host 实现 自动测试线上的每台机器的功能，另外1个是 java agent + jd-core （一个反编译软件的底层库）实现profile 监控同时能显示线上跑的真实的代码内容</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/87/cf/7bec93d8.jpg" width="30px"><span>朱国伟</span> 👍（20） 💬（1）<div>李老师 在跟着学的过程中 基本上都是现学的 比如 hive
+https:&#47;&#47;cwiki.apache.org&#47;confluence&#47;display&#47;Hive&#47;GettingStarted
 
-![](https://static001.geekbang.org/resource/image/0a/37/0ade10e49216575962e071d6fe9a7137.jpg?wh=634*314)
+在学习课程的过程中 是不是先不用对涉及到的这些大数据技术 如hdfs yarn hive等去做深入了解 只需跑一下GettingStared即可 即有个概念</div>2018-12-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/57/4e/791d0f5e.jpg" width="30px"><span>贺爷</span> 👍（9） 💬（1）<div>李老师，我之前买过您的《大型网站技术架构案例》并学习过，我想问下，对于一个程序员说，技术功底应该达到什么程度才可以去接触、学习和实践架构方面得东西呢？</div>2019-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fd/b0/30007f3c.jpg" width="30px"><span>大数据技术与数仓</span> 👍（8） 💬（1）<div>package com.company.sparkcore
 
-左边是要分析的数据表，右边是分析结果。实际上把左边表相同的行进行累计求和，就得到右边的表了，看起来跟WordCount的计算很相似。确实也是这样，我们看下这条SQL语句的MapReduce的计算过程，按照MapReduce编程模型，map和reduce函数的输入输出以及函数处理过程分别是什么。
+import org.apache.log4j.{Level, Logger}
+import org.apache.spark.{SparkConf, SparkContext}
 
-首先，看下map函数的输入Key和Value，我们主要看Value。Value就是左边表中每一行的数据，比如<1, 25>这样。map函数的输出就是以输入的Value作为Key，Value统一设为1，比如<<1, 25>, 1>这样。
+&#47;**
+  * 使用Spark Core的算子实现简单的join操作
+  *&#47;
+object JoinBySpark {
+  def main(args: Array[String]): Unit = {
+    val conf = new SparkConf()
+      .setAppName(JoinBySpark.getClass.getSimpleName)
+      .setMaster(&quot;local&quot;)
+    Logger.getLogger(&quot;org.apache.spark&quot;).setLevel(Level.OFF)
+    Logger.getLogger(&quot;org.apache.hadoop&quot;).setLevel(Level.OFF)
 
-map函数的输出经过shuffle以后，相同的Key及其对应的Value被放在一起组成一个<Key, Value集合>，作为输入交给reduce函数处理。比如<<2, 25>, 1>被map函数输出两次，那么到了reduce这里，就变成输入<<2, 25>, <1, 1>>，这里的Key是<2, 25>，Value集合是<1, 1>。
+    val sc = new SparkContext(conf)
+    &#47;&#47;通过文本文件创建RDD
+    val page_viewRDD = sc.textFile(&quot;file:&#47;&#47;&#47;e:&#47;page_view.txt&quot;)
+    val pv_usersRDD = sc.textFile(&quot;file:&#47;&#47;&#47;e:&#47;pv_users.txt&quot;)
+    &#47;&#47;提取需要的字段，组合成形如（userid,pageid）的RDD
+    val userid_pageidRDD = page_viewRDD.map(_.split(&quot;,&quot;)).map(viewData =&gt; (viewData(1), viewData(0)))
+    &#47;&#47;提取需要的字段，组合成形如（userid,age）的RDD
+    val userid_ageRDD = pv_usersRDD.map(_.split(&quot;,&quot;)).map(userData =&gt; (userData(0), userData(1)))
+    &#47;&#47;对上述的两个RDD执行Join操作，形成形如(userid,(pageid,age))的RDD
+    val userid_pageid_ageRDD = userid_pageidRDD.join(userid_ageRDD)
+    userid_pageid_ageRDD.collect().foreach(println)
+    &#47;&#47;对join操作形成的RDD提取pageid、age字段
+    val joinRes = userid_pageid_ageRDD.map(upaData =&gt; (upaData._2._1, upaData._2._2))
+    &#47;&#47;打印输出结果
+    &#47;&#47;    (1,32)
+    &#47;&#47;    (1,25)
+    &#47;&#47;    (2,25)
+    joinRes.collect().foreach(println)
 
-在reduce函数内部，Value集合里所有的数字被相加，然后输出。所以reduce的输出就是<<2, 25>, 2>。
 
-讲起来有点拗口，我把这个过程画成了一张图，看起来就清楚多了。
+  }
 
-![](https://static001.geekbang.org/resource/image/bc/57/bc088edf00478c835003272696c44c57.jpg?wh=1003*436)
 
-这样一条很有实用价值的SQL就被很简单的MapReduce计算过程处理好了。
+}</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b8/37/98991aeb.jpg" width="30px"><span>不似旧日</span> 👍（7） 💬（3）<div>大数据框架可以执行sql,能执行sql的框架有hadoop的hive  spark的sparkSQL,sparkSQL的执行速度要快于hive,
+由于大数据框架能执行sql那么是不是可以把这个框架当做数据库来看待?java就能调用大数据服务操作数据了?</div>2019-01-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6a/2d/ec4ed8ce.jpg" width="30px"><span>shawn</span> 👍（5） 💬（1）<div>李老师，“生成这些函数的 DAG（有向无环图）”，为什么是有向无环图，您可以说说原因嘛。
 
-在数据仓库中，SQL是最常用的分析工具，既然一条SQL可以通过MapReduce程序实现，那么有没有工具能够自动将SQL生成MapReduce代码呢？这样数据分析师只要输入SQL，就可以自动生成MapReduce可执行的代码，然后提交Hadoop执行，也就完美解决了我们最开始提出的问题。问题的答案，也就是这个神奇的工具就是Hadoop大数据仓库Hive。
+</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/7a/68/d6b53fbb.jpg" width="30px"><span>rains</span> 👍（4） 💬（1）<div>拍照软件和图像编辑美化软件结合起来，变成萌拍，美颜相机</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a0/8e/6e4c7509.jpg" width="30px"><span>一</span> 👍（3） 💬（1）<div>“在我们工作中也可以借鉴一下这种将两种技术嫁接到一起产生极大应用创新性的手段，说不定下一个做出类似Hive这种具有巨大应用价值的产品的人就是你！”老师的这句话好振奋人心啊！</div>2019-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（3） 💬（1）<div>智能手机就是嘛！ 以前的手机只能打电话，现在可以拍照、打电话、录音，也可以远程操控家电……等等 把操控其他事物的技术嫁接到手机上……</div>2018-11-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/b2/ce/5638be2b.jpg" width="30px"><span>Flychen</span> 👍（1） 💬（1）<div>小白一个，想体验下hive中跑SQL，有什么在线环境吗</div>2021-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/f3/129d6dfe.jpg" width="30px"><span>李二木</span> 👍（1） 💬（1）<div>子弹短信，智能音响也算吧。</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/5a/9e/8f2ccc1d.jpg" width="30px"><span>有点意思</span> 👍（0） 💬（1）<div>老师好
+请教下 HQL和SQL的区别有多大？我去搜集哪些资料才能知道他们的区别？
+由于目前我在做协议解析和语法解析 已经有了现成的sql语法解析了  </div>2019-08-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/87/cf/7bec93d8.jpg" width="30px"><span>朱国伟</span> 👍（0） 💬（1）<div>好像只是join的话 并没有reduce这一步骤
+SELECT pv.pageid, u.age FROM page_view pv JOIN users u ON (pv.userid = u.userid);
 
-## Hive的架构
+Number of reduce tasks is set to 0 since there&#39;s no reduce operator
+Hadoop job information for Stage-3: number of mappers: 1; number of reducers: 0
+2018-12-15 17:21:21,269 Stage-3 map = 0%,  reduce = 0%
+2018-12-15 17:21:26,382 Stage-3 map = 100%,  reduce = 0%
 
-Hive能够直接处理我们输入的SQL语句（Hive的SQL语法和数据库标准SQL略有不同），调用MapReduce计算框架完成数据分析操作。下面是它的架构图，我们结合架构图来看看Hive是如何实现将SQL生成MapReduce可执行代码的。
+Total MapReduce CPU Time Spent: 0 msec
+OK
+1	25
+2	25
+1	32
+Time taken: 26.01 seconds, Fetched: 3 row(s)</div>2018-12-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/8b/82/7f41f664.jpg" width="30px"><span>诺侠</span> 👍（57） 💬（0）<div>jupyter notebook应该算是一个。</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/65/c6/a2111ff3.jpg" width="30px"><span>李</span> 👍（45） 💬（8）<div>此教程适合有一定大数据基础的人，如果是新人，那么肯定是懵懂的</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/55/47/d217c45f.jpg" width="30px"><span>Panmax</span> 👍（29） 💬（0）<div>Linux 命令中最常用的管道符 | ，就是运用嫁接最多的地方吧。</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/32/3f/fa4ac035.jpg" width="30px"><span>sunlight001</span> 👍（17） 💬（0）<div>Jekins之类的持续集成工具，集成了非常多的工具及模块，比如sonar,git,mail等</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7b/e9/5955aa73.jpg" width="30px"><span>阿神</span> 👍（11） 💬（1）<div>老师，您好！hive on spark跟spark sql on hive性能上会一样吗，这两种方案怎么选型</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/65/d0/b5b00bc2.jpg" width="30px"><span>在路上</span> 👍（5） 💬（0）<div>当初接触到ajax时就觉得很神奇，了解其实现原理后发现就是已有的两个技术（Javascript+xml）相结合后产生的技术魅力，这就是1+1&gt;2的效果</div>2019-01-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fb/6e/c10b9c25.jpg" width="30px"><span>Albert</span> 👍（5） 💬（0）<div>Spring Cloud将各种微服务的基础设施集成在一起，Spring Boot简化应用配置和管理依赖，这两者结合在一起，使得微服务应用能够快速开发和构建</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/38/19/c8d72c61.jpg" width="30px"><span>木白</span> 👍（3） 💬（0）<div>集成的例子太多了，其实目前稍微复杂点的软件都是各种不同的功能结合在一起的。比如微信和支付宝这种，把社交和支付（或者说红包这种特殊的功能）结合起来，我们现在回头去看，可想想到有社交的地方就会有金钱往来，好像是那么理所当然。但是最开始聊天软件出现了好多年业没有出现相应的产品。也许技术和政策是一部分原因，这我就可能不太清楚了。</div>2019-01-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（3） 💬（0）<div>婚姻也算是一种嫁接吗？</div>2018-11-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/8e/91/f1bb1d06.jpg" width="30px"><span>梦幻之梦想</span> 👍（3） 💬（0）<div>操作系统</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f7/9d/be04b331.jpg" width="30px"><span>落叶飞逝的恋</span> 👍（3） 💬（0）<div>多种技术组合而成的软件产品太多了，比如:语音识别技术与搜索引擎技术组合成语音识别技术，比如iphone上的siri 。还有人脸识别技术与监控技术结合及公安系统组合，就可以马路闯红灯，直接暴露闯红灯的身份。</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/6d/9c/beaf7642.jpg" width="30px"><span>伊森</span> 👍（3） 💬（0）<div>学习李老师的课，不仅能学习到专业的知识，还引导你更深层次的思考🤔</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/cb/50/66d0bd7f.jpg" width="30px"><span>杰之7</span> 👍（2） 💬（0）<div>通过这一节的复习，对大数据仓库Hive有了进一步的理解。
 
-![](https://static001.geekbang.org/resource/image/26/ea/26287cac9a9cfa3874a680fdbcd795ea.jpg?wh=720*383)
+Hive的出现解决的BI工程师进入大数据处理的门槛，当然对于有大数据经验使用MR进行编程处理同样可行。在MR进行大数据处理的过程中需要进行Map，shuffle，reduce阶段。Hive将SQL自动生成MR可执行的代码，提交给Hadoop执行。
 
-我们通过Hive的Client（Hive的命令行工具，JDBC等）向Hive提交SQL命令。如果是创建数据表的DDL（数据定义语言），Hive就会通过执行引擎Driver将数据表的信息记录在Metastore元数据组件中，这个组件通常用一个关系数据库实现，记录表名、字段名、字段类型、关联HDFS文件路径等这些数据库的Meta信息（元信息）。
+对Hive的架构，主要有Mesastore对元数据的记录，Compiler对于查询语句的处理，及支持Where，join     on 等操作。
 
-如果我们提交的是查询分析数据的DQL（数据查询语句），Driver就会将该语句提交给自己的编译器Compiler进行语法分析、语法解析、语法优化等一系列操作，最后生成一个MapReduce执行计划。然后根据执行计划生成一个MapReduce的作业，提交给Hadoop MapReduce计算框架处理。
-
-对于一个较简单的SQL命令，比如：
-
-```
-SELECT * FROM status_updates WHERE status LIKE ‘michael jackson’;
-
-```
-
-它对应的Hive执行计划如下图。
-
-![](https://static001.geekbang.org/resource/image/cb/a6/cb1236ad035ca01cffbb9df47fa88fa6.jpg?wh=1744*1544)
-
-Hive内部预置了很多函数，Hive的执行计划就是根据SQL语句生成这些函数的DAG（有向无环图），然后封装进MapReduce的map和reduce函数中。这个例子中，map函数调用了三个Hive内置函数TableScanOperator、FilterOperator、FileOutputOperator，就完成了map计算，而且无需reduce函数。
-
-## Hive如何实现join操作
-
-除了上面这些简单的聚合（group by）、过滤（where）操作，Hive还能执行连接（join on）操作。文章开头的例子中，pv\_users表的数据在实际中是无法直接得到的，因为pageid数据来自用户访问日志，每个用户进行一次页面浏览，就会生成一条访问记录，保存在page\_view表中。而age年龄信息则记录在用户表user中。
-
-![](https://static001.geekbang.org/resource/image/82/2d/8254710229b1d749d08f7a0bb799ac2d.jpg?wh=720*306)
-
-这两张表都有一个相同的字段userid，根据这个字段可以将两张表连接起来，生成前面例子的pv\_users表，SQL命令是
-
-```
-SELECT pv.pageid, u.age FROM page_view pv JOIN user u ON (pv.userid = u.userid);
-
-```
-
-同样，这个SQL命令也可以转化为MapReduce计算，连接的过程如下图所示。
-
-![](https://static001.geekbang.org/resource/image/25/2a/25d62b355c976beb5b26af865ac2b92a.jpg?wh=720*347)
-
-从图上看，join的MapReduce计算过程和前面的group by稍有不同，因为join涉及两张表，来自两个文件（夹），所以需要在map输出的时候进行标记，比如来自第一张表的输出Value就记录为<1, X>，这里的1表示数据来自第一张表。这样经过shuffle以后，相同的Key被输入到同一个reduce函数，就可以根据表的标记对Value数据求笛卡尔积，用第一张表的每条记录和第二张表的每条记录连接，输出就是join的结果。
-
-所以我们如果打开Hive的源代码，看join相关的代码，会看到一个两层for循环，对来自两张表的记录进行连接操作。
-
-## 小结
-
-在实践中，工程师其实并不需要经常编写MapReduce程序，因为网站最主要的大数据处理就是SQL分析，也因此Hive在大数据应用中的作用非常重要。
-
-后面随着Hive的普及，我们对于在Hadoop上执行SQL的需求越加强烈，对大数据SQL的应用场景也多样化起来，于是又开发了各种大数据SQL引擎。
-
-Cloudera开发了Impala，这是一种运行在HDFS上的MPP架构的SQL引擎。和MapReduce启动Map和Reduce两种执行进程，将计算过程分成两个阶段进行计算不同，Impala在所有DataNode服务器上部署相同的Impalad进程，多个Impalad进程相互协作，共同完成SQL计算。在一些统计场景中，Impala可以做到毫秒级的计算速度。
-
-后来Spark出道以后，也迅速推出了自己的SQL引擎Shark，也就是后来的Spark SQL，将SQL语句解析成Spark的执行计划，在Spark上执行。由于Spark比MapReduce快很多，Spark SQL也相应比Hive快很多，并且随着Spark的普及，Spark SQL也逐渐被人们接受。后来Hive推出了Hive on Spark，将Hive的执行计划转换成Spark的计算模型，当然这是后话了。
-
-此外，我们还希望在NoSQL的数据库上执行SQL，毕竟SQL发展了几十年，积累了庞大的用户群体，很多人习惯了用SQL解决问题。于是Saleforce推出了Phoenix，一个执行在HBase上的SQL引擎。
-
-这些SQL引擎基本上都只支持类SQL语法，并不能像数据库那样支持标准SQL，特别是数据仓库领域几乎必然会用到嵌套查询SQL，也就是在where条件里面嵌套select子查询，但是几乎所有的大数据SQL引擎都不支持。然而习惯于传统数据库的使用者希望大数据也能支持标准SQL，我当时在Intel的大数据团队就决定开发一款可以支持标准SQL的大数据引擎，我作为最主要的开发者参与其中。江湖传说，开发数据库、编译器、操作系统是程序员的三大梦想。我将在专栏里专门讲述如何设计、开发一个大数据SQL引擎，一起感受开发数据库是怎样一种体验。
-
-最后我们还是回到Hive。Hive本身的技术架构其实并没有什么创新，数据库相关的技术和架构已经非常成熟，只要将这些技术架构应用到MapReduce上就得到了Hadoop大数据仓库Hive。 **但是想到将两种技术嫁接到一起，却是极具创新性的**，通过嫁接产生出的Hive可以极大降低大数据的应用门槛，也使Hadoop大数据技术得到大规模普及。
-
-在我们工作中也可以借鉴一下这种将两种技术嫁接到一起产生极大应用创新性的手段，说不定下一个做出类似Hive这种具有巨大应用价值技术产品的就是你。
-
-## 思考题
-
-在软件编程的上古时代，各种编程语言有各种编译器，将软件工程师编写的程序编译成可执行代码。软件工程师必须要在另外一个文本编辑器里将代码编写好，然后保存，再调用编译器对这个程序源代码文件进行编译。
-
-后来有人把编译器集成到文本编辑器里面，工程师可以在文本编辑器里面编写代码、编译调试代码，工作效率得到极大提高，这就是软件开发的集成开发环境IDE。
-
-类似这样将两个（或更多个）软件集成（嫁接）到一起，产生巨大创新应用价值的软件产品还有哪些？
-
-欢迎你写下自己的思考或疑问，与我和其他同学一起讨论。
+在技术的不断发展中，出现了多种SQL引擎，它们也共同促进的大数据的发展。</div>2019-02-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/a2/9b/d7adabb2.jpg" width="30px"><span>东东</span> 👍（1） 💬（0）<div>持续集成（Continuous integration）工具应该算一个吧。CI工具把整个软件工程过程需要的都整合在一起极大的提升了研发效率。常用的把代码仓库、编译工具、部署工具串联起来实现一键部署。</div>2020-02-29</li><br/><li><img src="" width="30px"><span>千回百转无劫山</span> 👍（1） 💬（0）<div>难道不应该讲Antlr 吗？ </div>2019-12-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/dd/36/d60a6190.jpg" width="30px"><span>mt11912</span> 👍（1） 💬（0）<div>postgresql 数据库支持json数据类型，将结构化数据和非结构化数据整合在一起。</div>2019-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/8b/3c/0462eca7.jpg" width="30px"><span>Tomcat</span> 👍（1） 💬（0）<div>将两种产技术或者产品嫁接起来，可以实现不一样的神奇效果。比如婴儿恒温箱，就是恒温+保暖箱；语音识别技术就是统计学+计算机；手机就是通讯+连接+……等等。
+这样的嫁接思维，不仅仅在技术中所向披靡，在商业领域或者人生思考中，也是非常有益处。</div>2019-04-10</li><br/>
+</ul>

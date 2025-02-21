@@ -6,7 +6,7 @@
 
 基于混合线程的并发编程模型自然不必多说。
 
-在 **数据类型** 方面有：
+在**数据类型**方面有：
 
 - 基于底层数组的切片；
 - 用来传递数据的通道；
@@ -14,241 +14,150 @@
 - 可实现面向对象的结构体；
 - 能无侵入实现的接口等。
 
-在 **语法** 方面有：
+在**语法**方面有：
 
-- 异步编程神器 `go` 语句；
-- 函数的最后关卡 `defer` 语句；
-- 可做类型判断的 `switch` 语句；
-- 多通道操作利器 `select` 语句；
-- 非常有特色的异常处理函数 `panic` 和 `recover`。
+- 异步编程神器`go`语句；
+- 函数的最后关卡`defer`语句；
+- 可做类型判断的`switch`语句；
+- 多通道操作利器`select`语句；
+- 非常有特色的异常处理函数`panic`和`recover`。
 
-除了这些，我们还一起讨论了 **测试Go程序** 的主要方式。这涉及了Go语言自带的程序测试套件，相关的概念和工具包括：
+除了这些，我们还一起讨论了**测试Go程序**的主要方式。这涉及了Go语言自带的程序测试套件，相关的概念和工具包括：
 
 - 独立的测试源码文件；
 - 三种功用不同的测试函数；
-- 专用的 `testing` 代码包；
-- 功能强大的 `go test` 命令。
+- 专用的`testing`代码包；
+- 功能强大的`go test`命令。
 
-另外，就在前不久，我还为你深入讲解了Go语言提供的那些 **同步工具**。它们也是Go语言并发编程工具箱中不可或缺的一部分。这包括了：
+另外，就在前不久，我还为你深入讲解了Go语言提供的那些**同步工具**。它们也是Go语言并发编程工具箱中不可或缺的一部分。这包括了：
 
 - 经典的互斥锁；
 - 读写锁；
 - 条件变量；
 - 原子操作。
 
-以及 **Go语言特有的一些数据类型**，即：
-
-- 单次执行小助手 `sync.Once`；
-- 临时对象池 `sync.Pool`；
-- 帮助我们实现多goroutine协作流程的 `sync.WaitGroup`、 `context.Context`；
-- 一种高效的并发安全字典 `sync.Map`。
-
-毫不夸张地说，如果你真正地掌握了上述这些知识，那么就已经获得了Go语言编程的精髓。
-
-在这之后，你再去研读Go语言标准库和那些优秀第三方库中的代码的时候，就一定会事半功倍。同时，在使用Go语言编写软件的时候，你肯定也会如鱼得水、游刃有余的。
-
-我用了大量的篇幅讲解了Go语言中最核心的知识点，真心希望你已经搞懂了这些内容。
-
-**在后面的日子里，我会与你一起去探究Go语言标准库中最常用的那些代码包，弄清它们的用法、了解它们的机理。当然了，我还会顺便讲一讲那些必备的周边知识。**
-
-## 前导内容1：Go语言字符编码基础
-
-首先，让我们来关注字符编码方面的问题。这应该是在计算机软件领域中非常基础的一个问题了。
-
-我在前面说过，Go语言中的标识符可以包含“任何Unicode编码可以表示的字母字符”。我还说过，虽然我们可以直接把一个整数值转换为一个 `string` 类型的值。
-
-但是，被转换的整数值应该可以代表一个有效的Unicode代码点，否则转换的结果就将会是 `"�"`，即：一个仅由高亮的问号组成的字符串值。
-
-另外，当一个 `string` 类型的值被转换为 `[]rune` 类型值的时候，其中的字符串会被拆分成一个一个的Unicode字符。
-
-显然，Go语言采用的字符编码方案从属于Unicode编码规范。更确切地说，Go语言的代码正是由Unicode字符组成的。Go语言的所有源代码，都必须按照Unicode编码规范中的UTF-8编码格式进行编码。
-
-换句话说，Go语言的源码文件必须使用UTF-8编码格式进行存储。如果源码文件中出现了非UTF-8编码的字符，那么在构建、安装以及运行的时候，go命令就会报告错误“illegal UTF-8 encoding”。
-
-在这里，我们首先要对Unicode编码规范有所了解。不过，在讲述它之前，我先来简要地介绍一下ASCII编码。
-
-### 前导内容 2： ASCII编码
-
-ASCII是英文“American Standard Code for Information Interchange”的缩写，中文译为美国信息交换标准代码。它是由美国国家标准学会（ANSI）制定的单字节字符编码方案，可用于基于文本的数据交换。
-
-它最初是美国的国家标准，后又被国际标准化组织（ISO）定为国际标准，称为ISO 646标准，并适用于所有的拉丁文字字母。
-
-ASCII编码方案使用单个字节（byte）的二进制数来编码一个字符。标准的ASCII编码用一个字节的最高比特（bit）位作为奇偶校验位，而扩展的ASCII编码则将此位也用于表示字符。ASCII编码支持的可打印字符和控制字符的集合也被叫做ASCII编码集。
-
-我们所说的Unicode编码规范，实际上是另一个更加通用的、针对书面字符和文本的字符编码标准。它为世界上现存的所有自然语言中的每一个字符，都设定了一个唯一的二进制编码。
-
-它定义了不同自然语言的文本数据在国际间交换的统一方式，并为全球化软件创建了一个重要的基础。
-
-Unicode编码规范以ASCII编码集为出发点，并突破了ASCII只能对拉丁字母进行编码的限制。它不但提供了可以对世界上超过百万的字符进行编码的能力，还支持所有已知的转义序列和控制代码。
-
-我们都知道，在计算机系统的内部，抽象的字符会被编码为整数。这些整数的范围被称为代码空间。在代码空间之内，每一个特定的整数都被称为一个代码点。
-
-一个受支持的抽象字符会被映射并分配给某个特定的代码点，反过来讲，一个代码点总是可以被看成一个被编码的字符。
-
-Unicode编码规范通常使用十六进制表示法来表示Unicode代码点的整数值，并使用“U+”作为前缀。比如，英文字母字符“a”的Unicode代码点是U+0061。在Unicode编码规范中，一个字符能且只能由与它对应的那个代码点表示。
-
-Unicode编码规范现在的最新版本是11.0，并会于2019年3月发布12.0版本。而Go语言从1.10版本开始，已经对Unicode的10.0版本提供了全面的支持。对于绝大多数的应用场景来说，这已经完全够用了。
-
-Unicode编码规范提供了三种不同的编码格式，即：UTF-8、UTF-16和UTF-32。其中的UTF是UCS Transformation Format的缩写。而UCS又是Universal Character Set的缩写，但也可以代表Unicode Character Set。所以，UTF也可以被翻译为Unicode转换格式。它代表的是字符与字节序列之间的转换方式。
-
-在这几种编码格式的名称中，“-”右边的整数的含义是，以多少个比特位作为一个编码单元。以UTF-8为例，它会以8个比特，也就是一个字节，作为一个编码单元。并且，它与标准的ASCII编码是完全兼容的。也就是说，在\[0x00, 0x7F\]的范围内，这两种编码表示的字符都是相同的。这也是UTF-8编码格式的一个巨大优势。
-
-UTF-8是一种可变宽的编码方案。换句话说，它会用一个或多个字节的二进制数来表示某个字符，最多使用四个字节。比如，对于一个英文字符，它仅用一个字节的二进制数就可以表示，而对于一个中文字符，它需要使用三个字节才能够表示。不论怎样，一个受支持的字符总是可以由UTF-8编码为一个字节序列。以下会简称后者为UTF-8编码值。
-
-现在，在你初步地了解了这些知识之后，请认真地思考并回答下面的问题。别担心，我会在后面进一步阐述Unicode、UTF-8以及Go语言对它们的运用。
-
-**问题：一个 `string` 类型的值在底层是怎样被表达的？**
-
-**典型回答** 是在底层，一个 `string` 类型的值是由一系列相对应的Unicode代码点的UTF-8编码值来表达的。
-
-## 问题解析
-
-在Go语言中，一个 `string` 类型的值既可以被拆分为一个包含多个字符的序列，也可以被拆分为一个包含多个字节的序列。
-
-前者可以由一个以 `rune` 为元素类型的切片来表示，而后者则可以由一个以 `byte` 为元素类型的切片代表。
-
-`rune` 是Go语言特有的一个基本数据类型，它的一个值就代表一个字符，即：一个Unicode字符。
-
-比如， `'G'`、 `'o'`、 `'爱'`、 `'好'`、 `'者'` 代表的就都是一个Unicode字符。
-
-我们已经知道，UTF-8编码方案会把一个Unicode字符编码为一个长度在\[1, 4\]范围内的字节序列。所以，一个 `rune` 类型的值也可以由一个或多个字节来代表。
-
-```
-type rune = int32
-
-```
-
-根据 `rune` 类型的声明可知，它实际上就是 `int32` 类型的一个别名类型。也就是说，一个 `rune` 类型的值会由四个字节宽度的空间来存储。它的存储空间总是能够存下一个UTF-8编码值。
-
-一个 `rune` 类型的值在底层其实就是一个UTF-8编码值。前者是（便于我们人类理解的）外部展现，后者是（便于计算机系统理解的）内在表达。
-
-请看下面的代码：
-
-```
-str := "Go爱好者"
-fmt.Printf("The string: %q\n", str)
-fmt.Printf("  => runes(char): %q\n", []rune(str))
-fmt.Printf("  => runes(hex): %x\n", []rune(str))
-fmt.Printf("  => bytes(hex): [% x]\n", []byte(str))
-
-```
-
-字符串值 `"Go爱好者"` 如果被转换为 `[]rune` 类型的值的话，其中的每一个字符（不论是英文字符还是中文字符）就都会独立成为一个 `rune` 类型的元素值。因此，这段代码打印出的第二行内容就会如下所示：
-
-```
-  => runes(char): ['G' 'o' '爱' '好' '者']
-
-```
-
-又由于，每个 `rune` 类型的值在底层都是由一个UTF-8编码值来表达的，所以我们可以换一种方式来展现这个字符序列：
-
-```
-  => runes(hex): [47 6f 7231 597d 8005]
-
-```
-
-可以看到，五个十六进制数与五个字符相对应。很明显，前两个十六进制数 `47` 和 `6f` 代表的整数都比较小，它们分别表示字符 `'G'` 和 `'o'`。
-
-因为它们都是英文字符，所以对应的UTF-8编码值用一个字节表达就足够了。一个字节的编码值被转换为整数之后，不会大到哪里去。
-
-而后三个十六进制数 `7231`、 `597d` 和 `8005` 都相对较大，它们分别表示中文字符 `'爱'`、 `'好'` 和 `'者'`。
-
-这些中文字符对应的UTF-8编码值，都需要使用三个字节来表达。所以，这三个数就是把对应的三个字节的编码值，转换为整数后得到的结果。
-
-我们还可以进一步地拆分，把每个字符的UTF-8编码值都拆成相应的字节序列。上述代码中的第五行就是这么做的。它会得到如下的输出：
-
-```
-  => bytes(hex): [47 6f e7 88 b1 e5 a5 bd e8 80 85]
-
-```
-
-这里得到的字节切片比前面的字符切片明显长了很多。这正是因为一个中文字符的UTF-8编码值需要用三个字节来表达。
-
-这个字节切片的前两个元素值与字符切片的前两个元素值是一致的，而在这之后，前者的每三个元素值才对应字符切片中的一个元素值。
-
-注意，对于一个多字节的UTF-8编码值来说，我们可以把它当做一个整体转换为单一的整数，也可以先把它拆成字节序列，再把每个字节分别转换为一个整数，从而得到多个整数。
-
-这两种表示法展现出来的内容往往会很不一样。比如，对于中文字符 `'爱'` 来说，它的UTF-8编码值可以展现为单一的整数 `7231`，也可以展现为三个整数，即： `e7`、 `88` 和 `b1`。
-
-![](https://static001.geekbang.org/resource/image/0d/85/0d8dac40ccb2972dbceef33d03741085.png?wh=1129*604)
-
-（字符串值的底层表示）
-
-总之，一个 `string` 类型的值会由若干个Unicode字符组成，每个Unicode字符都可以由一个 `rune` 类型的值来承载。
-
-这些字符在底层都会被转换为UTF-8编码值，而这些UTF-8编码值又会以字节序列的形式表达和存储。因此，一个 `string` 类型的值在底层就是一个能够表达若干个UTF-8编码值的字节序列。
-
-## 知识扩展
-
-**问题 1：使用带有 `range` 子句的 `for` 语句遍历字符串值的时候应该注意什么？**
-
-带有 `range` 子句的 `for` 语句会先把被遍历的字符串值拆成一个字节序列，然后再试图找出这个字节序列中包含的每一个UTF-8编码值，或者说每一个Unicode字符。
-
-这样的 `for` 语句可以为两个迭代变量赋值。如果存在两个迭代变量，那么赋给第一个变量的值，就将会是当前字节序列中的某个UTF-8编码值的第一个字节所对应的那个索引值。
-
-而赋给第二个变量的值，则是这个UTF-8编码值代表的那个Unicode字符，其类型会是 `rune`。
-
-例如，有这么几行代码：
-
-```
-str := "Go爱好者"
-for i, c := range str {
- fmt.Printf("%d: %q [% x]\n", i, c, []byte(string(c)))
+以及**Go语言特有的一些数据类型**，即：
+
+- 单次执行小助手`sync.Once`；
+- 临时对象池`sync.Pool`；
+- 帮助我们实现多goroutine协作流程的`sync.WaitGroup`、`context.Context`；
+- 一种高效的并发安全字典`sync.Map`。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/d8/425e1b0a.jpg" width="30px"><span>小虾米</span> 👍（7） 💬（4）<div>这篇文章把unicode和utf8区分的不是很清楚，正如上面有个网友说的rune切变16进制输出是字符的unicode的码点，而byte切片输出的才是utf8的编码</div>2018-12-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/9d/a4/e481ae48.jpg" width="30px"><span>lesserror</span> 👍（6） 💬（1）<div>郝林老师，请问一下：“基于混合线程的并发编程模型”。这句话该怎么理解呢？</div>2021-08-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ea/80/8759e4c1.jpg" width="30px"><span>🐻</span> 👍（4） 💬（1）<div>+ isrunesingle.go
+
+```go
+package show_rune_length
+
+func isSingleCharA(c rune) bool {
+	return int32(c) &lt; 128
 }
 
+func isSingleCharB(c rune) bool {
+	data := []byte(string(c))
+	return len(data) == 1
+}
+
+func isSingleCharC(c rune) bool {
+	data := string(c) + &quot; &quot;
+
+	for i, _ := range data {
+		if i == 0 {
+			continue
+		}
+
+		if i == 1 {
+			return true
+		} else {
+			return false
+		}
+	}
+
+	return false
+}
 ```
 
-这里被遍历的字符串值是 `"Go爱好者"`。在每次迭代的时候，这段代码都会打印出两个迭代变量的值，以及第二个值的字节序列形式。完整的打印内容如下：
++ isrunesingle_test.go
 
-```
-0: 'G' [47]
-1: 'o' [6f]
-2: '爱' [e7 88 b1]
-5: '好' [e5 a5 bd]
-8: '者' [e8 80 85]
+```go
+package show_rune_length
 
-```
+import (
+	&quot;testing&quot;
 
-第一行内容中的关键信息有 `0`、 `'G'` 和 `[47]`。这是由于这个字符串值中的第一个Unicode字符是 `'G'`。该字符是一个单字节字符，并且由相应的字节序列中的第一个字节表达。这个字节的十六进制表示为 `47`。
+	&quot;github.com&#47;stretchr&#47;testify&#47;assert&quot;
+)
 
-第二行展示的内容与之类似，即：第二个Unicode字符是 `'o'`，由字节序列中的第二个字节表达，其十六进制表示为 `6f`。
+type CharJudger func(c rune) bool
 
-再往下看，第三行展示的是 `'爱'`，也是第三个Unicode字符。因为它是一个中文字符，所以由字节序列中的第三、四、五个字节共同表达，其十六进制表示也不再是单一的整数，而是 `e7`、 `88` 和 `b1` 组成的序列。
+func TestIsSingleChar(t *testing.T) {
 
-下面要注意了，正是因为 `'爱'` 是由三个字节共同表达的，所以第四个Unicode字符 `'好'` 对应的索引值并不是 `3`，而是 `2` 加 `3` 后得到的 `5`。
+	for _, judger := range []CharJudger{
+		isSingleCharA,
+		isSingleCharB,
+		isSingleCharC,
+	} {
+		assert.True(t, judger(&#39;A&#39;))
+		assert.True(t, judger(rune(&#39; &#39;)))
+		assert.False(t, judger(&#39;😔&#39;))
+		assert.False(t, judger(&#39;爱&#39;))
+	}
+}
+```</div>2019-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/39/fa/a7edbc72.jpg" width="30px"><span>安排</span> 👍（3） 💬（2）<div>一个unicode字符在内存中存的是码点的值还是utf8对应的编码值？</div>2019-09-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/48/21/bd739446.jpg" width="30px"><span>Gryllus</span> 👍（3） 💬（1）<div>终于追上了进度</div>2018-11-02</li><br/><li><img src="" width="30px"><span>qiushye</span> 👍（2） 💬（2）<div>str := &quot;Go 爱好者 &quot;fmt.Printf(&quot;Th...
 
-这里的 `2` 代表的是 `'爱'` 对应的索引值，而 `3` 代表的则是 `'爱'` 对应的UTF-8编码值的宽度。对于这个字符串值中的最后一个字符 `'者'` 来说也是类似的，因此，它对应的索引值是 `8`。
+您在文章里举的这个例子在Go后面多加了空格，会让人误解成遍历字符串可以跳过空格，github代码里没问题。
 
-由此可以看出，这样的 `for` 语句可以逐一地迭代出字符串值里的每个Unicode字符。但是，相邻的Unicode字符的索引值并不一定是连续的。这取决于前一个Unicode字符是否为单字节字符。
+</div>2019-09-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/80/b2/2e9f442d.jpg" width="30px"><span>文武木子</span> 👍（1） 💬（2）<div>十六进制四个数字不是一共占用32位吗，一个字节不是8位嘛，这样不是占用4个字节吗？求大神解答</div>2019-10-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5b/66/ad35bc68.jpg" width="30px"><span>党</span> 👍（1） 💬（1）<div>一个unicode字符点都是由两个字节存储，为什么在go语言中 type rune = int32 四个字节 而不是 type rune=16 两个字节啊</div>2019-07-30</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/9LFicnceEOlv9eNwJqjRDHbX87iaJectWs9ibgRLs8jTsDZDsvnTzUI8J1YJ1CiaNWzXiaTnkjscz4gR0wcvw3JfasoO0rg9FliaDsK8FqTQmHyNE/132" width="30px"><span>Geek_479239</span> 👍（0） 💬（1）<div>谢谢老师，这篇很有收获</div>2022-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/4b/d7/f46c6dfd.jpg" width="30px"><span>William Ning</span> 👍（0） 💬（1）<div>打卡，一直不明白字符集unicode与字符编码utf-8以及其他的编码实现方式的区别，现在有些理解，但是还是需要理一理。</div>2022-02-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/49/86/a588c76d.jpg" width="30px"><span>杨锦</span> 👍（0） 💬（1）<div>郝老师，请教一个问题，对于一个6字节的utf8编码，怎么判断是要解码成6个宽度为1字节宽度的的还是2个3字节宽度的呢？</div>2020-01-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/43/14/e684be86.jpg" width="30px"><span>张岳文</span> 👍（0） 💬（1）<div>我认为string的底层是Unicode, 而非UTF-8。只是string转成[]byte时，string转成了utf-8的序列。。。内存中的应该统一用unicode处理，而UTF-8是为了存储和传输才进行字节转换的。</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b7/f9/a8f26b10.jpg" width="30px"><span>jacke</span> 👍（0） 💬（1）<div>string 底层是[]byte数组，我的疑问是：例子里面看出来，string转化为tune的时候，tune里面保存的是utf-8的代码点数据，string转化为[]byte的时候保存的是utf-8代码点对应的字节序。
+上面这些转化逻辑在哪里实现的？fmt.print里面？看了fmt.print找不到,string转为[]byte的实现函数stringtoslicebyte也没看到这部分逻辑</div>2019-05-12</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83erNhKGpqicibpQO3tYvl9vwiatvBzn27ut9y5lZ8hPgofPCFC24HX3ko7LW5mNWJficgJncBCGKpGL2jw/132" width="30px"><span>Geek_1ed70f</span> 👍（0） 💬（1）<div>您是说 一个汉字的rune值 在计算机底层会被转成utf-8编码来 给计算机读取是吗?  
 
-正因为如此，如果我们想得到其中某个Unicode字符对应的UTF-8编码值的宽度，就可以用下一个字符的索引值减去当前字符的索引值。
+比如  一个&quot;严&quot;字  unicode为20005(十进制),  utf-8编码是11100100 10111000 10100101(二进制),十进制就是14989477 ,     我们平时打印只能看到 20005  它是什么时候转成14989477的啊</div>2019-03-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5d/f8/62a8b90d.jpg" width="30px"><span>melody_future</span> 👍（0） 💬（1）<div>有点小晕，想请问下 rune 类型在内存的表现形式是 unicde 编码值，还是utf-8 编码值，你所说的底层指的是？</div>2019-03-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/20/27/a6932fbe.jpg" width="30px"><span>虢國技醬</span> 👍（0） 💬（1）<div>打卡：
+1、len函数对于字符串，得到的是字节长度
+2、utf-8 我以前看到的资料是 1-6个字节的可变长编码，go如果用rune，对于超过4个字节的utf-8字符怎么处理？</div>2019-01-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ce/2d/ef3b42df.jpg" width="30px"><span>wade</span> 👍（51） 💬（5）<div>而后三个十六进制数7231、597d和8005都相对较大，它们分别表示中文字符&#39;爱&#39;、&#39;好&#39;和&#39;者&#39;。这些中文字符对应的 UTF-8 编码值，都需要使用三个字节来表达。所以，这三个数就是把对应的三个字节来表达。所以，这三个数就是把对应的三个字节的编码值，转换为整数后得到的结果。
 
-初学者可能会对 `for` 语句的这种行为感到困惑，因为它给予两个迭代变量的值看起来并不总是对应的。不过，一旦我们了解了它的内在机制就会拨云见日、豁然开朗。
+&quot;爱好者&quot;对应的7231、597d、8005，不是UTF-8编码值，是unicode码点。unicode码点和最终计算器存储用的utf-8编码值不是一样的。转换成rune的时候rune切片每个元素存储一个unicode码点，也就是string里的一个字符转成rune切片的一个元素。string是以utf-8编码存储，byte切片也就是存储用的string用utf-8编码存储后的字节序。
 
-## 总结
+unicode和utf-8的关系，可以看这个文章
+http:&#47;&#47;www.ruanyifeng.com&#47;blog&#47;2007&#47;10&#47;ascii_unicode_and_utf-8.html</div>2018-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/02/3b/b4a47f63.jpg" width="30px"><span>only</span> 👍（23） 💬（2）<div>unicode只是给全世界的字符做了一个编码，假如世界上有100亿个字符，那么从0到100亿，有的数只占用一个字节，有的数二个有的数三个…，找到对应的编号就找到了对应的字符。unicode只给字符分配了编号，没有说怎么去存储这些字符，用1字节存不下，100字节太浪费，于是utf-8就想到了一个存储的点子，因为生活中用到的字符用4个字节应该能存下了，于是就用1到4个字节来存储这些字符，占1个字节的就用1字节存储，2字节的就用2字节存储，以此类推……，utf8要做的就是怎么去判断一个字符到底用了几个字节存储，就好比买绳子一样，有的人要两米有的人要一米，不按照尺寸剪肯定不行，具体怎么减咱们先不关心这个留给utf8去处理。存储这些编码在计算机里就是二进制。这些二进制utf8能读懂，但是计算机看来就是01没啥了不起的，8二进制放到4字节存储没毛病吧，装不满的高位大不了填充0，就是这么有钱豆浆喝一杯倒一杯，这个就是[]rune, 但是世界总有吃不饱饭的人看着闹心，那还是一个字节一个字节存吧，等需要查看字符的时候大不了再转换为rune切片，这就是[]byte</div>2020-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/99/c9/a7c77746.jpg" width="30px"><span>冰激凌的眼泪</span> 👍（16） 💬（0）<div>src文件编码是utf8
+string是utf8编码的mb，len(string)是字节的长度
+string可以转化为[]rune，unicode码，32bit的数字，当字符看，len([]rune)为字符长度
+string可以转化为[]byte，utf8编码字节串，len([]byte)和len(string)是一样的
+for range的时候，迭代出首字节下标和rune，首字符下标可能跳跃(视上一个字符编码长度定)</div>2018-11-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/99/c9/a7c77746.jpg" width="30px"><span>冰激凌的眼泪</span> 👍（9） 💬（0）<div>看rune大小
+转成byte看长度
+加个小尾巴,range看间隔
+</div>2018-11-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/a5/a3/f8bcd9dd.jpg" width="30px"><span>韡WEI</span> 👍（3） 💬（2）<div>rune怎么翻译？有道查的：神秘的记号。为什么这么命名这个类型？有没有什么故事？</div>2018-11-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/f7/83/7fa4bd45.jpg" width="30px"><span>趣学车</span> 👍（2） 💬（0）<div>len(s) == 1 则为单字节</div>2020-11-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/09/22/22c0c4fa.jpg" width="30px"><span>benying</span> 👍（1） 💬（0）<div>打卡,讲的挺清楚的,谢谢</div>2019-06-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/9b/9d/d487c368.jpg" width="30px"><span>花见笑</span> 👍（0） 💬（0）<div>UTF-8的编码规则:
+1、对于单字节的字符，字节的第一位设为0，后面七位为这个字符的Unicode码。
+因此对于英文字符，UTF-8编码和ASCII码是相同的。
 
-我们今天把目光聚焦在了Unicode编码规范、UTF-8编码格式，以及Go语言对字符串和字符的相关处理方式上。
+2、对于n字节的字符(n&gt;1)，第一个字节的前n位都设为1，第n+1位设为0，后面字节的
+前两位一律设为10。剩下的没有提及的二进制位，全部为这个字符的Unicode编码。
 
-Go语言的代码是由Unicode字符组成的，它们都必须由Unicode编码规范中的UTF-8编码格式进行编码并存储，否则就会导致go命令的报错。
+UTF-8每次传送8位数据,并且是一种可变长的编码格式
+具体来说，是怎么的可变长呢.
 
-Unicode编码规范中的编码格式定义的是：字符与字节序列之间的转换方式。其中的UTF-8是一种可变宽的编码方案。
+分为四个区间：
+0x0000 0000 至 0x0000 007F:0xxxxxxx
+0x0000 0080 至 0x0000 07FF:110xxxxx 10xxxxxx
+0x0000 0800 至 0x0000 FFFF:1110xxxx 10xxxxxx 10xxxxxx
+0x0001 0000 至 0x0010 FFFF:11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
 
-它会用一个或多个字节的二进制数来表示某个字符，最多使用四个字节。一个受支持的字符，总是可以由UTF-8编码为一个字节序列，后者也可以被称为UTF-8编码值。
+UTF-8解码过程:
 
-Go语言中的一个 `string` 类型值会由若干个Unicode字符组成，每个Unicode字符都可以由一个 `rune` 类型的值来承载。
+对于采用UTF-8编码的任意字符B
 
-这些字符在底层都会被转换为UTF-8编码值，而这些UTF-8编码值又会以字节序列的形式表达和存储。因此，一个 `string` 类型的值在底层就是一个能够表达若干个UTF-8编码值的字节序列。
+如果B的第一位为0，则B为ASCII码，并且B独立的表示一个字符;
 
-初学者可能会对带有 `range` 子句的 `for` 语句遍历字符串值的行为感到困惑，因为它给予两个迭代变量的值看起来并不总是对应的。但事实并非如此。
+如果B的前两位为1，第三位为0，则B为一个非ASCII字符，该字符由多个字节表示，
+并且该字符由两个字节表示;
 
-这样的 `for` 语句会先把被遍历的字符串值拆成一个字节序列，然后再试图找出这个字节序列中包含的每一个UTF-8编码值，或者说每一个Unicode字符。
+如果B的前三位为1，第四位为0，则B为一个非ASCII字符，该字符由多个字节表示，
+并且该字符由三个字节表示;
 
-相邻的Unicode字符的索引值并不一定是连续的。这取决于前一个Unicode字符是否为单字节字符。一旦我们清楚了这些内在机制就不会再困惑了。
+比如汉字 “王”,它的二进制形式为: 0x0000 738B,属于第三区间,
+0x0000 738B - 00000000 00000000 01110011 10001011,
+第三区间的编码是 1110xxxx 10xxxxxx 10xxxxxx
+把x都给替换,则最终&quot;王&quot;字对应的Unicode的编码是
+11100111 10001110 10001011
+转换成16进制 0xe7 0x8e 0x8b
 
-对于Go语言来说，Unicode编码规范和UTF-8编码格式算是基础之一了。我们应该了解到它们对Go语言的重要性。这对于正确理解Go语言中的相关数据类型以及日后的相关程序编写都会很有好处。
-
-## 思考题
-
-今天的思考题是：判断一个Unicode字符是否为单字节字符通常有几种方式？
-
-[戳此查看Go语言专栏文章配套详细代码。](https://github.com/hyper0x/Golang_Puzzlers)
+如果B的前四位为1，第五位为0，则B为一个非ASCII字符，该字符由多个字节表示，
+并且该字符由四个字节表示;</div>2022-09-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3b/ba/3b30dcde.jpg" width="30px"><span>窝窝头</span> 👍（0） 💬（0）<div>看它的长度或者转换类型判断</div>2022-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/56/8d/9b8a6837.jpg" width="30px"><span>Louhwz</span> 👍（0） 💬（0）<div>这章讲的很清楚，谢谢</div>2021-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/b1/97/9cbfca81.jpg" width="30px"><span>丶浮空的身体如石的❤</span> 👍（0） 💬（0）<div>豁然开朗</div>2021-01-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7e/05/431d380f.jpg" width="30px"><span>拂尘</span> 👍（0） 💬（1）<div>对于utf8字节序列中的某个字节，是独立成为一个字符，还是和前字节或者后字节或者前后字节来共同组成一个字符，需要前后字节和当前字节都考虑的。考虑的点为每个字节的最高位。具体来讲，前0当0，则当前字节独立成字符；前1或0当0，则当前字节和前面一个或多个字节组成一个字符；前1或0当1，则当前字节和前后多个字节组成一个字符；当1，则当前字节和后面一个或多个字节组成一个字符。</div>2020-09-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/c3/22/8520be75.jpg" width="30px"><span>1287</span> 👍（0） 💬（0）<div>这篇很赞</div>2020-06-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5f/1b/5462d887.jpg" width="30px"><span>强凯</span> 👍（0） 💬（0）<div>写的真清楚，说的真明白！</div>2020-04-25</li><br/>
+</ul>

@@ -8,65 +8,13 @@
 
 在这里和你分享一件有意思的小事，专栏上线的前一天凌晨，我们和编辑正霖都激动得睡不着，在群里预览文章，聊上线后会是怎么样的一番景象。我们甚至想，会不会上线后被各位疯狂吐槽，以至于不得不录一个“负荆请罪”视频。
 
-![](https://static001.geekbang.org/resource/image/45/c8/452c5eeed7d79d3cba7a145ae67f57c8.jpg?wh=1080*1642)
+![](https://static001.geekbang.org/resource/image/45/c8/452c5eeed7d79d3cba7a145ae67f57c8.jpg?wh=1080%2A1642)
 
 现在回想起来，真的是做好了被大家吐槽的准备。但你们给我的是超出预期的热情。不少同学从上线到结束，都在时刻关注、学习每一节课，并留下优质的提问以及鼓励、认可。
+<div><strong>精选留言（20）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/12/9d/84/171b2221.jpg" width="30px"><span>jeffery</span> 👍（14） 💬（2）<div>真不舍！太清爽了！希望加餐！😀要求是不是太过分了😀多谢唐老师三个月份的付出分享！确实牛</div>2021-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/a2/94/ae0a60d8.jpg" width="30px"><span>江山未</span> 👍（7） 💬（1）<div>感谢老师的精彩讲解，在地铁上刷完了课程。师傅领进门，修行在个人。对我来说还有很多有待深挖的点和不清楚的地方，下一步开始慢慢看源码。希望和大家共同进步！</div>2021-04-28</li><br/><li><img src="" width="30px"><span>Geek_daf51a</span> 👍（6） 💬（1）<div>辛苦老师，从专栏中学到了很多，有etcd历史、有原理、有重点问题案例、有定位延时、内存等问题方法以及最佳实践、还有有kubernetes、配置服务发现、分布式锁等剖析，过程中大量配图总结，覆盖了etcd方方面面，能感受到老师的用心与认真，值了，期待后面的加餐</div>2021-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ac/50/71c25e34.jpg" width="30px"><span>赵先生</span> 👍（5） 💬（1）<div>唐老师，etcd 3.5来了，希望加餐！</div>2021-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/be/1e/94886200.jpg" width="30px"><span>小鱼儿吐泡泡</span> 👍（4） 💬（1）<div>专栏质量确实很高，从整体到细节 读起来很舒服；非常符合学习一个新知识得过程； 结合实践案例，收货颇深； 同时，想问下，唐老师，可以把课后问题得答案补充下吗？</div>2021-07-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/be/1f/57c88dd1.jpg" width="30px"><span>小丢👣</span> 👍（2） 💬（1）<div>对etcd的应用实践，我几乎为零，看了一遍专栏过后，我觉得我了解的差不多了。在准备给部门小伙伴做一次系列分享时，我发现我懂得太少了，然后我把几篇基础篇至少来回看了5遍，才有勇气分享给小伙伴。当然也仅仅是入门，只是想说一下这就是任务式驱动吧，没有分享的任务，可能就不会去思考各种细节 ，也不会在短时间内对etcd认知有一个较大的提升。感谢老师的精彩讲解，这个专栏我还是会反复看的，太值了！</div>2021-10-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f0/27/6679da14.jpg" width="30px"><span>程序员历小冰</span> 👍（2） 💬（1）<div>老师学习和讲解etcd的思路很赞，可以用在大多数中间件的学习上.</div>2021-04-26</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJiaeTzf4V8ib4xKcYjWEIflBSqkjbpkscoaedppgnBAD9ZAibjYSz0DNSJQw8icz7xljEgbNQ5hrzPAA/132" width="30px"><span>liudu_ec</span> 👍（2） 💬（1）<div>终于看完了，意犹未尽</div>2021-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c3/09/dc368335.jpg" width="30px"><span>杰sir</span> 👍（1） 💬（1）<div>两周看看这个系列的文章，收获很大。包括etcd读写流程的梳理，各个模块的分析，尤其是boltd的剖析，我再其他etcd相关的文章里几乎没有看到有这块的解读，还有运维层面的总结，使用过程碰到的问题和相关的优化，以及对“一致性”这个中文词语在计算里领域里不同场景的解读（这个也是我到目前为止让我觉得解释的最清楚的）都让我读的大呼过瘾，后面自己有问题看看源码基本都可以搞定了。
 
-- 有的同学是比较资深的etcd使用者，会独立分析源码，撰写高质量的技术博客，并给出精彩的回答；
-- 有的同学是刨根问底的etcd兴趣用户，会细致思考每一个异常场景，给出精彩的提问；
-- 有的同学刚刚入门etcd用户，正因为你们的提问，让我意识到需要在基础篇中多去增加一些特性初体验的案例；
-- 还有的同学着急说面试要用，所以春节期间我们没有筹划春节特别活动，而是正常更新课程正文；
-- ……
+然后感觉老师写技术文章的能力也可以多学学，其中的思路，框架也可以在自己向别人输出自己所学的时候用到。
 
-当然在这过程中，我也收获满满。为了解答你们的疑问，我必须得更加深入地阅读etcd源码，也是倒逼着我去进一步成长。
-
-编辑正霖半开玩笑地和我说，我们是以百米冲刺的速度去跑马拉松。这段经历真的很难忘，你们的评论和收藏证明了我们的付出是值得的。
-
-在这最后一节课里，我想最后和你再分享下我个人的etcd学习经验，以及这整个专栏设计和写作思路。
-
-**如果要用一个核心词来总结这个专栏，那我希望是问题及任务式驱动。**
-
-从我的个人经验上来看，我每次进一步学习etcd的动力，其实都是源于某个棘手的问题。数据不一致、死锁等一系列棘手问题，它们会倒逼我走出舒适区，实现更进一步成长。
-
-从专栏目录中你也可以看到，每讲都是围绕着一个 **问题** 深入展开。在具体写作思路上，我会先从整体上给你介绍整体架构、解决方案，让你有个全局的认识。随后围绕每个点，按照由浅入深的思路给你分析各种解决方案。
-
-另外， **任务式驱动** 也是激励你不断学习的一个非常好的手段，通过任务实践你可以获得满满的成就感，建立正向反馈。你在学习etcd专栏的过程中，可结合自己的实际情况，为自己设立几个进阶任务，下面我给你列举了部分：
-
-- 从0到1搭建一个etcd集群（可以先从单节点再到多节点，并进行节点的增删操作）；
-- 业务应用中使用etcd的核心API；
-- 自己动手实现一个分布式锁的包；
-- 阅读etcd的源码，写篇源码分析博客 （可从早期的etcd v2开始）；
-- 基于raftexample实现一个支持多存储引擎的KV服务；
-- 基于Kubernetes的Operator机制，实现一个etcd operator，创建一个CRD资源就可新建一个集群；
-- ……
-
-我希望带给你的不仅仅是etcd原理与实践案例，更希望你收获的是一系列分布式核心问题解决方案，它们不仅能帮助你搞懂etcd背后的设计思想与实现，更像是一把通往分布式存储系统之门的钥匙，让你更轻松地学习、理解其他存储系统。
-
-那你可能会问了，为什么搞懂etcd就能更深入理解分布式存储系统呢？
-
-因为etcd相比其他分布式系统如HBase等，它足够简洁、轻量级，又涵盖了分布式系统常见的问题和核心概念，如API、数据模型、共识算法、存储引擎、事务、快照、WAL等，非常适合新人去学习。
-
-![](https://static001.geekbang.org/resource/image/7b/28/7b54b6ca9134c130bf3940c7db497928.png?wh=1920*1177)
-
-上图我为你总结了etcd以及其他分布式系统的核心技术点，下面我再和你简要分析一下几个分布式核心问题及解决方案，并以Redis Cluster集群模式作为对比案例，希望能够帮助你触类旁通。
-
-首先是服务可用性问题。分布式存储系统的解决方案是共识算法、复制模型。etcd使用的是Raft共识算法，一个写请求至少要一半以上节点确认才能成功，可容忍少数节点故障，具备高可用、强一致的目标。 [Redis Cluster](https://redis.io/topics/cluster-spec) 则使用的是主备异步复制和Gossip协议，基于主备异步复制协议，可将数据同步到多个节点，实现高可用。同时，通过Gossip协议发现集群中的其他节点、传递集群分片等元数据信息等操作，不依赖于元数据存储组件，实现了去中心化，降低了集群运维的复杂度。
-
-然后是数据如何存取的问题。分布式存储系统的解决方案是存储引擎。除了etcd使用的boltdb，常见的存储引擎还有我们实践篇 [18](https://time.geekbang.org/column/article/347136) 中所介绍bitcask、leveldb、rocksdb（leveldb优化版）等。不同的分布式存储系统在面对不同业务痛点时（读写频率、是否支持事务等），所选择的解决方案不一样。etcd v2使用的是内存tree，etcd v3则使用的是boltdb，而Redis Cluster则使用的是基于内存实现的各类数据结构。
-
-最后是如何存储大量数据的问题。分布式存储系统的解决方案是一系列的分片算法。etcd定位是个小型的分布式协调服务、元数据存储服务，因此etcd v2和etcd v3都不支持分片，每个节点含有全量的key-value数据。而Redis Cluster定位是个分布式、大容量的分布式缓存解决方案，因此它必须要使用分片机制，将数据打散在各个节点上。目前Redis Cluster使用的分片算法是哈希槽，它根据你请求的key，基于crc16哈希算法计算slot值，每个slot分配给对应的node节点处理。
-
-```
-HASH_SLOT = CRC16(key) mod 16384
-
-```
-
-etcd 作为最热门的云原生存储之一，在腾讯、阿里、Google、AWS、美团、字节跳动、拼多多、Shopee、明源云等公司都有大量的应用，覆盖的业务不仅仅是 Kubernetes 相关的各类容器产品，更有视频、推荐、安全、游戏、存储、集群调度等核心业务。
-
-更快、更稳是etcd未来继续追求的方向，etcd社区将紧密围绕Kubernetes社区做一系列的优化工作，提供集群降级、自动将Non-Voting的Learner节点提升为Voting Member等特性，彻底解决饱受开发者诟病的版本管理等问题。
-
-希望这个专栏一方面能帮助你遵循最佳实践，高效解决核心业务中各类痛点问题，另一方面能轻松帮你搞定面试过程中常见etcd问题，拿到满意的offer。
-
-当然，我发现很多同学只是默默地收藏，一直在“潜水”。我希望在这最后一课里，大家一块来“灌灌水”，分享一下你自己的etcd学习方法以及你对这门课的感受。我为你准备了一份 [问卷](https://jinshuju.net/f/sz6QOc)，希望你花两分钟填一下，说不定你就是我们这门课的“小锦鲤”~
-
-最后，再次感谢，我们留言区和加餐见！
+最后催更一下思考题的答疑，啥时候更新啊。</div>2021-12-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/b4/94/2796de72.jpg" width="30px"><span>追风筝的人</span> 👍（1） 💬（3）<div>老师 什么工具或命令 可以 查看etcd server   RPC调用速率  和磁盘平均延时？</div>2021-11-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/3a/27/5d218272.jpg" width="30px"><span>八台上</span> 👍（1） 💬（1）<div>坐等思考题答案</div>2021-10-29</li><br/><li><img src="" width="30px"><span>Geek_7154d8</span> 👍（1） 💬（1）<div>老师讲的太精彩了，比如分布式锁那一章，令我对分布式锁的技术要点顿时茅塞大开。</div>2021-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/30/85/14c2f16c.jpg" width="30px"><span>石小</span> 👍（1） 💬（1）<div>我问的不太明白哈😄，是这样的：mysql可以控制刷日志（通过innodb_flush_log_at_trx_commit），通过这个日志能控制刷磁盘，也会影响到事务提交成败。etcd有类似这样控制日志刷新的控制吗？还是说etcd每次提交必须刷磁盘（写wal日志），保证了事务一定会提交成功（即使boltdb写入失败）,如果是这样的，问什么etcd要这样设计？</div>2021-04-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/26/ba/92f91744.jpg" width="30px"><span>吃完了饭的人</span> 👍（0） 💬（1）<div>潜水完，冒个泡，反反复复看了两三遍</div>2021-03-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/61/e6/fedd20dc.jpg" width="30px"><span>mmm</span> 👍（2） 💬（0）<div>感谢老师 期待加餐</div>2021-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/3b/46/3701e908.jpg" width="30px"><span>Coder</span> 👍（1） 💬（0）<div>辛苦唐老师，收获满满！</div>2021-03-22</li><br/><li><img src="" width="30px"><span>川川</span> 👍（0） 💬（0）<div>老师，你微信多少</div>2022-11-20</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/L19sKxTMAPrPpHibMribicRB2o9LVknHc4GI6icyialvickFsuakY1dlF9SzLnUW4qu4sT6KlVWtZJUYGYYE6fqaBsyA/132" width="30px"><span>幽幽夜</span> 👍（0） 💬（0）<div>期待加餐，催更思考题...</div>2022-11-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2a/03/ef/d2fd9d36.jpg" width="30px"><span>愤叔</span> 👍（0） 💬（0）<div>这些课 ，有没有pdf 数据或者文档可以下载下来 </div>2022-02-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/3a/de/e5c30589.jpg" width="30px"><span>云原生工程师</span> 👍（0） 💬（0）<div>感谢老师，期待加餐</div>2021-03-23</li><br/>
+</ul>

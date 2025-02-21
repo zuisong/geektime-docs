@@ -68,7 +68,7 @@ Cassandra在数据库的CAP理论中可以平滑权衡，而HBase则是强一致
 
 Cassandra的数据模型组织形式如下图所示：
 
-![](https://static001.geekbang.org/resource/image/b9/3c/b9b12de5134a6a3c88ba8a97f6a3333c.png?wh=1112*618)
+![](https://static001.geekbang.org/resource/image/b9/3c/b9b12de5134a6a3c88ba8a97f6a3333c.png?wh=1112%2A618)
 
 从这个图可以看出来，可以通过行主键及列名就可以访问到数据矩阵的单元格值。
 
@@ -95,115 +95,13 @@ Cassandra的数据模型组织形式如下图所示：
 哪些地方可以用到呢？比如你训练的词嵌入向量，或者隐因子模型，当特别大时，可以二进制存在文件中，然后采用虚拟内存映射方式读取。
 
 另外一个就是PMML文件，专门用于保存数据挖掘和部分机器学习模型参数及决策函数的。当模型参数还不足以称之为海量时，PMML是一个很好的部署方法，可以让线上服务在做预测时并不依赖离线时的编程语言，以PMML协议保存离线训练结果就好。
+<div><strong>精选留言（14）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/14/59/34/2df52bae.jpg" width="30px"><span>Da.du.Ma</span> 👍（3） 💬（1）<div>基于ElasticSearch实现的第一个版本的内容推荐系统，是否可以写个专题。</div>2019-01-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/30/ff/b3e54147.jpg" width="30px"><span>雨幕下的稻田</span> 👍（1） 💬（1）<div>老师您好，问下，倒排索引使用redis，是否是key：标签，value：list或者set格式的集合，那如何也做到更新，尤其remove操作，还有倒排使用redis，内存是否会开销很大，因为一些item重复的出现在一些标签中</div>2020-01-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/59/34/2df52bae.jpg" width="30px"><span>Da.du.Ma</span> 👍（1） 💬（2）<div>对于api的调用链上的存储体系能深入讲一下么？每一次调用只返回少量top10，但是推荐系统最起码也要处理top100，存在浪费和损耗；而且，每次返回的数据，还需要放入已推荐记录，防止重复推荐。有没有一个整体的平衡思路</div>2019-01-29</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaEINKG7h0MpuMdBncDnl8Hv9RtX4OTs6Wg3O7ibs2AOch14SwVecEWmGkmnHouIEsgJjoDe1D7LSHqg/132" width="30px"><span>Berton</span> 👍（0） 💬（1）<div>正排索引是根据id得到所有的特征值，不是应该用行式数据库吗？</div>2019-01-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/22/69/c85fdb98.jpg" width="30px"><span>微微一笑</span> 👍（6） 💬（0）<div>请问老师，您说的道理我都懂，但是一到设计表结构环节就有点拿不定主意。我现在比较关注推荐领域hbase表设计，有什么推荐的资料吗？</div>2018-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/42/05/a7dd62b4.jpg" width="30px"><span>北邙</span> 👍（3） 💬（0）<div>不知道hbase的表结构应该如何设计</div>2018-06-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0f/7e/6eea4218.jpg" width="30px"><span>Falco</span> 👍（2） 💬（0）<div>你好，基与elasticsearch推荐文章什么时候能发布。现在在黑暗中摸索……</div>2019-07-15</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/qRjoqWIGC6tpmKZBGTxjQKC9cbz9XLhw2nF1c74R4icFOYOdVO4iaeQEQDqEvmbicxn6HEc4SU8kpkwVaO5nABMug/132" width="30px"><span>shangqiu86</span> 👍（2） 💬（1）<div>目前用的比较多的还是redis，数据量并不大，每天的点击量在5w左右，sku的量在2w左右，通常做的是能离线计算的就先离线计算好，并shell脚本定时去刷新离线数据，与redis的交互是在线上阶段，取到召回，实时排序，然后输出结果，目前接口要求在200ms</div>2019-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/a2/76/bdea7aa1.jpg" width="30px"><span>晨晓</span> 👍（0） 💬（0）<div>近线可以redis配合hbase</div>2020-03-29</li><br/><li><img src="" width="30px"><span>随心而至</span> 👍（0） 💬（1）<div>热门排行的接口名称叫Relative是不是不太好</div>2019-08-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/35/df/67f91c36.jpg" width="30px"><span>帅帅</span> 👍（0） 💬（0）<div>后两个API的接口重复了
+最后一个&#47;hostlist是不是很好</div>2018-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/35/df/67f91c36.jpg" width="30px"><span>帅帅</span> 👍（0） 💬（1）<div>看老师的意思，是需要实时做召回和排序，这样即使再优化时间也会很长吧。
 
-## API
+感觉可以分两类：
+1、热用户，提前算好所有的recommend，放到redis[userid] = list，每次直接分页返回即可；
+2、冷启动用户，再使用上面的流程，比如如果发现有用户画像，就找相邻用户，在做排序返回；</div>2018-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6e/cf/c863cc62.jpg" width="30px"><span>杨宗超</span> 👍（0） 💬（0）<div>外专业的的文科生表示跟不上啦</div>2018-05-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/95/2c/f254f684.jpg" width="30px"><span>铁丑-王立丰</span> 👍（0） 💬（0）<div>用户和物品的画像数据适合存储在 Cassandra 中。也适合存储模型数据，如相似度矩阵，还可以存储离线计算的推荐结果。
 
-除了存储，推荐系统作为一个服务，应该以良好的接口和上有服务之间交互，因此要设计良好的API。
-
-API有两大类，一类数据录入，另一类是推荐服务。数据录入API，可以用于数据采集的埋点，或者其他数据录入。
-
-![](https://static001.geekbang.org/resource/image/6e/15/6e88ceb14c4e28e8e113393f147de615.png?wh=1616*412)
-
-推荐服务的API按照推荐场景来设计，则是一种比较常见的方式，下面分别简单说一下API的样子。
-
-### 1.猜你喜欢
-
-**接口：**
-
-/Recommend
-
-**输入：**
-
-\\* UserID – 个性化推荐的前提
-
-\\* PageID – 推荐的页面ID，关系到一些业务策略
-
-\\* FromPage – 从什么页面来
-
-\\* PositionID – 页面中的推荐位ID
-
-\\* Size – 请求的推荐数量
-
-\\* Offset – 偏移量，这是用于翻页的
-
-**输出：**
-
-\\* Items – 推荐列表，通常是数组形式，每一个物品除了有ID，还有展示所需的各类元素
-
-\\* Recommend\_id – 唯一ID标识每一次调用，也叫做曝光ID，标识每一次曝光，用于推荐后追踪推荐效果的，很重要
-
-\\* Size – 本次推荐数量
-
-\\* Page —— 用于翻页的
-
-### 2.相关推荐
-
-**接口：**
-
-/Relative
-
-**输入：**
-
-\\* UserID – 个性化推荐的前提
-
-\\* PageID – 推荐的页面ID，关系到一些业务策略
-
-\\* FromPage – 从什么页面来
-
-\\* PositionID – 页面中的推荐位ID
-
-\\* ItemID – 需要知道正在浏览哪个物品导致推荐相关物品
-
-\\* Size – 请求的推荐数量
-
-\\* Offset – 偏移量，这是用于翻页的
-
-**输出：**
-
-\\* Items – 推荐列表，通常是数组形式，每一个物品除了有ID，还有展示所需的各类元素
-
-\\* Recommend\_ID – 唯一ID标识每一次调用，也叫做曝光ID，标识每一次曝光，用于推荐后追踪推荐效果的，很重要
-
-\\* Size – 本次推荐数量
-
-\\* Page —— 用于翻页的
-
-### 3.热门排行榜
-
-**接口：**
-
-/Relative
-
-**输入：**
-
-\\* UserID – 个性化推荐的前提
-
-\\* PageID – 推荐的页面ID，关系到一些业务策略
-
-\\* FromPage – 从什么页面来
-
-\\* PositionID – 页面中的推荐位ID
-
-\\* Size – 请求的推荐数量
-
-\\* Offset – 偏移量，这是用于翻页的
-
-**输出：**
-
-\\* Items – 推荐列表，通常是数组形式，每一个物品除了有ID，还有展示所需的各类元素
-
-\\* Recommend\_id – 唯一ID标识每一次调用，也叫做曝光ID，标识每一次曝光，用于推荐后追踪推荐效果的，很重要
-
-\\* Size – 本次推荐的数量
-
-\\* Page —— 用于翻页的
-
-相信你看到了吧，实际上这些接口都很类似。
-
-## 总结
-
-今天我主要讲解了推荐系统上线的两大问题，一个是线上数据存储，另一个是推荐系统的API有哪些。
-
-虽然实际情况肯定不是只有这点问题，但是这些也足以构建出一个简单的推荐系统线上版了。
-
-你还记得在前几篇专栏中，我提到统一考虑搜索和推荐的问题吗？那么说，如果要把推荐和搜索统一考虑的话，API该如何设计呢？欢迎留言一起讨论。感谢你的收听，我们下期再见。
+无刀老师，这几个场景完全可以用redis 方案吧。而且cassandra 也是kv的</div>2018-05-12</li><br/>
+</ul>

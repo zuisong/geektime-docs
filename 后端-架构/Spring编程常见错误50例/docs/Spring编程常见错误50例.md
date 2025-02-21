@@ -18,11 +18,11 @@ Spring 的广泛应用，让原本一些错综复杂的开发工作变得简单�
 
 ![](https://static001.geekbang.org/resource/image/83/fc/834c92d778378859acf4e0e02ee778fc.png)
 
-**Spring Core 篇：** 包括 Bean 定义、注入、AOP 等核心功能的使用问题讲解，这是 Spring 的基石。不管未来是做 Spring Web 开发，还是使用 Spring Cloud 技术栈，你都绕不开这些实践。
+**Spring Core 篇：**包括 Bean 定义、注入、AOP 等核心功能的使用问题讲解，这是 Spring 的基石。不管未来是做 Spring Web 开发，还是使用 Spring Cloud 技术栈，你都绕不开这些实践。
 
-**Spring Web 篇：** 出于大多项目使用 Spring 还是为了进行 Web 开发考虑，作者梳理了从请求 URL 解析、Header 解析、Body 转化到授权等 Web 开发必知必会案例。它们正好涵盖了从一个请求到来，到响应回去这一完整流程。
+**Spring Web 篇：**出于大多项目使用 Spring 还是为了进行 Web 开发考虑，作者梳理了从请求 URL 解析、Header 解析、Body 转化到授权等 Web 开发必知必会案例。它们正好涵盖了从一个请求到来，到响应回去这一完整流程。
 
-**Spring 补充篇：** 重点介绍 Spring 测试、Spring 事务、Spring Data 相关问题。最后，总结 Spring 使用中发生问题的根本原因。
+**Spring 补充篇：**重点介绍 Spring 测试、Spring 事务、Spring Data 相关问题。最后，总结 Spring 使用中发生问题的根本原因。
 
 ### 特别说明
 

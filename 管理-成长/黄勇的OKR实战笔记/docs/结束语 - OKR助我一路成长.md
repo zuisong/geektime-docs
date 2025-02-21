@@ -6,7 +6,7 @@
 
 所以，我有时就在想，我们程序员的价值到底在哪里，难道只是为了写代码？只是为了做“码农”？
 
-后来，我想明白了一件事儿： **既然改变不了世界，那就改变自己吧。**
+后来，我想明白了一件事儿：**既然改变不了世界，那就改变自己吧。**
 
 我希望自己能成为一名“包工头”，努力改善我们这些码农们的搬砖效率。因此，我为自己立下了一个成长目标：
 
@@ -18,55 +18,20 @@
 > 2. 总结出 1 套适合公司的项目管理流程。
 
 我心里想，如果我能将这两条“衡量标准”都做到了，自己也就基本具备了项目经理的能力，那么我的目标也就实现了。
+<div><strong>精选留言（24）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/10/65/0b/3d1d3371.jpg" width="30px"><span>阿坚</span> 👍（3） 💬（1）<div>精通OKR，码农变马云。</div>2019-12-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/02/5c/13332f45.jpg" width="30px"><span>黄勇</span> 👍（16） 💬（0）<div>致谢
 
-当我为自己制定了个人目标后，未来我所有的精力都聚焦在这个目标上。我主动去学习项目管理方面的相关技能，主动向公司经验丰富的业务同事学习，虚心向公司经验丰富的工程师们请教，并时刻等待着能让我一展身手的机会。
+本专栏能够圆满结束，离不开幕后所有工作人员对我的帮助，尤其是编辑韩楠，她几乎每天工作到深夜，逐字逐句地帮我打磨文稿，对专栏的付出的心血绝不比我少。
 
-正所谓， **“机会只留给有准备的人”。**
+感谢极客时间总主编郭蕾，他教会了我许多实用的写作技巧，我在写作每篇文章中都在尝试他所传授的方法，对我受益匪浅。
 
-由于我的业务和技术等综合能力俱佳，因此老板给了我一次带项目的机会，我十分珍惜，通过不断的努力以及团队成员对我的信任，我终于成功地完成了自己的第一个项目。在这个过程中，我学会了如何带领团队交付项目成果，也学会了不同场景下与客户打交道的各类技巧。
+感谢马佳敏、毛倩倩、李佳等极客时间同事对我的悉心帮助，大家的宝贵经验我也学到了一部分。
 
-项目管理工作让我收获满满，但成长过程中也伴随着一些艰难，比如，项目进度推进不下去、需求出现频繁变化、项目成员突然离职……最终这一切难题能得到解决，都要归功于我所制定的那个目标，它也是我对自己的承诺。努力想办法解决问题，坚信目标一定能实现。
+我还想感谢在这几个月里，一直被我怠慢的小公主 —— 我的女儿，因为我选择了写作，而放弃了和她一起玩耍。
 
-在接下来的一年里，我实现了自己当初制定的目标，成为了公司第一位项目经理，公司给我任命了正式的职位，我也有了自己的第一张名片。
+感谢每一位订阅本专栏的伙伴们，祝你们事业顺利，心想事成。
 
-回头想想自己的收获，其实很大一部分因素来源于我对自己个人目标的管理，这套“目标管理方法”一直伴随着我，它让我的工作变得更加聚焦，并驱动着我围绕自己所要追求的目标，不断前行。
-
-不过，当我做了一年项目经理工作后，由于长期不写代码了，感觉自己离技术越来越远，有种莫名的危机感。
-
-作为一名程序员出身的项目经理，在这个人才济济的时代下，我开始思考一个问题：我的核心竞争力到底在哪里？我再次使用自己的目标管理方法，为自己制定下一个阶段目标与衡量标准做准备：
-
-成长目标：
-
-> 在未来一年内，成为一名 Java 架构师。
-
-衡量标准：
-
-> 1. 学习 Spring 框架源代码，并为核心代码作注解。
-> 2. 自己动手写 1 个 Java Web 框架。
-
-经过一年的努力，我完成了自己的目标，成为了一名 Java 架构师。在这个过程中，我学会了如何合理地选择技术和工具来解决业务的各种需求，也明白了架构设计对于改善程序员的工作效率有何帮助，做架构让我成长飞快。
-
-在后续的几年中，我持续使用这套目标管理方法，通过自己坚持不懈的努力，陆续获得了一些新的成就：
-
-- 发布了自己的技术博客，吸引了上百万读者，结识了大量技术专家。
-- 开源了一款名为 Smart 的轻量级 Java Web 框架，深入理解到 Java 的底层原理。
-- 经历了一段阿里巴巴的架构师工作，接触到了大数据与大型系统的架构技术。
-- 写作了《架构探险：从零开始写 Java Web 框架》，成为了一名畅销书作者。
-- 加入了特赞科技公司并担任 CTO，从 0 到 1 地打造了一支强大的技术团队。
-- 带领团队将原有生产系统升级为微服务架构，让我们成为了国内第一批成功落地微服务的团队。
-- 写作了《架构探险：轻量级微服务架构（上、下）》两册，由此我也收到了许多企业的内训邀请。
-- 在 InfoQ 网站上写过文章，在 QCon 大会上做过讲师和出品人，加入了高端技术社群 TGO 鲲鹏会。
-
-直到 2015 年，我才知道自己过去使用的目标管理方法其实就是 OKR 工作法，因为核心思想是一样的，它们都关注目标及其实现方式，并通过挑战自我才能完成目标。
-
-当我了解到 OKR 在国外如此受欢迎时，我几乎为此感到疯狂。原来 OKR 由 Objectives（目标）与 Key Results（关键结果）两部分构成，它是一种目标管理的最佳实践方法，来源于企业管理过程，可应用于工作与生活等多方面。当你希望实现一个目标时，希望能够成就自我、服务团队、高效协同、激励伙伴、达成共识，此时你就能用 OKR。
-
-正是由于OKR 对我个人以及我所在的企业帮助极大，因此，我才想借助极客时间这个平台，为大家分享我所知道的关于 OKR 的一切，希望 OKR 也能助你一路成长。
-
-最后我想说的是：如果你学会了 OKR，但只是把 OKR 当成一种目标管理工具，用它来管理自己或团队的目标，那么 OKR 的价值也将变得十分有限。
-
-如果你能将OKR 转化为一种思维模式，形成一种“OKR 思维”，那么我相信，OKR 一定会让你终生受益。 **If you have a different mindset, you will have a different outcome.**
-
-在此， **我想将感谢留给你 —— 坚持阅读本专栏的读者们，** 每当我看到你的留言，不论是认可我的观点，还是对文章提出问题，这些都是对我莫大的支持和鼓励。希望你能将我所讲内容中对你有用的部分全部拿走，也希望我的经验和观点，能够为你在未来的 OKR 实践之路上带来一些启发，期待我们未来有机会能在极客时间上继续探讨。谢谢你！
-
-[![unpreview](https://static001.geekbang.org/resource/image/57/c2/57f7a0e666cfdd674591a8287b13b4c2.jpg?wh=1142*801)](https://jinshuju.net/f/P87PLh)
+—— 黄勇，2019.9.20，上海</div>2019-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/65/75/9c0b9b5b.jpg" width="30px"><span>攀登者</span> 👍（4） 💬（0）<div>学完专栏，收获很多，干什么事情都能用OKR</div>2019-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ef/09/209cb7ff.jpg" width="30px"><span>智超</span> 👍（4） 💬（0）<div>之前买了本okr的书，想了解下。后来看到了专栏，就直接下手了。感谢黄老师</div>2019-09-20</li><br/><li><img src="" width="30px"><span>无心亦逍遥</span> 👍（4） 💬（0）<div>谢谢黄老师的布道</div>2019-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/44/19/28074c40.jpg" width="30px"><span>小盖</span> 👍（4） 💬（0）<div>谢谢黄老师，跟到最后，学到很多</div>2019-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（3） 💬（0）<div>谢谢老师，收获很多，有待实践</div>2019-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ae/c4/0c427ad5.jpg" width="30px"><span>Eagle</span> 👍（3） 💬（0）<div>感谢黄老师的分享。专栏开始前我已读过两本OKR的书，对这个方法感兴趣，一直想在团队内实践一下，但又觉得还没完全掌握这个方法。随着专栏的学习，我们团队已经开始实践OKR方法，黄老师的专栏帮我解决了很多困惑和实操问题，非常感谢，希望后续还有学习，交流机会。</div>2019-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/48/ee/96a7d638.jpg" width="30px"><span>西西弗与卡夫卡</span> 👍（3） 💬（0）<div>感谢黄老师，收货很多</div>2019-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/63/9f/a6edd37e.jpg" width="30px"><span>天涯海峰</span> 👍（2） 💬（0）<div>谢谢黄老师，在这们课学习到的不仅仅是OKR,而是管理的思维。我好多内容深入的还不够，OKR是科学的方法，管理则是一门艺术。祝黄老师工作顺利，再出一个专栏😬</div>2019-09-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ed/9a/bbeec5bb.jpg" width="30px"><span>liu</span> 👍（2） 💬（0）<div>非常感谢黄老师及小编。老实说，管理类的专栏，很难写，更难写好。读这个专栏，很容易产生代入感，对参与的项目很有指导参考。专栏自始至终注重交流，不时的引入嘉宾，分享他们的okr感受，使专栏具有专业性与知识性，同时更具操作性。
+真的很感谢黄老师及小编，能够分享出如此优秀的内容</div>2019-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4d/fd/0aa0e39f.jpg" width="30px"><span>许童童</span> 👍（2） 💬（0）<div>感谢老师，跟着老师学到了很多OKR的相关知识，OKR不仅可以运用在工作中，更可以用在生活中，指导我们的生活，形成一个OKR思维，整个人生都将受益无穷。
+再一次感谢老师，江湖再见。</div>2019-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/2c/11/da135b7c.jpg" width="30px"><span>杀地瓜</span> 👍（2） 💬（0）<div>黄老师的OKR专栏让我受益匪浅，我是做项目方的，很多时候，任务和目标下面执行起来挺头疼的，现在通过OKR的学习，我和领导改良了公司的考核，效果觉得不错，落地速度快了，感谢黄老师的精彩分享，面对下一个新项目，觉得速度和效果都会不错，各位小伙伴们，认真执行，你会发现OKR的神奇😎</div>2019-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/41/a4/212e93a8.jpg" width="30px"><span>Sophie</span> 👍（1） 💬（0）<div>感谢黄老师，一路看下来，收获满满！~~</div>2020-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/44/a4/7a45d979.jpg" width="30px"><span>IT蜗壳-Tango</span> 👍（1） 💬（0）<div>谢谢老师。学到了很多。</div>2020-03-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/78/21/e2b4c90c.jpg" width="30px"><span>978!6</span> 👍（1） 💬（0）<div>受益良多，感谢~ </div>2020-03-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/93/ec/985675c8.jpg" width="30px"><span>小高</span> 👍（1） 💬（0）<div>谢谢老师！</div>2020-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/93/ec/985675c8.jpg" width="30px"><span>小高</span> 👍（1） 💬（0）<div>OKR是一个好工具，用处很多</div>2020-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f6/41/62ea275d.jpg" width="30px"><span>geduo4612</span> 👍（1） 💬（0）<div>老师，整个系列完成之后，我对于0，KR的概念比较清晰了，对如何写一个正确的O，KR也了解，但我再运用的时候感觉KR很难确定，首先一个难点是不知道如何确定KR。例如我的O是“两个月时间建立一支专业的运维团队”，那么KR都可以写哪些结果呢？我想到了一些描述性的语句，可我又感觉像是任务，计划，不是KR，例如说“KR，1个月内产出一个软件实施的标准化流程文稿”，请您指点，多谢。</div>2020-03-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/38/cf/f2c7d021.jpg" width="30px"><span>李双</span> 👍（1） 💬（0）<div>谢谢老师</div>2019-10-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTI98sVPqp4B5YJU8Piao6ic4KeiaDGU0jMUrAqlNaUR4APfWMxkkNUA59O7z11sVQRg95gt3Mb6KTXIA/132" width="30px"><span>alex</span> 👍（1） 💬（0）<div>感谢黄老师的布道；听了前面的入门之后，就去买了本OKR的书，一起学习了，其中关于OKR制定那讲也听了蛮多次了；非常感谢；</div>2019-10-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/46/be/d3040f9e.jpg" width="30px"><span>小广</span> 👍（0） 💬（0）<div>感谢老师的分享，对OKR有了初步的了解，希望可以在实践中利用好😄</div>2021-08-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/44/dc/63284499.jpg" width="30px"><span>凉茶</span> 👍（0） 💬（0）<div>感谢黄老师这个专栏布道 OKR 思维的各种干货，原来职场，人生，生活规划管理使用上 OKR，目标路线可以那么清晰，辛苦黄老师，衷心感谢！</div>2021-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/2f/a5/cd73655e.jpg" width="30px"><span>OnRoad</span> 👍（0） 💬（0）<div>OKR不仅仅是一个工具，刚需要当成一种思维去要求自己，会让你更加有的放矢的解决工作生活当中的问题</div>2020-12-20</li><br/>
+</ul>

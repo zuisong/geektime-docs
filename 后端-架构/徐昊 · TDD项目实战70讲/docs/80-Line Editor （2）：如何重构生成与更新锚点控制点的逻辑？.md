@@ -42,25 +42,7 @@ export class LineEditor extends Konva.Group {
 }
 
 ```
-
-任务列表为：
-
-- 在线段编辑（Line Editor）上设置锚点（Anchor）
-  - 将线（Line）数据，生成锚点
-  - 在Line Editor重绘时，按照数据更新锚点位置
-- 在锚点与锚点之间设置控制点
-  - 通过线段数据，在两个锚点之间生成控制点（Control）
-  - 在Line Editor重绘时，按照数据更新控制点位置
-- 拖动锚点时，改变线段中的位置
-- 拖动控制点时，在线段上增加锚点
-- 双击锚点时，删除锚点
-
-## 视频演示
-
-接下来让我们进入开发：
-
-## 思考题
-
-对于UI的样式要如何测试？
-
-欢迎把你的项目代码地址分享在留言区，我们下节课再见！
+<div><strong>精选留言（1）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/10/65/21/101a7075.jpg" width="30px"><span>davix</span> 👍（1） 💬（1）<div>老師，實際開發時，會實現了這些任務還看不到頁面啥樣嗎？
+TDD時每完成一個任務是不是也結合一個手工UI測試？要不那些 .on 啊，.fire啊，哪些參數啥都不知道生沒生效。最後少刪一些線等情況沒有實際看到UI，單純頭腦想也很容易忽略。</div>2022-09-19</li><br/>
+</ul>

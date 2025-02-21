@@ -48,7 +48,7 @@ public class UserOrdersResource {
         return Response.created(Link.of("/users/{uid}/orders/{oid}").expand(user.getId().value(), order.getId().value()).toUri()).build();
     }
 }
-
+    
 public class UserResource {
     private User user;
     public UserResource(User user) {
@@ -64,7 +64,7 @@ public class UserResource {
         return context.initResource(new UserOrdersResource(user));
     }
 }
-
+    
 @Path("/users")
 public class UsersResource {
     @Context
@@ -80,15 +80,9 @@ public class UsersResource {
         return Response.created(Link.of("/users/{id}").expand(user.getId().value()).toUri()).build();
     }
 }
-
 ```
 
 我们很容易可以发现，RESTful Web Services需要多模块协同完成。而不是像DI Container那样，可以从单一模块入手，完成几个功能之后再进行重构。所以对于RESTful Web Services，伦敦学派或许是一种更好的方式。
-
-那么下节课，我们将从伦敦学派入手，开始RESTful Web Services的开发。
-
-## 思考题
-
-按照视频中所展示的需求，我们要设计怎样的架构愿景，才能顺利地进入伦敦学派的开发？
-
-欢迎把你的想法分享在留言区，也欢迎把你的项目代码分享出来。相信经过你的思考与实操，学习效果会更好！
+<div><strong>精选留言（1）</strong></div><ul>
+<li><img src="" width="30px"><span>Flynn</span> 👍（0） 💬（1）<div>老师，科普一下什么是RESTful呗</div>2022-06-06</li><br/>
+</ul>

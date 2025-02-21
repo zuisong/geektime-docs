@@ -6,6 +6,17 @@
 
 还等什么，点击下面按钮开始测试吧！
 
-[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142*201)](http://time.geekbang.org/quiz/intro?act_id=218&exam_id=675)
+[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142%2A201)](http://time.geekbang.org/quiz/intro?act_id=218&exam_id=675)
 
-最后，这里有一份 [毕业问卷](https://jinshuju.net/f/vUVK4d)，题目不多，希望你能花两分钟填一下。十分期待能听到你说一说，你对这个课程的想法和建议。
+最后，这里有一份[毕业问卷](https://jinshuju.net/f/vUVK4d)，题目不多，希望你能花两分钟填一下。十分期待能听到你说一说，你对这个课程的想法和建议。
+<div><strong>精选留言（3）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/0f/a1/cd/2c513481.jpg" width="30px"><span>瀚海星尘</span> 👍（0） 💬（1）<div>60分压线飘过，心情复杂～������</div>2020-10-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/64/05/6989dce6.jpg" width="30px"><span>我来也</span> 👍（0） 💬（1）<div>老师的自测题太难了,哈哈.
+
+上次linux内核技术实战课 20题全是多选 我还得了大几十分.
+这次都还没及格.������
+
+vim的知识还是太多了,我还只是对常用的东西有些了解,可能还了解的不太全面.
+就比如关闭窗口&#47;退出某个buf的操作, 平常就只用了有限的那么几种.
+
+在闲暇之余,还是要把老师的专栏拿出来温习下才行.</div>2020-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/7f/5f/1d82812f.jpg" width="30px"><span>軟件賺硬幣</span> 👍（1） 💬（0）<div>我65分，主要是插件用得少(所以插件部分没有细看，导致答错)，彩色状态栏显示文件信息，vim文本颜色控制等都是自己在vimrc里面写的，没用插件。现在暂时是用了drawit(画图)，vim-table-mode(制表)，Syntastic(语法检查)这三个插件和一个插件管理器vim-plug。其他插件等以后确实有需要再下载。我不想一来就把vim搞成IDE。插入模式映射;+alnum快速输入并跳转，对写代码和markdown还算有效率(markdown不包含输入高数公式--我对markdown那些高级语法还不熟)。</div>2022-02-18</li><br/>
+</ul>

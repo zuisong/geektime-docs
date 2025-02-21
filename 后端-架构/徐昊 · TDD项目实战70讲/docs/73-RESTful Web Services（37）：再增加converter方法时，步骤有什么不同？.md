@@ -2,13 +2,13 @@
 
 ## 回顾架构愿景与任务列表
 
-![](https://static001.geekbang.org/resource/image/c1/bd/c1a8d4b80fcf2c009a448d996594b6bd.jpg?wh=2284x1264)
-
+![](https://static001.geekbang.org/resource/image/c1/bd/c1a8d4b80fcf2c009a448d996594b6bd.jpg?wh=2284x1264)  
 ![](https://static001.geekbang.org/resource/image/fd/06/fd32fcbe73cb3d406f7473a0798a8d06.jpg?wh=2284x1285)
 
 目前的任务列表：
 
 - Resource/RootResource/ResourceMethods
+  
   - 当HEAD方法映射到GET方法时，忽略GET的返回值
   - 当没有OPTIONS方法时，提供默认实现
 
@@ -68,6 +68,7 @@ class DefaultResourceRouter implements ResourceRouter {
     }
 }
 
+
 class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
     private String httpMethod;
     private UriTemplate uriTemplate;
@@ -121,6 +122,7 @@ class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
             return values -> converter.apply(values.get(0));
         }
     }
+
 
     @Override
     public String toString() {
@@ -262,6 +264,7 @@ class ResourceHandler implements ResourceRouter.Resource {
     private SubResourceLocators subResourceLocators;
     private Function<ResourceContext, Object> resource;
 
+
     public ResourceHandler(Class<?> resourceClass) {
         this(resourceClass, new PathTemplate(getTemplate(resourceClass)), rc -> rc.getResource(resourceClass));
     }
@@ -290,7 +293,6 @@ class ResourceHandler implements ResourceRouter.Resource {
         return uriTemplate;
     }
 }
-
 ```
 
 ## 视频演示
@@ -303,3 +305,13 @@ class ResourceHandler implements ResourceRouter.Resource {
 2. 分享：对于学习TDD，你的初衷是什么？驱动力是什么呢？
 
 欢迎把你的思考和想法分享在评论区，我们下节课再见！
+<div><strong>精选留言（2）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/11/d4/9c/030e80d3.jpg" width="30px"><span>java小霸王</span> 👍（0） 💬（0）<div>初衷就是为了让自己更专业吧，提高效率</div>2024-03-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（0）<div>学习 TDD 的初衷:不要因为重大 Bug 丢掉工作
+驱动力:
+重要功能可以靠测试提高正确率,而不是靠运气;
+可以即时重构,代码越来越好(更容易修改);
+使用测试代替 Debug、查看日志调试,提升了工作效率;
+使用动态测试轻松应对复杂场景;
+最近发生的两个 Bug 终于不是服务端代码导致的(一个是新服务发布后有一个旧的实例没有下线,另一个是客户端组装请求参数格式有误);
+虽然学习 TDD 阶段开发的时间加长了,但功能完成后基本可以顺利通过测试部门验证,不用再回头找 Bug、改 Bug 了,总体工作时间缩短了</div>2022-09-03</li><br/>
+</ul>

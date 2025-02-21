@@ -2,13 +2,13 @@
 
 ## 回顾架构愿景与任务列表
 
-![](https://static001.geekbang.org/resource/image/c1/bd/c1a8d4b80fcf2c009a448d996594b6bd.jpg?wh=2284x1264)
-
+![](https://static001.geekbang.org/resource/image/c1/bd/c1a8d4b80fcf2c009a448d996594b6bd.jpg?wh=2284x1264)  
 ![](https://static001.geekbang.org/resource/image/fd/06/fd32fcbe73cb3d406f7473a0798a8d06.jpg?wh=2284x1285)
 
 目前的任务列表：
 
 - Resource/RootResource/ResourceMethods
+  
   - 使用默认构造函数转换matrix、form、header、cookie
   - 使用默认构造函数转换List、Set、SortSet、Arrary
 
@@ -227,15 +227,7 @@ class ResourceHandler implements ResourceRouter.Resource {
         return uriTemplate;
     }
 }
-
 ```
-
-## 视频演示
-
-进入今天的环节：
-
-## 思考题
-
-在这个项目的学习中，你最大的收获是什么？与DI容器这个项目相比，有什么不一样的感受吗？
-
-历经42节课，我们终于完成了用TDD的方式来实现Restful Web Services，辛苦了。同时也要恭喜你，通过持续的努力与思考，成为了更好的自己！下周我们将开启一个全新的项目，敬请期待！
+<div><strong>精选留言（1）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（0）<div>原来路由派分是最复杂的模块</div>2022-09-13</li><br/>
+</ul>

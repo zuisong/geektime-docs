@@ -17,8 +17,7 @@
 
 课程分为五大篇章——基础篇、分析设计篇、解耦重构篇、持续交付篇以及扩展篇。
 
-![](https://static001.geekbang.org/resource/image/b4/bf/b475054a1yybcb5be43ee5c760df58bf.jpg)
-
+![](https://static001.geekbang.org/resource/image/b4/bf/b475054a1yybcb5be43ee5c760df58bf.jpg)  
 **基础篇**：讲解重构和自动化测试的基础知识，包括重构的类型、时机、安全重构的手法，自动化测试的策略和常用框架。这些日常开发的必备技能，可以有效帮你提高编码效率和代码质量。
 
 **分析设计篇**：结合实例讲解如何分析系统、诊断问题，了解主流应用架构，掌握常用的遗留系统分析工具。

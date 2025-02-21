@@ -9,97 +9,18 @@
 ## 数据库的基本架构
 
 要搞清楚分布式数据库的架构风格，就要先了解“数据库”的架构。当然，我们这里说的数据库仍然默认是关系型数据库。我们先通过一张架构图看看数据库的全貌。
+<div><strong>精选留言（27）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/12/71/3d/da8dc880.jpg" width="30px"><span>游弋云端</span> 👍（6） 💬（3）<div>在传统数据库之上，不做分片和分表等逻辑，基于共识协议达成多个节点的数据一致性，这类产品怎么算归属？</div>2020-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/88/23/a0966b4d.jpg" width="30px"><span>Tim Zhang</span> 👍（5） 💬（4）<div>想学习下分布式数据库源码，newsql有没有java实现的分布式数据库，golang看起来比较累</div>2020-08-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fa/fd/3a6d013a.jpg" width="30px"><span>朱海昆</span> 👍（3） 💬（1）<div>感觉老师的讲解会让我对分布式的理解更上一个台阶，谢谢老师</div>2020-08-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJqUkoCXOxRraVNVg1fTm4O892WFVCjeL9pS8kUX2nEeTEcaS6k0kP25h3rRKtUCwSoUrY6dvP43w/132" width="30px"><span>赵见跃</span> 👍（3） 💬（2）<div>老师好，腾讯的TBase 属于PGXC 架构，那腾讯的TDSQL 属于哪个架构呢？它们的架构不一样是吧。谢谢老师。</div>2020-08-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJqUkoCXOxRraVNVg1fTm4O892WFVCjeL9pS8kUX2nEeTEcaS6k0kP25h3rRKtUCwSoUrY6dvP43w/132" width="30px"><span>赵见跃</span> 👍（3） 💬（2）<div>老师好，NewSQL是在nosql基础上进化的，那NewSQL就是比nosql 多了事务功能吗？还是有更多的变化？像mongodb也提供了事务功能，它不属于NewSQL是吧。谢谢！</div>2020-08-18</li><br/><li><img src="" width="30px"><span>Geek6713</span> 👍（2） 💬（1）<div>有一点不太理解，为了实现分布式事务为什么一定要有全局时钟呢？两阶段提交协议就可以实现分布式事务啊。</div>2020-12-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1e/b7/b20ab184.jpg" width="30px"><span>麋鹿在泛舟</span> 👍（1） 💬（1）<div>请教一个疑问，PG-XC架构数据库如果讲底层的存储替换成分布式存储，是不是也可以说数据库也具备了NewSQL的能力？ NewSQL也在逐步支持分布式事务，随着以后的技术演进，是不是两者界限会逐渐模糊?</div>2021-02-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3e/e9/116f1dee.jpg" width="30px"><span>wy</span> 👍（1） 💬（1）<div>ivan老师，hbase这种 nosql的kv数据库是不是完全可以用pgxc架构的数据库替代，因为在pgxc不仅可以存储海量数据而且支持更复杂的计算，使用场景多。hbase在我看来它的优势在于可以通过region的分裂达到更好负载平衡，但是这个pgxc实现起来应该也不难。</div>2020-09-27</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Pu41KPIhAp72l0N7kOFL738owSAIT5EyH0oUUMacQRWzeFV77QDjSDNTSFNvjNZib1myibvxAfQAsAY5KzsIia73w/132" width="30px"><span>王鹏</span> 👍（1） 💬（1）<div>最近用了Clickhouse，感觉是真的快，也能解决一些OLAP和OLTP混合的场景</div>2020-08-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/71/97/f1a3d398.jpg" width="30px"><span>张永志</span> 👍（1） 💬（1）<div>全局时钟的话，还能调整系统时间吗？往回调整时间允许吗？</div>2020-08-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/b5/36/d444d19e.jpg" width="30px"><span>xy🥝</span> 👍（1） 💬（2）<div>老师讲的特别好，又拓展了视野。
+腾讯的TDSQL应该也是属于PGXC类的，也是比较依赖于proxy</div>2020-08-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e6/1c/9d3744ee.jpg" width="30px"><span>程序员俊达</span> 👍（0） 💬（2）<div>现在NewSQL有新出一个StarRocks，现在公司的项目需要从TiDB迁移到StarRocks上。</div>2021-11-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/75/dd/9ead6e69.jpg" width="30px"><span>黄海峰</span> 👍（0） 💬（1）<div>greenplum是不是也是pgxc风格</div>2020-09-23</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTK0Qwib3PcoRRxTZSoxAdJ1hELibJeoEqSKP6Ksyu0e7MrGickk1COuv6oQ1w9W2kqM8gUg0Oj057UBw/132" width="30px"><span>UTC+00:00</span> 👍（0） 💬（2）<div>感谢老师的精妙讲解， 让我对分布式数据库有了更近一步的理解。
+日前，TiDB中PD转移至TiKV项目，不知是否能算作&quot;NewSQL 朝 PGXC 的方向做了一点回拨&quot;，亦或是通讯链路边长、网络通讯“代价”过大。
+PS: 吹了很久的微服务的风，问题也逐渐暴露。现在有种“分布式”向“单体”回拨的趋势，例如，Istio。</div>2020-08-23</li><br/><li><img src="" width="30px"><span>vage</span> 👍（10） 💬（4）<div>有一种数据库，计算与存储分离架构，数据在存储层分片存储，而且实现了计算下沉。另外，数据还可以缓存在计算层，以提升读写性能，最牛B的是，还可以在多个计算层节点的缓存中保持一致。上面还实现了标准的SQL接口，兼容SQL99等标准。如果实现了上面这些功能，从技术来说，这个数据库强大吗？有市场需求吗？金融行业有需要吗？</div>2020-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ff/24/abb7bfe3.jpg" width="30px"><span>Geek_7ixbah</span> 👍（6） 💬（0）<div>想知道老师都是怎么学习这些经典论文的呢，比如文中的 “Architecture of a Database System”，一百多页的论文真的全读通读吗</div>2021-09-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/83/ce/d52344f4.jpg" width="30px"><span>张海鹏</span> 👍（5） 💬（0）<div>PGXC 最后面的是单体数据库，后面的集群依然是通过类似 Binlog 的方式来同步的，所以结构也是主从或主备。而 NewSQL，底层是分布式存储，各节点通过 Paxos 或者 Raft 来同步。这是两者的大差别。另外，NewSQL 对待架构上的每个组件都是可以独立且分布式部署的。</div>2020-12-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/34/df/64e3d533.jpg" width="30px"><span>leslie</span> 👍（2） 💬（0）<div>用过GOLDENDB，给我的感觉就是和PG和MYSQL的使用思路近似，至少在cording和index方面。
+Tidb只知道开发者中有一大批当年国内顶级的MYSQL牛人，文档和部署方面给人的感觉和GOLDENDB也是大相径庭，总体感觉思路应当受MONGODB影响更深；只是没有想到OCEAN也是同理。
+国内TIDB类似的应当还有热濮科技：金官丁十余年前就是mysql的神人，感觉现在的分布式是在早年mysql和mongodb基础上出来的；至少前段时间和一些DB圈子退役边缘的老混混沟通时大家有此认可。</div>2021-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/0f/70/f59db672.jpg" width="30px"><span>槑·先生</span> 👍（0） 💬（0）<div>所以 Aurora 也是属于pgxc架构咯？</div>2024-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/b8/81/a0afe928.jpg" width="30px"><span>杜思奇</span> 👍（0） 💬（0）<div>老师，在GaussDB(DWS)出现前有不少企业在使用Teradata。这种硬件一体机的TD属于哪种类别呀，也是PGXC么</div>2021-12-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c4/eb/2285a345.jpg" width="30px"><span>花晨少年</span> 👍（0） 💬（0）<div>学习到了，讲的真的很好，我准备先从分布式nosql学起，看看源码，然后有时间再研究关系型的</div>2021-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/8d/0e/1f49ade9.jpg" width="30px"><span>海鲨数据库架构师_曾院士</span> 👍（0） 💬（0）<div>应该有第三种风格
+基于数据库中间件简单路由
+对跨库事再新增的主库。表在主库是完整数据。
+分片库只是表的部分数据。
+对分片库事务除了在分片库执行外，还在主库执行。
+跨库事务在主库执行，通过日志ROW放式再路由到方片库</div>2021-04-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/a2/55/1092ebb8.jpg" width="30px"><span>边城路远</span> 👍（0） 💬（0）<div>vitess也属于PGXC吧？</div>2021-04-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/74/67/46bb05de.jpg" width="30px"><span>怀刚</span> 👍（0） 💬（1）<div>巨杉数据库在存储引擎层实现了分布式的能力，数据库实例层兼容MySQL、PostgreSQL等协议，但是SQL实例、协调节点、数据节点物理上部署在一起组成一个node，严格来说并不是完全的计算存储分离，因为一个协调节点有可能将用户请求分发到多个数据节点（包含协调节点本身所在的数据节点），然后对数据节点返回处理后返回客户端，跟NewSQL和PGXC两种架构风格上都有所不同，不知道理解上对不对，疑问应该归属到哪一类？</div>2020-12-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fa/fd/3a6d013a.jpg" width="30px"><span>朱海昆</span> 👍（0） 💬（0）<div>巨杉在金融的案例相对较多，宣传也是金融级分布式关系型数据库。不知道老师对巨杉有什么看法？</div>2020-09-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/04/b9/153b6088.jpg" width="30px"><span>王昊</span> 👍（0） 💬（0）<div>老师您好，能简单说一下citus吗？</div>2020-08-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/f2/66/b16f9ca9.jpg" width="30px"><span>南国</span> 👍（0） 💬（0）<div>首先回答问题：因为还是学生，没啥熟悉的分布式数据库，就直接回答第二个问题啦。当然newsql支持的是结构化数据，nosql半结构化数据偏多，本身都有存在的意义，只是对比架构。熟悉的nosql是Redis，因为Redis集群不支持集群的跨节点事务（单线程支持单机事务很容易，lua脚本即可），所以使得redis的集群的架构简单且高效，哈希槽分片，gossip传递集群信息，当然分片的键值也不必支持全局时钟，这使得redis做单纯的key&#47;value服务非常高效。而对比Newsql，因为我们下的定义是关系型数据库，所以需要支持分布式事务，这是很复杂且昂贵的操作（spanner使用的两阶段提交本身还有单点故障，数据不一致的问题），因为数据的更改顺序很重要，所以也需要全局时钟，更不必说单机关系型数据库本身逻辑的复杂性，所以不但读写都非常昂贵，也会使得架构很复杂（spanner为了物理时钟而引入time master和每台机器上的timeslave daemon，分布式事务要映入事务管理者，此时也要锁表）。当然它们都有适合的场景，还是取决于数据类型与具体业务的取舍。
 
-![](https://static001.geekbang.org/resource/image/02/66/0224c515b201a42725a5ed3ce9a3c366.jpg?wh=2700*1939)
-
-这张图从约瑟夫 · 海勒斯坦(Joseph M. Hellerstein)等人的论文“ [Architecture of a Database System](https://dsf.berkeley.edu/papers/fntdb07-architecture.pdf)”中翻译而来。文中将数据库从逻辑上拆分为5个部分，分别是客户端通讯管理器(Client Communications Manager)、查询处理器（Relational Query Processor）、事务存储管理器（Transactional Storage Manager）、进程管理器（Process Manager）和共享组件与工具(Shared Components and Utilities)，每个部分下面又可以拆分成一些组件。
-
-你在各种数据库产品中都能找到这5个部分的对应实现，比如Oracle、DB2、SQL Server和MySQL，无一例外。下面，我依次介绍下这5个部分的功能。
-
-1. **客户端通讯管理器。** 这是应用开发者能够直观感受到的模块，通常我们使用JDBC或者ODBC协议访问数据库时，连接的就是这个部分。
-
-2. **进程管理器。** 连接建好了，数据库会为客户端分配一个进程，客户端后续发送的所有操作都会通过对应的进程来执行。当然，这里的进程只是大致的说法。事实上，Oracle和PostgreSQL是进程的方式，而MySQL使用的则是线程。还有，进程与客户也不都是简单的一对一关系，但这部分功能不会影响你对分布式数据库的理解，可以略过。
-
-3. **查询处理器。** 它包括四个部分，功能上是顺序执行的。首先是解析器，它将接收到的SQL解析为内部的语法树。然后是查询重写（Query Rewrite），它也被称为逻辑优化，主要是依据关系代数的等价变换，达到简化和标准化的目的，比如会消除重复条件或去掉一些无意义谓词 ，还有将视图替换为表等操作。再往后就是查询算法优化（Query Optimizer），它也被称为物理优化，主要是根据表连接方式、连接顺序和排序等技术进行优化，我们常说的基于规则优化（RBO）和基于代价优化（CBO）就在这部分。最后就是计划执行器（Plan Executor），最终执行查询计划，访问存储系统。
-
-4. **事务存储管理器。** 它包括四个部分，其中访问方式（Access Methods）是指数据在磁盘的具体存储形式。锁管理（Lock Manager）是指并发控制。日志管理（Log Manager）是确保数据的持久性。缓存管理（Buffer Manager）则是指I/O操作相关的缓存控制。
-
-5. **共享组件和工具。** 在整个过程中还会涉及到的一些辅助操作，当然它们对于数据库的运行也是非常重要的。例如编目数据管理器（Catalog Manager）会记录数据库的表、字段、视图等元数据信息，并根据这些信息来操作具体数据内容。复制机制（Replication）也很重要，它是实现系统高可靠性的基础，在单体数据库中，通过主备节点复制的方式来实现数据的复制。
-
-
-到这里，你应该对数据库的运行过程有了一个大致的理解，这样就能够串接起后续要讲到的PGXC和NewSQL两种架构风格的关键功能了。当然，数据库本身的运行机制是比较复杂的，就算只是其中的一个具体模块，我们用整整一讲都不一定能够说清楚。如果你希望进一步了解的话，可以仔细研读约瑟夫 · 海勒斯坦的这篇论文。
-
-## PGXC：单体数据库的自然演进
-
-单体数据库的功能看似已经很完善了，但在面临高并发场景的时候，还是会碰到写入性能不足的问题，很难解决。因此，也就有了向分布式数据库演进的动力。要解决写入性能不足的问题，大家首先想到的，最简单直接的办法就是分库分表。
-
-分库分表方案就是在多个单体数据库之前增加代理节点，本质上是增加了SQL路由功能。这样，代理节点首先解析客户端请求，再根据数据的分布情况，将请求转发到对应的单体数据库。
-
-![](https://static001.geekbang.org/resource/image/1b/91/1b2f74aa08e35b6fa326065fc5527391.jpg?wh=2700*1001)
-
-代理节点需要实现三个主要功能，它们分别是客户端接入、简单的查询处理器和进程管理中的访问控制。
-
-另外，分库分表方案还有一个重要的功能，那就是分片信息管理，分片信息就是数据分布情况，是区别于编目数据的一种元数据。不过考虑到分片信息也存在多副本的一致性的问题，大多数情况下它会独立出来，更详细的原因我在第7讲中展开说明。
-
-显然，如果把每一次的事务写入都限制在一个单体数据库内，业务场景就会很受局限。因此，跨库事务成为必不可少的功能，但是单体数据库是不感知这个事情的，所以我们就要在代理节点增加分布式事务组件。
-
-同时，简单的分库分表不能满足全局性的查询需求，因为每个数据节点只能看到一部分数据，有些查询运算是无法处理的，比如排序、多表关联等。所以，代理节点要增强查询计算能力，支持跨多个单体数据库的查询。
-
-随着分布式事务和跨节点查询等功能的加入，代理节点已经不再只是简单的路由功能，更多时候会被称为协调节点。
-
-![](https://static001.geekbang.org/resource/image/fa/2f/fa871c7ecb1b2f327e1261775a512f2f.jpg?wh=2700*987)
-
-很多分库分表方案会演进到这个阶段，比如MyCat。这时离分布式数据库还差重要的一步，就是全局时钟。我们在 [第2讲](https://time.geekbang.org/column/article/272104) 已经介绍了全局时钟的意义，它是实现数据一致性的必要条件。
-
-加上这最后一块拼图，PGXC区别于单体数据库的功能也就介绍完整了，它们是分片、分布式事务、跨节点查询和全局时钟。
-
-![](https://static001.geekbang.org/resource/image/2a/4e/2a698e380e08621a2e3b7196ebdcf54e.jpg?wh=2700*1000)
-
-协调节点与数据节点，实现了一定程度上的计算与存储分离，这也是所有分布式数据库的一个架构基调。但是，因为PGXC的数据节点本身就是完整的单体数据库，所以也具备很强的计算能力。
-
-说了这么多，PGXC风格的分布式数据库到底包括哪些产品呢？PGXC（PostgreSQL-XC）的本意是指一种以PostgreSQL为内核的开源分布式数据库。因为PostgreSQL的影响力和开放的软件版权协议（类似BSD），很多厂商在PGXC上二次开发，推出自己的产品。不过，这些改动都没有变更主体架构风格，所以我把这类产品统称为PGXC风格，其中包括TBase、GuassDB 300和AntDB等。当然，这里所说的PGXC并不限于以PostgreSQL为内核，那些以MySQL为内核的产品往往也会采用同样的架构，例如GoldenDB，所以我把它们也归入了PGXC风格。
-
-## NewSQL：革命性的新架构
-
-相对于PGXC，NewSQL有着完全不同的发展路线。NewSQL也叫原生分布式数据库，我觉得这个名字能更准确地体现这类架构风格的特点，就是说它的每个组件在设计之初都是基于分布式架构的，不像PGXC那样带有明显的单体架构痕迹。
-
-NewSQL的基础是NoSQL，更具体地说，是类似BigTable的分布式键值（K/V）系统。分布式键值系统选择做了一个减法，完全放弃了数据库事务处理能力，然后将重点放在对存储和写入能力的扩展上，这个能力扩展的基础就是分片。引入分片的另一个好处是，系统能够以更小的粒度调度数据，实现各节点上的存储平衡和访问负载平衡。
-
-分布式键值系统由于具备这些鲜明的特点，所以在不少细分场景获得了成功（比如电商网站对于商品信息的存储），但在面对大量的事务处理场景时就无能为力了（比如支付系统）。这种状况直到Google Spanner横空出世才被改变，因为Spanner基于BigTable构建了新的事务能力。
-
-除了上述内容，NewSQL还有两个重要的革新，分别出现在高可靠机制和存储引擎的设计上。
-
-高可靠机制的变化在于，放弃了粒度更大的主从复制，转而以分片为单位采用Paxos或Raft等共识算法。这样，NewSQL就实现了更小粒度的高可靠单元，获得了更高的系统整体可靠性。存储引擎层面，则是使用LSM-Tree模型替换B+ Tree模型，大幅提升了写入性能。
-
-由于NewSQL在架构上的革新性，产品实现的难度比PGXC要大，所以产品就相对少一些。Spanner是NewSQL的开山鼻祖，这个不用说了；其他知名度比较高的产品有CockroachDB、TiDB和YugabyteDB，这三款数据库都宣称设计灵感来自Spanner；另外就是阿里自研的OceanBase，因为它有一个代理层，有时会被同行质疑，但是从整体架构风格看，我还是愿意把它归为NewSQL。
-
-![](https://static001.geekbang.org/resource/image/67/87/67b03095173a1cf570cdeec485b7aa87.jpg?wh=2700*1086)
-
-从系统架构上看，我个人认为，NewSQL的设计思想更加领先，具有里程碑意义，而PGXC的架构偏于保守。但PGXC的优势则在于稳健，直接采用单机数据库作为数据节点，大幅降低了工程开发的工作量，也减少了引入风险的机会。总的来说，NewSQL的长处在架构设计，PGXC的长处则在工程实现。
-
-当然，NewSQL的架构设计也不是完美无缺。比如，作为一个计算与存储分离得更加彻底的架构，NewSQL的计算节点需要借助网络才能与存储节点通讯，这意味着要花费更大的代价来传输数据。随着NewSQL分布式数据库的应用实践越来越多，很多产品为了获得更好的计算性能，会尽量将更多计算下压到存储节点执行。这种架构上的修正，似乎也可以理解为，NewSQL朝PGXC的方向做了一点回拨。
-
-## 小结
-
-关于分布式数据库的两种架构风格，我们今天就先学到这里了。最后，我们再一起复习下今天的重点内容。
-
-1. 从架构上，数据库可以被拆分为5个部分，分别是客户端通讯管理器、进程管理器、查询处理器、事务存储管理器和共享组件与工具。分布式数据库在此基础上增加四个主要功能，包括分片信息管理、分布式事务管理、跨节点查询和全局时钟。
-2. PGXC架构是从分库分表方案演进而来的。它设置了协调节点，在代理功能的基础上增加了分布式事务管理、跨节点查询功能；原有的单体数据继续作为数据节点；新增了全局时钟和分片信息管理两个功能，这两个功能又有两种实现情况，一是拆分为两个独立角色节点，例如GoldenDB，二是合并为一个角色节点，例如TBase。
-3. NewSQL架构是原生分布式数据库，架构中的每个层次的设计都是以分布式为目标。NewSQL是从分布式键值系统演进而来，主要的工作负载由计算节点和存储节点承担，另外由管理节点承担全局时钟和分片信息管理功能。不过，这三类节点是逻辑功能上划分，在设计实现层面是可分可合的。比如，TiDB是分为独立节点，CockroachDB则是对等的P2P架构。
-4. NewSQL在架构上更加领先，而PGXC最大程度复用了单体数据库的工程实现，更加稳健。
-
-今天我们从单体数据库架构出发，简单介绍了PGXC和NewSQL两种架构。为了帮助你迅速地把握要点，在内容上，我专门挑选了那些最能体现与单体数据库差异的部分。不过，这些内容尚不足以完全解释数据库的整体运作原理，但对于你理解两种架构风格的分布式数据库产品的基本框架足够了。如果你想更彻底、更全面地了解数据库架构，我建议你仔细研读“Architecture of a Database System”和另一本非常值得阅读的经典教材《数据库系统实现》。
-
-![](https://static001.geekbang.org/resource/image/ba/77/bac0b877eb2dd6abf0f6921a28d76f77.jpg?wh=2700*3921)
-
-## 思考题
-
-按照惯例，最后是思考题时间。今天我们介绍了两种不同的架构风格，你会将自己熟悉的分布式数据库归入哪一类呢？或者如果你有熟悉的NoSQL产品，可以和NewSQL比较一下，谈谈它们架构上的差异。
-
-欢迎你在评论区留言和我一起讨论，我会在答疑篇和你继续探讨这个问题。如果你身边的朋友也对分布式数据库的架构风格感兴趣，你也可以把今天这一讲分享给他，我们一起讨论。
-
-## 学习资料
-
-Joseph M. Hellerstein et al.： [_Architecture of a Database System_](https://dsf.berkeley.edu/papers/fntdb07-architecture.pdf)
-
-加西亚-莫利纳 等： [《数据库系统实现》](https://book.douban.com/subject/4838430/)
+学了这节课程后确实从一个新的角度看待了这个问题，但是有一个小小的问题，就是觉得PGXC与Newsql的界限很模糊，因为它们需要支持分片，事务，全局时钟等，分片需要分机器（newsql粒度更小，spanner以一个Tablet组为粒度），大家都一样，分布式事务则需要协调者，大家也一样，全局时钟也都是依靠外界，那么是否可以理解为它们的差别就是单个机器上是运行仅进行存储（当然还有各种日志）的程序还是一个完整DBMS呢？</div>2020-08-19</li><br/>
+</ul>

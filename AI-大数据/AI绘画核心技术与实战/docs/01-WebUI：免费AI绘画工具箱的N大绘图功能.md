@@ -11,224 +11,84 @@
 简言之，Stable Diffusion是这样一个过程：你不妨想象一下，任何一张图像都可以通过不断添加噪声变成一张完全被噪声覆盖的图像；反过来，任何一张噪声图像通过逐步合理地去除噪声，变得清晰可辨。
 
 Stable Diffusion（以下简称SD）在AI绘画领域中闪耀着耀眼的光芒，SD背后的方法在学术界被称为Latent Diffusion，论文发表于2022年计算机顶会CVPR，相关知识在后面的课程中我们会涉及，这里先按下不表。此时你只需要知道，SD模型可以输入文本，生成图像。这里提到的文本，就是我们常说的prompt。比如下面这张图，就是由SD模型生成的。
-
-![](https://static001.geekbang.org/resource/image/f8/cb/f8b7d1beea87115537ed104b8031a3cb.jpg?wh=1300x873)
-
-这里我并非打算讨论其学术价值，而是想和你说说SD模型的高昂成本。你知道吗，训练一个Stable Diffusion模型的代价相当可观。SD模型有几个备受关注的版本，比如SD 1.4、SD 1.5和SD 2.0。
-
-为了训练这些模型，需要使用巨大的数据集，包含20亿至50亿个图像文本对。这一庞大任务需要依赖数百块A100显卡，每块A100的价格大约在十万元左右。以SD 1.5为例，训练过程需要使用256块A100显卡，并持续耗时30天。这样一算，你可能会感叹，这投入都够买好几套海淀区的学区房了，真不是普通人能玩得起的！
-
-然而，令人惊喜和惊叹的是，这些令人炫目的成果竟然被开源了！这一开源举措在整个社区中引发了热烈反响，掀起了一股热潮。开源的SD模型让我们真切感受到了文生图的强大魅力和言出法随的创作能力。
-
-然而，复杂的代码逻辑也让普通用户望而却步。我们今天要用到的WebUI便应运而生。2022年10月，开源社区AUTOMATIC1111推出了名为 “stable-diffusion-webui” 的图形化界面，为普通用户提供了方便快捷的构建SD模型图像UI界面的工具。
-
-通过这个界面，用户可以体验到SD模型一系列的功能，包括文生图、图生图、inpainting和 outpainting等等，甚至还能自定义训练具有指定风格的全新模型。由于开源、易于上手和功能全面等诸多优势，SD WebUI迅速成为SD模型系列中最出色、使用最广泛的图形化程序之一。
-
-为了让你在上手实操前有个基本认识，这里我先贴了个WebUI的界面图。
-
-你可以看到，在这个界面最上面的部分，你可以选择各种不同的AI绘画模型和不同的AI绘画功能；右侧可以展示出AI绘画的效果，供我们根据喜好决定是否保存到本地；至于左侧的参数信息怎么用，稍后我再详细讲解。
-
-![](https://static001.geekbang.org/resource/image/63/4f/63c72f749a6aa9aa3ab2348519a6824f.png?wh=2900x2267)
-
-与其他AI绘画类模型如Midjoruney、DALL-E 2相比，SD WebUI可以免费在个人电脑或服务器上运行，并根据用户意愿进行改造和扩展。随着社区力量的涌入，SD WebUI还拥有了丰富的插件，如LoRA、ControlNet等，它们让原生SD模型的能力和表现更加出色。
-
-目前，SD WebUI已经支持多平台运行，包括Windows、MacOS和Linux系统，支持英伟达、AMD和苹果M系列等多种GPU架构。对于追求高自由度的AI绘画艺术家而言，SD WebUI几乎已经成为该领域的首选工具。
-
-## WebUI的安装和部署
-
-一提到安装WebUI，你可能会担心GPU的问题。我事先说明，先把心放在肚子里。因为WebUI既可以使用自己的本地GPU，也可以使用第三方提供的GPU资源。
-
-如果你拥有个人显卡或GPU服务器，并且希望按照官方的安装方式进行操作，那么首先需要下载SD WebUI的代码。你可以使用Git命令将整个仓库克隆到本地。如果你的网络速度比较慢，也可以在GitHub主页中找到并下载已打包好的zip压缩包。
-
-```bash
-git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git
-
-```
-
-对于Windows用户，可以像后面这样操作。
-
-```bash
-1. 安装Python 3.10.6，勾选 "Add Python to PATH"。
-2. 从Windows资源管理器(CMD终端)中以非管理员的用户身份运行webui-user.bat。
-
-```
-
-![](https://static001.geekbang.org/resource/image/63/91/63536b62b12b75532f5302c63e08f891.jpg?wh=2900x2215)
-
-对于Linux用户，打开终端命令行。
-
-```bash
-# Debian-based:
-sudo apt install wget git python3 python3-venv
-# Red Hat-based:
-sudo dnf install wget git python3
-# Arch-based:
-sudo pacman -S wget git python3
-
-bash <(wget -qO- https://raw.githubusercontent.com/AUTOMATIC1111/stable-diffusion-webui/master/webui.sh)
-
-```
-
-![](https://static001.geekbang.org/resource/image/c5/b0/c551b86a767759be04c3b94bb956bcb0.png?wh=2900x1351)
-
-对于苹果M系列芯片的电脑用户，打开电脑的term命令行工具，根据这个 [教程链接](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Installation-on-Apple-Silicon) 来安装WebUI。
-
-```bash
-# 首先cd到你希望安装WebUI的位置
-
-brew install cmake protobuf rust python@3.10 git wget
-
-git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui
-
-cd stable-diffusion-webui
-
-export no_proxy="localhost, 127.0.0.1, ::1"
-
-./webui.sh
-
-```
-
-在你的浏览器输入以下链接 [http://127.0.0.1:7860](http://127.0.0.1:7860/)，便可以进入WebUI。在丐版M2处理器的MacBook Air上，20步生成512分辨率的单张图像，大概需要25秒。即使没有英伟达的高端显卡，也可以在本地进行AI绘画。
-
-更详细的安装方案和问题，你可以参考 [官方指南](https://github.com/AUTOMATIC1111/stable-diffusion-webui)。
-
-如果你本地没有英伟达显卡，而且不希望等太久，可以使用各种第三方平台提供的GPU资源进行操作。这需要发挥下你的聪明才智，也欢迎小伙伴们在评论区留下你的方法。启动WebUI后的界面可以看下面的图示。
-
-![](https://static001.geekbang.org/resource/image/fd/f4/fd137cc1a21f32211fc3f27f1b340cf4.png?wh=2900x1331)
-
-此外，如果你希望进行汉化或者探索更多功能，可以在Extensions（扩展）中进一步探索。Extensions提供了一系列额外的功能和工具，里面包括很多功能和定制选项，这让我们的WebUI体验更加个性化和定制化。
-
-到这里，我们就完成了WebUI的安装和部署。搞定了环境问题，我们便可以玩转WebUI了！
-
-## WebUI基本能力之文生图
-
-现在让我们开始创作吧！首先我们需要熟悉一下后面这些参数信息。
-
-![](https://static001.geekbang.org/resource/image/b5/29/b596e8080731898080e307581a70e829.jpg?wh=4409x2480)
-
-- Stable Diffusion checkpoint：这里可以选择已经下载的模型。目前许多平台支持开源的SD模型下载，例如Civitai、Hugging Face等。
-- txt2img：这个选项表示启用文生图（text-to-image）功能。类似地，img2img等选项则代表其他功能。
-- prompt：用于生成图像的文字输入，需要使用英文输入，但你也可以通过探索Extensions来实现中文输入。
-- negative prompt：这是生成图像的反向提示词，用于指定你不希望模型生成的内容。例如，如果你不想图像中出现红色，可以在这里输入“red”。
-- Sampling method：不同的采样算法，这里深入了Diffusion算法领域，稍后我们会更详细地讲解。简单来说，通过这些采样算法，噪声图像可以逐渐变得更清晰。
-- Sampling steps：与采样算法配合使用，表示生成图像的步数。步数越大，需要等待的时间越长。通常20-30步就足够了。
-- Width & Height：生成图像的宽度和高度。
-- Batch size：每次生成的图像数。如果显存不够大，建议调小这个数值。
-- CFG scale：这里表示prompt的影响程度。值越大，prompt的影响就越大。
-- Seed：生成图像的随机种子，类似于抽奖的幸运种子，会影响生成的图像结果。
-
-这些参数的变化会对最终的生成效果产生千般变化。每一个参数都扮演着重要的角色，影响着生成图像的质量、多样性和风格。理解和熟悉这些参数的作用是使用WebUI进行图像生成和编辑的关键。
-
-但你不用着急，在后续的课程中，我们将会详细拆解这些参数的作用，逐一介绍它们对生成效果的影响。通过学习这些参数的作用，你将能够更加准确地控制生成图像的特征和风格，实现自己所需的创作效果。
-
-OK，开启AI绘画！我们在WebUI界面中使用如下参数，让SD模型帮我们生成一只可爱的小猫。这里我们使用的是一个名为RealisticVision的模型，你可以点开 [这个链接](https://civitai.com/models/4201?modelVersionId=6987) 进行模型下载，然后将模型放置在WebUI安装路径下的模型文件夹中。
-
-```python
-# 模型文件夹地址：./stable-diffusion-webui/models/Stable-diffusion
-model：realisticVisionV13_v13.safetensors[c35782bad8]
-prompt：a photo of a cute cat
-Sampling method：Euler A
-Sampling steps：20
-Width & Height: 512
-Batch size: 4
-CFG scale: 7
-seed: 10
-
-```
-
-结果是后面这样。
-
-![](https://static001.geekbang.org/resource/image/2c/35/2cce40c243bff208855dbb31659fb935.jpg?wh=4409x2480)
-
-通过SD模型，几只可爱的小猫瞬间诞生了！然而，这些小猫似乎带着一丝悲伤。不过，我们可以保持相同的参数，把prompt语句稍作修改，在cute和happy cat之间多写一个单词 “and”。
-
-```bash
-prompt：a photo of a cute and happy cat
-
-```
-
-![](https://static001.geekbang.org/resource/image/dd/ca/dd714e39ee5da4d4b8b5b6a21daf80ca.jpg?wh=4409x2480)
-
-魔法再次生效！现在这些可爱的小猫展现出了微笑的表情。接下来，你可以放飞想象力，将所有的生成和创作交给SD模型完成了！AI绘图的文生图模式已经为你打开大门，更加广阔的创作空间就在眼前！
-
-## WebUI的其它有趣功能
-
-除了基本的文生图能力外，WebUI在图像生成和编辑方面几乎无所不能。我们继续探索WebUI的其他玩法。
-
-**img2img：图生图，不同风格**
-
-我先大致给你梳理一下img2img的原理。首先，输入图像经过添加噪声的处理，变成了一个“不清晰的噪声图”。然后，通过结合不同的prompt语句，图像逐渐变得清晰，并呈现出与prompt语句相关的风格。
-
-以一张男士的头像为例，通过使用不同的prompt语句，就能将其转变成多种不同的风格，如艺术风格、卡通风格、油画风格等。每一步都会逐渐减少噪声的影响，使得图像细节逐渐清晰，并呈现出与prompt语句相匹配的风格特征。
-
-请注意，具体的实现方式可能会因为我们使用的模型和算法而有所不同。这只是一个大致的描述，实际操作需要考虑到具体的模型和算法选择。
-
-![](https://static001.geekbang.org/resource/image/93/b3/932dd1d545fc151aa4ea149b99eb3bb3.jpg?wh=4409x2480)
-
-**Outpainting：延展图像**
-
-我们还可以生成图像之外的区域，这个功能可以帮我们扩展图像的边界或填充缺失的区域，使整体图像更完整。它的基本原理是将原始图像中的图像之外的区域看作“不清晰的噪声图”，但会保持原本区域不变，并参考原始图像的信息来生成原图之外的内容。
-
-![](https://static001.geekbang.org/resource/image/7c/5e/7c877119f3067167031a07c314655c5e.jpg?wh=4409x2480)
-
-**Inpainting：局部重绘**
-
-同样的思路，我们可以在图像内部绘制一个遮罩（mask），这个功能使用WebUI自带的画笔功能便可以实现。
-
-当我们对要重画的区域进行遮罩后，使用不同的prompt语句，就可以为该遮罩重新绘制新的内容。这样做可以根据所选择的风格和要表达的意图，在图像的特定区域上添加或修改内容，从而实现更具创意和个性化的图像效果。
-
-通过与不同的prompt语句结合，我们可以为图像内部的遮罩部分赋予各种风格和特征。
-
-![](https://static001.geekbang.org/resource/image/ff/00/ff0109ce0bc174108b1974bb17f81100.jpg?wh=4409x2480)
-
-**强调prompt的关键词**
-
-在WebUI中，有时我们希望强调prompt语句中的特定词汇。为了实现这一目的，我们可以使用圆括号 ( ) 来突出显示这些词汇。举个例子，如果我们想强调少年头发的卷曲特征，即curly hair，只需在该词汇外添加多个 ( )，以突出显示该词汇，从而引导生成模型更加关注这一特定要素。
-
-![](https://static001.geekbang.org/resource/image/94/c1/94cyye0f49de4c43f736ac3749bb8dc1.jpg?wh=4409x2480)
-
-**Negative prompt：反向提示词**
-
-通过在negative prompt区域添加不想出现的信息，比如在此处添加 “smile（微笑）”，就可以去掉笑容。生成模型会参考这些负面prompt信息，尽量避免生成带有笑容的图像。这样的处理可以帮助控制图像生成的特定要素，使其符合特定需求或风格。
-
-请注意，生成模型的效果可能会受到多种因素的影响，包括数据集、模型架构等。
-
-![](https://static001.geekbang.org/resource/image/71/47/717538c1b9a30279af211836a5857e47.jpg?wh=4409x2480)
-
-**Face restoration：面部修复**
-
-对于SD模型来说，实现高质量而且精确的人脸生成确实是一个挑战。为了解决这个问题，WebUI可以结合以往针对人脸修复的工作，例如GFPGAN、CodeFormer等，对生成图像中的人脸区域进行修复，从而提高人脸的生成质量。
-
-通过对生成的人脸进行修复，可以改善细节、纠正不准确的特征，让生成的人脸显得更加自然和美观。这种修复过程可以针对人脸区域做精细调整，提升生成结果的真实感和质量。
-
-![](https://static001.geekbang.org/resource/image/b7/5e/b7b43e22e7a191bb12ef585ec243bd5e.jpg?wh=4409x2480)
-
-## WebUI的功能拓展插件
-
-WebUI的功能，不光是前面我们提到的这几种。通过探索WebUI的Extensions，你会发现更多让人惊喜的功能和工具，实现更多个性化的需求。例如，你可以探索中文输入的扩展，方便你在中文模式下生成和编辑图像。
-
-此外，用户也可以通过自定义训练模型，实现更加个性化和定制化的图像生成。通过指定特定的风格和样本图像，用户可以训练出符合自己需求的模型，进一步发挥创造力。
-
-总之，WebUI的功能远远超出我们展示的范围，它为用户提供了一个广阔的创作空间。期待你能充分发挥想象力，探索出更多新颖和创造性的玩法，将WebUI的潜力发挥到极致。无论是专业人士还是爱好者，都能在WebUI中找到满足自己创作需求的工具和功能。让我们一起期待更多精彩的创作和探索！
-
-## 总结时刻
-
-这一讲，我们学习了Stable Diffusion模型，了解了它在创意图像生成和编辑中的应用。
-
-Stable Diffusion模型是一种基于噪声图像逐步演化的生成模型。通过对图像进行多次采样和演化，我们可以逐渐生成高质量、多样性的图像。
-
-为了满足普通人使用SD模型的需求，WebUI这个强大的图形化界面工具应运而生，它为我们提供了便捷的使用接口和丰富的功能。
-
-通过WebUI，我们可以轻松选择和加载已训练好的Stable Diffusion模型，使用文生图等功能生成具有创意和多样性的图像。我们还介绍了WebUI中的一些关键参数，如 **prompt、negative prompt** 等，它们对图片生成效果起着重要的影响。
-
-此外，我们还探索了WebUI的其他功能，如图像编辑、样式迁移等，这些功能使得我们可以在图像生成和编辑过程中实现更多的创作可能性。WebUI的易用性和灵活性使得它成为广大创意艺术家和AI爱好者的首选工具之一。
-
-希望这一讲能够激发你对WebUI工具和Stable Diffusion模型的兴趣和热情，并尝试开启广阔的创作空间。
-
-![](https://static001.geekbang.org/resource/image/c9/d8/c98af7f4b7941048e2bd76eb1e3d72d8.jpg?wh=2600x1852)
-
-## 思考题
-
-你的工作与图像和创意创作有关吗？WebUI在这方面扮演怎样的角色呢？
-
-欢迎你在留言区与我交流讨论，并把今天的内容分享给身边的同事和朋友，和他一同探索AI绘画的无限可能！
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="" width="30px"><span>yanyu-xin</span> 👍（20） 💬（2）<div>在https:&#47;&#47;space.bilibili.com&#47;12566101下载了Stable Diffusion整合包，win版安装很简单。内置了很多模型和扩展，秋叶aaaki的一键启动器很好用。
+我的MateBook笔记本只有内置显卡，在启动器性能设置选择硬件引擎为CPU后也能绘图，CPU绘图一幅图都要20多分钟左右。尝试一下新技术勉强可以，只是确实太慢了。
+找了一个云算力市场，不用翻墙，价格低廉，国内的“揽睿星舟”。https:&#47;&#47;www.lanrui-ai.com&#47;register?invitation_code=1643301013。
+该云在云应用市场中，直接内置了最新版的基于Stable Diffusion Web UI打包的应用。已预装所有依赖和常见模型，一键即可启动。如果家里有矿，可以直接选A100-80G显卡的。我选了特价3090-24G显卡，速度挺快。用来学习或者训练自己的小模型也是挺香的。</div>2023-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/44/a4/7a45d979.jpg" width="30px"><span>IT蜗壳-Tango</span> 👍（19） 💬（2）<div>Win11 搭建笔记：https:&#47;&#47;xie.infoq.cn&#47;article&#47;62e1d389d8a0c4c7638ba610d
+Mac M1版本搭建笔记：https:&#47;&#47;xie.infoq.cn&#47;article&#47;5fd4d53d1ed467f51c4c7f7a2
+
+Mac 的版本是很早前的笔记了，如果使用win11中的方法，大概率应该也不会再报那些奇怪的错误了。</div>2023-07-18</li><br/><li><img src="" width="30px"><span>Geek_ac422d</span> 👍（6） 💬（1）<div>推荐几个低成本体验ai绘画的方式：https:&#47;&#47;note.youdao.com&#47;s&#47;XwhBsykQ</div>2023-07-18</li><br/><li><img src="" width="30px"><span>互联网砖瓦匠</span> 👍（4） 💬（3）<div>我的3080终于要在AI这块排上用场了，不知道老师了解RTX4090对AI这块提升大不大。</div>2023-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/6c/67/07bcc58f.jpg" width="30px"><span>虹炎</span> 👍（2） 💬（2）<div>一次性安装成功，但是老师省略了耗时步骤，我说一下
+1，win11 第一次运行webui.bat  会要安装 Installing torch and torchvision  （2.6GB） 耗时一会儿
+2，前面成功，会要求更新pip ,根据提示操作python.exe -m pip install --upgrade pip
+3，更新pip后， 再次运行webui.bat 则可以启动成功</div>2023-08-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/46/3d/55653953.jpg" width="30px"><span>AI悦创</span> 👍（2） 💬（1）<div>强调 prompt 的关键词 这个部分中，右边图片的指令，：a photo of boy with (((curly hair))), Greg Rutkowski
+
+为什么是三个括号？不是一个括号？</div>2023-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8e/72/63c94eee.jpg" width="30px"><span>黄马</span> 👍（2） 💬（1）<div>老师哪里有免费的GPU可以做实验</div>2023-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/59/97/9b7a412c.jpg" width="30px"><span>Aā 阳～</span> 👍（1） 💬（2）<div>老师，生成出来得图片黑屏是什么原因啊</div>2023-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e0/c8/4ad13219.jpg" width="30px"><span>啥也不会</span> 👍（1） 💬（1）<div>麻烦请问老师，是否可以使用 java 来调用Stable Diffusion模型实现类似 WEBUI 的效果呢？没有检索到相关的资料。</div>2023-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/93/65/6016b046.jpg" width="30px"><span>清风明月</span> 👍（1） 💬（2）<div>webui是通过调用sd API还是自己本地集成了模型？</div>2023-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/38/ae/0f/4743bf1d.jpg" width="30px"><span>Short Hair Girl</span> 👍（0） 💬（1）<div>我可能比较小白，我就没看到这Python 3.10.6安装包再哪里找？</div>2023-09-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/09/98/397c2c81.jpg" width="30px"><span>贾维斯Echo</span> 👍（0） 💬（1）<div>Mac 执行.&#47;webui.sh 后终端提示Warning: caught exception &#39;Torch not compiled with CUDA enabled&#39;, memory monitor disabled,然后打开页面一堆报错提示这个Error
+Expecting value: line 1 column 1 (char 0),请问老师这个怎么解决?</div>2023-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0c/16/179e4fce.jpg" width="30px"><span>Zeke</span> 👍（0） 💬（1）<div>执行 .&#47;webui.sh后，Downloading torch-2.0.1-cp310-none-macosx_10_9_x86_64.whl 到一半报错
+ERROR: Exception:
+Traceback (most recent call last):
+  File &quot;&#47;usr&#47;local&#47;lib&#47;python3.10&#47;site-packages&#47;pip&#47;_vendor&#47;urllib3&#47;response.py&quot;, line 438, in _error_catcher
+    yield
+  File &quot;&#47;usr&#47;local&#47;lib&#47;python3.10&#47;site-packages&#47;pip&#47;_vendor&#47;urllib3&#47;response.py&quot;, line 561, in read
+    data = self._fp_read(amt) if not fp_closed else b&quot;&quot;
+  File &quot;&#47;usr&#47;local&#47;lib&#47;python3.10&#47;site-packages&#47;pip&#47;_vendor&#47;urllib3&#47;response.py&quot;, line 527, in _fp_read
+    return self._fp.read(amt) if amt is not None else self._fp.read()
+  File &quot;&#47;usr&#47;local&#47;lib&#47;python3.10&#47;site-packages&#47;pip&#47;_vendor&#47;cachecontrol&#47;filewrapper.py&quot;, line 90, in read
+    data = self.__fp.read(amt)
+  File &quot;&#47;usr&#47;local&#47;Cellar&#47;python@3.10&#47;3.10.12_1&#47;Frameworks&#47;Python.framework&#47;Versions&#47;3.10&#47;lib&#47;python3.10&#47;http&#47;client.py&quot;, line 466, in read
+    s = self.fp.read(amt)
+  File &quot;&#47;usr&#47;local&#47;Cellar&#47;python@3.10&#47;3.10.12_1&#47;Frameworks&#47;Python.framework&#47;Versions&#47;3.10&#47;lib&#47;python3.10&#47;socket.py&quot;, line 705, in readinto
+    return self._sock.recv_into(b)
+  File &quot;&#47;usr&#47;local&#47;Cellar&#47;python@3.10&#47;3.10.12_1&#47;Frameworks&#47;Python.framework&#47;Versions&#47;3.10&#47;lib&#47;python3.10&#47;ssl.py&quot;, line 1274, in recv_into
+    return self.read(nbytes, buffer)
+  File &quot;&#47;usr&#47;local&#47;Cellar&#47;python@3.10&#47;3.10.12_1&#47;Frameworks&#47;Python.framework&#47;Versions&#47;3.10&#47;lib&#47;python3.10&#47;ssl.py&quot;, line 1130, in read
+    return self._sslobj.read(len, buffer)
+TimeoutError: The read operation timed out</div>2023-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/75/16/4dd77397.jpg" width="30px"><span>a</span> 👍（0） 💬（1）<div>你好，我在M2版的MacbookPro上安装了webUI，但是生成一张图片需要两个多小时，是什么原因呢</div>2023-09-03</li><br/><li><img src="" width="30px"><span>谭小龙</span> 👍（0） 💬（1）<div>请问自己配置台式 AMD的主板和CPU对软件的支持怎么样呢，是否存在限制？哪些型号是由限制的？</div>2023-08-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/bd/18/2af6bf4b.jpg" width="30px"><span>兔2🐰🍃</span> 👍（0） 💬（2）<div>生产过程中图片显示正常，一旦结束就会出现图片变成紫色的X光照片一样。请问老师，这是啥原因么？</div>2023-08-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/da/79/9b093890.jpg" width="30px"><span>大秦皇朝</span> 👍（0） 💬（1）<div>老师麻烦请教一下，webui一定需要Python v3.10.6吗？v3.10.0行吗？</div>2023-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/e1/30/56151c95.jpg" width="30px"><span>徐大雷</span> 👍（0） 💬（2）<div>老师你好，我有个问题咨询一下，我在civitai里面选择的模型，然后在这个模型下面的gallery里面有很多图片，我点进去按照图片的提示词和采样方法等自己本地跑，为啥画出来的图片会不一样呢？谢谢老师的回复</div>2023-08-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/6c/67/07bcc58f.jpg" width="30px"><span>虹炎</span> 👍（0） 💬（2）<div>发现一个常见的错误：NansException: A tensor with all NaNs was produced in VAE. This could be because there&#39;s not enough precision to represent the picture. Try adding --no-half-vae commandline argument to fix this. Use --disable-nan-check commandline argument to disable this check.  希望老师指点一下</div>2023-08-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/38/21/53/41a08531.jpg" width="30px"><span>·幸</span> 👍（0） 💬（1）<div>venv &quot;D:\AIGC\stable-diffusion-webui-master\venv\Scripts\Python.exe&quot;
+Python 3.10.6 (tags&#47;v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49) [MSC v.1932 64 bit (AMD64)]
+Version: ## 1.4.1
+Commit hash: &lt;none&gt;
+Traceback (most recent call last):
+  File &quot;D:\AIGC\stable-diffusion-webui-master\launch.py&quot;, line 38, in &lt;module&gt;
+    main()
+  File &quot;D:\AIGC\stable-diffusion-webui-master\launch.py&quot;, line 29, in main
+    prepare_environment()
+  File &quot;D:\AIGC\stable-diffusion-webui-master\modules\launch_utils.py&quot;, line 268, in prepare_environment
+    raise RuntimeError(
+RuntimeError: Torch is not able to use GPU; add --skip-torch-cuda-test to COMMANDLINE_ARGS variable to disable this check
+请按任意键继续. . .
+
+
+请问出现以上内容应该怎么解决？</div>2023-08-02</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/ccCGDRLarBQWib8tSOpV4jgh7x86BjI4AjWWbaiaWuwzbibzh4OWU0IxvjVmvEhEkzCB8fn2CyJpauH7mSVAXQFVA/132" width="30px"><span>Geek_a7f70d</span> 👍（0） 💬（1）<div>这个课程没有视频直播吗？都是文字的？？
+</div>2023-07-27</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKPjJg1rdQ0DyIlibflLQqE5k744wdHAwFOTBtGGwRoiar5AZMyBkoW3Mle30l8NZD6QibYeKOYRHdvA/132" width="30px"><span>Geek_336bd7</span> 👍（0） 💬（1）<div>Something went wrong
+Expecting value: line 1 column 1 (char 0)
+打开http:&#47;&#47;127.0.0.1:7860&#47;后，页面弹框出现这个问题</div>2023-07-25</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKPjJg1rdQ0DyIlibflLQqE5k744wdHAwFOTBtGGwRoiar5AZMyBkoW3Mle30l8NZD6QibYeKOYRHdvA/132" width="30px"><span>Geek_336bd7</span> 👍（0） 💬（2）<div>作者能有个ubuntu20.04 docker环境的安装方法么？？？？</div>2023-07-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/46/3d/55653953.jpg" width="30px"><span>AI悦创</span> 👍（0） 💬（1）<div>很高兴老师的回复，也很想和老师讨论一下这个问题，希望编辑老师看见和老师说一下，先在此谢谢了。：网络上出现了一个秋叶的一键包，当然这不是重点，重点是：我一个朋友笔记本，显卡3080ti，显存6GB，在生成高分辨率的时候毫无压力（就是速度慢一点），但是不会失败，而我就直接报错，他说会不会是启动器的问题？但是显然我不是很理解这个提示，这也是我觉得可以讨论且有机会解决的。
+
+我也查阅了 GitHub issue，但是并不能解决（有可能我的阅读能力不足）也希望老师能辅助解答一下，不然我感觉 1.6万买的整机有点拉垮，不知道是不是台式机的问题（联想）现在还支持七天无理由退换货），期待老师的回复。</div>2023-07-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/34/a2/454fd9f0.jpg" width="30px"><span>Angelevil</span> 👍（0） 💬（1）<div>已经安装torch，执行.&#47;webui.sh 还是报错</div>2023-07-24</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKDqDqBBy9yghEiaXicBCarEJFYKdToVTOY5l2bznG4BEKjJRFJCl3Zyia92EX4s9x812GyUZTRlAPOw/132" width="30px"><span>Geek_542548</span> 👍（0） 💬（1）<div>loading stable diffusion model: FileNotFoundError
+FileNotFoundError: No checkpoints found. When searching for checkpoints, looked at:
+ - file &#47;Users&#47;zhangyu&#47;workspace&#47;stable-diffusion-webui&#47;model.ckpt
+ - directory &#47;Users&#47;zhangyu&#47;workspace&#47;stable-diffusion-webui&#47;models&#47;Stable-diffusionCan&#39;t run without a checkpoint. Find and place a .ckpt or .safetensors file into any of those locations.
+这几个报错 影响使用吗</div>2023-07-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b6/9c/25dea911.jpg" width="30px"><span>计划生肉</span> 👍（0） 💬（1）<div>MacPro 15年版，启动报如下错
+Launching Web UI with arguments: --skip-torch-cuda-test --upcast-sampling --no-half-vae --use-cpu interrogate
+No module &#39;xformers&#39;. Proceeding without it.
+Warning: caught exception &#39;Torch not compiled with CUDA enabled&#39;, memory monitor disabled
+Loading weights [6ce0161689] from &#47;Users&#47;cher&#47;ai&#47;webui&#47;new&#47;stable-diffusion-webui&#47;models&#47;Stable-diffusion&#47;v1-5-pruned-emaonly.safetensors
+Exception in thread Thread-3 (first_time_calculation):
+Traceback (most recent call last):
+  File &quot;&#47;Users&#47;cher&#47;miniconda3&#47;lib&#47;python3.10&#47;threading.py&quot;, line 1016, in _bootstrap_inner
+    self.run()
+  File &quot;&#47;Users&#47;cher&#47;miniconda3&#47;lib&#47;python3.10&#47;threading.py&quot;, line 953, in run
+    self._target(*self._args, **self._kwargs)
+  File &quot;&#47;Users&#47;cher&#47;ai&#47;webui&#47;new&#47;stable-diffusion-webui&#47;modules&#47;devices.py&quot;, line 170, in first_time_calculation
+    linear(x)
+  File &quot;&#47;Users&#47;cher&#47;ai&#47;webui&#47;new&#47;stable-diffusion-webui&#47;venv&#47;lib&#47;python3.10&#47;site-packages&#47;torch&#47;nn&#47;modules&#47;module.py&quot;, line 1501, in _call_impl
+    return forward_call(*args, **kwargs)
+  File &quot;&#47;Users&#47;cher&#47;ai&#47;webui&#47;new&#47;stable-diffusion-webui&#47;extensions-builtin&#47;Lora&#47;lora.py&quot;, line 400, in lora_Linear_forward
+    return torch.nn.Linear_forward_before_lora(self, input)
+  File &quot;&#47;Users&#47;cher&#47;ai&#47;webui&#47;new&#47;stable-diffusion-webui&#47;venv&#47;lib&#47;python3.10&#47;site-packages&#47;torch&#47;nn&#47;modules&#47;linear.py&quot;, line 114, in forward
+    return F.linear(input, self.weight, self.bias)
+RuntimeError: &quot;addmm_impl_cpu_&quot; not implemented for &#39;Half&#39;</div>2023-07-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/46/3d/55653953.jpg" width="30px"><span>AI悦创</span> 👍（0） 💬（1）<div>老师这个后期能教学么：3D 骨架模型编辑 （3D Openpose）</div>2023-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/46/3d/55653953.jpg" width="30px"><span>AI悦创</span> 👍（0） 💬（3）<div>还有一个问题，希望老师解答：我的台式机：4070ti，显存12G，选择老师的模型，参数设置都一样。除了图片大小设置为1080、1080或2048、2040，均无法启动，都会报错。
+OutOfMemoryError: CUDA out of memory. Tried to allocate 1.25 GiB (GPU 0; 11.99 GiB total capacity; 9.86 GiB already allocated; 0 bytes free; 10.28 GiB reserved in total by PyTorch) If reserved memory is &gt;&gt; allocated memory try setting max_split_size_mb to avoid fragmentation. See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF
+Time taken: 2.29sTorch active&#47;reserved: 10419&#47;10848 MiB, Sys VRAM: 12282&#47;12282 MiB (100.0%)
+查不到资料，希望老师能帮忙解决一下。sos
+</div>2023-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/46/3d/55653953.jpg" width="30px"><span>AI悦创</span> 👍（0） 💬（1）<div>Batch count 和 Batch size 其中 Batch count 作者没有讲解，和 count 的区别呢？</div>2023-07-23</li><br/>
+</ul>

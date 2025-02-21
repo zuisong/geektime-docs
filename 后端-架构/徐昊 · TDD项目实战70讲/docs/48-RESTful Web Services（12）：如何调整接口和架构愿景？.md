@@ -17,6 +17,7 @@ static class Router implements ResourceRouter {
         Pattern matched = routerTable.keySet().stream().filter(pattern -> pattern.matcher(path).matches()).findFirst().get();
         Class<?> resource = routerTable.get(matched);
 
+
         Method method = Arrays.stream(resource.getMethods()).filter(m -> m.isAnnotationPresent(GET.class)).findFirst().get();
         Object object = resourceContext.getResource(resource);
         try {
@@ -28,7 +29,6 @@ static class Router implements ResourceRouter {
         }
     }
 }
-
 ```
 
 构想中的架构愿景是这样的：
@@ -44,3 +44,6 @@ static class Router implements ResourceRouter {
 请Spike Sub-Resource Locator。
 
 欢迎把你的想法分享在留言区，也欢迎把你的项目代码分享出来。相信经过你的思考与实操，学习效果会更好！
+<div><strong>精选留言（1）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/20/a8/66/e2781d4a.jpg" width="30px"><span>忘川</span> 👍（4） 💬（0）<div>spike 其实是不断让组件 进行磨合 然后发现其中 缺失的部分,然后针对缺失的属性 站在整个设计的角度,考虑怎么合理分配. 感觉出来,经典模式更多是 针对测试用例的重构,然后得出设计.伦敦学派,更多是在spike过程中,根据缺失,进行设计的重构,让组件的边界和关系,在没有细节改动成本最小的时候,及时弥补漏洞.</div>2023-01-07</li><br/>
+</ul>

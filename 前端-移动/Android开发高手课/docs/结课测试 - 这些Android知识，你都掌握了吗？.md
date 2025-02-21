@@ -6,4 +6,7 @@
 
 还等什么，点击下面按钮开始测试吧！
 
-[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142*201)](http://time.geekbang.org/quiz/intro?act_id=150&exam_id=333)
+[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142%2A201)](http://time.geekbang.org/quiz/intro?act_id=150&exam_id=333)
+<div><strong>精选留言（3）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/14/4a/10/365ea684.jpg" width="30px"><span>聪明的傻孩子</span> 👍（2） 💬（0）<div>早早早，还在看第二遍的我正在打卡</div>2020-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/cc/2e/7da3eb5d.jpg" width="30px"><span>格锅</span> 👍（1） 💬（0）<div>刚收到推送说这个专栏更新了</div>2020-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/72/a8/c24a66a1.jpg" width="30px"><span>Geek_sky</span> 👍（0） 💬（0）<div>能简单介绍一下Android如何正确使用https，以及https证书过期的处理吗？</div>2020-07-03</li><br/>
+</ul>

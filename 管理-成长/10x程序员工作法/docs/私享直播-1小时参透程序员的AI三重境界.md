@@ -9,3 +9,6 @@
 快来看看你正处在哪个阶段，并可以往哪个方向尝试与努力吧！
 
 PPT 下载链接: [https://pan.baidu.com/s/12PAxvziRFkkjseU1FZzDCQ](https://pan.baidu.com/s/12PAxvziRFkkjseU1FZzDCQ) （提取码: vz82）
+<div><strong>精选留言（1）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2024-08-25</li><br/>
+</ul>

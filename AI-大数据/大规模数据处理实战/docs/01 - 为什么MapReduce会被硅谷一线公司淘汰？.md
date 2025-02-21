@@ -10,7 +10,7 @@
 
 我们先来沿着时间线看一下超大规模数据处理的重要技术以及它们产生的年代。
 
-![](https://static001.geekbang.org/resource/image/54/ca/54a0178e675d0054cda83b5dc89b1dca.png?wh=5000*3092)
+![](https://static001.geekbang.org/resource/image/54/ca/54a0178e675d0054cda83b5dc89b1dca.png?wh=5000%2A3092)
 
 我认为可以把超大规模数据处理的技术发展分为三个阶段：石器时代，青铜时代，蒸汽机时代。
 
@@ -25,152 +25,38 @@
 ### 青铜时代
 
 2003年，MapReduce的诞生标志了超大规模数据处理的第一次革命，而开创这段青铜时代的就是下面这篇论文《MapReduce: Simplified Data Processing on Large Clusters》。
-
-![](https://static001.geekbang.org/resource/image/ae/61/ae9083e7b1f5cdd97deda1c8a1344861.png?wh=2817*1556)
-
-杰夫（Jeff Dean）和桑杰（Sanjay Ghemawat）从纷繁复杂的业务逻辑中，为我们抽象出了Map和Reduce这样足够通用的编程模型。后面的Hadoop仅仅是对于GFS、BigTable、MapReduce 的依葫芦画瓢，我这里不再赘述。
-
-### 蒸汽机时代
-
-到了2014年左右，Google内部已经几乎没人写新的MapReduce了。
-
-2016年开始，Google在新员工的培训中把MapReduce替换成了内部称为FlumeJava（不要和Apache Flume混淆，是两个技术）的数据处理技术。
-
-这标志着青铜时代的终结，同时也标志着蒸汽机时代的开始。
-
-我跳过“铁器时代”之类的描述，是因为只有工业革命的概念才能解释从MapReduce进化到FlumeJava的划时代意义。
-
-Google内部的FlumeJava和它后来的开源版本Apache Beam所引进的统一的编程模式，将在后面的章节中为你深入解析。
-
-现在你可能有一个疑问 ：为什么MapReduce会被取代？今天我将重点为你解答。
-
-## 高昂的维护成本
-
-使用MapReduce，你需要严格地遵循分步的Map和Reduce步骤。当你构造更为复杂的处理架构时，往往需要协调多个Map和多个Reduce任务。
-
-然而，每一步的MapReduce都有可能出错。
-
-为了这些异常处理，很多人开始设计自己的协调系统（orchestration）。例如，做一个状态机（state machine）协调多个MapReduce，这大大增加了整个系统的复杂度。
-
-如果你搜 “MapReduce orchestration” 这样的关键词，就会发现有很多书，整整一本都在写怎样协调MapReduce。
-
-你可能会惊讶于MapReduce的复杂度。我也经常会看到一些把MapReduce说得过度简单的误导性文章。
-
-例如，“把海量的××数据通过MapReduce导入大数据系统学习，就能产生××人工智能”。似乎写文的“专家”动动嘴就能点石成金。
-
-而现实的MapReduce系统的复杂度是超过了“伪专家”的认知范围的。下面我来举个例子，告诉你MapReduce有多复杂。
-
-想象一下这个情景，你的公司要 **预测美团的股价**，其中一个重要特征是活跃在街头的美团外卖电动车数量，而你负责 **处理所有美团外卖电动车的图片**。
-
-在真实的商用环境下，为了解决这个问题，你可能至少需要10个MapReduce任务：
-
-![](https://static001.geekbang.org/resource/image/44/c7/449ebd6c5950f5b7691d34d13a781ac7.jpg?wh=4075*2658)
-
-首先，我们需要搜集每日的外卖电动车图片。
-
-数据的搜集往往不全部是公司独自完成，许多公司会选择部分外包或者众包。所以在 **数据搜集**（Data collection）部分，你至少需要4个MapReduce任务：
-
-1. 数据导入（data ingestion）：用来把散落的照片（比如众包公司上传到网盘的照片）下载到你的存储系统。
-
-2. 数据统一化（data normalization）：用来把不同外包公司提供过来的各式各样的照片进行格式统一。
-
-3. 数据压缩（compression）：你需要在质量可接受的范围内保持最小的存储资源消耗 。
-
-4. 数据备份（backup）：大规模的数据处理系统我们都需要一定的数据冗余来降低风险。
-
-
-仅仅是做完数据搜集这一步，离真正的业务应用还差得远。
-
-真实的世界是如此不完美，我们需要一部分数据质量控制（quality control）流程，比如：
-
-1. 数据时间有效性验证 （date validation）：检测上传的图片是否是你想要的日期的。
-
-2. 照片对焦检测（focus detection）：你需要筛选掉那些因对焦不准而无法使用的照片。
-
-
-最后才到你负责的重头戏——找到这些图片里的外卖电动车。而这一步因为人工的介入是最难控制时间的。你需要做4步：
-
-1. 数据标注问题上传（question uploading）：上传你的标注工具，让你的标注者开始工作。
-
-2. 标注结果下载（answer downloading）：抓取标注完的数据。
-
-3. 标注异议整合（adjudication）：标注异议经常发生，比如一个标注者认为是美团外卖电动车，另一个标注者认为是京东快递电动车。
-
-4. 标注结果结构化（structuralization）: 要让标注结果可用，你需要把可能非结构化的标注结果转化成你的存储系统接受的结构。
-
-
-这里我不再深入每个MapReduce任务的技术细节，因为本章的重点仅仅是理解MapReduce的复杂度。
-
-通过这个案例，我想要阐述的观点是，因为真实的商业MapReduce场景极端复杂，像上面这样10个子任务的MapReduce系统在硅谷一线公司司空见惯。
-
-在应用过程中，每一个MapReduce任务都有可能出错，都需要重试和异常处理的机制。所以，协调这些子MapReduce的任务往往需要和业务逻辑紧密耦合的状态机。
-
-这样过于复杂的维护让系统开发者苦不堪言。
-
-## 时间性能“达不到”用户的期待
-
-除了高昂的维护成本，MapReduce的时间性能也是个棘手的问题。
-
-MapReduce是一套如此精巧复杂的系统，如果使用得当，它是青龙偃月刀，如果使用不当，它就是一堆废铁。不幸的是并不是每个人都是关羽。
-
-在实际的工作中，不是每个人都对MapReduce细微的配置细节了如指掌。
-
-在现实中，业务往往需求一个刚毕业的新手在3个月内上线一套数据处理系统，而他很可能从来没有用过MapReduce。这种情况下开发的系统是很难发挥好MapReduce的性能的。
-
-你一定想问，MapReduce的性能优化配置究竟复杂在哪里呢？
-
-我想Google500多页的MapReduce性能优化手册足够说明它的复杂度了。这里我举例讲讲MapReduce的分片（sharding）难题，希望能窥斑见豹，引发大家的思考。
-
-Google曾经在2007年到2012年间做过一个对于1PB数据的大规模排序实验，来测试MapReduce的性能。
-
-从2007年的排序时间12小时，到2012年的排序时间缩短至0.5小时。即使是Google，也花了5年的时间才不断优化了一个MapReduce流程的效率。
-
-2011年，他们在Google Research的博客上公布了初步的成果。
-
-![](https://static001.geekbang.org/resource/image/db/6b/db4bb58536ffe3b6addd88803a77396b.jpg?wh=1331*973)
-
-其中有一个重要的发现，就是他们在MapReduce的性能配置上花了非常多的时间。包括了缓冲大小(buffer size），分片多少（number of shards），预抓取策略（prefetch），缓存大小（cache size）等等。
-
-所谓的分片，是指把大规模的的数据分配给不同的机器/工人，流程如下图所示。
-
-![](https://static001.geekbang.org/resource/image/b0/38/b08b95244530aeb0171e3e35c9bfb638.png?wh=2917*2038)
-
-选择一个好的分片函数（sharding function）为何格外重要？让我们来看一个例子。
-
-假如你在处理Facebook的所有用户数据，你选择了按照用户的年龄作为分片函数（sharding function）。我们来看看这时候会发生什么。
-
-因为用户的年龄分布不均衡（假如在20~30这个年龄段的Facebook用户最多），导致我们在下图中worker C上分配到的任务远大于别的机器上的任务量。
-
-![](https://static001.geekbang.org/resource/image/5c/91/5c719600021f738e8c7edf82197eac91.png?wh=3658*2804)
-
-这时候就会发生掉队者问题（stragglers）。别的机器都完成了Reduce阶段，只有worker C还在工作。
-
-当然它也有改进方法。掉队者问题可以通过MapReduce的性能剖析（profiling）发现。 如下图所示，箭头处就是掉队的机器。
-
-![](https://static001.geekbang.org/resource/image/63/ca/6399416524eb0dec1e292ea01b2294ca.png?wh=6750*1946)
-
-图片引用：Chen, Qi, Cheng Liu, and Zhen Xiao. “Improving MapReduce performance using smart speculative execution strategy.” IEEE Transactions on Computers 63.4 (2014): 954-967.
-
-回到刚刚的Google大规模排序实验。
-
-因为MapReduce的分片配置异常复杂，在2008年以后，Google改进了MapReduce的分片功能，引进了动态分片技术 (dynamic sharding），大大简化了使用者对于分片的手工调整。
-
-在这之后，包括动态分片技术在内的各种崭新思想被逐渐引进，奠定了下一代大规模数据处理技术的雏型。
-
-## 小结
-
-这一讲中，我们分析了两个MapReduce之所以被硅谷一线公司淘汰的“致命伤”：高昂的维护成本和达不到用户期待的时间性能。
-
-文中也提到了下一代数据处理技术雏型。这就是2008年左右在Google西雅图研发中心诞生的FlumeJava，它一举解决了上面MapReduce的短板。
-
-另外，它还带来了一些别的优点：更好的可测试性；更好的可监控性；从1条数据到1亿条数据无缝扩展，不需要修改一行代码，等等。
-
-在后面的章节中，我们将具体展开这几点，通过深入解析Apache Beam（FlumeJava的开源版本），揭开MapReduce继任者的神秘面纱。
-
-## 思考题
-
-如果你在Facebook负责处理例子中的用户数据，你会选择什么分片函数，来保证均匀分布的数据分片?
-
-欢迎你把答案写在留言区，与我和其他同学一起探讨。
-
-如果你觉得有所收获，也欢迎把文章分享给你的朋友。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/dV2JvjoAOHOibxVqExibsBv0ib9jJ9zD8icYaDtFbicUgP0GmRbzmgujvz6pOl6drUcgdvfQXTJpOOY9OL45WrkInbA/132" width="30px"><span>SpanningWings</span> 👍（16） 💬（1）<div>还想到一个问题有关consistent hashing的。map reduce下层的GFS也没有采用consistent hashing来控制分片，这又是为什么？老师有空回答下吗？
+</div>2019-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/50/87/dde718fa.jpg" width="30px"><span>alexgreenbar</span> 👍（13） 💬（1）<div>赞一个，几乎每问必答，无论是否小白问题，很务实，具备高手风范！</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/48/f3/65c7e3ef.jpg" width="30px"><span>cricket1981</span> 👍（10） 💬（1）<div>如果不需要按某些字段做聚合分析，只是普通数据处理的话，直接用Round Robin分片即可。我想了解什么是“动态分片”技术？即使不用MR，其他大数据处理框架也需要用到“分片”，毕竟大数据的处理是“分而治之”，如何分才能分得好是关键。日常工作中经常遇到数据倾斜问题，也是由于分片不合理导致的。如果对于待处理的数据你了解到好办，知道用哪些字段作分片最合适，但如果遇到不熟悉的数据你又该如何分片？而不是等到出现数据倾斜问题的时候才发现，进行分片修改再重跑呢？谢谢老师指教！</div>2019-04-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLhMtBwGqqmyhxp5uaDTvvp18iaalQj8qHv6u8rv1FQXGozfl3alPvdPHpEsTWwFPFVOoP6EeKT4bw/132" width="30px"><span>Codelife</span> 👍（69） 💬（1）<div>我们最早采用的是哈希算法，后来发现增删节点泰麻烦，改为带虚拟节点的一致性哈希环开处理，稍微复杂点，但是性能还好</div>2019-04-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/dHawibgghoCDFTuT4uIF3yibBxhgSuGaiagGMO8QYSBL0L2IcJ2TvggBjZattqSeeoJY5S1CmcyfuE7gkpb4P6fibg/132" width="30px"><span>maye</span> 👍（14） 💬（1）<div>个人愚见：虽然MapReduce引擎存在性能和维护成本上的问题，但是由于Hive的封装使其适用性很广泛，学习成本很低，但是实际使用过程中和Spark等相比性能差太多了。不过对于计算引擎模型的理解方面，MapReduce还是一个很经典的入门模型，对于未来迁移到其他计算引擎也是有很大帮助的。
+还有一个个人问题：不知道蔡老师对于流计算和批处理的关系是怎么看待的？流计算有可能完全取代批处理么？
+关于思考题：问题的核心店在于Reducer Key是否倾斜，个人认为可以按照update_time之类的时间字段进行分片处理。</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7c/16/4d1e5cc1.jpg" width="30px"><span>mgxian</span> 👍（247） 💬（2）<div>把年龄倒过来比如 28 岁 变成 82 来分片</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4d/49/28e73b9c.jpg" width="30px"><span>明翼</span> 👍（7） 💬（1）<div>一般用户信息表都存在一个id，有的是递增的数字id，有的是类似uuid随机字符串，对于递增的直接对机器数量取余，如果是字符串通过比较均衡的hash函数操作后再对机器数量取余即可。</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/0e/b9/7866f19d.jpg" width="30px"><span>王伟</span> 👍（35） 💬（1）<div>你好！我工作中遇到这样的场景：会员在我们平台注册，信息会保存在对应商家的商家库中，现在需要将商家库中的信息实时的同步到另一台服务的会员库中，商家库是按照商家编号分库，而且商家库和会员库没在同一台服务器部署。想请教一下，像这种我们如何做到实时同步？</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/4d/87/57236a2d.jpg" width="30px"><span>木卫六</span> 👍（14） 💬（1）<div>年龄是值域在0-120（假定）之间的数值，难以分片的原因正是因为年龄的十位数权重过大，所以我觉得一切有效降低十位数权重的哈希算法应该都是可行的。
+1.对于年龄ABC，比如倒置CBA，或(C*大质数1+B*较小质数+C)%numPartitions，这类方法应该可以明显改善分布不均，但是对某些单一热点无解，比如25岁用户特别多；
+2.随机分区，可做到很好均衡，对combine，io等优化不友好
+3. 先采样+动态合并和拆分，实现过于复杂，效果可能不稳定
+
+这是我的想法，请老师指正。</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/62/a5/43aa0c27.jpg" width="30px"><span>TKbook</span> 👍（10） 💬（1）<div>在评论在看到Consistent hashing，特地去搜索看了下，终于明白了。评论干货很多。。</div>2019-04-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83erQ5LXNgaZ3ReArPrY4YeT5mNVtBpiazFEQzNuUXxzdLOWtMliaGicNCpjaOezRISARHXPibkA4ACgib1g/132" width="30px"><span>JensonYao</span> 👍（8） 💬（1）<div>MapReduce是从纷繁复杂的业务逻辑中，为我们抽象出了 Map 和 Reduce这样足够通用的编程模型。
+缺点：
+1、复杂度高
+	当你构造更为复杂的处理架构时，往往进行任务划分，而且每一步都可能出错。而且往往比认为的复杂的多。
+2、时间性能达不到用户要求
+	Google500 多页的 MapReduce 性能优化手册
+	1PB的排序从12小时优化到0.5小时花了5年
+
+思考题：如果你在 Facebook 负责处理例子中的用户数据，你会选择什么分片函数，来保证均匀分布的数据分片?
+由于没有过相关的经验，从网上查了下资料，常见的数据分片有1、hash 2、consistent hash without virtual node 3、consistent hash with virtual node 4、range based
+文章中使用的方法就是range based方法，缺点在于区间大小固定，但是数据量不确定，所以会导致不均匀。
+其他三种方法都可以保证均匀分布的数据分片，但是节点增删导致的数据迁移成本不同。
+1、hash函数节点增删时，可能需要调整散列函数函数，导致大量的数据迁移
+　　consistent hash是将数据按照特征值映射到一个首尾相接的hash环上，同时也将节点映射到这个环上。对于数据，从数据在环上的位置开始，顺时针找到的第一个节点即为数据的存储节点
+2、consistent hash without virtual node 增删的时候只会影响到hash环上响应的节点，不会发生大规模的数据迁移。但是，在增加节点的时候，只能分摊一个已存在节点的压力；同样，在其中一个节点挂掉的时候，该节点的压力也会被全部转移到下一个节点
+3、consistent hash with virtual node 在实际工程中，一般会引入虚拟节点（virtual node）的概念。即不是将物理节点映射在hash换上，而是将虚拟节点映射到hash环上。虚拟节点的数目远大于物理节点，因此一个物理节点需要负责多个虚拟节点的真实存储。操作数据的时候，先通过hash环找到对应的虚拟节点，再通过虚拟节点与物理节点的映射关系找到对应的物理节点。引入虚拟节点后的一致性hash需要维护的元数据也会增加：第一，虚拟节点在hash环上的问题，且虚拟节点的数目又比较多；第二，虚拟节点与物理节点的映射关系。但带来的好处是明显的，当一个物理节点失效是，hash环上多个虚拟节点失效，对应的压力也就会发散到多个其余的虚拟节点，事实上也就是多个其余的物理节点。在增加物理节点的时候同样如此。
+引用blog：http:&#47;&#47;www.cnblogs.com&#47;xybaby&#47;p&#47;7076731.html
+
+所以这样看具体采用何种方式要结合其他的因素（显示场景，成本？），如何抉择我也不是很清楚。</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/f8/a9/93e418f5.jpg" width="30px"><span>牛冠群</span> 👍（7） 💬（1）<div>您好，学习周期有点长，能不能加快些进度。感谢！</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/40/bd/acb9d02a.jpg" width="30px"><span>monkeyking</span> 👍（6） 💬（2）<div>按照user_id哈希或者给user_id加一个随机数前缀</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6b/e4/afacba1c.jpg" width="30px"><span>孙稚昊</span> 👍（5） 💬（1）<div>我们公司现在还在使用hadoop streaming 的MapReduce，默认mapper 结果是按key sort 过得，在reducer 中借此实现join和group by的复杂操作，经常为了Join 一个table就要多写四个job</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/37/d0/26975fba.jpg" width="30px"><span>西南偏北</span> 👍（5） 💬（1）<div>MR的劣势刚好对应了Spark的优势
+
+1. 通过DAG RDD进行数据链式处理，最终只有一个job，大大降低了大数量MR的维护成本
+2. 优先基于内存计算的Spark相对于基于磁盘计算的MR也大幅度提高了计算性能，缩短计算时间
+
+个人觉得，这两点可以作为MR和Spark的主要区别。</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5b/71/140a10e8.jpg" width="30px"><span>王昊</span> 👍（4） 💬（1）<div>老师您好，我现在正在读研究生(专业计算机技术)，喜欢数据科学，编写过简单的MR，谢谢您高屋建瓴地述说其历史发展，想请教您比如很多学生应该怎么学习，如何成长为优秀的工程师，是应该从头从MR学起还是直接学高级的技术？</div>2019-04-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6b/e4/afacba1c.jpg" width="30px"><span>孙稚昊</span> 👍（4） 💬（1）<div>现在写MapReduce job 开几百个worker经常有1，2个卡着不结束，基本都要在下班前赶着启动耗时长的任务。 我们分片用户是用的 country+username 的 hash，还是比较均匀的</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ef/a7/6e8f3636.jpg" width="30px"><span>mjl</span> 👍（4） 💬（1）<div>个人理解，对于已知数据分布情况的数据，我们大多数情况下能找到合适的一个分区策略对数据进行分片。但实际上这对于数据开发者来说，就需要知道整体数据的一个基本情况。而对于数据倾斜，基本分为分区策略不当导致的倾斜以及单热点key的倾斜，对于后者，无论用户设置什么分区策略，都无法对数据进行分割。
+对于数据倾斜问题的话，spark 3.0版本计划合入的AE功能给出了一定的方案。对于倾斜的partition，在shuffleWrite阶段就可以统计每个map输出的各个分区信息，然后根据这些信息来调整下一个stage的并发度。进一步的话，对于两表join，一张表有存在热点key的话，可以广播另外一张表的该partition，最终与其他分区的join结果做union。基于这个思路的话，engine其实是能很灵活的处理数据倾斜类问题，而不用用户去花精力研究选择。</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a1/e6/50da1b2d.jpg" width="30px"><span>旭东(Frank)</span> 👍（4） 💬（1）<div>区分热点数据（占用）大的数据，以及关联性大的数据。应该有个数据抽样分析，再做具体分片策略</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6b/e4/afacba1c.jpg" width="30px"><span>孙稚昊</span> 👍（3） 💬（1）<div>如果我读Beam的文档没有理解错的话，Beam只是spark 和flink 的各种API的一个封装，本身并没有runner，该有的调优还得在spark 和flink上面做，所以除了google以外的公司用Beam的还是蛮少的</div>2019-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/93/b8/6510592e.jpg" width="30px"><span>渡码</span> 👍（3） 💬（1）<div>认同您说的MR的局限性，因此建立在MR之上的hive有用武之地。面对不断出现的新框架我们怎么快速掌握它的设计，尤其是即便看文档也会觉得模棱两可，这时候有必要深入到源码中吗，您在这后续课程中有没有相关的经验分享</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6b/e4/afacba1c.jpg" width="30px"><span>孙稚昊</span> 👍（3） 💬（1）<div>我们组还在用Hadoop Streaming而没有使用spark的原因是spark 内存使用不加节制，经常新起的job把周期性job的内存吃光，导致他们有时会挂掉，不知道这个问题是否有很好的解决方法。我们还是在保守地使用hadoop streaming，麻烦得很</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ed/3e/c1725237.jpg" width="30px"><span>楚翔style</span> 👍（3） 💬（1）<div>mapreduce更适合处理离线数据吧，而且数据量大了比spark要稳定。楠兄怎么看？</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c7/2a/02eea2ba.jpg" width="30px"><span>veio007</span> 👍（3） 💬（1）<div>如果是我，外面弄个自增的计数器，然后每次计数器的当前值对worker个数取模，但是就算每个人分配同等数量的数据，同样会出现有人快有人慢的情况，机器的性能处理能力不一样或者其他干扰项都可能会有影响</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/41/27/3ff1a1d6.jpg" width="30px"><span>hua168</span> 👍（3） 💬（1）<div>那现在还在用MapReduce的大数据软件怎么搞了？也会被慢慢淘汰？还需要学习吗？</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/24/0f/196fa05b.jpg" width="30px"><span>呆小木</span> 👍（3） 💬（1）<div>对用户id取哈希值，然后用哈希值对分区数取模。由于不同的id还是有可能计算得到相同的哈希值，也就是所谓的哈希碰撞，从而产生数据倾斜，可以在Map端给id拼上一个随机字符串，让它计算得到的哈希值分配更均匀，到Reduce端再去掉随机串。请老师指点😜ོ</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/ef/c0/8adceaed.jpg" width="30px"><span>Li221</span> 👍（2） 💬（1）<div>给元楠老师100个赞，每问必答，是所有专栏里最敬业的老师了！</div>2019-04-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/3XbCueYYVWTiclv8T5tFpwiblOxLphvSZxL4ujMdqVMibZnOiaFK2C5nKRGv407iaAsrI0CDICYVQJtiaITzkjfjbvrQ/132" width="30px"><span>有铭</span> 👍（2） 💬（1）<div>今天这文章将MapReduce复杂度问题让我豁然开朗，以前我总觉得很多讲MapReduce的文章，讲的轻描淡写的，颇有点“把冰箱门打开，把大象装进去，把冰箱门关上”的味道。我当初就觉得可能MapReduce没那么简单。</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0d/c1/d36816df.jpg" width="30px"><span>M</span> 👍（2） 💬（1）<div>请问文中所说的分片是指InputFormat读取数据时还是指shuffle时的分发？</div>2019-04-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLdWHFCr66TzHS2CpCkiaRaDIk3tU5sKPry16Q7ic0mZZdy8LOCYc38wOmyv5RZico7icBVeaPX8X2jcw/132" width="30px"><span>JohnT3e</span> 👍（2） 💬（1）<div>如果处理逻辑和用户年龄相关，那么可以在原始年龄上加随机值的方式，尽可能散列。如果需要的话，后期再对结果进行合并。如果处理逻辑和年龄无关，那么可以选择散列性好的字段，比如用户唯一标识。在sharding时hash生成方面可以选取一些散列性好的算法，比如murmurhash算法。</div>2019-04-17</li><br/>
+</ul>

@@ -2,8 +2,11 @@
 
 咱们课程到这里就算正式更新完了，在讲结束语之前呢，我还给你准备了一份结课测试题，这套试卷共有5道单选题和5道多选题，满分100，核心考点都出自前面讲到的所有重要知识，希望可以帮助你进行一场自测。
 
-除此之外呢，我也很想知道你对这门课的建议，所以我也给你准备了一份 [问卷](https://jinshuju.net/f/tp2QfX)。欢迎你在问卷里聊一聊你的想法，也许就有机会获得礼物哦。
+除此之外呢，我也很想知道你对这门课的建议，所以我也给你准备了一份[问卷](https://jinshuju.net/f/tp2QfX)。欢迎你在问卷里聊一聊你的想法，也许就有机会获得礼物哦。
 
 好了，话不多说，请你来做一做这套结课测试题吧！
 
-[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142*201)](http://time.geekbang.org/quiz/intro?act_id=3429&exam_id=8955)
+[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142%2A201)](http://time.geekbang.org/quiz/intro?act_id=3429&exam_id=8955)
+<div><strong>精选留言（3）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/1c/ed/80/157c58a9.jpg" width="30px"><span>从心所欲</span> 👍（3） 💬（1）<div>今天学完了整个课程！整体来讲还不错，值这个价！我感觉这门课前面比较基础，学起来比较轻松，感觉收获也多。但是后面难起来了，学不动了，只能还给老师了，不得不承认后面难点对安卓菜鸟不太友好，期待以后经验丰富了看能不能理解清楚。</div>2022-04-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/d6/a7/ac23f5a6.jpg" width="30px"><span>better</span> 👍（0） 💬（2）<div>其他jetpack系列</div>2022-04-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/e9/01/2885812b.jpg" width="30px"><span>Michael</span> 👍（2） 💬（0）<div>没有看课程，也就是有 2个多选题少选了，看来我的 kotlin 还是有点基础</div>2022-05-31</li><br/>
+</ul>

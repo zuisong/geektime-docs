@@ -6,4 +6,8 @@
 
 点击下面按钮，马上开始测试吧！
 
-[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142*201)](http://time.geekbang.org/quiz/intro?act_id=173&exam_id=406)
+[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142%2A201)](http://time.geekbang.org/quiz/intro?act_id=173&exam_id=406)
+<div><strong>精选留言（5）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/11/18/5c/1a58e8f6.jpg" width="30px"><span>草原上的奔跑</span> 👍（12） 💬（0）<div>java核心技术面试精讲19年看完的，刚重新看了下目录，大部分都没印象了。
+做题错了2个，但是有些是凭感觉选的，不是用扎实的知识做基础，需要再刷一遍，加深些印象</div>2020-06-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/30/8a/b5ca7286.jpg" width="30px"><span>业余草</span> 👍（7） 💬（0）<div>满分的💯路过！</div>2020-07-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f6/8c/c4c17bbe.jpg" width="30px"><span>恒初</span> 👍（6） 💬（0）<div>全是GC相关的题目，搬砖工程师用不上</div>2020-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/cb/ce/d9e00eb5.jpg" width="30px"><span>undefined</span> 👍（3） 💬（1）<div>重头再来</div>2021-03-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/55/2b/b7927cc4.jpg" width="30px"><span>超超超超超帅耶🌴</span> 👍（1） 💬（0）<div>只对六个(⊙︿⊙)</div>2022-03-13</li><br/>
+</ul>

@@ -4,14 +4,15 @@
 
 目前我们的架构愿景如下：
 
-![](https://static001.geekbang.org/resource/image/59/24/59ee2d534a4ae87623a736157e848924.jpg?wh=2284x1285)
-
+![](https://static001.geekbang.org/resource/image/59/24/59ee2d534a4ae87623a736157e848924.jpg?wh=2284x1285)  
 ![](https://static001.geekbang.org/resource/image/2e/a4/2ef7e84ba450b36d1df67cfce9e61da4.jpg?wh=2284x1285)
 
 任务列表如下：
 
 - ResourceRouter
+  
   - 将Resource Method的返回值包装为Response对象
+    
     - 根据与Path匹配结果，降序排列RootResource，选择第一个的RootResource
     - 如果没有匹配的RootResource，则构造404的Response
     - 如果返回的RootResource中无法匹配剩余Path，则构造404的Response
@@ -41,7 +42,6 @@ class DefaultResourceRouter implements ResourceRouter {
     record Result(Optional<UriTemplate.MatchResult> matched, RootResource resource) {
     }
 }
-
 ```
 
 ## 视频演示
@@ -56,3 +56,6 @@ class DefaultResourceRouter implements ResourceRouter {
 2. 你有没有什么比较好的学习TDD的方法？
 
 欢迎把你的想法分享在留言区，也欢迎把你的项目代码分享出来。相信经过你的思考与实操，学习效果会更好！
+<div><strong>精选留言（2）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（2） 💬（0）<div>视频中的流式计算按功能封装方法，因为实现了单一原则，所以每个方法都能拥有一个名副其实的名字。看似简单的背后运转着大道规则（设计原则）。</div>2022-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/53/ae/a08024b2.jpg" width="30px"><span>Luke</span> 👍（0） 💬（0）<div>又踩了个坑：重构后的 result 方法里，给的 path 参数要带有 `&#47;` 斜杠。或者之后 mock 的时候，满足的 path 条件要一致。。。</div>2022-09-21</li><br/>
+</ul>

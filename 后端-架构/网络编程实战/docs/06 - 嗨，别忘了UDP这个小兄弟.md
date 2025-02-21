@@ -9,356 +9,48 @@
 TCP可以用日常生活中打电话的场景打比方，前面也多次用到了这样的例子。在这个例子中，拨打号码、接通电话、开始交流，分别对应了TCP的三次握手和报文传送。一旦双方的连接建立，那么双方对话时，一定知道彼此是谁。这个时候我们就说，这种对话是有上下文的。
 
 同样的，我们也可以给UDP找一个类似的例子，这个例子就是邮寄明信片。在这个例子中，发信方在明信片中填上了接收方的地址和邮编，投递到邮局的邮筒之后，就可以不管了。发信方也可以给这个接收方再邮寄第二张、第三张，甚至是第四张明信片，但是这几张明信片之间是没有任何关系的，他们的到达顺序也是不保证的，有可能最后寄出的第四张明信片最先到达接收者的手中，因为没有序号，接收者也不知道这是第四张寄出的明信片；而且，即使接收方没有收到明信片，也没有办法重新邮寄一遍该明信片。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/15/23/74/b81c9f8c.jpg" width="30px"><span>何赫赫</span> 👍（26） 💬（2）<div>老师，UDP没有发送缓冲区这个概念吗</div>2020-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f2/62/f873cd8f.jpg" width="30px"><span>tongmin_tsai</span> 👍（22） 💬（3）<div>老师，UDP被IP层分包发送后，对端如何保证UDP包整个组合的？比如用UDP发送3000字节，假设拆分2个MTU发送，后一个先到服务端，前一个后到服务端，那应用层接收的时候，UDP怎么组装的？</div>2019-09-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/1e/74/636ea0f3.jpg" width="30px"><span>你好</span> 👍（12） 💬（4）<div>多人聊天室使用UDP，消息发出后怎么保证消息可以被收到呀，UDP不是不可靠传输嘛，中间丢了消息咋办呀</div>2019-10-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/81/e6/6cafed37.jpg" width="30px"><span>旅途</span> 👍（10） 💬（1）<div>第一个思考题 另起一个线程进行recvfrom</div>2019-12-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/20/dd/6e/8f6f79d2.jpg" width="30px"><span>YUAN</span> 👍（6） 💬（1）<div>udp之所以sendto要目的地址是因为他是非连接的，否则不知道将数据发给谁，recvfrom要发送方地址也是因为udp是非连接的，有了from内核就可以判定将数据上传给谁（应用进程）。是这样吗？</div>2020-10-03</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKzqiaZnBw2myRWY802u48Rw3W2zDtKoFQ6vN63m4FdyjibM21FfaOYe8MbMpemUdxXJeQH6fRdVbZA/132" width="30px"><span>kissingers</span> 👍（5） 💬（4）<div>老师，TCP 流，UDP包，流的说法怎么理解？</div>2019-09-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a9/8f/a998a456.jpg" width="30px"><span>范龙dragon</span> 👍（5） 💬（2）<div>客户端代码的29行sendline数组之前没有初始化数组元素为0，直接用strlen应该会有问题吧，strlen不是以0作为结束标志吗？</div>2019-08-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f0/ca/4560f06b.jpg" width="30px"><span>zhchnchn</span> 👍（5） 💬（2）<div>如果不开启服务端，TCP 客户端的 connect 函数会直接返回“Connection refused”报错信息。而在 UDP 程序里，则会一直阻塞在这里。
+-------------------------
+这个地方不太理解。请问老师,对TCP来说，收到“Connection refused”报错信息，表明收到了服务端的RST包，如果服务端不开启，谁负责发送RST包呢?</div>2019-08-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7e/3d/e97e661c.jpg" width="30px"><span>江永枫</span> 👍（3） 💬（1）<div>关于阻塞io，可以考虑使用多线程模型去提升性能，或者结合io多路复用来处理能力。
 
-这两个简单的例子，道出了UDP和TCP之间最大的区别。
 
-TCP是一个面向连接的协议，TCP在IP报文的基础上，增加了诸如重传、确认、有序传输、拥塞控制等能力，通信的双方是在一个确定的上下文中工作的。
+https:&#47;&#47;m.php.cn&#47;article&#47;410029.html</div>2019-08-14</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaELZPnUAiajaR5C25EDLWeJURggyiaOP5GGPe2qlwpQcm5e3ybib8OsP4tvddFDLVRSNNGL5I3SFPJHsA/132" width="30px"><span>null</span> 👍（2） 💬（1）<div>老师好，有 3 个问题请教一下：
+1. TCP 有序传输的意思是：需要等到当前发送的包 ACK 之后，才发下一个包么？还是说可以一直发消息，收到 ACK 之后再确认对应的包发送成功？
 
-而UDP则不同，UDP没有这样一个确定的上下文，它是一个不可靠的通信协议，没有重传和确认，没有有序控制，也没有拥塞控制。我们可以简单地理解为，在IP报文的基础上，UDP增加的能力有限。
+2. 关于 TCP 和 UDP 连接，我可以这么理解么？
+TCP 连接之后直到关闭，这期间发的消息，比如 client 发给(send 函数) server，
+然后 server 回复(不知道用啥函数写回，也是 send 函数么？) client；
+client 又继续发给 server，继续重复刚才的步骤....，
+走的都是同一个连接。
 
-UDP不保证报文的有效传递，不保证报文的有序，也就是说使用UDP的时候，我们需要做好丢包、重传、报文组装等工作。
+而 UDP，client 发给（sendto 函数） server 是一个连接。而 server 回复（sendto 函数） client，又是另一个连接。
 
-既然如此，为什么我们还要使用UDP协议呢？
+3. 下面的循环发送，我甚至是可以动态更改对端 client_addr 地址和端口信息的吧？
+for (;;) {
+  sendto(socket_fd, send_line, strlen(send_line), 0, (struct sockaddr *) &amp;client_addr, client_len);
+}</div>2021-03-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/df/0e/4e2b06d5.jpg" width="30px"><span>流浪在寂寞古城</span> 👍（2） 💬（3）<div>https:&#47;&#47;github.com&#47;worsun&#47;study&#47;tree&#47;master&#47;hack_time&#47;socket_code&#47;6</div>2019-10-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/19/28/f4b4ed22.jpg" width="30px"><span>马留</span> 👍（2） 💬（5）<div>如果对udp套接字调用了listen函数，会怎么样呢？</div>2019-08-29</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q3auHgzwzM7zuDYFIutbSPc4eEtcMhdNBTI1FRR7q0xrGh2X1QdiaNxvAV31HcRUsjPWLaaWftqgwTnVoiaica8Nw/132" width="30px"><span>胜辉（大V）</span> 👍（1） 💬（1）<div>示例程序在我的测试机(ubuntu 20.04）上有几个报错。除了include需要添加多个库，还有就是sprintf不分需要改为如下：
+        char send_line[MAXLINE+4];
+        sprintf(send_line, &quot;Hi, %s&quot;, message);
 
-答案很简单，因为UDP比较简单，适合的场景还是比较多的，我们常见的DNS服务，SNMP服务都是基于UDP协议的，这些场景对时延、丢包都不是特别敏感。另外多人通信的场景，如聊天室、多人游戏等，也都会使用到UDP协议。
+因为&quot;Hi, &quot;本身占用了额外的4个字节，所以导致send_line跟&quot;Hi, &quot;+message的长度不匹配，需要修改send_line为message长度加4。不知道其他同学的测试环境那里如何？</div>2021-10-25</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaELZPnUAiajaR5C25EDLWeJURggyiaOP5GGPe2qlwpQcm5e3ybib8OsP4tvddFDLVRSNNGL5I3SFPJHsA/132" width="30px"><span>null</span> 👍（1） 💬（1）<div>如果不开启服务端，而在 UDP 程序里，则会一直阻塞在这里（sendto）。
 
-## UDP编程
+阻塞是为了等待消息发出去之后的 ACK 确认么？
+不是说把明信片放到邮筒就不管了么？
+邮筒可以认为是 IP 协议栈（即网络接口层？）吧？把 udp 包传递给 IP 层就不管了。
 
-UDP和TCP编程非常不同，下面这张图是UDP程序设计时的主要过程。
-
-![](https://static001.geekbang.org/resource/image/84/30/8416f0055bedce10a3c7d0416cc1f430.png?wh=4034*2631)
-
-我们看到服务器端创建UDP 套接字之后，绑定到本地端口，调用recvfrom函数等待客户端的报文发送；客户端创建套接字之后，调用sendto函数往目标地址和端口发送UDP报文，然后客户端和服务器端进入互相应答过程。
-
-recvfrom和sendto是UDP用来接收和发送报文的两个主要函数：
-
-```
-#include <sys/socket.h>
-
-ssize_t recvfrom(int sockfd, void *buff, size_t nbytes, int flags,
-　　　　　　　　　　struct sockaddr *from, socklen_t *addrlen);
-
-ssize_t sendto(int sockfd, const void *buff, size_t nbytes, int flags,
-                const struct sockaddr *to, socklen_t addrlen);
-
-```
-
-我们先来看一下recvfrom函数。
-
-sockfd、buff和nbytes是前三个参数。sockfd是本地创建的套接字描述符，buff指向本地的缓存，nbytes表示最大接收数据字节。
-
-第四个参数flags是和I/O相关的参数，这里我们还用不到，设置为0。
-
-后面两个参数from和addrlen，实际上是返回对端发送方的地址和端口等信息，这和TCP非常不一样，TCP是通过accept函数拿到的描述字信息来决定对端的信息。另外UDP报文每次接收都会获取对端的信息，也就是说报文和报文之间是没有上下文的。
-
-函数的返回值告诉我们实际接收的字节数。
-
-接下来看一下sendto函数。
-
-sendto函数中的前三个参数为sockfd、buff和nbytes。sockfd是本地创建的套接字描述符，buff指向发送的缓存，nbytes表示发送字节数。第四个参数flags依旧设置为0。
-
-后面两个参数to和addrlen，表示发送的对端地址和端口等信息。
-
-函数的返回值告诉我们实际发送的字节数。
-
-我们知道， TCP的发送和接收每次都是在一个上下文中，类似这样的过程：
-
-A连接上: 接收→发送→接收→发送→…
-
-B连接上: 接收→发送→接收→发送→ …
-
-而UDP的每次接收和发送都是一个独立的上下文，类似这样：
-
-接收A→发送A→接收B→发送B →接收C→发送C→ …
-
-## UDP服务端例子
-
-我们先来看一个UDP服务器端的例子：
-
-```
-#include "lib/common.h"
-
-static int count;
-
-static void recvfrom_int(int signo) {
-    printf("\nreceived %d datagrams\n", count);
-    exit(0);
-}
-
-int main(int argc, char **argv) {
-    int socket_fd;
-    socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
-
-    struct sockaddr_in server_addr;
-    bzero(&server_addr, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    server_addr.sin_port = htons(SERV_PORT);
-
-    bind(socket_fd, (struct sockaddr *) &server_addr, sizeof(server_addr));
-
-    socklen_t client_len;
-    char message[MAXLINE];
-    count = 0;
-
-    signal(SIGINT, recvfrom_int);
-
-    struct sockaddr_in client_addr;
-    client_len = sizeof(client_addr);
-    for (;;) {
-        int n = recvfrom(socket_fd, message, MAXLINE, 0, (struct sockaddr *) &client_addr, &client_len);
-        message[n] = 0;
-        printf("received %d bytes: %s\n", n, message);
-
-        char send_line[MAXLINE];
-        sprintf(send_line, "Hi, %s", message);
-
-        sendto(socket_fd, send_line, strlen(send_line), 0, (struct sockaddr *) &client_addr, client_len);
-
-        count++;
-    }
-
-}
-
-```
-
-程序的12～13行，首先创建一个套接字，注意这里的套接字类型是“SOCK\_DGRAM”，表示的是UDP数据报。
-
-15～21行和TCP服务器端类似，绑定数据报套接字到本地的一个端口上。
-
-27行为该服务器创建了一个信号处理函数，以便在响应“Ctrl+C”退出时，打印出收到的报文总数。
-
-31～42行是该服务器端的主体，通过调用recvfrom函数获取客户端发送的报文，之后我们对收到的报文进行重新改造，加上“Hi”的前缀，再通过sendto函数发送给客户端对端。
-
-## UDP客户端例子
-
-接下来我们再来构建一个对应的UDP客户端。在这个例子中，从标准输入中读取输入的字符串后，发送给服务端，并且把服务端经过处理的报文打印到标准输出上。
-
-```
-#include "lib/common.h"
-
-# define    MAXLINE     4096
-
-int main(int argc, char **argv) {
-    if (argc != 2) {
-        error(1, 0, "usage: udpclient <IPaddress>");
-    }
-
-    int socket_fd;
-    socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
-
-    struct sockaddr_in server_addr;
-    bzero(&server_addr, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(SERV_PORT);
-    inet_pton(AF_INET, argv[1], &server_addr.sin_addr);
-
-    socklen_t server_len = sizeof(server_addr);
-
-    struct sockaddr *reply_addr;
-    reply_addr = malloc(server_len);
-
-    char send_line[MAXLINE], recv_line[MAXLINE + 1];
-    socklen_t len;
-    int n;
-
-    while (fgets(send_line, MAXLINE, stdin) != NULL) {
-        int i = strlen(send_line);
-        if (send_line[i - 1] == '\n') {
-            send_line[i - 1] = 0;
-        }
-
-        printf("now sending %s\n", send_line);
-        size_t rt = sendto(socket_fd, send_line, strlen(send_line), 0, (struct sockaddr *) &server_addr, server_len);
-        if (rt < 0) {
-            error(1, errno, "send failed ");
-        }
-        printf("send bytes: %zu \n", rt);
-
-        len = 0;
-        n = recvfrom(socket_fd, recv_line, MAXLINE, 0, reply_addr, &len);
-        if (n < 0)
-            error(1, errno, "recvfrom failed");
-        recv_line[n] = 0;
-        fputs(recv_line, stdout);
-        fputs("\n", stdout);
-    }
-
-    exit(0);
-}
-
-```
-
-10～11行创建一个类型为“SOCK\_DGRAM”的套接字。
-
-13～17行，初始化目标服务器的地址和端口。
-
-28～51行为程序主体，从标准输入中读取的字符进行处理后，调用sendto函数发送给目标服务器端，然后再次调用recvfrom函数接收目标服务器发送过来的新报文，并将其打印到标准输出上。
-
-为了让你更好地理解UDP和TCP之间的差别，我们模拟一下UDP的三种运行场景，你不妨思考一下这三种场景的结果和TCP的到底有什么不同？
-
-## 场景一：只运行客户端
-
-如果我们只运行客户端，程序会一直阻塞在recvfrom上。
-
-```
-$ ./udpclient 127.0.0.1
-1
+谢谢老师</div>2021-03-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/e6/3a/382cf024.jpg" width="30px"><span>rongyefeng</span> 👍（1） 💬（1）<div>老师，你之前说过，创建套接字应该使用PF_INET，初始化套接字结构体地址才使用AF_INET，我看你在创建套接字的时候使用AF_INET。</div>2020-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/41/af/4307867a.jpg" width="30px"><span>JJj</span> 👍（1） 💬（1）<div>服务端要发送数据给客户端，客户端不需要bind吗？</div>2020-05-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/dc/e6/ea4b2c10.jpg" width="30px"><span>........</span> 👍（1） 💬（1）<div>老师, 请问一下, 这个read函数, 是不是每次可以不读够1024字节, 所以才需要使用readn取封装一下</div>2019-12-19</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Gswh7ibY4tubXhp0BXOmV2pXZ3XsXic1d942ZMAEgWrRSF99bDskOTsG1g172ibORXxSCWTn9HWUX5vSSUVWU5I4A/132" width="30px"><span>奔奔奔跑</span> 👍（1） 💬（2）<div>老师，学完这章我有个不理解的地方，UDP是客户端向服务端发消息，服务端收到客户端的报文，根据报文的地址在传消息回去，因此服务端不能主动向客户端发消息。那么客户端如果也bind，那么服务端也能向客户端发消息了，老师我这么理解对吗</div>2019-11-23</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epUgnMApgafcbOicQJYOlApkHf6AzxF5edzeXAtVNhwOZTh3WB5wtIrbf1Algg6Axy5rEfZjj0B6Ng/132" width="30px"><span>云端</span> 👍（1） 💬（1）<div>老师您好:
+阻塞=进程或线程挂起？</div>2019-09-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/8a/98/2be9d17b.jpg" width="30px"><span>破晓^_^</span> 👍（1） 💬（1）<div>函数sendto原型参数写错了,应该为ssize_t sendto(int sockfd, const void *buff, size_t nbytes, int flags,const struct sockaddr *to, socklen_t addrlen);  最后一个参数与recvfrom不一样.</div>2019-09-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fa/03/eba78e43.jpg" width="30px"><span>风清扬</span> 👍（0） 💬（1）<div>场景一：只运行客户端 这里是不是有点问题
 now sending g1
 send bytes: 2
-<阻塞在这里>
-
-```
-
-还记得TCP程序吗？如果不开启服务端，TCP客户端的connect函数会直接返回“Connection refused”报错信息。而在UDP程序里，则会一直阻塞在这里。
-
-## 场景二：先开启服务端，再开启客户端
-
-在这个场景里，我们先开启服务端在端口侦听，然后再开启客户端：
-
-```
-$./udpserver
-received 2 bytes: g1
-received 2 bytes: g2
-
-```
-
-```
-$./udpclient 127.0.0.1
-g1
-now sending g1
-send bytes: 2
-Hi, g1
-g2
-now sending g2
-send bytes: 2
-Hi, g2
-
-```
-
-我们在客户端一次输入g1、g2，服务器端在屏幕上打印出收到的字符，并且可以看到，我们的客户端也收到了服务端的回应：“Hi,g1”和“Hi,g2”。
-
-## 场景三: 开启服务端，再一次开启两个客户端
-
-这个实验中，在服务端开启之后，依次开启两个客户端，并发送报文。
-
-服务端：
-
-```
-$./udpserver
-received 2 bytes: g1
-received 2 bytes: g2
-received 2 bytes: g3
-received 2 bytes: g4
-
-```
-
-第一个客户端：
-
-```
-$./udpclient 127.0.0.1
-now sending g1
-send bytes: 2
-Hi, g1
-g3
-now sending g3
-send bytes: 2
-Hi, g3
-
-```
-
-第二个客户端：
-
-```
-$./udpclient 127.0.0.1
-now sending g2
-send bytes: 2
-Hi, g2
-g4
-now sending g4
-send bytes: 2
-Hi, g4
-
-```
-
-我们看到，两个客户端发送的报文，依次都被服务端收到，并且客户端也可以收到服务端处理之后的报文。
-
-如果我们此时把服务器端进程杀死，就可以看到信号函数在进程退出之前，打印出服务器端接收到的报文个数。
-
-```
-$ ./udpserver
-received 2 bytes: g1
-received 2 bytes: g2
-received 2 bytes: g3
-received 2 bytes: g4
-^C
-received 4 datagrams
-
-```
-
-之后，我们再重启服务器端进程，并使用客户端1和客户端2继续发送新的报文，我们可以看到和TCP非常不同的结果。
-
-以下就是服务器端的输出，服务器端重启后可以继续收到客户端的报文，这在TCP里是不可以的，TCP断联之后必须重新连接才可以发送报文信息。但是UDP报文的“无连接”的特点，可以在UDP服务器重启之后，继续进行报文的发送，这就是UDP报文“无上下文”的最好说明。
-
-```
-$ ./udpserver
-received 2 bytes: g1
-received 2 bytes: g2
-received 2 bytes: g3
-received 2 bytes: g4
-^C
-received 4 datagrams
-$ ./udpserver
-received 2 bytes: g5
-received 2 bytes: g6
-
-```
-
-第一个客户端：
-
-```
-$./udpclient 127.0.0.1
-now sending g1
-send bytes: 2
-Hi, g1
-g3
-now sending g3
-send bytes: 2
-Hi, g3
-g5
-now sending g5
-send bytes: 2
-Hi, g5
-
-```
-
-第二个客户端：
-
-```
-$./udpclient 127.0.0.1
-now sending g2
-send bytes: 2
-Hi, g2
-g4
-now sending g4
-send bytes: 2
-Hi, g4
-g6
-now sending g6
-send bytes: 2
-Hi, g6
-
-```
-
-## 总结
-
-在这一讲里，我介绍了UDP程序的例子，我们需要重点关注以下两点：
-
-- UDP是无连接的数据报程序，和TCP不同，不需要三次握手建立一条连接。
-- UDP程序通过recvfrom和sendto函数直接收发数据报报文。
-
-## 思考题
-
-最后给你留两个思考题吧。在第一个场景中，recvfrom一直处于阻塞状态中，这是非常不合理的，你觉得这种情形应该怎么处理呢？另外，既然UDP是请求-应答模式的，那么请求中的UDP报文最大可以是多大呢？
-
-欢迎你在评论区写下你的思考，我会和你一起讨论。也欢迎把这篇文章分享给你的朋友或者同事，一起讨论一下UDP这个协议。
+看输入那里只有1？</div>2022-02-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/25/c7/edd74dfb.jpg" width="30px"><span>淡C</span> 👍（0） 💬（1）<div>服务端的count++有什么用
+</div>2022-01-26</li><br/><li><img src="" width="30px"><span>Geek_88aaae</span> 👍（0） 💬（1）<div>老师您好，为什么我在进行第三个实验的过程中，在服务端关闭时，客户端发送数据的数据没有在服务端重新打开时收到呢？客户端也一直阻塞在了recv from</div>2021-11-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/25/62/78/6e7642a3.jpg" width="30px"><span>王蓬勃</span> 👍（0） 💬（1）<div>为什么说UDP比TCP安全，但不可靠？这个UDP的安全体现在哪里？</div>2021-10-25</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/ooYDTtTQHL9CZQmonDOQSC4Af9S4uqicXzUicOqEJqSOtHyOZ81PTpxcTqK5ibNHsaNWJIuHiaVcxB8gIo9RNXsshA/132" width="30px"><span>小叶</span> 👍（0） 💬（1）<div>能不能讲下阻塞跟非阻塞先呢，一说到阻塞就不知道是什么了</div>2021-08-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/33/32/8f304f6c.jpg" width="30px"><span>--SNIPER</span> 👍（0） 💬（1）<div>老师 您好
+ss -anlpx发现存在3w多的udp端口占用，state都是UNCONN，这类是未close套接字吗，正常吗
+期待您的回复</div>2021-05-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/db/26/54f2c164.jpg" width="30px"><span>靠人品去赢</span> 👍（0） 💬（1）<div>老师这个讲解还是相当明白的，这个通过举例子来比较“打电话”的TCP，“发邮件”的UDP，来比较。同样通过服务器重启是否能继续接受，来说明为什么UDP是无连接的，TCP是面向连接的。</div>2020-09-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1e/19/a235f31d.jpg" width="30px"><span>云淡风轻</span> 👍（0） 💬（1）<div>请教老师：
+问题：
+服务器端 recvfrom 读取客户端的信息到message中，如果多个客户端一直发信息，后来的 message 会将前面的 message 覆盖掉吗？
+测试：
+服务器端将 message 回传给客户端，发现没有覆盖的现象。
+疑问：
+请问老师，这里面是什么原理</div>2020-06-05</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/5kv7IqibneNnMLqtWZQR5f1et8lJmoxiaU43Ttzz3zqW7QzBqMkib8GCtImKsms7PPbWmTB51xRnZQAnRPfA1wVaw/132" width="30px"><span>Geek_63bb29</span> 👍（0） 💬（2）<div>老师，cmake可以讲解或详细注释一下吗？有点弄不清楚这个</div>2020-05-31</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epKJlW7sqts2ZbPuhMbseTAdvHWnrc4ficAeSZyKibkvn6qyxflPrkKKU3mH6XCNmYvDg11tB6y0pxg/132" width="30px"><span>pc</span> 👍（0） 💬（1）<div>所以服务端的recvfrom(socket_fd, message, MAXLINE, 0, (struct sockaddr *) &amp;client_addr, &amp;client_len)也会阻塞是么？等任意一个客户端发消息过来了，就receive到message而继续执行？</div>2020-05-11</li><br/>
+</ul>

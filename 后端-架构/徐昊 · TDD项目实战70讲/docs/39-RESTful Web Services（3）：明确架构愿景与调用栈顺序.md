@@ -12,7 +12,7 @@ static class ResourceServlet extends HttpServlet {
         this.providers = providers;
         context = application.getContext();
     }
-
+    
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         Stream<Class<?>> rootResources = application.getClasses().stream().filter(c -> c.isAnnotationPresent(Path.class));
@@ -22,7 +22,7 @@ static class ResourceServlet extends HttpServlet {
         MessageBodyWriter<Object> writer = (MessageBodyWriter<Object>) providers.getMessageBodyWriter(result.getClass(), null, null, null);
         writer.writeTo(result, null, null, null, null, null, resp.getOutputStream());
     }
-
+    
     Object dispatch(HttpServletRequest req, Stream<Class<?>> rootResources, ResourceContext rc) {
         try {
             Class<?> rootClass = rootResources.findFirst().get();
@@ -34,7 +34,6 @@ static class ResourceServlet extends HttpServlet {
         }
     }
 }
-
 ```
 
 在这个Spike的基础上，我们可以进一步细化架构的愿景：
@@ -47,10 +46,8 @@ static class ResourceServlet extends HttpServlet {
 
 根据Spike的结果，我们可以得到这部分的架构愿景和调用栈顺序：
 
-![](https://static001.geekbang.org/resource/image/69/f9/69187acce0858b870364248b0f5f99f9.jpg?wh=2284x1285)
-
-![](https://static001.geekbang.org/resource/image/10/a1/102dee363b2a45734c24ee4ef20c39a1.jpg?wh=2284x1285)
-
+![](https://static001.geekbang.org/resource/image/69/f9/69187acce0858b870364248b0f5f99f9.jpg?wh=2284x1285)  
+![](https://static001.geekbang.org/resource/image/10/a1/102dee363b2a45734c24ee4ef20c39a1.jpg?wh=2284x1285)  
 如上图所示，为大致的组件划分。
 
 - ResourceServlet：以Servlet的形式作为入口，处理Http请求。
@@ -66,5 +63,7 @@ static class ResourceServlet extends HttpServlet {
 
 1. 在当前架构愿景下，我们要如何分解任务？
 2. 关于架构愿景的学习，你有什么收获吗？
-
-欢迎把你的想法分享在留言区，也欢迎把你的项目代码分享出来。相信经过你的思考与实操，学习效果会更好！
+<div><strong>精选留言（3）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（1） 💬（1）<div>留下代码 https:&#47;&#47;github.com&#47;wyyl1&#47;geektime-tdd-framework&#47;tree&#47;3</div>2022-06-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e9/22/7606c6ba.jpg" width="30px"><span>张铁林</span> 👍（1） 💬（0）<div>https:&#47;&#47;github.com&#47;vfbiby&#47;tdd-restful
+</div>2022-06-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/87/e1/b3edcc09.jpg" width="30px"><span>范飞扬</span> 👍（0） 💬（0）<div>好吧，原来dispatcher 变成了ResourceRouter，我说怎么组件元素变少了</div>2024-04-29</li><br/>
+</ul>

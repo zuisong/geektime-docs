@@ -1,270 +1,81 @@
-在 [上一篇文章](https://time.geekbang.org/column/article/134456) 中我们介绍了setTimeout是如何结合渲染进程的循环系统工作的，那本篇文章我们就继续介绍另外一种类型的WebAPI——XMLHttpRequest。
+在[上一篇文章](https://time.geekbang.org/column/article/134456)中我们介绍了setTimeout是如何结合渲染进程的循环系统工作的，那本篇文章我们就继续介绍另外一种类型的WebAPI——XMLHttpRequest。
 
 自从网页中引入了JavaScript，我们就可以操作DOM树中任意一个节点，例如隐藏/显示节点、改变颜色、获得或改变文本内容、为元素添加事件响应函数等等， 几乎可以“为所欲为”了。
 
 不过在XMLHttpRequest出现之前，如果服务器数据有更新，依然需要重新刷新整个页面。而XMLHttpRequest提供了从Web服务器获取数据的能力，如果你想要更新某条数据，只需要通过XMLHttpRequest请求服务器提供的接口，就可以获取到服务器的数据，然后再操作DOM来更新页面内容，整个过程只需要更新网页的一部分就可以了，而不用像之前那样还得刷新整个页面，这样既有效率又不会打扰到用户。
 
 关于XMLHttpRequest，本来我是想一带而过的，后来发现这个WebAPI用于教学非常好。首先前面讲了那么网络内容，现在可以通过它把HTTP协议实践一遍；其次，XMLHttpRequest是一个非常典型的WebAPI，通过它来讲解浏览器是如何实现WebAPI的很合适，这对于你理解其他WebAPI也有非常大的帮助，同时在这个过程中我们还可以把一些安全问题给串起来。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/14/94/82/d0a417ba.jpg" width="30px"><span>蓝配鸡</span> 👍（68） 💬（10）<div>如何高效学习安全理论
 
-但在深入讲解XMLHttpRequest之前，我们得先介绍下 **同步回调** 和 **异步回调** 这两个概念，这会帮助你更加深刻地理解WebAPI是怎么工作的。
+1. why， 知道为什么有这个安全机制， 历史是什么样的
 
-## 回调函数 VS 系统调用栈
+2. how，知道why之后自己先想想怎么解决这个问题， 再去看看别人是怎么解决的， 分析利弊
 
-那什么是回调函数呢（Callback Function）？
+3. 学完之后自己上手试试
 
-将一个函数作为参数传递给另外一个函数，那作为参数的这个函数就是 **回调函数**。简化的代码如下所示：
+4. 拉个你身边最蠢的小伙伴把这件事给他说明白</div>2019-09-12</li><br/><li><img src="" width="30px"><span>Geek_d972f2</span> 👍（49） 💬（2）<div>建立tcp连接是在xhr open还是send?</div>2019-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/72/89/1a83120a.jpg" width="30px"><span>yihang</span> 👍（38） 💬（3）<div>请教老师，我看到 es6中可以通过一个 fetch api来请求，它的实现是用了 xmlHttpRequest么？如果不是，原理上有什么不同？</div>2019-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/5b/d6/d6c26ea2.jpg" width="30px"><span>imperial</span> 👍（17） 💬（1）<div>老师，异步函数的调用不应该有三种方式吗，可以放到队列尾，微任务中，也可以放入延迟队列中，为什么不放入延迟队列中呢</div>2019-10-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5f/80/51269d88.jpg" width="30px"><span>Hurry</span> 👍（10） 💬（2）<div>IPC是什么</div>2019-09-14</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJibVeub5HnlS9HgLdrDSnQma6VINyAyf1bTOhKh4MGQkMydoCVs7ofbicePRomxjDM873A56fqx97w/132" width="30px"><span>oc7</span> 👍（7） 💬（1）<div> 异步回调的第二种方式 把异步函数添加到微任务队列中 具体是哪些WebAPI呢? Promise.then?</div>2019-09-12</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/xRYuVOluJxeuRtmKPjwwkSibKeeHEia1fVyiaK14JQtdM3bLqHShGTSvF3yRY4Mp81gz2hLw6BZoY02AXSFHZiaBxg/132" width="30px"><span>bobi</span> 👍（5） 💬（1）<div>老师，什么时候专门讲微任务？</div>2019-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/f5/b8/9f165f4b.jpg" width="30px"><span>mfist</span> 👍（5） 💬（1）<div>作为一名前端开发工程师，要如何高效地学习前端web安全理论呢？
+作为web工程师可以稍微把自己领域知识向后端扩展一些，这样理解web问题、网络传输问题会
+更加得心应手。比如说前端浏览器因为跨域block，后端到底有没有处理请求；XSS 漏洞 以及CSRF
+漏洞如果能前后端一起模拟一下，会更容易理解的。
 
-```
-let callback = function(){
-    console.log('i am do homework')
-}
-function doWork(cb) {
-    console.log('start do work')
-    cb()
-    console.log('end do work')
-}
-doWork(callback)
+今日总结
+xmlhttprequest是为了解决网页局部数据刷新产生的技术。通过同步回调和异步回调以及系统调用栈来引出了
+xmlhttprequest运行机制。一个xhr主要包含下面四个步骤：1. 创建xmlhttprequest对象；2. 为xhr对象
+注册回调函数（ontimeout、onerror、onreadystatechange）；3. 打开请求（xhr.open（&#39;GET&#39;, url,true））4. 配置基础的请求信息（timeout&#47;responseType&#47;setRequestHeader）；5. 发送请求。xhr中场景的坑（
+跨域和混合内容）</div>2019-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/cf/3e/5c684022.jpg" width="30px"><span>朱维娜🍍</span> 👍（4） 💬（1）<div>想知道 延时任务是不是一种微任务啊</div>2019-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/9d/5d/3fdead91.jpg" width="30px"><span>レイン小雨</span> 👍（20） 💬（13）<div>老师后面能详细的讲一下浏览器同源策略的具体实现吗？作为前端最基本的常识性知识却总是感觉理解的不够深入，开始我以为是跨域的请求是被浏览器“拦截在了门内”----即请求没有发送出去，但是看了很多文章中说，其实跨域的请求是发送出去了，服务器也接收到了并响应了，而是在返回的时候被浏览器“拦截在门外”，还有人说，不同的浏览器实现也不一样，很是困惑这里，希望老师能给一个确定的答案。</div>2019-09-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/39/08/09055b47.jpg" width="30px"><span>淡</span> 👍（9） 💬（5）<div>老师你好，我有以下几个疑问：
+1.渲染进程里的主线程while循环空转，为啥不会造成系统卡死？我们自己code里空while死循环会造成卡死
+2.就是网络进程IPC给渲染进程时，渲染进程收到消息。这里的”消息“具体包含哪些内容啊？
+谢谢。</div>2019-09-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epcs6PibsP9vEXv4EibUw3bhQPUK04zRTOvfrvF08TwM67xPb1LBh2uRENHQwo2VqYfC5GhJmM7icxHA/132" width="30px"><span>蹦哒</span> 👍（3） 💬（1）<div>老师请问是否可以这样理解：
+异步的本质，就是通过把方法（函数）添加到消息队列尾部，通过循环系统在下一次循环中去执行；
+同步的本质，就是在当前方法中执行另外一个方法，执行完之后接着执行原来的方法</div>2020-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/c8/e9/c7c5cbf5.jpg" width="30px"><span>l1shu</span> 👍（3） 💬（3）<div>为什么有些文章说渲染进程中有一个定时器线程用来计时的 到时间后会把回调函数塞到消息队列  而没有提到延迟队列这个说法  求老师解答</div>2019-10-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/cc/2d/124656fb.jpg" width="30px"><span>Yefei</span> 👍（2） 💬（0）<div>前几章都很赞，这一章看来三篇了，对于前端开发同学来说，整体有点hello world的感觉，难道是另一个人准备的么 :(</div>2023-02-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/93/4a/de82f373.jpg" width="30px"><span>AICC</span> 👍（2） 💬（1）<div>老师什么时候出一个web安全的专栏啊，好想系统性的学学</div>2019-09-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（2） 💬（0）<div>文中说：网络进程接收到数据之后，就会利用 IPC 来通知渲染进程；渲染进程接收到消息之后，会将 xhr 的回调函数封装成任务并添加到消息队列中
+---------------------------------------------------------
+这里网络进程收到数据之后，会进行资源请求的结果状态判断吗？ 只是把对应的资源请求的结果状态 和 响应数据通知给 渲染进程，然后渲染进程 根据请求结果状态选择对应的回调函数添加人任务队列中的呢？</div>2019-09-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/27/d5/0fd21753.jpg" width="30px"><span>一粟</span> 👍（2） 💬（0）<div>随着互联网金融的发展，web安全越来越重要了</div>2019-09-12</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/yyibGRYCArsUNBfCAEAibua09Yb9D5AdO8TkCmXymhAepibqmlz0hzg06ggBLxyvXicnjqFVGr7zYF0rQoZ0aXCBAg/132" width="30px"><span>james</span> 👍（1） 💬（0）<div>三个点：
+what（是什么）、why（为什么）、how（怎么做）</div>2020-06-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/1a/8c/d91b01a6.jpg" width="30px"><span>zhangbao</span> 👍（1） 💬（3）<div>老师好！关于 XMLHttpRequest 的工作机制，有一个疑问，想不太明白：xhr 的 onreadystatechange 回调，在整个请求过程中，会触发好几次，那么封装成任务的 xhr 的回调函数，第一次从消息队列中取出执行一次后，不就没有了吗，怎么能保证后续 state 改变时的还有回调来执行的呢？
 
-```
+ </div>2020-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/22/97/5263baeb.jpg" width="30px"><span>健忘症。</span> 👍（1） 💬（2）<div>老师，我有一些疑问想请教您一下。
 
-在上面示例代码中，我们将一个匿名函数赋值给变量callback，同时将callback作为参数传递给了doWork()函数，这时在函数doWork()中callback就是回调函数。
+您说过 MutationObserver、和 Promise 是可以实现微任务的两种方式。
+而微任务的执行时机又是主线程执行结束后，当前宏任务结束前的时机。
+那么说明微任务是依赖与宏任务存在的，而宏任务是指存放在消息队列中的回调函数。
+那是不是可以说，我使用 Promise 包装了一下 XMLHttpRequest 请求，有 .then 的操作，
+那么 XMLHttpRequest 请求成功后返回的结果，通过 IPC 包装成了宏任务进入了消息队列中。
+当消息队列执行到XMLHttpRequest 回调函数的时候，是执行了一个宏任务，那么为什么.then 中的回调函数就可以被判定为微任务而去执行的呢？？
+还有一个问题就是，如果 Promise 并没有进行异步操作，而是直接 new Promise(resolve =&gt; {resolve(1)}).then((res) =&gt; {})
+那么.then 中的回调函数还是否是一个微任务了呢？？
 
-上面的回调方法有个特点，就是回调函数callback是在主函数doWork返回之前执行的，我们把这个回调过程称为 **同步回调**。
+望指点一二，再次感谢老师的付出。</div>2020-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/98/1c/d7a1439e.jpg" width="30px"><span>KaKaKa</span> 👍（1） 💬（2）<div>执行 JS 代码是一个任务，执行任务时会维护一个系统调用栈。那当执行 JS 代码这个任务时，系统调用栈和 JS 代码内的执行上下文栈有什么关联？</div>2020-04-08</li><br/><li><img src="" width="30px"><span>Geek_177f82</span> 👍（1） 💬（3）<div>有个疑惑，就是使用setTimeout执行任务时会把任务添加到延迟消息队列，但是在函数中使用setTimeout就是异步回调。而异步回调函数有两种方式：1， 放入微任务处理；2，放入消息队列处理。这样以来就有点迷糊了。那使用setTimeout执行的任务到底应该放哪里执行。还是依据执行环境分别处理。希望老师解答疑惑。谢谢🙏！</div>2019-09-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2024-05-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/3a/f5/1fa34f88.jpg" width="30px"><span>润曦</span> 👍（0） 💬（0）<div>`XMLHttpRequest`的异步回调属于**宏任务**（Macro Task）。
 
-既然有同步回调，那肯定也有异步回调。下面我们再来看看异步回调的例子：
+在JavaScript中，任务被分为两大类：宏任务和微任务。它们都是异步任务，但在事件循环中的处理顺序不同。
 
-```
-let callback = function(){
-    console.log('i am do homework')
-}
-function doWork(cb) {
-    console.log('start do work')
-    setTimeout(cb,1000)
-    console.log('end do work')
-}
-doWork(callback)
+### 宏任务（Macro Task）
 
-```
+宏任务是由宿主环境（如浏览器或Node.js）发起的任务，每次事件循环只执行一个宏任务。宏任务包括：
 
-在这个例子中，我们使用了setTimeout函数让callback在doWork函数执行结束后，又延时了1秒再执行，这次callback并没有在主函数doWork内部被调用，我们把这种回调函数在主函数外部执行的过程称为 **异步回调**。
+- `setTimeout`
+- `setInterval`
+- `setImmediate`（Node.js特有）
+- I&#47;O 操作
+- UI 渲染
+- `XMLHttpRequest`的回调
 
-现在你应该知道什么是同步回调和异步回调了，那下面我们再深入点，站在消息循环的视角来看看同步回调和异步回调的区别。理解了这些，可以让你从本质上理解什么是回调。
+### 微任务（Micro Task）
 
-我们还是先来回顾下页面的事件循环系统，通过 [《15 \| 消息队列和事件循环：页面是怎么“活”起来的？》](https://time.geekbang.org/column/article/132931) 的学习，你应该已经知道浏览器页面是通过事件循环机制来驱动的，每个渲染进程都有一个消息队列，页面主线程按照顺序来执行消息队列中的事件，如执行JavaScript事件、解析DOM事件、计算布局事件、用户输入事件等等，如果页面有新的事件产生，那新的事件将会追加到事件队列的尾部。所以可以说是 **消息队列和主线程循环机制保证了页面有条不紊地运行**。
+微任务通常是由JavaScript引擎发起的任务，每次事件循环会执行所有队列中的微任务。微任务包括：
 
-这里还需要补充一点，那就是当循环系统在执行一个任务的时候，都要为这个任务维护一个 **系统调用栈**。这个 **系统调用栈** 类似于JavaScript的调用栈，只不过系统调用栈是Chromium的开发语言C++来维护的，其完整的调用栈信息你可以通过chrome://tracing/来抓取。当然，你也可以通过Performance来抓取它核心的调用信息，如下图所示：
+- `Promise`回调（`then`、`catch`、`finally`）
+- `MutationObserver`
+- `process.nextTick`（Node.js特有）
 
-![](https://static001.geekbang.org/resource/image/d3/77/d3d66afb1a103103e5c3f86c823efb77.png?wh=1142*205)
+### 执行顺序
 
-消息循环系统调用栈记录
+在每个事件循环中，首先执行当前宏任务中的代码，然后执行该宏任务产生的所有微任务。如果微任务执行过程中继续产生新的微任务，这些新的微任务也会在当前宏任务之后、下一个宏任务之前执行完成。
 
-这幅图记录了一个Parse HTML的任务执行过程，其中黄色的条目表示执行JavaScript的过程，其他颜色的条目表示浏览器内部系统的执行过程。
+### `XMLHttpRequest`回调的处理
 
-通过该图你可以看出来，Parse HTML任务在执行过程中会遇到一系列的子过程，比如在解析页面的过程中遇到了JavaScript脚本，那么就暂停解析过程去执行该脚本，等执行完成之后，再恢复解析过程。然后又遇到了样式表，这时候又开始解析样式表……直到整个任务执行完成。
+当`XMLHttpRequest`操作完成（无论是成功还是失败），它的回调函数会被放入宏任务队列。这意味着回调的执行会等到当前执行栈清空，并且已经在微任务队列中的所有微任务都执行完毕之后。
 
-需要说明的是，整个Parse HTML是一个完整的任务，在执行过程中的脚本解析、样式表解析都是该任务的子过程，其下拉的长条就是执行过程中调用栈的信息。
+### 结论
 
-每个任务在执行过程中都有自己的调用栈，那么同步回调就是在当前主函数的上下文中执行回调函数，这个没有太多可讲的。下面我们主要来看看异步回调过程，异步回调是指回调函数在主函数之外执行，一般有两种方式：
-
-- 第一种是把异步函数做成一个任务，添加到信息队列尾部；
-- 第二种是把异步函数添加到微任务队列中，这样就可以在当前任务的末尾处执行微任务了。
-
-## XMLHttpRequest运作机制
-
-理解了什么是同步回调和异步回调，接下来我们就来分析XMLHttpRequest背后的实现机制，具体工作过程你可以参考下图：
-
-![](https://static001.geekbang.org/resource/image/29/c6/2914a052f4f249a52077692a22ee5cc6.png?wh=1142*523)
-
-XMLHttpRequest工作流程图
-
-这是XMLHttpRequest的总执行流程图，下面我们就来分析从发起请求到接收数据的完整流程。
-
-我们先从XMLHttpRequest的用法开始，首先看下面这样一段请求代码：
-
-```
- function GetWebData(URL){
-    /**
-     * 1:新建XMLHttpRequest请求对象
-     */
-    let xhr = new XMLHttpRequest()
-
-    /**
-     * 2:注册相关事件回调处理函数
-     */
-    xhr.onreadystatechange = function () {
-        switch(xhr.readyState){
-          case 0: //请求未初始化
-            console.log("请求未初始化")
-            break;
-          case 1://OPENED
-            console.log("OPENED")
-            break;
-          case 2://HEADERS_RECEIVED
-            console.log("HEADERS_RECEIVED")
-            break;
-          case 3://LOADING
-            console.log("LOADING")
-            break;
-          case 4://DONE
-            if(this.status == 200||this.status == 304){
-                console.log(this.responseText);
-                }
-            console.log("DONE")
-            break;
-        }
-    }
-
-    xhr.ontimeout = function(e) { console.log('ontimeout') }
-    xhr.onerror = function(e) { console.log('onerror') }
-
-    /**
-     * 3:打开请求
-     */
-    xhr.open('Get', URL, true);//创建一个Get请求,采用异步
-
-    /**
-     * 4:配置参数
-     */
-    xhr.timeout = 3000 //设置xhr请求的超时时间
-    xhr.responseType = "text" //设置响应返回的数据格式
-    xhr.setRequestHeader("X_TEST","time.geekbang")
-
-    /**
-     * 5:发送请求
-     */
-    xhr.send();
-}
-
-```
-
-上面是一段利用了XMLHttpRequest来请求数据的代码，再结合上面的流程图，我们可以分析下这段代码是怎么执行的。
-
-**第一步：创建XMLHttpRequest对象。**
-
-当执行到 `let xhr = new XMLHttpRequest()` 后，JavaScript会创建一个XMLHttpRequest对象 **xhr**，用来执行实际的网络请求操作。
-
-**第二步：为xhr对象注册回调函数。**
-
-因为网络请求比较耗时，所以要注册回调函数，这样后台任务执行完成之后就会通过调用回调函数来告诉其执行结果。
-
-XMLHttpRequest的回调函数主要有下面几种：
-
-- ontimeout，用来监控超时请求，如果后台请求超时了，该函数会被调用；
-- onerror，用来监控出错信息，如果后台请求出错了，该函数会被调用；
-- onreadystatechange，用来监控后台请求过程中的状态，比如可以监控到HTTP头加载完成的消息、HTTP响应体消息以及数据加载完成的消息等。
-
-**第三步：配置基础的请求信息。**
-
-注册好回调事件之后，接下来就需要配置基础的请求信息了，首先要通过open接口配置一些基础的请求信息，包括请求的地址、请求方法（是get还是post）和请求方式（同步还是异步请求）。
-
-然后通过xhr内部属性类配置一些其他可选的请求信息，你可以参考文中示例代码，我们通过 `xhr.timeout = 3000` 来配置超时时间，也就是说如果请求超过3000毫秒还没有响应，那么这次请求就被判断为失败了。
-
-我们还可以通过 `xhr.responseType = "text"` 来配置服务器返回的格式，将服务器返回的数据自动转换为自己想要的格式，如果将responseType的值设置为json，那么系统会自动将服务器返回的数据转换为JavaScript对象格式。下面的图表是我列出的一些返回类型的描述：
-
-![](https://static001.geekbang.org/resource/image/85/bf/856d1965676fafa46122e3ad1235dfbf.png?wh=1142*590)
-
-假如你还需要添加自己专用的请求头属性，可以通过xhr.setRequestHeader来添加。
-
-**第四步：发起请求。**
-
-一切准备就绪之后，就可以调用 `xhr.send` 来发起网络请求了。你可以对照上面那张请求流程图，可以看到：渲染进程会将请求发送给网络进程，然后网络进程负责资源的下载，等网络进程接收到数据之后，就会利用IPC来通知渲染进程；渲染进程接收到消息之后，会将xhr的回调函数封装成任务并添加到消息队列中，等主线程循环系统执行到该任务的时候，就会根据相关的状态来调用对应的回调函数。
-
-- 如果网络请求出错了，就会执行xhr.onerror；
-- 如果超时了，就会执行xhr.ontimeout；
-- 如果是正常的数据接收，就会执行onreadystatechange来反馈相应的状态。
-
-这就是一个完整的XMLHttpRequest请求流程，如果你感兴趣，可以参考下Chromium对XMLHttpRequest的实现， [点击这里查看代码](https://chromium.googlesource.com/chromium/src/+/refs/heads/master/third_party/blink/renderer/core/xmlhttprequest/)。
-
-## XMLHttpRequest使用过程中的“坑”
-
-上述过程看似简单，但由于浏览器很多安全策略的限制，所以会导致你在使用过程中踩到非常多的“坑”。
-
-浏览器安全问题是前端工程师避不开的一道坎，通常在使用过程中遇到的“坑”，很大一部分都是由安全策略引起的，不管你喜不喜欢，它都在这里。本来很完美的一个方案，正是由于加了安全限制，导致使用起来非常麻烦。
-
-而你要做的就是去正视这各种的安全问题。也就是说要想更加完美地使用XMLHttpRequest，你就要了解浏览器的安全策略。
-
-下面我们就来看看在使用XMLHttpRequest的过程中所遇到的跨域问题和混合内容问题。
-
-### 1\. 跨域问题
-
-比如在极客邦的官网使用XMLHttpRequest请求极客时间的页面内容，由于极客邦的官网是 [www.geekbang.org](https://www.geekbang.org)，极客时间的官网是 [time.geekbang.org](https://time.geekbang.org)，它们不是同一个源，所以就涉及到了跨域（在A站点中去访问不同源的B站点的内容）。默认情况下，跨域请求是不被允许的，你可以看下面的示例代码：
-
-```
-var xhr = new XMLHttpRequest()
-var url = 'https://time.geekbang.org/'
-function handler() {
-    switch(xhr.readyState){
-        case 0: //请求未初始化
-        console.log("请求未初始化")
-        break;
-        case 1://OPENED
-        console.log("OPENED")
-        break;
-        case 2://HEADERS_RECEIVED
-        console.log("HEADERS_RECEIVED")
-        break;
-        case 3://LOADING
-        console.log("LOADING")
-        break;
-        case 4://DONE
-        if(this.status == 200||this.status == 304){
-            console.log(this.responseText);
-            }
-        console.log("DONE")
-        break;
-    }
-}
-
-function callOtherDomain() {
-  if(xhr) {
-    xhr.open('GET', url, true)
-    xhr.onreadystatechange = handler
-    xhr.send();
-  }
-}
-callOtherDomain()
-
-```
-
-你可以在控制台测试下。首先通过浏览器打开 [www.geekbang.org](https://www.geekbang.org)，然后打开控制台，在控制台输入以上示例代码，再执行，会看到请求被Block了。控制台的提示信息如下：
-
-```
-Access to XMLHttpRequest at 'https://time.geekbang.org/' from origin 'https://www.geekbang.org' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
-
-```
-
-因为 www.geekbang.org 和 time.geekbang.com 不属于一个域，所以以上访问就属于跨域访问了，这次访问失败就是由于跨域问题导致的。
-
-### 2\. HTTPS混合内容的问题
-
-了解完跨域问题后，我们再来看看HTTPS的混合内容。HTTPS混合内容是HTTPS页面中包含了不符合HTTPS安全要求的内容，比如包含了HTTP资源，通过HTTP加载的图像、视频、样式表、脚本等，都属于混合内容。
-
-通常，如果HTTPS请求页面中使用混合内容，浏览器会针对HTTPS混合内容显示警告，用来向用户表明此HTTPS页面包含不安全的资源。比如打开站点 [https://www.iteye.com/groups](https://www.iteye.com/groups) ，可以通过控制台看到混合内容的警告，参考下图：
-
-![](https://static001.geekbang.org/resource/image/4b/63/4b4a210a1e078d9a26fe31e6eab34963.png?wh=1142*336)
-
-HTTPS混合内容警告
-
-从上图可以看出，通过HTML文件加载的混合资源，虽然给出警告，但大部分类型还是能加载的。而使用XMLHttpRequest请求时，浏览器认为这种请求可能是攻击者发起的，会阻止此类危险的请求。比如我通过浏览器打开地址 [https://www.iteye.com/groups](https://www.iteye.com/groups) ，然后通过控制台，使用XMLHttpRequest来请求 [http://img-ads.csdn.net/2018/201811150919211586.jpg](http://img-ads.csdn.net/2018/201811150919211586.jpg) ，这时候请求就会报错，出错信息如下图所示：
-
-![](https://static001.geekbang.org/resource/image/46/a1/46c22d4e54815942c1a86f11b14516a1.png?wh=1142*517)
-
-使用XMLHttpRequest混合资源失效
-
-## 总结
-
-好了，今天我们就讲到这里，下面我来总结下今天的内容。
-
-首先我们介绍了回调函数和系统调用栈；接下来我们站在循环系统的视角，分析了XMLHttpRequest是怎么工作的；最后又说明了由于一些安全因素的限制，在使用XMLHttpRequest的过程中会遇到跨域问题和混合内容的问题。
-
-本篇文章跨度比较大，不是单纯地讲一个问题，而是将回调类型、循环系统、网络请求和安全问题“串联”起来了。
-
-对比 [上一篇文章](https://time.geekbang.org/column/article/134456)，setTimeout是直接将延迟任务添加到延迟队列中，而XMLHttpRequest发起请求，是由浏览器的其他进程或者线程去执行，然后再将执行结果利用IPC的方式通知渲染进程，之后渲染进程再将对应的消息添加到消息队列中。如果你搞懂了setTimeout和XMLHttpRequest的工作机制后，再来理解其他WebAPI就会轻松很多了，因为大部分WebAPI的工作逻辑都是类似的。
-
-## 思考时间
-
-网络安全很重要，但是又很容易被忽视，因为项目需求很少涉及到基础的Web安全。如果忽视了这些基础安全策略，在开发过程中会处处遇到安全策略挖下的“大坑”，所以对于一名开发者来说，Web安全理论很重要，也必须要学好。
-
-那么今天我留给你一道开放性的思考题：你认为作为一名开发工程师，要如何去高效地学习前端的Web安全理论呢？
-
-欢迎在留言区与我分享你的想法，也欢迎你在留言区记录你的思考过程。感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。
+所以，`XMLHttpRequest`的异步回调是宏任务，这也意味着它的执行可能会被当前执行栈中的代码以及微任务队列中的任务所延迟。这种机制确保了异步代码的执行顺序和预期效果，但在编写代码时也需要考虑到它可能带来的影响。</div>2024-02-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/fb/ee/e574554d.jpg" width="30px"><span>王晓聪</span> 👍（0） 💬（0）<div>老师有出书的计划吗？课程还是从比较宏观的角度讲了浏览器的原理。希望老师出本书讲讲更细节的浏览器实现原理</div>2023-10-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2f/99/7c/b85e0be1.jpg" width="30px"><span>Geek_89dbe0</span> 👍（0） 💬（0）<div>留下jio印</div>2022-09-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/2d/16/b525a71d.jpg" width="30px"><span>zgy</span> 👍（0） 💬（0）<div>突然出现的安全篇，是为下文点题吗？感觉上有点突兀。</div>2022-03-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/10/5e/42f4faf7.jpg" width="30px"><span>天择</span> 👍（0） 💬（0）<div>这里面有个问题，网络请求回来之后，浏览器怎么知道把哪个callback任务放入队列呢？是每个callback和tcp请求之间（socket标识？）有映射关系？</div>2021-12-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/91/b1/ae745f2f.jpg" width="30px"><span>nabaonan</span> 👍（0） 💬（0）<div>xmlhttprequest是开启的进程还是线程？我看网上有的文章说是开启的线程</div>2021-11-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/e0/93/c512e343.jpg" width="30px"><span>云销雨霁</span> 👍（0） 💬（0）<div>ontimeout， onerror 这些回调，已经在消息队列里，onreadystatechange = 4消息正确的被接受了，这些ontimeout， onerror任务什么时候会被清理呢</div>2021-08-15</li><br/>
+</ul>

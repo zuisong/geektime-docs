@@ -6,53 +6,20 @@
 
 Vue 3这个专栏从入门到Vue实战，从组件化到Vue生态源码都有涉及，设计之初就是想通过学习Vue这个框架，让你能逐步进阶前端开发，不止是掌握具体的知识点，更希望能帮助你深入了解前端框架的设计原理、内部用到的算法和设计模式，帮你构建出一个完整的前端知识体系。
 
-我真正想传达的理念是， **任何框架，我们都可以通过深入底层，在理解框架底层用到的计算机世界最佳实践的基础上，去构建自己的知识体系**。如果只是浮于表层，只是追求框架的使用层面，是无法构建自己核心竞争力的。
+我真正想传达的理念是，**任何框架，我们都可以通过深入底层，在理解框架底层用到的计算机世界最佳实践的基础上，去构建自己的知识体系**。如果只是浮于表层，只是追求框架的使用层面，是无法构建自己核心竞争力的。
 
 如果说编程是一个武侠世界的话，框架和最佳实践是武功和招式，算法和数据结构、设计模式和网络协议等底层知识就是内力，如果我们只沉迷于武功和招式，注定很难成为高手，真正的高手需要不断地修炼内力和不断地实战。
 
 因为每个前端框架最终都会过时，未来的某一天Vue也一定会过时，那个时候所有的语法都会成为过去，但是我们深入底层研究的Vue内蕴含的组件化、响应式等理念，源码中的算法、数据结构等思想，会内化成我们编程的内力，在未来继续支撑我们在前端这条编程的路上走得更远。
+<div><strong>精选留言（23）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/13/c8/4a/3a322856.jpg" width="30px"><span>ll</span> 👍（21） 💬（0）<div>在极客买了很多课程，大圣的的课是头一个从头追到尾的。当时抱着学习新框架的目的来的，最后发现不仅学了新知识，以前学习工作中的前端知识也通过追更得到了总结。
 
-深入底层构建知识体系是我们学习任何框架的方向，那面对一个新框架，我们怎么尽可能地快速掌握呢？
+除知识层面的收获外，大圣在课程中传递的方法论以及对生活一些感悟我也深以为然。作为一个同龄人，也是非专业，但入行却晚很多。这篇大圣描述的11年的迷茫，在我这还要加个“大龄”。但是，我发现一个“秘密”，没谁越活越年轻，物理层面上。与其浪费时间弥漫，向前进就是了。
 
-毕竟现在新框架层出不穷，从最早的HTML、CSS、JavaScript三兄弟构建网页，2009年Angular1和Node.js的诞生让前端框架正式起舞，然后前端的复杂度越来越高。
+另外，也不要埋头瞎走，你的态度可能决定你走的“快不快”，你的“基础知识”决定了你走的“远不远”。
+“基础知识”欠缺怎么办？能怎么办？作为一个“大龄非专”我的建议是“学”，一遍不行多来几遍，能量守恒知不知道，钢炼看过没？想要有所得，献出你的时间？不要浪费在迷惘上。
 
-你只需要记住一点就能以不变应万变：所有框架，都是为了提供更快更好的开发者体验和用户体验。
-
-我们要在脑子里存着一个前端知识体系的全景图。有任何新技术出现的时候，不盲目地追热点，要先看新技术的特点和解决的问题，把新出现的这个框架和图里的某个框架联系起来，结合你自己的全景图，把你学到的前端知识从独立的知识点变成相互有联系的网状结构，这也是很多高手学习速度非常快的一个原因。
-
-![](https://static001.geekbang.org/resource/image/c0/9f/c0dec6954byy36cfdd1c296f4327aa9f.jpeg?wh=3411x2416)
-
-这里是我画的一个前端框架的全景图分享给你。当然就我自己来说，还有一些其他的实用学习方法，今天也分享给你。
-
-## 一些方法
-
-如果你是新手，可能会出现迷茫、不知道怎么更快速地提升自己的问题。
-
-我刚开始也很迷茫。2011年的时候，毕业进入到北京南六环的一个仓库里实习做物流，仓库里的工作让人找不到方向，但是那时的我除了一腔热血，啥都不会。
-
-于是每周末，我都坐很久的地铁去中关村一个叫车库咖啡的咖啡厅，那里都是创业的人，15块钱一杯咖啡可以听他们吹一天，当时墙上还有一个招聘黑板，上面全是找PHP程序员的。那会我感觉编程是个好东西，这么多人都需要，得学起来，于是每天下班后就在线学编程，后来开启了个人生涯的新方向。这段经历让我明白， **当自己开始迷茫的时候，一定要多出去看看这个社会在发生什么变化，多和别人交流一下，就会找到新的方向。**
-
-然后我找了一个小公司做程序员，小公司的技术栈什么都有，写了几个月PHP和Python后，我开始专注写前端，工资虽然很低，但是我的运气比较好，当时的老大要求我每个月必须要看一本技术书然后给他讲，《JavaScript权威指南》、《锋利的jQuery》、《Sea.js源码》都是那个时候被迫看的。不过至今我依然保持着这个习惯，这应该也是我从0基础到进百度只花了一年半的主要原因。
-
-所以如果你现在苦于进不了大厂，先从 **一个月看一本书** 开始吧。不过记得，在看完书之后最好你能够用自己的方式去转述一下学习的心得，可以写博客、可以B站录视频等等。通过输出来检验学习成果，是费曼学习法的精髓所在。
-
-由于入行遇见的经理就给我指明了正确的学习方向，在后面的职业生涯中，我也一直会在社区里给自己找一个职场的大牛作为导师。毕竟现在勤奋是我们所有人都具备的属性， **但有时候高手给自己指一个方向，比我们自己摸索几个月效率还要高**。
-
-大牛会告诉你效率最高的学习方法，放弃该放弃的技术方向，你只需要脸皮够厚加到他的微信，没事吃个羊腿泡个澡，就可以获得定制化的建议。这也是我技术生涯少走弯路的秘诀。
-
-## 2022学习路线
-
-现在我成为了一个自由职业者，致力于培养更多的前端迈过进阶的门槛，最后我也推荐几个2022年的学习路线供你参考：
-
-- TypeScript的重要性会在2022年进一步体现，如果你现在对TypeScript还不熟悉的话，现在就要努力学习啦；
-- 熟练掌握Vue后，可以在React、Angular、Svelte和Solid.js中选一个也去学一下，主要学习这些框架和Vue框架的易同，使用对比的方式学习，会让你拥有更高的前端视野；
-- 专栏中我们通过Vue源码感受了算法的魅力，你也可以把LeetCode刷200题作为2022年的flag之一；
-- Vue的新文档也在编写之中，2022年你也可以尝试一下只读英文文档去巩固英语基础。
-
-有什么让你感觉痛苦的，新的一年就大胆去战胜它，相信完成这个目标之后你会发现，之前进阶路上的拦路虎只是一个纸老虎。
-
-最后限于我个人的水平所限，专栏难免有不足的地方，欢迎你随时留言。
-
-祝你能够找到适合自己的方式，构建自己核心的知识体系；愿你能够继续怀揣对Web前端技术的热忱，去拥抱Vue和React，拥抱TypeScript，拥抱这个更好的前端时代，以及，所有那些值得去追求的美好事物。
-
-编程进阶的路很长，山底太挤，我们山顶见！
+最后，谢谢大圣，谢谢极客时间，也谢谢自己最初将游戏充值的钱用来买课了。
+ps. 有些内容回头自己还得复习几遍。
+</div>2022-01-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2c/03/c4/709e8106.jpg" width="30px"><span> kk  </span> 👍（11） 💬（1）<div>虽然工作很多年了，还在山底，我觉得我要做出改变了，2022年，，我要让他变的不一样。</div>2022-03-02</li><br/><li><img src="" width="30px"><span>Geek_e92dcb</span> 👍（7） 💬（0）<div>一路跟着大圣老师走来 今天节课即是终点也是起点 希望2022年自己比2021年更近一步！</div>2022-01-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/25/2f/5b/74ba6ffa.jpg" width="30px"><span>酱汁</span> 👍（4） 💬（0）<div>完结撒花</div>2022-01-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3f/a8/8da58e53.jpg" width="30px"><span>海阔天空</span> 👍（3） 💬（0）<div>“当自己开始迷茫的时候，一定要多出去看看这个社会在发生什么变化，多和别人交流一下，就会找到新的方向”。看到这句话的时候，我想起了妈妈对我说的，你是猛虎，就应该出去闯闯，别窝在家里。</div>2022-01-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/8a/d7/daabec34.jpg" width="30px"><span>tequ1lAneio</span> 👍（2） 💬（0）<div>完结撒花！！！</div>2022-01-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/23/f8/e6/8e494b4a.jpg" width="30px"><span>赵建平</span> 👍（1） 💬（0）<div>完结撒花🎉</div>2022-01-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/07/13/f5f41616.jpg" width="30px"><span>GGG</span> 👍（1） 💬（0）<div>完结撒花😘</div>2022-01-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/fc/e6/2cff4a89.jpg" width="30px"><span>醉月</span> 👍（1） 💬（0）<div>完结撒花🌸</div>2022-01-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d3/a3/52702576.jpg" width="30px"><span>becky</span> 👍（0） 💬（0）<div>看了老师的课程，觉得自己作为科班出身好惭愧，工作之后学习方面就懈怠了，不知不觉就跟别人拉开了差距，学完这个课程是改变的第一步，希望自己努力变得更好</div>2023-07-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2e/c8/79/981e4e15.jpg" width="30px"><span>小岩岩</span> 👍（0） 💬（0）<div>完结撒花~要是年初就读到这门课多好啊，年底了才看到大圣老师给的22年计划(／_＼)大怨种</div>2022-10-26</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eodIuZicdbXE3NKceSfZlfsZNvPJc3Aa2nlTictMnJWkt5JiaPbjG7cn4LiaXmjANMJUhf0Lf905x6IqA/132" width="30px"><span>Geek_cnsjaw</span> 👍（0） 💬（0）<div>编程进阶的路很长，山底太挤，我们山顶见！</div>2022-10-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/fe/95/c2c54f9a.jpg" width="30px"><span>黄Yien</span> 👍（0） 💬（0）<div>还是看了大圣的推荐的javascript的书籍认识大圣的，也让我了解到底层的基础知识多重要，希望自己在前端路上走远些。</div>2022-09-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2e/df/91/da895cb4.jpg" width="30px"><span>李小燕</span> 👍（0） 💬（0）<div>撒花 </div>2022-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/64/6b/d8ca3b18.jpg" width="30px"><span>方剑鹏</span> 👍（0） 💬（0）<div>好喜欢大圣！冲啊！</div>2022-07-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/70/75/421516b6.jpg" width="30px"><span>文春伟</span> 👍（0） 💬（0）<div>很不错的全景图，完结🌻</div>2022-06-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c6/33/9ffaa2c7.jpg" width="30px"><span>怎么肥四</span> 👍（0） 💬（0）<div>顶峰相见</div>2022-03-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/20/9a/ce/89430cc1.jpg" width="30px"><span>月落梅影</span> 👍（0） 💬（0）<div>能不能把完整的代码push到仓库？？？</div>2022-03-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/18/4e/9beaf580.jpg" width="30px"><span>yanhu</span> 👍（0） 💬（0）<div>希望能补充一下纯函数式写法的使用</div>2022-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/48/e2/0a1dff73.jpg" width="30px"><span>布霆</span> 👍（0） 💬（2）<div>大圣老师好，我想向您请教一下，您是如何学习和看懂各个框架的源码的，我发现源码不知从何看起，也难以看懂。请问有什么方法吗？</div>2022-02-08</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaEJfTnE46bP9zFU0MJicYZmKYTPhm97YjgSEmNVKr3ic1BY3CL8ibPUFCBVTqyoHQPpBcbe9GRKEN1CyA/132" width="30px"><span>逗逼章鱼</span> 👍（0） 💬（0）<div>`我的运气比较好，当时的老大要求我每个月必须要看一本技术书然后给他讲` 看的这个我好感慨，我以前让一个刚毕业的新手（基础也不好）每周一篇技术博客写学习心得或者工作中遇到的问题和解决方案。然后那个人本身就不乐意学习的样子，我还被HR 教训，人家是女生不要这么对人家，我。。。。。。。</div>2022-02-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/37/f5/3e421eee.jpg" width="30px"><span>骏采星驰</span> 👍（0） 💬（0）<div>说到偶像🤩   我把大圣作为我的技术偶像了 白嫖了很多大圣老师的技术公开课 每次都是大大的服  2022 我要加油 我要深入 我要蜕变</div>2022-01-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4d/fd/0aa0e39f.jpg" width="30px"><span>许童童</span> 👍（0） 💬（0）<div>完结撒花🎉</div>2022-01-21</li><br/>
+</ul>

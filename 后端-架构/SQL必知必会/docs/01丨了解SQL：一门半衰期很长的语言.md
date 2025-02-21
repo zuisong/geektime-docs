@@ -9,71 +9,22 @@
 可以说在整个数字化的世界中，最重要而且最通用的元基础就是数据，而直接与数据打交道的语言就是SQL语言。很多人忽视了SQL语言的重要性，认为它不就是SELECT语句吗，掌握它应该是数据分析师的事。事实上在实际工作中，你不应该低估SQL的作用。如今互联网的很多业务处理离不开SQL，因为它们都需要与数据打交道。
 
 SQL在各种技术和业务中无处不在，它的情况又是怎样的呢？45年前，也就是1974年，IBM研究员发布了一篇揭开数据库技术的论文《SEQUEL：一门结构化的英语查询语言》，直到今天这门结构化的查询语言并没有太大的变化，相比于其他语言，SQL的半衰期可以说是非常长了。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/14/34/df/64e3d533.jpg" width="30px"><span>leslie</span> 👍（34） 💬（1）<div>作者的回复有误吧：MYSQL是否区分大小写是可以设置的，我前几天刚装了套-默认是区分大小写；我同事的代码就报错。5.6开始的版本基本上都是大小写敏感的，除非设置成不区分大小写。
+不同数据库的sql特性不同：各家对T-SQL的支持&#47;保留不一样吧；sql server保留的最好-其实当时从它的名字也可以发现这点，其次是sybase,后面是mysql【注：5.5后的版本有太多oracle的东西继承了】oracle只保留了大概60-70%左右的T-SQL。
+其实mysql默认安装是区分大小写的：尤其是表名和数据库名；除非参数设置进行修改；尤其是5.6开始。各家对关键字的保留还不一样：这是数据库用多了最大的问题，总是会记岔了关键字。</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5b/25/d78cc1fe.jpg" width="30px"><span>都市夜归人</span> 👍（85） 💬（4）<div>对于大小写问题，不同的数据库系统规范不一样吧？</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/b9/c4/1fa60128.jpg" width="30px"><span>ZERO</span> 👍（30） 💬（3）<div>一份在用的 mysql 开发规范~ 欢迎大家指出问题~
+https:&#47;&#47;zerolee1993.github.io&#47;mysql-guide</div>2019-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（27） 💬（2）<div>老师日常 画ER图都是用什么工具啊？</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/2b/84/07f0c0d6.jpg" width="30px"><span>supermouse</span> 👍（16） 💬（1）<div>老师，请问数据库管理系统和数据库是一回事吗？如果不是的话，他们是什么关系？</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/00/7e/df232aa6.jpg" width="30px"><span>杨明翰</span> 👍（9） 💬（1）<div>老师，请问学习SQL是不就是学习数据库呢？这两者是个什么关系，小白</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/51/fb/681d5b2e.jpg" width="30px"><span>何学琛</span> 👍（7） 💬（1）<div>老师，课程内容是否可以扩充SQL Server数据库</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e1/29/19753a6b.jpg" width="30px"><span>天生轮回眼</span> 👍（5） 💬（1）<div>用思维导图将此课程保存
+用实际操作将此课程熟练
+用工作业绩将此课程升华</div>2019-06-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c9/6e/1ac1c955.jpg" width="30px"><span>niemo</span> 👍（5） 💬（1）<div>迫不及待了。能更新快点就好了
+</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0b/4e/fd946cb2.jpg" width="30px"><span>allean</span> 👍（5） 💬（1）<div>有意思💪</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/d6/d9/15a23df5.jpg" width="30px"><span>(´×ω×`)</span> 👍（5） 💬（1）<div>大佬，这个专栏更新完，大概要多久</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7c/c8/8627f5c1.jpg" width="30px"><span>右耳朵猫咪</span> 👍（3） 💬（1）<div>请问老师有什么工具能往一个表里插入大量的数据，而不是借用程序语言比如Java？</div>2019-10-12</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epNzDuzGqveaESQlVSTN1KEWepzlV35LSiaiaAga9xZNGlvsm5ojFJicRSt1PrdbEPdkiag8iblkHVn1zQ/132" width="30px"><span>Bigcat</span> 👍（3） 💬（2）<div>小白，完全没接触过，希望学完可以入门</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/1b/eb/d94261dc.jpg" width="30px"><span>阳</span> 👍（3） 💬（1）<div>老师，建NBA球员库的时候，是否考虑增加外号这一属性？</div>2019-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/cb/41/7a490933.jpg" width="30px"><span>Sunny</span> 👍（3） 💬（1）<div>SQL组成：DDL、DML、 DCL 、DQL；
+实体，属性和关系</div>2019-06-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/26/4b/bc3daee8.jpg" width="30px"><span>牛小妞</span> 👍（3） 💬（1）<div>打卡学习！（0基础学员，想学会SQL）</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4a/c7/ec18673b.jpg" width="30px"><span>大斌</span> 👍（3） 💬（1）<div>SQL是一个长期回报超高的技能，并且不会占用你太多时间精力。</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e5/33/ff5c52ad.jpg" width="30px"><span>不负</span> 👍（3） 💬（1）<div>如今技术更迭快速，带有通用性强（需求广）、半衰期长（一直受用）、入门不难等特性的产品或技术才能持续发展，而非只湮没在历史的长河中。</div>2019-06-12</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/AGicQgKibwja1SxkQ7oXQE8hYH7yCpiaicNHw3qZRuNB81aVDOQm9P1zd5F75Jbtv66G15D6ZjbbqfnoETR4321Zdw/132" width="30px"><span>高泽林</span> 👍（1） 💬（1）<div>一直没有大小写区分的习惯</div>2019-12-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/f9/e5/c04c8725.jpg" width="30px"><span>散人</span> 👍（1） 💬（1）<div>C！</div>2019-11-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/5b/08/b0b0db05.jpg" width="30px"><span>丁丁历险记</span> 👍（1） 💬（1）<div>1   45年前论文。
+2   sql92   sql99  标准
+3   ddl   dml   dcl   dql
 
-SQL有两个重要的标准，分别是SQL92和SQL99，它们分别代表了92年和99年颁布的SQL标准，我们今天使用的SQL语言依然遵循这些标准。要知道92年是Windows3.1发布的时间，如今还有多少人记得它，但如果你从事数据分析，或者和数据相关的工作，依然会用到SQL语言。
+声明式语法的便捷性。
 
-作为技术和互联网行业的从业人员，我们总是希望能找到一个通用性强，变化相对少，上手相对容易的语言，SQL正是为数不多的，可以满足这三个条件的语言。
+er 图。来个例子会更好。
 
-## 入门SQL并不难
-
-SQL功能这么强大，那么学起来会很难吗？一点也不。SQL不需要像其他语言那样，学习起来需要大量的程序语言基础，SQL更像是一门英语，有一些简单的英语单词，当你使用它的时候，就好像在用英语与数据库进行对话。
-
-我们可以把SQL语言按照功能划分成以下的4个部分：
-
-1. DDL，英文叫做Data Definition Language，也就是数据定义语言，它用来定义我们的数据库对象，包括数据库、数据表和列。通过使用DDL，我们可以创建，删除和修改数据库和表结构。
-2. DML，英文叫做Data Manipulation Language，数据操作语言，我们用它操作和数据库相关的记录，比如增加、删除、修改数据表中的记录。
-3. DCL，英文叫做Data Control Language，数据控制语言，我们用它来定义访问权限和安全级别。
-4. DQL，英文叫做Data Query Language，数据查询语言，我们用它查询想要的记录，它是SQL语言的重中之重。在实际的业务中，我们绝大多数情况下都是在和查询打交道，因此学会编写正确且高效的查询语句，是学习的重点。
-
-学习SQL就像学习英文语法一样。SQL 是为数不多的声明性语言，这种语言的特点就是，你只需要告诉计算机，你想从原始数据中获取什么样的数据结果即可。比如我想找主要角色定位是战士的英雄，以及他们的英雄名和最大生命值，就可以输入下面的语言：
-
-```
-SELECT name, hp_max FROM heros WHERE role_main = '战士'
-
-```
-
-这里我定义了heros数据表，包括了name、hp\_max、role\_main等字段，具体的数据表我会在后面的课程中作为示例讲解，这里只是做个简单的说明。
-
-你能从这段代码看出，我并没有告诉计算机该如何执行才能得到结果，这也是声明性语言最大的便捷性。我们不需要指定具体的执行步骤，比如先执行哪一步，再执行哪一步，在执行前是否要检查是否满足条件A等等这些传统的编程思维。
-
-SQL语言定义了我们的需求，而不同的DBMS（数据库管理系统）则会按照指定的SQL帮我们提取想要的结果，这样是不是很棒！
-
-## 开启SQL之旅
-
-SQL是我们与DBMS交流的语言，我们在创建DBMS之前，还需要对它进行设计，对于RDBMS来说采用的是ER图（Entity Relationship Diagram），即实体-关系图的方式进行设计。
-
-ER图评审通过后，我们再用SQL语句或者可视化管理工具（如Navicat）创建数据表。
-
-实体-关系图有什么用呢？它是我们用来描述现实世界的概念模型，在这个模型中有3个要素：实体、属性、关系。
-
-实体就是我们要管理的对象，属性是标识每个实体的属性，关系则是对象之间的关系。比如我们创建了“英雄”这个实体，那么它下面的属性包括了姓名、职业、最大生命值、初始生命值、最大魔法值、初始魔法值和攻击范围等。同时，我们还有“用户”这个实体，它下面的属性包括用户ID、登录名、密码、性别和头像等。
-
-“英雄”和“用户”这两个实体之间就是多对多的关系，也就是说一个英雄可以从属多个用户，而一个用户也可以拥有多个英雄。
-
-除了多对多之外，也有一对一和一对多的关系。
-
-创建完数据表之后，我们就可以用SQL操作了。你能看到很多SQL语句的大小写不统一，虽然大小写不会影响SQL的执行，不过我还是推荐你采用统一的书写规范，因为好的代码规范是提高效率的关键。
-
-关于SQL大小写的问题，我总结了下面两点：
-
-1. 表名、表别名、字段名、字段别名等都小写；
-2. SQL保留字、函数名、绑定变量等都大写。
-
-比如下面这个SQL语句：
-
-```
-SELECT name, hp_max FROM heros WHERE role_main = '战士'
-
-```
-
-你能看到SELECT、FROM、WHERE这些常用的SQL保留字都采用了大写，而name、hp\_max、role\_main这些字段名，表名都采用了小写。此外在数据表的字段名推荐采用下划线命名，比如role\_main这种。
-
-## 总结
-
-今天我带你初步了解了SQL语言，当然，SQL再简单，也还是需要你一步一步，从点滴做起，先掌握基本的DDL、DML、DCL和DQL语法，再了解不同的DBMS中的SQL语法差异，然后再来看如何优化，提升SQL的效率。要想写出高性能的SQL，首先要了解它的原理，其次就是做大量的练习。
-
-SQL的价值在于通用性强（市场需求普遍），半衰期长（一次学习终身受用），入门不难。实际上，很多事情的价值都可以按照这三点来进行判断，比如一个产品的市场价值。如果你是一名产品经理，你是喜欢通用性更强的产品，还是喜欢更个性的产品。今天的文章只是简单预热，你可能也会有一些感悟，不妨说说你对一个产品或者语言的市场价值的理解。
-
-![](https://static001.geekbang.org/resource/image/9f/d2/9f72d7f01aace4c991d9774a81d051d2.jpg?wh=2418x1708)
-
-欢迎你在评论区写下你的心得，也欢迎把这篇文章分享给你的朋友或者同事，让更多人了解SQL这门语言。
+总结   学个套路  关键字大写。让读sql 的效率更高。</div>2019-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/92/ba/9833f06f.jpg" width="30px"><span>半瓶醋</span> 👍（1） 💬（1）<div>二八定律，不变应万变，确实是法则。</div>2019-10-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/93/c8/69512653.jpg" width="30px"><span>种菜的渔民</span> 👍（1） 💬（1）<div>生产力工具🛠</div>2019-10-08</li><br/><li><img src="" width="30px"><span>William</span> 👍（1） 💬（1）<div>大佬，第一章命名为语法基础，我浏览了一下文案，连最基础的查询命令都没有介绍就直接说怎么用怎么优化。像我这种百分百的小白如何跟得上啊？</div>2019-09-24</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/wJphZ3HcvhjVUyTWCIsCugzfQY5NAy6VJ0XoPLibDlcHWMswFmFe678zd0lUjFETia80NQhyQcVnGDlKgKPcRGyw/132" width="30px"><span>JingZ</span> 👍（1） 💬（1）<div>最近工作开始需要写些sql，打算不依赖别人啦，自己安装好mysql workbench，翻阅起《SQL 必知必会》，尽快自我动手 丰衣足食啦～</div>2019-07-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/87/25/898dea4e.jpg" width="30px"><span>桃园悠然在</span> 👍（1） 💬（1）<div>从数据分析专栏过来的，老师的配图依旧很赞，很有阅读欲！</div>2019-07-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/14/9e/a880956c.jpg" width="30px"><span>Leo_豆花味</span> 👍（1） 💬（1）<div>打卡第二天</div>2019-06-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/72/65/68bd8177.jpg" width="30px"><span>雪飞鸿</span> 👍（1） 💬（1）<div>看SQL Server不在课程体系中</div>2019-06-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/37/2c/22f56ee4.jpg" width="30px"><span>细琴Ivy彬</span> 👍（1） 💬（1）<div>老师，请问后期有教怎么建立数据库吗？要用什么工具软件～
+实操用SQL去查询数据库吗</div>2019-06-23</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIF4hVQibicU336icg4zJ1ia5iaT5almR5EE99EjgiazFu37CnJLLL2KibvOiaC6jEWroaJJqTKfW6B3TXKRQ/132" width="30px"><span>凌晨四点半</span> 👍（1） 💬（1）<div>打卡</div>2019-06-19</li><br/>
+</ul>

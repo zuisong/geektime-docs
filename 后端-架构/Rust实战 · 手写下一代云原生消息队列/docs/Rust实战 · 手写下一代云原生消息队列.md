@@ -6,5 +6,5 @@
 
 值得一提的是，课程所涉及的项目来自许文强老师的个人开源作品 RobustMQ，—个 100% 用 Rust 实现的云原生消息队列，加入课程即可直接参与成为 Contributor，收获 Rust 编程长期实战场景。
 
-- 本课程可运行 Demo 源代码： [https://github.com/robustmq/robustmq-geek](https://github.com/robustmq/robustmq-geek)
-- RobustMQ 开源项目代码： [https://github.com/robustmq/robustmq](https://github.com/robustmq/robustmq)
+- 本课程可运行 Demo 源代码：[https://github.com/robustmq/robustmq-geek](https://github.com/robustmq/robustmq-geek)
+- RobustMQ 开源项目代码：[https://github.com/robustmq/robustmq](https://github.com/robustmq/robustmq)

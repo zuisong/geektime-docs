@@ -6,6 +6,9 @@
 
 还等什么，点击下面按钮开始测试吧！
 
-[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142*201)](http://time.geekbang.org/quiz/intro?act_id=382&exam_id=1214)
+[![](https://static001.geekbang.org/resource/image/28/a4/28d1be62669b4f3cc01c36466bf811a4.png?wh=1142%2A201)](http://time.geekbang.org/quiz/intro?act_id=382&exam_id=1214)
 
-最后，我为你准备了 [调查问卷](https://jinshuju.net/f/agBYz6)，题目不多，希望你可以花两分钟填一下。十分期待能听到你的反馈，说说你对这门课程的想法和建议。
+最后，我为你准备了[调查问卷](https://jinshuju.net/f/agBYz6)，题目不多，希望你可以花两分钟填一下。十分期待能听到你的反馈，说说你对这门课程的想法和建议。
+<div><strong>精选留言（3）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/13/7b/bd/ccb37425.jpg" width="30px"><span>进化菌</span> 👍（0） 💬（1）<div>题目比较基础，不小心才答了80分，不知道及格没有呢</div>2021-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/23/66/413c0bb5.jpg" width="30px"><span>LDxy</span> 👍（0） 💬（1）<div>谢谢老师！</div>2021-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>70分</div>2023-07-28</li><br/>
+</ul>

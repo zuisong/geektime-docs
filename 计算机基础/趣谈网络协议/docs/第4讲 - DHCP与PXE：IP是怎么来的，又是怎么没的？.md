@@ -9,7 +9,6 @@
 ```
 $ sudo ifconfig eth1 10.0.0.1/24
 $ sudo ifconfig eth1 up
-
 ```
 
 **使用iproute2：**
@@ -17,7 +16,6 @@ $ sudo ifconfig eth1 up
 ```
 $ sudo ip addr add 10.0.0.1/24 dev eth1
 $ sudo ip link set up eth1
-
 ```
 
 你可能会问了，自己配置这个自由度太大了吧，我是不是配置什么都可以？如果配置一个和谁都不搭边的地址呢？例如，旁边的机器都是192.168.1.x，我非得配置一个16.158.23.6，会出现什么现象呢？
@@ -27,148 +25,38 @@ $ sudo ip link set up eth1
 192.168.1.6就在你这台机器的旁边，甚至是在同一个交换机上，而你把机器的地址设为了16.158.23.6。在这台机器上，你企图去ping192.168.1.6，你觉得只要将包发出去，同一个交换机的另一台机器马上就能收到，对不对？
 
 可是Linux系统不是这样的，它没你想的那么智能。你用肉眼看到那台机器就在旁边，它则需要根据自己的逻辑进行处理。
-
-还记得我们在第二节说过的原则吗？ **只要是在网络上跑的包，都是完整的，可以有下层没上层，绝对不可能有上层没下层。**
-
-所以，你看着它有自己的源IP地址16.158.23.6，也有目标IP地址192.168.1.6，但是包发不出去，这是因为MAC层还没填。
-
-自己的MAC地址自己知道，这个容易。但是目标MAC填什么呢？是不是填192.168.1.6这台机器的MAC地址呢？
-
-当然不是。Linux首先会判断，要去的这个地址和我是一个网段的吗，或者和我的一个网卡是同一网段的吗？只有是一个网段的，它才会发送ARP请求，获取MAC地址。如果发现不是呢？
-
-**Linux默认的逻辑是，如果这是一个跨网段的调用，它便不会直接将包发送到网络上，而是企图将包发送到网关。**
-
-如果你配置了网关的话，Linux会获取网关的MAC地址，然后将包发出去。对于192.168.1.6这台机器来讲，虽然路过它家门的这个包，目标IP是它，但是无奈MAC地址不是它的，所以它的网卡是不会把包收进去的。
-
-如果没有配置网关呢？那包压根就发不出去。
-
-如果将网关配置为192.168.1.6呢？不可能，Linux不会让你配置成功的，因为网关要和当前的网络至少一个网卡是同一个网段的，怎么可能16.158.23.6的网关是192.168.1.6呢？
-
-所以，当你需要手动配置一台机器的网络IP时，一定要好好问问你的网络管理员。如果在机房里面，要去网络管理员那里申请，让他给你分配一段正确的IP地址。当然，真正配置的时候，一定不是直接用命令配置的，而是放在一个配置文件里面。 **不同系统的配置文件格式不同，但是无非就是CIDR、子网掩码、广播地址和网关地址**。
-
-## 动态主机配置协议（DHCP）
-
-原来配置IP有这么多门道儿啊。你可能会问了，配置了IP之后一般不能变的，配置一个服务端的机器还可以，但是如果是客户端的机器呢？我抱着一台笔记本电脑在公司里走来走去，或者白天来晚上走，每次使用都要配置IP地址，那可怎么办？还有人事、行政等非技术人员，如果公司所有的电脑都需要IT人员配置，肯定忙不过来啊。
-
-因此，我们需要有一个自动配置的协议，也就是 **动态主机配置协议（Dynamic Host Configuration Protocol）**，简称 **DHCP**。
-
-有了这个协议，网络管理员就轻松多了。他只需要配置一段共享的IP地址。每一台新接入的机器都通过DHCP协议，来这个共享的IP地址里申请，然后自动配置好就可以了。等人走了，或者用完了，还回去，这样其他的机器也能用。
-
-所以说， **如果是数据中心里面的服务器，IP一旦配置好，基本不会变，这就相当于买房自己装修。DHCP的方式就相当于租房。你不用装修，都是帮你配置好的。你暂时用一下，用完退租就可以了。**
-
-## 解析DHCP的工作方式
-
-当一台机器新加入一个网络的时候，肯定一脸懵，啥情况都不知道，只知道自己的MAC地址。怎么办？先吼一句，我来啦，有人吗？这时候的沟通基本靠“吼”。这一步，我们称为 **DHCP Discover。**
-
-新来的机器使用IP地址0.0.0.0发送了一个广播包，目的IP地址为255.255.255.255。广播包封装了UDP，UDP封装了BOOTP。其实DHCP是BOOTP的增强版，但是如果你去抓包的话，很可能看到的名称还是BOOTP协议。
-
-在这个广播包里面，新人大声喊：我是新来的（Boot request），我的MAC地址是这个，我还没有IP，谁能给租给我个IP地址！
-
-格式就像这样：
-
-![](https://static001.geekbang.org/resource/image/90/81/90b4d41ee38e891031705d987d5d8481.jpg?wh=1405*1141)
-
-如果一个网络管理员在网络里面配置了 **DHCP Server** 的话，他就相当于这些IP的管理员。他立刻能知道来了一个“新人”。这个时候，我们可以体会MAC地址唯一的重要性了。当一台机器带着自己的MAC地址加入一个网络的时候，MAC是它唯一的身份，如果连这个都重复了，就没办法配置了。
-
-只有MAC唯一，IP管理员才能知道这是一个新人，需要租给它一个IP地址，这个过程我们称为 **DHCP Offer**。同时，DHCP Server为此客户保留为它提供的IP地址，从而不会为其他DHCP客户分配此IP地址。
-
-DHCP Offer的格式就像这样，里面有给新人分配的地址。
-
-![](https://static001.geekbang.org/resource/image/a5/6b/a52c8c87b925b52059febe9dfcd6be6b.jpg?wh=1405*1141)
-
-DHCP Server仍然使用广播地址作为目的地址，因为，此时请求分配IP的新人还没有自己的IP。DHCP Server回复说，我分配了一个可用的IP给你，你看如何？除此之外，服务器还发送了子网掩码、网关和IP地址租用期等信息。
-
-新来的机器很开心，它的“吼”得到了回复，并且有人愿意租给它一个IP地址了，这意味着它可以在网络上立足了。当然更令人开心的是，如果有多个DHCP Server，这台新机器会收到多个IP地址，简直受宠若惊。
-
-它会选择其中一个DHCP Offer，一般是最先到达的那个，并且会向网络发送一个DHCP Request广播数据包，包中包含客户端的MAC地址、接受的租约中的IP地址、提供此租约的DHCP服务器地址等，并告诉所有DHCP Server它将接受哪一台服务器提供的IP地址，告诉其他DHCP服务器，谢谢你们的接纳，并请求撤销它们提供的IP地址，以便提供给下一个IP租用请求者。
-
-![](https://static001.geekbang.org/resource/image/cd/fa/cdbcaad24e1a4d24dd724e38f6f043fa.jpg?wh=1405*1141)
-
-此时，由于还没有得到DHCP Server的最后确认，客户端仍然使用0.0.0.0为源IP地址、255.255.255.255为目标地址进行广播。在BOOTP里面，接受某个DHCP Server的分配的IP。
-
-当DHCP Server接收到客户机的DHCP request之后，会广播返回给客户机一个DHCP ACK消息包，表明已经接受客户机的选择，并将这一IP地址的合法租用信息和其他的配置信息都放入该广播包，发给客户机，欢迎它加入网络大家庭。
-
-![](https://static001.geekbang.org/resource/image/cc/a9/cca8b0baa4749bb359e453b1b482e1a9.jpg?wh=1405*1141)
-
-最终租约达成的时候，还是需要广播一下，让大家都知道。
-
-## IP地址的收回和续租
-
-既然是租房子，就是有租期的。租期到了，管理员就要将IP收回。
-
-如果不用的话，收回就收回了。就像你租房子一样，如果还要续租的话，不能到了时间再续租，而是要提前一段时间给房东说。DHCP也是这样。
-
-客户机会在租期过去50%的时候，直接向为其提供IP地址的DHCP Server发送DHCP request消息包。客户机接收到该服务器回应的DHCP ACK消息包，会根据包中所提供的新的租期以及其他已经更新的TCP/IP参数，更新自己的配置。这样，IP租用更新就完成了。
-
-好了，一切看起来完美。DHCP协议大部分人都知道，但是其实里面隐藏着一个细节，很多人可能不会去注意。接下来，我就讲一个有意思的事情：网络管理员不仅能自动分配IP地址，还能帮你自动安装操作系统！
-
-## 预启动执行环境（PXE）
-
-普通的笔记本电脑，一般不会有这种需求。因为你拿到电脑时，就已经有操作系统了，即便你自己重装操作系统，也不是很麻烦的事情。但是，在数据中心里就不一样了。数据中心里面的管理员可能一下子就拿到几百台空的机器，一个个安装操作系统，会累死的。
-
-所以管理员希望的不仅仅是自动分配IP地址，还要自动安装系统。装好系统之后自动分配IP地址，直接启动就能用了，这样当然最好了！
-
-这事儿其实仔细一想，还是挺有难度的。安装操作系统，应该有个光盘吧。数据中心里不能用光盘吧，想了一个办法就是，可以将光盘里面要安装的操作系统放在一个服务器上，让客户端去下载。但是客户端放在哪里呢？它怎么知道去哪个服务器上下载呢？客户端总得安装在一个操作系统上呀，可是这个客户端本来就是用来安装操作系统的呀？
-
-其实，这个过程和操作系统启动的过程有点儿像。首先，启动BIOS。这是一个特别小的小系统，只能干特别小的一件事情。其实就是读取硬盘的MBR启动扇区，将GRUB启动起来；然后将权力交给GRUB，GRUB加载内核、加载作为根文件系统的initramfs文件；然后将权力交给内核；最后内核启动，初始化整个操作系统。
-
-那我们安装操作系统的过程，只能插在BIOS启动之后了。因为没安装系统之前，连启动扇区都没有。因而这个过程叫做 **预启动执行环境（Pre-boot Execution Environment）**，简称 **PXE。**
-
-PXE协议分为客户端和服务器端，由于还没有操作系统，只能先把客户端放在BIOS里面。当计算机启动时，BIOS把PXE客户端调入内存里面，就可以连接到服务端做一些操作了。
-
-首先，PXE客户端自己也需要有个IP地址。因为PXE的客户端启动起来，就可以发送一个DHCP的请求，让DHCP Server给它分配一个地址。PXE客户端有了自己的地址，那它怎么知道PXE服务器在哪里呢？对于其他的协议，都好办，要有人告诉他。例如，告诉浏览器要访问的IP地址，或者在配置中告诉它；例如，微服务之间的相互调用。
-
-但是PXE客户端启动的时候，啥都没有。好在DHCP Server除了分配IP地址以外，还可以做一些其他的事情。这里有一个DHCP Server的一个样例配置：
-
-```
-ddns-update-style interim;
-ignore client-updates;
-allow booting;
-allow bootp;
-subnet 192.168.1.0 netmask 255.255.255.0
-{
-option routers 192.168.1.1;
-option subnet-mask 255.255.255.0;
-option time-offset -18000;
-default-lease-time 21600;
-max-lease-time 43200;
-range dynamic-bootp 192.168.1.240 192.168.1.250;
-filename "pxelinux.0";
-next-server 192.168.1.180;
-}
-
-```
-
-按照上面的原理，默认的DHCP Server是需要配置的，无非是我们配置IP的时候所需要的IP地址段、子网掩码、网关地址、租期等。如果想使用PXE，则需要配置next-server，指向PXE服务器的地址，另外要配置初始启动文件filename。
-
-这样PXE客户端启动之后，发送DHCP请求之后，除了能得到一个IP地址，还可以知道PXE服务器在哪里，也可以知道如何从PXE服务器上下载某个文件，去初始化操作系统。
-
-## 解析PXE的工作过程
-
-接下来我们来详细看一下PXE的工作过程。
-
-首先，启动PXE客户端。第一步是通过DHCP协议告诉DHCP Server，我刚来，一穷二白，啥都没有。DHCP Server便租给它一个IP地址，同时也给它PXE服务器的地址、启动文件pxelinux.0。
-
-其次，PXE客户端知道要去PXE服务器下载这个文件后，就可以初始化机器。于是便开始下载，下载的时候使用的是TFTP协议。所以PXE服务器上，往往还需要有一个TFTP服务器。PXE客户端向TFTP服务器请求下载这个文件，TFTP服务器说好啊，于是就将这个文件传给它。
-
-然后，PXE客户端收到这个文件后，就开始执行这个文件。这个文件会指示PXE客户端，向TFTP服务器请求计算机的配置信息pxelinux.cfg。TFTP服务器会给PXE客户端一个配置文件，里面会说内核在哪里、initramfs在哪里。PXE客户端会请求这些文件。
-
-最后，启动Linux内核。一旦启动了操作系统，以后就啥都好办了。
-
-![](https://static001.geekbang.org/resource/image/bb/8e/bbc2b660bba0ad00b5d1179db158498e.jpg?wh=2083*3001)
-
-## 小结
-
-好了，这一节就到这里了。我来总结一下今天的内容：
-
-- DHCP协议主要是用来给客户租用IP地址，和房产中介很像，要商谈、签约、续租，广播还不能“抢单”；
-
-- DHCP协议能给客户推荐“装修队”PXE，能够安装操作系统，这个在云计算领域大有用处。
-
-
-最后，学完了这一节，给你留两个思考题吧。
-
-1. PXE协议可以用来安装操作系统，但是如果每次重启都安装操作系统，就会很麻烦。你知道如何使得第一次安装操作系统，后面就正常启动吗？
-2. 现在上网很简单了，买个家用路由器，连上WIFI，给DHCP分配一个IP地址，就可以上网了。那你是否用过更原始的方法自己组过简单的网呢？说来听听。
-
-欢迎你留言和我讨论。趣谈网络协议，我们下期见！
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/11/53/19/965c845c.jpg" width="30px"><span>袁沛</span> 👍（344） 💬（10）<div>20年前大学宿舍里绕了好多同轴电缆的10M以太网，上BBS用IP，玩星际争霸用IPX。那时候没有DHCP，每栋楼有个哥们负责分配IP。</div>2018-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/6e/c6/4a7b2517.jpg" width="30px"><span>Will王志翔(大象)</span> 👍（139） 💬（1）<div>以问答写笔记：
+
+1. 正确配置IP?
+	
+CIDR、子网掩码、广播地址和网关地址。
+	
+2. 在跨网段调用中，是如何获取目标IP的mac地址的？
+	
+从源IP网关获取所在网关mac,
+然后又替换为目标IP所在网段网关的mac,
+最后是目标IP的mac地址
+	
+3. 手动配置麻烦，怎么办？
+	
+DHCP！Dynamic Host Configuration Protocol！
+DHCP, 让你配置IP，如同自动房产中介。
+	
+4. 如果新来的，房子是空的(没有操作系统)，怎么办？
+	
+PXE， Pre-boot Execution Environment.
+&quot;装修队&quot;PXE，帮你安装操作系统。</div>2018-07-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/36/9e/8f031100.jpg" width="30px"><span>ERIC</span> 👍（91） 💬（14）<div>刘老师你好，文章关于DHCP可能是有两处错误。DHCP Offer 和 DHCP ACK都不是广播包，而是直接发到客户机的网卡上的。这是wiki上的链接：
+https:&#47;&#47;en.wikipedia.org&#47;wiki&#47;Dynamic_Host_Configuration_Protocol#DHCP_offer
+https:&#47;&#47;en.wikipedia.org&#47;wiki&#47;Dynamic_Host_Configuration_Protocol#DHCP_acknowledgement
+
+另外我自己也抓了包验证，https:&#47;&#47;baixiang.oss-cn-shenzhen.aliyuncs.com&#47;dhcp&#47;dhcp.png。</div>2019-03-01</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/FMwyx76xm95LgNQKtepBbNVMz011ibAjM42N2PicvqU9tib9n43AURiaq6CKCqEoGo9iahsNNsTSiaqANMmfCbK0kZhQ/132" width="30px"><span>机器人</span> 👍（51） 💬（2）<div>那么跨网段调用中，是如何获取目标IP 的mac地址的？根据讲解推理应该是从源IP网关获取所在网关
+mac,然后又替换为目标IP所在网段网关的mac,最后是目标IP的mac地址，不知对否</div>2018-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/97/39/60d6a10d.jpg" width="30px"><span>天涯囧侠</span> 👍（47） 💬（2）<div>在一个有dhcp的网络里，如果我手动配置了一个IP，dhcp Server会知道这个信息，并不再分配这个IP吗？会的话具体是怎样交互的呢？</div>2018-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/f8/bd/16545faf.jpg" width="30px"><span>陈浩佳</span> 👍（38） 💬（3）<div>我分享一个我最近遇到的问题:
+最近我们的设备增加了dhcp自动分配地址的功能。我把几台设备连到同个路由器上，但是发现每台设备最后分配到的ip都是一样的，我登录了路由器里面查看，显示的设备列表确实是ip都是一致的，mac地址是不一致的。。。。所以就觉得有点奇怪。不过这里要说明的是，设备的mac地址是我们自己程序里面设置的，网卡不带mac地址的----最后查看代码发现，我们设备代码是先启动了dhcp客户端，后面再设置了mac地址，这里就有问题了，所以，我把它倒过来，先设置mac地址，再启动dhcp客户端，这样就解决问题了。。。由于原先启动dhcp的时候还未设置mac地址，所以默认的mac地址都是一致的，所以获取的ip都是一致的。但是，这里也说明一个问题，路由器列表上的mac地址不一定就是分配ip时的mac地址，如果分配到ip后再去修改mac地址，也是会同步到路由器上的，但是不会重新分配ip。
+</div>2020-06-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7d/95/dd73022c.jpg" width="30px"><span>我是曾经那个少年</span> 👍（38） 💬（1）<div>看了虽然懂了，但是对于一个做软件开发的，不知道怎么去实战！</div>2018-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d0/f1/432e0476.jpg" width="30px"><span>X</span> 👍（36） 💬（1）<div>进入BIOS设置页面，有一项PXE Boot to LAN，若设置为Enabled则表示计算机从网络启动，从PXE服务端下载配置文件和操作系统内核进行启动；若设置为Disabled则表示从本地启动，启动动BIOS后，会去寻找启动扇区，如果没有安装操作系统，就会找不到启动扇区，这个时候就启动不起来。</div>2018-05-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f8/ba/d28174a9.jpg" width="30px"><span>Geek_zbvt62</span> 👍（35） 💬（6）<div>跨网段的通信，一般都是ip包头的目标地址是最终目标地址，但2层包头的目标地址总是下一个网关的，是么？</div>2018-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/4c/fd/8022b3a2.jpg" width="30px"><span>penghuster</span> 👍（32） 💬（1）<div>请教一下，pxe客户端请求的IP，是否最终会直接用于系统</div>2018-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/54/cf/fddcf843.jpg" width="30px"><span>芋头</span> 👍（32） 💬（1）<div>要是以前大学老师能够讲得如此精彩，易懂，大学就不会白学了</div>2018-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3f/97/8d7a6460.jpg" width="30px"><span>卡卡</span> 👍（25） 💬（1）<div>pxe要去tftp下载初始文件，那么pxe自己是不是也需要一个tftp客户端？</div>2018-05-25</li><br/><li><img src="" width="30px"><span>呵呵</span> 👍（20） 💬（1）<div>pxe客户端是放在哪里的？</div>2018-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/4f/94/05044c31.jpg" width="30px"><span>踢车牛</span> 👍（10） 💬（3）<div>老师，你好，上面你提到网关至少和当前一个网络的一个网卡在同一个网段内，这么说网关上可以配置多个网卡，
+假如网关上有两个网卡，其中一个是192.168.1.6，另一个是
+16.158.23.X,这样包可以发出去么？</div>2018-09-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a5/cd/3aff5d57.jpg" width="30px"><span>Alery</span> 👍（9） 💬（7）<div>“如果你配置了网关的话，Linux 会获取网关的 MAC 地址，然后将包发出去。对于 192.168.1.6 这台机器来讲，虽然路过它家门的这个包，目标 IP 是它，但是无奈 MAC 地址不是它的，所以它的网卡是不会把包收进去的。”
+
+刘老师，网络包到达网关，根据第一章网关应该也是会通过ARP协议大吼一声谁的ip地址是192.168.1.6，当192.168.1.6这台主机发现在叫自己就会响应网关他的mac地址，这样不就有获得192.168.1.6主机的mac地址了吗？</div>2018-06-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fe/8f/466f880d.jpg" width="30px"><span>没心没肺</span> 👍（8） 💬（1）<div>当年联机打C&amp;C，眼看快要败了，偷偷拧掉终结器……嘿嘿……</div>2018-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/12/ce/a8c8b5e8.jpg" width="30px"><span>Jason</span> 👍（7） 💬（1）<div>大道至简。牛</div>2018-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/bb/85/191eea69.jpg" width="30px"><span>搬铁少年ai</span> 👍（6） 💬（1）<div>想问一下老师，为什么要用tftp而不是ftp，我记得ap更新系统也是tftp</div>2018-10-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5b/b9/d07de7c6.jpg" width="30px"><span>FLOSS</span> 👍（6） 💬（1）<div>交换机，路由器，集线器这些东西的区别是什么？DHCP是不是只有在路由器中有？ARP协议是PC对PC的还是，PC给路由器，然后路由器再给另外一台PC，路由器有自己的MAC地址吗？</div>2018-05-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/af/73/946c4638.jpg" width="30px"><span>🤘🤘🤘</span> 👍（5） 💬（1）<div>Clients requesting renewal of an existing lease may communicate directly via UDP unicast, since the client already has an established IP address at that point. Additionally, there is a BROADCAST flag (1 bit in 2 byte flags field, where all other bits are reserved and so are set to 0) the client can use to indicate in which way (broadcast or unicast) it can receive the DHCPOFFER: 0x8000 for broadcast, 0x0000 for unicast.[4] Usually, the DHCPOFFER is sent through unicast. For those hosts which cannot accept unicast packets before IP addresses are configured, this flag can be used to work around this issue.  维基上说的是两种选择(广播和单播 通常为单播)</div>2019-04-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/44/35/3b8372c5.jpg" width="30px"><span>chinhu ko</span> 👍（5） 💬（1）<div>为什么我的网卡标识一个是 enp5s0f1 ,一个是 lo ,一个是 wlp4s0 ,没有你提到的 eth0 和 eth1 ？</div>2018-05-26</li><br/><li><img src="" width="30px"><span>Subhuti</span> 👍（4） 💬（1）<div>在这个广播包里面，新人大声喊：我是新来的（Boot request），我的 MAC 地址是这个，我还没有 IP，谁能给租给我个 IP 地址！
+请问，目标端口67，这个是如何获得的呢？</div>2020-01-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/85/0a/e564e572.jpg" width="30px"><span>N_H</span> 👍（4） 💬（1）<div>网关是硬件吗？</div>2019-06-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/88/fe/c18a85fe.jpg" width="30px"><span>随风</span> 👍（4） 💬（1）<div>pxe在bios后面启动，那时候还没有操作系统，也就没有文件系统，那下载的文件存放在何处呢？小白求解！</div>2019-04-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ca/61/b3f00e6f.jpg" width="30px"><span>byte</span> 👍（4） 💬（1）<div>客户端和DHCP server的识别在MAC和IP层都是广播地址，他们通过BTOOP的协议内容来识别是否为自己的应答？</div>2018-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/57/0f/1f229bf5.jpg" width="30px"><span>Void_seT</span> 👍（4） 💬（1）<div>我印象中10.0.0.1&#47;24是路由器地址，这是把这台机器配成路由器了么？配成10.0.0.2&#47;24也没问题吧？</div>2018-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（3） 💬（1）<div>吼是同一个网段 是arp协议在发挥作用 是在找mac地址相同的机器 是在二层设备里发生的事情</div>2019-08-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/0f/70/759b1567.jpg" width="30px"><span>张飞online</span> 👍（3） 💬（1）<div>在上面是，先判断目的地址是不是在同一网段，然后确定是否发arp广播，还是先发广播，发现没有应答，然后发网关</div>2018-10-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/08/d2/71987d0b.jpg" width="30px"><span>夜禹</span> 👍（3） 💬（1）<div>老师，跨网段请求如果在外面没找到目标MAC，就不会回子网找了吗</div>2018-09-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ab/69/5f1f0d1c.jpg" width="30px"><span>支离书</span> 👍（3） 💬（1）<div>学习了，pxe客户端获取到的操作系统最后安装到硬盘上了吗？如何安装的？pxe写启动扇区吗？</div>2018-06-22</li><br/>
+</ul>

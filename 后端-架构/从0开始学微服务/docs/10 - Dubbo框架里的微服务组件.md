@@ -14,23 +14,22 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:dubbo="http://dubbo.apache.org/schema/dubbo"
     xsi:schemaLocation="http://www.springframework.org/schema/beans        http://www.springframework.org/schema/beans/spring-beans-4.3.xsd        http://dubbo.apache.org/schema/dubbo        http://dubbo.apache.org/schema/dubbo/dubbo.xsd">
-
+ 
     <!-- 提供方应用信息，用于计算依赖关系 -->
     <dubbo:application name="hello-world-app"  />
-
+ 
     <!-- 使用multicast广播注册中心暴露服务地址 -->
     <dubbo:registry address="multicast://224.5.6.7:1234" />
-
+ 
     <!-- 用dubbo协议在20880端口暴露服务 -->
     <dubbo:protocol name="dubbo" port="20880" />
-
+ 
     <!-- 声明需要暴露的服务接口 -->
     <dubbo:service interface="com.alibaba.dubbo.demo.DemoService" ref="demoService" />
-
+ 
     <!-- 和本地bean一样实现服务 -->
     <bean id="demoService" class="com.alibaba.dubbo.demo.provider.DemoServiceImpl" />
 </beans>
-
 ```
 
 其中“dubbo:service”开头的配置项声明了服务提供者要发布的接口，“dubbo:protocol”开头的配置项声明了服务提供者要发布的接口的协议以及端口号。
@@ -39,187 +38,16 @@ Dubbo会把以上配置项解析成下面的URL格式：
 
 ```
 dubbo://host-ip:20880/com.alibaba.dubbo.demo.DemoService
-
 ```
 
-然后基于 [扩展点自适应机制](http://dubbo.incubator.apache.org/zh-cn/docs/dev/SPI.html)，通过URL的“dubbo://”协议头识别，就会调用DubboProtocol的export()方法，打开服务端口20880，就可以把服务demoService暴露到20880端口了。
-
-再来看下服务引用的过程，下面这段代码是服务消费者的XML配置。
-
-```
-<?xml version="1.0" encoding="UTF-8"?>
-<beans xmlns="http://www.springframework.org/schema/beans"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xmlns:dubbo="http://dubbo.apache.org/schema/dubbo"
-    xsi:schemaLocation="http://www.springframework.org/schema/beans        http://www.springframework.org/schema/beans/spring-beans-4.3.xsd        http://dubbo.apache.org/schema/dubbo        http://dubbo.apache.org/schema/dubbo/dubbo.xsd">
-
-    <!-- 消费方应用名，用于计算依赖关系，不是匹配条件，不要与提供方一样 -->
-    <dubbo:application name="consumer-of-helloworld-app"  />
-
-    <!-- 使用multicast广播注册中心暴露发现服务地址 -->
-    <dubbo:registry address="multicast://224.5.6.7:1234" />
-
-    <!-- 生成远程服务代理，可以和本地bean一样使用demoService -->
-    <dubbo:reference id="demoService" interface="com.alibaba.dubbo.demo.DemoService" />
-</beans>
-
-```
-
-其中“dubbo:reference”开头的配置项声明了服务消费者要引用的服务，Dubbo会把以上配置项解析成下面的URL格式：
-
-```
-dubbo://com.alibaba.dubbo.demo.DemoService
-
-```
-
-然后基于扩展点自适应机制，通过URL的“dubbo://”协议头识别，就会调用DubboProtocol的refer()方法，得到服务demoService引用，完成服务引用过程。
-
-## 服务注册与发现
-
-先来看下服务提供者注册服务的过程，继续以前面服务提供者的XML配置为例，其中“dubbo://registry”开头的配置项声明了注册中心的地址，Dubbo会把以上配置项解析成下面的URL格式：
-
-```
-registry://multicast://224.5.6.7:1234/com.alibaba.dubbo.registry.RegistryService?export=URL.encode("dubbo://host-ip:20880/com.alibaba.dubbo.demo.DemoService")
-
-```
-
-然后基于扩展点自适应机制，通过URL的“registry://”协议头识别，就会调用RegistryProtocol的export()方法，将export参数中的提供者URL，注册到注册中心。
-
-再来看下服务消费者发现服务的过程，同样以前面服务消费者的XML配置为例，其中“dubbo://registry”开头的配置项声明了注册中心的地址，跟服务注册的原理类似，Dubbo也会把以上配置项解析成下面的URL格式：
-
-```
-registry://multicast://224.5.6.7:1234/com.alibaba.dubbo.registry.RegistryService?refer=URL.encode("consummer://host-ip/com.alibaba.dubbo.demo.DemoService")
-
-```
-
-然后基于扩展点自适应机制，通过URL的“registry://”协议头识别，就会调用RegistryProtocol的refer()方法，基于refer参数中的条件，查询服务demoService的地址。
-
-## 服务调用
-
-专栏前面我讲过在服务调用的过程中，通常把服务消费者叫作客户端，服务提供者叫作服务端，发起一次服务调用需要解决四个问题：
-
-- 客户端和服务端如何建立网络连接？
-
-- 服务端如何处理请求？
-
-- 数据传输采用什么协议？
-
-- 数据该如何序列化和反序列化？
-
-
-其中前两个问题客户端和服务端如何建立连接和服务端如何处理请求是通信框架要解决的问题，Dubbo支持多种通信框架，比如Netty 4，需要在服务端和客户端的XML配置中添加下面的配置项。
-
-服务端：
-
-```
-<dubbo:protocol server="netty4" />
-
-```
-
-客户端：
-
-```
-<dubbo:consumer client="netty4" />
-
-```
-
-这样基于扩展点自适应机制，客户端和服务端之间的调用会通过Netty 4框架来建立连接，并且服务端采用NIO方式来处理客户端的请求。
-
-再来看下Dubbo的数据传输采用什么协议。Dubbo不仅支持私有的Dubbo协议，还支持其他协议比如Hessian、RMI、HTTP、Web Service、Thrift等。下面这张图描述了私有Dubbo协议的协议头约定。
-
-![](https://static001.geekbang.org/resource/image/8f/a5/8f98ef03078163adc8055b02ac4337a5.jpg?wh=727*491)
-
-(图片来源： [https://dubbo.incubator.apache.org/docs/zh-cn/dev/sources/images/dubbo\_protocol\_header.jpg](https://dubbo.incubator.apache.org/docs/zh-cn/dev/sources/images/dubbo_protocol_header.jpg) ）
-
-至于数据序列化和反序列方面，Dubbo同样也支持多种序列化格式，比如Dubbo、Hession 2.0、JSON、Java、Kryo以及FST等，可以通过在XML配置中添加下面的配置项。
-
-例如：
-
-```
-<dubbo:protocol name="dubbo" serialization="kryo"/>
-
-```
-
-## 服务监控
-
-服务监控主要包括四个流程：数据采集、数据传输、数据处理和数据展示，其中服务框架的作用是进行埋点数据采集，然后上报给监控系统。
-
-在Dubbo框架中，无论是服务提供者还是服务消费者，在执行服务调用的时候，都会经过Filter调用链拦截，来完成一些特定功能，比如监控数据埋点就是通过在Filter调用链上装备了MonitorFilter来实现的，详细的代码实现你可以参考 [这里](https://github.com/apache/incubator-dubbo/blob/7a48fac84b14ac6a21c1bdfc5958705dd8dda84d/dubbo-monitor/dubbo-monitor-api/src/main/java/org/apache/dubbo/monitor/support/MonitorFilter.java)。
-
-## 服务治理
-
-服务治理手段包括节点管理、负载均衡、服务路由、服务容错等，下面这张图给出了Dubbo框架服务治理的具体实现。
-
-![](https://static001.geekbang.org/resource/image/8d/fc/8d02991a1eac41596979d8e89f5344fc.jpg?wh=600*300)
-
-（图片来源： [http://dubbo.incubator.apache.org/docs/zh-cn/user/sources/images/cluster.jpg](http://dubbo.incubator.apache.org/docs/zh-cn/user/sources/images/cluster.jpg) ）
-
-图中的Invoker是对服务提供者节点的抽象，Invoker封装了服务提供者的地址以及接口信息。
-
-- 节点管理：Directory负责从注册中心获取服务节点列表，并封装成多个Invoker，可以把它看成“List<Invoker>” ，它的值可能是动态变化的，比如注册中心推送变更时需要更新。
-
-- 负载均衡：LoadBalance负责从多个Invoker中选出某一个用于发起调用，选择时可以采用多种负载均衡算法，比如Random、RoundRobin、LeastActive等。
-
-- 服务路由：Router负责从多个Invoker中按路由规则选出子集，比如读写分离、机房隔离等。
-
-- 服务容错：Cluster将Directory中的多个Invoker伪装成一个Invoker，对上层透明，伪装过程包含了容错逻辑，比如采用Failover策略的话，调用失败后，会选择另一个Invoker，重试请求。
-
-
-## 一次服务调用的流程
-
-上面我讲的是Dubbo下每个基本组件的实现方式，那么Dubbo框架下，一次服务调用的流程是什么样的呢？下面结合这张图，我来给你详细讲解一下。
-
-![](https://static001.geekbang.org/resource/image/bf/19/bff032fdcca1272bb0349286caad6c19.jpg?wh=800*738)
-
-(图片来源： [https://dubbo.incubator.apache.org/docs/zh-cn/dev/sources/images/dubbo-extension.jpg](https://dubbo.incubator.apache.org/docs/zh-cn/dev/sources/images/dubbo-extension.jpg) ）
-
-首先我来解释微服务架构中各个组件分别对应到上面这张图中是如何实现。
-
-- 服务发布与引用：对应实现是图里的Proxy服务代理层，Proxy根据客户端和服务端的接口描述，生成接口对应的客户端和服务端的Stub，使得客户端调用服务端就像本地调用一样。
-
-- 服务注册与发现：对应实现是图里的Registry注册中心层，Registry根据客户端和服务端的接口描述，解析成服务的URL格式，然后调用注册中心的API，完成服务的注册和发现。
-
-- 服务调用：对应实现是Protocol远程调用层，Protocol把客户端的本地请求转换成RPC请求。然后通过Transporter层来实现通信，Codec层来实现协议封装，Serialization层来实现数据序列化和反序列化。
-
-- 服务监控：对应实现层是Filter调用链层，通过在Filter调用链层中加入MonitorFilter，实现对每一次调用的拦截，在调用前后进行埋点数据采集，上传给监控系统。
-
-- 服务治理：对应实现层是Cluster层，负责服务节点管理、负载均衡、服务路由以及服务容错。
-
-
-再来看下微服务架构各个组件是如何串联起来组成一个完整的微服务框架的，以Dubbo框架下一次服务调用的过程为例，先来看下客户端发起调用的过程。
-
-- 首先根据接口定义，通过Proxy层封装好的透明化接口代理，发起调用。
-
-- 然后在通过Registry层封装好的服务发现功能，获取所有可用的服务提供者节点列表。
-
-- 再根据Cluster层的负载均衡算法从可用的服务节点列表中选取一个节点发起服务调用，如果调用失败，根据Cluster层提供的服务容错手段进行处理。
-
-- 同时通过Filter层拦截调用，实现客户端的监控统计。
-
-- 最后在Protocol层，封装成Dubbo RPC请求，发给服务端节点。
-
-
-这样的话，客户端的请求就从一个本地调用转化成一个远程RPC调用，经过服务调用框架的处理，通过网络传输到达服务端。其中服务调用框架包括通信协议框架Transporter、通信协议Codec、序列化Serialization三层处理。
-
-服务端从网络中接收到请求后的处理过程是这样的：
-
-- 首先在Protocol层，把网络上的请求解析成Dubbo RPC请求。
-
-- 然后通过Filter拦截调用，实现服务端的监控统计。
-
-- 最后通过Proxy层的处理，把Dubbo RPC请求转化为接口的具体实现，执行调用。
-
-
-## 总结
-
-今天我给你讲述了Dubbo服务化框架每个基本组件的实现方式，以及一次Dubbo调用的流程。
-
-**对于学习微服务架构来说，最好的方式是去实际搭建一个微服务的框架，甚至去从代码入手做一些二次开发**。
-
-你可以按照Dubbo的 [官方文档](http://dubbo.incubator.apache.org/#/docs/user/quick-start.md?lang=zh-cn) 去安装并搭建一个服务化框架。如果想深入了解它的实现的话，可以下载 [源码](https://github.com/apache/incubator-dubbo) 来阅读。
-
-## 思考题
-
-在以Dubbo为例，学习完服务化框架的具体实现后，你对其中的实现细节还有什么疑问吗？
-
-欢迎你在留言区写下自己的思考，与我一起讨论。
+然后基于[扩展点自适应机制](http://dubbo.incubator.apache.org/zh-cn/docs/dev/SPI.html)，通过URL的“dubbo://”协议头识别，就会调用DubboProtocol的export()方法，打开服务端口20880，就可以把服务demoService暴露到20880端口了。
+<div><strong>精选留言（25）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/10/7d/da/780f149e.jpg" width="30px"><span>echo＿陈</span> 👍（17） 💬（1）<div>撸了半年的dubbo源码……
+胡老师这篇很不错，已分享给同事</div>2018-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/0e/c77ad9b1.jpg" width="30px"><span>eason2017</span> 👍（7） 💬（1）<div>这篇文章好哇，学习dunno 必备</div>2018-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/67/1d/58425d0b.jpg" width="30px"><span>Home</span> 👍（5） 💬（1）<div>后期会有springcloud的介绍嘛？</div>2018-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/46/c0/106d98e7.jpg" width="30px"><span>Sam_Deep_Thinking</span> 👍（3） 💬（1）<div>没玩过，不过看起来doubo很强大哈。学习了。下篇是讲spring cloud吗？</div>2018-09-13</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/PUiby8MibibKcMd88OtDq1c0myEILZjap46fyiaOlML0UlNWzj9NTIEXOhXCCR1tcUibG0I6UoGp59Zj8H5EYwzkY9g/132" width="30px"><span>fldhmily63319</span> 👍（3） 💬（1）<div>老师能评价一下Dubbo, Spring Cloud甚至是ZooKeeper的区别，优劣势吗？</div>2018-09-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqOOrv7cDhjs48zvkq9Ngl90wxXCGKSIbiarmQjYlUZy2ukb0Jh7sANcLziaPWyXcCibueHxR5Mw61ibQ/132" width="30px"><span>小白</span> 👍（1） 💬（1）<div>在微服务架构中，同一个服务是不是有可能既充当服务提供者的角色又充当服务消费者的角色呢？</div>2018-11-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9a/a9/dfea2c50.jpg" width="30px"><span>张龙大骗子</span> 👍（1） 💬（1）<div>neety是个好框架啊，thrift和protobuf也是</div>2018-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（1） 💬（3）<div>现在微服务框架，大部分都是java语言的，其他语言有推荐吗？比如nodejs或者go什么的</div>2018-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/55/fe/ab541300.jpg" width="30px"><span>小猪</span> 👍（0） 💬（1）<div>rancher可以用来做微服务框架吗？可以运行微服务系统吗？</div>2018-11-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9e/6e/c4fa7cbc.jpg" width="30px"><span>二师哥</span> 👍（0） 💬（1）<div>就算有有了前面学习的基础, 我依旧无法做到立刻理解. 已经看了三、四遍。
+打算看下文档，自己实现以下，然后边学习，边看文档和老胡的文章。</div>2018-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/4c/77/98a3f58a.jpg" width="30px"><span>庞小勇</span> 👍（37） 💬（4）<div>php开发者，听着一脸蒙逼</div>2018-09-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4b/d4/b7719327.jpg" width="30px"><span>波波安</span> 👍（4） 💬（0）<div>老师对怎么去读源码，有什么好的建议和方式吗，每次都不知道从哪看起😬</div>2018-10-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6c/ea/ce9854a5.jpg" width="30px"><span>坤</span> 👍（2） 💬（0）<div>Dubbo 服务治理相关的组件都是需要客户端自己在代码中选择使用吗？不像ServiceMesh可以独立于业务代码进行流量或服务的治理。</div>2021-03-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/00/45/a1fc2b46.jpg" width="30px"><span>Mr.Right</span> 👍（2） 💬（0）<div>python开发者，听着一脸蒙逼
+</div>2019-10-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（1） 💬（1）<div>牛逼的Dubbo
+牛逼的阿里
+牛逼的开源
+感谢😊</div>2019-05-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/51/f0/d1142758.jpg" width="30px"><span>Billylin</span> 👍（1） 💬（0）<div>胡老师，您好，如果后端服务使用dubbo框架的话，有什么组件可以充当网关这个角色呢？</div>2018-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/7a/d2/4ba67c0c.jpg" width="30px"><span>Sch0ng</span> 👍（0） 💬（0）<div>Dubbo是阿里发布的基于Java语言的开源微服务框架。理解的最佳途径是自己做实验。</div>2021-09-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/8e/e0/847348b1.jpg" width="30px"><span>爱学习的大叔</span> 👍（0） 💬（0）<div>不错，对dubbo有两个一个整体上的认识。</div>2020-04-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/bd/91/29c2a7fd.jpg" width="30px"><span>lw</span> 👍（0） 💬（0）<div>学了这课，有信心去看dubbo源码了。</div>2019-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8f/2b/c8922696.jpg" width="30px"><span>Geek_jra2hk</span> 👍（0） 💬（1）<div>rpc应该算是长连接吧？如果有多个服务端节点，每次都去通过负载均衡选择，那是在初始化的时候客户端需要跟所有服务端建立连接？求老师赐教</div>2019-09-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e3/02/0c228d1c.jpg" width="30px"><span>Tony</span> 👍（0） 💬（0）<div>代码侵入高，相对于spring cloud
+好处是可扩展性强，可定制化，性能优于http协议请求，虽然没玩过dubbo- ̗̀(๑ᵔ⌔ᵔ๑)</div>2019-02-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/7f/f6/32074937.jpg" width="30px"><span>Rainbow</span> 👍（0） 💬（0）<div>我们公司用的就是这一套，开发同学可以小团队做不同的模块，作为测试同学每天 xshell 都要开 n 多个窗口跟踪日志😅，还有就是某个功能出问题以后就要去检查环境，而且有好多个模块，好多个节点，好多个实例，也挺耗费时间的。课程很棒！感谢胡老师分享，看到跟微服务相关特地来学习的，谢谢分享！</div>2018-12-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/69/11/831cec7d.jpg" width="30px"><span>小寞子。(≥3≤)</span> 👍（0） 💬（0）<div>对于一个完全第一次听到dubbo这个词的人。我竟然听懂了。。。 理论上没毛病。。通过一系列的层集 来解决和自动化微服务的一系列问题和管理。。。只是看起来会很缓慢的样子。。。😂😂😂😂😂</div>2018-11-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/58/5a/15d1ffda.jpg" width="30px"><span>ctsPrsvrnc</span> 👍（0） 💬（1）<div>胡老师，一直有个疑问，spring cloud出了很久了，dubbo曾经断更过，为什么感觉国内依然还是选择dubbo多？仅仅是因为不依赖spring boot吗？</div>2018-09-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a7/aa/2a8c15fa.jpg" width="30px"><span>AhianZhang</span> 👍（0） 💬（0）<div>使用 filter 会影响性能</div>2018-09-13</li><br/>
+</ul>

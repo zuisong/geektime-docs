@@ -4,60 +4,32 @@
 
 这对中小型团队而言无疑是非常大的负担，也无形中拖慢了追求“小步快跑”，以快速应对市场变化的互联网产品交付节奏。
 
-为解决这一问题，各类打着“一套代码，多端运行”口号的跨平台开发方案，如雨后春笋般涌现， **React Native就是其中的典型代表**。
+为解决这一问题，各类打着“一套代码，多端运行”口号的跨平台开发方案，如雨后春笋般涌现，**React Native就是其中的典型代表**。
 
 React Native希望开发者能够在性能、展示、交互能力和迭代交付效率之间做到平衡。它在Web容器方案的基础上，优化了加载、解析和渲染这三大过程，以相对简单的方式支持了构建移动端页面必要的Web标准，保证了便捷的前端开发体验；并且在保留基本渲染能力的基础上，用原生自带的UI组件实现代替了核心的渲染引擎，从而保证了良好的渲染性能。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/14/83/e8/f726c635.jpg" width="30px"><span>加温后的啤酒</span> 👍（54） 💬（7）<div>老师你好，我之前接触过flutter，但是放弃了。因为接触了flutter之后发现，渲染UI方面确实性能、简洁性各方面都不错、可是像webView、音视频播放、第三方分享、数据持久化存储等功能需要大量的组件支持，flutter引擎并不支持。因此就需要去编写大量的组件、但是编写组件很麻烦、等于要写三套代码：iOS代码、安卓代码、Dart代码，那如果这么麻烦的话flutter存在的意义又是什么呢？这就是我放弃的原因。所以老师能讨论下这个问题该怎么解决吗？</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3d/77/45e5e06d.jpg" width="30px"><span>胡鹏</span> 👍（13） 💬（1）<div>我是工作两年的后端，半年前内部调岗到大数据，，不过我的全栈梦想和架构梦想一直没变过，</div>2019-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/9d/25/cc8a81c8.jpg" width="30px"><span>衣知世 与 计知白</span> 👍（11） 💬（2）<div>安卓开发4年多，感觉很多东西还是不会，毕竟单单一个安卓就有很多方向，IM，视频，直播等等，如果现在学习Flutter，这些底层的原理是不是还得继续学习，Flutter只是一个UI渲染库呢？比如视频播放什么的还得用到安卓里面的video呢？</div>2019-10-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/56/b7/4258025c.jpg" width="30px"><span>top_founder</span> 👍（11） 💬（2）<div>我对dart能否成为大众开发语言持怀疑态度。我更认为typescript是未来前端的主流开发语言。</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/50/39/371c9918.jpg" width="30px"><span>Xunqf</span> 👍（8） 💬（1）<div>我是做iOS开发的，Flutter是我接触的第一个跨平台开发框架，自学一段时间后，遇到了如下一些问题：
+1.网页加载问题。
+2.视频播放问题。
+3.原生和Flutter之间跳转问题。
+4.图片编辑问题。
+5.Platform View目前还是beta版，也有各种问题。
+6.网络请求代理的问题。
+7.等等吧。
+希望在这个专栏中能够得到解答。</div>2019-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/45/c0/b7ced73a.jpg" width="30px"><span>Eren</span> 👍（6） 💬（2）<div>我是工作两年的Android程序员，赶上了Android移动端的末班车，希望通过学习Flutter可以弯道超车，实现自己的小梦想！加油！小伙伴们！</div>2019-07-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/fd/2a/0d1d4f11.jpg" width="30px"><span>Norbert</span> 👍（6） 💬（2）<div>我是一个7年老前端了，打算从flutter入手切入客户端开发</div>2019-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/48/55/48de9a24.jpg" width="30px"><span>Carlo</span> 👍（5） 💬（1）<div>我们在生产环境使用flutter。发现适配新的native feature（比如dark mode 等）很成问题。您对这个有什么建议？</div>2019-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/4c/5b/5499d6e6.jpg" width="30px"><span>墨名次</span> 👍（5） 💬（1）<div>我做过几年Android&#47;IOS应用程序开发，也使用Weex写过公司项目，不过这些东西快一年没接触了，现在一直在写后端(Java、.Net)跟Web前端，Flutter没发布正式版的时候自己也根据文档学过一些皮毛，就是学了基础控件然后做了一些商城首页、列表、详情示例，后来因为工作原因暂时把它放下了。现在，总有放不下Flutter的那种感觉，感觉它会火，它是前端跨平台的一个趋势，所以又冒出了继续学习Flutter的想法，前几天自己也通过写博客分享了Flutter环境安装在Java11下遇到一些问题的解决方法。现在真的很忙，每天半夜才能睡觉，不想自己去翻文档、看博客学习了，这样太累，想利用睡觉前刷头条的时间学习一下Flutter，技多不压身，所以希望能够通过老师分享的这个课程系统的深入的学习Flutter，快速入门Flutter。</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/fc/a2/7da62426.jpg" width="30px"><span>Dominic</span> 👍（5） 💬（2）<div>评论区好多后端 学 flutter的 … …我也是，</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/11/3d/58ac17a0.jpg" width="30px"><span>水木年华</span> 👍（4） 💬（1）<div>前端开发一枚，熟悉webpack、react。老师有这些js基础学习Flutter会容易一些吗？</div>2019-07-02</li><br/><li><img src="" width="30px"><span>Geek_b3928a</span> 👍（4） 💬（1）<div>我是一位后端开发者，请问没有前端经验开始学习flutter是否吃力，能独立开发一个应用周期会有多久？</div>2019-07-01</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKibpqtH0ORBMSibtP6DzJ9yZmWzSxzv9ULPZmXyDrduib1fFkacNiakhOuOEOrUILFbA7jXQq2NEFKUg/132" width="30px"><span>L</span> 👍（4） 💬（1）<div>后端程序员适合学习吗</div>2019-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/59/ca/836d55ec.jpg" width="30px"><span>*</span> 👍（3） 💬（1）<div>老师好，我从实习到现在接触前端两年，最近准备学习flutter！目前接触的移动端解决方案是h5页面嵌在原生壳里面，这样做开发过程中和原生会有很多交互，不方便开发！
+1、需要android和iOS各自打包壳
+2、iOS上架审核慢问题
+3、第三方视频sdk集成问题，需要写两套，前端再调用原生方法打开视频
+4、实时位置定位等问题
+希望这些问题可以得到老师的解答！
 
-但是，由于React Native的技术方案所限，使用原生控件承载界面渲染，在牺牲了部分Web标准灵活性的同时，固然解决了不少性能问题，但也引入了新的问题：除开通过JavaScript虚拟机进行原生接口的调用，而带来的通信低效不谈，由于框架本身不负责渲染，而是由原生代理，因此我们还需要面对大量平台相关的逻辑。
-
-而随着系统版本和API的变化，我们还需要处理不同平台的原生控件渲染能力上的差异，修复各类怪异的Bug，甚至还需要在原生系统上打各类补丁。
-
-这都使React Native的跨平台特性被大打折扣：要用好React Native，除了掌握这个框架外，开发者还必须同时熟悉iOS和Android系统。这，无疑给开发者提出了更多挑战，也是很多开发者们对React Native又爱又恨的原因。在这其中，也有一些团队决定放弃React Native回归原生开发，Airbnb就是一个例子。
-
-备注：2018年，Airbnb团队在Medium上发布的一系列文章（ [React Native at Airbnb](https://medium.com/airbnb-engineering/react-native-at-airbnb-f95aa460be1c)、 [React Native at Airbnb: The Technology](https://medium.com/airbnb-engineering/react-native-at-airbnb-the-technology-dafd0b43838)、 [Building a Cross-Platform Mobile Team](https://medium.com/airbnb-engineering/building-a-cross-platform-mobile-team-3e1837b40a88)、 [Sunsetting React Native](https://medium.com/airbnb-engineering/sunsetting-react-native-1868ba28e30a)、 [What’s Next for Mobile at Airbnb](https://medium.com/airbnb-engineering/whats-next-for-mobile-at-airbnb-5e71618576ab)）详细描述了这个过程。
-
-**而我们本次课程的主角Flutter，则完全不同于React Native。**
-
-它开辟了全新的思路，提供了一整套从底层渲染逻辑到上层开发语言的完整解决方案：视图渲染完全闭环在其框架内部，不依赖于底层操作系统提供的任何组件，从根本上保证了视图渲染在Android和iOS上的高度一致性；Flutter的开发语言Dart，是Google专门为（大）前端开发量身打造的专属语言，借助于先进的工具链和编译器，成为了少数同时支持JIT和AOT的语言之一，开发期调试效率高，发布期运行速度快、执行性能好，在代码执行效率上可以媲美原生App。而这与React Native所用的只能解释执行的JavaScript，又拉开了性能差距。
-
-正是因为这些革命性的特点，Flutter在正式版发布半年多的时间里，在GitHub上的Star就已经超过了68,000，与已经发布4年多的、拥有78,000 Star的同行业领头羊React Native的差距非常小。同时，阿里闲鱼、今日头条等知名商用案例的加持，更使得Flutter的热度不断攀升。
-
-**现在看来，在Google的强力带动下，Flutter极有可能成为跨平台开发领域的终极解决方案。** 在过去的大半年时间里，我曾面试了20多位初、中、高级候选人，包括前端、Android、iOS的开发者。当问到最近想学习什么新技术时，超过80%的候选人告诉我，他会学习或正在学习Flutter。
-
-不过坦白讲，相比其他跨平台技术，Flutter的学习成本相对较高。我听过很多（大）前端开发者反馈：Flutter从语言到开发框架都是全新的，技术栈的积累也要从头开始，学不动了。
-
-**学习成本高，这也是目前大多数开发者犹豫是否要跟进这个框架的最重要原因。对此，我感同身受。**
-
-但其实，大前端各个方向的工作有很多相似、相通之处。面对业务侧日益增多的需求，作为大前端团队的负责人，我曾在不同时期带领团队分别探索并大规模落地了以React Native和Flutter为代表的跨平台方案，也是美团最早落地Flutter线上大规模应用的发起者和推动者之一。
-
-在探索并大规模落地Flutter的过程中，我阅读过大量关于Flutter的教程和技术博客，但我发现很多文章的学习门槛都比较高，而且过于重视应用层API各个参数的介绍或实现细节，导致很多从其他平台转来的开发者无从下手，只能依葫芦画瓢，却不知道为什么要“画瓢”，无法与自身的经验串联进而形成知识体系。这，无疑又增加了学习门槛，加长了学习周期。
-
-那么， **Flutter到底该怎么学？真的要从头开始么？**
-
-虽然Flutter是全新的跨平台技术，但其背后的框架原理和底层设计思想，无论是底层渲染机制与事件处理方式，还是组件化解耦思路，亦或是工程化整体方法等，与原生Android/iOS开发并没有本质区别，甚至还从React Native那里吸收了不少优秀的设计理念。就连Flutter所采用的Dart语言，关于信息表达和处理的方式，也有诸多其他优秀编程语言的影子。
-
-因此，从本质上看，Flutter并没有开创新的概念。这也就意味着，如果我们在学习Flutter时，能够深入进去搞懂它的原理、设计思路和通用理念，并与过往的开发经验相结合，建立起属于自己的知识体系抽象层次，而不是仅停留在应用层API的使用上，就摆脱了经验与平台的强绑定。
-
-这样的话，即使未来老框架不断更新，或者出现新的解决方案，我们仍旧可以立于不败之地。
-
-那么，Flutter框架底层有哪些关键技术？它们是如何高效运转，以支撑起可以媲美原生应用的跨平台方案的？Flutter应用开发的最佳实践是怎样的？企业需要什么样的终端技术人才？终端技术未来有哪些发展方向？
-
-这些问题，正是我要通过这个课程为你解答的。在这个课程里，我不仅会帮助你快速上手，能够使用Flutter开发一款企业级App，更希望帮助你将其与过往的开发经验串联起来，以建立起自己的知识体系；同时，希望你能透过现象明白Flutter框架的用法，并看到其背后的原理和设计理念。
-
-为了帮助你领悟到Flutter的核心思想和关键技术，而不是陷入组件的API细节难以自拔，我会在不影响学习、理解的情况下，省去一些不影响核心功能的代码和参数讲解，着重为你剖析框架的核心知识点和背后原理，并与你分享一些常见问题的解决思路。
-
-整体来说，专栏主要包括以下五大部分内容：
-
-- **Flutter开发起步模块。** 我会从跨平台方案发展历史出发，与你介绍Flutter的诞生背景、基本原理，并带你体验一下Flutter代码是如何在原生系统上运行的。
-- **Dart基础模块。** 我会从Dart与其他编程语言的设计思想对比出发，与你讲述Dart设计的关键思路以及独有特性，并通过一个综合案例带你去实践一下。
-- **Flutter基础模块。** 我将通过Flutter与原生系统对应概念对比，与你讲述Flutter独有的概念和框架设计思路。学完这个模块，你就可以开发出一个简单的App了。
-- **Flutter进阶模块。** 我会与你讲述Flutter开发中的一些疑难问题、高级特性及其背后原理，帮助你在遇到问题时化被动为主动。
-- **Flutter综合应用模块。** 我将和你聊聊在企业级应用迭代的生命周期中，如何从效率和质量这两个维度出发，构建自己的Flutter开发体系。
-
-最后，我希望通过这个课程，能够帮助你快速上手Flutter开发应用，掌握其精髓，并引导你建立起属于自己的终端知识体系。
-
-现在，Flutter正处于快速发展中，社区也非常活跃。站在未来看未来，尽管Flutter全平台制霸的目标已经非常清晰，但为期三个月的专栏分享未必能穷尽Flutter未来可能的技术发展方向。接下来，我会持续关注Flutter包括移动端之外的最新变化，持续更新这个专栏，第一时间与你分享Flutter的那些事儿。
-
-好了，今天的内容就到这里了。如果可以的话，还请你在留言区中做个自我介绍，和我聊聊你目前的工作、学习情况，以及你在学习或者使用Flutter时遇到的问题，这样我们可以彼此了解，也方便我在后面针对性地给你讲解。
-
-加油，让我们突破自己的瓶颈，保持学习、保持冷静、保持成长。
+学习flutter image.network 加载网络图片失败了，还没找到原因</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/3c/ad/8f8913d9.jpg" width="30px"><span>I.Say</span> 👍（2） 💬（1）<div>3年的iOSer，学习flutter的唯一担忧就是它的性能是否能赶得上原生，毕竟想RN这种老的跨平台语言也很久了，但是很多公司尝试后又会放弃，回归到原生的开发，flutter是否会步其后尘，期待回复。</div>2019-07-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/43/e1/b7be5560.jpg" width="30px"><span>sam</span> 👍（2） 💬（1）<div>Flutter仅仅只是解决跨平台的问题吗？感觉在一些工具类项目（内部办公类似钉钉）中使用场景并不多，反而美团外卖中有很多Web页面很有必要这么做。</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c1/24/0ea08c9e.jpg" width="30px"><span>柴柴777</span> 👍（2） 💬（1）<div>Android开发，会一点前端，用过半年vue，
+闲暇之余看过一礼拜flutter，环境搭好Demo跑起来就没在看了，
+dart零基础，只跟着这里学应该是不够的吧</div>2019-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4f/f7/771ab517.jpg" width="30px"><span>Kevin Chen</span> 👍（2） 💬（1）<div>目前用Flutter构建了一个应用，但是在：
+1.多环境（Dev、Uat、Pro）变量管理；
+2.状态管理；
+没有找到较好的实践。
+老师，在专栏里面会对这些进行分享吗？</div>2019-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/22/46/df595e4a.jpg" width="30px"><span>CatTalk</span> 👍（2） 💬（1）<div>去年就将应用中的某个功能模块Flutter实现了，并且结合插件框架做成了动态加载....可惜后来精力不够，组内推广也不太成功，测试完成后就躺在我们仓库了😞</div>2019-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/5a/d3/64403405.jpg" width="30px"><span>Callin</span> 👍（1） 💬（1）<div>老师好,我是前端工程师, 做过小程序 学习过node ，想往大前端的方向发展,目标是全栈工程师,希望和老师一起共进,学习好Flutter</div>2019-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/c5/2e/0326eefc.jpg" width="30px"><span>Larry</span> 👍（1） 💬（1）<div>3年前端小工，持续并专注于移动端开发，熟悉RN，iOS开发，Android方向能力还差些；尝试过Taro、uniapp等国内跨平台框架。掌握移动端开发的知识体系，能够对新框架融会贯通，看清背后。期待flutter的到来。</div>2019-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/62/34/e08d6460.jpg" width="30px"><span>忘山</span> 👍（1） 💬（1）<div>老师你好,我是一个大龄 iOSer,公司想跨平台开发控制智能系统设备,我感觉除了界面,还有一些交互可以使用 flutter,减少工作量,提高工作效率,但是具体底层的交互控制协议,音视频播放,推送好像目前的 flutter 或者说起他的跨平台开发都无法满足具体的需要,请问我可以这样理解么?</div>2019-07-20</li><br/><li><img src="" width="30px"><span>Geek_29b9d4</span> 👍（1） 💬（3）<div>什么时候用原生开发，什么时候用flutter</div>2019-07-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fe/c0/94343a68.jpg" width="30px"><span>神笔马郎</span> 👍（1） 💬（1）<div>如果一个人去完成一个私人项目，是否要具备安卓和ios的开发技能</div>2019-07-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/5a/e0/7ed48fdb.jpg" width="30px"><span>方坤</span> 👍（1） 💬（1）<div>陈老师，你好！我是一名Android&#47;IOS开发，懂一点后端，写过RN，去年Flutter1.0的时候也关注过，仅仅是写了几个demo。想了解下Flutter开发RFID之类的跟硬件结合的APP，相较原生有什么优势呀。谢谢老师</div>2019-07-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/db/26/54f2c164.jpg" width="30px"><span>靠人品去赢</span> 👍（1） 💬（1）<div>大佬问一下，为什么我觉得只要我flex用的好，其实像移动端前端都差不多，于是有几个问题
+（1）你即使用flutter也会有不同系统会有差异的问题，那我为什么要用flutter？他和市面上的这些前端框架有什么差别和优势，很多框架也支持多平台，而且学习曲线再高，也不过是JS+HTML+CSS的基础上DOM上搞事情。
+（2）还有这个flutter社区会真的流行开来吗，社区活跃度你觉得怎么样比如说跟一些比较流行的比？</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/09/6b/51ee29ca.jpg" width="30px"><span>ch4o5</span> 👍（1） 💬（1）<div>PHP开发，乐于接触新的技术</div>2019-07-01</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTI1KQOU2VruV0ibibrTUIicHpXiaGHlvMkzZ1jPCSb9TLKcibb4YbJbyGtlec7pjbt8fdicxtQTic5bDwibCA/132" width="30px"><span>Geek_4s70e3</span> 👍（0） 💬（1）<div>flutter 的全局弹框要保存每个context，好麻烦，tabview也不能缓存子组件状态</div>2019-11-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/48/55/48de9a24.jpg" width="30px"><span>Carlo</span> 👍（0） 💬（1）<div>崩溃日志的报告有没有好的办法捕获啊？试了几乎所有方法。</div>2019-10-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/48/06/da87638d.jpg" width="30px"><span>谜团</span> 👍（0） 💬（1）<div>咨询、游戏开发能不能使用此框架？</div>2019-09-21</li><br/>
+</ul>

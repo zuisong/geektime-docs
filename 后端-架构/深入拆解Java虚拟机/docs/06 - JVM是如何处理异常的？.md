@@ -7,83 +7,25 @@
 捕获异常则涉及了如下三种代码块。
 
 1. try代码块：用来标记需要进行异常监控的代码。
-
 2. catch代码块：跟在try代码块之后，用来捕获在try代码块中触发的某种指定类型的异常。除了声明所捕获异常的类型之外，catch代码块还定义了针对该异常类型的异常处理器。在Java中，try代码块后面可以跟着多个catch代码块，来捕获不同类型的异常。Java虚拟机会从上至下匹配异常处理器。因此，前面的catch代码块所捕获的异常类型不能覆盖后边的，否则编译器会报错。
-
 3. finally代码块：跟在try代码块和catch代码块之后，用来声明一段必定运行的代码。它的设计初衷是为了避免跳过某些关键的清理代码，例如关闭已打开的系统资源。
+<div><strong>精选留言（30）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/11/f9/9e/833b272e.jpg" width="30px"><span>阿坤</span> 👍（62） 💬（2）<div>如果finally有return语句，catch内throw的异常会被忽略，这个从jvm层面怎么解释呢？</div>2018-09-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f8/db/c4edf697.jpg" width="30px"><span>曲东方</span> 👍（42） 💬（2）<div>throw exception性能差fillstacktrace除了遍历堆栈以外，如果有inline 代码消除等编译优化发生，是不是要先“去优化”完了再fill？要不然可能出现错误堆栈和代码对不上的情况
 
+throw exception估计也会影响jit的优化，进而影响整体性能
 
-在程序正常执行的情况下，这段代码会在try代码块之后运行。否则，也就是try代码块触发异常的情况下，如果该异常没有被捕获，finally代码块会直接运行，并且在运行之后重新抛出该异常。如果该异常被catch代码块捕获，finally代码块则在catch代码块之后运行。在某些不幸的情况下，catch代码块也触发了异常，那么finally代码块同样会运行，并会抛出catch代码块触发的异常。在某些极端不幸的情况下，finally代码块也触发了异常，那么只好中断当前finally代码块的执行，并往外抛异常。
+</div>2018-08-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/f3/129d6dfe.jpg" width="30px"><span>李二木</span> 👍（14） 💬（2）<div> 	看完今天的文章有几个疑问
 
-上面这段听起来有点绕，但是等我讲完Java虚拟机的异常处理机制之后，你便会明白这其中的道理。
+   1方法的异常表是包含RuntimeException这种非check类型的异常吧？如果是那么每个方法都有异常表，那么是不是每个异常表中都有像ArrayIndexOutOfBoundsException这类型异常了。这类公共异常是私有还是共享呢
 
-## 异常的基本概念
+   2像catch自定义异常，也会添加的当前方法的异常表里吗？
 
-在Java语言规范中，所有异常都是Throwable类或者其子类的实例。Throwable有两大直接子类。第一个是Error，涵盖程序不应捕获的异常。当程序触发Error时，它的执行状态已经无法恢复，需要中止线程甚至是中止虚拟机。第二子类则是Exception，涵盖程序可能需要捕获并且处理的异常。Exception有一个特殊的子类RuntimeException，用来表示“程序虽然无法继续执行，但是还能抢救一下”的情况。前边提到的数组索引越界便是其中的一种。
+   3 我们常常看到的异常调用栈，这里方法调用信息其实就是弹出方法栈帧吗？</div>2018-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fe/59/29913e7b.jpg" width="30px"><span>吴伟</span> 👍（11） 💬（1）<div>检查异常和非检查异常也就是其他书籍中说的编译期异常和运行时异常？</div>2018-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/67/1e/40890f8f.jpg" width="30px"><span>李双迎</span> 👍（10） 💬（1）<div>老师，如果异常构造比较耗时，那么能否通过缓存同一位置相同异常的实例，来解决呢？</div>2018-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e1/a9/64a2fe3a.jpg" width="30px"><span>子清</span> 👍（5） 💬（1）<div>如果在业务层的代码中使用Assert来判断参数是否有问题，然后在调用方捕捉异常，这样会不会耗性能</div>2018-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/22/aa/c7725dd8.jpg" width="30px"><span>Ennis LM</span> 👍（4） 💬（1）<div>Java 虚拟机会忽略掉异常构造器以及填充栈帧的 Java 方法（Throwable.fillInStackTrace），直接从新建异常位置开始算起。
+Java 虚拟机还会忽略标记为不可见的 Java 方法栈帧。
 
-![](https://static001.geekbang.org/resource/image/47/93/47c8429fc30aec201286b47f3c1a5993.png?wh=1414*1086)
-
-RuntimeException和Error属于Java里的非检查异常（unchecked exception）。其他异常则属于检查异常（checked exception）。在Java语法中，所有的检查异常都需要程序显式地捕获，或者在方法声明中用throws关键字标注。通常情况下，程序中自定义的异常应为检查异常，以便最大化利用Java编译器的编译时检查。
-
-异常实例的构造十分昂贵。这是由于在构造异常实例时，Java虚拟机便需要生成该异常的栈轨迹（stack trace）。该操作会逐一访问当前线程的Java栈帧，并且记录下各种调试信息，包括栈帧所指向方法的名字，方法所在的类名、文件名，以及在代码中的第几行触发该异常。
-
-当然，在生成栈轨迹时，Java虚拟机会忽略掉异常构造器以及填充栈帧的Java方法（Throwable.fillInStackTrace），直接从新建异常位置开始算起。此外，Java虚拟机还会忽略标记为不可见的Java方法栈帧。我们在介绍Lambda的时候会看到具体的例子。
-
-既然异常实例的构造十分昂贵，我们是否可以缓存异常实例，在需要用到的时候直接抛出呢？从语法角度上来看，这是允许的。然而，该异常对应的栈轨迹并非throw语句的位置，而是新建异常的位置。因此，这种做法可能会误导开发人员，使其定位到错误的位置。这也是为什么在实践中，我们往往选择抛出新建异常实例的原因。
-
-## Java虚拟机是如何捕获异常的？
-
-在编译生成的字节码中，每个方法都附带一个异常表。异常表中的每一个条目代表一个异常处理器，并且由from指针、to指针、target指针以及所捕获的异常类型构成。这些指针的值是字节码索引（bytecode index，bci），用以定位字节码。
-
-其中，from指针和to指针标示了该异常处理器所监控的范围，例如try代码块所覆盖的范围。target指针则指向异常处理器的起始位置，例如catch代码块的起始位置。
-
-```
-public static void main(String[] args) {
-  try {
-    mayThrowException();
-  } catch (Exception e) {
-    e.printStackTrace();
-  }
-}
-// 对应的Java字节码
-public static void main(java.lang.String[]);
-  Code:
-    0: invokestatic mayThrowException:()V
-    3: goto 11
-    6: astore_1
-    7: aload_1
-    8: invokevirtual java.lang.Exception.printStackTrace
-   11: return
-  Exception table:
-    from  to target type
-      0   3   6  Class java/lang/Exception  // 异常表条目
-
-```
-
-举个例子，在上面这段代码的main方法中，我定义了一段try-catch代码。其中，catch代码块所捕获的异常类型为Exception。
-
-编译过后，该方法的异常表拥有一个条目。其from指针和to指针分别为0和3，代表它的监控范围从索引为0的字节码开始，到索引为3的字节码结束（不包括3）。该条目的target指针是6，代表这个异常处理器从索引为6的字节码开始。条目的最后一列，代表该异常处理器所捕获的异常类型正是Exception。
-
-当程序触发异常时，Java虚拟机会从上至下遍历异常表中的所有条目。当触发异常的字节码的索引值在某个异常表条目的监控范围内，Java虚拟机会判断所抛出的异常和该条目想要捕获的异常是否匹配。
-
-如果匹配，Java虚拟机会将控制流转移至该条目target指针指向的字节码。如果遍历完所有异常表条目，Java虚拟机仍未匹配到异常处理器，那么它会弹出当前方法对应的Java栈帧，并且在调用者（caller）中重复上述操作。在最坏情况下，Java虚拟机需要遍历当前线程Java栈上所有方法的异常表。
-
-finally代码块的编译比较复杂。当前版本Java编译器的做法，是复制finally代码块的内容，分别放在try-catch代码块所有正常执行路径以及异常执行路径的出口中。
-
-![](https://static001.geekbang.org/resource/image/17/06/17e2a3053b06b0a4383884f106e31c06.png?wh=1920*779)
-
-针对异常执行路径，Java编译器会生成一个或多个异常表条目，监控整个try-catch代码块，并且捕获所有种类的异常（在javap中以any指代）。这些异常表条目的target指针将指向另一份复制的finally代码块。并且，在这个finally代码块的最后，Java编译器会重新抛出所捕获的异常。
-
-如果你感兴趣的话，可以用javap工具来查看下面这段包含了try-catch-finally代码块的编译结果。为了更好地区分每个代码块，我定义了四个实例字段：tryBlock、catchBlock、finallyBlock、以及methodExit，并且仅在对应的代码块中访问这些字段。
-
-```
-public class Foo {
-  private int tryBlock;
-  private int catchBlock;
-  private int finallyBlock;
-  private int methodExit;
-
-  public void test() {
+请问老师，填充栈帧的 Java 方法和不可见的 Java 方法栈帧，是什么</div>2018-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/99/4e/0146807f.jpg" width="30px"><span>兔子</span> 👍（3） 💬（1）<div>老师，您好！java.lang.Error这种错误产生的原因是什么样的？jvm对这种Error的处理方式跟Exception一样的吗？如果程序碰到这种情况为了确保程序还能正常运行加上try catch是否就可以了？谢谢！</div>2019-11-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c9/cb/7b6802cc.jpg" width="30px"><span>贾智文</span> 👍（3） 💬（1）<div>当触发异常的字节码的索引值在某个异常表条目的监控范围内，Java 虚拟机会判断所抛出的异常和该条目想要捕获的异常是否匹配。                        
+这里有点没懂，每层方法的监控范围有可能会重叠吧，只用索引判断不会出现多个情况都满足的情况吗？</div>2018-08-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/39/f9/acfb9a48.jpg" width="30px"><span>无言的约定</span> 👍（0） 💬（1）<div>郑老师，问个问题，在执行某个方法时，我不知道在哪会发生异常，这个时候我怎么才能捕获可能产生的异常并存储在日志文件里？</div>2019-12-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/2b/8b/dd02189a.jpg" width="30px"><span>Randy</span> 👍（0） 💬（1）<div>郑老师，请教一下 ，文章中说下面这段代码编译出了3份finally 代码块，请问是怎么看出来的，请帮忙解读一下
+public void test() {
     try {
       tryBlock = 0;
     } catch (Exception e) {
@@ -92,173 +34,166 @@ public class Foo {
       finallyBlock = 2;
     }
     methodExit = 3;
-  }
-}
+  }</div>2019-11-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a1/e6/50da1b2d.jpg" width="30px"><span>旭东(Frank)</span> 👍（0） 💬（1）<div>请问检查式异常的初衷是什么？经常因为检查式异常导致方法重构时，相应方法的封装性被破坏？
 
-$ javap -c Foo
-...
+如何正确使用这两种异常，有何指导意见？谢谢</div>2018-08-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/51/6f/f33beea5.jpg" width="30px"><span>YIFENG</span> 👍（0） 💬（2）<div>老师，在讲复制finally部分的图中，复制到catch部分的finally右边的黄色虚线指向重新抛出异常，哪种情况会走到这条黄线路径呢？</div>2018-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（181） 💬（6）<div>感谢雨迪！
+这节让我终于搞清楚了两个疑惑！
+
+1:使用异常捕获的代码为什么比较耗费性能？
+因为构造异常的实例比较耗性能。这从代码层面很难理解，不过站在JVM的角度来看就简单了，因为JVM在构造异常实例时需要生成该异常的栈轨迹。这个操作会逐一访问当前线程的栈帧，并且记录下各种调试信息，包括栈帧所指向方法的名字，方法所在的类名、文件名，以及在代码中的第几行触发该异常等信息。
+虽然具体不清楚JVM的实现细节，但是看描述这件事情也是比较费时费力的。
+
+2:finally是怎么实现无论异常与否都能被执行的？
+这个事情是由编译器来实现的，现在的做法是这样的，编译器在编译Java代码时，会复制finally代码块的内容，然后分别放在try-catch代码块所有的正常执行路径及异常执行路径的出口中。
+
+
+</div>2018-08-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/67/17/942e5115.jpg" width="30px"><span>wuyong</span> 👍（9） 💬（0）<div>```java
+public class Foo {
+    private int tryBlock;
+    private int catchBlock;
+    private int finallyBlock;
+    private int methodExit;
+
+    public void test() {
+        try {
+            tryBlock = 0;
+        } catch (Exception e) {
+            catchBlock = 1;
+        } finally {
+            finallyBlock = 2;
+        }
+        methodExit = 3;
+    }
+}
+```
+
+相当于如下的代码：
+
+```java
+public class Foo {
+    private int tryBlock;
+    private int catchBlock;
+    private int finallyBlock;
+    private int methodExit;
+
+    public void test() {
+        try {
+            tryBlock = 0;
+            finallyBlock = 2;
+        } catch (Exception e) {
+            catchBlock = 1;
+            finallyBlock = 2;
+        } catch (Throwable e) {
+            finallyBlock = 2;
+            throw e;
+        }
+        methodExit = 3;
+    }
+}
+```</div>2020-08-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/11/cd/0e06bd0f.jpg" width="30px"><span>Krloy</span> 👍（5） 💬（2）<div>关于try catch的疑问
+
+如果for里面中写 try catch 一百条数据中有1条数据异常 程序正常执行 会返回99条数据
+如果for里面不写 try catch写外面 程序正常执行 但是数据返回0 
+
+try catch 异常实例构造非常昂贵，因为虚拟机会生成改异常的栈轨迹，改操作会逐一访问改线程栈帧，并记录下各种调试信息。
+
+那么如果我在for中写try catch 的话 会不会每次循环都生成一个异常实例？
+上面两种写try catch的方法 哪种要更好点</div>2018-08-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/69/3d/abb7bfe3.jpg" width="30px"><span>Geek_8ra72c</span> 👍（3） 💬（2）<div>捕捉异常代码性能差是因为需要生成该异常的栈轨迹，就算不捕捉，也会打印该异常的的栈轨迹啊，那性能本来就差啊，何来捕捉异常性能差之说？</div>2019-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b7/37/36ce456f.jpg" width="30px"><span>王小臭</span> 👍（3） 💬（0）<div>辛苦老师了，这么早更新</div>2018-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4e/60/0d5aa340.jpg" width="30px"><span>gogo</span> 👍（2） 💬（2）<div>老师您好，请教一个问题，在spring项目中使用了统一异常处理，在service层做一些校验，校验失败时抛出异常，在统一异常处理逻辑里封装异常信息返回给客户端，这种场景自定义异常集成RuntimeException是不是比较好呢？</div>2019-09-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/d0/42/6fd01fb9.jpg" width="30px"><span>我已经设置了昵称</span> 👍（2） 💬（0）<div>对于实践环节表示看不懂字节码代码，无法理解，老师能不能在后篇解释下前篇遗留的问题</div>2019-03-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0d/bf/c8f343a3.jpg" width="30px"><span>南城风戈</span> 👍（2） 💬（0）<div>沙发</div>2018-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/30/c5/7d/38a7f6f2.jpg" width="30px"><span>spring~</span> 👍（1） 💬（0）<div>老师请问  代码监视器监视的不是 try的覆盖范围吗？  是不是可能编译后分为多个监视器 监视同一try{}块里的异常</div>2022-11-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/5b/83a35681.jpg" width="30px"><span>Monday</span> 👍（1） 💬（0）<div>动手实践最美丽：
+Compiled from &quot;Foo.java&quot;
+public class Foo {
+  public Foo();
+    Code:
+       0: aload_0
+       1: invokespecial #1                  &#47;&#47; Method java&#47;lang&#47;Object.&quot;&lt;init&gt;&quot;:()V
+       4: return
+
   public void test();
     Code:
        0: aload_0
        1: iconst_0
-       2: putfield      #20                 // Field tryBlock:I
-       5: goto          30
-       8: astore_1
-       9: aload_0
-      10: iconst_1
-      11: putfield      #22                 // Field catchBlock:I
+       2: putfield      #2                  &#47;&#47; Field tryBlock:I
+       5: aload_0
+       6: iconst_2
+       7: putfield      #3                  &#47;&#47; Field finallyBlock:I
+      10: goto          35
+      13: astore_1
       14: aload_0
-      15: iconst_2
-      16: putfield      #24                 // Field finallyBlock:I
-      19: goto          35
-      22: astore_2
-      23: aload_0
-      24: iconst_2
-      25: putfield      #24                 // Field finallyBlock:I
-      28: aload_2
-      29: athrow
-      30: aload_0
-      31: iconst_2
-      32: putfield      #24                 // Field finallyBlock:I
+      15: iconst_1
+      16: putfield      #5                  &#47;&#47; Field catchBlock:I
+      19: aload_0
+      20: iconst_2
+      21: putfield      #3                  &#47;&#47; Field finallyBlock:I
+      24: goto          35
+      27: astore_2
+      28: aload_0
+      29: iconst_2
+      30: putfield      #3                  &#47;&#47; Field finallyBlock:I
+      33: aload_2
+      34: athrow
       35: aload_0
       36: iconst_3
-      37: putfield      #26                 // Field methodExit:I
+      37: putfield      #6                  &#47;&#47; Field methodExit:I
       40: return
     Exception table:
        from    to  target type
-           0     5     8   Class java/lang/Exception
-           0    14    22   any
-
-  ...
-
-```
-
-可以看到，编译结果包含三份finally代码块。其中，前两份分别位于try代码块和catch代码块的正常执行路径出口。最后一份则作为异常处理器，监控try代码块以及catch代码块。它将捕获try代码块触发的、未被catch代码块捕获的异常，以及catch代码块触发的异常。
-
-这里有一个小问题，如果catch代码块捕获了异常，并且触发了另一个异常，那么finally捕获并且重抛的异常是哪个呢？答案是后者。也就是说原本的异常便会被忽略掉，这对于代码调试来说十分不利。
-
-## Java 7的Suppressed异常以及语法糖
-
-Java 7引入了Suppressed异常来解决这个问题。这个新特性允许开发人员将一个异常附于另一个异常之上。因此，抛出的异常可以附带多个异常的信息。然而，Java层面的finally代码块缺少指向所捕获异常的引用，所以这个新特性使用起来非常繁琐。
-
-为此，Java 7专门构造了一个名为try-with-resources的语法糖，在字节码层面自动使用Suppressed异常。当然，该语法糖的主要目的并不是使用Suppressed异常，而是精简资源打开关闭的用法。
-
-在Java 7之前，对于打开的资源，我们需要定义一个finally代码块，来确保该资源在正常或者异常执行状况下都能关闭。资源的关闭操作本身容易触发异常。因此，如果同时打开多个资源，那么每一个资源都要对应一个独立的try-finally代码块，以保证每个资源都能够关闭。这样一来，代码将会变得十分繁琐。
-
-```
-  FileInputStream in0 = null;
-  FileInputStream in1 = null;
-  FileInputStream in2 = null;
-  ...
-  try {
-    in0 = new FileInputStream(new File("in0.txt"));
-    ...
-    try {
-      in1 = new FileInputStream(new File("in1.txt"));
-      ...
-      try {
-        in2 = new FileInputStream(new File("in2.txt"));
-        ...
-      } finally {
-        if (in2 != null) in2.close();
-      }
-    } finally {
-      if (in1 != null) in1.close();
-    }
-  } finally {
-    if (in0 != null) in0.close();
-  }
-
-```
-
-Java 7的try-with-resources语法糖，极大地简化了上述代码。程序可以在try关键字后声明并实例化实现了AutoCloseable接口的类，编译器将自动添加对应的close()操作。在声明多个AutoCloseable实例的情况下，编译生成的字节码类似于上面手工编写代码的编译结果。与手工代码相比，try-with-resources还会使用Suppressed异常的功能，来避免原异常“被消失”。
-
-```
-public class Foo implements AutoCloseable {
-  private final String name;
-  public Foo(String name) { this.name = name; }
-
-  @Override
-  public void close() {
-    throw new RuntimeException(name);
-  }
-
-  public static void main(String[] args) {
-    try (Foo foo0 = new Foo("Foo0"); // try-with-resources
-         Foo foo1 = new Foo("Foo1");
-         Foo foo2 = new Foo("Foo2")) {
-      throw new RuntimeException("Initial");
-    }
-  }
+           0     5    13   Class java&#47;lang&#47;Exception
+           0     5    27   any
+          13    19    27   any
 }
+</div>2020-07-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/13/56/6a062937.jpg" width="30px"><span>gentleman♥️</span> 👍（1） 💬（0）<div>就是checked异常 一直不try catch ，jvm会怎么个处理流程呢</div>2019-01-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/53/ab/587173ca.jpg" width="30px"><span>编程的德彪</span> 👍（1） 💬（0）<div>这一篇是看的明白的的一篇。😂</div>2018-11-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/04/b5/8bc4790b.jpg" width="30px"><span>Geek_987169</span> 👍（1） 💬（0）<div>老师，请教您一个问题，jvm在执行字节码指令的过程中，在什么情况下会由顺序执行变为跳转执行？</div>2018-09-12</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83erk8f6IVErdbicJhx7p9VrbrGNpIcVUXyxQnSX529LicF9YX9AUQvnrTTRjibk1R7LVXfNd7oxbsFR8Q/132" width="30px"><span>苦酒入喉吨吨吨</span> 👍（0） 💬（0）<div>在编译期，带有try-catch的方法编译为字节码，会有如下的处理：
+    - 在方法字节码最后，增加一个异常表，异常表每一项都有：from、to、target、异常类型，from和to表示该处理器负责的字节码行号范围，target 表示异常处理器（如catch块）的起始位置（字节码行号），异常类型表示这个项能处理哪些类型的异常；
+    - 每个catch都会对应一个表项，target 指向的是catch代码块，异常类型也是一个确定的Exception名字。
+    - finally也会生成一个表项，不过finally的表项很特殊：from-to的范围覆盖了整个try + catch块，target 指向的是插入的finally块，异常类型是any。为什么finally 也要生成一个表项？ 因为catch块也可能抛异常，这时就需要这个表项来处理了；
+    - 为了保证finally块一定被执行，编译器会把finally代码块，插入到所以可能的路径出口处，也就意味着finally代码块越长，这个方法里额外增加的字节码就越多。
+运行时，如果抛出异常，JVM 处理过程如下：
+    - 先去异常表里查询，如果from-to符合、异常类型也符合，则跳转到 target 的字节码
+    - 如果是 catch 的表项，那么就不会向外抛异常了；
+    - 如果所有的 catch的表项都不符合条件，或者catch 也抛异常了，就会跳到finally 的表项处理：跳到插入的finally块并执行，然后向外抛异常
 
-// 运行结果：
-Exception in thread "main" java.lang.RuntimeException: Initial
-        at Foo.main(Foo.java:18)
-        Suppressed: java.lang.RuntimeException: Foo2
-                at Foo.close(Foo.java:13)
-                at Foo.main(Foo.java:19)
-        Suppressed: java.lang.RuntimeException: Foo1
-                at Foo.close(Foo.java:13)
-                at Foo.main(Foo.java:19)
-        Suppressed: java.lang.RuntimeException: Foo0
-                at Foo.close(Foo.java:13)
-                at Foo.main(Foo.java:19)
 
-```
+</div>2023-05-26</li><br/><li><img src="" width="30px"><span>Geek_9c691e</span> 👍（0） 💬（0）<div>有一个疑问：为什么主动catch住的异常，处理之后不会继续抛出。而编译器帮助添加的any异常条目，处理完finally之后，会继续抛出异常呢？这2中异常条目在jvm层面的处理不一样吗？</div>2023-05-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/4c/dd/c6035349.jpg" width="30px"><span>Bumblebee</span> 👍（0） 💬（0）<div>今日收获
 
-除了try-with-resources语法糖之外，Java 7还支持在同一catch代码块中捕获多种异常。实际实现非常简单，生成多个异常表条目即可。
+①  抛异常的方式分为显示抛异常（程序中使用throw关键字进行抛异常）与隐式抛异常（Java虚拟机在运行中碰到无法继续的异常状态自动抛出，例如数组越界异常）；
 
-```
-// 在同一catch代码块中捕获多种异常
-try {
-  ...
-} catch (SomeException | OtherException e) {
-  ...
-}
+②  Java中所有异常都是Throwable类或其子类的实例；
 
-```
+③  Throwable有两大直接子类，第一类是Error（涵盖程序不能捕获的异常，当触发Error时执行状态已经无法恢复需要中断当前线程甚至是虚拟机）第二类是Exception（典型的代表是RuntimeException异常，表示程序虽然被中断但是还可以进行挽救）；
 
-## 总结与实践
+④  RuntimeException与Error在Java属于非检查异常（抛异常的所在方法可以不进行throws关键字申明），其他属于受检查异常（需要在抛异常的方法声明throws关键字将异常抛出）；
 
-今天我介绍了Java虚拟机的异常处理机制。
+⑤  异常实例的构造非常昂贵（因为在构造异常实例时Java虚拟机会逐一访该线程的Java栈帧并记录调用链上的详细信息，包括栈帧所指的方法名字方法所在的类名文件名以及抛异常的代码行数）；
+当然，在生成栈轨迹时，Java 虚拟机会忽略掉异常构造器以及填充栈帧的 Java 方法（Throwable.fillInStackTrace），直接从新建异常位置开始算起。此外，Java 虚拟机还会忽略标记为不可见的 Java 方法栈帧；
 
-Java的异常分为Exception和Error两种，而Exception又分为RuntimeException和其他类型。RuntimeException和Error属于非检查异常。其他的Exception皆属于检查异常，在触发时需要显式捕获，或者在方法头用throws关键字声明。
+⑤  Java虚拟机是如何捕获异常的？
+      1）进行了异常捕获的代码在生成字节码后，方法会携带一个异常表，异常表中每个条目代表一个异常处理器，每个异常处理器包含（from，to，target指针，以及捕获的异常类型所组成）
 
-Java字节码中，每个方法对应一个异常表。当程序触发异常时，Java虚拟机将查找异常表，并依此决定需要将控制流转移至哪个异常处理器之中。Java代码中的catch代码块和finally代码块都会生成异常表条目。
-
-Java 7引入了Suppressed异常、try-with-resources，以及多异常捕获。后两者属于语法糖，能够极大地精简我们的代码。
-
-那么今天的实践环节，你可以看看其他控制流语句与finally代码块之间的协作。
-
-```
-
-// 编译并用javap -c查看编译后的字节码
-public class Foo {
-  private int tryBlock;
-  private int catchBlock;
-  private int finallyBlock;
-  private int methodExit;
-
-  public void test() {
-    for (int i = 0; i < 100; i++) {
-      try {
-        tryBlock = 0;
-        if (i < 50) {
-          continue;
-        } else if (i < 80) {
-          break;
-        } else {
-          return;
-        }
-      } catch (Exception e) {
-        catchBlock = 1;
-      } finally {
-        finallyBlock = 2;
-      }
+      2）from，to，target这些指针是字节码索引，用以定位字节码（from与to指针指向try代码块的起始位置，target指向异常处理器的起始位置，catch代码块的起始位置）；
+      3）代码示例；
+源码：
+public class Test {
+    public static void main(String[] args) {
+        try {
+            int try_i =1;
+        } catch (RuntimeException e) { }
     }
-    methodExit = 3;
-  }
 }
+反编译字节码：
+Compiled from &quot;Test.java&quot;
+public class org.example.nio.test.Test {
+  public org.example.nio.test.Test();
+    Code:
+       0: aload_0
+       1: invokespecial #1                  &#47;&#47; Method java&#47;lang&#47;Object.&quot;&lt;init&gt;&quot;:()V
+       4: return
 
-```
+  public static void main(java.lang.String[]);
+    Code:
+       0: iconst_1
+       1: istore_1
+       2: goto          6
+       5: astore_1
+       6: return
+    Exception table:
+       from    to  target type
+           0     2     5  </div>2022-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/20/a6/9f/3c60fffd.jpg" width="30px"><span>青阳</span> 👍（0） 💬（0）<div>不记得在哪看过一句，程序运行时抛出RuntimeException，都是和代码逻辑错误有关系，所以抛出这个异常的时候要修复代码了</div>2021-04-25</li><br/>
+</ul>

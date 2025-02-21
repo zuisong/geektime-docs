@@ -2,13 +2,13 @@
 
 ## 回顾架构愿景与任务列表
 
-![](https://static001.geekbang.org/resource/image/c1/bd/c1a8d4b80fcf2c009a448d996594b6bd.jpg?wh=2284x1264)
-
+![](https://static001.geekbang.org/resource/image/c1/bd/c1a8d4b80fcf2c009a448d996594b6bd.jpg?wh=2284x1264)  
 ![](https://static001.geekbang.org/resource/image/fd/06/fd32fcbe73cb3d406f7473a0798a8d06.jpg?wh=2284x1285)
 
 目前的任务列表：
 
 - Resource/RootResource/ResourceMethods
+  
   - 当HEAD方法映射到GET方法时，忽略GET的返回值
   - 当没有OPTIONS方法时，提供默认实现
 
@@ -58,7 +58,7 @@ class DefaultResourceRouter implements ResourceRouter {
                 Collections.list(request.getHeaders(HttpHeaders.ACCEPT)).toArray(String[]::new), resourceContext, uri);
     }
 }
-
+    
 class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
     private String httpMethod;
     private UriTemplate uriTemplate;
@@ -149,7 +149,7 @@ class ResourceHandler implements ResourceRouter.Resource {
     private ResourceMethods resourceMethods;
     private SubResourceLocators subResourceLocators;
     private Function<ResourceContext, Object> resource;
-
+ 
     public ResourceHandler(Class<?> resourceClass) {
         this(resourceClass, new PathTemplate(getTemplate(resourceClass)), rc -> rc.getResource(resourceClass));
     }
@@ -178,7 +178,6 @@ class ResourceHandler implements ResourceRouter.Resource {
         return uriTemplate;
     }
 }
-
 ```
 
 ## 视频演示
@@ -190,3 +189,12 @@ class ResourceHandler implements ResourceRouter.Resource {
 接下来应该如何构造测试？
 
 这个项目的内容也接近尾声了，为你的坚持学习和思考点赞，同时也再为你加油鼓劲儿！我们下节课再见！
+<div><strong>精选留言（2）</strong></div><ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/20/a8/66/e2781d4a.jpg" width="30px"><span>忘川</span> 👍（0） 💬（0）<div>- 行为测试
+	- 是在测试约定 或者 规范
+	- 更多用在测试刚开始的时候 
+	- 使用行为测试 制定好规范后 就可以在更小 更可控的范围内 使用状态 进行测试
+</div>2023-01-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（0）<div>可以极大简化测试的时候，可以使用行为验证。
+KISS原则：Keep It Simple, Stupid. 维基百科上说美国军方都在使用！
+链接：https:&#47;&#47;zh.m.wikipedia.org&#47;zh&#47;KISS%E5%8E%9F%E5%88%99</div>2022-08-20</li><br/>
+</ul>
