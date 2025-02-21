@@ -467,6 +467,8 @@
       
         
       
+        
+      
     
     
       
@@ -3697,33 +3699,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#coroutinedispatcher" class="md-nav__link">
-    <span class="md-ellipsis">
-      CoroutineDispatcher拦截器
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      小结
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      思考题
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -4363,6 +4338,8 @@
       
         
       
+        
+      
     
     
       
@@ -4679,6 +4656,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
       
@@ -4733,6 +4716,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -5297,33 +5284,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#coroutinedispatcher" class="md-nav__link">
-    <span class="md-ellipsis">
-      CoroutineDispatcher拦截器
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      小结
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      思考题
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -5351,7 +5311,7 @@
 
 <p>你好，我是朱涛。今天，我们来分析Kotlin协程当中的Dispatchers。</p>
 <p>上节课里，我们分析了launch的源代码，从中我们知道，Kotlin的launch会调用startCoroutineCancellable()，接着又会调用createCoroutineUnintercepted()，最终会调用编译器帮我们生成SuspendLambda实现类当中的create()方法。这样，协程就创建出来了。不过，协程是创建出来了，可它是如何运行的呢？</p>
-<p>另外我们也都知道，协程无法脱离线程运行，Kotlin当中所有的协程，最终都是运行在线程之上的。 <strong>那么，协程创建出来以后，它又是如何跟线程产生关联的？</strong> 这节课，我们将进一步分析launch的启动流程，去发掘上节课我们忽略掉的代码分支。</p>
+<p>另外我们也都知道，协程无法脱离线程运行，Kotlin当中所有的协程，最终都是运行在线程之上的。<strong>那么，协程创建出来以后，它又是如何跟线程产生关联的？</strong>这节课，我们将进一步分析launch的启动流程，去发掘上节课我们忽略掉的代码分支。</p>
 <p>我相信，经过这节课的学习，你会对协程与线程之间的关系有一个更加透彻的认识。</p>
 <h2 id="dispatchers">Dispatchers</h2>
 <p>在上节课里我们学习过，launch{}本质上是调用了startCoroutineCancellable()当中的createCoroutineUnintercepted()方法创建了协程。</p>
@@ -5363,481 +5323,15 @@
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    createCoroutineUnintercepted(completion).intercepted().resumeCancellableWith(Result.success(Unit))
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>}
 </code></pre></div>
-<p>那么下面，我们就接着上节课的流程，继续分析createCoroutineUnintercepted(completion)之后的 <strong>intercepted()方法</strong>。</p>
-<p>不过，在正式分析intercepted()之前，我们还需要弄清楚Dispatchers、CoroutineDispatcher、ContinuationInterceptor、CoroutineContext之间的关系。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>// 代码段2
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>public actual object Dispatchers {
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    public actual val Default: CoroutineDispatcher = DefaultScheduler
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    public actual val Main: MainCoroutineDispatcher get() = MainDispatcherLoader.dispatcher
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    public actual val Unconfined: CoroutineDispatcher = kotlinx.coroutines.Unconfined
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    public val IO: CoroutineDispatcher = DefaultIoScheduler
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    public fun shutdown() {    }
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>}
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>public abstract class CoroutineDispatcher :
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    AbstractCoroutineContextElement(ContinuationInterceptor), ContinuationInterceptor {}
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>public interface ContinuationInterceptor : CoroutineContext.Element {}
-<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>
-<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>public interface Element : CoroutineContext {}
-</code></pre></div>
-<p>在 <a href="https://time.geekbang.org/column/article/488571">第17讲</a> 当中，我们曾经分析过它们之间的继承关系。Dispatchers是一个单例对象，它当中的Default、Main、Unconfined、IO，类型都是CoroutineDispatcher，而它本身就是CoroutineContext。所以，它们之间的关系就可以用下面这个图来描述。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/2c/d1/2cf4c3c45b6f6838e5fyy16a4fce02d1.jpg?wh=2000x1125" /></p>
-<p>让我们结合这张图，来看看下面这段代码：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>// 代码段3
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>fun main() {
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    testLaunch()
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    Thread.sleep(2000L)
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>}
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>private fun testLaunch() {
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    val scope = CoroutineScope(Job())
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    scope.launch{
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        logX(&quot;Hello!&quot;)
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>        delay(1000L)
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        logX(&quot;World!&quot;)
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    }
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>}
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>/**
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a> * 控制台输出带协程信息的log
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a> */
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>fun logX(any: Any?) {
-<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    println(
-<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>        &quot;&quot;&quot;
-<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>================================
-<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>$any
-<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>Thread:${Thread.currentThread().name}
-<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>================================&quot;&quot;&quot;.trimIndent()
-<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>    )
-<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>}
-<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>
-<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>/*
-<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>输出结果
-<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>================================
-<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>Hello!
-<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>Thread:DefaultDispatcher-worker-1 @coroutine#1
-<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>================================
-<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>================================
-<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>World!
-<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>Thread:DefaultDispatcher-worker-1 @coroutine#1
-<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>================================
-<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a>*/
-</code></pre></div>
-<p>在这段代码中，我们没有为launch()传入任何CoroutineContext参数，但通过执行结果，我们发现协程代码居然执行在DefaultDispatcher，并没有运行在main线程之上。这是为什么呢？</p>
-<p>我们可以回过头来分析下launch的源代码，去看看上节课中我们刻意忽略的地方。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>// 代码段4
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>public fun CoroutineScope.launch(
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    context: CoroutineContext = EmptyCoroutineContext,
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    start: CoroutineStart = CoroutineStart.DEFAULT,
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    block: suspend CoroutineScope.() -&gt; Unit
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>): Job {
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    // 1
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    val newContext = newCoroutineContext(context)
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    val coroutine = if (start.isLazy)
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        LazyStandaloneCoroutine(newContext, block) else
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        StandaloneCoroutine(newContext, active = true)
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    coroutine.start(start, coroutine, block)
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    return coroutine
-<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>}
-</code></pre></div>
-<p>首先，请留意launch的第一个参数，context，它的默认值是EmptyCoroutineContext。在第17讲里，我曾提到过，CoroutineContext就相当于Map，而EmptyCoroutineContext则相当于一个空的Map。所以，我们可以认为，这里的EmptyCoroutineContext传了也相当于没有传，它的目的只是为了让context参数不为空而已。 <strong>这其实也体现出了Kotlin的空安全思维，Kotlin官方用EmptyCoroutineContext替代了null。</strong></p>
-<p>接着，请留意上面代码的注释1，这行代码会调用newCoroutineContext(context)，将传入的context参数重新包装一下，然后返回。让我们看看它具体的逻辑：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>// 代码段5
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>public actual fun CoroutineScope.newCoroutineContext(context: CoroutineContext): CoroutineContext {
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    // 1
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    val combined = coroutineContext.foldCopiesForChildCoroutine() + context
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    // 2
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    val debug = if (DEBUG) combined + CoroutineId(COROUTINE_ID.incrementAndGet()) else combined
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    // 3
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    return if (combined !== Dispatchers.Default &amp;&amp; combined[ContinuationInterceptor] == null)
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        debug + Dispatchers.Default else debug
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>}
-</code></pre></div>
-<p>这段代码一共有三个注释，我们来分析一下：</p>
+<div><strong>精选留言（5）</strong></div>
 <ul>
-<li>注释1，由于newCoroutineContext()是CoroutineScope的扩展函数，因此，我们可以直接访问CoroutineScope的coroutineContext对象，它其实就是CoroutineScope对应的上下文。foldCopiesForChildCoroutine()的作用，其实就是将CoroutineScope当中的所有上下文元素都拷贝出来，然后跟传入的context参数进行合并。 <strong>这行代码，可以让子协程继承父协程的上下文元素。</strong></li>
-<li>注释2，它的作用是在调试模式下，为我们的协程对象增加唯一的ID。我们在代码段3的输出结果中看到的“@coroutine#1”，其中的数字“1”就是在这个阶段生成的。</li>
-<li>注释3，如果合并过后的combined当中没有CoroutineDispatcher，那么，就会默认使用Dispatchers.Default。</li>
+<li><img src="" width="30px"><span>Paul Shan</span> 👍（10） 💬（1）<div>Kotlin在开启协程状态机之前做了大量的工作，从父协程那里继承了状态，重新设定了子协程运行线程，检查了各种异常情况，区分了程序异常和协程cancel的情况，最终在指定的线程里启动了状态机。协程的重点不在线程，而在线程之外的调度，异常处理和状态机。
+</div>2022-03-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/33/8a/f7a3d5e6.jpg" width="30px"><span>Allen</span> 👍（4） 💬（1）<div>协程本质上是对线程的封装，我们在使用协程的时候，并不需要直接与线程打交道，直接使用 Coroutine 提供的相关 API 以同步的方式就可以间接完成与线程之间的交互。</div>2022-03-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/ee/f4/27a5080a.jpg" width="30px"><span>7Promise</span> 👍（4） 💬（1）<div>kotlin的协程与java线程密不可分，协程最终是运行在线程中的Task。</div>2022-03-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/55/28/66bf4bc4.jpg" width="30px"><span>荷兰小猪8813</span> 👍（2） 💬（1）<div>如果挂起后，再恢复，是如何恢复到之前的线程的呢？？
+
+这个线程的是如何保存的呢？？</div>2022-04-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/33/8a/f7a3d5e6.jpg" width="30px"><span>Allen</span> 👍（0） 💬（1）<div>这里，请你留意代码中我标记出的注释，intercepted() 方法首先会判断它的成员变量 intercepted 是否为空，如果不为空，就会调用 context[ContinuationInterceptor]，获取上下文当中的 Dispatcher 对象。以代码段 3 当中的逻辑为例，这时候的 Dispatcher 肯定是 Default 线程池。
+
+涛哥，这里应该是 intercepted 为空才会调用 context[ContinuationInterceptor] 吧？</div>2022-03-30</li><br/>
 </ul>
-<p>看到这里，你也许会有一个疑问，为什么协程默认的线程池是Dispatchers.Default，而不是Main呢？答案其实也很简单，因为Kotlin协程是支持多平台的， <strong>Main线程只在UI编程平台才有可用</strong>。因此，当我们的协程没有指定Dispatcher的时候，就只能使用Dispatchers.Default了。毕竟，协程是无法脱离线程执行的。</p>
-<p>那么现在，代码段3当中的协程执行在Dispatchers.Default的原因也就找到了：由于我们定义的scope没有指定Dispatcher，同时launch的参数也没有传入Dispatcher，最终在newCoroutineContext()的时候，会被默认指定为Default线程池。</p>
-<p>好，有了前面的基础以后，接下来，我们就可以开始intercepted()的逻辑了。</p>
-<h2 id="coroutinedispatcher">CoroutineDispatcher拦截器</h2>
-<p>让我们回到课程开头提到过的startCoroutineCancellable()方法的源代码，其中的createCoroutineUnintercepted()方法，我们在上节课已经分析过了，它的返回值类型就是Continuation。而 <strong>intercepted()方法，其实就是Continuation的扩展函数</strong>。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>// 代码段6
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>public fun &lt;T&gt; (suspend () -&gt; T).startCoroutineCancellable(completion: Continuation&lt;T&gt;): Unit = runSafely(completion) {
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    //                                        注意这里
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    //                                           ↓
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    createCoroutineUnintercepted(completion).intercepted().resumeCancellableWith(Result.success(Unit))
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>}
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>public actual fun &lt;T&gt; Continuation&lt;T&gt;.intercepted(): Continuation&lt;T&gt; =
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    (this as? ContinuationImpl)?.intercepted() ?: this
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>internal abstract class ContinuationImpl(
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    completion: Continuation&lt;Any?&gt;?,
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    private val _context: CoroutineContext?
-<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>) : BaseContinuationImpl(completion) {
-<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    constructor(completion: Continuation&lt;Any?&gt;?) : this(completion, completion?.context)
-<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>
-<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    @Transient
-<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>    private var intercepted: Continuation&lt;Any?&gt;? = null
-<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>
-<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>    // 1
-<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    public fun intercepted(): Continuation&lt;Any?&gt; =
-<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>        intercepted
-<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>            ?: (context[ContinuationInterceptor]?.interceptContinuation(this) ?: this)
-<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>                .also { intercepted = it }
-<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>}
-</code></pre></div>
-<p>从上面的代码中，我们可以看到，startCoroutineCancellable()当中的intercepted()最终会调用BaseContinuationImpl的intercepted()方法。</p>
-<p>这里，请你留意代码中我标记出的注释，intercepted()方法首先会判断它的成员变量 <strong>intercepted是否为空</strong>，如果为空，就会调用context[ContinuationInterceptor]，获取上下文当中的Dispatcher对象。以代码段3当中的逻辑为例，这时候的Dispatcher肯定是Default线程池。</p>
-<p>然后，如果我们继续跟进interceptContinuation(this)方法的话，会发现程序最终会调用CoroutineDispatcher的interceptContinuation()方法。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>// 代码段7
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>public abstract class CoroutineDispatcher :
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    AbstractCoroutineContextElement(ContinuationInterceptor), ContinuationInterceptor {
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    // 1
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    public final override fun &lt;T&gt; interceptContinuation(continuation: Continuation&lt;T&gt;): Continuation&lt;T&gt; =
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        DispatchedContinuation(this, continuation)
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>}
-</code></pre></div>
-<p>同样留意下这里的注释1，interceptContinuation()直接返回了一个DispatchedContinuation对象，并且将this、continuation作为参数传了进去。这里的this，其实就是Dispatchers.Default。</p>
-<p>所以，如果我们把startCoroutineCancellable()改写一下，它实际上会变成下面这样：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>// 代码段8
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>public fun &lt;T&gt; (suspend () -&gt; T).startCoroutineCancellable(completion: Continuation&lt;T&gt;): Unit = runSafely(completion) {
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    createCoroutineUnintercepted(completion).intercepted().resumeCancellableWith(Result.success(Unit))
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>}
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>// 等价
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>//  ↓
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>public fun &lt;T&gt; (suspend () -&gt; T).startCoroutineCancellable(completion: Continuation&lt;T&gt;): Unit = runSafely(completion) {
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    // 1
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    val continuation = createCoroutineUnintercepted(completion)
-<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    // 2
-<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    val dispatchedContinuation = continuation.intercepted()
-<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    // 3
-<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    dispatchedContinuation.resumeCancellableWith(Result.success(Unit))
-<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>}
-</code></pre></div>
-<p>在上面的代码中，注释1，2我们都已经分析完了，现在只剩下注释3了。这里的resumeCancellableWith()，其实就是真正将协程任务分发到线程上的逻辑。让我们继续跟进分析源代码：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>// 代码段9
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>internal class DispatchedContinuation&lt;in T&gt;(
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    @JvmField val dispatcher: CoroutineDispatcher,
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    @JvmField val continuation: Continuation&lt;T&gt;
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>) : DispatchedTask&lt;T&gt;(MODE_UNINITIALIZED), CoroutineStackFrame, Continuation&lt;T&gt; by continuation {
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    inline fun resumeCancellableWith(
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        result: Result&lt;T&gt;,
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>        noinline onCancellation: ((cause: Throwable) -&gt; Unit)?
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    ) {
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>        // 省略，留到后面分析
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    }
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>}
-</code></pre></div>
-<p>也就是，DispatchedContinuation是实现了Continuation接口，同时，它使用了“类委托”的语法，将接口的具体实现委托给了它的成员属性continuation。通过之前代码段7的分析，我们知道它的成员属性 <strong>dispatcher对应的就是Dispatcher.Default</strong>，而成员属性 <strong>continuation对应的则是launch当中传入的SuspendLambda实现类</strong>。</p>
-<p>另外，DispatchedContinuation还继承自DispatchedTask，我们来看看DispatchedTask到底是什么。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>internal abstract class DispatchedTask&lt;in T&gt;(
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    @JvmField public var resumeMode: Int
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>) : SchedulerTask() {
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>}
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>internal actual typealias SchedulerTask = Task
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>internal abstract class Task(
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    @JvmField var submissionTime: Long,
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    @JvmField var taskContext: TaskContext
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>) : Runnable {
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    constructor() : this(0, NonBlockingContext)
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    inline val mode: Int get() = taskContext.taskMode // TASK_XXX
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>}
-</code></pre></div>
-<p>可以看到，DispatchedContinuation继承自DispatchedTask，而它则是SchedulerTask的子类，SchedulerTask是Task的类型别名，而Task实现了Runnable接口。因此， <strong>DispatchedContinuation不仅是一个Continuation，同时还是一个Runnable。</strong></p>
-<p>那么，既然它是Runnable，也就意味着它可以被分发到Java的线程当中去执行了。所以接下来，我们就来看看resumeCancellableWith()当中具体的逻辑：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>// 代码段9
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>internal class DispatchedContinuation&lt;in T&gt;(
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    @JvmField val dispatcher: CoroutineDispatcher,
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    @JvmField val continuation: Continuation&lt;T&gt;
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>) : DispatchedTask&lt;T&gt;(MODE_UNINITIALIZED), CoroutineStackFrame, Continuation&lt;T&gt; by continuation {
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    inline fun resumeCancellableWith(
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>        result: Result&lt;T&gt;,
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>        noinline onCancellation: ((cause: Throwable) -&gt; Unit)?
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    ) {
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>        val state = result.toState(onCancellation)
-<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>        // 1
-<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>        if (dispatcher.isDispatchNeeded(context)) {
-<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>            _state = state
-<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>            resumeMode = MODE_CANCELLABLE
-<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>            // 2
-<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>            dispatcher.dispatch(context, this)
-<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>        } else {
-<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>            // 3
-<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>            executeUnconfined(state, MODE_CANCELLABLE) {
-<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>                if (!resumeCancelled(state)) {
-<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>                    resumeUndispatchedWith(result)
-<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>                }
-<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>            }
-<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a>        }
-<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a>    }
-<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a>
-<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a>}
-<a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a>
-<a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a>public abstract class CoroutineDispatcher :
-<a id="__codelineno-10-32" name="__codelineno-10-32" href="#__codelineno-10-32"></a>    AbstractCoroutineContextElement(ContinuationInterceptor), ContinuationInterceptor {
-<a id="__codelineno-10-33" name="__codelineno-10-33" href="#__codelineno-10-33"></a>    // 默认是true
-<a id="__codelineno-10-34" name="__codelineno-10-34" href="#__codelineno-10-34"></a>    public open fun isDispatchNeeded(context: CoroutineContext): Boolean = true
-<a id="__codelineno-10-35" name="__codelineno-10-35" href="#__codelineno-10-35"></a>
-<a id="__codelineno-10-36" name="__codelineno-10-36" href="#__codelineno-10-36"></a>    public abstract fun dispatch(context: CoroutineContext, block: Runnable)
-<a id="__codelineno-10-37" name="__codelineno-10-37" href="#__codelineno-10-37"></a>}
-<a id="__codelineno-10-38" name="__codelineno-10-38" href="#__codelineno-10-38"></a>
-<a id="__codelineno-10-39" name="__codelineno-10-39" href="#__codelineno-10-39"></a>internal object Unconfined : CoroutineDispatcher() {
-<a id="__codelineno-10-40" name="__codelineno-10-40" href="#__codelineno-10-40"></a>    // 只有Unconfined会重写成false
-<a id="__codelineno-10-41" name="__codelineno-10-41" href="#__codelineno-10-41"></a>    override fun isDispatchNeeded(context: CoroutineContext): Boolean = false
-<a id="__codelineno-10-42" name="__codelineno-10-42" href="#__codelineno-10-42"></a>}
-</code></pre></div>
-<p>这段代码里也有三个注释，我们来分析一下：</p>
-<ul>
-<li>注释1，dispatcher.isDispatchNeeded()，通过查看CoroutineDispatcher的源代码，我们发现它的返回值始终都是true。在它的子类当中，只有Dispatchers.Unconfined会将其重写成false。这也就意味着，除了Unconfined以外，其他的Dispatcher都会返回true。对于我们代码段3当中的代码而言，我们的Dispatcher是默认的Default，所以，代码将会进入注释2对应的分支。</li>
-<li>注释2，dispatcher.dispatch(context, this)，这里其实就相当于将代码的执行流程分发到Default线程池。dispatch()的第二个参数要求是Runnable，这里我们传入的是this，这是因为DispatchedContinuation本身就间接实现了Runnable接口。</li>
-<li>注释3，executeUnconfined{}，它其实就对应着Dispather是Unconfined的情况，这时候，协程的执行不会被分发到别的线程，而是直接在当前线程执行。</li>
-</ul>
-<p>接下来，让我们继续沿着注释2进行分析，这里的dispatcher.dispatch()其实就相当于调用了Dispatchers.Default.dispatch()。让我们看看它的逻辑：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>public actual object Dispatchers {
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    @JvmStatic
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    public actual val Default: CoroutineDispatcher = DefaultScheduler
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>}
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>internal object DefaultScheduler : SchedulerCoroutineDispatcher(
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    CORE_POOL_SIZE, MAX_POOL_SIZE,
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    IDLE_WORKER_KEEP_ALIVE_NS, DEFAULT_SCHEDULER_NAME
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>) {}
-</code></pre></div>
-<p>那么，从上面的代码中，我们可以看到， <strong>Dispatchers.Default本质上是一个单例对象DefaultScheduler</strong>，它是SchedulerCoroutineDispatcher的子类。</p>
-<p>我们也来看看SchedulerCoroutineDispatcher的源代码：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>internal open class SchedulerCoroutineDispatcher(
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    private val corePoolSize: Int = CORE_POOL_SIZE,
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    private val maxPoolSize: Int = MAX_POOL_SIZE,
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    private val idleWorkerKeepAliveNs: Long = IDLE_WORKER_KEEP_ALIVE_NS,
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    private val schedulerName: String = &quot;CoroutineScheduler&quot;,
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>) : ExecutorCoroutineDispatcher() {
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    private var coroutineScheduler = createScheduler()
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>    override fun dispatch(context: CoroutineContext, block: Runnable): Unit = coroutineScheduler.dispatch(block)
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>}
-</code></pre></div>
-<p>根据以上代码，我们可以看到Dispatchers.Default.dispatch()最终会调用SchedulerCoroutineDispatcher的dispatch()方法，而它实际上调用的是coroutineScheduler.dispatch()。</p>
-<p>这里，我们同样再来看看CoroutineScheduler的源代码：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>internal class CoroutineScheduler(
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    @JvmField val corePoolSize: Int,
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    @JvmField val maxPoolSize: Int,
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    @JvmField val idleWorkerKeepAliveNs: Long = IDLE_WORKER_KEEP_ALIVE_NS,
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    @JvmField val schedulerName: String = DEFAULT_SCHEDULER_NAME
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>) : Executor, Closeable {
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    override fun execute(command: Runnable) = dispatch(command)
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    fun dispatch(block: Runnable, taskContext: TaskContext = NonBlockingContext, tailDispatch: Boolean = false) {
-<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>        trackTask()
-<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>        // 1
-<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>        val task = createTask(block, taskContext)
-<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>        // 2
-<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>        val currentWorker = currentWorker()
-<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>        // 3
-<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>        val notAdded = currentWorker.submitToLocalQueue(task, tailDispatch)
-<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>        if (notAdded != null) {
-<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>            if (!addToGlobalQueue(notAdded)) {
-<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>
-<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>                throw RejectedExecutionException(&quot;$schedulerName was terminated&quot;)
-<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>            }
-<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>        }
-<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>        val skipUnpark = tailDispatch &amp;&amp; currentWorker != null
-<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>
-<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>        if (task.mode == TASK_NON_BLOCKING) {
-<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>            if (skipUnpark) return
-<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a>            signalCpuWork()
-<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>        } else {
-<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a>
-<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a>            signalBlockingWork(skipUnpark = skipUnpark)
-<a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a>        }
-<a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a>    }
-<a id="__codelineno-13-34" name="__codelineno-13-34" href="#__codelineno-13-34"></a>
-<a id="__codelineno-13-35" name="__codelineno-13-35" href="#__codelineno-13-35"></a>    private fun currentWorker(): Worker? = (Thread.currentThread() as? Worker)?.takeIf { it.scheduler == this }
-<a id="__codelineno-13-36" name="__codelineno-13-36" href="#__codelineno-13-36"></a>
-<a id="__codelineno-13-37" name="__codelineno-13-37" href="#__codelineno-13-37"></a>    // 内部类 Worker
-<a id="__codelineno-13-38" name="__codelineno-13-38" href="#__codelineno-13-38"></a>    internal inner class Worker private constructor() : Thread() {
-<a id="__codelineno-13-39" name="__codelineno-13-39" href="#__codelineno-13-39"></a>    }
-<a id="__codelineno-13-40" name="__codelineno-13-40" href="#__codelineno-13-40"></a>}
-</code></pre></div>
-<p>你发现了吗？CoroutineScheduler其实是Java并发包下的Executor的子类，它的execute()方法也被转发到了dispatch()。</p>
-<p>上面的代码里也有三个注释，我们分别来看看：</p>
-<ul>
-<li>注释1，将传入的Runnable类型的block（也就是DispatchedContinuation），包装成Task。</li>
-<li>注释2，currentWorker()，拿到当前执行的线程。这里的Worker其实是一个内部类，它本质上仍然是Java的Thread。</li>
-<li>注释3，currentWorker.submitToLocalQueue()，将当前的Task添加到Worker线程的本地队列，等待执行。</li>
-</ul>
-<p>那么接下来，我们就来分析下Worker是如何执行Task的。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>internal inner class Worker private constructor() : Thread() {
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    override fun run() = runWorker()
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    @JvmField
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    var mayHaveLocalTasks = false
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    private fun runWorker() {
-<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>        var rescanned = false
-<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>        while (!isTerminated &amp;&amp; state != WorkerState.TERMINATED) {
-<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>            // 1
-<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>            val task = findTask(mayHaveLocalTasks)
-<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>
-<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>            if (task != null) {
-<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>                rescanned = false
-<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>                minDelayUntilStealableTaskNs = 0L
-<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>                // 2
-<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>                executeTask(task)
-<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>                continue
-<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a>            } else {
-<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a>                mayHaveLocalTasks = false
-<a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a>            }
-<a id="__codelineno-14-23" name="__codelineno-14-23" href="#__codelineno-14-23"></a>
-<a id="__codelineno-14-24" name="__codelineno-14-24" href="#__codelineno-14-24"></a>            if (minDelayUntilStealableTaskNs != 0L) {
-<a id="__codelineno-14-25" name="__codelineno-14-25" href="#__codelineno-14-25"></a>                if (!rescanned) {
-<a id="__codelineno-14-26" name="__codelineno-14-26" href="#__codelineno-14-26"></a>                    rescanned = true
-<a id="__codelineno-14-27" name="__codelineno-14-27" href="#__codelineno-14-27"></a>                } else {
-<a id="__codelineno-14-28" name="__codelineno-14-28" href="#__codelineno-14-28"></a>                    rescanned = false
-<a id="__codelineno-14-29" name="__codelineno-14-29" href="#__codelineno-14-29"></a>                    tryReleaseCpu(WorkerState.PARKING)
-<a id="__codelineno-14-30" name="__codelineno-14-30" href="#__codelineno-14-30"></a>                    interrupted()
-<a id="__codelineno-14-31" name="__codelineno-14-31" href="#__codelineno-14-31"></a>                    LockSupport.parkNanos(minDelayUntilStealableTaskNs)
-<a id="__codelineno-14-32" name="__codelineno-14-32" href="#__codelineno-14-32"></a>                    minDelayUntilStealableTaskNs = 0L
-<a id="__codelineno-14-33" name="__codelineno-14-33" href="#__codelineno-14-33"></a>                }
-<a id="__codelineno-14-34" name="__codelineno-14-34" href="#__codelineno-14-34"></a>                continue
-<a id="__codelineno-14-35" name="__codelineno-14-35" href="#__codelineno-14-35"></a>            }
-<a id="__codelineno-14-36" name="__codelineno-14-36" href="#__codelineno-14-36"></a>
-<a id="__codelineno-14-37" name="__codelineno-14-37" href="#__codelineno-14-37"></a>            tryPark()
-<a id="__codelineno-14-38" name="__codelineno-14-38" href="#__codelineno-14-38"></a>        }
-<a id="__codelineno-14-39" name="__codelineno-14-39" href="#__codelineno-14-39"></a>        tryReleaseCpu(WorkerState.TERMINATED)
-<a id="__codelineno-14-40" name="__codelineno-14-40" href="#__codelineno-14-40"></a>    }
-<a id="__codelineno-14-41" name="__codelineno-14-41" href="#__codelineno-14-41"></a>}
-</code></pre></div>
-<p>实际上，Worker会重写Thread的run()方法，然后把执行流程交给runWorker()，以上代码里有两个关键的地方，我也用注释标记了。</p>
-<ul>
-<li>注释1，在while循环当中，会一直尝试从Worker的本地队列取Task出来，如果存在需要执行的Task，就会进入下一步。</li>
-<li>注释2，executeTask(task)，其实就是执行对应的Task。</li>
-</ul>
-<p>而接下来的逻辑，就是 <strong>最关键的部分</strong> 了：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>internal inner class Worker private constructor() : Thread() {
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    private fun executeTask(task: Task) {
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>        val taskMode = task.mode
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>        idleReset(taskMode)
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>        beforeTask(taskMode)
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>        // 1
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>        runSafely(task)
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>        afterTask(taskMode)
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    }
-<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>}
-<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>
-<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>fun runSafely(task: Task) {
-<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>    try {
-<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>        // 2
-<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>        task.run()
-<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>    } catch (e: Throwable) {
-<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>        val thread = Thread.currentThread()
-<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>        thread.uncaughtExceptionHandler.uncaughtException(thread, e)
-<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>    } finally {
-<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>        unTrackTask()
-<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>    }
-<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>}
-<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a>
-<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a>internal abstract class Task(
-<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a>    @JvmField var submissionTime: Long,
-<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a>    @JvmField var taskContext: TaskContext
-<a id="__codelineno-15-27" name="__codelineno-15-27" href="#__codelineno-15-27"></a>) : Runnable {
-<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a>    constructor() : this(0, NonBlockingContext)
-<a id="__codelineno-15-29" name="__codelineno-15-29" href="#__codelineno-15-29"></a>    inline val mode: Int get() = taskContext.taskMode // TASK_XXX
-<a id="__codelineno-15-30" name="__codelineno-15-30" href="#__codelineno-15-30"></a>}
-</code></pre></div>
-<p>在Worker的executeTask()方法当中，会调用runSafely()方法，而在这个方法当中，最终会调用task.run()。前面我们就提到过 <strong>Task本质上就是Runnable，而Runnable.run()其实就代表了我们的协程任务真正执行了！</strong></p>
-<p>那么，task.run()具体执行的代码是什么呢？其实它是执行的 <strong>DispatchedTask.run()</strong>。这里的DispatchedTask实际上是DispatchedContinuation的父类。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>internal class DispatchedContinuation&lt;in T&gt;(
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>    @JvmField val dispatcher: CoroutineDispatcher,
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    @JvmField val continuation: Continuation&lt;T&gt;
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>) : DispatchedTask&lt;T&gt;(MODE_UNINITIALIZED), CoroutineStackFrame, Continuation&lt;T&gt; by continuation {
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
-<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    public final override fun run() {
-<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>
-<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>        val taskContext = this.taskContext
-<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>        var fatalException: Throwable? = null
-<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>        try {
-<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>            val delegate = delegate as DispatchedContinuation&lt;T&gt;
-<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>            val continuation = delegate.continuation
-<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>            withContinuationContext(continuation, delegate.countOrElement) {
-<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>                val context = continuation.context
-<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a>                val state = takeState()
-<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>                val exception = getExceptionalResult(state)
-<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>
-<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>                val job = if (exception == null &amp;&amp; resumeMode.isCancellableMode) context[Job] else null
-<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>                if (job != null &amp;&amp; !job.isActive) {
-<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a>                    // 1
-<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a>                    val cause = job.getCancellationException()
-<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a>                    cancelCompletedResult(state, cause)
-<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a>                    continuation.resumeWithStackTrace(cause)
-<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a>                } else {
-<a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a>                    if (exception != null) {
-<a id="__codelineno-16-26" name="__codelineno-16-26" href="#__codelineno-16-26"></a>                        // 2
-<a id="__codelineno-16-27" name="__codelineno-16-27" href="#__codelineno-16-27"></a>                        continuation.resumeWithException(exception)
-<a id="__codelineno-16-28" name="__codelineno-16-28" href="#__codelineno-16-28"></a>                    } else {
-<a id="__codelineno-16-29" name="__codelineno-16-29" href="#__codelineno-16-29"></a>                        // 3
-<a id="__codelineno-16-30" name="__codelineno-16-30" href="#__codelineno-16-30"></a>                        continuation.resume(getSuccessfulResult(state))
-<a id="__codelineno-16-31" name="__codelineno-16-31" href="#__codelineno-16-31"></a>                    }
-<a id="__codelineno-16-32" name="__codelineno-16-32" href="#__codelineno-16-32"></a>                }
-<a id="__codelineno-16-33" name="__codelineno-16-33" href="#__codelineno-16-33"></a>            }
-<a id="__codelineno-16-34" name="__codelineno-16-34" href="#__codelineno-16-34"></a>        } catch (e: Throwable) {
-<a id="__codelineno-16-35" name="__codelineno-16-35" href="#__codelineno-16-35"></a>
-<a id="__codelineno-16-36" name="__codelineno-16-36" href="#__codelineno-16-36"></a>            fatalException = e
-<a id="__codelineno-16-37" name="__codelineno-16-37" href="#__codelineno-16-37"></a>        } finally {
-<a id="__codelineno-16-38" name="__codelineno-16-38" href="#__codelineno-16-38"></a>            val result = runCatching { taskContext.afterTask() }
-<a id="__codelineno-16-39" name="__codelineno-16-39" href="#__codelineno-16-39"></a>            handleFatalException(fatalException, result.exceptionOrNull())
-<a id="__codelineno-16-40" name="__codelineno-16-40" href="#__codelineno-16-40"></a>        }
-<a id="__codelineno-16-41" name="__codelineno-16-41" href="#__codelineno-16-41"></a>    }
-<a id="__codelineno-16-42" name="__codelineno-16-42" href="#__codelineno-16-42"></a>}
-</code></pre></div>
-<p>上面的代码有三个关键的注释，我们一起来分析：</p>
-<ul>
-<li>注释1，在协程代码执行之前，它首先会判断当前协程是否已经取消。如果已经取消的话，就会调用continuation.resumeWithStackTrace(cause)将具体的原因传出去。</li>
-<li>注释2，判断协程是否发生了异常，如果已经发生了异常，则需要调用continuation.resumeWithException(exception)将异常传递出去。</li>
-<li>注释3，如果一切正常，则会调用continuation.resume(getSuccessfulResult(state))，这时候，协程才会正式启动，并且执行launch当中传入的Lambda表达式。</li>
-</ul>
-<p>最后，按照惯例，我还是制作了一个视频，来向你展示整个Dispather的代码执行流程。</p>
-<h2 id="_1">小结</h2>
-<p>这节课，我们围绕着launch，着重分析了它的Dispatchers执行流程。Dispatchers是协程框架中与线程交互的关键，这里面主要涉及以下几个步骤：</p>
-<ul>
-<li>第一步，createCoroutineUnintercepted(completion)创建了协程的Continuation实例，紧接着就会调用它的intercepted()方法，将其封装成DispatchedContinuation对象。</li>
-<li>第二步，DispatchedContinuation会持有CoroutineDispatcher、以及前面创建的Continuation对象。课程中的CoroutineDispatcher实际上就是Default线程池。</li>
-<li>第三步，执行DispatchedContinuation的resumeCancellableWith()方法，这时候，就会执行dispatcher.dispatch()，这就会将协程的Continuation封装成Task添加到Worker的本地任务队列，等待执行。这里的Worker本质上就是Java的Thread。 <strong>在这一步，协程就已经完成了线程的切换</strong>。</li>
-<li>第四步，Worker的run()方法会调用runWork()，它会从本地的任务队列当中取出Task，并且调用task.run()。而它实际上调用的是DispatchedContinuation的run()方法，在这里，会调用continuation.resume()，它将执行原本launch当中生成的SuspendLambda子类。 <strong>这时候，launch协程体当中的代码，就在线程上执行了</strong>。</li>
-</ul>
-<h2 id="_2">思考题</h2>
-<p>经过这节课的学习以后，请问你是否对协程的本质有了更深入的认识？请讲讲你的心得体会吧！</p>
 
 
 

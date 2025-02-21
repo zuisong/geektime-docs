@@ -467,6 +467,8 @@
       
         
       
+        
+      
     
     
       
@@ -681,6 +683,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -3337,42 +3343,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      流水线里的接力赛：操作数前推
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      总结延伸
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      推荐阅读
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      课后思考
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -5810,42 +5780,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      流水线里的接力赛：操作数前推
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      总结延伸
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      推荐阅读
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      课后思考
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -5875,51 +5809,46 @@
 <p>着急的人，看完上一讲的这两种方案，可能已经要跳起来问了：“这也能算解决方案么？”的确，这两种方案都有点儿笨。</p>
 <p>第一种解决方案，好比是在软件开发的过程中，发现效率不够，于是研发负责人说：“我们需要双倍的人手和研发资源。”而第二种解决方案，好比你在提需求的时候，研发负责人告诉你说：“来不及做，你只能等我们需求排期。” 你应该很清楚地知道，“堆资源”和“等排期”这样的解决方案，并不会真的提高我们的效率，只是避免冲突的无奈之举。</p>
 <p>那针对流水线冒险的问题，我们有没有更高级或者更高效的解决方案呢？既不用简单花钱加硬件电路这样“堆资源”，也不是纯粹等待之前的任务完成这样“等排期”。</p>
-<p>答案当然是有的。这一讲，我们就来看看计算机组成原理中，一个更加精巧的解决方案， <strong>操作数前推</strong>。</p>
+<p>答案当然是有的。这一讲，我们就来看看计算机组成原理中，一个更加精巧的解决方案，<strong>操作数前推</strong>。</p>
 <h2 id="nop">NOP操作和指令对齐</h2>
-<p>要想理解操作数前推技术，我们先来回顾一下， <a href="https://time.geekbang.org/column/article/93359">第5讲</a> 讲过的，MIPS体系结构下的R、I、J三类指令，以及 <a href="https://time.geekbang.org/column/article/99523">第20讲</a> 里的五级流水线“取指令（IF）-指令译码（ID）-指令执行（EX）-内存访问（MEM）-数据写回（WB） ”。</p>
-<p>我把对应的图片放进来了，你可以看一下。如果印象不深，建议你先回到这两节去复习一下，再来看今天的内容。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/b1/bf/b1ade5f8de67b172bf7b4ec9f63589bf.jpeg?wh=2212*595" /><img alt="" src="https://static001.geekbang.org/resource/image/1e/ad/1e880fa8b1eab511583267e68f0541ad.jpeg?wh=2203*1180" /></p>
-<p>在MIPS的体系结构下，不同类型的指令，会在流水线的不同阶段进行不同的操作。</p>
-<p>我们以MIPS的LOAD，这样从内存里读取数据到寄存器的指令为例，来仔细看看，它需要经历的5个完整的流水线。STORE这样从寄存器往内存里写数据的指令，不需要有写回寄存器的操作，也就是没有数据写回的流水线阶段。至于像ADD和SUB这样的加减法指令，所有操作都在寄存器完成，所以没有实际的内存访问（MEM）操作。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/b6/d4/b66ea9ca3300c7f71e91aaa6b6428fd4.jpg?wh=2181*592" /></p>
-<p>有些指令没有对应的流水线阶段，但是我们并不能跳过对应的阶段直接执行下一阶段。不然，如果我们先后执行一条LOAD指令和一条ADD指令，就会发生LOAD指令的WB阶段和ADD指令的WB阶段，在同一个时钟周期发生。这样，相当于触发了一个结构冒险事件，产生了资源竞争。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/9e/5f/9e62ab3b42e445d65accf0549badf45f.jpeg?wh=2015*1082" /></p>
-<p>所以，在实践当中，各个指令不需要的阶段，并不会直接跳过，而是会运行一次NOP操作。通过插入一个NOP操作，我们可以使后一条指令的每一个Stage，一定不和前一条指令的同Stage在一个时钟周期执行。这样，就不会发生先后两个指令，在同一时钟周期竞争相同的资源，产生结构冒险了。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/c1/42/c16643d83dd534d3d97d0d7ad8e30d42.jpg?wh=2181*573" /></p>
-<h2 id="_1">流水线里的接力赛：操作数前推</h2>
-<p>通过NOP操作进行对齐，我们在流水线里，就不会遇到资源竞争产生的结构冒险问题了。除了可以解决结构冒险之外，这个NOP操作，也是我们之前讲的流水线停顿插入的对应操作。</p>
-<p>但是，插入过多的NOP操作，意味着我们的CPU总是在空转，干吃饭不干活。那么，我们有没有什么办法，尽量少插入一些NOP操作呢？不要着急，下面我们就以两条先后发生的ADD指令作为例子，看看能不能找到一些好的解决方案。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>add $t0, $s2,$s1
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>add $s2, $s1,$t0
-</code></pre></div>
-<p>这两条指令很简单。</p>
-<ol>
-<li>第一条指令，把 s1 和 s2 寄存器里面的数据相加，存入到 t0 这个寄存器里面。</li>
-<li>第二条指令，把 s1 和 t0 寄存器里面的数据相加，存入到 s2 这个寄存器里面。</li>
-</ol>
-<p>因为后一条的 add 指令，依赖寄存器 t0 里的值。而 t0 里面的值，又来自于前一条指令的计算结果。所以后一条指令，需要等待前一条指令的数据写回阶段完成之后，才能执行。就像上一讲里讲的那样，我们遇到了一个数据依赖类型的冒险。于是，我们就不得不通过流水线停顿来解决这个冒险问题。我们要在第二条指令的译码阶段之后，插入对应的NOP指令，直到前一天指令的数据写回完成之后，才能继续执行。</p>
-<p>这样的方案，虽然解决了数据冒险的问题，但是也浪费了两个时钟周期。我们的第2条指令，其实就是多花了2个时钟周期，运行了两次空转的NOP操作。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/94/69/94dda2330b07c08530540ae11838c569.jpeg?wh=2389*1069" /></p>
-<p>不过，其实我们第二条指令的执行，未必要等待第一条指令写回完成，才能进行。如果我们第一条指令的执行结果，能够直接传输给第二条指令的执行阶段，作为输入，那我们的第二条指令，就不用再从寄存器里面，把数据再单独读出来一次，才来执行代码。</p>
-<p>我们完全可以在第一条指令的执行阶段完成之后，直接将结果数据传输给到下一条指令的ALU。然后，下一条指令不需要再插入两个NOP阶段，就可以继续正常走到执行阶段。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/dc/27/dceadd35c334974d8270052b37d48c27.jpeg?wh=2249*638" /></p>
-<p>这样的解决方案，我们就叫作 <strong>操作数前推</strong>（Operand Forwarding），或者操作数旁路（Operand Bypassing）。其实我觉得，更合适的名字应该叫 <strong>操作数转发</strong>。这里的Forward，其实就是我们写Email时的“转发”（Forward）的意思。不过现有的经典教材的中文翻译一般都叫“前推”，我们也就不去纠正这个说法了，你明白这个意思就好。</p>
-<p>转发，其实是这个技术的 <strong>逻辑含义</strong>，也就是在第1条指令的执行结果，直接“转发”给了第2条指令的ALU作为输入。另外一个名字，旁路（Bypassing），则是这个技术的 <strong>硬件含义</strong>。为了能够实现这里的“转发”，我们在CPU的硬件里面，需要再单独拉一根信号传输的线路出来，使得ALU的计算结果，能够重新回到ALU的输入里来。这样的一条线路，就是我们的“旁路”。它越过（Bypass）了写入寄存器，再从寄存器读出的过程，也为我们节省了2个时钟周期。</p>
-<p>操作数前推的解决方案不但可以单独使用，还可以和流水线冒泡一起使用。有的时候，虽然我们可以把操作数转发到下一条指令，但是下一条指令仍然需要停顿一个时钟周期。</p>
-<p>比如说，我们先去执行一条LOAD指令，再去执行ADD指令。LOAD指令在访存阶段才能把数据读取出来，所以下一条指令的执行阶段，需要在访存阶段完成之后，才能进行。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/49/2d/49f3a9b1ae2972ac5c6cfca7731bf12d.jpeg?wh=2497*640" /></p>
-<p>总的来说，操作数前推的解决方案，比流水线停顿更进了一步。流水线停顿的方案，有点儿像游泳比赛的接力方式。下一名运动员，需要在前一个运动员游玩了全程之后，触碰到了游泳池壁才能出发。而操作数前推，就好像短跑接力赛。后一个运动员可以提前抢跑，而前一个运动员会多跑一段主动把交接棒传递给他。</p>
-<h2 id="_2">总结延伸</h2>
-<p>这一讲，我给你介绍了一个更加高级，也更加复杂的解决数据冒险问题方案，就是操作数前推，或者叫操作数旁路。</p>
-<p>操作数前推，就是通过在硬件层面制造一条旁路，让一条指令的计算结果，可以直接传输给下一条指令，而不再需要“指令1写回寄存器，指令2再读取寄存器“这样多此一举的操作。这样直接传输带来的好处就是，后面的指令可以减少，甚至消除原本需要通过流水线停顿，才能解决的数据冒险问题。</p>
-<p>这个前推的解决方案，不仅可以单独使用，还可以和前面讲解过的流水线冒泡结合在一起使用。因为有些时候，我们的操作数前推并不能减少所有“冒泡”，只能去掉其中的一部分。我们仍然需要通过插入一些“气泡”来解决冒险问题。</p>
-<p>通过操作数前推，我们进一步提升了CPU的运行效率。那么，我们是不是还能找到别的办法，进一步地减少浪费呢？毕竟，看到现在，我们仍然少不了要插入很多NOP的“气泡”。那就请你继续坚持学习下去。下一讲，我们来看看，CPU是怎么通过乱序执行，进一步减少“气泡”的。</p>
-<h2 id="_3">推荐阅读</h2>
-<p>想要深入了解操作数前推相关的内容，推荐你读一下《计算机组成与设计：硬件/软件接口》的4.5～4.7章节。</p>
-<h2 id="_4">课后思考</h2>
-<p>前面讲5级流水线指令的时候，我们说，STORE指令是没有数据写回阶段的，而ADD指令是没有访存阶段的。那像CMP或者JMP这样的比较和跳转指令，5个阶段都是全的么？还是说不需要哪些阶段呢？</p>
-<p>欢迎留言和我分享你的疑惑和见解。你也可以把今天的内容，分享给你的朋友，和他一起学习和进步。</p>
+<div><strong>精选留言（27）</strong></div>
+<ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/12/ec/2a/b11d5ad8.jpg" width="30px"><span>曾经瘦过</span> 👍（58） 💬（6）<div>感觉老师的讲课顺序特别好 方案都是一点点演变来的  那些看起来高大上的解决方案 都是从最笨的方法开始慢慢优化演变而来的  不是直接一步到位的讲解 能够更好的理解</div>2019-09-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ce/4f/3a89d29a.jpg" width="30px"><span>J.D.Chi</span> 👍（1） 💬（2）<div>1. 我可以这么理解吗？就是把一个方法：
+int main(int a , int b){
+int c = a + b;
+return c;
+}
+变成 
+int main(int a , int b){
+return a + b;
+}
+2. 看了之后有一个想法会不会那个时候的程序员的编程代码里是会考虑到汇编指令这一块，后来随着机器性能的发展，现在的程序员在日常写代码对这块就不太重视了，于是一些《代码简洁之道》一类的书就应运而生了。一方面包括了从视觉上对代码的规范，另一方面也回归到对指令考虑这一块。</div>2019-09-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a0/3f/06b690ba.jpg" width="30px"><span>刘桢</span> 👍（40） 💬（7）<div>今天考研冲北邮！</div>2019-06-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ba/01/c5161563.jpg" width="30px"><span>Geek</span> 👍（18） 💬（2）<div>后面这些就有点难了，对于非计算机专业的我来说，不过就当看小说了，会一直看下去。。。</div>2019-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/6e/8e/5d309a85.jpg" width="30px"><span>拯救地球好累</span> 👍（15） 💬（0）<div>---总结---
+为了避免流水线停顿中插入过多的NOP指令，我们引入了操作数前推技术。
+具有依赖关系的两条指令，后一条指令的输入往往来自于前一条指令执行之后写入的寄存器，而操作数前推则通过在硬件上制造一条旁路让前一条指令的执行结果直接作为后一条指令的输入，而无需等待前一条指令写回寄存器。
+这就像工厂流水线中，上一道工序做好的半成品一般会先递送到某个储物柜上以供下个工序的工人使用，增加旁路后好比前一位工人直接将半成品递交给下一位工人，而减少了“放物品-取物品”这样的动作。</div>2019-10-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/65/2b/446ef7b6.jpg" width="30px"><span>许先森</span> 👍（12） 💬（0）<div>cmp：取指令、译码、执行、访存、写回；
+jmp：取指令、译码</div>2020-01-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/ec/2a/b11d5ad8.jpg" width="30px"><span>曾经瘦过</span> 👍（8） 💬（1）<div>cmp 指令是比较大小的指令  执行步骤感觉是 取指令 译码 取数据（访问内存 或者寄存器） 比较大小(执行) 出结果(写回)  应该是全的   jump指令是跳转的指令 执行步骤应该是  取指令  译码    跳转(执行)  没有访问内存和写回 的过程   </div>2019-09-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/68/ef/6264ca3d.jpg" width="30px"><span>Magic</span> 👍（7） 💬（0）<div>CMP需要使用ALU进行比较，比较结果需要写入状态寄存器，因此没有访存阶段。
+JMP在控制器中直接修改PC寄存器，因此没有ALU执行和访存阶段</div>2020-09-28</li><br/><li><img src="" width="30px"><span>haer</span> 👍（7） 💬（4）<div>我觉得：cmp没有“访存”，jmp没有“执行”和“访存”</div>2019-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/15/69/187b9968.jpg" width="30px"><span>南山</span> 👍（2） 💬（0）<div>从指令作用理解，cmp是全的，jmp不需要回写~</div>2019-06-17</li><br/><li><img src="" width="30px"><span>竹林木</span> 👍（1） 💬（0）<div>cmp: 取指令，译码，执行，写回(访问内存应该是load指令阶段，这里只需要访问已经load到寄存器的值就行了)
+jump: 取指令，译码，写回(改写的是指令计数器的值)</div>2021-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/9a/89/babe8b52.jpg" width="30px"><span>A君</span> 👍（1） 💬（0）<div>cmp指令需要把比较结果写入条件寄存器，所有有写回指令，如果是无条件jmp就只需要取指和译码即可，反之还需要执行。</div>2020-06-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/e0/6b/f61d7466.jpg" width="30px"><span>prader26</span> 👍（1） 💬（0）<div>1  为了解决，计算机指令中，有太多气泡的，可以采用操作数前推的办法。(上一条指令，的结果不再写入到寄存器中去，而是直接传递给一下需要使用数据的指令。)</div>2019-09-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a5/98/a65ff31a.jpg" width="30px"><span>djfhchdh</span> 👍（1） 💬（0）<div>CMP没有访问内存的操作，JMP没有执行、访问内存的操作</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/81/e9/d131dd81.jpg" width="30px"><span>Mamba</span> 👍（0） 💬（0）<div>CMP指令用于比较两个值，它通常会经历以下阶段：
+取指：从指令缓存中获取指令。
+解码：确定操作数和操作类型。
+执行：执行比较操作，设置状态标志（如零标志、符号标志、进位标志等）。
+
+MP指令用于无条件跳转或者条件跳转，它通常会经历以下阶段：
+取指：从指令缓存中获取指令。
+解码：确定跳转目标和跳转条件（对于条件跳转）。
+执行：计算跳转地址（对于间接跳转）并决定是否应该跳转。
+
+CMP和JMP指令通常不需要内存访问阶段和写回阶段。</div>2024-08-23</li><br/><li><img src="" width="30px"><span>Geek_88604f</span> 👍（0） 💬（0）<div>将前一个指令的执行结果直接发送到下一个指令的执行阶段可以进一步减少等待。但是这么做会不会导致两个指令之间耦合增强，需要考虑发送失败之类的情况需要怎么处理------不知道硬件层面是否需要这样对异常进行设计?</div>2023-11-03</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/mQddXC7nRiaKHTwdficicTB3bH0q5ic5UoSab51Omic7eyLBz0SNcvbLpQnNib7zP1yJFm7xxx4ia81iahfibRVnbTwHmhw/132" width="30px"><span>浮石沉木</span> 👍（0） 💬（0）<div>老师，这里的指令对齐，我理解的是假设有14级的流水线，哪怕一个指令实际只有5个stage，但是为了对齐，剩余的9个stage都得用nohup补齐吗？</div>2022-07-28</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/SluScDGqnhBNwmOQ774QEzuXiazk8Ab7ng8xCT81gunl9Hls9oibwB4AibCDxDtZwTe4mEib5QiaLXUqMv8iceXicXSYg/132" width="30px"><span>Geek_080ce7</span> 👍（0） 💬（0）<div>旁路建立好之后，那不是无论前后两个指令有没有数据依赖关系，都会收到前一个指令的计算机结果？那不是导致计算紊乱吗？这是怎么解决的？感觉很有难度呀</div>2022-04-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/75/f0/2c65887d.jpg" width="30px"><span>活着即是修行</span> 👍（0） 💬（0）<div>cmp我感觉需要访存，因为要比较数值的大小，需要从内存中读取数值。写回不用吧。
+jmp我感觉不用访存，也不用写回吧</div>2021-11-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/49/55/062c8d54.jpg" width="30px"><span>林有有头号粉丝</span> 👍（0） 💬（0）<div>老师您好，我想请问一下PC值更新的时机是什么时候？是每一个时钟信号给出的时候就完成自身状态的更新，并且向外界传输的吗？
+</div>2021-08-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/f3/129d6dfe.jpg" width="30px"><span>李二木</span> 👍（0） 💬（0）<div>操作数前推，就是通过在硬件层面制造一条旁路，让一条指令的计算结果，可以直接传输给下一条指令，而不再需要“指令 1 写回寄存器，指令 2 再读取寄存器“这样多此一举的操作</div>2021-03-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/99/c3/e4f408d4.jpg" width="30px"><span>陌兮</span> 👍（0） 💬（0）<div>老师讲的真是太有趣了，非常好看</div>2021-03-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/5f/aa/63e641c1.jpg" width="30px"><span>H</span> 👍（0） 💬（0）<div>看完之后🈶1个问题哈，希望老师能解答
+1、本文说通过指令对齐，就是插入NOP操作来避免结构冒险的出现，但是缓存中已经划分为指令缓存和数据缓存。这两个缓存分区，还有用吗？</div>2020-12-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/10/0e/5a0f2339.jpg" width="30px"><span>哪里有会生气的龙</span> 👍（0） 💬（1）<div>ps:各个指令不需要的阶段，并不会直接跳过，而是会运行一次 NOP 操作。
+请问，是所有的指令吗？</div>2020-09-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/de/5d/3a75c20b.jpg" width="30px"><span>Geek_bd6gy9</span> 👍（0） 💬（2）<div>老师，有点不太理解，SUB和ADD指令为什么没有访存操作呢？它们需要的数据不也是从内存中加载到缓存，寄存器然后才能执行么？对于哪些指令需要访存搞不清楚……，麻烦老师解答一下</div>2020-06-05</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqXNhbTULKiakib8lYXrvGF2zPwfedooBzC2EtSv1nt1MwV1KUvTkcJrvCBFvcdwJicnr3OEXnk9GUCg/132" width="30px"><span>WENMURAN</span> 👍（0） 💬（0）<div>冒险和预测二:
+结构冒险和数据冒险的解决方法，增加硬件资源和等待。
+更好的解决方案:操作数前堆
+就是在硬件层面，构建一条同路，使得上一条指令的结果可以直接传入下一条使用，避免中间经过一层寄存器，减少一次NOF操作
+操作数前堆也可以和流水线冒泡结合起来使用
+</div>2020-04-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9b/ba/333b59e5.jpg" width="30px"><span>Linuxer</span> 👍（0） 💬（2）<div>请问老师操作数前推中，前一条指令的输出存哪呢？如果还是寄存器那不还是没解决问题，如果不是那指令add不有两种形式，那又如何区分呢?</div>2019-06-17</li><br/>
+</ul>
 
 
 

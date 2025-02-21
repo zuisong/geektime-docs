@@ -467,6 +467,8 @@
       
         
       
+        
+      
     
     
       
@@ -681,6 +683,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -4734,42 +4740,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#2qemu" class="md-nav__link">
-    <span class="md-ellipsis">
-      2.解析qemu的命令行
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3machine" class="md-nav__link">
-    <span class="md-ellipsis">
-      3.初始化machine
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      总结时刻
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      课堂练习
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -6020,42 +5990,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#2qemu" class="md-nav__link">
-    <span class="md-ellipsis">
-      2.解析qemu的命令行
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3machine" class="md-nav__link">
-    <span class="md-ellipsis">
-      3.初始化machine
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      总结时刻
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      课堂练习
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -6085,7 +6019,7 @@
 <p>这里是上一节我们讲的qemu启动时候的命令。</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>qemu-system-x86_64 -enable-kvm -name ubuntutest  -m 2048 -hda ubuntutest.qcow2 -vnc :19 -net nic,model=virtio -nettap,ifname=tap0,script=no,downscript=no
 </code></pre></div>
-<p>接下来，我们在 <a href="https://www.qemu.org/">这里下载</a> qemu的代码。qemu的main函数在vl.c下面。这是一个非常非常长的函数，我们来慢慢地解析它。</p>
+<p>接下来，我们在<a href="https://www.qemu.org/">这里下载</a>qemu的代码。qemu的main函数在vl.c下面。这是一个非常非常长的函数，我们来慢慢地解析它。</p>
 <h2 id="1module">1.初始化所有的Module</h2>
 <p>第一步，初始化所有的Module，调用下面的函数。</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>module_call_init(MODULE_INIT_QOM);
@@ -6117,414 +6051,26 @@
 <a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>}
 </code></pre></div>
 <p>从代码里面的定义我们可以看出来，type_init后面的参数是一个函数，调用type_init就相当于调用module_init，在这里函数就是kvm_type_init，类型就是MODULE_INIT_QOM。是不是感觉和驱动有点儿像？</p>
-<p>module_init最终要调用register_module_init。属于MODULE_INIT_QOM这种类型的，有一个Module列表ModuleTypeList，列表里面是一项一项的ModuleEntry。KVM就是其中一项，并且会初始化每一项的init函数为参数表示的函数fn，也即KVM这个module的init函数就是kvm_type_init。</p>
-<p>当然，MODULE_INIT_QOM这种类型会有很多很多的module，从后面的代码我们可以看到，所有调用type_init的地方都注册了一个MODULE_INIT_QOM类型的Module。</p>
-<p>了解了Module的注册机制，我们继续回到main函数中module_call_init的调用。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>void module_call_init(module_init_type type)
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>{
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    ModuleTypeList *l;
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    ModuleEntry *e;
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    l = find_type(type);
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    QTAILQ_FOREACH(e, l, node) {
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        e-&gt;init();
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    }
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>}
-</code></pre></div>
-<p>在module_call_init中，我们会找到MODULE_INIT_QOM这种类型对应的ModuleTypeList，找出列表中所有的ModuleEntry，然后调用每个ModuleEntry的init函数。这里需要注意的是，在module_call_init调用的这一步，所有Module的init函数都已经被调用过了。</p>
-<p>后面我们会看到很多的Module，当你看到它们的时候，你需要意识到，它的init函数在这里也被调用过了。这里我们还是以对于kvm这个module为例子，看看它的init函数都做了哪些事情。你会发现，其实它调用的是kvm_type_init。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>static void kvm_type_init(void)
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>{
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    type_register_static(&amp;kvm_accel_type);
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>}
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>TypeImpl *type_register_static(const TypeInfo *info)
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>{
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    return type_register(info);
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>}
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>TypeImpl *type_register(const TypeInfo *info)
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>{
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    assert(info-&gt;parent);
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    return type_register_internal(info);
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>}
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>static TypeImpl *type_register_internal(const TypeInfo *info)
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>{
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    TypeImpl *ti;
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    ti = type_new(info);
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>
-<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    type_table_add(ti);
-<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    return ti;
-<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>}
-<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>
-<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>static TypeImpl *type_new(const TypeInfo *info)
-<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>{
-<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>    TypeImpl *ti = g_malloc0(sizeof(*ti));
-<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>    int i;
-<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>
-<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>    if (type_table_lookup(info-&gt;name) != NULL) {
-<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>    }
-<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>
-<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>    ti-&gt;name = g_strdup(info-&gt;name);
-<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>    ti-&gt;parent = g_strdup(info-&gt;parent);
-<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>
-<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>    ti-&gt;class_size = info-&gt;class_size;
-<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>    ti-&gt;instance_size = info-&gt;instance_size;
-<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>
-<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>    ti-&gt;class_init = info-&gt;class_init;
-<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>    ti-&gt;class_base_init = info-&gt;class_base_init;
-<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>    ti-&gt;class_data = info-&gt;class_data;
-<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>
-<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>    ti-&gt;instance_init = info-&gt;instance_init;
-<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a>    ti-&gt;instance_post_init = info-&gt;instance_post_init;
-<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a>    ti-&gt;instance_finalize = info-&gt;instance_finalize;
-<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a>
-<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a>    ti-&gt;abstract = info-&gt;abstract;
-<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a>
-<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a>    for (i = 0; info-&gt;interfaces &amp;&amp; info-&gt;interfaces[i].type; i++) {
-<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a>        ti-&gt;interfaces[i].typename = g_strdup(info-&gt;interfaces[i].type);
-<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a>    }
-<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a>    ti-&gt;num_interfaces = i;
-<a id="__codelineno-4-54" name="__codelineno-4-54" href="#__codelineno-4-54"></a>
-<a id="__codelineno-4-55" name="__codelineno-4-55" href="#__codelineno-4-55"></a>    return ti;
-<a id="__codelineno-4-56" name="__codelineno-4-56" href="#__codelineno-4-56"></a>}
-<a id="__codelineno-4-57" name="__codelineno-4-57" href="#__codelineno-4-57"></a>
-<a id="__codelineno-4-58" name="__codelineno-4-58" href="#__codelineno-4-58"></a>static void type_table_add(TypeImpl *ti)
-<a id="__codelineno-4-59" name="__codelineno-4-59" href="#__codelineno-4-59"></a>{
-<a id="__codelineno-4-60" name="__codelineno-4-60" href="#__codelineno-4-60"></a>    assert(!enumerating_types);
-<a id="__codelineno-4-61" name="__codelineno-4-61" href="#__codelineno-4-61"></a>    g_hash_table_insert(type_table_get(), (void *)ti-&gt;name, ti);
-<a id="__codelineno-4-62" name="__codelineno-4-62" href="#__codelineno-4-62"></a>}
-<a id="__codelineno-4-63" name="__codelineno-4-63" href="#__codelineno-4-63"></a>
-<a id="__codelineno-4-64" name="__codelineno-4-64" href="#__codelineno-4-64"></a>static GHashTable *type_table_get(void)
-<a id="__codelineno-4-65" name="__codelineno-4-65" href="#__codelineno-4-65"></a>{
-<a id="__codelineno-4-66" name="__codelineno-4-66" href="#__codelineno-4-66"></a>    static GHashTable *type_table;
-<a id="__codelineno-4-67" name="__codelineno-4-67" href="#__codelineno-4-67"></a>
-<a id="__codelineno-4-68" name="__codelineno-4-68" href="#__codelineno-4-68"></a>    if (type_table == NULL) {
-<a id="__codelineno-4-69" name="__codelineno-4-69" href="#__codelineno-4-69"></a>        type_table = g_hash_table_new(g_str_hash, g_str_equal);
-<a id="__codelineno-4-70" name="__codelineno-4-70" href="#__codelineno-4-70"></a>    }
-<a id="__codelineno-4-71" name="__codelineno-4-71" href="#__codelineno-4-71"></a>
-<a id="__codelineno-4-72" name="__codelineno-4-72" href="#__codelineno-4-72"></a>    return type_table;
-<a id="__codelineno-4-73" name="__codelineno-4-73" href="#__codelineno-4-73"></a>}
-<a id="__codelineno-4-74" name="__codelineno-4-74" href="#__codelineno-4-74"></a>
-<a id="__codelineno-4-75" name="__codelineno-4-75" href="#__codelineno-4-75"></a>static const TypeInfo kvm_accel_type = {
-<a id="__codelineno-4-76" name="__codelineno-4-76" href="#__codelineno-4-76"></a>    .name = TYPE_KVM_ACCEL,
-<a id="__codelineno-4-77" name="__codelineno-4-77" href="#__codelineno-4-77"></a>    .parent = TYPE_ACCEL,
-<a id="__codelineno-4-78" name="__codelineno-4-78" href="#__codelineno-4-78"></a>    .class_init = kvm_accel_class_init,
-<a id="__codelineno-4-79" name="__codelineno-4-79" href="#__codelineno-4-79"></a>    .instance_size = sizeof(KVMState),
-<a id="__codelineno-4-80" name="__codelineno-4-80" href="#__codelineno-4-80"></a>};
-</code></pre></div>
-<p>每一个Module既然要模拟某种设备，那应该定义一种类型TypeImpl来表示这些设备，这其实是一种面向对象编程的思路，只不过这里用的是纯C语言的实现，所以需要变相实现一下类和对象。</p>
-<p>kvm_type_init会注册kvm_accel_type，定义上面的代码，我们可以认为这样动态定义了一个类。这个类的名字是TYPE_KVM_ACCEL，这个类有父类TYPE_ACCEL，这个类的初始化应该调用函数kvm_accel_class_init（看，这里已经直接叫类class了）。如果用这个类声明一个对象，对象的大小应该是instance_size。是不是有点儿Java语言反射的意思，根据一些名称的定义，一个类就定义好了。</p>
-<p>这里的调用链为：kvm_type_init-&gt;type_register_static-&gt;type_register-&gt;type_register_internal。</p>
-<p>在type_register_internal中，我们会根据kvm_accel_type这个TypeInfo，创建一个TypeImpl来表示这个新注册的类，也就是说，TypeImpl才是我们想要声明的那个class。在qemu里面，有一个全局的哈希表type_table，用来存放所有定义的类。在type_new里面，我们先从全局表里面根据名字找这个类。如果找到，说明这个类曾经被注册过，就报错；如果没有找到，说明这是一个新的类，则将TypeInfo里面信息填到TypeImpl里面。type_table_add会将这个类注册到全局的表里面。到这里，我们注意，class_init还没有被调用，也即这个类现在还处于纸面的状态。</p>
-<p>这点更加像Java的反射机制了。在Java里面，对于一个类，首先我们写代码的时候要写一个class xxx的定义，编译好就放在.class文件中，这也是出于纸面的状态。然后，Java会有一个Class对象，用于读取和表示这个纸面上的class xxx，可以生成真正的对象。</p>
-<p>相同的过程在后面的代码中我们也可以看到，class_init会生成XXXClass，就相当于Java里面的Class对象，TypeImpl还会有一个instance_init函数，相当于构造函数，用于根据XXXClass生成Object，这就相当于Java反射里面最终创建的对象。和构造函数对应的还有instance_finalize，相当于析构函数。</p>
-<p>这一套反射机制放在qom文件夹下面，全称QEMU Object Model，也即用C实现了一套面向对象的反射机制。</p>
-<p>说完了初始化Module，我们还回到main函数接着分析。</p>
-<h2 id="2qemu">2.解析qemu的命令行</h2>
-<p>第二步我们就要开始解析qemu的命令行了。qemu的命令行解析，就是下面这样一长串。还记得咱们自己写过一个解析命令行参数的程序吗？这里的opts是差不多的意思。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>    qemu_add_opts(&amp;qemu_drive_opts);
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    qemu_add_opts(&amp;qemu_chardev_opts);
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    qemu_add_opts(&amp;qemu_device_opts);
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    qemu_add_opts(&amp;qemu_netdev_opts);
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    qemu_add_opts(&amp;qemu_nic_opts);
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    qemu_add_opts(&amp;qemu_net_opts);
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    qemu_add_opts(&amp;qemu_rtc_opts);
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    qemu_add_opts(&amp;qemu_machine_opts);
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    qemu_add_opts(&amp;qemu_accel_opts);
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    qemu_add_opts(&amp;qemu_mem_opts);
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    qemu_add_opts(&amp;qemu_smp_opts);
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    qemu_add_opts(&amp;qemu_boot_opts);
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    qemu_add_opts(&amp;qemu_name_opts);
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    qemu_add_opts(&amp;qemu_numa_opts);
-</code></pre></div>
-<p>为什么有这么多的opts呢？这是因为，我们上一节给的参数都是简单的参数，实际运行中创建的kvm参数会复杂N倍。这里我们贴一个开源云平台软件OpenStack创建出来的KVM的参数，如下所示。不要被吓坏，你不需要全部看懂，只需要看懂一部分就行了。具体我来给你解析。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>qemu-system-x86_64
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>-enable-kvm
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>-name instance-00000024
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>-machine pc-i440fx-trusty,accel=kvm,usb=off
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>-cpu SandyBridge,+erms,+smep,+fsgsbase,+pdpe1gb,+rdrand,+f16c,+osxsave,+dca,+pcid,+pdcm,+xtpr,+tm2,+est,+smx,+vmx,+ds_cpl,+monitor,+dtes64,+pbe,+tm,+ht,+ss,+acpi,+ds,+vme
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>-m 2048
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>-smp 1,sockets=1,cores=1,threads=1
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>......
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>-rtc base=utc,driftfix=slew
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>-drive file=/var/lib/nova/instances/1f8e6f7e-5a70-4780-89c1-464dc0e7f308/disk,if=none,id=drive-virtio-disk0,format=qcow2,cache=none
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>-device virtio-blk-pci,scsi=off,bus=pci.0,addr=0x4,drive=drive-virtio-disk0,id=virtio-disk0,bootindex=1
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>-netdev tap,fd=32,id=hostnet0,vhost=on,vhostfd=37
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>-device virtio-net-pci,netdev=hostnet0,id=net0,mac=fa:16:3e:d1:2d:99,bus=pci.0,addr=0x3
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>-chardev file,id=charserial0,path=/var/lib/nova/instances/1f8e6f7e-5a70-4780-89c1-464dc0e7f308/console.log
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>-vnc 0.0.0.0:12
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>-device cirrus-vga,id=video0,bus=pci.0,addr=0x2
-</code></pre></div>
+<div><strong>精选留言（10）</strong></div>
 <ul>
-<li>
-<p>-enable-kvm：表示启用硬件辅助虚拟化。</p>
-</li>
-<li>
-<p>-name instance-00000024：表示虚拟机的名称。</p>
-</li>
-<li>
-<p>-machine pc-i440fx-trusty,accel=kvm,usb=off：machine是什么呢？其实就是计算机体系结构。不知道什么是体系结构的话，可以订阅极客时间的另一个专栏《深入浅出计算机组成原理》。</p>
-</li>
+<li><img src="https://static001.geekbang.org/account/avatar/00/10/c6/f9/caf27bd3.jpg" width="30px"><span>大王叫我来巡山</span> 👍（27） 💬（1）<div>感觉设计这个软件的真厉害，怪不得我们自己做的业务系统自己都信不过，差距实在是太远，国内很多大公司在分享技术的时候也就是个PPT，根本不敢把代码放出来给大家看，也没有把实际用的效果展示给大家，只是给别人的感觉很牛逼而已。我感觉我从事这个工作这么久，真没遇到过这种大神</div>2019-07-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/25/4b/4cbd001e.jpg" width="30px"><span>佳俊</span> 👍（8） 💬（1）<div>看了很久都没有搞明白一个type_init 宏定义出来的函数是怎么被调用的，直到发现在module_init 里面一个这个属性的定义__attribute__((constructor))，才明白是GNU C 里面的一个特性，在main函数调用前系统会自动先调用这个函数。</div>2020-05-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/e3/ad/a47728fd.jpg" width="30px"><span>泡泡</span> 👍（1） 💬（2）<div>请问代码是用的哪个内核版本</div>2019-07-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/74/c9/d3439ca4.jpg" width="30px"><span>why</span> 👍（12） 💬（0）<div>解析 qemu 的执行步骤
+
+1. 初始化所有模块
+
+模块的信息(包括名称, 模块类型初始化函数等), 存在 TypeInfo 中, 通过调用 type_init, 将这些信息统一以 ModelEntry 的格式存储到 ModelTypeList 中. 
+
+module_call_init() 会调用 ModelTypeList 中所有模块的初始化函数,  从 ModelEntry 里存储的 TypeInfo 信息生成 TypeImpl(类似于 class 文件), 这个 TypeImpl 会存储到 qemu 的一个全局 hash 表中.  
+
+2. 解析命令行参数
+
+命令行参数比较多. 
+
+其中 -machine 参数用于指定计算机体系结构. 另外 网卡&#47;硬盘的配置要分表从 Host&#47;Guest 较多进行设置.
+
+3. 初始化 machine
+
+会在 qemu 的全局 hash 表中注册对应计算机体系结构的 TypeImpl 信息. 然后会调用所有 TypeImpl 的初始化方法 class_init 生成对应的 Class. 最后会得到一个 MachineClass. 然后调用 TypeImple 中的 instance_init 方法生成 MachineClass 的一个实例. </div>2020-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/4d/97/1d99a0a3.jpg" width="30px"><span>柒城</span> 👍（3） 💬（0）<div>老师，之后会不会开个专门讲虚拟化的专栏啊？吧QEMU和KVM好好讲讲</div>2021-10-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4a/2c/f8451d77.jpg" width="30px"><span>石维康</span> 👍（3） 💬（0）<div>请问老师pc_machine_type_##suffix所对应的TypeImpl的instance_init是在哪初始化的？也就是从代码里如何体现从MachineClass生成MachineState？</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5e/aa/b29ee77d.jpg" width="30px"><span>RobinDevNotes</span> 👍（2） 💬（0）<div>期望老师出一个讲openstack的专栏</div>2021-09-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5e/aa/b29ee77d.jpg" width="30px"><span>RobinDevNotes</span> 👍（1） 💬（0）<div>openstack是调用libvirt，libevirtd再调用kvm吗？</div>2021-09-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b2/e0/bf56878a.jpg" width="30px"><span>kkxue</span> 👍（0） 💬（0）<div>nova通过libvirt驱动，将配置数据转化成XML格式的文件，用于创建虚拟机。</div>2022-04-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/90/8f/9c691a5f.jpg" width="30px"><span>奔跑的码仔</span> 👍（0） 💬（0）<div>请问，qemu使用的是哪个版本？</div>2019-10-23</li><br/>
 </ul>
-<p>qemu会模拟多种体系结构，常用的有普通PC机，也即x86的32位或者64位的体系结构、Mac电脑PowerPC的体系结构、Sun的体系结构、MIPS的体系结构，精简指令集。如果使用KVM hardware-assisted virtualization，也即BIOS中VD-T是打开的，则参数中accel=kvm。如果不使用hardware-assisted virtualization，用的是纯模拟，则有参数accel = tcg，-no-kvm。</p>
-<ul>
-<li>
-<p>-cpu SandyBridge,+erms,+smep,+fsgsbase,+pdpe1gb,+rdrand,+f16c,+osxsave,+dca,+pcid,+pdcm,+xtpr,+tm2,+est,+smx,+vmx,+ds_cpl,+monitor,+dtes64,+pbe,+tm,+ht,+ss,+acpi,+ds,+vme：表示设置CPU，SandyBridge是Intel处理器，后面的加号都是添加的CPU的参数，这些参数会显示在/proc/cpuinfo里面。</p>
-</li>
-<li>
-<p>-m 2048：表示内存。</p>
-</li>
-<li>
-<p>-smp 1,sockets=1,cores=1,threads=1：SMP我们解析过，叫对称多处理器，和NUMA对应。qemu仿真了一个具有1个vcpu，一个socket，一个core，一个threads的处理器。</p>
-</li>
-</ul>
-<p>socket、core、threads是什么概念呢？socket就是主板上插cpu的槽的数目，也即常说的“路”，core就是我们平时说的“核”，即双核、4核等。thread就是每个core的硬件线程数，即超线程。举个具体的例子，某个服务器是：2路4核超线程（一般默认为2个线程），通过cat /proc/cpuinfo，我们看到的是2 <em>4</em> 2=16个processor，很多人也习惯成为16核了。</p>
-<ul>
-<li>
-<p>-rtc base=utc,driftfix=slew：表示系统时间由参数-rtc指定。</p>
-</li>
-<li>
-<p>-device cirrus-vga,id=video0,bus=pci.0,addr=0x2：表示显示器用参数-vga设置，默认为cirrus，它模拟了CL-GD5446PCI VGA card。</p>
-</li>
-<li>
-<p>有关网卡，使用-net参数和-device。</p>
-</li>
-<li>
-<p>从HOST角度：-netdev tap,fd=32,id=hostnet0,vhost=on,vhostfd=37。</p>
-</li>
-<li>
-<p>从GUEST角度：-device virtio-net-pci,netdev=hostnet0,id=net0,mac=fa:16:3e:d1:2d:99,bus=pci.0,addr=0x3。</p>
-</li>
-<li>
-<p>有关硬盘，使用-hda -hdb，或者使用-drive和-device。</p>
-</li>
-<li>
-<p>从HOST角度：-drive file=/var/lib/nova/instances/1f8e6f7e-5a70-4780-89c1-464dc0e7f308/disk,if=none,id=drive-virtio-disk0,format=qcow2,cache=none</p>
-</li>
-<li>
-<p>从GUEST角度：-device virtio-blk-pci,scsi=off,bus=pci.0,addr=0x4,drive=drive-virtio-disk0,id=virtio-disk0,bootindex=1</p>
-</li>
-<li>
-<p>-vnc 0.0.0.0:12：设置VNC。</p>
-</li>
-</ul>
-<p>在main函数中，接下来的for循环和大量的switch case语句，就是对于这些参数的解析，我们不一一解析，后面真的用到这些参数的时候，我们再仔细看。</p>
-<h2 id="3machine">3.初始化machine</h2>
-<p>回到main函数，接下来是初始化machine。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>machine_class = select_machine();
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>current_machine = MACHINE(object_new(object_class_get_name(
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>                          OBJECT_CLASS(machine_class))));
-</code></pre></div>
-<p>这里面的machine_class是什么呢？这还得从machine参数说起。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>-machine pc-i440fx-trusty,accel=kvm,usb=off
-</code></pre></div>
-<p>这里的pc-i440fx是x86机器默认的体系结构。在hw/i386/pc_piix.c中，它定义了对应的machine_class。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>DEFINE_I440FX_MACHINE(v4_0, &quot;pc-i440fx-4.0&quot;, NULL,
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>                      pc_i440fx_4_0_machine_options);
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>#define DEFINE_I440FX_MACHINE(suffix, name, compatfn, optionfn) \
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    static void pc_init_##suffix(MachineState *machine) \
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    { \
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>......
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>        pc_init1(machine, TYPE_I440FX_PCI_HOST_BRIDGE, \
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>                 TYPE_I440FX_PCI_DEVICE); \
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    } \
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    DEFINE_PC_MACHINE(suffix, name, pc_init_##suffix, optionfn)
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>#define DEFINE_PC_MACHINE(suffix, namestr, initfn, optsfn) \
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    static void pc_machine_##suffix##_class_init(ObjectClass *oc, void *data
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>) \
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>    { \
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>        MachineClass *mc = MACHINE_CLASS(oc); \
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>        optsfn(mc); \
-<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>        mc-&gt;init = initfn; \
-<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>    } \
-<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>    static const TypeInfo pc_machine_type_##suffix = { \
-<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>        .name       = namestr TYPE_MACHINE_SUFFIX, \
-<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>        .parent     = TYPE_PC_MACHINE, \
-<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>        .class_init = pc_machine_##suffix##_class_init, \
-<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>    }; \
-<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>    static void pc_machine_init_##suffix(void) \
-<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>    { \
-<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>        type_register(&amp;pc_machine_type_##suffix); \
-<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>    } \
-<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>    type_init(pc_machine_init_##suffix)
-</code></pre></div>
-<p>为了定义machine_class，这里有一系列的宏定义。入口是DEFINE_I440FX_MACHINE。这个宏有几个参数，v4_0是后缀，"pc-i440fx-4.0"是名字，pc_i440fx_4_0_machine_options是一个函数，用于定义machine_class相关的选项。这个函数定义如下：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>static void pc_i440fx_4_0_machine_options(MachineClass *m)
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>{
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    pc_i440fx_machine_options(m);
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    m-&gt;alias = &quot;pc&quot;;
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    m-&gt;is_default = 1;
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>}
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>static void pc_i440fx_machine_options(MachineClass *m)
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>{
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    PCMachineClass *pcmc = PC_MACHINE_CLASS(m);
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    pcmc-&gt;default_nic_model = &quot;e1000&quot;;
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>
-<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>    m-&gt;family = &quot;pc_piix&quot;;
-<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    m-&gt;desc = &quot;Standard PC (i440FX + PIIX, 1996)&quot;;
-<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>    m-&gt;default_machine_opts = &quot;firmware=bios-256k.bin&quot;;
-<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>    m-&gt;default_display = &quot;std&quot;;
-<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    machine_class_allow_dynamic_sysbus_dev(m, TYPE_RAMFB_DEVICE);
-<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>}
-</code></pre></div>
-<p>我们先不看pc_i440fx_4_0_machine_options，先来看DEFINE_I440FX_MACHINE。</p>
-<p>这里面定义了一个pc_init_##suffix，也就是pc_init_v4_0。这里面转而调用pc_init1。注意这里这个函数只是定义了一下，没有被调用。</p>
-<p>接下来，DEFINE_I440FX_MACHINE里面又定义了DEFINE_PC_MACHINE。它有四个参数，除了DEFINE_I440FX_MACHINE传进来的三个参数以外，多了一个initfn，也即初始化函数，指向刚才定义的pc_init_##suffix。</p>
-<p>在DEFINE_PC_MACHINE中，我们定义了一个函数pc_machine_##suffix## <em>class_init。从函数的名字class_init可以看出，这是machine_class从纸面上的class初始化为Class对象的方法。在这个函数里面，我们可以看到，它创建了一个MachineClass对象，这个就是Class对象。MachineClass对象的init函数指向上面定义的pc_init</em>##suffix，说明这个函数是machine这种类型初始化的一个函数，后面会被调用。</p>
-<p>接着，我们看DEFINE_PC_MACHINE。它定义了一个pc_machine_type_##suffix的TypeInfo。这是用于生成纸面上的class的原材料，果真后面调用了type_init。</p>
-<p>看到了type_init，我们应该能够想到，既然它定义了一个纸面上的class，那上面的那句module_call_init，会和我们上面解析的type_init是一样的，在全局的表里面注册了一个全局的名字是"pc-i440fx-4.0"的纸面上的class，也即TypeImpl。</p>
-<p>现在全局表中有这个纸面上的class了。我们回到select_machine。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>static MachineClass *select_machine(void)
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>{
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    MachineClass *machine_class = find_default_machine();
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    const char *optarg;
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    QemuOpts *opts;
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>......
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    opts = qemu_get_machine_opts();
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    qemu_opts_loc_restore(opts);
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    optarg = qemu_opt_get(opts, &quot;type&quot;);
-<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    if (optarg) {
-<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>        machine_class = machine_parse(optarg);
-<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>    }
-<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>......
-<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>    return machine_class;
-<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>}
-<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>
-<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>MachineClass *find_default_machine(void)
-<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>{
-<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>    GSList *el, *machines = object_class_get_list(TYPE_MACHINE, false);
-<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>    MachineClass *mc = NULL;
-<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>    for (el = machines; el; el = el-&gt;next) {
-<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>        MachineClass *temp = el-&gt;data;
-<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>        if (temp-&gt;is_default) {
-<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>            mc = temp;
-<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>            break;
-<a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>        }
-<a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>    }
-<a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>    g_slist_free(machines);
-<a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a>    return mc;
-<a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>}
-<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a>
-<a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a>static MachineClass *machine_parse(const char *name)
-<a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a>{
-<a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a>    MachineClass *mc = NULL;
-<a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a>    GSList *el, *machines = object_class_get_list(TYPE_MACHINE, false);
-<a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a>
-<a id="__codelineno-11-38" name="__codelineno-11-38" href="#__codelineno-11-38"></a>    if (name) {
-<a id="__codelineno-11-39" name="__codelineno-11-39" href="#__codelineno-11-39"></a>        mc = find_machine(name);
-<a id="__codelineno-11-40" name="__codelineno-11-40" href="#__codelineno-11-40"></a>    }
-<a id="__codelineno-11-41" name="__codelineno-11-41" href="#__codelineno-11-41"></a>    if (mc) {
-<a id="__codelineno-11-42" name="__codelineno-11-42" href="#__codelineno-11-42"></a>        g_slist_free(machines);
-<a id="__codelineno-11-43" name="__codelineno-11-43" href="#__codelineno-11-43"></a>        return mc;
-<a id="__codelineno-11-44" name="__codelineno-11-44" href="#__codelineno-11-44"></a>    }
-<a id="__codelineno-11-45" name="__codelineno-11-45" href="#__codelineno-11-45"></a>......
-<a id="__codelineno-11-46" name="__codelineno-11-46" href="#__codelineno-11-46"></a>}
-</code></pre></div>
-<p>在select_machine中，有两种方式可以生成MachineClass。一种方式是find_default_machine，找一个默认的；另一种方式是machine_parse，通过解析参数生成MachineClass。无论哪种方式，都会调用object_class_get_list获得一个MachineClass的列表，然后在里面找。object_class_get_list定义如下：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>GSList *object_class_get_list(const char *implements_type,
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>                              bool include_abstract)
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>{
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    GSList *list = NULL;
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    object_class_foreach(object_class_get_list_tramp,
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>                         implements_type, include_abstract, &amp;list);
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    return list;
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>}
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>void object_class_foreach(void (*fn)(ObjectClass *klass, void *opaque), const char *implements_type, bool include_abstract,
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>                          void *opaque)
-<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>{
-<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>    OCFData data = { fn, implements_type, include_abstract, opaque };
-<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>
-<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>    enumerating_types = true;
-<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>    g_hash_table_foreach(type_table_get(), object_class_foreach_tramp, &amp;data);
-<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>    enumerating_types = false;
-<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>}
-</code></pre></div>
-<p>在全局表type_table_get()中，对于每一项TypeImpl，我们都执行object_class_foreach_tramp。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>static void object_class_foreach_tramp(gpointer key, gpointer value,
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>                                       gpointer opaque)
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>{
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    OCFData *data = opaque;
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    TypeImpl *type = value;
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    ObjectClass *k;
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    type_initialize(type);
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    k = type-&gt;class;
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>......
-<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>    data-&gt;fn(k, data-&gt;opaque);
-<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>}
-<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>
-<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>static void type_initialize(TypeImpl *ti)
-<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>{
-<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>    TypeImpl *parent;
-<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>......
-<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>    ti-&gt;class_size = type_class_get_size(ti);
-<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>    ti-&gt;instance_size = type_object_get_size(ti);
-<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>    if (ti-&gt;instance_size == 0) {
-<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>        ti-&gt;abstract = true;
-<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>    }
-<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>......
-<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>    ti-&gt;class = g_malloc0(ti-&gt;class_size);
-<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>......
-<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>    ti-&gt;class-&gt;type = ti;
-<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>
-<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a>    while (parent) {
-<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>        if (parent-&gt;class_base_init) {
-<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a>            parent-&gt;class_base_init(ti-&gt;class, ti-&gt;class_data);
-<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a>        }
-<a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a>        parent = type_get_parent(parent);
-<a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a>    }
-<a id="__codelineno-13-34" name="__codelineno-13-34" href="#__codelineno-13-34"></a>
-<a id="__codelineno-13-35" name="__codelineno-13-35" href="#__codelineno-13-35"></a>    if (ti-&gt;class_init) {
-<a id="__codelineno-13-36" name="__codelineno-13-36" href="#__codelineno-13-36"></a>        ti-&gt;class_init(ti-&gt;class, ti-&gt;class_data);
-<a id="__codelineno-13-37" name="__codelineno-13-37" href="#__codelineno-13-37"></a>    }
-<a id="__codelineno-13-38" name="__codelineno-13-38" href="#__codelineno-13-38"></a>}
-</code></pre></div>
-<p>在object_class_foreach_tramp中，会调用将type_initialize，这里面会调用class_init将纸面上的class也即TypeImpl变为ObjectClass，ObjectClass是所有Class类的祖先，MachineClass是它的子类。</p>
-<p>因为在machine的命令行里面，我们指定了名字为"pc-i440fx-4.0"，就肯定能够找到我们注册过了的TypeImpl，并调用它的class_init函数。</p>
-<p>因而pc_machine_##suffix## <em>class_init会被调用，在这里面，pc_i440fx_machine_options才真正被调用初始化MachineClass，并且将MachineClass的init函数设置为pc_init</em>##suffix。也即，当select_machine执行完毕后，就有一个MachineClass了。</p>
-<p>接着，我们回到object_new。这就很好理解了，MachineClass是一个Class类，接下来应该通过它生成一个Instance，也即对象，这就是object_new的作用。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>Object *object_new(const char *typename)
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>{
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    TypeImpl *ti = type_get_by_name(typename);
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    return object_new_with_type(ti);
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>}
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>static Object *object_new_with_type(Type type)
-<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>{
-<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>    Object *obj;
-<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>    type_initialize(type);
-<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>    obj = g_malloc(type-&gt;instance_size);
-<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>    object_initialize_with_type(obj, type-&gt;instance_size, type);
-<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>    obj-&gt;free = g_free;
-<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>
-<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>    return obj;
-<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>}
-</code></pre></div>
-<p>object_new中，TypeImpl的instance_init会被调用，创建一个对象。current_machine就是这个对象，它的类型是MachineState。</p>
-<p>至此，绕了这么大一圈，有关体系结构的对象才创建完毕，接下来很多的设备的初始化，包括CPU和内存的初始化，都是围绕着体系结构的对象来的，后面我们会常常看到current_machine。</p>
-<h2 id="_1">总结时刻</h2>
-<p>这一节，我们学到，虚拟机对于设备的模拟是一件非常复杂的事情，需要用复杂的参数模拟各种各样的设备。为了能够适配这些设备，qemu定义了自己的模块管理机制，只有了解了这种机制，后面看每一种设备的虚拟化的时候，才有一个整体的思路。</p>
-<p>这里的MachineClass是我们遇到的第一个，我们需要掌握它里面各种定义之间的关系。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/07/30/078dc698ef1b3df93ee9569e55ea2f30.png?wh=2308*2053" /></p>
-<p>每个模块都会有一个定义TypeInfo，会通过type_init变为全局的TypeImpl。TypeInfo以及生成的TypeImpl有以下成员：</p>
-<ul>
-<li>name表示当前类型的名称</li>
-<li>parent表示父类的名称</li>
-<li>class_init用于将TypeImpl初始化为MachineClass</li>
-<li>instance_init用于将MachineClass初始化为MachineState</li>
-</ul>
-<p>所以，以后遇到任何一个类型的时候，将父类和子类之间的关系，以及对应的初始化函数都要看好，这样就一目了然了。</p>
-<h2 id="_2">课堂练习</h2>
-<p>你可能会问，这么复杂的qemu命令，我是怎么找到的，当然不是我一个字一个字打的，这是著名的云平台管理软件OpenStack创建虚拟机的时候自动生成的命令行。所以，给你留一道课堂练习题，请你看一下OpenStack的基本原理，看它是通过什么工具来管理如此复杂的命令行的。</p>
-<p>欢迎留言和我分享你的疑惑和见解，也欢迎可以收藏本节内容，反复研读。你也可以把今天的内容分享给你的朋友，和他一起学习和进步。</p>
 
 
 

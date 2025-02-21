@@ -462,6 +462,8 @@
       
         
       
+        
+      
     
     
       
@@ -4546,6 +4548,8 @@
       
         
       
+        
+      
     
     
       
@@ -4862,6 +4866,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
       
@@ -4916,6 +4926,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -5503,13 +5517,13 @@
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>sudo make install
 </code></pre></div>
 <p>在安装时执行到这里，报出下图错误：</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/40/fa/40ba14544153f1ef67bfd21a884c1efa.jpg?wh=1385*604" /></p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/40/fa/40ba14544153f1ef67bfd21a884c1efa.jpg?wh=1385%2A604" /></p>
 <p>其实就是没有安装Boost，所以执行下面的命令安装它。</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>brew install boost jsoncpp
 </code></pre></div>
 <p>安装Boost完成后，再等待十几分钟时间安装ReDex。</p>
 <p>下来就是编译我们的Sample，得到的安装包信息如下。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/bc/0b/bcf38372f4d9315b9d288607e437040b.jpeg?wh=1446*899" /></p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/bc/0b/bcf38372f4d9315b9d288607e437040b.jpeg?wh=1446%2A899" /></p>
 <p>可以看到有三个Dex文件，APK大小为13.7MB。</p>
 <p><strong>通过ReDex命令优化</strong></p>
 <p>为了让我们可以更加清楚流程，你可以输出ReDex的日志。</p>
@@ -5520,229 +5534,18 @@
 </code></pre></div>
 <p>上面这段很长的命令，其实可以拆解为几部分：</p>
 <ul>
-<li>
-<p><code>--sign</code> 签名信息</p>
-</li>
-<li>
-<p><code>-s</code>（keystore）签名文件路径</p>
-</li>
-<li>
-<p><code>-a</code>（keyalias）签名的别名</p>
-</li>
-<li>
-<p><code>-p</code>（keypass）签名的密码</p>
-</li>
-<li>
-<p><code>-c</code> 指定ReDex的配置文件路径</p>
-</li>
-<li>
-<p><code>-P</code> ProGuard规则文件路径</p>
-</li>
-<li>
-<p><code>-o</code> 输出的文件路径</p>
-</li>
-<li>
-<p>最后是要处理APK文件的路径</p>
-</li>
+<li><code>--sign</code> 签名信息</li>
+<li><code>-s</code>（keystore）签名文件路径</li>
+<li><code>-a</code>（keyalias）签名的别名</li>
+<li><code>-p</code>（keypass）签名的密码</li>
+<li><code>-c</code> 指定ReDex的配置文件路径</li>
+<li><code>-P</code> ProGuard规则文件路径</li>
+<li><code>-o</code> 输出的文件路径</li>
+<li>最后是要处理APK文件的路径</li>
 </ul>
-<p>但在使用时，我遇到了下图的问题：</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/f9/42/f942ef115b2293562b6c3d533c0abd42.png?wh=1419*438" /></p>
-<p>这里是找不到 <code>Zipalign</code>，所以需要我们配置Android SDK的根目录路径，添加在原命令前面：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ANDROID_SDK=/path/to/android/sdk redex [... arguments ...]
-</code></pre></div>
-<p>结果如下：</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/4f/28/4f442a95f1518cbe38311b042cdda028.png?wh=2010*870" /></p>
-<p>实际的优化效果是，原Debug包为14.21MB，去除Debuginfo的方法后为12.91MB，效果还是不错的。 <strong>去除的内容就是一些调试信息及堆栈行号。</strong></p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/fd/07/fda8e0b637df6f145f9867764720ab07.jpeg?wh=1411*937" /></p>
-<p>不过老师在Sample的proguard-rules.pro中添加了 <code>-keepattributes SourceFile,LineNumberTable</code> 保留了行号信息。</p>
-<p>所以处理后的包安装后进入首页，还是可以看到堆栈信息的行号。</p>
-<p><strong>Dex重分包的方法</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>redex --sign -s ReDexSample/keystore/debug.keystore -a androiddebugkey -p android -c redex-test/interdex.config -P ReDexSample/proguard-rules.pro  -o redex-test/interdex_output.apk ReDexSample/build/outputs/apk/debug/ReDexSample-debug.apk
-</code></pre></div>
-<p>和之前的命令一样，只是 <code>-c</code> 使用的配置文件为interdex.config。</p>
-<p>输出信息：</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/29/aa/293f13ab6fe75ede7d4840d04f0d56aa.jpeg?wh=1396*832" /></p>
-<p>优化效果为，原Debug包为14.21MB、3个Dex，优化后为13.34MB、2个Dex。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/77/c3/77abb69a81448e677b64bb5cbd59fec3.jpeg?wh=1436*901" /></p>
-<p>根据老师的介绍， <strong>如果你的应用有4个以上的Dex，这个体积优化至少有10%</strong>。 看来效果还是很棒棒的。至于其他问题，比如在Windows环境使用ReDex，可以参看ReDex的 <a href="https://fbredex.com/docs/installation">使用文档</a>。</p>
-<p><a href="https://github.com/AndroidAdvanceWithGeektime/Chapter27"><strong>Chapter27</strong></a></p>
-<blockquote>
-<p>利用AspectJ实现插桩的例子。</p>
-</blockquote>
-<p>效果和 <a href="https://github.com/AndroidAdvanceWithGeektime/Chapter07">Chapter07</a> 是一样的，只是Chapter07使用的是ASM方式实现的，这次是AspectJ实现。ASM与AspectJ都是Java字节码处理框架，相比较来说AspectJ使用更加简单，同样的功能实现只需下面这点代码，但是ASM比AspectJ更加高效和灵活。</p>
-<p>AspectJ实现代码：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>@Aspect
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>public class TraceTagAspectj {
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    @Before(&quot;execution(* **(..))&quot;)
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    public void before(JoinPoint joinPoint) {
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>        Trace.beginSection(joinPoint.getSignature().toString());
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    }
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    /**
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>     * hook method when it&#39;s called out.
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>     */
-<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    @After(&quot;execution(* **(..))&quot;)
-<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    public void after() {
-<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>        Trace.endSection();
-<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>    }
-</code></pre></div>
-<p>简单介绍下上面代码的意思：</p>
+<div><strong>精选留言（1）</strong></div>
 <ul>
-<li>
-<p><code>@Aspect</code>：在编译时AspectJ会查找被 <code>@Aspect</code> 注解的类，然后执行我们的AOP实现。</p>
-</li>
-<li>
-<p><code>@Before</code>：可以简单理解为方法执行前。</p>
-</li>
-<li>
-<p><code>@After</code>：可以简单理解为方法执行后。</p>
-</li>
-<li>
-<p><code>execution</code>：方法执行。</p>
-</li>
-<li>
-<p><code>* **(..)</code>：第一个星号代表任意返回类型，第二个星号代表任意类，第三个代表任意方法，括号内为方法参数无限制。星号和括号内都是可以替换为具体值，比如String TestClass.test(String)。</p>
-</li>
-</ul>
-<p>知道了相关注解的含义，那么实现的代码含义就是， <strong>所有方法在执行前后插入相应指定操作</strong>。</p>
-<p>效果对比如下：</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/64/77/644381974bcd1e3b2d468cdeb432ed77.png?wh=664*388" /></p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/02/ca/02b99a9e7fd70da8d9fdf086f31c78ca.png?wh=1738*916" /></p>
-<p>下来实现给MainActivity的 <code>onResume</code> 方法增加try catch。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>@Aspect
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>public class TryCatchAspect {
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    @Pointcut(&quot;execution(* com.sample.systrace.MainActivity.onResume())&quot;) // &lt;- 指定类与方法
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    public void methodTryCatch() {
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    }
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    @Around(&quot;methodTryCatch()&quot;)
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    public void aroundTryJoinPoint(ProceedingJoinPoint joinPoint) throws Throwable {
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>         // try catch
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>         try {
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>             joinPoint.proceed(); // &lt;- 调用原方法
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>         } catch (Exception e) {
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>              e.printStackTrace();
-<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>         }
-<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>    }
-<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>}
-</code></pre></div>
-<p>上面用到了两个新注解：</p>
-<ul>
-<li>
-<p><code>@Around</code>：用于替换以前的代码，使用joinPoint.proceed()可以调用原方法。</p>
-</li>
-<li>
-<p><code>@Pointcut</code>：指定一个切入点。</p>
-</li>
-</ul>
-<p>实现就是指定一个切入点，利用替换原方法的思路包裹一层try catch。</p>
-<p>效果对比如下：</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/7f/c0/7f4a5bb6995c53872966c956d7e78ec0.png?wh=635*420" /></p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/08/bc/08d123aa792c8f4fc8538fd5658cb9bc.png?wh=1723*902" /></p>
-<p>当然AspectJ还有很多用法，Sample中包含有《AspectJ程序设计指南》，便于我们具体了解和学习AspectJ。</p>
-<p><a href="https://github.com/AndroidAdvanceWithGeektime/Chapter-ASM"><strong>Chapter-ASM</strong></a></p>
-<blockquote>
-<p>Sample利用ASM实现了统计方法耗时和替换项目中所有的new Thread。</p>
-</blockquote>
-<ul>
-<li>
-<p>运行项目首先要注掉ASMSample build.gradle的 <code>apply plugin: 'com.geektime.asm-plugin'</code> 和根目录build.gradle的 <code>classpath ("com.geektime.asm:asm-gradle-plugin:1.0") { changing = true }</code>。</p>
-</li>
-<li>
-<p>运行 <code>gradle task ":asm-gradle-plugin:buildAndPublishToLocalMaven"</code> 编译plugin插件，编译的插件在本地 <code>.m2\repository</code> 目录下</p>
-</li>
-<li>
-<p>打开第一步注掉的内容就可以运行了。</p>
-</li>
-</ul>
-<p>实现的大致过程是，先利用Transform遍历所有文件，再通过ASM的 <code>visitMethod</code> 遍历所有方法，最后通过AdviceAdapter实现最终的修改字节码。具体实现可以看代码和 <a href="https://time.geekbang.org/column/article/83148">《练习Sample跑起来 | ASM插桩强化练习》</a>。</p>
-<p>效果对比：</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/ee/0b/ee98c9349e62d5aca66b883a89cd470b.png?wh=734*601" /></p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/d0/3a/d0dd3c68ac2d56b6eebf6853f871c43a.png?wh=1055*920" /></p>
-<p>下面是两个练习：</p>
-<p>1.给某个方法增加try catch</p>
-<p>这里我就给MainActivity的 <code>mm</code> 方法进行try catch。实现很简单，直接修改ASMCode的TraceMethodAdapter。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>public static class TraceMethodAdapter extends AdviceAdapter {
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>        private final String methodName;
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>        private final String className;
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        private final Label tryStart = new Label();
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>        private final Label tryEnd = new Label();
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>        private final Label catchStart = new Label();
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>        private final Label catchEnd = new Label();
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>        protected TraceMethodAdapter(int api, MethodVisitor mv, int access, String name, String desc, String className) {
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>            super(api, mv, access, name, desc);
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>            this.className = className;
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>            this.methodName = name;
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>        }
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>        @Override
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>        protected void onMethodEnter() {
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>            if (className.equals(&quot;com/sample/asm/MainActivity&quot;) &amp;&amp; methodName.equals(&quot;mm&quot;)) {
-<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>                mv.visitTryCatchBlock(tryStart, tryEnd, catchStart, &quot;java/lang/Exception&quot;);
-<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>                mv.visitLabel(tryStart);
-<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>            }
-<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>        }
-<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>
-<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>        @Override
-<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>        protected void onMethodExit(int opcode) {
-<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>            if (className.equals(&quot;com/sample/asm/MainActivity&quot;) &amp;&amp; methodName.equals(&quot;mm&quot;)) {
-<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>                mv.visitLabel(tryEnd);
-<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>                mv.visitJumpInsn(GOTO, catchEnd);
-<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>                mv.visitLabel(catchStart);
-<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, &quot;java/lang/RuntimeException&quot;, &quot;printStackTrace&quot;, &quot;()V&quot;, false);
-<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>                mv.visitInsn(Opcodes.RETURN);
-<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>                mv.visitLabel(catchEnd);
-<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>            }
-<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>        }
-</code></pre></div>
-<p><code>visitTryCatchBlock</code> 方法：前三个参数均是Label实例，其中一、二表示try块的范围，三则是catch块的开始位置，第四个参数是异常类型。其他的方法及参数就不细说了，具体你可以参考 <a href="https://asm.ow2.io/asm4-guide.pdf">ASM文档</a>。</p>
-<p>实现类似AspectJ，在方法执行开始及结束时插入我们的代码。</p>
-<p>效果我就不截图了，代码如下：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>public void mm() {
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>        try {
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>            A a = new A(new B(2));
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>        } catch (Exception e) {
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>            e.printStackTrace();
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>        }
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    }
-</code></pre></div>
-<p>2.查看代码中谁获取了IMEI</p>
-<p>这个就更简单了，直接寻找谁使用了TelephonyManager的 <code>getDeviceId</code> 方法，并且在Sample中有答案。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>public class IMEIMethodAdapter extends AdviceAdapter {
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    private final String methodName;
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    private final String className;
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    protected IMEIMethodAdapter(int api, MethodVisitor mv, int access, String name, String desc, String className) {
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>        super(api, mv, access, name, desc);
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>        this.className = className;
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>        this.methodName = name;
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    }
-<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>
-<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>    @Override
-<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>    public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
-<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>        super.visitMethodInsn(opcode, owner, name, desc, itf);
-<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>
-<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>        if (owner.equals(&quot;android/telephony/TelephonyManager&quot;) &amp;&amp; name.equals(&quot;getDeviceId&quot;) &amp;&amp; desc.equals(&quot;()Ljava/lang/String;&quot;)) {
-<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>            Log.e(&quot;asmcode&quot;, &quot;get imei className:%s, method:%s, name:%s&quot;, className, methodName, name);
-<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>        }
-<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>    }
-<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>}
-</code></pre></div>
-<p>Build后输出如下：</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/2d/94/2d5c01eee4fc651b5831c0341d6e0994.png?wh=814*339" /></p>
-<p>总体来说ASM的上手难度还是高于AspectJ，需要我们了解编译后的字节码，这里所使用的功能也只是冰山一角。课代表鹏飞同学推荐的ASM Bytecode Outline插件是个好帮手！最后我将我练习的代码也上传到了 <a href="https://github.com/simplezhli/Chapter-ASM">GitHub</a>，里面还包括一份中文版的ASM文档，有兴趣的同学可以下载看看。</p>
-<p>参考</p>
-<ul>
-<li><a href="http://time.geekbang.org/column/article/83148">练习Sample跑起来 | ASM插桩强化练</a></li>
-<li><a href="http://asm.ow2.io/asm4-guide.pdf">ASM文档</a></li>
+<li><img src="https://static001.geekbang.org/account/avatar/00/13/b1/92/f3dabcb1.jpg" width="30px"><span>小小代码</span> 👍（1） 💬（1）<div>试了下Redex去除Dex文件Debuginfo行号信息的功能，发现行号由正确的com.sample.redex.MainActivity.onCreate(MainActivity.java:20)变为不正确的com.sample.redex.MainActivity.onCreate(Unknown Source:13)，并没有像支付宝所说的变成-1</div>2019-04-13</li><br/>
 </ul>
 
 

@@ -81,11 +81,6 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
-        
-        <a href="#_1" class="md-skip">
-          Skip to content
-        </a>
-      
     </div>
     <div data-md-component="announce">
       
@@ -467,6 +462,8 @@
       
         
       
+        
+      
     
     
       
@@ -681,6 +678,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -4439,17 +4440,6 @@
       
       
       
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    39   管道：项目组A完成了，如何交接给项目组B？
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -4459,41 +4449,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      总结时刻
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      课堂练习
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
       
     </li>
   
@@ -5978,32 +5933,6 @@
   
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      总结时刻
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      课堂练习
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -6028,12 +5957,12 @@
   <h1>39   管道：项目组A完成了，如何交接给项目组B？</h1>
 
 <p>在这一章的第一节里，我们大致讲了管道的使用方式以及相应的命令行。这一节，我们就具体来看一下管道是如何实现的。</p>
-<p>我们先来看，我们常用的 <strong>匿名管道</strong>（Anonymous Pipes），也即将多个命令串起来的竖线，背后的原理到底是什么。</p>
+<p>我们先来看，我们常用的<strong>匿名管道</strong>（Anonymous Pipes），也即将多个命令串起来的竖线，背后的原理到底是什么。</p>
 <p>上次我们说，它是基于管道的，那管道如何创建呢？管道的创建，需要通过下面这个系统调用。</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>int pipe(int fd[2])
 </code></pre></div>
 <p>在这里，我们创建了一个管道pipe，返回了两个文件描述符，这表示管道的两端，一个是管道的读取端描述符fd[0]，另一个是管道的写入端描述符fd[1]。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/8f/a7/8fa3144bf3a34ddf789884a75fa2d4a7.png?wh=823*817" /></p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/8f/a7/8fa3144bf3a34ddf789884a75fa2d4a7.png?wh=823%2A817" /></p>
 <p>我们来看在内核里面是如何实现的。</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>SYSCALL_DEFINE1(pipe, int __user *, fildes)
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>{
@@ -6061,361 +5990,24 @@
 </code></pre></div>
 <p>在内核中，主要的逻辑在pipe2系统调用中。这里面要创建一个数组files，用来存放管道的两端的打开文件，另一个数组fd存放管道的两端的文件描述符。如果调用__do_pipe_flags没有错误，那就调用fd_install，将两个fd和两个struct file关联起来。这一点和打开一个文件的过程很像了。</p>
 <p>我们来看__do_pipe_flags。这里面调用了create_pipe_files，然后生成了两个fd。从这里可以看出，fd[0]是用于读的，fd[1]是用于写的。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>static int __do_pipe_flags(int *fd, struct file **files, int flags)
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>{
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    int error;
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    int fdw, fdr;
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>......
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    error = create_pipe_files(files, flags);
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>......
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    error = get_unused_fd_flags(flags);
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>......
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    fdr = error;
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    error = get_unused_fd_flags(flags);
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>......
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    fdw = error;
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    fd[0] = fdr;
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    fd[1] = fdw;
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    return 0;
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>......
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>}
-</code></pre></div>
-<p>创建一个管道，大部分的逻辑其实都是在create_pipe_files函数里面实现的。这一章第一节的时候，我们说过，命名管道是创建在文件系统上的。从这里我们可以看出，匿名管道，也是创建在文件系统上的，只不过是一种特殊的文件系统，创建一个特殊的文件，对应一个特殊的inode，就是这里面的get_pipe_inode。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>int create_pipe_files(struct file **res, int flags)
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>{
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    int err;
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    struct inode *inode = get_pipe_inode();
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    struct file *f;
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    struct path path;
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>......
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    path.dentry = d_alloc_pseudo(pipe_mnt-&gt;mnt_sb, &amp;empty_name);
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>......
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    path.mnt = mntget(pipe_mnt);
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    d_instantiate(path.dentry, inode);
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    f = alloc_file(&amp;path, FMODE_WRITE, &amp;pipefifo_fops);
-<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>......
-<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    f-&gt;f_flags = O_WRONLY | (flags &amp; (O_NONBLOCK | O_DIRECT));
-<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    f-&gt;private_data = inode-&gt;i_pipe;
-<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>
-<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    res[0] = alloc_file(&amp;path, FMODE_READ, &amp;pipefifo_fops);
-<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>......
-<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    path_get(&amp;path);
-<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>    res[0]-&gt;private_data = inode-&gt;i_pipe;
-<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>    res[0]-&gt;f_flags = O_RDONLY | (flags &amp; O_NONBLOCK);
-<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>    res[1] = f;
-<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    return 0;
-<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>......
-<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>}
-</code></pre></div>
-<p>从get_pipe_inode的实现，我们可以看出，匿名管道来自一个特殊的文件系统pipefs。这个文件系统被挂载后，我们就得到了struct vfsmount *pipe_mnt。然后挂载的文件系统的superblock就变成了：pipe_mnt-&gt;mnt_sb。如果你对文件系统的操作还不熟悉，要返回去复习一下文件系统那一章啊。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>static struct file_system_type pipe_fs_type = {
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    .name       = &quot;pipefs&quot;,
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    .mount      = pipefs_mount,
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    .kill_sb    = kill_anon_super,
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>};
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>static int __init init_pipe_fs(void)
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>{
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    int err = register_filesystem(&amp;pipe_fs_type);
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    if (!err) {
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>        pipe_mnt = kern_mount(&amp;pipe_fs_type);
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    }
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>......
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>}
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>static struct inode * get_pipe_inode(void)
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>{
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    struct inode *inode = new_inode_pseudo(pipe_mnt-&gt;mnt_sb);
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    struct pipe_inode_info *pipe;
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>......
-<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    inode-&gt;i_ino = get_next_ino();
-<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>
-<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>    pipe = alloc_pipe_info();
-<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>......
-<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>    inode-&gt;i_pipe = pipe;
-<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>    pipe-&gt;files = 2;
-<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>    pipe-&gt;readers = pipe-&gt;writers = 1;
-<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>    inode-&gt;i_fop = &amp;pipefifo_fops;
-<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>    inode-&gt;i_state = I_DIRTY;
-<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>    inode-&gt;i_mode = S_IFIFO | S_IRUSR | S_IWUSR;
-<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>    inode-&gt;i_uid = current_fsuid();
-<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>    inode-&gt;i_gid = current_fsgid();
-<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>    inode-&gt;i_atime = inode-&gt;i_mtime = inode-&gt;i_ctime = current_time(inode);
-<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>
-<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>    return inode;
-<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>......
-<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>}
-</code></pre></div>
-<p>我们从new_inode_pseudo函数创建一个inode。这里面开始填写Inode的成员，这里和文件系统的很像。这里值得注意的是struct pipe_inode_info，这个结构里面有个成员是struct pipe_buffer *bufs。我们可以知道， <strong>所谓的匿名管道，其实就是内核里面的一串缓存</strong>。</p>
-<p>另外一个需要注意的是pipefifo_fops，将来我们对于文件描述符的操作，在内核里面都是对应这里面的操作。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>const struct file_operations pipefifo_fops = {
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    .open       = fifo_open,
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    .llseek     = no_llseek,
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    .read_iter  = pipe_read,
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    .write_iter = pipe_write,
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    .poll       = pipe_poll,
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    .unlocked_ioctl = pipe_ioctl,
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    .release    = pipe_release,
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    .fasync     = pipe_fasync,
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>};
-</code></pre></div>
-<p>我们回到create_pipe_files函数，创建完了inode，还需创建一个dentry和他对应。dentry和inode对应好了，我们就要开始创建struct file对象了。先创建用于写入的，对应的操作为pipefifo_fops；再创建读取的，对应的操作也为pipefifo_fops。然后把private_data设置为pipe_inode_info。这样从struct file这个层级上，就能直接操作底层的读写操作。</p>
-<p>至此，一个匿名管道就创建成功了。如果对于fd[1]写入，调用的是pipe_write，向pipe_buffer里面写入数据；如果对于fd[0]的读入，调用的是pipe_read，也就是从pipe_buffer里面读取数据。</p>
-<p>但是这个时候，两个文件描述符都是在一个进程里面的，并没有起到进程间通信的作用，怎么样才能使得管道是跨两个进程的呢？还记得创建进程调用的fork吗？在这里面，创建的子进程会复制父进程的struct files_struct，在这里面fd的数组会复制一份，但是fd指向的struct file对于同一个文件还是只有一份，这样就做到了，两个进程各有两个fd指向同一个struct file的模式，两个进程就可以通过各自的fd写入和读取同一个管道文件实现跨进程通信了。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/9c/a3/9c0e38e31c7a51da12faf4a1aca10ba3.png?wh=1162*1363" /></p>
-<p>由于管道只能一端写入，另一端读出，所以上面的这种模式会造成混乱，因为父进程和子进程都可以写入，也都可以读出，通常的方法是父进程关闭读取的fd，只保留写入的fd，而子进程关闭写入的fd，只保留读取的fd，如果需要双向通行，则应该创建两个管道。</p>
-<p>一个典型的使用管道在父子进程之间的通信代码如下：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>#include &lt;unistd.h&gt;
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>#include &lt;fcntl.h&gt;
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>#include &lt;stdlib.h&gt;
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>#include &lt;stdio.h&gt;
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>#include &lt;errno.h&gt;
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>#include &lt;string.h&gt;
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>int main(int argc, char *argv[])
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>{
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  int fds[2];
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  if (pipe(fds) == -1)
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    perror(&quot;pipe error&quot;);
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>  pid_t pid;
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>  pid = fork();
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>  if (pid == -1)
-<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>    perror(&quot;fork error&quot;);
-<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>
-<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>  if (pid == 0){
-<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>    close(fds[0]);
-<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>    char msg[] = &quot;hello world&quot;;
-<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>    write(fds[1], msg, strlen(msg) + 1);
-<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>    close(fds[1]);
-<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>    exit(0);
-<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>  } else {
-<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>    close(fds[1]);
-<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>    char msg[128];
-<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>    read(fds[0], msg, 128);
-<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>    close(fds[0]);
-<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>    printf(&quot;message : %s\n&quot;, msg);
-<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>    return 0;
-<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>  }
-<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>}
-</code></pre></div>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/71/b6/71eb7b4d026d04e4093daad7e24feab6.png?wh=1162*1363" /></p>
-<p>到这里，我们仅仅解析了使用管道进行父子进程之间的通信，但是我们在shell里面的不是这样的。在shell里面运行A|B的时候，A进程和B进程都是shell创建出来的子进程，A和B之间不存在父子关系。</p>
-<p>不过，有了上面父子进程之间的管道这个基础，实现A和B之间的管道就方便多了。</p>
-<p>我们首先从shell创建子进程A，然后在shell和A之间建立一个管道，其中shell保留读取端，A进程保留写入端，然后shell再创建子进程B。这又是一次fork，所以，shell里面保留的读取端的fd也被复制到了子进程B里面。这个时候，相当于shell和B都保留读取端，只要shell主动关闭读取端，就变成了一管道，写入端在A进程，读取端在B进程。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/81/fa/81be4d460aaa804e9176ec70d59fdefa.png?wh=2494*4663" /></p>
-<p>接下来我们要做的事情就是，将这个管道的两端和输入输出关联起来。这就要用到dup2系统调用了。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>int dup2(int oldfd, int newfd);
-</code></pre></div>
-<p>这个系统调用，将老的文件描述符赋值给新的文件描述符，让newfd的值和oldfd一样。</p>
-<p>我们还是回忆一下，在files_struct里面，有这样一个表，下标是fd，内容指向一个打开的文件struct file。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>struct files_struct {
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  struct file __rcu * fd_array[NR_OPEN_DEFAULT];
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>}
-</code></pre></div>
-<p>在这个表里面，前三项是定下来的，其中第零项STDIN_FILENO表示标准输入，第一项STDOUT_FILENO表示标准输出，第三项STDERR_FILENO表示错误输出。</p>
-<p>在A进程中，写入端可以做这样的操作：dup2(fd[1],STDOUT_FILENO)，将STDOUT_FILENO（也即第一项）不再指向标准输出，而是指向创建的管道文件，那么以后往标准输出写入的任何东西，都会写入管道文件。</p>
-<p>在B进程中，读取端可以做这样的操作，dup2(fd[0],STDIN_FILENO)，将STDIN_FILENO也即第零项不再指向标准输入，而是指向创建的管道文件，那么以后从标准输入读取的任何东西，都来自于管道文件。</p>
-<p>至此，我们才将A|B的功能完成。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/c0/e2/c042b12de704995e4ba04173e0a304e2.png?wh=2149*1363" /></p>
-<p>为了模拟A|B的情况，我们可以将前面的那一段代码，进一步修改成下面这样：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>#include &lt;unistd.h&gt;
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>#include &lt;fcntl.h&gt;
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>#include &lt;stdlib.h&gt;
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>#include &lt;stdio.h&gt;
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>#include &lt;errno.h&gt;
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>#include &lt;string.h&gt;
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>int main(int argc, char *argv[])
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>{
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>  int fds[2];
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>  if (pipe(fds) == -1)
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    perror(&quot;pipe error&quot;);
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>  pid_t pid;
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>  pid = fork();
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>  if (pid == -1)
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>    perror(&quot;fork error&quot;);
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>
-<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>  if (pid == 0){
-<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>    dup2(fds[1], STDOUT_FILENO);
-<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>    close(fds[1]);
-<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>    close(fds[0]);
-<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>    execlp(&quot;ps&quot;, &quot;ps&quot;, &quot;-ef&quot;, NULL);
-<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>  } else {
-<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>    dup2(fds[0], STDIN_FILENO);
-<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>    close(fds[0]);
-<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>    close(fds[1]);
-<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>    execlp(&quot;grep&quot;, &quot;grep&quot;, &quot;systemd&quot;, NULL);
-<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>  }
-<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>
-<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>  return 0;
-<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>}
-</code></pre></div>
-<p>接下来，我们来看命名管道。我们在讲命令的时候讲过，命名管道需要事先通过命令mkfifo，进行创建。如果是通过代码创建命名管道，也有一个函数，但是这不是一个系统调用，而是Glibc提供的函数。它的定义如下：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>int
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>mkfifo (const char *path, mode_t mode)
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>{
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>  dev_t dev = 0;
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>  return __xmknod (_MKNOD_VER, path, mode | S_IFIFO, &amp;dev);
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>}
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>int
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>__xmknod (int vers, const char *path, mode_t mode, dev_t *dev)
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>{
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>  unsigned long long int k_dev;
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>......
-<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>  /* We must convert the value to dev_t type used by the kernel.  */
-<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>  k_dev = (*dev) &amp; ((1ULL &lt;&lt; 32) - 1);
-<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>......
-<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>  return INLINE_SYSCALL (mknodat, 4, AT_FDCWD, path, mode,
-<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>                         (unsigned int) k_dev);
-<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>}
-</code></pre></div>
-<p>Glibc的mkfifo函数会调用mknodat系统调用，还记得咱们学字符设备的时候，创建一个字符设备的时候，也是调用的mknod。这里命名管道也是一个设备，因而我们也用mknod。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode, unsigned, dev)
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>{
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    struct dentry *dentry;
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    struct path path;
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    unsigned int lookup_flags = 0;
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>......
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>retry:
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    dentry = user_path_create(dfd, filename, &amp;path, lookup_flags);
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>......
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    switch (mode &amp; S_IFMT) {
-<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>......
-<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>        case S_IFIFO: case S_IFSOCK:
-<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>            error = vfs_mknod(path.dentry-&gt;d_inode,dentry,mode,0);
-<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>            break;
-<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>    }
-<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>......
-<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>}
-</code></pre></div>
-<p>对于mknod的解析，我们在字符设备那一节已经解析过了，先是通过user_path_create对于这个管道文件创建一个dentry，然后因为是S_IFIFO，所以调用vfs_mknod。由于这个管道文件是创建在一个普通文件系统上的，假设是在ext4文件上，于是vfs_mknod会调用ext4_dir_inode_operations的mknod，也即会调用ext4_mknod。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>const struct inode_operations ext4_dir_inode_operations = {
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>......
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    .mknod      = ext4_mknod,
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>......
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>};
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>static int ext4_mknod(struct inode *dir, struct dentry *dentry,
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>              umode_t mode, dev_t rdev)
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>{
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>    handle_t *handle;
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>    struct inode *inode;
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>......
-<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>    inode = ext4_new_inode_start_handle(dir, mode, &amp;dentry-&gt;d_name, 0,
-<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>                        NULL, EXT4_HT_DIR, credits);
-<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>    handle = ext4_journal_current_handle();
-<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>    if (!IS_ERR(inode)) {
-<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>        init_special_inode(inode, inode-&gt;i_mode, rdev);
-<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>        inode-&gt;i_op = &amp;ext4_special_inode_operations;
-<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>        err = ext4_add_nondir(handle, dentry, inode);
-<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>        if (!err &amp;&amp; IS_DIRSYNC(dir))
-<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>            ext4_handle_sync(handle);
-<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a>    }
-<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a>    if (handle)
-<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a>        ext4_journal_stop(handle);
-<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a>......
-<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a>}
-<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a>
-<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a>#define ext4_new_inode_start_handle(dir, mode, qstr, goal, owner, \
-<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a>                    type, nblocks)          \
-<a id="__codelineno-12-30" name="__codelineno-12-30" href="#__codelineno-12-30"></a>    __ext4_new_inode(NULL, (dir), (mode), (qstr), (goal), (owner), \
-<a id="__codelineno-12-31" name="__codelineno-12-31" href="#__codelineno-12-31"></a>             0, (type), __LINE__, (nblocks))
-<a id="__codelineno-12-32" name="__codelineno-12-32" href="#__codelineno-12-32"></a>
-<a id="__codelineno-12-33" name="__codelineno-12-33" href="#__codelineno-12-33"></a>void init_special_inode(struct inode *inode, umode_t mode, dev_t rdev)
-<a id="__codelineno-12-34" name="__codelineno-12-34" href="#__codelineno-12-34"></a>{
-<a id="__codelineno-12-35" name="__codelineno-12-35" href="#__codelineno-12-35"></a>    inode-&gt;i_mode = mode;
-<a id="__codelineno-12-36" name="__codelineno-12-36" href="#__codelineno-12-36"></a>    if (S_ISCHR(mode)) {
-<a id="__codelineno-12-37" name="__codelineno-12-37" href="#__codelineno-12-37"></a>        inode-&gt;i_fop = &amp;def_chr_fops;
-<a id="__codelineno-12-38" name="__codelineno-12-38" href="#__codelineno-12-38"></a>        inode-&gt;i_rdev = rdev;
-<a id="__codelineno-12-39" name="__codelineno-12-39" href="#__codelineno-12-39"></a>    } else if (S_ISBLK(mode)) {
-<a id="__codelineno-12-40" name="__codelineno-12-40" href="#__codelineno-12-40"></a>        inode-&gt;i_fop = &amp;def_blk_fops;
-<a id="__codelineno-12-41" name="__codelineno-12-41" href="#__codelineno-12-41"></a>        inode-&gt;i_rdev = rdev;
-<a id="__codelineno-12-42" name="__codelineno-12-42" href="#__codelineno-12-42"></a>    } else if (S_ISFIFO(mode))
-<a id="__codelineno-12-43" name="__codelineno-12-43" href="#__codelineno-12-43"></a>        inode-&gt;i_fop = &amp;pipefifo_fops;
-<a id="__codelineno-12-44" name="__codelineno-12-44" href="#__codelineno-12-44"></a>    else if (S_ISSOCK(mode))
-<a id="__codelineno-12-45" name="__codelineno-12-45" href="#__codelineno-12-45"></a>        ;   /* leave it no_open_fops */
-<a id="__codelineno-12-46" name="__codelineno-12-46" href="#__codelineno-12-46"></a>    else
-<a id="__codelineno-12-47" name="__codelineno-12-47" href="#__codelineno-12-47"></a>......
-<a id="__codelineno-12-48" name="__codelineno-12-48" href="#__codelineno-12-48"></a>}
-</code></pre></div>
-<p>在ext4_mknod中，ext4_new_inode_start_handle会调用__ext4_new_inode，在ext4文件系统上真的创建一个文件，但是会调用init_special_inode，创建一个内存中特殊的inode，这个函数我们在字符设备文件中也遇到过，只不过当时inode的i_fop指向的是def_chr_fops，这次换成管道文件了，inode的i_fop变成指向pipefifo_fops，这一点和匿名管道是一样的。</p>
-<p>这样，管道文件就创建完毕了。</p>
-<p>接下来，要打开这个管道文件，我们还是会调用文件系统的open函数。还是沿着文件系统的调用方式，一路调用到pipefifo_fops的open函数，也就是fifo_open。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>static int fifo_open(struct inode *inode, struct file *filp)
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>{
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    struct pipe_inode_info *pipe;
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    bool is_pipe = inode-&gt;i_sb-&gt;s_magic == PIPEFS_MAGIC;
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    int ret;
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    filp-&gt;f_version = 0;
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    if (inode-&gt;i_pipe) {
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>        pipe = inode-&gt;i_pipe;
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>        pipe-&gt;files++;
-<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>    } else {
-<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>        pipe = alloc_pipe_info();
-<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>        pipe-&gt;files = 1;
-<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>        inode-&gt;i_pipe = pipe;
-<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>        spin_unlock(&amp;inode-&gt;i_lock);
-<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>    }
-<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>    filp-&gt;private_data = pipe;
-<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>    filp-&gt;f_mode &amp;= (FMODE_READ | FMODE_WRITE);
-<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>
-<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>    switch (filp-&gt;f_mode) {
-<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>    case FMODE_READ:
-<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>        pipe-&gt;r_counter++;
-<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>        if (pipe-&gt;readers++ == 0)
-<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>            wake_up_partner(pipe);
-<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>        if (!is_pipe &amp;&amp; !pipe-&gt;writers) {
-<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>            if ((filp-&gt;f_flags &amp; O_NONBLOCK)) {
-<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>            filp-&gt;f_version = pipe-&gt;w_counter;
-<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a>            } else {
-<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>                if (wait_for_partner(pipe, &amp;pipe-&gt;w_counter))
-<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a>                    goto err_rd;
-<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a>            }
-<a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a>        }
-<a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a>        break;
-<a id="__codelineno-13-34" name="__codelineno-13-34" href="#__codelineno-13-34"></a>    case FMODE_WRITE:
-<a id="__codelineno-13-35" name="__codelineno-13-35" href="#__codelineno-13-35"></a>        pipe-&gt;w_counter++;
-<a id="__codelineno-13-36" name="__codelineno-13-36" href="#__codelineno-13-36"></a>        if (!pipe-&gt;writers++)
-<a id="__codelineno-13-37" name="__codelineno-13-37" href="#__codelineno-13-37"></a>            wake_up_partner(pipe);
-<a id="__codelineno-13-38" name="__codelineno-13-38" href="#__codelineno-13-38"></a>        if (!is_pipe &amp;&amp; !pipe-&gt;readers) {
-<a id="__codelineno-13-39" name="__codelineno-13-39" href="#__codelineno-13-39"></a>            if (wait_for_partner(pipe, &amp;pipe-&gt;r_counter))
-<a id="__codelineno-13-40" name="__codelineno-13-40" href="#__codelineno-13-40"></a>                goto err_wr;
-<a id="__codelineno-13-41" name="__codelineno-13-41" href="#__codelineno-13-41"></a>        }
-<a id="__codelineno-13-42" name="__codelineno-13-42" href="#__codelineno-13-42"></a>        break;
-<a id="__codelineno-13-43" name="__codelineno-13-43" href="#__codelineno-13-43"></a>    case FMODE_READ | FMODE_WRITE:
-<a id="__codelineno-13-44" name="__codelineno-13-44" href="#__codelineno-13-44"></a>        pipe-&gt;readers++;
-<a id="__codelineno-13-45" name="__codelineno-13-45" href="#__codelineno-13-45"></a>        pipe-&gt;writers++;
-<a id="__codelineno-13-46" name="__codelineno-13-46" href="#__codelineno-13-46"></a>        pipe-&gt;r_counter++;
-<a id="__codelineno-13-47" name="__codelineno-13-47" href="#__codelineno-13-47"></a>        pipe-&gt;w_counter++;
-<a id="__codelineno-13-48" name="__codelineno-13-48" href="#__codelineno-13-48"></a>        if (pipe-&gt;readers == 1 || pipe-&gt;writers == 1)
-<a id="__codelineno-13-49" name="__codelineno-13-49" href="#__codelineno-13-49"></a>            wake_up_partner(pipe);
-<a id="__codelineno-13-50" name="__codelineno-13-50" href="#__codelineno-13-50"></a>        break;
-<a id="__codelineno-13-51" name="__codelineno-13-51" href="#__codelineno-13-51"></a>......
-<a id="__codelineno-13-52" name="__codelineno-13-52" href="#__codelineno-13-52"></a>    }
-<a id="__codelineno-13-53" name="__codelineno-13-53" href="#__codelineno-13-53"></a>......
-<a id="__codelineno-13-54" name="__codelineno-13-54" href="#__codelineno-13-54"></a>}
-</code></pre></div>
-<p>在fifo_open里面，创建pipe_inode_info，这一点和匿名管道也是一样的。这个结构里面有个成员是struct pipe_buffer *bufs。我们可以知道， <strong>所谓的命名管道，其实是也是内核里面的一串缓存。</strong></p>
-<p>接下来，对于命名管道的写入，我们还是会调用pipefifo_fops的pipe_write函数，向pipe_buffer里面写入数据。对于命名管道的读入，我们还是会调用pipefifo_fops的pipe_read，也就是从pipe_buffer里面读取数据。</p>
-<h2 id="_1">总结时刻</h2>
-<p>无论是匿名管道，还是命名管道，在内核都是一个文件。只要是文件就要有一个inode。这里我们又用到了特殊inode、字符设备、块设备，其实都是这种特殊的inode。</p>
-<p>在这种特殊的inode里面，file_operations指向管道特殊的pipefifo_fops，这个inode对应内存里面的缓存。</p>
-<p>当我们用文件的open函数打开这个管道设备文件的时候，会调用pipefifo_fops里面的方法创建struct file结构，他的inode指向特殊的inode，也对应内存里面的缓存，file_operations也指向管道特殊的pipefifo_fops。</p>
-<p>写入一个pipe就是从struct file结构找到缓存写入，读取一个pipe就是从struct file结构找到缓存读出。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/48/97/486e2bc73abbe91d7083bb1f4f678097.png?wh=2749*2383" /></p>
-<h2 id="_2">课堂练习</h2>
-<p>上面创建匿名管道的程序，你一定要运行一下，然后试着通过strace查看自己写的程序的系统调用，以及直接在命令行使用匿名管道的系统调用，做一个比较。</p>
-<p>欢迎留言和我分享你的疑惑和见解 ，也欢迎可以收藏本节内容，反复研读。你也可以把今天的内容分享给你的朋友，和他一起学习和进步。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/8c/37/8c0a95fa07a8b9a1abfd394479bdd637.jpg?wh=1110*659" /></p>
+<div><strong>精选留言（16）</strong></div>
+<ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/12/e8/fd/035f4c94.jpg" width="30px"><span>欢乐小熊</span> 👍（8） 💬（1）<div>- 匿名管道: 只能在管道创建进程及其后代之间通信
+  - 通过 pipe 系统调用创建
+  - **inode 由特殊的文件系统 pipefs 创建**
+  - **inode 关联的 fos 为 pipefifo_fops**
+- 命名管道: 通过管道文件名, 可以在任意进程之间通信
+  - 通过 mkfifo Glibc 库函数创建
+    - 内部调用 mknodat 系统调用
+  - **inode 由普通文件系统创建, 真实存在于磁盘中**
+  - **inode 关联的 fos 与匿名管道一致, 为 pipefifo_fops**
+
+老师, 在阅读的过程中产生了一个疑问, 匿名管道创建 inode 使用到的文件系统 pipefs, 也是属于内存文件系统吗? 这个 inode 是否会写到磁盘上呢?</div>2019-06-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d9/a2/afbc447c.jpg" width="30px"><span>海军上校</span> 👍（3） 💬（3）<div>管道代码是不是写错啦？pid=0应该是子进程 close fd1吧 我理解的</div>2019-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/3a/27/5d218272.jpg" width="30px"><span>八台上</span> 👍（2） 💬（1）<div>请问 管道是特殊的inode  这个inode也会占用磁盘吗   不然机器重启的时候不就没了吗？</div>2020-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4a/2c/f8451d77.jpg" width="30px"><span>石维康</span> 👍（1） 💬（1）<div>在ext4_mknod函数里调用init_special_inode时传入的是上一步ext4_new_inode_start_handle返回的inode。为什么文中还会说&quot;但是会调用 init_special_inode，创建一个内存中特殊的 inode&quot;?
+在init_special_inode中也没有看到创建虚拟inode的地方？</div>2019-06-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/f6/4e/0066303c.jpg" width="30px"><span>cuikt</span> 👍（0） 💬（2）<div>老师你好，我在shell中执行echo &#39;aaa&#39; | &gt; a.txt ，为什么a.txt文件被创建了，但是a.txt是空的呢？</div>2019-07-08</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/3XbCueYYVWTiclv8T5tFpwiblOxLphvSZxL4ujMdqVMibZnOiaFK2C5nKRGv407iaAsrI0CDICYVQJtiaITzkjfjbvrQ/132" width="30px"><span>有铭</span> 👍（0） 💬（1）<div>管道更像是流处理，还是批处理？</div>2019-06-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6e/bd/b83ad32d.jpg" width="30px"><span>shangyu</span> 👍（3） 💬（1）<div>请问下老师pipe的缓存大小是多少呢 如果进程a的输出太大会有什么影响呢</div>2019-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/b4/78/47011c75.jpg" width="30px"><span>xavier</span> 👍（2） 💬（3）<div>好奇想问，在举例中的那个shell创建A和B进程的时候，在fork生成 B进程的时候，是保留了B进程的管道输出的部分，而将shell父进程的管道输出关闭掉了，那如果shell紧接着再去fork一个C进程，岂不是管道的输入和输出都没有了？</div>2020-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/90/8f/9c691a5f.jpg" width="30px"><span>奔跑的码仔</span> 👍（2） 💬（0）<div>strace -f -o file .&#47;npipe 可以看到咱们父、子进程的整个执行过程。
+strace -f -o file1 ps -ef | grep systemd只可以看到ps -ef命令的execv，看不到grep命令的。</div>2019-09-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/4e/2d/06d3f9f5.jpg" width="30px"><span>静✨</span> 👍（1） 💬（0）<div>看了三遍 居然看懂了。
+这个创建管道的实现真是牛皮</div>2021-05-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/1c/6f/3ea2a599.jpg" width="30px"><span>嘉木</span> 👍（0） 💬（0）<div>读取管道的时候，如果管道里面没有数据会阻塞，有数据才会返回，这个通知机制是怎么实现的呢？</div>2023-05-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fd/08/c039f840.jpg" width="30px"><span>小鳄鱼</span> 👍（0） 💬（0）<div>二刷：匿名管道通过pipefs，而命名管道被当成设备需要通过ext4在磁盘上创建文件。显然，后者不会因为重启而消失，管道依然存在。但管道中的内容会丢失，因为实际上是内核的缓存。而前者重启后，管道都找不着了。是这样吗？</div>2022-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/83/fb/621adceb.jpg" width="30px"><span>linker</span> 👍（0） 💬（0）<div>bash创建的匿名管道居然没有用dup2函数</div>2021-12-19</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epTjkcZR0E7apmNbbLeAnlDePhUT6qJAwK6iasibLCckQTlEW9x5MEMa3HKrekZfTdkaJIpKFDHSFfA/132" width="30px"><span>John117</span> 👍（0） 💬（1）<div>老师，对于有名管道来说，现在a和b两个进程需要通信。如果我在进程a中创建了一个管道，现在有个进程b，有什么优雅的方法将管道的path告诉进程b？</div>2020-11-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epcs6PibsP9vEXv4EibUw3bhQPUK04zRTOvfrvF08TwM67xPb1LBh2uRENHQwo2VqYfC5GhJmM7icxHA/132" width="30px"><span>蹦哒</span> 👍（0） 💬（2）<div>请问老师：
+fd只是一个int，如果一个进程不停循环的用各个整数来尝试读取写入，恰巧有一个fd另外一个进程打开准备读取或者写入。这样岂不有可能破坏了进程的隔离性？</div>2020-06-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/90/8f/9c691a5f.jpg" width="30px"><span>奔跑的码仔</span> 👍（0） 💬（0）<div>“当我们用文件的 open 函数打开这个管道设备文件的时候，会调用 pipefifo_fops 里面的方法创建 struc file”。应该vfs创建的struct file，并将文件inode指向的pipefifo_fops赋值给struct file的的f_ops的吧？</div>2019-09-29</li><br/>
+</ul>
 
 
 

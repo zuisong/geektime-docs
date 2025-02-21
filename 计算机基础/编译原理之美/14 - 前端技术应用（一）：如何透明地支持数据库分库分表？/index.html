@@ -467,6 +467,8 @@
       
         
       
+        
+      
     
     
       
@@ -681,6 +683,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -3448,42 +3454,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#sql" class="md-nav__link">
-    <span class="md-ellipsis">
-      解析SQL语句，判断访问哪个数据库
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      我们的示例离实用还有多大差距？
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      课程小结
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      一课一思
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -5453,42 +5423,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#sql" class="md-nav__link">
-    <span class="md-ellipsis">
-      解析SQL语句，判断访问哪个数据库
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      我们的示例离实用还有多大差距？
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      课程小结
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      一课一思
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -5518,211 +5452,24 @@
 <p>这节课，我们主要讨论，一个分布式数据库领域的需求。我会带你设计一个中间层，让应用逻辑不必关心数据库的物理分布。这样，无论把数据库拆成多少个分库，编程时都会像面对一个物理库似的没什么区别。</p>
 <p>接下来，我们先了解一下分布式数据库的需求和带来的挑战。</p>
 <h2 id="_1">分布式数据库解决了什么问题，又带来了哪些挑战</h2>
-<p>随着技术的进步，我们编写的应用所采集、处理的数据越来越多，处理的访问请求也越来越多。而单一数据库服务器的处理能力是有限的，当数据量和访问量超过一定级别以后，就要开始做分库分表的操作。比如，把一个数据库的大表拆成几张表，把一个库拆成几个库，把读和写的操作分离开等等。 <strong>我们把这类技术统称为分布式数据库技术。</strong></p>
-<p>分库分表（Sharding）有时也翻译成“数据库分片”。分片可以依据各种不同的策略，比如我开发过一个与社区有关的应用系统，这个系统的很多业务逻辑都是围绕小区展开的。对于这样的系统，按照 <strong>地理分布的维度</strong> 来分片就很合适，因为每次对数据库的操作基本上只会涉及其中一个分库。</p>
-<p>假设我们有一个订单表，那么就可以依据一定的规则对订单或客户进行编号，编号中就包含地理编码。比如SDYT代表山东烟台，BJHD代表北京海淀，不同区域的数据放在不同的分库中：</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/37/85/376bf6f25970caf6250e9a4cd768de85.jpg?wh=1142*674" /></p>
-<p>通过数据库分片，我们可以提高数据库服务的性能和可伸缩性。当数据量和访问量增加时，增加数据库节点的数量就行了。不过，虽然数据库的分片带来了性能和伸缩性的好处，但它也带来了一些挑战。</p>
-<p><strong>最明显的一个挑战，是数据库分片逻辑侵入到业务逻辑中。</strong> 过去，应用逻辑只访问一个数据库，现在需要根据分片的规则，判断要去访问哪个数据库，再去跟这个数据库服务器连接。如果增加数据库分片，或者对分片策略进行调整，访问数据库的所有应用模块都要修改。这会让软件的维护变得更复杂，显然也不太符合软件工程中模块低耦合、把变化隔离的理念。</p>
-<p>所以如果有一种技术，能让我们访问很多数据库分片时，像访问一个数据库那样就好了。 <strong>数据库的物理分布，对应用是透明的。</strong></p>
-<p>可是，“理想很吸引人，现实很骨感”。要实现这个技术，需要解决很多问题：</p>
-<p><strong>首先是跨库查询的难题。</strong> 如果SQL操作都针对一个库还好，但如果某个业务需求恰好要跨多个库，比如上面的例子中，如果要查询多个小区的住户信息，那么就要在多个库中都执行查询，然后把查询结果合并，一般还要排序。</p>
-<p>如果我们前端显示的时候需要分页，每页显示一百行，那就更麻烦了。我们不可能从10个分库中各查出10行，合并成100行，这100行不一定排在前面，最差的情况，可能这100行恰好都在其中一个分库里。所以，你可能要从每个分库查出100行来，合并、排序后，再取出前100行。如果涉及数据库表跨库做连接，你想象一下，那就更麻烦了。</p>
-<p><strong>其次就是跨库做写入的难题。</strong> 如果对数据库写入时遇到了跨库的情况，那么就必须实现分布式事务。所以，虽然分布式数据库的愿景很吸引人，但我们必须解决一系列技术问题。</p>
-<p>这一讲，我们先解决最简单的问题， <strong>也就是当每次数据操作仅针对一个分库的时候，能否自动确定是哪个分库的问题。</strong> 解决这个问题我们不需要依据别的信息，只需要提供SQL就行了。这就涉及对SQL语句的解析了，自然要用到编译技术。</p>
-<h2 id="sql">解析SQL语句，判断访问哪个数据库</h2>
-<p>我画了一张简化版的示意图：假设有两张表，分别是订单表和客户表，它们的主键是order_id和cust_id：</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/9b/e0/9bb05d9ccff18746b275a765567c4de0.jpg?wh=1142*582" /></p>
-<p>我们采用的分片策略，是依据这两个主键的前4位的编码来确定数据库分片的逻辑，比如：前四位是SDYT，那就使用山东烟台的分片，如果是BJHD，就使用北京海淀的分片，等等。</p>
-<p>在我们的应用中，会对订单表进行一些增删改查的操作，比如会执行下面的SQL语句：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>//查询
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>select * from orders where order_id = &#39;SDYT20190805XXXX&#39;
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>select * from orders where cust_id = &#39;SDYT987645&#39;
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>//插入
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>insert into orders (order_id，...其他字段) values( &quot;BJHD20190805XXXX&quot;,...)
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>//修改
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>update orders set price=298.00 where order_id=&#39;FJXM20190805XXXX&#39;
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>//删除
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>delete from orders where order_id=&#39;SZLG20190805XXXX&#39;
-</code></pre></div>
-<p>我们要能够解析这样的SQL语句，根据主键字段的值，决定去访问哪个分库或者分表。这就需要用到编译器前端技术，包括 <strong>词法分析、语法分析和语义分析。</strong></p>
-<p>听到这儿，你可能会质疑：“解析SQL语句？是在开玩笑吗？”你可能觉得这个任务太棘手，犹豫着是否要忍受业务逻辑和技术逻辑混杂的缺陷，把判断分片的逻辑写到应用代码里，或者想解决这个问题，又或者想自己写一个开源项目，帮到更多的人。</p>
-<p>无论你的内心活动如何，应用编译技术，能让你有更强的信心解决这个问题。那么如何去做呢？要想完成解析SQL的任务，在词法分析和语法分析这两个阶段，我建议你采用工具快速落地，比如Antlr。你要找一个现成的SQL语句的语法规则文件。</p>
-<p>GitHub中，那个收集了很多示例Antlr规则文件的 <a href="https://github.com/antlr/grammars-v4">项目</a> 里， <a href="https://github.com/antlr/grammars-v4">有两个可以参考的规则</a>：一个是 <a href="https://github.com/antlr/grammars-v4/tree/master/plsql">PLSQL</a> 的（它是Oracle数据库的SQL语法）；一个是 <a href="https://github.com/antlr/grammars-v4/tree/master/sqlite">SQLite</a> 的（这是一个嵌入式数据库）。</p>
-<p>实际上，我还找到MySQL workbench所使用的一个产品级的 <a href="https://github.com/mysql/mysql-workbench/tree/8.0/library/parsers/grammars">规则文件</a>。MySQL workbench是一个图形化工具，用于管理和访问MySQL。这个规则文件还是很靠谱的，不过它里面嵌了很多属性计算规则，而且是C++语言写的，我嫌处理起来麻烦，就先弃之不用， <strong>暂且采用SQLite的规则文件来做示范。</strong></p>
-<p>先来看一下这个文件里的一些规则，例如select语句相关的语法：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>factored_select_stmt
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a> : ( K_WITH K_RECURSIVE? common_table_expression ( &#39;,&#39; common_table_expression )* )?
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>   select_core ( compound_operator select_core )*
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>   ( K_ORDER K_BY ordering_term ( &#39;,&#39; ordering_term )* )?
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>   ( K_LIMIT expr ( ( K_OFFSET | &#39;,&#39; ) expr )? )?
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a> ;
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>common_table_expression
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a> : table_name ( &#39;(&#39; column_name ( &#39;,&#39; column_name )* &#39;)&#39; )? K_AS &#39;(&#39; select_stmt &#39;)&#39;
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a> ;
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>select_core
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a> : K_SELECT ( K_DISTINCT | K_ALL )? result_column ( &#39;,&#39; result_column )*
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>   ( K_FROM ( table_or_subquery ( &#39;,&#39; table_or_subquery )* | join_clause ) )?
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>   ( K_WHERE expr )?
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>   ( K_GROUP K_BY expr ( &#39;,&#39; expr )* ( K_HAVING expr )? )?
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a> | K_VALUES &#39;(&#39; expr ( &#39;,&#39; expr )* &#39;)&#39; ( &#39;,&#39; &#39;(&#39; expr ( &#39;,&#39; expr )* &#39;)&#39; )*
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a> ;
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>
-<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>result_column
-<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a> : &#39;*&#39;
-<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a> | table_name &#39;.&#39; &#39;*&#39;
-<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a> | expr ( K_AS? column_alias )?
-<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a> ;
-</code></pre></div>
-<p>我们可以一边看这个语法规则，一边想几个select语句做一做验证。你可以思考一下，这个规则是怎么把select语句拆成不同的部分的。</p>
-<p>SQL里面也有表达式，我们研究一下它的表达式的规则：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>expr
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a> : literal_value
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a> | BIND_PARAMETER
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a> | ( ( database_name &#39;.&#39; )? table_name &#39;.&#39; )? column_name
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a> | unary_operator expr
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a> | expr &#39;||&#39; expr
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a> | expr ( &#39;*&#39; | &#39;/&#39; | &#39;%&#39; ) expr
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a> | expr ( &#39;+&#39; | &#39;-&#39; ) expr
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a> | expr ( &#39;&lt;&lt;&#39; | &#39;&gt;&gt;&#39; | &#39;&amp;&#39; | &#39;|&#39; ) expr
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a> | expr ( &#39;&lt;&#39; | &#39;&lt;=&#39; | &#39;&gt;&#39; | &#39;&gt;=&#39; ) expr
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a> | expr ( &#39;=&#39; | &#39;==&#39; | &#39;!=&#39; | &#39;&lt;&gt;&#39; | K_IS | K_IS K_NOT | K_IN | K_LIKE | K_GLOB | K_MATCH | K_REGEXP ) expr
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a> | expr K_AND expr
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a> | expr K_OR expr
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a> | function_name &#39;(&#39; ( K_DISTINCT? expr ( &#39;,&#39; expr )* | &#39;*&#39; )? &#39;)&#39;
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a> | &#39;(&#39; expr &#39;)&#39;
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a> | K_CAST &#39;(&#39; expr K_AS type_name &#39;)&#39;
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a> | expr K_COLLATE collation_name
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a> | expr K_NOT? ( K_LIKE | K_GLOB | K_REGEXP | K_MATCH ) expr ( K_ESCAPE expr )?
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a> | expr ( K_ISNULL | K_NOTNULL | K_NOT K_NULL )
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a> | expr K_IS K_NOT? expr
-<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a> | expr K_NOT? K_BETWEEN expr K_AND expr
-<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a> | expr K_NOT? K_IN ( &#39;(&#39; ( select_stmt
-<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>                          | expr ( &#39;,&#39; expr )*
-<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>                          )?
-<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>                      &#39;)&#39;
-<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>                    | ( database_name &#39;.&#39; )? table_name )
-<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a> | ( ( K_NOT )? K_EXISTS )? &#39;(&#39; select_stmt &#39;)&#39;
-<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a> | K_CASE expr? ( K_WHEN expr K_THEN expr )+ ( K_ELSE expr )? K_END
-<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a> | raise_function
-<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a> ;
-</code></pre></div>
-<p>你可能会觉得SQL的表达式的规则跟其他语言的表达式规则很像。比如都支持加减乘除、关系比较、逻辑运算等等。而且从这个规则文件里，你一下子就能看出各种运算的优先级，比如你会注意到，字符串连接操作“||”比乘法和除法的优先级更高。 <strong>所以，研究一门语言时积累的经验，在研究下一门语言时仍然有用。</strong></p>
-<p>有了规则文件之后，接下来，我们用Antlr生成词法分析器和语法分析器：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>antlr -visitor -package dsql.parser SQLite.g4
-</code></pre></div>
-<p>在这个命令里，我用-package参数指定了生成的Java代码的包是dsql.parser。dsql是分布式SQL的意思。接着，我们可以写一点儿程序测试一下所生成的词法分析器和语法分析器：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>String sql = &quot;select order_id from orders where cust_id = &#39;SDYT987645&#39;&quot;;
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>//词法分析
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>SQLiteLexer lexer = new SQLiteLexer(CharStreams.fromString(sql));
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>CommonTokenStream tokens = new CommonTokenStream(lexer);
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>//语法分析
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>SQLiteParser parser = new SQLiteParser(tokens);
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>ParseTree tree = parser.sql_stmt();
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>//输出lisp格式的AST
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>System.out.println(tree.toStringTree(parser));
-</code></pre></div>
-<p>这段程序的输出是LISP格式的AST，我调整了一下缩进，让它显得更像一棵树：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>(sql_stmt
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  (factored_select_stmt
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    (select_core select
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>      (result_column
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        (expr
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>          (column_name
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>            (any_name order_id))))
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>      from (table_or_subquery
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>              (table_name
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>                (any_name orders)))
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>      where (expr
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>              (expr
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>                (column_name
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>                  (any_name cust_id)))
-<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>              =
-<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>                (expr
-<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>                  (literal_value
-<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>                    (&#39;SDYT987645&#39;))))))
-</code></pre></div>
-<p>从AST中，我们可以清晰地看出这个select语句是如何被解析成结构化数据的，再继续写点儿代码，就能获得想要的信息了。</p>
-<p>接下来的任务是：对于访问订单表的select语句，要在where子句里找出cust_id="客户编号"或order_id="订单编号"这样的条件，从而能够根据客户编号或订单编号确定采用哪个分库。</p>
-<p>怎么实现呢？很简单，我们用visitor模式遍历一下AST就可以了：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>public String getDBName(String sql) {
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    //词法解析
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    SQLiteLexer lexer = new SQLiteLexer(CharStreams.fromString(sql));
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    CommonTokenStream tokens = new CommonTokenStream(lexer);
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    //语法解析
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    SQLiteParser parser = new SQLiteParser(tokens);
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    ParseTree tree = parser.sql_stmt();
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    //以lisp格式打印AST
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    System.out.println(tree.toStringTree(parser));
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    //获得select语句的要素,包括表名和where条件
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    SQLVisitor visitor = new SQLVisitor();
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    SelectStmt select = (SelectStmt) visitor.visit(tree);
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>
-<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>    String dbName = null;
-<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>    if (select.tableName.equals(&quot;orders&quot;)) {
-<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>        if (select.whereExprs != null) {
-<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>            for (WhereExpr expr : select.whereExprs) {
-<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>                //根据cust_id或order_id来确定库的名称
-<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>                if (expr.columnName.equals(&quot;cust_id&quot;) || expr.columnName.equals(&quot;order_id&quot;)) {
-<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>                    //取编号的前4位，即区域编码
-<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>                    String region = expr.value.substring(1, 5);
-<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>                    //根据区域编码，获取库名称
-<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>                    dbName = region2DB.get(region);
-<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>                    break;
-<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>                }
-<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>            }
-<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>        }
-<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>    }
-<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>    return dbName;
-<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>}
-</code></pre></div>
-<p>获取表名和where子句条件的代码在SQLVisitor.java中。因为已经有了AST，抽取这些信息是不难的。你可以点开我在文稿中提供的链接，查看示例代码。</p>
-<h2 id="_2">我们的示例离实用还有多大差距？</h2>
-<p>目前，我们已经初步解决了数据库访问透明化的问题。当然，这只是一个示例，如果要做得严密、实用，我们还要补充一些工作。</p>
-<p><strong>我们需要做一些语义分析工作，确保SQL语句的合法性。</strong> 语法分析并不能保证程序代码完全合法，我们必须进行很多语义的检查才行。</p>
-<p>我给订单表起的名字，是orders。如果你把表名称改为order，那么必须用引号引起来，写成’order’，不带引号的order会被认为是一个关键字。因为在SQL中我们可以使用order by这样的子句，这时候，order这个表名就会被混淆，进而被解析错误。这个语法解析程序会在表名的地方出现一个order节点，这在语义上是不合法的，需要被检查出来并报错。</p>
-<p><strong>如果要检查语义的正确性，我们还必须了解数据库的元数据。</strong> 否则，就没有办法判断在SQL语句中是否使用了正确的字段，以及正确的数据类型。除此之外，我们还需要扩展到能够识别跨库操作，比如下面这样一个where条件：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>order_id = &#39;FJXM20190805XXXX&#39; or order_id = &#39;SZLG20190805XXXX&#39;
-</code></pre></div>
-<p>分析这个查询条件，可以知道数据是存在两个不同的数据库中的。但是我们要让解析程序分析出这个结果，甚至让它针对更加复杂的条件，也能分析出来。这就需要更加深入的语义分析功能了。</p>
-<p><strong>最后，解析器的速度也是一个需要考虑的因素。</strong> 因为执行每个SQL都需要做一次解析，而这个时间就加在了每一次数据库访问上。所以，SQL解析的时间越少越好。因此，有的项目就会尽量提升解析效率。 <strong>阿里有一个开源项目Druid，是一个数据库连接池。</strong> 这个项目强调性能，因此他们纯手写了一个SQL解析器，尽可能地提升性能。</p>
-<p>总之，要实现一个完善的工具，让工具达到产品级的质量，有不少工作要做。如果要支持更强的分布式数据库功能，还要做更多的工作。不过，你应该不会觉得这事儿有多么难办了吧？至少在编译技术这部分你是有信心的。</p>
-<p>在这里，我还想讲一讲SQL防注入这个问题。SQL注入攻击是一种常见的攻击手段。你向服务器请求一个url的时候，可以把恶意的SQL嵌入到参数里面，这样形成的SQL就是不安全的。</p>
-<p>以前面的SQL语句为例，这个select语句本来只是查询一个订单，订单编号“SDYT20190805XXXX”作为参数传递给服务端的一个接口，服务端收到参数以后，用单引号把这个参数引起来，并加上其他部分，就组装成下面的SQL并执行：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>//原来的SQL
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>select * from orders where order_id = &#39;SDYT20190805XXXX&#39;
-</code></pre></div>
-<p>如果我们遇到了一个恶意攻击者，他可能把参数写成“SDYT20190805XXXX’；drop table customers; --”。服务器接到这个参数以后，仍然把它拿单引号引起来，并组装成SQL，组装完毕以后就是下面的语句：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>//被注入恶意SQL后
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>select * from orders where order_id = &#39;SDYT20190805XXXX&#39;; drop table customers; --&#39;
-</code></pre></div>
-<p>如果你看不清楚，我分行写一下，这样你就知道它是怎么把你宝贵的客户信息全都删掉的：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>//被注入恶意SQL后
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>select * from orders where order_id = &#39;SDYT20190805XXXX&#39;;
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>drop table customers;  // 把顾客表给删了
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>--&#39;                    //把你加的单引号变成了注释，这样SQL不会出错
-</code></pre></div>
-<p><strong>所以SQL注入有很大的危害。</strong> 而我们一般用检查客户端传过来的参数的方法，看看有没有SQL语句中的关键字，来防止SQL注入。不过这是比较浅的防御，有时还会漏过一些非法参数，所以要在SQL执行之前，做最后一遍检查。而这个时候，就要运用编译器前端技术来做SQL的解析了。借此，我们能检查出来异常： <strong>明明这个功能是做查询的，为什么形成的SQL会有删除表的操作？</strong></p>
-<p>通过这个例子，我们又分析了一种场景：开发一个安全可靠的系统，用编译技术做SQL分析是必须做的一件事情。</p>
-<h2 id="_3">课程小结</h2>
-<p>今天，我带你利用学到的编译器前端技术，解析了SQL语句，并针对分布式数据库透明查询的功能做了一次概念证明。</p>
-<p>SQL是程序员经常打交道的语言。有时，我们会遇到需要解析SQL语言的需求，除了分布式数据库场景的需求以外，Hibernate对HQL的解析，也跟解析SQL差不多。而且，最近有一种技术，能够通过RESTful这样的接口做通用的查询，其实也是一种类SQL的子语言。</p>
-<p>当然了，今天我们只是基于工具做解析。一方面，有时候我们就是需要做个原型系统或者最小的能用的系统，有时间有资源了，再追求完美也不为过，比如追求编译速度的提升。另一方面，你能看到MySQL workbench也是用Antlr来作帮手的，在很多情况下，Antlr这样的工具生成的解析器足够用，甚至比你手写的还要好，所以，我们大可以节省时间，用工具做解析。</p>
-<p>可能你会觉得，实际应用的难度似乎要低于学习原理的难度。如果你有这个感觉，那就对了，这说明你已经掌握了原理篇的内容，所以日常的一些应用根本不是问题，你可以找出更多的应用场景来练练手。</p>
-<h2 id="_4">一课一思</h2>
-<p>你在工作中，是否遇到过其他需要解析SQL的场景？另外，当你阅读了SQL的规则文件之后，是否发现了它跟Java这样的语言规则的不同之处？是更加简单还是更复杂？欢迎在留言区写下你的发现。</p>
-<p>最后，感谢你的阅读，如果这篇文章让你有所收获，也欢迎你将它分享给更多的朋友。</p>
+<p>随着技术的进步，我们编写的应用所采集、处理的数据越来越多，处理的访问请求也越来越多。而单一数据库服务器的处理能力是有限的，当数据量和访问量超过一定级别以后，就要开始做分库分表的操作。比如，把一个数据库的大表拆成几张表，把一个库拆成几个库，把读和写的操作分离开等等。<strong>我们把这类技术统称为分布式数据库技术。</strong></p>
+<p>分库分表（Sharding）有时也翻译成“数据库分片”。分片可以依据各种不同的策略，比如我开发过一个与社区有关的应用系统，这个系统的很多业务逻辑都是围绕小区展开的。对于这样的系统，按照<strong>地理分布的维度</strong>来分片就很合适，因为每次对数据库的操作基本上只会涉及其中一个分库。</p>
+<div><strong>精选留言（18）</strong></div>
+<ul>
+<li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKq0aBhhSXg7qiaWQH81zmjAYPXwoiaJEoMOxwXZF7d2iazMyQCeYpT7DJmxy2Iny7qq3RRr0UjOnO5A/132" width="30px"><span>xiaoma2008</span> 👍（16） 💬（3）<div>如果老师对分布式数据库比较熟的话，希望老师能出个分布式查询的课程！</div>2019-11-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/33/ae/436e3a56.jpg" width="30px"><span>David</span> 👍（6） 💬（1）<div>关于编译技术还有什么经典的应用场景吗？老师帮我们拓展一下想象力。</div>2019-10-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/b7/24/17f6c240.jpg" width="30px"><span>janey</span> 👍（3） 💬（1）<div>在编译器层面实现分布式数据查询，可以理解为把多表查询提前了吗？只是看起来就一个select语句</div>2019-09-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/23/c4/91/a017bf72.jpg" width="30px"><span>coconut</span> 👍（2） 💬（1）<div>老师，想要满足 高性能地解析SQL到语法树 这个需求，我尝试用antlr和yacc golang写了demo测试，antlr差不多性能降了300+倍，goyacc下降了10倍左右。
+
+如果还想提高性能，还有什么方式么？我想到的
+1.调研sql parser，如druid
+2.尝试其他语言 （估计不会有啥提升）
+</div>2021-01-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/ef/90/53c6bfde.jpg" width="30px"><span>Richie</span> 👍（2） 💬（1）<div>老师能不能多讲点，关于SQL解析的内容，更深，更细</div>2019-09-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/b3/17/9f6d67dc.jpg" width="30px"><span>超越杨超越</span> 👍（1） 💬（1）<div>对老师讲的这部分还是没有太理解。
+采用编译技术对SQL进行解析之后呢，结果是什么呢？遇到合法的SQL就执行，非法的SQL语句就直接报错么？
+请问采用类似于正则匹配之类的方式，可以做到么？</div>2020-11-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/ec/4a/40a2ba79.jpg" width="30px"><span>reverse</span> 👍（1） 💬（2）<div>注意；SQLite 的地址是 ：https:&#47;&#47;github.com&#47;antlr&#47;grammars-v4&#47;blob&#47;master&#47;sql&#47;sqlite&#47;SQLite.g4</div>2020-03-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/04/1c/b0c6c009.jpg" width="30px"><span>zhj</span> 👍（1） 💬（1）<div>SQLVisitor代码在哪里了</div>2019-11-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/8b/3f/094cf966.jpg" width="30px"><span>Nick</span> 👍（0） 💬（1）<div>“作者回复: 我最近其实在构思写一个分布式数据访问的工具。跟MyCat的定位会不大相同，是想整体上把数据访问这件事情，对应用透明化。野心有点大。
+因为现在很多用到数据库的应用，其水平扩展能力都困在了数据库这个点上。这个问题不解决，所谓云原生就是在忽视房间里的大象。
+我看资料，已经有一些分布式数据库的商业产品。但要像使用一个单一的数据库一样的使用它，还是有点困难。
+我整理一下这方面的思路，会跟大家分享的”
+宫老师，我们很想听 您 关于 分布式数据访问工具  的分享。</div>2021-03-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8a/4c/d976b42c.jpg" width="30px"><span>冯选刚</span> 👍（0） 💬（1）<div>学到了。</div>2020-01-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a6/60/0eac2751.jpg" width="30px"><span>52rock</span> 👍（0） 💬（1）<div>查找delete没有where的SQL</div>2019-10-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ce/c6/958212b5.jpg" width="30px"><span>sugar</span> 👍（5） 💬（0）<div>我来说说工作中sql解析的场景吧：一般后端同学都有自己雪藏的一大坨复杂的sql祖传代码，作为写新sql参考也好、拿来给带的实习生做演示也好，读起来肯定是带换行带缩进才比较舒服；而到了执行的时候，linux各种终端 ssh隧道之间复制粘贴，肯定最希望的还是去掉一切非必要的空格、换行符以及缩进制表符这样的1-line-sql，这个诉求我个人是长期存在的，目前为止在大多数ide里我没发现100%解决这个需求场景的sql formatter，况且绝大多数ide中sql格式化的插件都有各种小毛病，用起来让人不爽，自己写一个 想怎么hack怎么hack。这算是个不错的自己写sql parser的场景吧～</div>2020-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/53/5c/6d846d99.jpg" width="30px"><span>农村合作社</span> 👍（1） 💬（0）<div>好像没有代码链接，我补一下：
+https:&#47;&#47;github.com&#47;RichardGong&#47;PlayWithCompiler&#47;blob&#47;master&#47;lab&#47;db&#47;src&#47;main&#47;playdb&#47;SQLVisitor.java</div>2022-11-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/71/ac/8295e3e7.jpg" width="30px"><span>书忆江南</span> 👍（1） 💬（0）<div>SparkSQL也是用Antlr4来进行SQL语法的解析的</div>2020-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/e0/76/ffaf5f49.jpg" width="30px"><span>allen</span> 👍（0） 💬（0）<div>老师，文中提到的&quot;一个是SQLite的（这是一个嵌入式数据库）&quot;,链接点进去是404，找不到资源</div>2023-04-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/4b/11/d7e08b5b.jpg" width="30px"><span>dll</span> 👍（0） 💬（0）<div>对于防sql注入安全检查的具体code老师有没有资料能告知一下，谢谢</div>2022-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/4b/11/d7e08b5b.jpg" width="30px"><span>dll</span> 👍（0） 💬（0）<div>老师这节课的内容是掌握了本章节讲到的生成代码解析sql，增加防注入功能，模拟一个根据主键前四个字母定位数据库位置，调用对应数据的sql查询就可以吗</div>2022-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>规则文件，看起来感觉陌生，不知道啥意思，只知道是一条条规则</div>2021-10-15</li><br/>
+</ul>
 
 
 

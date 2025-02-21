@@ -467,6 +467,8 @@
       
         
       
+        
+      
     
     
       
@@ -681,6 +683,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1233,6 +1239,48 @@
   
     
     
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
       
         
       
@@ -2970,51 +3018,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#ebpf-bcc" class="md-nav__link">
-    <span class="md-ellipsis">
-      eBPF 和 BCC
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#systemtap-sysdig" class="md-nav__link">
-    <span class="md-ellipsis">
-      SystemTap 和 sysdig
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      如何选择追踪工具
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      小结
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      思考
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -3451,6 +3454,8 @@
       
         
       
+        
+      
     
     
       
@@ -3796,6 +3801,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -4040,6 +4049,16 @@
   
     
     
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
       
         
       
@@ -5735,6 +5754,18 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
       
@@ -6021,51 +6052,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#ebpf-bcc" class="md-nav__link">
-    <span class="md-ellipsis">
-      eBPF 和 BCC
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#systemtap-sysdig" class="md-nav__link">
-    <span class="md-ellipsis">
-      SystemTap 和 sysdig
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      如何选择追踪工具
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      小结
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      思考
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -6099,295 +6085,40 @@
 <p>perf 已经是我们的老朋友了。在前面的案例中，我们多次用到它，来查找应用程序或者内核中的热点函数，从而定位性能瓶颈。而在内核线程 CPU 高的案例中，我们还使用火焰图动态展示 perf 的事件记录，从而更直观地发现了问题。</p>
 <p>不过，我们前面使用 perf record/top时，都是先对事件进行采样，然后再根据采样数，评估各个函数的调用频率。实际上，perf 的功能远不止于此。比如，</p>
 <ul>
-<li>
-<p>perf 可以用来分析 CPU cache、CPU 迁移、分支预测、指令周期等各种硬件事件；</p>
-</li>
-<li>
-<p>perf 也可以只对感兴趣的事件进行动态追踪。</p>
-</li>
+<li>perf 可以用来分析 CPU cache、CPU 迁移、分支预测、指令周期等各种硬件事件；</li>
+<li>perf 也可以只对感兴趣的事件进行动态追踪。</li>
 </ul>
-<p>接下来，我们还是以内核函数 do_sys_open，以及用户空间函数 readline 为例，看一看 perf 动态追踪的使用方法。</p>
-<p>同 ftrace 一样，你也可以通过 perf list ，查询所有支持的事件：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$ perf list
-</code></pre></div>
-<p>然后，在 perf 的各个子命令中添加 --event 选项，设置追踪感兴趣的事件。如果这些预定义的事件不满足实际需要，你还可以使用 perf probe 来动态添加。而且，除了追踪内核事件外，perf 还可以用来跟踪用户空间的函数。</p>
-<p><strong>我们先来看第一个 perf 示例，内核函数 do_sys_open 的例子</strong>。你可以执行 perf probe 命令，添加 do_sys_open 探针：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ perf probe --add do_sys_open
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>Added new event:
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  probe:do_sys_open    (on do_sys_open)
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>You can now use it in all perf tools, such as:
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    perf record -e probe:do_sys_open -aR sleep 1
-</code></pre></div>
-<p>探针添加成功后，就可以在所有的 perf 子命令中使用。比如，上述输出就是一个 perf record 的示例，执行它就可以对 10s 内的 do_sys_open 进行采样：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ perf record -e probe:do_sys_open -aR sleep 10
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>[ perf record: Woken up 1 times to write data ]
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>[ perf record: Captured and wrote 0.148 MB perf.data (19 samples) ]
-</code></pre></div>
-<p>而采样成功后，就可以执行 perf script ，来查看采样结果了：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ perf script
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>            perf 12886 [000] 89565.879875: probe:do_sys_open: (ffffffffa807b290)
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>           sleep 12889 [000] 89565.880362: probe:do_sys_open: (ffffffffa807b290)
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>           sleep 12889 [000] 89565.880382: probe:do_sys_open: (ffffffffa807b290)
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>           sleep 12889 [000] 89565.880635: probe:do_sys_open: (ffffffffa807b290)
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>           sleep 12889 [000] 89565.880669: probe:do_sys_open: (ffffffffa807b290)
-</code></pre></div>
-<p>输出中，同样也列出了调用 do_sys_open 的任务名称、进程 PID 以及运行的 CPU 等信息。不过，对于 open 系统调用来说，只知道它被调用了并不够，我们需要知道的是，进程到底在打开哪些文件。所以，实际应用中，我们还希望追踪时能显示这些函数的参数。</p>
-<p>对于内核函数来说，你当然可以去查看内核源码，找出它的所有参数。不过还有更简单的方法，那就是直接从调试符号表中查询。执行下面的命令，你就可以知道 do_sys_open 的所有参数：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ perf probe -V do_sys_open
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>Available variables at do_sys_open
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        @&lt;do_sys_open+0&gt;
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>                char*   filename
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>                int     dfd
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>                int     flags
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>                struct open_flags       op
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>                umode_t mode
-</code></pre></div>
-<p>从这儿可以看出，我们关心的文件路径，就是第一个字符指针参数（也就是字符串），参数名称为 filename。如果这个命令执行失败，就说明调试符号表还没有安装。那么，你可以执行下面的命令，安装调试信息后重试：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a># Ubuntu
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>$ apt-get install linux-image-`uname -r`-dbgsym
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a># CentOS
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>$ yum --enablerepo=base-debuginfo install -y kernel-debuginfo-$(uname -r)
-</code></pre></div>
-<p>找出参数名称和类型后，就可以把参数加到探针中了。不过由于我们已经添加过同名探针，所以在这次添加前，需要先把旧探针给删掉：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a># 先删除旧的探针
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>perf probe --del probe:do_sys_open
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a># 添加带参数的探针
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>$ perf probe --add &#39;do_sys_open filename:string&#39;
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>Added new event:
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>  probe:do_sys_open    (on do_sys_open with filename:string)
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>You can now use it in all perf tools, such as:
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    perf record -e probe:do_sys_open -aR sleep 1
-</code></pre></div>
-<p>新的探针添加后，重新执行 record 和 script 子命令，采样并查看记录：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a># 重新采样记录
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>$ perf record -e probe:do_sys_open -aR ls
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a># 查看结果
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>$ perf script
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>            perf 13593 [000] 91846.053622: probe:do_sys_open: (ffffffffa807b290) filename_string=&quot;/proc/13596/status&quot;
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>              ls 13596 [000] 91846.053995: probe:do_sys_open: (ffffffffa807b290) filename_string=&quot;/etc/ld.so.cache&quot;
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>              ls 13596 [000] 91846.054011: probe:do_sys_open: (ffffffffa807b290) filename_string=&quot;/lib/x86_64-linux-gnu/libselinux.so.1&quot;
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>              ls 13596 [000] 91846.054066: probe:do_sys_open: (ffffffffa807b290) filename_string=&quot;/lib/x86_64-linux-gnu/libc.so.6”
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>              ...
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a># 使用完成后不要忘记删除探针
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>$ perf probe --del probe:do_sys_open
-</code></pre></div>
-<p>现在，你就可以看到每次调用 open 时打开的文件了。不过，这个结果是不是看着很熟悉呢？</p>
-<p>其实，在我们使用 strace 跟踪进程的系统调用时，也经常会看到这些动态库的影子。比如，使用 strace 跟踪 ls 时，你可以得到下面的结果：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$ strace ls
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>...
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>access(&quot;/etc/ld.so.nohwcap&quot;, F_OK)      = -1 ENOENT (No such file or directory)
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>access(&quot;/etc/ld.so.preload&quot;, R_OK)      = -1 ENOENT (No such file or directory)
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>openat(AT_FDCWD, &quot;/etc/ld.so.cache&quot;, O_RDONLY|O_CLOEXEC) = 3
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>...
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>access(&quot;/etc/ld.so.nohwcap&quot;, F_OK)      = -1 ENOENT (No such file or directory)
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>openat(AT_FDCWD, &quot;/lib/x86_64-linux-gnu/libselinux.so.1&quot;, O_RDONLY|O_CLOEXEC) = 3
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>...
-</code></pre></div>
-<p>你估计在想，既然strace 也能得到类似结果，本身又容易操作，为什么我们还要用perf 呢？</p>
-<p>实际上，很多人只看到了 strace 简单易用的好处，却忽略了它对进程性能带来的影响。从原理上来说， <strong>strace 基于系统调用 ptrace 实现</strong>，这就带来了两个问题。</p>
+<div><strong>精选留言（26）</strong></div>
 <ul>
-<li>
-<p>由于ptrace 是系统调用，就需要在内核态和用户态切换。当事件数量比较多时，繁忙的切换必然会影响原有服务的性能；</p>
-</li>
-<li>
-<p>ptrace 需要借助 SIGSTOP 信号挂起目标进程。这种信号控制和进程挂起，会影响目标进程的行为。</p>
-</li>
+<li><img src="https://static001.geekbang.org/account/avatar/00/14/11/4b/fa64f061.jpg" width="30px"><span>xfan</span> 👍（9） 💬（1）<div>我想知道ebpf程序编写有什么好点的学习资源吗，有种心有余而力不足的感觉</div>2019-03-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/0c/30/d4737cd5.jpg" width="30px"><span>lyonger</span> 👍（4） 💬（1）<div>老师，最近kvm虚拟机器，xfs文件系统下使用devmapper的驱动，每次使用docker跑任务ci build的时候，用iotop查看发现runner机器的[loop1]、[loop2]、[kworker&#47;u32:2]的io 99%，任务中止了以后就没有发现异常了。我用perf定位到了热点函数是xfsaild、xfs_inode_item_push。用ftrace和trace-cmd要先知道运行的命令。那么2个疑问：
+1、有办法直接查看某个热点函数里的执行逻辑吗？在不知道执行什么命令的情况下，我只知道某个热点函数名称
+2、可以使用的探针有哪些，是怎么查看呢？
+
+期待您的回复，多谢。</div>2019-07-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/63/2e/e49116d1.jpg" width="30px"><span>Geek_007</span> 👍（2） 💬（1）<div>老师你好，我在使用 perf trace 命令时发现，perf trace 追踪时，不能打印出打开文件的文件名，尽管我已经使用 perf probe 将filename 加入，但是依然无法打印出文件名。另外我使用 perf trace -e probe:do_sys_open ,依然还是记录所有的事件，请问老师，是我使用的有问题？还是其他问题？</div>2019-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e2/d8/f0562ede.jpg" width="30px"><span>manatee</span> 👍（1） 💬（1）<div>想请教下老师，在容器环境下使用以上动态追踪技术有哪些注意点和坑呢</div>2019-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a7/6d/19bff1f9.jpg" width="30px"><span>ichen</span> 👍（1） 💬（1）<div># perf probe
+perf: &#39;probe&#39; is not a perf-command. See &#39;perf --help&#39;.</div>2019-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/99/7a/558666a5.jpg" width="30px"><span>AceslupK</span> 👍（0） 💬（1）<div>动态追踪好难</div>2022-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/13/00/a4a2065f.jpg" width="30px"><span>Michael</span> 👍（0） 💬（1）<div>调试符号表安装不了
+
+root@iZ94lcu45k0Z:~# apt-get install linux-image-`uname -r`-dbgsym
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+E: Unable to locate package linux-image-4.15.0-72-generic-dbgsym
+E: Couldn&#39;t find any package by glob &#39;linux-image-4.15.0-72-generic-dbgsym&#39;
+E: Couldn&#39;t find any package by regex &#39;linux-image-4.15.0-72-generic-dbgsym&#39;</div>2020-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/0c/30/d4737cd5.jpg" width="30px"><span>lyonger</span> 👍（0） 💬（1）<div>我昨天查到了问题根源，发现docker对于使用存储驱动有选择推荐的说明，那个问题是存储驱动问题导致，通过热点函数和调试发现改成overlay2后loop内核线程的io几乎没有了。业务也正常了。但是那2个问题，期待老师有空后给予解答，多谢。</div>2019-07-11</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epGMibYc0m7cDHMsNRBUur2NPVnlBZFXoNjWomibfjnHeAO3XRt27VaH3WNtdUX11d3uIT1ZHWCxLeg/132" width="30px"><span>york</span> 👍（0） 💬（1）<div># perf probe -x &#47;bin&#47;bash -V readline
+The &#47;bin&#47;bash file has no debug information.
+Rebuild with -g, or install an appropriate debuginfo package.
+  Error: Failed to show vars.
+
+这个问题怎么解？</div>2019-03-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/10/32/e37aacfe.jpg" width="30px"><span>cliff(亮剑)</span> 👍（0） 💬（1）<div>有没有讲Linux汇编和GDB的一期？</div>2019-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/64/05/6989dce6.jpg" width="30px"><span>我来也</span> 👍（12） 💬（0）<div>[D51打卡]
+长见识了。
+还是先把perf 和 火焰图用起来吧。
+知道还有更好的工具在内核收集信息就行了。有需要了再来针对性的 看吧。🤦‍♂️</div>2019-03-22</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/PiajxSqBRaEKQMM4m7NHuicr55aRiblTSEWIYe0QqbpyHweaoAbG7j2v7UUElqqeP3Ihrm3UfDPDRb1Hv8LvPwXqA/132" width="30px"><span>ninuxer</span> 👍（1） 💬（0）<div>打卡day54
+整个动态追踪都比较懵逼，常用的也就是trace和perf很简单的用法，等啃完内核的书再回过头来看文章，估计容易消化点～</div>2019-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/f8/b8/0398768b.jpg" width="30px"><span>takumi</span> 👍（0） 💬（0）<div>perf probe -x &#47;bin&#47;bash &#39;readline%return +0($retval):string’ 这里有一个小错误，最后一个符号使用了全角符号，改成后应该是: perf probe -x &#47;bin&#47;bash &#39;readline%return +0($retval):string&#39;</div>2024-02-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/cd/db/7467ad23.jpg" width="30px"><span>Bachue Zhou</span> 👍（0） 💬（0）<div>请问用 perf trace 和 ebpf 相比，哪种技术追踪效率更高？</div>2023-04-12</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqtXSgThiaEiaEqqic5YIJ7v469nCM3VXiccOJ4SxbYjW91ciczuYYEzcTVtYWaWXaokZqShuLdKsXjnFA/132" width="30px"><span>Geek_b85295</span> 👍（0） 💬（0）<div>apt-get install linux-image-`uname -r`-dbgsym  
+这句话执行特别慢怎么办，安装包非常大，有国内的源替代源吗，把下面两个替换掉
+deb http:&#47;&#47;ddebs.ubuntu.com&#47; bionic main
+deb http:&#47;&#47;ddebs.ubuntu.com&#47; bionic-updates main
+</div>2021-06-18</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqtXSgThiaEiaEqqic5YIJ7v469nCM3VXiccOJ4SxbYjW91ciczuYYEzcTVtYWaWXaokZqShuLdKsXjnFA/132" width="30px"><span>Geek_b85295</span> 👍（0） 💬（0）<div>apt-get install linux-image-`uname -r`-dbgsym  </div>2021-06-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c5/54/a9b1d9f1.jpg" width="30px"><span>bruceyk</span> 👍（0） 💬（0）<div>问下老师，应用程序安装符号表，是需要开启–g选项编译吗，会不会本身影响程序的性能？</div>2021-05-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/08/46/7763cc7f.jpg" width="30px"><span>付钱</span> 👍（0） 💬（1）<div>$ apt-get install linux-image-`uname -r`-dbgsym
+这个命令也运行失败了，提示找不到package</div>2020-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/73/f5/29138f17.jpg" width="30px"><span>凳子</span> 👍（0） 💬（0）<div>老师，想问下，在k8s上，如果在一个容器内使用eBPF追踪syscall，是不是会影响宿主机上的所有容器？</div>2020-04-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/83/fb/621adceb.jpg" width="30px"><span>linker</span> 👍（0） 💬（0）<div>之前使用ftrace与trace-cmd定位多调度延迟的问题，打印出的报告比较多，还得手动写脚本分析那个函数延迟大</div>2020-04-03</li><br/><li><img src="" width="30px"><span>201200986</span> 👍（0） 💬（0）<div>ebpf相关的内容有没有更多材料推荐呢？</div>2020-03-21</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJGMphabeneYRlxs1biaO9oKic6Dwgbe312561lE56V93uUHgXXAsGmK1pH18mvpElygoJh8SUtQPUA/132" width="30px"><span>董皋</span> 👍（0） 💬（0）<div>打卡</div>2020-03-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ca/3b/6dd2b1e2.jpg" width="30px"><span>Cloudfull</span> 👍（0） 💬（0）<div>老师 perf probe -a 添加自定义探针时  如何查看里面的 struct 类型的变量？</div>2019-11-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/f6/4e/0066303c.jpg" width="30px"><span>cuikt</span> 👍（0） 💬（0）<div>高大上，内容干货多多。</div>2019-05-10</li><br/><li><img src="" width="30px"><span>如果</span> 👍（0） 💬（0）<div>DAY51，打卡</div>2019-04-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/57/6e/b6795c44.jpg" width="30px"><span>夜空中最亮的星</span> 👍（0） 💬（0）<div>报道</div>2019-03-26</li><br/>
 </ul>
-<p>所以，在性能敏感的应用（比如数据库）中，我并不推荐你用 strace （或者其他基于 ptrace 的性能工具）去排查和调试。</p>
-<p>在 strace 的启发下，结合内核中的 utrace 机制， perf 也提供了一个 trace 子命令，是取代 strace 的首选工具。相对于 ptrace 机制来说，perf trace 基于内核事件，自然要比进程跟踪的性能好很多。</p>
-<p>perf trace 的使用方法如下所示，跟 strace 其实很像：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$ perf trace ls
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>         ? (         ): ls/14234  ... [continued]: execve()) = 0
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>     0.177 ( 0.013 ms): ls/14234 brk(                                                                  ) = 0x555d96be7000
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>     0.224 ( 0.014 ms): ls/14234 access(filename: 0xad98082                                            ) = -1 ENOENT No such file or directory
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>     0.248 ( 0.009 ms): ls/14234 access(filename: 0xad9add0, mode: R                                   ) = -1 ENOENT No such file or directory
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>     0.267 ( 0.012 ms): ls/14234 openat(dfd: CWD, filename: 0xad98428, flags: CLOEXEC                  ) = 3
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>     0.288 ( 0.009 ms): ls/14234 fstat(fd: 3&lt;/usr/lib/locale/C.UTF-8/LC_NAME&gt;, statbuf: 0x7ffd2015f230 ) = 0
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>     0.305 ( 0.011 ms): ls/14234 mmap(len: 45560, prot: READ, flags: PRIVATE, fd: 3                    ) = 0x7efe0af92000
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>     0.324 Dockerfile  test.sh
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>( 0.008 ms): ls/14234 close(fd: 3&lt;/usr/lib/locale/C.UTF-8/LC_NAME&gt;                          ) = 0
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>     ...
-</code></pre></div>
-<p>不过，perf trace 还可以进行系统级的系统调用跟踪（即跟踪所有进程），而 strace 只能跟踪特定的进程。</p>
-<p><strong>第二个 perf 的例子是用户空间的库函数</strong>。以 bash 调用的库函数 readline 为例，使用类似的方法，可以跟踪库函数的调用（基于 uprobes）。</p>
-<p>readline 的作用，是从终端中读取用户输入，并把这些数据返回调用方。所以，跟 open 系统调用不同的是，我们更关注 readline 的调用结果。</p>
-<p>我们执行下面的命令，通过 -x 指定 bash 二进制文件的路径，就可以动态跟踪库函数。这其实就是跟踪了所有用户在 bash 中执行的命令：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a># 为/bin/bash添加readline探针
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>$ perf probe -x /bin/bash &#39;readline%return +0($retval):string’
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a># 采样记录
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>$ perf record -e probe_bash:readline__return -aR sleep 5
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a># 查看结果
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>$ perf script
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    bash 13348 [000] 93939.142576: probe_bash:readline__return: (5626ffac1610 &lt;- 5626ffa46739) arg1=&quot;ls&quot;
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a># 跟踪完成后删除探针
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>$ perf probe --del probe_bash:readline__return
-</code></pre></div>
-<p>当然，如果你不确定探针格式，也可以通过下面的命令，查询所有支持的函数和函数参数：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a># 查询所有的函数
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>$ perf probe -x /bin/bash —funcs
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a># 查询函数的参数
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>$ perf probe -x /bin/bash -V readline
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>Available variables at readline
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>        @&lt;readline+0&gt;
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>                char*   prompt
-</code></pre></div>
-<p>跟内核函数类似，如果你想要查看普通应用的函数名称和参数，那么在应用程序的二进制文件中，同样需要包含调试信息。</p>
-<h2 id="ebpf-bcc">eBPF 和 BCC</h2>
-<p>ftrace 和 perf 的功能已经比较丰富了，不过，它们有一个共同的缺陷，那就是不够灵活，没法像 DTrace 那样通过脚本自由扩展。</p>
-<p>而 eBPF 就是 Linux 版的 DTrace，可以通过C 语言自由扩展（这些扩展通过 LLVM 转换为 BPF 字节码后，加载到内核中执行）。下面这张图，就表示了 eBPF 追踪的工作原理：</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/a3/e9/a3547f2ac1d4d75b850a02a2735560e9.png?wh=580*325" /></p>
-<p>（图片来自 <a href="https://thenewstack.io/long-last-linux-gets-dynamic-tracing/">THE NEW STACK</a>）</p>
-<p>从图中你可以看到，eBPF 的执行需要三步：</p>
-<ul>
-<li>
-<p>从用户跟踪程序生成 BPF 字节码；</p>
-</li>
-<li>
-<p>加载到内核中运行；</p>
-</li>
-<li>
-<p>向用户空间输出结果。</p>
-</li>
-</ul>
-<p>所以，从使用上来说，eBPF 要比我们前面看到的 ftrace 和 perf ，都更加繁杂。</p>
-<p>实际上，在 eBPF 执行过程中，编译、加载还有 maps 等操作，对所有的跟踪程序来说都是通用的。把这些过程通过 Python 抽象起来，也就诞生了 BCC（BPF Compiler Collection）。</p>
-<p>BCC 把 eBPF 中的各种事件源（比如 kprobe、uprobe、tracepoint 等）和数据操作（称为 Maps），也都转换成了 Python 接口（也支持 lua）。这样，使用 BCC 进行动态追踪时，编写简单的脚本就可以了。</p>
-<p>不过要注意，因为需要跟内核中的数据结构交互，真正核心的事件处理逻辑，还是需要我们用 C 语言来编写。</p>
-<p>至于 BCC 的安装方法，在内存模块的 <a href="https://time.geekbang.org/column/article/0?cid=140">缓存案例</a> 中，我就已经介绍过了。如果你还没有安装过，可以执行下面的命令来安装（其他系统的安装请参考 <a href="https://github.com/iovisor/bcc/blob/master/INSTALL.md">这里</a>）：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a># Ubuntu
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 4052245BD4284CDD
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>echo &quot;deb https://repo.iovisor.org/apt/$(lsb_release -cs) $(lsb_release -cs) main&quot; | sudo tee /etc/apt/sources.list.d/iovisor.list
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>sudo apt-get update
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>sudo apt-get install bcc-tools libbcc-examples linux-headers-$(uname -r)
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a># REHL 7.6
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>yum install bcc-tools
-</code></pre></div>
-<p>安装后，BCC 会把所有示例（包括 Python 和 lua），放到 /usr/share/bcc/examples 目录中：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>$ ls /usr/share/bcc/examples
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>hello_world.py  lua  networking  tracing
-</code></pre></div>
-<p>接下来，还是以 do_sys_open 为例，我们一起来看看，如何用 eBPF 和 BCC 实现同样的动态跟踪。</p>
-<p>通常，我们可以把 BCC 应用，拆分为下面这四个步骤。</p>
-<p>第一，跟所有的 Python 模块使用方法一样，在使用之前，先导入要用到的模块：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>from bcc import BPF
-</code></pre></div>
-<p>第二，需要定义事件以及处理事件的函数。这个函数需要用 C 语言来编写，作用是初始化刚才导入的 BPF 对象。这些用 C 语言编写的处理函数，要以字符串的形式送到 BPF 模块中处理：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a># define BPF program (&quot;&quot;&quot; is used for multi-line string).
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a># &#39;#&#39; indicates comments for python, while &#39;//&#39; indicates comments for C.
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>prog = &quot;&quot;&quot;
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>#include &lt;uapi/linux/ptrace.h&gt;
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>#include &lt;uapi/linux/limits.h&gt;
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>#include &lt;linux/sched.h&gt;
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>// define output data structure in C
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>struct data_t {
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    u32 pid;
-<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>    u64 ts;
-<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    char comm[TASK_COMM_LEN];
-<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>    char fname[NAME_MAX];
-<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>};
-<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>BPF_PERF_OUTPUT(events);
-<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>
-<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>// define the handler for do_sys_open.
-<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>// ctx is required, while other params depends on traced function.
-<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>int hello(struct pt_regs *ctx, int dfd, const char __user *filename, int flags){
-<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>    struct data_t data = {};
-<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>    data.pid = bpf_get_current_pid_tgid();
-<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>    data.ts = bpf_ktime_get_ns();
-<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>    if (bpf_get_current_comm(&amp;data.comm, sizeof(data.comm)) == 0) {
-<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a>        bpf_probe_read(&amp;data.fname, sizeof(data.fname), (void *)filename);
-<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a>    }
-<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a>    events.perf_submit(ctx, &amp;data, sizeof(data));
-<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a>    return 0;
-<a id="__codelineno-15-27" name="__codelineno-15-27" href="#__codelineno-15-27"></a>}
-<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a>&quot;&quot;&quot;
-<a id="__codelineno-15-29" name="__codelineno-15-29" href="#__codelineno-15-29"></a># load BPF program
-<a id="__codelineno-15-30" name="__codelineno-15-30" href="#__codelineno-15-30"></a>b = BPF(text=prog)
-<a id="__codelineno-15-31" name="__codelineno-15-31" href="#__codelineno-15-31"></a># attach the kprobe for do_sys_open, and set handler to hello
-<a id="__codelineno-15-32" name="__codelineno-15-32" href="#__codelineno-15-32"></a>b.attach_kprobe(event=&quot;do_sys_open&quot;, fn_name=&quot;hello&quot;)
-</code></pre></div>
-<p>第三步，是定义一个输出函数，并把输出函数跟 BPF 事件绑定：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a># process event
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>start = 0
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>def print_event(cpu, data, size):
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>    global start
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    # event’s type is data_t
-<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    event = b[&quot;events&quot;].event(data)
-<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>    if start == 0:
-<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>            start = event.ts
-<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>    time_s = (float(event.ts - start)) / 1000000000
-<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>    print(&quot;%-18.9f %-16s %-6d %-16s&quot; % (time_s, event.comm, event.pid, event.fname))
-<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>
-<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a># loop with callback to print_event
-<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>b[&quot;events&quot;].open_perf_buffer(print_event)
-</code></pre></div>
-<p>最后一步，就是执行事件循环，开始追踪 do_sys_open 的调用：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a># print header
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>print(&quot;%-18s %-16s %-6s %-16s&quot; % (&quot;TIME(s)&quot;, &quot;COMM&quot;, &quot;PID&quot;, &quot;FILE”))
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a># start the event polling loop
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>while 1:
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    try:
-<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>        b.perf_buffer_poll()
-<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    except KeyboardInterrupt:
-<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>        exit()
-</code></pre></div>
-<p>我们把上面几个步骤的代码，保存到文件 trace-open.py 中，然后就可以用 Python 来运行了。如果一切正常，你可以看到如下输出：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>$ python trace-open.py
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>TIME(s)            COMM             PID    FILE
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>0.000000000        irqbalance       1073   /proc/interrupts
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>0.000175401        irqbalance       1073   /proc/stat
-<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>0.000258802        irqbalance       1073   /proc/irq/9/smp_affinity
-<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>0.000290102        irqbalance       1073   /proc/irq/0/smp_affinity
-</code></pre></div>
-<p>从输出中，你可以看到 irqbalance 进程（你的环境中可能还会有其他进程）正在打开很多文件，而 irqbalance 依赖这些文件中读取的内容，来执行中断负载均衡。</p>
-<p>通过这个简单的示例，你也可以发现，eBPF 和 BCC 的使用，其实比 ftrace 和 perf 有更高的门槛。想用 BCC 开发自己的动态跟踪程序，至少要熟悉 C 语言、Python 语言、被跟踪事件或函数的特征（比如内核函数的参数和返回格式）以及 eBPF 提供的各种数据操作方法。</p>
-<p>不过，因为强大的灵活性，虽然 eBPF 在使用上有一定的门槛，却也无法阻止它成为目前最热门、最受关注的动态追踪技术。</p>
-<p>当然，BCC 软件包也内置了很多已经开发好的实用工具，默认安装到 /usr/share/bcc/tools/ 目录中，它们的使用场景如下图所示：</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/fc/21/fc5f387a982db98c49c7cefb77342c21.png?wh=1500*1050" /></p>
-<p>（图片来自 <a href="http://www.brendangregg.com/ebpf.html#bcc">Linux Extended BPF (eBPF) Tracing Tools</a>）</p>
-<p>这些工具，一般都可以直接拿来用。而在编写其他的动态追踪脚本时，它们也是最好的参考资料。不过，有一点需要你特别注意，很多 eBPF 的新特性，都需要比较新的 <a href="https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md">内核版本</a>（如下图所示）。如果某些工具无法运行，很可能就是因为使用了当前内核不支持的特性。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/61/e8/61abce1affc770a15dae7d489e50a8e8.png?wh=1500*1050" /></p>
-<p>（图片来自 <a href="http://www.brendangregg.com/ebpf.html#bcc">Linux Extended BPF (eBPF) Tracing Tools</a>）</p>
-<h2 id="systemtap-sysdig">SystemTap 和 sysdig</h2>
-<p>除了前面提到的 ftrace、perf、eBPF 和 BCC 外，SystemTap 和 sysdig 也是常用的动态追踪工具。</p>
-<p><strong>SystemTap</strong> 也是一种可以通过脚本进行自由扩展的动态追踪技术。在 eBPF 出现之前，SystemTap 是Linux 系统中，功能最接近 DTrace 的动态追踪机制。不过要注意，SystemTap 在很长时间以来都游离于内核之外（而 eBPF 自诞生以来，一直根植在内核中）。</p>
-<p>所以，从稳定性上来说，SystemTap 只在 RHEL 系统中好用，在其他系统中则容易出现各种异常问题。当然，反过来说，支持 3.x 等旧版本的内核，也是 SystemTap 相对于 eBPF 的一个巨大优势。</p>
-<p><strong>sysdig</strong> 则是随着容器技术的普及而诞生的，主要用于容器的动态追踪。sysdig 汇集了一些列性能工具的优势，可以说是集百家之所长。我习惯用这个公式来表示sysdig的特点： sysdig = strace + tcpdump + htop + iftop + lsof + docker inspect。</p>
-<p>而在最新的版本中（内核版本 &gt;= 4.14），sysdig 还可以通过 eBPF 来进行扩展，所以，也可以用来追踪内核中的各种函数和事件。</p>
-<h2 id="_1">如何选择追踪工具</h2>
-<p>到这里，你可能又觉得头大了，这么多动态追踪工具，在实际场景中到底该怎么选择呢？还是那句话，具体性能工具的选择，就要从具体的工作原理来入手。</p>
-<p>这两节课，我们已经把常见工具的原理和特点都介绍过了，你可以先自己思考区分一下，不同场景的工具选择问题。比如：</p>
-<ul>
-<li>
-<p>在不需要很高灵活性的场景中，使用 perf 对性能事件进行采样，然后再配合火焰图辅助分析，就是最常用的一种方法；</p>
-</li>
-<li>
-<p>而需要对事件或函数调用进行统计分析（比如观察不同大小的 I/O 分布）时，就要用 SystemTap 或者 eBPF，通过一些自定义的脚本来进行数据处理。</p>
-</li>
-</ul>
-<p>在这里，我也总结了几个常见的动态追踪使用场景，并且分别推荐了适合的工具。你可以保存这个表格，方便自己查找并使用。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/5a/25/5a2b2550547d5eaee850bfb806f76625.png?wh=1659*872" /></p>
-<h2 id="_2">小结</h2>
-<p>今天，我主要带你学习了 perf、eBPF 和 BCC 等动态追踪方法，并总结了不同场景中如何选择动态追踪方法。</p>
-<p>在 Linux 系统中，常见的动态追踪方法，包括 ftrace、perf、eBPF 以及 SystemTap 等。在大多数性能问题中，使用 perf 配合火焰图是一个不错的方法。如果这满足不了你的要求，那么：</p>
-<ul>
-<li>
-<p>在新版的内核中，eBPF 和 BCC 是最灵活的动态追踪方法；</p>
-</li>
-<li>
-<p>而在旧版本内核中，特别是在 RHEL 系统中，由于 eBPF 支持受限，SystemTap 往往是更好的选择。</p>
-</li>
-</ul>
-<p>此外，在使用动态追踪技术时，为了得到分析目标的详细信息，一般需要内核以及应用程序的调试符号表。动态追踪实际上也是在这些符号（包括函数和事件）上进行的，所以易读易理解的符号，有助于加快动态追踪的过程。</p>
-<h2 id="_3">思考</h2>
-<p>最后，我想邀请你一起来聊聊，你所理解的动态追踪技术。你有没有在实际环境中用过动态追踪呢？这么多的动态追踪方法，你一般会怎么选择呢？你可以结合今天的内容，和你自己的操作记录，来总结思路。</p>
-<p>欢迎在留言区和我讨论，也欢迎把这篇文章分享给你的同事、朋友。我们一起在实战中演练，在交流中进步。</p>
 
 
 

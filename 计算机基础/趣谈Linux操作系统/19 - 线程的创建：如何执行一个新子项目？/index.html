@@ -467,6 +467,8 @@
       
         
       
+        
+      
     
     
       
@@ -681,6 +683,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -4062,42 +4068,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      内核态创建任务
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      用户态执行线程
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      总结时刻
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
-    <span class="md-ellipsis">
-      课堂练习
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -6020,42 +5990,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      内核态创建任务
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      用户态执行线程
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      总结时刻
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
-    <span class="md-ellipsis">
-      课堂练习
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -6104,355 +6038,120 @@
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>}
 </code></pre></div>
 <p>接下来，就像在内核里一样，每一个进程或者线程都有一个task_struct结构，在用户态也有一个用于维护线程的结构，就是这个pthread结构。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>struct pthread *pd = NULL;
-</code></pre></div>
-<p>凡是涉及函数的调用，都要使用到栈。每个线程也有自己的栈。那接下来就是创建线程栈了。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>int err = ALLOCATE_STACK (iattr, &amp;pd);
-</code></pre></div>
-<p>ALLOCATE_STACK是一个宏，我们找到它的定义之后，发现它其实就是一个函数。只是，这个函数有些复杂，所以我这里把主要的代码列一下。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a># define ALLOCATE_STACK(attr, pd) allocate_stack (attr, pd, &amp;stackaddr)
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>static int
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>allocate_stack (const struct pthread_attr *attr, struct pthread **pdp,
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>                ALLOCATE_STACK_PARMS)
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>{
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>  struct pthread *pd;
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>  size_t size;
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>  size_t pagesize_m1 = __getpagesize () - 1;
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>......
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  size = attr-&gt;stacksize;
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>......
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>  /* Allocate some anonymous memory.  If possible use the cache.  */
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>  size_t guardsize;
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>  void *mem;
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>  const int prot = (PROT_READ | PROT_WRITE
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>                   | ((GL(dl_stack_flags) &amp; PF_X) ? PROT_EXEC : 0));
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>  /* Adjust the stack size for alignment.  */
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>  size &amp;= ~__static_tls_align_m1;
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>  /* Make sure the size of the stack is enough for the guard and
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>  eventually the thread descriptor.  */
-<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>  guardsize = (attr-&gt;guardsize + pagesize_m1) &amp; ~pagesize_m1;
-<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>  size += guardsize;
-<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>  pd = get_cached_stack (&amp;size, &amp;mem);
-<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>  if (pd == NULL)
-<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>  {
-<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>    /* If a guard page is required, avoid committing memory by first
-<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>    allocate with PROT_NONE and then reserve with required permission
-<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>    excluding the guard page.  */
-<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>    mem = __mmap (NULL, size, (guardsize == 0) ? prot : PROT_NONE,
-<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>            MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
-<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>    /* Place the thread descriptor at the end of the stack.  */
-<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>#if TLS_TCB_AT_TP
-<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>    pd = (struct pthread *) ((char *) mem + size) - 1;
-<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>#elif TLS_DTV_AT_TP
-<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>    pd = (struct pthread *) ((((uintptr_t) mem + size - __static_tls_size) &amp; ~__static_tls_align_m1) - TLS_PRE_TCB_SIZE);
-<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>#endif
-<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>    /* Now mprotect the required region excluding the guard area. */
-<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>    char *guard = guard_position (mem, size, guardsize, pd, pagesize_m1);
-<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>    setup_stack_prot (mem, size, guard, guardsize, prot);
-<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>    pd-&gt;stackblock = mem;
-<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>    pd-&gt;stackblock_size = size;
-<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>    pd-&gt;guardsize = guardsize;
-<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>    pd-&gt;specific[0] = pd-&gt;specific_1stblock;
-<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a>    /* And add to the list of stacks in use.  */
-<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a>    stack_list_add (&amp;pd-&gt;list, &amp;stack_used);
-<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a>  }
-<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a>
-<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a>  *pdp = pd;
-<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a>  void *stacktop;
-<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a># if TLS_TCB_AT_TP
-<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a>  /* The stack begins before the TCB and the static TLS block.  */
-<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a>  stacktop = ((char *) (pd + 1) - __static_tls_size);
-<a id="__codelineno-4-54" name="__codelineno-4-54" href="#__codelineno-4-54"></a># elif TLS_DTV_AT_TP
-<a id="__codelineno-4-55" name="__codelineno-4-55" href="#__codelineno-4-55"></a>  stacktop = (char *) (pd - 1);
-<a id="__codelineno-4-56" name="__codelineno-4-56" href="#__codelineno-4-56"></a># endif
-<a id="__codelineno-4-57" name="__codelineno-4-57" href="#__codelineno-4-57"></a>  *stack = stacktop;
-<a id="__codelineno-4-58" name="__codelineno-4-58" href="#__codelineno-4-58"></a>......
-<a id="__codelineno-4-59" name="__codelineno-4-59" href="#__codelineno-4-59"></a>}
-</code></pre></div>
-<p>我们来看一下，allocate_stack主要做了以下这些事情：</p>
+<div><strong>精选留言（30）</strong></div>
 <ul>
-<li>
-<p>如果你在线程属性里面设置过栈的大小，需要你把设置的值拿出来；</p>
-</li>
-<li>
-<p>为了防止栈的访问越界，在栈的末尾会有一块空间guardsize，一旦访问到这里就错误了；</p>
-</li>
-<li>
-<p>其实线程栈是在进程的堆里面创建的。如果一个进程不断地创建和删除线程，我们不可能不断地去申请和清除线程栈使用的内存块，这样就需要有一个缓存。get_cached_stack就是根据计算出来的size大小，看一看已经有的缓存中，有没有已经能够满足条件的；</p>
-</li>
-<li>
-<p>如果缓存里面没有，就需要调用__mmap创建一块新的，系统调用那一节我们讲过，如果要在堆里面malloc一块内存，比较大的话，用__mmap；</p>
-</li>
-<li>
-<p>线程栈也是自顶向下生长的，还记得每个线程要有一个pthread结构，这个结构也是放在栈的空间里面的。在栈底的位置，其实是地址最高位；</p>
-</li>
-<li>
-<p>计算出guard内存的位置，调用setup_stack_prot设置这块内存的是受保护的；</p>
-</li>
-<li>
-<p>接下来，开始填充pthread这个结构里面的成员变量stackblock、stackblock_size、guardsize、specific。这里的specific是用于存放Thread Specific Data的，也即属于线程的全局变量；</p>
-</li>
-<li>
-<p>将这个线程栈放到stack_used链表中，其实管理线程栈总共有两个链表，一个是stack_used，也就是这个栈正被使用；另一个是stack_cache，就是上面说的，一旦线程结束，先缓存起来，不释放，等有其他的线程创建的时候，给其他的线程用。</p>
-</li>
+<li><img src="https://static001.geekbang.org/account/avatar/00/10/d6/60/f21b2164.jpg" width="30px"><span>jacy</span> 👍（30） 💬（1）<div>pstree -apl pid看进程树
+pstack pid 看栈</div>2019-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/74/c9/d3439ca4.jpg" width="30px"><span>why</span> 👍（17） 💬（2）<div>老师, 多线程的内核栈是共享的吗, 会不会出现问题?</div>2019-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/08/ab/caec7bca.jpg" width="30px"><span>humor</span> 👍（11） 💬（2）<div>老师之前说过进程默认会有一个主线程，意思是在创建进程的时候也会同时创建一个线程吗？</div>2019-05-30</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epcs6PibsP9vEXv4EibUw3bhQPUK04zRTOvfrvF08TwM67xPb1LBh2uRENHQwo2VqYfC5GhJmM7icxHA/132" width="30px"><span>蹦哒</span> 👍（9） 💬（1）<div>老师、同学们，不知道如下认识是否正确呢：
+1.原来线程存在的价值是复用进程的部分内存（引用五大结构），又是一个享元模式（Flyweight Design Pattern）的体现
+2.线程函数局部变量在用户态的线程栈中（是在进程的堆里面创建的），独立的内存块，所以多线程之间无需考虑共享数据问题；而进程的全局变量，由于多线程是共享了进程数据，再加上各个线程在内核中是独立的task被调度系统调度，随时会被抢占并且访问同一个全局变量，所以多线程之间需要做共享数据保护</div>2020-06-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/ff/3f/bbb8a88c.jpg" width="30px"><span>徐凯</span> 👍（7） 💬（1）<div>&quot;将这个线程栈放到 stack_used 链表中，其实管理线程栈总共有两个链表，一个是 stack_used，也就是这个栈正被使用；另一个是 stack_cache，就是上面说的，一旦线程结束，先缓存起来，不释放，等有其他的线程创建的时候，给其他的线程用。&quot;  这一段是线程池的意思么 如果是的话  既然内部已经有这个设计 我们有时候还要在程序中自己去设计一个呢？</div>2019-05-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/aa/21/6c3ba9af.jpg" width="30px"><span>lfn</span> 👍（3） 💬（1）<div>所以，线程局部变量其实是存储在每个线程自己的用户栈里咯？</div>2019-05-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/ea/c2/445977ea.jpg" width="30px"><span>youyui</span> 👍（1） 💬（1）<div>线程要进行上下文切换应该有各自的内核栈吧，那内核栈在哪里创建的？</div>2019-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/69/0b/780b0aac.jpg" width="30px"><span>nora</span> 👍（1） 💬（1）<div>之前总是认为线程和进程都占用了内核的taskstruct 认为实际上线程进程没啥区别，这篇文章真是醍醐灌顶啊，谢谢老师。</div>2019-05-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/BIRpwViaN51yynIeFonD7QRlwDCVtKibrG956NTxzEqibOZZVjhMMgibOPmd3VicfYxpknZsic1oJq8KicZvXkmmiajuQg/132" width="30px"><span>tuyu</span> 👍（0） 💬（1）<div>老师, 我最近在看k8s专栏, docker的原理是使用clone的namespace参数, 所以容器的创建, 实际上是线程的创建吗</div>2019-08-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/50/4a/04fef27f.jpg" width="30px"><span>kdb_reboot</span> 👍（0） 💬（1）<div>老师你终于出现了；还是之前那个问题，我现在进度比较慢，只把进程管理子系统看完了，看了一个多月，看了鸟哥私房菜 apue ulk lkd 内核代码 libc 还有你的专栏。因为进度太慢了 我的问题是后面老师还会关注这个专栏吗，或者有什么方法可以一起讨论或者联系到老师？ 比如微信群或者邮箱？我做驱动开发，我感觉你的专栏完全就是为我而写的；）</div>2019-08-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/50/4a/04fef27f.jpg" width="30px"><span>kdb_reboot</span> 👍（0） 💬（1）<div>跟到这一篇了,前面几篇概念感觉都是为最后这两篇作铺垫</div>2019-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/1a/ad/faf1bf19.jpg" width="30px"><span>windcaller</span> 👍（0） 💬（1）<div>pstack
+ulimit -a</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/e9/0b/1171ac71.jpg" width="30px"><span>WL</span> 👍（0） 💬（1）<div>请问一下老师为什么栈的结构是栈底是高地址栈顶是低地址呢，为什么不是反过来的呢？</div>2019-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/48/dc/fef6ed17.jpg" width="30px"><span>六月星空2011</span> 👍（0） 💬（1）<div>这里应该说的是线程栈的内存空间不释放，后续创建线程的时候直接复用内存空间，而不是线程池的概念。</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/b4/f6/735673f7.jpg" width="30px"><span>W.jyao</span> 👍（0） 💬（2）<div>问一下，如果一个信号是进程共享，比如说kill，那么是主线程会收到这个信号还是这个进程的任意一个线程都有可能收到？麻烦老师解答下</div>2019-05-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f3/cf/851dab01.jpg" width="30px"><span>Milittle</span> 👍（44） 💬（7）<div>刘老师，您好，您可以把文档中给出的代码文件定位给出来么，一般在对应看源码的时候，很难定位到老师给的代码点的对应源码文件，谢谢老师~老师讲的真的让我把多年的零散知识可以连贯起来，然后理解的更加透彻，但是也会有不太理解的地方，再次感谢。这个课很值得~。
+总结以下进程和线程的异同点：
+1. 进程有独立的内存空间，比如代码段，数据段。线程则是共享进程的内存空间。
+2. 在创建新进程的时候，会将父进程的所有五大数据结构复制新的，形成自己新的内存空间数据，而在创建新线程的时候，则是引用进程的五大数据结构数据，但是线程会有自己的私有（局部）数据，执行栈空间。
+3. 进程和线程其实在cpu看来都是task_struct结构的一个封装，执行不同task即可，而且在cpu看来就是在执行这些task时候遵循对应的调度策略以及上下文资源切换定义，包括寄存器地址切换，内核栈切换，指令指针寄存器的地址切换。所以对于cpu而言，进程和线程是没有区别的。
+4. 进程创建的时候直接使用系统调用fork，进行系统调用的链路走，从而进入到_do_fork去创建task，而线程创建在调用_do_fork之前，还需要维护pthread这个数据结构的信息，初始化用户态栈信息。
+自己就能意识到这几点，如果有理解不到位，或者不全面的地方，还请老师给予指点，谢谢老师。</div>2019-05-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/74/c9/d3439ca4.jpg" width="30px"><span>why</span> 👍（29） 💬（3）<div>- 线程的创建
+- 线程是由内核态和用户态合作完成的, pthread_create 是 Glibc 库的一个函数
+- pthread_create 中
+1. 设置线程属性参数, 如线程栈大小
+2. 创建用户态维护线程的结构, pthread
+3. 创建线程栈 allocate_stack
+    - 取栈的大小, 在栈末尾加 guardsize
+    - 在进程堆中创建线程栈(先尝试调用 get_cached_stack 从缓存回收的线程栈中取用)
+    - 若无缓存线程栈, 调用 `__mmap` 创建
+    - 将 pthread 指向栈空间中
+    - 计算 guard 内存位置, 并设置保护
+    - 填充 pthread 内容, 其中 specific 存放属于线程的全局变量
+    - 线程栈放入 stack_used 链表中(另外 stack_cache 链表记录回收缓存的线程栈)
+4. 设置运行函数, 参数到 pthread 中
+5. 调用 create_thread 创建线程
+    - 设置 clone_flags 标志位, 调用 `__clone`
+    - clone 系统调用返回时, 应该要返回到新线程上下文中, 因此 `__clone` 将参数和指令位置压入栈中, 返回时从该函数开始执行
+6. 内核调用 `__do_fork` 
+    - 在 copy_process 复制 task_struct 过程中, 五大数据结构不复制, 直接引用进程的
+    - 亲缘关系设置: group_leader 和 tgid 是当前进程; real_parent 与当前进程一样
+    - 信号处理: 数据结构共享, 处理一样
+7. 返回用户态, 先运行 start_thread 同样函数
+    - 在 start_thread 中调用用户的函数, 运行完释放相关数据
+    - 如果是最后一个线程直接退出
+    - 或调用 `__free_tcb` 释放 pthread 以及线程栈, 从 stack_used 移到 stack_cache 中</div>2019-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ec/13/49e98289.jpg" width="30px"><span>neohope</span> 👍（4） 💬（0）<div>关于clone_flags标志位的含义，可以参考一下这里http:&#47;&#47;man7.org&#47;linux&#47;man-pages&#47;man2&#47;clone.2.html
+
+If CLONE_THREAD is set, the child is placed in the same thread group as the calling process.
+When a clone call is made without specifying CLONE_THREAD, then the resulting thread is placed in a new thread group whose TGID is the same as the thread&#39;s TID.  This thread is the leader of the new thread group.
+
+If CLONE_PARENT is set, then the parent of the new child (as returned by getppid(2)) will be the same as that of the calling process.
+If CLONE_PARENT is not set, then (as with fork(2)) the child&#39;s parent is the calling process.</div>2019-12-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8e/bb/c039dc11.jpg" width="30px"><span>garlic</span> 👍（4） 💬（0）<div>进程线程查看命令：ps，top，pidstat，pstree
+函数栈查看打印命令：
+ pstack
+jstack (java)
+gdb (C&#47;C++&#47;go)
+kill -SIGQUIT [pid] (go)
+
+相关API:
+
+C:
+glibc backtrace
+Boost stacktrace
+libunwind
+
+Java:
+getStackTrace;
+
+go:
+panic
+debug.PrintStack
+pprof.Lookup(&quot;goroutine&quot;).WriteTo
+runtime.Stack
+
+python
+traceback objects
+StackSummary Objects
+ 笔记链接 https:&#47;&#47;garlicspace.com&#47;?p=1678&amp;preview=true
+</div>2019-10-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/2f/7a/ab6c811c.jpg" width="30px"><span>相逢是缘</span> 👍（3） 💬（0）<div>1、pthread_create 不是一个系统调用，是 Glibc 库的一个函数
+2、在内核里一样，每一个进程或者线程都有一个 task_struct 结构，线程在用户态也有一个用于维护线程的结构，就是这个 pthread 结构
+3、创建线程栈
+----用户态int err = ALLOCATE_STACK (iattr, &amp;pd);
+---程属性里面设置过栈的大小，需要你把设置的值拿出来
+---为了防止栈的访问越界，在栈的末尾会有一块空间 guardsize
+---其实线程栈是在进程的堆里面创建的get_cached_stack 
+---如果缓存里面没有，就需要调用 __mmap 创建一块新的
+---线程栈也是自顶向下生长的，还记得每个线程要有一个 pthread 结构，这个结构也是放在栈的空间里面的。在栈底的位置，其实是地址最高位。
+---计算出 guard 内存的位置，调用 setup_stack_prot 设置这块内存的是受保护的
+---开始填充 pthread 这个结构里面的成员变量 stackblock、stackblock_size、guardsize、specific。
+---将这个线程栈放到 stack_used 链表中，使用完之后放到stack_cache中
+---其实有了用户态的栈，接着需要解决的就是用户态的程序从哪里开始运行的问题
+pd-&gt;start_routine = start_routine;
+pd-&gt;arg = arg;
+pd-&gt;schedpolicy = self-&gt;schedpolicy;
+pd-&gt;schedparam = self-&gt;schedparam;
+&#47;* Pass the descriptor to the caller.  *&#47;
+*newthread = (pthread_t) pd;
+atomic_increment (&amp;__nptl_nthreads);
+retval = create_thread (pd, iattr, &amp;stopped_start, STACK_VARIABLES_ARGS, &amp;thread_ran);
+start_routine 就是咱们给线程的函数，start_routine，start_routine 的参数 arg，以及调度策略都要赋值给 pthread
+
+----内核态
+--系统调用__clone
+将线程要执行的函数的参数和指令的位置都压到栈里面，当从内核返回，从栈里弹出来的时候，就从这个函数开始
+--在 copy_process 复制 task_struct 过程中, files、fs、sighand、mm、五大数据结构不复制, 直接引用进程的
+--亲缘关系：新进程group_leader就是自己，tgid就是他的pid，real_parent 是当前的进程。新线程group_leader是当前进程的，tgid是当前进程的tgid，real_parent 是当前集成的real_parent；
+--信号处理：共享信号
+
+4、用户态执行线程
+--所有的线程统一的入口start_thread
+--用户的函数执行完毕之后，会释放这个线程相关的数据
+a、线程数目也减一，如果这是最后一个线程了，就直接退出进程
+b、_free_tcb 用于释放 pthread，__free_tcb 会调用 __deallocate_stack 来释放整个线程栈，放到缓存的线程栈列表 stack_cache 中；</div>2020-08-15</li><br/><li><img src="" width="30px"><span>Geek_b8928e</span> 👍（3） 💬（1）<div>创建进程的话，调用的系统调用是 fork，在 copy_process 函数里面，会将五大结构 files_struct、fs_struct、sighand_struct、signal_struct、mm_struct 都复制一遍，从此父进程和子进程各用各的数据结构。而创建线程的话，调用的是系统调用 clone，在 copy_process 函数里面， 五大结构仅仅是引用计数加一，也即线程共享进程的数据结构。</div>2020-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/50/4a/04fef27f.jpg" width="30px"><span>kdb_reboot</span> 👍（3） 💬（0）<div>三刷: 感觉应该讲清楚这一点,&quot;角色划分&quot;
+内核态是用来管理的,用户态是提供给用户用的
+这才有了为什么要两个模式来回切换, 以及,真正调度,是内核态来做的,而用户态执行是用户态自己做,这才有了单独的线程栈
+内存模型也很重要
+
+另外想请教个问题:从上下文来理解, 所以说,主线程的栈是用整个用户空间的栈?子线程的栈在进程的堆里面?</div>2019-09-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/f5/0b/73628618.jpg" width="30px"><span>兔嘟嘟</span> 👍（2） 💬（0）<div>老师您好，我想请问一下可以这样理解主线程和进程的关系吗：
+主线程和进程是绑定的，在内核体现为一个task，在用户态则是进程的运行主线，所以其实没有独立的主线程的概念。
+主线程的线程栈就是进程栈，主线程没有pthread，所有的属性都是进程的属性。
+因为主线程其实不是独立的，所以主线程结束时，也就是进程结束时。</div>2021-08-19</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/LBOHwXq4wliccC1HUPEghTOkWsnVR5zOmSQsias4O6obKJb2tOEpqoiaPE9mGibTlrrnGeMC5m4fp1fY234k4p9PgA/132" width="30px"><span>Geek_4c6cb8</span> 👍（1） 💬（1）<div>老师您好，同一个进程的不同线程，内核栈都是相同的吗</div>2022-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/d2/ee/1ec46e78.jpg" width="30px"><span>空格</span> 👍（1） 💬（0）<div>不知道我的理解对不对？线程fork后内核态会创建task_struct，之后还是会尝试wakeup_preempt_entity，然后之后接受调度，调度成功后才会在用户态执行start_thread方法？不知道我这个理解对不对？</div>2019-09-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/ff/f3/de2233f5.jpg" width="30px"><span>浅陌</span> 👍（0） 💬（0）<div>请问这个线程是内核态还是用户态的呀，用户态线程与内核态线程多对多是怎么实现的呀</div>2022-06-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fd/08/c039f840.jpg" width="30px"><span>小鳄鱼</span> 👍（0） 💬（0）<div>老师，可否讲一下线程模型？还有LWP是如何支持用户线程</div>2022-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/82/0c/cc106ab1.jpg" width="30px"><span>Samaritan.</span> 👍（0） 💬（0）<div>老师每一讲的图真的是太用心了，以前有很多模糊的地方，看着图非常容易理解</div>2022-05-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/95/7e/1057f77a.jpg" width="30px"><span>四有青年</span> 👍（0） 💬（0）<div>这篇文章就很好解释了进程和线程区别这一常见面试题了。以前只是背答案，知其然而不知其所以然，现在就串联起来了～</div>2022-01-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/aa/30/acc91f01.jpg" width="30px"><span>honnkyou</span> 👍（0） 💬（1）<div>在 start_thread 入口函数中，才真正的调用用户提供的函数，
+是指pd-&gt;start_routine吗？</div>2020-03-31</li><br/>
 </ul>
-<p>搞定了用户态栈的问题，其实用户态的事情基本搞定了一半。</p>
-<h2 id="_2">内核态创建任务</h2>
-<p>接下来，我们接着pthread_create看。其实有了用户态的栈，接着需要解决的就是用户态的程序从哪里开始运行的问题。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pd-&gt;start_routine = start_routine;
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>pd-&gt;arg = arg;
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>pd-&gt;schedpolicy = self-&gt;schedpolicy;
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>pd-&gt;schedparam = self-&gt;schedparam;
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>/* Pass the descriptor to the caller.  */
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>*newthread = (pthread_t) pd;
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>atomic_increment (&amp;__nptl_nthreads);
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>retval = create_thread (pd, iattr, &amp;stopped_start, STACK_VARIABLES_ARGS, &amp;thread_ran);
-</code></pre></div>
-<p>start_routine就是咱们给线程的函数，start_routine，start_routine的参数arg，以及调度策略都要赋值给pthread。</p>
-<p>接下来__nptl_nthreads加一，说明又多了一个线程。</p>
-<p>真正创建线程的是调用create_thread函数，这个函数定义如下：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>static int
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>create_thread (struct pthread *pd, const struct pthread_attr *attr,
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>bool *stopped_start, STACK_VARIABLES_PARMS, bool *thread_ran)
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>{
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>  const int clone_flags = (CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SYSVSEM | CLONE_SIGHAND | CLONE_THREAD | CLONE_SETTLS | CLONE_PARENT_SETTID | CLONE_CHILD_CLEARTID | 0);
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>  ARCH_CLONE (&amp;start_thread, STACK_VARIABLES_ARGS, clone_flags, pd, &amp;pd-&gt;tid, tp, &amp;pd-&gt;tid)；
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>  /* It&#39;s started now, so if we fail below, we&#39;ll have to cancel it
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>and let it clean itself up.  */
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>  *thread_ran = true;
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>}
-</code></pre></div>
-<p>这里面有很长的clone_flags，这些咱们原来一直没注意，不过接下来的过程，我们要特别的关注一下这些标志位。</p>
-<p>然后就是ARCH_CLONE，其实调用的是__clone。看到这里，你应该就有感觉了，马上就要到系统调用了。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a># define ARCH_CLONE __clone
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>/* The userland implementation is:
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>   int clone (int (*fn)(void *arg), void *child_stack, int flags, void *arg),
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>   the kernel entry is:
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>   int clone (long flags, void *child_stack).
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>   The parameters are passed in register and on the stack from userland:
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>   rdi: fn
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>   rsi: child_stack
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>   rdx: flags
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>   rcx: arg
-<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>   r8d: TID field in parent
-<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>   r9d: thread pointer
-<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>%esp+8: TID field in child
-<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>
-<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>   The kernel expects:
-<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>   rax: system call number
-<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>   rdi: flags
-<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>   rsi: child_stack
-<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>   rdx: TID field in parent
-<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>   r10: TID field in child
-<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>   r8:  thread pointer  */
-<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>
-<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>        .text
-<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>ENTRY (__clone)
-<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>        movq    $-EINVAL,%rax
-<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>......
-<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>        /* Insert the argument onto the new stack.  */
-<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>        subq    $16,%rsi
-<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>        movq    %rcx,8(%rsi)
-<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>
-<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>        /* Save the function pointer.  It will be popped off in the
-<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>           child in the ebx frobbing below.  */
-<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>        movq    %rdi,0(%rsi)
-<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>
-<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>        /* Do the system call.  */
-<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a>        movq    %rdx, %rdi
-<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a>        movq    %r8, %rdx
-<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a>        movq    %r9, %r8
-<a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a>        mov     8(%rsp), %R10_LP
-<a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a>        movl    $SYS_ify(clone),%eax
-<a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a>......
-<a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a>        syscall
-<a id="__codelineno-7-45" name="__codelineno-7-45" href="#__codelineno-7-45"></a>......
-<a id="__codelineno-7-46" name="__codelineno-7-46" href="#__codelineno-7-46"></a>PSEUDO_END (__clone)
-</code></pre></div>
-<p>如果对于汇编不太熟悉也没关系，你可以重点看上面的注释。</p>
-<p>我们能看到最后调用了syscall，这一点clone和我们原来熟悉的其他系统调用几乎是一致的。但是，也有少许不一样的地方。</p>
-<p>如果在进程的主线程里面调用其他系统调用，当前用户态的栈是指向整个进程的栈，栈顶指针也是指向进程的栈，指令指针也是指向进程的主线程的代码。此时此刻执行到这里，调用clone的时候，用户态的栈、栈顶指针、指令指针和其他系统调用一样，都是指向主线程的。</p>
-<p>但是对于线程来说，这些都要变。因为我们希望当clone这个系统调用成功的时候，除了内核里面有这个线程对应的task_struct，当系统调用返回到用户态的时候，用户态的栈应该是线程的栈，栈顶指针应该指向线程的栈，指令指针应该指向线程将要执行的那个函数。</p>
-<p>所以这些都需要我们自己做，将线程要执行的函数的参数和指令的位置都压到栈里面，当从内核返回，从栈里弹出来的时候，就从这个函数开始，带着这些参数执行下去。</p>
-<p>接下来我们就要进入内核了。内核里面对于clone系统调用的定义是这样的：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>SYSCALL_DEFINE5(clone, unsigned long, clone_flags, unsigned long, newsp,
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>         int __user *, parent_tidptr,
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>         int __user *, child_tidptr,
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>         unsigned long, tls)
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>{
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    return _do_fork(clone_flags, newsp, 0, parent_tidptr, child_tidptr, tls);
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>}
-</code></pre></div>
-<p>看到这里，发现了熟悉的面孔_do_fork，是不是轻松了一些？上一节我们已经沿着它的逻辑过了一遍了。这里我们重点关注几个区别。</p>
-<p>第一个是上面 <strong>复杂的标志位设定</strong>，我们来看都影响了什么。</p>
-<p>对于copy_files，原来是调用dup_fd复制一个files_struct的，现在因为CLONE_FILES标识位变成将原来的files_struct引用计数加一。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>static int copy_files(unsigned long clone_flags, struct task_struct *tsk)
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>{
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    struct files_struct *oldf, *newf;
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    oldf = current-&gt;files;
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    if (clone_flags &amp; CLONE_FILES) {
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>        atomic_inc(&amp;oldf-&gt;count);
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>        goto out;
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    }
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    newf = dup_fd(oldf, &amp;error);
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    tsk-&gt;files = newf;
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>out:
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    return error;
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>}
-</code></pre></div>
-<p>对于copy_fs，原来是调用copy_fs_struct复制一个fs_struct，现在因为CLONE_FS标识位变成将原来的fs_struct的用户数加一。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>static int copy_fs(unsigned long clone_flags, struct task_struct *tsk)
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>{
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    struct fs_struct *fs = current-&gt;fs;
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    if (clone_flags &amp; CLONE_FS) {
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        fs-&gt;users++;
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>        return 0;
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    }
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    tsk-&gt;fs = copy_fs_struct(fs);
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    return 0;
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>}
-</code></pre></div>
-<p>对于copy_sighand，原来是创建一个新的sighand_struct，现在因为CLONE_SIGHAND标识位变成将原来的sighand_struct引用计数加一。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>static int copy_sighand(unsigned long clone_flags, struct task_struct *tsk)
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>{
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    struct sighand_struct *sig;
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    if (clone_flags &amp; CLONE_SIGHAND) {
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>        atomic_inc(&amp;current-&gt;sighand-&gt;count);
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>        return 0;
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    }
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    sig = kmem_cache_alloc(sighand_cachep, GFP_KERNEL);
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    atomic_set(&amp;sig-&gt;count, 1);
-<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    memcpy(sig-&gt;action, current-&gt;sighand-&gt;action, sizeof(sig-&gt;action));
-<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>    return 0;
-<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>}
-</code></pre></div>
-<p>对于copy_signal，原来是创建一个新的signal_struct，现在因为CLONE_THREAD直接返回了。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>static int copy_signal(unsigned long clone_flags, struct task_struct *tsk)
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>{
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    struct signal_struct *sig;
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    if (clone_flags &amp; CLONE_THREAD)
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>        return 0;
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    sig = kmem_cache_zalloc(signal_cachep, GFP_KERNEL);
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    tsk-&gt;signal = sig;
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    init_sigpending(&amp;sig-&gt;shared_pending);
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>......
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>}
-</code></pre></div>
-<p>对于copy_mm，原来是调用dup_mm复制一个mm_struct，现在因为CLONE_VM标识位而直接指向了原来的mm_struct。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>static int copy_mm(unsigned long clone_flags, struct task_struct *tsk)
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>{
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    struct mm_struct *mm, *oldmm;
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    oldmm = current-&gt;mm;
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    if (clone_flags &amp; CLONE_VM) {
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>        mmget(oldmm);
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>        mm = oldmm;
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>        goto good_mm;
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    }
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    mm = dup_mm(tsk);
-<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>good_mm:
-<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    tsk-&gt;mm = mm;
-<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    tsk-&gt;active_mm = mm;
-<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>    return 0;
-<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>}
-</code></pre></div>
-<p>第二个就是 <strong>对于亲缘关系的影响</strong>，毕竟我们要识别多个线程是不是属于一个进程。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>p-&gt;pid = pid_nr(pid);
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>if (clone_flags &amp; CLONE_THREAD) {
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    p-&gt;exit_signal = -1;
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    p-&gt;group_leader = current-&gt;group_leader;
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    p-&gt;tgid = current-&gt;tgid;
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>} else {
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    if (clone_flags &amp; CLONE_PARENT)
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>        p-&gt;exit_signal = current-&gt;group_leader-&gt;exit_signal;
-<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>    else
-<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>        p-&gt;exit_signal = (clone_flags &amp; CSIGNAL);
-<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>    p-&gt;group_leader = p;
-<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>    p-&gt;tgid = p-&gt;pid;
-<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>}
-<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>    /* CLONE_PARENT re-uses the old parent */
-<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>if (clone_flags &amp; (CLONE_PARENT|CLONE_THREAD)) {
-<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>    p-&gt;real_parent = current-&gt;real_parent;
-<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>    p-&gt;parent_exec_id = current-&gt;parent_exec_id;
-<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>} else {
-<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>    p-&gt;real_parent = current;
-<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a>    p-&gt;parent_exec_id = current-&gt;self_exec_id;
-<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a>}
-</code></pre></div>
-<p>从上面的代码可以看出，使用了CLONE_THREAD标识位之后，使得亲缘关系有了一定的变化。</p>
-<ul>
-<li>
-<p>如果是新进程，那这个进程的group_leader就是它自己，tgid是它自己的pid，这就完全重打锣鼓另开张了，自己是线程组的头。如果是新线程，group_leader是当前进程的，group_leader，tgid是当前进程的tgid，也就是当前进程的pid，这个时候还是拜原来进程为老大。</p>
-</li>
-<li>
-<p>如果是新进程，新进程的real_parent是当前的进程，在进程树里面又见一辈人；如果是新线程，线程的real_parent是当前的进程的real_parent，其实是平辈的。</p>
-</li>
-</ul>
-<p>第三， <strong>对于信号的处理</strong>，如何保证发给进程的信号虽然可以被一个线程处理，但是影响范围应该是整个进程的。例如，kill一个进程，则所有线程都要被干掉。如果一个信号是发给一个线程的pthread_kill，则应该只有线程能够收到。</p>
-<p>在copy_process的主流程里面，无论是创建进程还是线程，都会初始化struct sigpending pending，也就是每个task_struct，都会有这样一个成员变量。这就是一个信号列表。如果这个task_struct是一个线程，这里面的信号就是发给这个线程的；如果这个task_struct是一个进程，这里面的信号是发给主线程的。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>init_sigpending(&amp;p-&gt;pending);
-</code></pre></div>
-<p>另外，上面copy_signal的时候，我们可以看到，在创建进程的过程中，会初始化signal_struct里面的struct sigpending shared_pending。但是，在创建线程的过程中，连signal_struct都共享了。也就是说，整个进程里的所有线程共享一个shared_pending，这也是一个信号列表，是发给整个进程的，哪个线程处理都一样。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>init_sigpending(&amp;sig-&gt;shared_pending);
-</code></pre></div>
-<p>至此，clone在内核的调用完毕，要返回系统调用，回到用户态。</p>
-<h2 id="_3">用户态执行线程</h2>
-<p>根据__clone的第一个参数，回到用户态也不是直接运行我们指定的那个函数，而是一个通用的start_thread，这是所有线程在用户态的统一入口。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>#define START_THREAD_DEFN \
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>  static int __attribute__ ((noreturn)) start_thread (void *arg)
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>START_THREAD_DEFN
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>{
-<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    struct pthread *pd = START_THREAD_SELF;
-<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    /* Run the code the user provided.  */
-<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>    THREAD_SETMEM (pd, result, pd-&gt;start_routine (pd-&gt;arg));
-<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>    /* Call destructors for the thread_local TLS variables.  */
-<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>    /* Run the destructor for the thread-local data.  */
-<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>    __nptl_deallocate_tsd ();
-<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>    if (__glibc_unlikely (atomic_decrement_and_test (&amp;__nptl_nthreads)))
-<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>        /* This was the last thread.  */
-<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>        exit (0);
-<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>    __free_tcb (pd);
-<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>    __exit_thread ();
-<a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a>}
-</code></pre></div>
-<p>在start_thread入口函数中，才真正的调用用户提供的函数，在用户的函数执行完毕之后，会释放这个线程相关的数据。例如，线程本地数据thread_local variables，线程数目也减一。如果这是最后一个线程了，就直接退出进程，另外__free_tcb用于释放pthread。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>void
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>internal_function
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>__free_tcb (struct pthread *pd)
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>{
-<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>  ......
-<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>  __deallocate_stack (pd);
-<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>}
-<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>
-<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>void
-<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>internal_function
-<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>__deallocate_stack (struct pthread *pd)
-<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>{
-<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>  /* Remove the thread from the list of threads with user defined
-<a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a>     stacks.  */
-<a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>  stack_list_del (&amp;pd-&gt;list);
-<a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a>  /* Not much to do.  Just free the mmap()ed memory.  Note that we do
-<a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a>     not reset the &#39;used&#39; flag in the &#39;tid&#39; field.  This is done by
-<a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a>     the kernel.  If no thread has been created yet this field is
-<a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a>     still zero.  */
-<a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a>  if (__glibc_likely (! pd-&gt;user_stack))
-<a id="__codelineno-18-21" name="__codelineno-18-21" href="#__codelineno-18-21"></a>    (void) queue_stack (pd);
-<a id="__codelineno-18-22" name="__codelineno-18-22" href="#__codelineno-18-22"></a>}
-</code></pre></div>
-<p>__free_tcb会调用__deallocate_stack来释放整个线程栈，这个线程栈要从当前使用线程栈的列表stack_used中拿下来，放到缓存的线程栈列表stack_cache中。</p>
-<p>好了，整个线程的生命周期到这里就结束了。</p>
-<h2 id="_4">总结时刻</h2>
-<p>线程的调用过程解析完毕了，我画了一个图总结一下。这个图对比了创建进程和创建线程在用户态和内核态的不同。</p>
-<p>创建进程的话，调用的系统调用是fork，在copy_process函数里面，会将五大结构files_struct、fs_struct、sighand_struct、signal_struct、mm_struct都复制一遍，从此父进程和子进程各用各的数据结构。而创建线程的话，调用的是系统调用clone，在copy_process函数里面， 五大结构仅仅是引用计数加一，也即线程共享进程的数据结构。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/14/4b/14635b1613d04df9f217c3508ae8524b.jpeg?wh=3134*3212" /></p>
-<h2 id="_5">课堂练习</h2>
-<p>你知道如果查看一个进程的线程以及线程栈的使用情况吗？请找一下相关的命令和API，尝试一下。</p>
-<p>欢迎留言和我分享你的疑惑和见解，也欢迎你收藏本节内容，反复研读。你也可以把今天的内容分享给你的朋友，和他一起学习、进步。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/8c/37/8c0a95fa07a8b9a1abfd394479bdd637.jpg?wh=1110*659" /></p>
 
 
 

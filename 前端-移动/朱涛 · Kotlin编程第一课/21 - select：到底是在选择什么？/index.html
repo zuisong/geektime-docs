@@ -467,6 +467,8 @@
       
         
       
+        
+      
     
     
       
@@ -3487,51 +3489,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#selectasync" class="md-nav__link">
-    <span class="md-ellipsis">
-      select和async
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#selectchannel" class="md-nav__link">
-    <span class="md-ellipsis">
-      select和Channel
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      思考与实战
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      小结
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      思考题
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -4381,6 +4338,8 @@
       
         
       
+        
+      
     
     
       
@@ -4697,6 +4656,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
       
@@ -4751,6 +4716,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -5315,51 +5284,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#selectasync" class="md-nav__link">
-    <span class="md-ellipsis">
-      select和async
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#selectchannel" class="md-nav__link">
-    <span class="md-ellipsis">
-      select和Channel
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      思考与实战
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      小结
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      思考题
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -5386,630 +5310,23 @@
   <h1>21   select：到底是在选择什么？</h1>
 
 <p>你好，我是朱涛。今天我们来学习Kotlin协程的select。</p>
-<p>select，在目前的Kotlin 1.6当中，仍然是一个 <strong>实验性的特性</strong>（Experimental）。但是，考虑到select具有较强的实用性，我决定还是来给你介绍一下它。</p>
+<p>select，在目前的Kotlin 1.6当中，仍然是一个<strong>实验性的特性</strong>（Experimental）。但是，考虑到select具有较强的实用性，我决定还是来给你介绍一下它。</p>
 <p>select可以说是软件架构当中非常重要的一个组件，在很多业务场景下，select与Deferred、Channel结合以后，在大大提升程序的响应速度的同时，还可以提高程序的灵活性、扩展性。</p>
-<p>今天这节课，我会从select的 <strong>使用角度</strong> 着手，带你理解select的核心使用场景，之后也会通过源码帮你进一步分析select API的底层规律。学完这节课以后，你完全可以将select应用到自己的工作当中去。</p>
+<p>今天这节课，我会从select的<strong>使用角度</strong>着手，带你理解select的核心使用场景，之后也会通过源码帮你进一步分析select API的底层规律。学完这节课以后，你完全可以将select应用到自己的工作当中去。</p>
 <p>好，接下来，我们就一起来学习select吧！</p>
 <h2 id="select">select就是选择“更快的结果”</h2>
 <p>由于select的工作机制比较抽象，我们先来假设一个场景，看看select适用于什么样的场景。</p>
 <p>客户端，想要查询一个商品的详情。目前有两个服务：缓存服务，速度快但信息可能是旧的；网络服务，速度慢但信息一定是最新的。</p>
 <p><img alt="" src="https://static001.geekbang.org/resource/image/50/86/50f7c90d8a01e42834500bb5yy705486.jpg?wh=1576x707" /></p>
 <p>对于这个场景，如果让我们来实现其中的逻辑的话，我们非常轻松地就能实现类似这样的代码逻辑：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>// 代码段1
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>fun main() = runBlocking {
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    suspend fun getCacheInfo(productId: String): Product? {
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        delay(100L)
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        return Product(productId, 9.9)
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    }
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    suspend fun getNetworkInfo(productId: String): Product? {
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        delay(200L)
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        return Product(productId, 9.8)
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    }
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    fun updateUI(product: Product) {
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        println(&quot;${product.productId}==${product.price}&quot;)
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    }
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    val startTime = System.currentTimeMillis()
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    val productId = &quot;xxxId&quot;
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    // 查询缓存
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    val cacheInfo = getCacheInfo(productId)
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    if (cacheInfo != null) {
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>        updateUI(cacheInfo)
-<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>        println(&quot;Time cost: ${System.currentTimeMillis() - startTime}&quot;)
-<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    }
-<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>
-<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>    // 查询网络
-<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>    val latestInfo = getNetworkInfo(productId)
-<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    if (latestInfo != null) {
-<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>        updateUI(latestInfo)
-<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>        println(&quot;Time cost: ${System.currentTimeMillis() - startTime}&quot;)
-<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    }
-<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>}
-<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>
-<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>data class Product(
-<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>    val productId: String,
-<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>    val price: Double
-<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>)
-<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>
-<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>/*
-<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>输出结果
-<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>xxxId==9.9
-<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>Time cost: 112
-<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>xxxId==9.8
-<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>Time cost: 314
-<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>*/
-</code></pre></div>
-<p>考虑到缓存服务速度更快，我们自然而然会这么写，先去查询缓存服务，如果查询到了信息，我们就会去更新UI界面。之后去查询网络服务，拿到最新的信息之后，我们再来更新UI界面。也就是这样：</p>
+<div><strong>精选留言（12）</strong></div>
 <ul>
-<li>第一步：查询缓存信息；</li>
-<li>第二步：缓存服务返回信息，更新UI；</li>
-<li>第三步：查询网络服务；</li>
-<li>第四步：网络服务返回信息，更新UI。</li>
+<li><img src="https://static001.geekbang.org/account/avatar/00/14/71/c1/cbc55e06.jpg" width="30px"><span>白乾涛</span> 👍（3） 💬（3）<div>作为一个 Android 开发同学，我感觉协程没 Kotlin 基础语法香。
+因为在 Android 中，异步任务没那么多，也没什么嵌套，只要稍加封装，用起来也没那么痛。
+所以协程没想象中的那么实用。</div>2022-03-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/71/c1/cbc55e06.jpg" width="30px"><span>白乾涛</span> 👍（3） 💬（1）<div>所有的 onXX 都是回调
+所有的异步都会用到回调</div>2022-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7b/4b/95812b15.jpg" width="30px"><span>抱紧我的小鲤鱼</span> 👍（2） 💬（1）<div>不是很理解select的应用场景</div>2022-04-27</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Urc67zDC8R6dh9U1ZFTF36icXewM1seehvOUYUs4hyWSsFzS5WQc2RcrE1Mzs8qtgib5SM5wFrVh22QcQd0JUUBw/132" width="30px"><span>jim</span> 👍（1） 💬（1）<div>配合Channel使用感觉变复杂了</div>2022-04-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/ef/c0/537b3905.jpg" width="30px"><span>L先生</span> 👍（1） 💬（2）<div>是不是类似于callback，包了一层，返回出去。内部可能每个包个async，然后谁先出数据就callback出去</div>2022-03-07</li><br/><li><img src="" width="30px"><span>Paul Shan</span> 👍（0） 💬（1）<div>请问老师，是不是flow因为有了combine等操作符就不需要select了?</div>2022-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/d6/a7/ac23f5a6.jpg" width="30px"><span>better</span> 👍（0） 💬（1）<div>onXXX 表示回调的多，另外也可以表示会自动执行的方法（看个人习惯）。
+感觉源代码难读，大概读了一下，发现有个注册回调的地方，当回调执行时，会判断一下 isSelected，如 select 已选择，则后续的就不走了。不知道对不对</div>2022-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/ee/8c/06f3aef0.jpg" width="30px"><span>神秘嘉Bin</span> 👍（0） 💬（1）<div>是不是利用了onComplete和onStart进行计时，然后返回最快的一个？</div>2022-03-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/93/a6/679b3c6b.jpg" width="30px"><span>Renext</span> 👍（0） 💬（1）<div>学习了</div>2022-03-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/8e/6d/f2354440.jpg" width="30px"><span>瞌睡的李先生</span> 👍（2） 💬（0）<div>学过go语言的同学会感觉到这一篇真的特别好理解。学到现在感觉kotlin的协程有种集百家之长的感觉，对于多种语言背景的同学都可以方便地学习上手。</div>2022-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/71/ab/b19a1ba2.jpg" width="30px"><span>BUG君</span> 👍（1） 💬（0）<div>看到有小伙伴留言说不是很好理解，其实还是基础知识的问题，建议先去补补java得IO模型的基础知识，再回过头来看会更好理解一些</div>2023-07-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/36/61/54/31a8d7e6.jpg" width="30px"><span>anmi</span> 👍（0） 💬（0）<div>看起来很像回调，问题是回调里怎么可以定义函数</div>2023-11-12</li><br/>
 </ul>
-<p>这种做法的好处在于，用户可以第一时间看到商品的信息，虽然它暂时会展示旧的信息，但由于我们同时查询了网络服务，旧缓存信息也马上会被替代成新的信息。这样的做法，可以最大程度保证用户体验。</p>
-<p>不过，以上整个流程都是建立在“缓存服务一定更快”的前提下的，万一我们的缓存服务出了问题，它的速度变慢了，甚至是超时、无响应呢？</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/12/b1/1267b73837eaa9370651e468c1c536b1.jpg?wh=1607x717" /></p>
-<p>这时候，如果你回过头来分析代码段1的话，你就会发现：程序执行流程会卡在第二步，迟迟无法进行第三步。具体来说，是因为getCacheInfo()它是一个挂起函数，只有这个程序执行成功以后，才可以继续执行后面的任务。你也可以把getCacheInfo()当中的delay时间修改成2000毫秒，去验证一下。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>/*
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>执行结果：
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>xxxId==9.9
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>Time cost: 2013
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>xxxId==9.8
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>Time cost: 2214
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>*/
-</code></pre></div>
-<p>那么，面对这样的场景，我们其实需要一个可以 <strong>灵活选择</strong> 的语法：“两个挂起函数同时执行，谁返回的速度更快，我们就选择谁”。这其实就是select的典型使用场景。</p>
-<h2 id="selectasync">select和async</h2>
-<p>上面的这个场景，我们可以用async搭配select来使用。async可以实现并发，select则可以选择最快的结果。</p>
-<p>让我们来看看，代码具体该怎么写。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>// 代码段2
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>fun main() = runBlocking {
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    val startTime = System.currentTimeMillis()
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    val productId = &quot;xxxId&quot;
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    //          1，注意这里
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    //               ↓
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    val product = select&lt;Product?&gt; {
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        // 2，注意这里
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        async { getCacheInfo(productId) }
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>            .onAwait { // 3，注意这里
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>                it
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>            }
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        // 4，注意这里
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        async { getNetworkInfo(productId) }
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>            .onAwait {  // 5，注意这里
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>                it
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>            }
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    }
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    if (product != null) {
-<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>        updateUI(product)
-<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>        println(&quot;Time cost: ${System.currentTimeMillis() - startTime}&quot;)
-<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    }
-<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>}
-<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>
-<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>/*
-<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>输出结果
-<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>xxxId==9.9
-<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>Time cost: 127
-<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>*/
-</code></pre></div>
-<p>从上面的执行结果，我们可以看到，由于缓存的服务更快，所以，select确实帮我们选择了更快的那个结果。代码中一共有四个注释，我们一起来看看：</p>
-<ul>
-<li>注释1，我们使用select这个高阶函数包裹了两次查询的服务，同时传入了泛型参数Product，代表我们要选择的数据类型是Product。</li>
-<li>注释2，4中，我们使用了async包裹了getCacheInfo()、getNetworkInfo()这两个挂起函数，这是为了让这两个查询实现并发执行。</li>
-<li>注释3，5中，我们使用onAwait{} 将执行结果传给了select{}，而select才能进一步将数据返回给product局部变量。 <strong>注意了，这里我们用的onAwait{}，而不是await()。</strong></li>
-</ul>
-<p>现在，假设，我们的缓存服务出现了问题，需要2000毫秒才能返回：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>// 代码段3
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>suspend fun getCacheInfo(productId: String): Product? {
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    // 注意这里
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    delay(2000L)
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    return Product(productId, 9.9)
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>}
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>/*
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>输出结果
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>xxxId==9.8
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>Time cost: 226
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>*/
-</code></pre></div>
-<p>这时候，通过执行结果，我们可以发现，我们的select可以在缓存服务出现问题的时候，灵活选择网络服务的结果。从而避免用户等待太长的时间，得到糟糕的体验。</p>
-<p>不过，你也许发现了，“代码段1”和“代码段2”其实并不是完全等价的。因为在代码段2当中，用户大概率是会展示旧的缓存信息。但实际场景下，我们是需要进一步更新最新信息的。</p>
-<p>其实，在代码段2的基础上，我们也可以轻松实现，只是说，这里我们需要为Product这个数据类增加一个标记。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>// 代码段4
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>data class Product(
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    val productId: String,
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    val price: Double,
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    // 是不是缓存信息
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    val isCache: Boolean = false
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>)
-</code></pre></div>
-<p>然后，我们还需要对代码段2的逻辑进行一些提取：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>// 代码段5
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>fun main() = runBlocking {
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    suspend fun getCacheInfo(productId: String): Product? {
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        delay(100L)
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        return Product(productId, 9.9)
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    }
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    suspend fun getNetworkInfo(productId: String): Product? {
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        delay(200L)
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        return Product(productId, 9.8)
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    }
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    fun updateUI(product: Product) {
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>        println(&quot;${product.productId}==${product.price}&quot;)
-<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    }
-<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>
-<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    val startTime = System.currentTimeMillis()
-<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    val productId = &quot;xxxId&quot;
-<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>
-<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>    // 1，缓存和网络，并发执行
-<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>    val cacheDeferred = async { getCacheInfo(productId) }
-<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    val latestDeferred = async { getNetworkInfo(productId) }
-<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>
-<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>    // 2，在缓存和网络中间，选择最快的结果
-<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>    val product = select&lt;Product?&gt; {
-<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>        cacheDeferred.onAwait {
-<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>                it?.copy(isCache = true)
-<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>            }
-<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>
-<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>        latestDeferred.onAwait {
-<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>                it?.copy(isCache = false)
-<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>            }
-<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>    }
-<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>
-<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>    // 3，更新UI
-<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>    if (product != null) {
-<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>        updateUI(product)
-<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>        println(&quot;Time cost: ${System.currentTimeMillis() - startTime}&quot;)
-<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a>    }
-<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>
-<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a>    // 4，如果当前结果是缓存，那么再取最新的网络服务结果
-<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a>    if (product != null &amp;&amp; product.isCache) {
-<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>        val latest = latestDeferred.await()?: return@runBlocking
-<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a>        updateUI(latest)
-<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a>        println(&quot;Time cost: ${System.currentTimeMillis() - startTime}&quot;)
-<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a>    }
-<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a>}
-<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a>
-<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a>/*
-<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a>输出结果：
-<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a>xxxId==9.9
-<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a>Time cost: 120
-<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a>xxxId==9.8
-<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a>Time cost: 220
-<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a>*/
-</code></pre></div>
-<p>如果你对比代码段1和代码段5的执行结果，会发现代码段5的总体耗时更短。</p>
-<p>另外在上面的代码中，还有几个注释，我们一个个看：</p>
-<ul>
-<li>首先看注释1，我们将getCacheInfo()、getNetworkInfo()提取到了select的外部，让它们通过async并发执行。如果你还记得第16讲思考题当中的逻辑，你一定可以理解这里的async并发。（如果你忘了，可以回过头去看看。）</li>
-<li>注释2，我们仍然是通过select选择最快的那个结果，接着在注释3这里我们第一时间更新UI界面。</li>
-<li>注释4，我们判断当前的product是不是来自于缓存，如果是的话，我们还需要用最新的信息更新UI。</li>
-</ul>
-<p>然后在这里，假设我们的缓存服务出现了问题，需要2000毫秒才能返回：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>// 代码段6
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>suspend fun getCacheInfo(productId: String): Product? {
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    // 注意这里
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    delay(2000L)
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    return Product(productId, 9.9)
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>}
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>/*
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>输出结果
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>xxxId==9.8
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>Time cost: 224
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>*/
-</code></pre></div>
-<p>可以看到，代码仍然可以正常执行。其实，当前的这个例子很简单，不使用select同样也可以实现。不过，select这样的代码模式的优势在于， <strong>扩展性非常好</strong>。</p>
-<p>下面，我们可以再来假设一下，现在我们有了多个缓存服务。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/dy/2b/dyydce7b6a709e2725bbffec9726312b.jpg?wh=1550x736" /></p>
-<p>对于这个问题，我们其实只需要稍微改动一下代码段3就行了。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>// 代码段7
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>fun main() = runBlocking {
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    val startTime = System.currentTimeMillis()
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    val productId = &quot;xxxId&quot;
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    val cacheDeferred = async { getCacheInfo(productId) }
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    // 变化在这里
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    val cacheDeferred2 = async { getCacheInfo2(productId) }
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    val latestDeferred = async { getNetworkInfo(productId) }
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    val product = select&lt;Product?&gt; {
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>        cacheDeferred.onAwait {
-<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>            it?.copy(isCache = true)
-<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>        }
-<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>
-<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>        // 变化在这里
-<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>        cacheDeferred2.onAwait {
-<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>            it?.copy(isCache = true)
-<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>        }
-<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>
-<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>        latestDeferred.onAwait {
-<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>            it?.copy(isCache = false)
-<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>        }
-<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>    }
-<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>
-<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>    if (product != null) {
-<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>        updateUI(product)
-<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>        println(&quot;Time cost: ${System.currentTimeMillis() - startTime}&quot;)
-<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>    }
-<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>
-<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>    if (product != null &amp;&amp; product.isCache) {
-<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>        val latest = latestDeferred.await() ?: return@runBlocking
-<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>        updateUI(latest)
-<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>        println(&quot;Time cost: ${System.currentTimeMillis() - startTime}&quot;)
-<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>    }
-<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>}
-<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>
-<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a>/*
-<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a>输出结果
-<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a>xxxId==9.9
-<a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a>Time cost: 125
-<a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a>xxxId==9.8
-<a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a>Time cost: 232
-<a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a>*/
-</code></pre></div>
-<p>可以看到，当增加一个缓存服务进来的时候，我们的代码只需要做很小的改动，就可以实现。</p>
-<p>所以，总的来说，对比传统的挂起函数串行的执行流程，select这样的代码模式，不仅可以提升程序的整体响应速度，还可以大大提升程序的 <strong>灵活性、扩展性</strong>。</p>
-<h2 id="selectchannel">select和Channel</h2>
-<p>在前面的课程我们提到过，在协程中返回一个内容的时候，我们可以使用挂起函数、async，但如果要返回多个结果的话，就要用Channel和Flow。</p>
-<p>那么，这里我们来看看select和Channel的搭配使用。这里，我们有两个管道，channel1、channel2，它们里面的内容分别是1、2、3；a、b、c，我们通过select，将它们当中的数据收集出来并打印。</p>
-<p><img alt="图片" src="https://static001.geekbang.org/resource/image/d2/e4/d2d280yy62f88e03522a435b3abyy9e4.gif?wh=1080x608" /></p>
-<p>对于这个问题，如果我们不借助select来实现的话，其实可以大致做到，但结果不会令人满意。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>// 代码段8
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>fun main() = runBlocking {
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    val startTime = System.currentTimeMillis()
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    val channel1 = produce {
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>        send(1)
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>        delay(200L)
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        send(2)
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        delay(200L)
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        send(3)
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>        delay(150L)
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    }
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    val channel2 = produce {
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>        delay(100L)
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>        send(&quot;a&quot;)
-<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>        delay(200L)
-<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        send(&quot;b&quot;)
-<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>        delay(200L)
-<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>        send(&quot;c&quot;)
-<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>    }
-<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>
-<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>    channel1.consumeEach {
-<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>        println(it)
-<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>    }
-<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>
-<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>    channel2.consumeEach {
-<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>        println(it)
-<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>    }
-<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>
-<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>    println(&quot;Time cost: ${System.currentTimeMillis() - startTime}&quot;)
-<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>}
-<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>
-<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>/*
-<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>输出结果
-<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a>1
-<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>2
-<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a>3
-<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a>a
-<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a>b
-<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a>c
-<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a>Time cost: 989
-<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a>*/
-</code></pre></div>
-<p>可以看到，通过普通的方式，我们的代码是串行执行的，执行结果并不符合预期。channel1执行完毕以后，才会执行channel2，程序总体的执行时间，也是两者的总和。最关键的是，如果channel1当中如果迟迟没有数据的话，我们的程序会一直卡着不执行。</p>
-<p>当然，以上的问题，我们通过其他方式也可以解决，但最方便的解决方案，还是select。让我们来看看select与Channel搭配后，会带来什么样的好处。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>// 代码段9
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>fun main() = runBlocking {
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    val startTime = System.currentTimeMillis()
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    val channel1 = produce {
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        send(&quot;1&quot;)
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>        delay(200L)
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>        send(&quot;2&quot;)
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>        delay(200L)
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>        send(&quot;3&quot;)
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>        delay(150L)
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    }
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    val channel2 = produce {
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>        delay(100L)
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>        send(&quot;a&quot;)
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>        delay(200L)
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>        send(&quot;b&quot;)
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>        delay(200L)
-<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>        send(&quot;c&quot;)
-<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>    }
-<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>
-<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>    suspend fun selectChannel(channel1: ReceiveChannel&lt;String&gt;, channel2: ReceiveChannel&lt;String&gt;): String = select&lt;String&gt; {
-<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>        // 1， 选择channel1
-<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>        channel1.onReceive{
-<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>            it.also { println(it) }
-<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>        }
-<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>        // 2， 选择channel1
-<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>        channel2.onReceive{
-<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>            it.also { println(it) }
-<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>        }
-<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>    }
-<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>
-<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>    repeat(6){// 3， 选择6次结果
-<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>        selectChannel(channel1, channel2)
-<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>    }
-<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a>
-<a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a>    println(&quot;Time cost: ${System.currentTimeMillis() - startTime}&quot;)
-<a id="__codelineno-9-38" name="__codelineno-9-38" href="#__codelineno-9-38"></a>}
-<a id="__codelineno-9-39" name="__codelineno-9-39" href="#__codelineno-9-39"></a>
-<a id="__codelineno-9-40" name="__codelineno-9-40" href="#__codelineno-9-40"></a>/*
-<a id="__codelineno-9-41" name="__codelineno-9-41" href="#__codelineno-9-41"></a>输出结果
-<a id="__codelineno-9-42" name="__codelineno-9-42" href="#__codelineno-9-42"></a>1
-<a id="__codelineno-9-43" name="__codelineno-9-43" href="#__codelineno-9-43"></a>a
-<a id="__codelineno-9-44" name="__codelineno-9-44" href="#__codelineno-9-44"></a>2
-<a id="__codelineno-9-45" name="__codelineno-9-45" href="#__codelineno-9-45"></a>b
-<a id="__codelineno-9-46" name="__codelineno-9-46" href="#__codelineno-9-46"></a>3
-<a id="__codelineno-9-47" name="__codelineno-9-47" href="#__codelineno-9-47"></a>c
-<a id="__codelineno-9-48" name="__codelineno-9-48" href="#__codelineno-9-48"></a>Time cost: 540
-<a id="__codelineno-9-49" name="__codelineno-9-49" href="#__codelineno-9-49"></a>*/
-</code></pre></div>
-<p>从程序的执行结果中，我们可以看到，程序的输出结果符合预期，同时它的执行耗时，也比代码段8要少很多。上面的代码中有几个注释，我们来看看：</p>
-<ul>
-<li>注释1和2，onReceive{} 是Channel在select当中的语法，当Channel当中有数据以后，它就会被回调，通过这个Lambda，我们也可以将结果传出去。</li>
-<li>注释3，这里我们执行了6次select，目的是要把两个管道中的所有数据都消耗掉。管道1有3个数据、管道2有3个数据，所以加起来，我们需要选择6次。</li>
-</ul>
-<p>这时候，假设channel1出了问题，它不再产生数据了，我们看看程序会怎么样执行。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>// 代码段10
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>fun main() = runBlocking {
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    val startTime = System.currentTimeMillis()
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    val channel1 = produce&lt;String&gt; {
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        // 变化在这里
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>        delay(15000L)
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    }
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    val channel2 = produce {
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>        delay(100L)
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>        send(&quot;a&quot;)
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>        delay(200L)
-<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>        send(&quot;b&quot;)
-<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>        delay(200L)
-<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>        send(&quot;c&quot;)
-<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>    }
-<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>
-<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>    suspend fun selectChannel(channel1: ReceiveChannel&lt;String&gt;, channel2: ReceiveChannel&lt;String&gt;): String = select&lt;String&gt; {
-<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>        channel1.onReceive{
-<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>            it.also { println(it) }
-<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>        }
-<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>        channel2.onReceive{
-<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>            it.also { println(it) }
-<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>        }
-<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>    }
-<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a>
-<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a>    // 变化在这里
-<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a>    repeat(3){
-<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a>        selectChannel(channel1, channel2)
-<a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a>    }
-<a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a>
-<a id="__codelineno-10-32" name="__codelineno-10-32" href="#__codelineno-10-32"></a>    println(&quot;Time cost: ${System.currentTimeMillis() - startTime}&quot;)
-<a id="__codelineno-10-33" name="__codelineno-10-33" href="#__codelineno-10-33"></a>}
-<a id="__codelineno-10-34" name="__codelineno-10-34" href="#__codelineno-10-34"></a>
-<a id="__codelineno-10-35" name="__codelineno-10-35" href="#__codelineno-10-35"></a>/*
-<a id="__codelineno-10-36" name="__codelineno-10-36" href="#__codelineno-10-36"></a>输出结果
-<a id="__codelineno-10-37" name="__codelineno-10-37" href="#__codelineno-10-37"></a>a
-<a id="__codelineno-10-38" name="__codelineno-10-38" href="#__codelineno-10-38"></a>b
-<a id="__codelineno-10-39" name="__codelineno-10-39" href="#__codelineno-10-39"></a>c
-<a id="__codelineno-10-40" name="__codelineno-10-40" href="#__codelineno-10-40"></a>Time cost: 533
-<a id="__codelineno-10-41" name="__codelineno-10-41" href="#__codelineno-10-41"></a>*/
-</code></pre></div>
-<p>在上面的代码中，我们将channel1当中的send()都删除了，并且，repeat()的次数变成了3次，因为管道里只有三个数据了。</p>
-<p>这时候，我们发现，select也是可以正常执行的。</p>
-<p>不过，我们有时候可能并不清楚每个Channel当中有多少个数据，比如说，这里如果我们还是写repeat(6)的话，程序就会出问题了。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>// 代码段11
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>// 仅改动这里
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>repeat(6){
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    selectChannel(channel1, channel2)
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>}
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>/*
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>崩溃：
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>Exception in thread &quot;main&quot; ClosedReceiveChannelException: Channel was closed
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>*/
-</code></pre></div>
-<p>这时候，你应该就能反应过来了，由于我们的channel2当中只有3个数据，它发送完数据以后就会被关闭，而我们的select是会被调用6次的，所以就会触发上面的ClosedReceiveChannelException异常。</p>
-<p>在19讲当中，我们学过receiveCatching()这个方法，它可以封装Channel的结果，防止出现ClosedReceiveChannelException。类似的，当Channel与select配合的时候，我们可以使用onReceiveCatching{} 这个高阶函数。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>// 代码段12
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>fun main() = runBlocking {
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    val startTime = System.currentTimeMillis()
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    val channel1 = produce&lt;String&gt; {
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>        delay(15000L)
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    }
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>    val channel2 = produce {
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>        delay(100L)
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>        send(&quot;a&quot;)
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>        delay(200L)
-<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>        send(&quot;b&quot;)
-<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>        delay(200L)
-<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>        send(&quot;c&quot;)
-<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>    }
-<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>
-<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>    suspend fun selectChannel(channel1: ReceiveChannel&lt;String&gt;, channel2: ReceiveChannel&lt;String&gt;): String =
-<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>        select&lt;String&gt; {
-<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>            channel1.onReceiveCatching {
-<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>                it.getOrNull() ?: &quot;channel1 is closed!&quot;
-<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a>            }
-<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a>            channel2.onReceiveCatching {
-<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a>                it.getOrNull() ?: &quot;channel2 is closed!&quot;
-<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a>            }
-<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a>        }
-<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a>
-<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a>    repeat(6) {
-<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a>        val result = selectChannel(channel1, channel2)
-<a id="__codelineno-12-30" name="__codelineno-12-30" href="#__codelineno-12-30"></a>        println(result)
-<a id="__codelineno-12-31" name="__codelineno-12-31" href="#__codelineno-12-31"></a>    }
-<a id="__codelineno-12-32" name="__codelineno-12-32" href="#__codelineno-12-32"></a>
-<a id="__codelineno-12-33" name="__codelineno-12-33" href="#__codelineno-12-33"></a>    println(&quot;Time cost: ${System.currentTimeMillis() - startTime}&quot;)
-<a id="__codelineno-12-34" name="__codelineno-12-34" href="#__codelineno-12-34"></a>}
-<a id="__codelineno-12-35" name="__codelineno-12-35" href="#__codelineno-12-35"></a>
-<a id="__codelineno-12-36" name="__codelineno-12-36" href="#__codelineno-12-36"></a>/*
-<a id="__codelineno-12-37" name="__codelineno-12-37" href="#__codelineno-12-37"></a>输出结果
-<a id="__codelineno-12-38" name="__codelineno-12-38" href="#__codelineno-12-38"></a>a
-<a id="__codelineno-12-39" name="__codelineno-12-39" href="#__codelineno-12-39"></a>b
-<a id="__codelineno-12-40" name="__codelineno-12-40" href="#__codelineno-12-40"></a>c
-<a id="__codelineno-12-41" name="__codelineno-12-41" href="#__codelineno-12-41"></a>channel2 is closed!
-<a id="__codelineno-12-42" name="__codelineno-12-42" href="#__codelineno-12-42"></a>channel2 is closed!
-<a id="__codelineno-12-43" name="__codelineno-12-43" href="#__codelineno-12-43"></a>channel2 is closed!
-<a id="__codelineno-12-44" name="__codelineno-12-44" href="#__codelineno-12-44"></a>Time cost: 541
-<a id="__codelineno-12-45" name="__codelineno-12-45" href="#__codelineno-12-45"></a>程序不会立即退出
-<a id="__codelineno-12-46" name="__codelineno-12-46" href="#__codelineno-12-46"></a>*/
-</code></pre></div>
-<p>这时候，即使我们不知道管道里有多少个数据，我们也不用担心崩溃的问题了。在onReceiveCatching{} 这个高阶函数当中，我们可以使用it.getOrNull()来获取管道里的数据，如果获取的结果是null，就代表管道已经被关闭了。</p>
-<p>不过，上面的代码仍然还有一个问题，那就是，当我们得到所有结果以后，程序不会立即退出，因为我们的channel1一直在delay()。这时候，当我们完成6次repeat()调用以后，我们将channel1、channel2取消即可。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>// 代码段13
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>fun main() = runBlocking {
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    val startTime = System.currentTimeMillis()
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    val channel1 = produce&lt;String&gt; {
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>        delay(15000L)
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    }
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    val channel2 = produce {
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>        delay(100L)
-<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>        send(&quot;a&quot;)
-<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>        delay(200L)
-<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>        send(&quot;b&quot;)
-<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>        delay(200L)
-<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>        send(&quot;c&quot;)
-<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>    }
-<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>
-<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>    suspend fun selectChannel(channel1: ReceiveChannel&lt;String&gt;, channel2: ReceiveChannel&lt;String&gt;): String =
-<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>        select&lt;String&gt; {
-<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>            channel1.onReceiveCatching {
-<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>                it.getOrNull() ?: &quot;channel1 is closed!&quot;
-<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>            }
-<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>            channel2.onReceiveCatching {
-<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>                it.getOrNull() ?: &quot;channel2 is closed!&quot;
-<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>            }
-<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>        }
-<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>
-<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a>    repeat(6) {
-<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>        val result = selectChannel(channel1, channel2)
-<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a>        println(result)
-<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a>    }
-<a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a>
-<a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a>    // 变化在这里
-<a id="__codelineno-13-34" name="__codelineno-13-34" href="#__codelineno-13-34"></a>    channel1.cancel()
-<a id="__codelineno-13-35" name="__codelineno-13-35" href="#__codelineno-13-35"></a>    channel2.cancel()
-<a id="__codelineno-13-36" name="__codelineno-13-36" href="#__codelineno-13-36"></a>
-<a id="__codelineno-13-37" name="__codelineno-13-37" href="#__codelineno-13-37"></a>    println(&quot;Time cost: ${System.currentTimeMillis() - startTime}&quot;)
-<a id="__codelineno-13-38" name="__codelineno-13-38" href="#__codelineno-13-38"></a>}
-</code></pre></div>
-<p>这时候，我们对比一下代码段13和代码段10的话，就会发现程序的执行效率提升的同时，扩展性和灵活性也更好了。</p>
-<blockquote>
-<p>提示：这种将多路数据以非阻塞的方式合并成一路数据的模式，在其他领域也有广泛的应用，比如说操作系统、Java NIO（Non-blocking I/O），等等。如果你能理解这个案例中的代码，相信你对操作系统、NIO之类的技术也会有一个新的认识。</p>
-</blockquote>
-<h2 id="_1">思考与实战</h2>
-<p>如果你足够细心的话，你会发现，当我们的Deferred、Channel与select配合的时候，它们原本的API会多一个on前缀。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>public interface Deferred : CoroutineContext.Element {
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    public suspend fun join()
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    public suspend fun await(): T
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    // select相关
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    public val onJoin: SelectClause0
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    public val onAwait: SelectClause1&lt;T&gt;
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>}
-<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>
-<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>public interface SendChannel&lt;in E&gt;
-<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>    public suspend fun send(element: E)
-<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>
-<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>    // select相关
-<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>    public val onSend: SelectClause2&lt;E, SendChannel&lt;E&gt;&gt;
-<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>
-<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>}
-<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>
-<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>public interface ReceiveChannel&lt;out E&gt; {
-<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>    public suspend fun receive(): E
-<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a>
-<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a>    public suspend fun receiveCatching(): ChannelResult&lt;E&gt;
-<a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a>    // select相关
-<a id="__codelineno-14-23" name="__codelineno-14-23" href="#__codelineno-14-23"></a>    public val onReceive: SelectClause1&lt;E&gt;
-<a id="__codelineno-14-24" name="__codelineno-14-24" href="#__codelineno-14-24"></a>    public val onReceiveCatching: SelectClause1&lt;ChannelResult&lt;E&gt;&gt;
-<a id="__codelineno-14-25" name="__codelineno-14-25" href="#__codelineno-14-25"></a>}
-</code></pre></div>
-<p>所以，只要你记住了Deferred、Channel的API，你是不需要额外记忆select的API的，只需要在原本的API的前面加上一个on就行了。</p>
-<p>另外你要注意，当select与Deferred结合使用的时候，当并行的Deferred比较多的时候，你往往需要在得到一个最快的结果以后，去取消其他的Deferred。</p>
-<p>比如说，对于Deferred1、Deferred2、Deferred3、Deferred4、Deferred5，其中Deferred2返回的结果最快，这时候，我们往往会希望取消其他的Deferred，以节省资源。那么在这个时候，我们可以使用类似这样的方式：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>fun main() = runBlocking {
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    suspend fun &lt;T&gt; fastest(vararg deferreds: Deferred&lt;T&gt;): T = select {
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>        fun cancelAll() = deferreds.forEach { it.cancel() }
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>        for (deferred in deferreds) {
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>            deferred.onAwait {
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>                cancelAll()
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>                it
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>            }
-<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>        }
-<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    }
-<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>
-<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>    val deferred1 = async {
-<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>        delay(100L)
-<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>        println(&quot;done1&quot;)    // 没机会执行
-<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>        &quot;result1&quot;
-<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>    }
-<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>
-<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>    val deferred2 = async {
-<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>        delay(50L)
-<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>        println(&quot;done2&quot;)
-<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>        &quot;result2&quot;
-<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a>    }
-<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a>
-<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a>    val deferred3 = async {
-<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a>        delay(10000L)
-<a id="__codelineno-15-27" name="__codelineno-15-27" href="#__codelineno-15-27"></a>        println(&quot;done3&quot;)    // 没机会执行
-<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a>        &quot;result3&quot;
-<a id="__codelineno-15-29" name="__codelineno-15-29" href="#__codelineno-15-29"></a>    }
-<a id="__codelineno-15-30" name="__codelineno-15-30" href="#__codelineno-15-30"></a>
-<a id="__codelineno-15-31" name="__codelineno-15-31" href="#__codelineno-15-31"></a>    val deferred4 = async {
-<a id="__codelineno-15-32" name="__codelineno-15-32" href="#__codelineno-15-32"></a>        delay(2000L)
-<a id="__codelineno-15-33" name="__codelineno-15-33" href="#__codelineno-15-33"></a>        println(&quot;done4&quot;)    // 没机会执行
-<a id="__codelineno-15-34" name="__codelineno-15-34" href="#__codelineno-15-34"></a>        &quot;result4&quot;
-<a id="__codelineno-15-35" name="__codelineno-15-35" href="#__codelineno-15-35"></a>    }
-<a id="__codelineno-15-36" name="__codelineno-15-36" href="#__codelineno-15-36"></a>
-<a id="__codelineno-15-37" name="__codelineno-15-37" href="#__codelineno-15-37"></a>    val deferred5 = async {
-<a id="__codelineno-15-38" name="__codelineno-15-38" href="#__codelineno-15-38"></a>        delay(14000L)
-<a id="__codelineno-15-39" name="__codelineno-15-39" href="#__codelineno-15-39"></a>        println(&quot;done5&quot;)    // 没机会执行
-<a id="__codelineno-15-40" name="__codelineno-15-40" href="#__codelineno-15-40"></a>        &quot;result5&quot;
-<a id="__codelineno-15-41" name="__codelineno-15-41" href="#__codelineno-15-41"></a>    }
-<a id="__codelineno-15-42" name="__codelineno-15-42" href="#__codelineno-15-42"></a>
-<a id="__codelineno-15-43" name="__codelineno-15-43" href="#__codelineno-15-43"></a>    val result = fastest(deferred1, deferred2, deferred3, deferred4, deferred5)
-<a id="__codelineno-15-44" name="__codelineno-15-44" href="#__codelineno-15-44"></a>    println(result)
-<a id="__codelineno-15-45" name="__codelineno-15-45" href="#__codelineno-15-45"></a>}
-<a id="__codelineno-15-46" name="__codelineno-15-46" href="#__codelineno-15-46"></a>
-<a id="__codelineno-15-47" name="__codelineno-15-47" href="#__codelineno-15-47"></a>/*
-<a id="__codelineno-15-48" name="__codelineno-15-48" href="#__codelineno-15-48"></a>输出结果
-<a id="__codelineno-15-49" name="__codelineno-15-49" href="#__codelineno-15-49"></a>done2
-<a id="__codelineno-15-50" name="__codelineno-15-50" href="#__codelineno-15-50"></a>result2
-<a id="__codelineno-15-51" name="__codelineno-15-51" href="#__codelineno-15-51"></a>*/
-</code></pre></div>
-<p>所以，借助这样的方式，我们不仅可以通过async并发执行协程，也可以借助select得到最快的结果，而且，还可以避免不必要的资源浪费。</p>
-<h2 id="_2">小结</h2>
-<p>好，这节课的内容就到这儿了，我们来做一个简单的总结。</p>
-<ul>
-<li>select，就是选择“更快的结果”。</li>
-<li>当select与async、Channel搭配以后，我们可以并发执行协程任务，以此大大提升程序的执行效率甚至用户体验，并且还可以改善程序的扩展性、灵活性。</li>
-<li>关于select的API，我们完全不需要去刻意记忆，只需要在Deferred、Channel的API基础上加上on这个前缀即可。</li>
-<li>最后，我们还结合实战，分析了select与async产生太多并发协程的时候，还可以定义一个类似fastest()的方法，去统一取消剩余的协程任务。这样的做法，就可以大大节省计算资源，从而平衡性能与功耗。</li>
-</ul>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/5c/5b/5c3e1e2b9e00c367e413428d40994f5b.jpg?wh=2000x853" /></p>
-<p>其实，和Kotlin的Channel一样，select并不是Kotlin独创的概念。select在很多编程语言当中都有类似的实现，比如Go、Rust，等等。在这些计算机语言当中，select的语法可能与Kotlin的不太一样，但背后的核心理念都是“选择更快的结果”。</p>
-<p>所以，只要你掌握了Kotlin的select，今后学习其他编程语言的select，都不再是问题。</p>
-<h2 id="_3">思考题</h2>
-<p>前面我们已经说过，select的API，只需要在Deferred、Channel原本API的基础上加一个on前缀即可。比如onAwait{}。那么，你有没有觉得它跟我们前面学的onStart{}、onCompletion{} 之类的回调API很像？</p>
-<p>你能从中悟出select的实现原理吗？ 欢迎在留言区说说你的想法，也欢迎你把今天的内容分享给更多的朋友。</p>
 
 
 

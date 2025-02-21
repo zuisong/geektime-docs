@@ -467,6 +467,8 @@
       
         
       
+        
+      
     
     
       
@@ -681,6 +683,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -5224,295 +5230,47 @@
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>+---------------+----------+------+-----+---------+-------+
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>9 rows in set (0.02 sec)
 </code></pre></div>
-<p>某个门店的销售流水表有400万条数据，现在我要查看一下商品编号是100的商品在2020-12-12这一天的销售情况，查询代码如下：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>mysql&gt; SELECT
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>-&gt; quantity,price,transdate
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>-&gt; FROM
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>-&gt; demo.trans
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>-&gt; WHERE
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>-&gt; transdate &gt; &#39;2020-12-12&#39;
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>-&gt; AND transdate &lt; &#39;2020-12-13&#39;
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>-&gt; AND itemnumber = 100;
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>+----------+--------+---------------------+
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>| quantity | price | transdate |
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>+----------+--------+---------------------+
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>| 1.000 | 220.00 | 2020-12-12 19:45:36 |
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>| 1.000 | 220.00 | 2020-12-12 08:56:37 |
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>+----------+--------+---------------------+
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>2 rows in set (8.08 sec)
-</code></pre></div>
-<p>可以看到，结果总共有2条记录，可是却花了8秒钟，非常慢。同时，这里我没有做表的关联，这只是单表的查询，而且只是一个门店几个月的数据而已。而总部是把所有门店的数据都汇总到一起，查询速度更慢，这样的查询效率，我们肯定是不能接受的。</p>
-<p>怎么解决这个问题呢？这时，我们就可以给数据表添加索引。</p>
-<h1 id="_2">单字段索引</h1>
-<p>MySQL支持单字段索引和组合索引，而单字段索引比较常用，我们先来学习下创建单字段索引的方法。</p>
-<h2 id="_3">如何创建单字段索引？</h2>
-<p>创建单字段索引，一般有3种方式：</p>
-<ol>
-<li>你可以通过CREATE语句直接给已经存在的表创建索引，这种方式比较简单，我就不多解释了；</li>
-<li>可以在创建表的同时创建索引；</li>
-<li>可以通过修改表来创建索引。</li>
-</ol>
-<p>直接给数据表创建索引的语法如下：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>CREATE INDEX 索引名 ON TABLE 表名 (字段);
-</code></pre></div>
-<p>创建表的同时创建索引的语法如下所示：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>CREATE TABLE 表名
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>(
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>字段 数据类型,
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>….
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>{ INDEX | KEY } 索引名(字段)
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>)
-</code></pre></div>
-<p>修改表时创建索引的语法如下所示：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ALTER TABLE 表名 ADD { INDEX | KEY } 索引名 (字段);
-</code></pre></div>
-<p>这里有个小问题要提醒你一下，给表设定主键约束或者唯一性约束的时候，MySQL会自动创建主键索引或唯一性索引。这也是我建议你在创建表的时候，一定要定义主键的原因之一。</p>
-<p>举个小例子，我们可以给表demo.trans创建索引如下：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>mysql&gt; CREATE INDEX index_trans ON demo.trans (transdate(10));
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>Query OK, 0 rows affected (1 min 8.71 sec)
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>Records: 0 Duplicates: 0 Warnings: 0
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>mysql&gt; SELECT
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>-&gt; quantity,price,transdate
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>-&gt; FROM
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>-&gt; demo.trans
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>-&gt; WHERE
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>-&gt; transdate &gt; &#39;2020-12-12&#39;
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>-&gt; AND transdate &lt; &#39;2020-12-13&#39;
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>-&gt; AND itemnumber = 100;
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>+----------+--------+---------------------+
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>| quantity | price | transdate |
-<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>+----------+--------+---------------------+
-<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>| 1.000 | 220.00 | 2020-12-12 19:45:36 |
-<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>| 1.000 | 220.00 | 2020-12-12 08:56:37 |
-<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>+----------+--------+---------------------+
-<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>2 rows in set (0.30 sec)
-</code></pre></div>
-<p>可以看到，加了索引之后，这一次我们只用了0.3秒，比没有索引的时候，快了20多倍。这么大的差距，说明索引对提高查询的速度确实很有帮助。那么，索引是如何做到这一点的呢？下面我们来学习下单字段索引的作用原理。</p>
-<h2 id="_4">单字段索引的作用原理</h2>
-<p>要知道索引是怎么起作用的，我们需要借助MySQL中的EXPLAIN 这个关键字。</p>
-<p>EXPLAIN关键字能够查看SQL语句的执行细节，包括表的加载顺序，表是如何连接的，以及索引使用情况等。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>mysql&gt; EXPLAIN SELECT
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>-&gt; quantity,price,transdate
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>-&gt; FROM
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>-&gt; demo.trans
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>-&gt; WHERE
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>-&gt; transdate &gt; &#39;2020-12-12&#39;
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>-&gt; AND transdate &lt; &#39;2020-12-13&#39;
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>-&gt; AND itemnumber = 100;
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>+----+-------------+-------------+------------+-------+-------------------+-------------------+---------+------+------+----------+-----------------------------------------------+
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>| id | select_type | table | partitions | type | possible_keys | key | key_len | ref | rows | filtered | Extra |
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>+----+-------------+-------------+------------+-------+-------------------+-------------------+---------+------+------+----------+-----------------------------------------------+
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>| 1 | SIMPLE | trans | NULL | range | index_trans | index_trans | 6 | NULL | 5411 | 10.00 | Using index condition; Using where; Using MRR |
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>+----+-------------+-------------+------------+-------+-------------------+-------------------+---------+------+------+----------+-----------------------------------------------+
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>1 row in set, 1 warning (0.00 sec)
-</code></pre></div>
-<p>我来解释下代码里的关键内容。</p>
+<div><strong>精选留言（17）</strong></div>
 <ul>
-<li>type=range：表示使用索引查询特定范围的数据记录。</li>
-<li>rows=5411：表示需要读取的记录数。</li>
-<li>possible_keys=index_trans：表示可以选择的索引是index_trans。</li>
-<li>key=index_trans：表示实际选择的索引是index_trans。</li>
-<li>extra=Using index condition;Using where;Using MRR：这里面的信息对SQL语句的执行细节做了进一步的解释，包含了3层含义：第一个是执行时使用了索引，第二个是执行时通过WHERE条件进行了筛选，第三个是使用了顺序磁盘读取的策略。</li>
+<li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLZKoB7sooIiaCHqcdNGI97WI3ZJLJph4mibIiat1qRvrBmkicZTEYvyT5iax1vlLFFgk2xgUibmnWvkicWA/132" width="30px"><span>朱晓峰</span> 👍（5） 💬（0）<div>你好，我是朱晓峰，下面我就来公布一下上节课思考题的答案：
+
+上节课，我们学习了数学函数、字符串函数和条件判断函数。下面是思考题的答案：
+
+计算会员积分，我们可以假设actualvalue&gt;=0，这样的话就可以使用求余函数MOD来代替FLOOR:
+
+FLOOR(acutalvalue)替换成actualvalue - MOD(actualvalue,1)</div>2021-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/56/ea/32608c44.jpg" width="30px"><span>giteebravo</span> 👍（10） 💬（4）<div>
+ CREATE INDEX index_trans ON demo.trans (transdate(10));
+
+——括号里面的 10 有什么具体含义吗？</div>2021-04-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3a/63/a94f339e.jpg" width="30px"><span>Devo</span> 👍（6） 💬（2）<div>我会选择（商品编号，[门店编号]，销售日期）的联合索引，主要依据是商品编号一般是等值查询且区分度较高，门店编号这个字段我觉得可以看具体查询场景选择，销售日期一般是范围，放在末位直接扫链表效果较好，请老师指正，谢谢！</div>2021-04-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/9d/a4/e481ae48.jpg" width="30px"><span>lesserror</span> 👍（2） 💬（2）<div>总结一下这一讲的收获吧。
+
+MySQL 最多支持由 16 个字段组成的组合索引。
+
+组合索引的所有组成字段都被查询条件用到，且符合最左匹配原则，查询效率有可能会比单字段索引快！
+
+关于索引这块的知识，建议去了解一下B+树的相关概念，会更容易理解索引的内部运行机制。比单纯背结论更加有效，并且会根深蒂固！
+
+</div>2021-04-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/56/ea/32608c44.jpg" width="30px"><span>giteebravo</span> 👍（2） 💬（1）<div>
+在为字段 itemnumber 创建索引 index_trans_itemnumber 后，实际读取的记录数下降了 80% (与使用索引 index_trans 相比)，但为什么查询速度反而下降了 0.08 秒呢？
+</div>2021-04-01</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqXKSvfaeicogzRnFuricd5MibNibYSgq20J6l0Cgicghv6wcuj8I2FEBdfxg1o1uJZjuUHKgQcukf9LpA/132" width="30px"><span>青石雨巷</span> 👍（1） 💬（1）<div>
+CREATE INDEX 索引名 ON TABLE 表名 (字段);
+
+这里TABLE字段要删掉，容易让别人产生误解</div>2021-12-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/e6/eb/7b7c0101.jpg" width="30px"><span>彭彬</span> 👍（1） 💬（2）<div>CREATE INDEX index_trans ON demo.trans (transdate(10));    
+执行上述语句出错，提示transdate不是字符串</div>2021-09-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/eb/77/ffd16123.jpg" width="30px"><span>重洋</span> 👍（1） 💬（1）<div>对字段a、b、c建立组合索引，选择a、b为查询条件时，此时组合索引的效果相当于只对a、b建立组合索引吗？</div>2021-08-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/bd/6d/7010f98e.jpg" width="30px"><span>SharpBB</span> 👍（0） 💬（1）<div>单字段索引
+    create index 索引名 on table 表名(字段);
+    注意
+        创建主键约束&#47;唯一约束 会自动创建主键索引 唯一性索引
+    经常被筛选的字段当索引
+组合索引
+    create index 索引名 on table 表名(字段1,字段2);
+删除索引
+    DROP INDEX 索引名 ON 表名;
+如果是主键 不能直接删除 得先去掉主键
+    ALTER TABLE 表名 DROP PRIMARY KEY；</div>2022-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/a7/49/9a2c8cfd.jpg" width="30px"><span>木木</span> 👍（0） 💬（2）<div>老师你好，咱课程中提到的数据有提供吗？
+
+方便跟着操作练习</div>2021-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/e6/eb/7b7c0101.jpg" width="30px"><span>彭彬</span> 👍（0） 💬（2）<div>老师：如果创建索引的顺序是 A,B,C;  而查询的where子句中是 C,B,A的顺序，那是不是索引就失效了</div>2021-09-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/53/7e/b6829040.jpg" width="30px"><span>SevenMonths</span> 👍（0） 💬（1）<div>这里留个坑。以后回来补上 explain 慢查询的思维导图。</div>2021-09-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/25/ed/a0/cc89c128.jpg" width="30px"><span>大聖</span> 👍（0） 💬（3）<div>文中还有一个部分不理解 - “比如“branchnumber &gt; 10 AND cashiernumber = 1 AND itemnumber = 100”这个条件，只能用到组合索引中 branchnumber&gt;10 的部分，后面的索引就都用不上了” 为什么组合索引中用到branchnumber&gt;10以后就中断了，cashiernumber和itemnumber不是也是组合索引的一部分么？</div>2021-06-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/25/ed/a0/cc89c128.jpg" width="30px"><span>大聖</span> 👍（0） 💬（3）<div>我测试的时候，我的trans表里数据很少，只有不到10条，我发现一个现象：如果transdate是text类型，那么根据transdate &gt; &#39;2018-01-01&#39;的时候，用explain查看发现索引没有起作用，但是如果换成datetime类型，索引就起作用，这个是为什么呢？</div>2021-06-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/8d/e5/f3df7b02.jpg" width="30px"><span>ly</span> 👍（0） 💬（2）<div>老师您好，我理解的联合索引的创建将等值查询字段放前面，范围查询放后面，这样理解对吗，那如果都是等值查询，怎么样确定字段先后顺序能使索引最优</div>2021-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/56/ea/32608c44.jpg" width="30px"><span>giteebravo</span> 👍（0） 💬（1）<div>
+小结部分总结得太好了，从索引的好处、使用方法，到如何选择索引字段，以及索引的使用成本，都覆盖到了。
+</div>2021-04-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7c/c8/8627f5c1.jpg" width="30px"><span>右耳朵猫咪</span> 👍（0） 💬（2）<div>如果执行计划的key是多个单字段索引，它和一个单字段索引有什么区别呢？</div>2021-04-01</li><br/>
 </ul>
-<p>通过这个小例子，我们可以发现，有了索引之后，MySQL在执行SQL语句的时候多了一种优化的手段。也就是说，在查询的时候，可以先通过查询索引快速定位，然后再找到对应的数据进行读取，这样就大大提高了查询的速度。</p>
-<h2 id="_5">如何选择索引字段？</h2>
-<p>在刚刚的查询中，我们是选择transdate（交易时间）字段来当索引字段，你可能会问，为啥不选别的字段呢？这是因为，交易时间是查询条件。MySQL可以按照交易时间的限定“2020年12月12日”，在索引中而不是数据表中寻找满足条件的索引记录，再通过索引记录中的指针来定位数据表中的数据。这样，索引就能发挥作用了。</p>
-<p>不过，你有没有想过，itemnumber字段也是查询条件，能不能用itemnumber来创建一个索引呢？我们来试一试：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>mysql&gt; CREATE INDEX index_trans_itemnumber ON demo.trans (itemnumber);
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>Query OK, 0 rows affected (43.88 sec)
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>Records: 0 Duplicates: 0 Warnings: 0
-</code></pre></div>
-<p>然后看看效果：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>mysql&gt; SELECT
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>-&gt; quantity,price,transdate
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>-&gt; FROM
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>-&gt; demo.trans
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>-&gt; WHERE
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>-&gt; transdate &gt; &#39;2020-12-12&#39;      -- 对交易时间的筛选，可以在transdate的索引中定位
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>-&gt; AND transdate &lt; &#39;2020-12-13&#39;
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>-&gt; AND itemnumber = 100;         -- 对商品编号的筛选，可以在itemnumber的索引中定位
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>+----------+--------+---------------------+
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>| quantity | price | transdate |
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>+----------+--------+---------------------+
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>| 1.000 | 220.00 | 2020-12-12 19:45:36 |
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>| 1.000 | 220.00 | 2020-12-12 08:56:37 |
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>+----------+--------+---------------------+
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>2 rows in set (0.38 sec)
-</code></pre></div>
-<p>我们发现，用itemnumber创建索引之后，查询速度跟之前差不多，基本在同一个数量级。</p>
-<p>这是为啥呢？我们来看看MySQL的运行计划：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>mysql&gt; EXPLAIN SELECT
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>-&gt; quantity,price,transdate
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>-&gt; FROM
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>-&gt; demo.trans
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>-&gt; WHERE
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>-&gt; transdate &gt; &#39;2020-12-12&#39;
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>-&gt; AND transdate &lt; &#39;2020-12-13&#39;
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>-&gt; AND itemnumber = 100;                 -- 对itemnumber 进行限定
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>+----+-------------+-------------+------------+------+------------------------------------------------+------------------------------+---------+-------+------+----------+-------------+
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>| id | select_type | table | partitions | type | possible_keys | key | key_len | ref | rows | filtered | Extra |
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>+----+-------------+-------------+------------+------+------------------------------------------------+------------------------------+---------+-------+------+----------+-------------+
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>| 1 | SIMPLE | trans | NULL | ref | index_trans,index_trans_itemnumber | index_trans_itemnumber | 5 | const | 1192 | 0.14 | Using where |
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>+----+-------------+-------------+------------+------+------------------------------------------------+------------------------------+---------+-------+------+----------+-------------+
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>1 row in set, 1 warning (0.01 sec)
-</code></pre></div>
-<p>我们发现，“possible_keys= index_trans,index_trans_itemnumber ”，就是说MySQL认为可以选择的索引确实有2个，一个是用transdate字段创建的索引index_trans，另一个是用itemnumber字段创建的索引index_trans_itemnumber。</p>
-<p>key= index_trans_itemnumber， 说明MySQL实际选择使用的索引是itemnumber字段创建的索引index_trans_itemnumber。而rows=1192，就表示实际读取的数据记录数只有1192个，比用transdate创建的索引index_trans的实际读取记录数要少，这就是MySQL选择使用itemnumber索引的原因。</p>
-<p><strong>所以，我建议你在选择索引字段的时候，要选择那些经常被用做筛选条件的字段</strong>。这样才能发挥索引的作用，提升检索的效率。</p>
-<h1 id="_6">组合索引</h1>
-<p>在实际工作中，有时会遇到比较复杂的数据表，这种表包括的字段比较多，经常需要通过不同的字段筛选数据，特别是数据表中包含多个层级信息。比如我们的销售流水表就包含了门店信息、收款机信息和商品信息这3个层级信息。门店对应多个门店里的收款机，每个收款机对应多个从这台收款机销售出去的商品。我们经常要把这些层次信息作为筛选条件，来进行查询。这个时候单字段的索引往往不容易发挥出索引的最大功效，可以使用组合索引。</p>
-<p>现在，先看看单字段索引的效果，我们分别用branchnumber和cashiernumber来创建索引：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>mysql&gt; CREATE INDEX index_trans_branchnumber ON demo.trans (branchnumber);
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>Query OK, 0 rows affected (41.49 sec)
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>Records: 0 Duplicates: 0 Warnings: 0
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a> mysql&gt; CREATE INDEX index_trans_cashiernumber ON demo.trans (cashiernumber);
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>Query OK, 0 rows affected (41.95 sec)
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>Records: 0 Duplicates: 0 Warnings: 0
-</code></pre></div>
-<p>有了门店编号和收款机编号的索引，现在我们就尝试一下以门店编号、收款机编号和商品编号为查询条件，来验证一下索引是不是起了作用。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>mysql&gt; SELECT
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>-&gt; itemnumber,quantity,price,transdate
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>-&gt; FROM
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>-&gt; demo.trans
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>-&gt; WHERE
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>-&gt; branchnumber = 11 AND cashiernumber = 1 -- 门店编号和收款机号为筛选条件
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>-&gt; AND itemnumber = 100;    -- 商品编号为筛选条件
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>+------------+----------+--------+---------------------+
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>| itemnumber | quantity | price | transdate |
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>+------------+----------+--------+---------------------+
-<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>| 100 | 1.000 | 220.00 | 2020-07-11 09:18:35 |
-<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>| 100 | 1.000 | 220.00 | 2020-09-06 21:21:58 |
-<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>| 100 | 1.000 | 220.00 | 2020-11-10 15:00:11 |
-<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>| 100 | 1.000 | 220.00 | 2020-12-25 14:28:06 |
-<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>| 100 | 1.000 | 220.00 | 2021-01-09 20:21:44 |
-<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>| 100 | 1.000 | 220.00 | 2021-02-08 10:45:05 |
-<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>+------------+----------+--------+---------------------+
-<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>6 rows in set (0.31 sec)
-</code></pre></div>
-<p>结果有6条记录，查询时间是0.31秒，跟只创建商品编号索引差不多。下面我们就来查看一下执行计划，看看新建的索引有没有起作用。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>mysql&gt; EXPLAIN SELECT
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>-&gt; itemnumber,quantity,price,transdate
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>-&gt; FROM
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>-&gt; demo.trans
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>-&gt; WHERE
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>-&gt; branchnumber = 11 AND cashiernumber = 1
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>-&gt; AND itemnumber = 100;
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>+----+-------------+-------+------------+------+---------------------------------------------------------------------------+------------------------+---------+-------+------+----------+-------------+
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>| id | select_type | table | partitions | type | possible_keys | key | key_len | ref | rows | filtered | Extra |
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>+----+-------------+-------+------------+------+---------------------------------------------------------------------------+------------------------+---------+-------+------+----------+-------------+
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>| 1 | SIMPLE | trans | NULL | ref | index_trans_itemnumber,index_trans_branchnumber,index_trans_cashiernumber | index_trans_itemnumber | 5 | const | 1192 | 20.50 | Using where |
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>+----+-------------+-------+------------+------+---------------------------------------------------------------------------+------------------------+---------+-------+------+----------+-------------+
-<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>1 row in set, 1 warning (0.01 sec)
-</code></pre></div>
-<p>MySQL有3个索引可以用，分别是用branchnumber创建的index_trans_branchnumber、用cashiernumber创建的index_trans_cashiernumber和用itemnumber创建的index_trans_itemnumber。</p>
-<p>最后，MySQL还是选择了index_trans_itemnumber，实际筛选的记录数是1192，花费了0.31秒。</p>
-<p>为什么MySQL会这样选呢？这是因为，优化器现在有3种索引可以用，分别是商品编号索引、门店编号索引和收款机号索引。优化器发现，商品编号索引实际搜索的记录数最少，所以最后就选择了这种索引。</p>
-<p>所以， <strong>如果有多个索引，而这些索引的字段同时作为筛选字段出现在查询中的时候，MySQL会选择使用最优的索引来执行查询操作</strong>。</p>
-<p>能不能让这几个筛选字段同时发挥作用呢？这就用到组合索引了。组合索引，就是包含多个字段的索引。MySQL最多支持由16个字段组成的组合索引。</p>
-<h2 id="_7">如何创建组合索引？</h2>
-<p>创建组合索引的语法结构与创建单字段索引相同，不同的是相比单字段索引，组合索引使用了多个字段。</p>
-<p>直接给数据表创建索引的语法如下：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>CREATE INDEX 索引名 ON TABLE 表名 (字段1，字段2，...);
-</code></pre></div>
-<p>创建表的同时创建索引：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>CREATE TABLE 表名
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>(
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>字段 数据类型,
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>….
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>{ INDEX | KEY } 索引名(字段1，字段2，...)
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>)
-</code></pre></div>
-<p>修改表时创建索引：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>ALTER TABLE 表名 ADD { INDEX | KEY } 索引名 (字段1，字段2，...);
-</code></pre></div>
-<p>现在，针对刚刚的查询场景，我们就可以通过创建组合索引，发挥多个字段的筛选作用。</p>
-<p>具体做法是，我们给销售流水表创建一个由3个字段branchnumber、cashiernumber、itemnumber组成的组合索引，如下所示：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>mysql&gt; CREATE INDEX Index_branchnumber_cashiernumber_itemnumber ON demo.trans (branchnumber,cashiernumber,itemnumber);
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>Query OK, 0 rows affected (59.26 sec)
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>Records: 0 Duplicates: 0 Warnings: 0
-</code></pre></div>
-<p>有了组合索引，刚刚的查询速度就更快了：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>mysql&gt; SELECT
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>-&gt; itemnumber,quantity,price,transdate
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>-&gt; FROM
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>-&gt; demo.trans
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>-&gt; WHERE
-<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>-&gt; branchnumber = 11 AND cashiernumber = 1
-<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>-&gt; AND itemnumber = 100;
-<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>+------------+----------+--------+---------------------+
-<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>| itemnumber | quantity | price | transdate |
-<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>+------------+----------+--------+---------------------+
-<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>| 100 | 1.000 | 220.00 | 2020-07-11 09:18:35 |
-<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>| 100 | 1.000 | 220.00 | 2020-09-06 21:21:58 |
-<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>| 100 | 1.000 | 220.00 | 2020-11-10 15:00:11 |
-<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>| 100 | 1.000 | 220.00 | 2020-12-25 14:28:06 |
-<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>| 100 | 1.000 | 220.00 | 2021-01-09 20:21:44 |
-<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>| 100 | 1.000 | 220.00 | 2021-02-08 10:45:05 |
-<a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a>+------------+----------+--------+---------------------+
-<a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a>6 rows in set (0.00 sec)
-</code></pre></div>
-<p>几乎是瞬间就完成了，不超过10毫秒。我们看看MySQL的执行计划：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>mysql&gt; EXPLAIN SELECT
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>-&gt; itemnumber,quantity,price,transdate
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>-&gt; FROM
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>-&gt; demo.trans
-<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>-&gt; WHERE                         -- 同时筛选门店编号、收款机号和商品编号
-<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>-&gt; branchnumber = 11 AND cashiernumber = 1
-<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>-&gt; AND itemnumber = 100;
-<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>+----+-------------+-------+------------+------+-----------------------------------------------------------------------------------------------------------------------+---------------------------------------------+---------+-------------------+------+----------+-------+
-<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>| id | select_type | table | partitions | type | possible_keys | key | key_len | ref | rows | filtered | Extra |
-<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>+----+-------------+-------+------------+------+-----------------------------------------------------------------------------------------------------------------------+---------------------------------------------+---------+-------------------+------+----------+-------+
-<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>| 1 | SIMPLE | trans | NULL | ref | index_trans_itemnumber,index_trans_branchnumber,index_trans_cashiernumber,index_branchnumber_cashiernumber_itemnumber | index_branchnumber_cashiernumber_itemnumber | 15 | const,const,const | 6 | 100.00 | NULL |
-<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>+----+-------------+-------+------------+------+-----------------------------------------------------------------------------------------------------------------------+---------------------------------------------+---------+-------------------+------+----------+-------+
-<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>1 row in set, 1 warning (0.01 sec)
-</code></pre></div>
-<p>这个查询，MySQL可以用到的索引有4个：</p>
-<ul>
-<li>index_trans_itemnumber；</li>
-<li>index_trans_branchnumber；</li>
-<li>index_trans_cashiernumber；</li>
-<li>我们刚才用branchnumber、cashiernumber和itemnumber创建的组合索引Index_branchnumber_cashiernumber_itemnumber。</li>
-</ul>
-<p>MySQL选择了组合索引，筛选后读取的记录只有6条。组合索引被充分利用，筛选更加精准，所以非常快。</p>
-<h2 id="_8">组合索引的原理</h2>
-<p>下面我就来讲讲组合索引的工作原理。</p>
-<p><strong>组合索引的多个字段是有序的，遵循左对齐的原则</strong>。比如我们创建的组合索引，排序的方式是branchnumber、cashiernumber和itemnumber。因此，筛选的条件也要遵循从左向右的原则，如果中断，那么，断点后面的条件就没有办法利用索引了。</p>
-<p>比如说我们刚才的条件，branchnumber = 11 AND cashiernumber = 1 AND itemnumber = 100，包含了从左到右的所有字段，所以可以最大限度使用全部组合索引。</p>
-<p>假如把条件换成“cashiernumber = 1 AND itemnumber = 100”，由于我们的组合索引是按照branchnumber、cashiernumber和itemnumber的顺序建立的，最左边的字段branchnumber没有包含到条件当中，中断了，所以这个条件完全不能使用组合索引。</p>
-<p>类似的，如果筛选的是一个范围，如果没有办法无法精确定位，也相当于中断。比如“branchnumber &gt; 10 AND cashiernumber = 1 AND itemnumber = 100”这个条件，只能用到组合索引中branchnumber&gt;10的部分，后面的索引就都用不上了。我们来看看MySQL的运行计划：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>mysql&gt; EXPLAIN SELECT
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>-&gt; itemnumber,quantity,price,transdate
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>-&gt; FROM
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>-&gt; demo.trans
-<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>-&gt; WHERE
-<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>-&gt; branchnumber &gt; 10 AND cashiernumber = 1 AND itemnumber = 100;
-<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>+----+-------------+-------+------------+------+-----------------------------------------------------------------------------------------------------------------------+------------------------+---------+-------+------+----------+-------------+
-<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>| id | select_type | table | partitions | type | possible_keys | key | key_len | ref | rows | filtered | Extra |
-<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>+----+-------------+-------+------------+------+-----------------------------------------------------------------------------------------------------------------------+------------------------+---------+-------+------+----------+-------------+
-<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>| 1 | SIMPLE | trans | NULL | ref | index_trans_itemnumber,index_trans_branchnumber,index_trans_cashiernumber,index_branchnumber_cashiernumber_itemnumber | index_trans_itemnumber | 5 | const | 1192 | 20.50 | Using where |
-<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>+----+-------------+-------+------------+------+-----------------------------------------------------------------------------------------------------------------------+------------------------+---------+-------+------+----------+-------------+
-<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>1 row in set, 1 warning (0.02 sec)
-</code></pre></div>
-<p>果然，MySQL没有选择组合索引，而是选择了用itemnumber创建的普通索引index_trans_itemnumber。因为 <strong>如果只用组合索引的一部分，效果没有单字段索引那么好</strong>。</p>
-<h1 id="_9">总结</h1>
-<p>这节课，我们学习了什么是索引、如何创建和使用索引。索引可以非常显著地提高数据查询的速度，数据表里包含的数据越多，效果越显著。我们应该选择经常被用做筛选条件的字段来创建索引，这样才能通过索引缩小实际读取数据表中数据的范围，发挥出索引的优势。如果有多个筛选的字段，而且经常一起出现，也可以用多个字段来创建组合索引。</p>
-<p>如果你要删除索引，就可以用：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>DROP INDEX 索引名 ON 表名;
-</code></pre></div>
-<p>当然， 有的索引不能用这种方法删除，比如主键索引，你就必须通过修改表来删除索引。语法如下：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>ALTER TABLE 表名 DROP PRIMARY KEY；
-</code></pre></div>
-<p>最后，我来跟你说说索引的成本。索引能够提升查询的效率，但是建索引也是有成本的，主要有2个方面，一个存储空间的开销，还有一个是数据操作上的开销。</p>
-<ul>
-<li>存储空间的开销，是指索引需要单独占用存储空间。</li>
-<li>数据操作上的开销，是指一旦数据表有变动，无论是插入一条新数据，还是删除一条旧的数据，甚至是修改数据，如果涉及索引字段，都需要对索引本身进行修改，以确保索引能够指向正确的记录。</li>
-</ul>
-<p>因此，索引也不是越多越好，创建索引有存储开销和操作开销，需要综合考虑。</p>
-<h1 id="_10">思考题</h1>
-<p>假如我有一个单品销售统计表，包括门店编号、销售日期（年月日）、商品编号、销售数量、销售金额、成本、毛利，而用户经常需要对销售情况进行查询，你会对这个表建什么样的索引呢？为什么？</p>
-<p>欢迎在留言区写下你的思考和答案，我们一起交流讨论。如果你觉得今天的内容对你有所帮助，也欢迎你分享给你的朋友或同事，我们下节课见。</p>
 
 
 

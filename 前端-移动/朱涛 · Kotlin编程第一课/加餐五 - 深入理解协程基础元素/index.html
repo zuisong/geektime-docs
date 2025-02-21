@@ -467,6 +467,8 @@
       
         
       
+        
+      
     
     
       
@@ -3655,42 +3657,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#continuation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Continuation到底该怎么用？
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#suspendcoroutineuninterceptedorreturn" class="md-nav__link">
-    <span class="md-ellipsis">
-      suspendCoroutineUninterceptedOrReturn
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      小结
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      思考题
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -4372,6 +4338,8 @@
       
         
       
+        
+      
     
     
       
@@ -4688,6 +4656,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
       
@@ -4742,6 +4716,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -5306,42 +5284,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#continuation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Continuation到底该怎么用？
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#suspendcoroutineuninterceptedorreturn" class="md-nav__link">
-    <span class="md-ellipsis">
-      suspendCoroutineUninterceptedOrReturn
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      小结
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      思考题
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -5369,336 +5311,32 @@
 
 <p>你好，我是朱涛。</p>
 <p>在上一讲当中，我们深入研究了Kotlin挂起函数的原理，实际更多的是在了解协程的“基础层”。而接下来，我们将会开始研究协程启动的原理，探索协程的“中间层”。</p>
-<p>在 <a href="https://time.geekbang.org/column/article/495862">第26讲</a> 里，我曾提到过，Kotlin的协程框架其实就是协程基础元素组合出来的框架。如果我们想要弄懂Kotlin协程，首先就要将它的“基础层”理解透彻。</p>
+<p>在<a href="https://time.geekbang.org/column/article/495862">第26讲</a>里，我曾提到过，Kotlin的协程框架其实就是协程基础元素组合出来的框架。如果我们想要弄懂Kotlin协程，首先就要将它的“基础层”理解透彻。</p>
 <p>所以今天，我还是决定来一次加餐，带你系统深入地认识一下Kotlin协程当中的基础元素。等你对协程的基础层有了深入认识以后，下节课研究协程启动原理就会轻松一些了。</p>
 <h2 id="_1">协程基础元素</h2>
 <p>通过第26讲我们现在已经知道，Kotlin协程的基础元素大致有这些：Continuation、SafeContinuation、CoroutineContext、CombinedContext、CancellationException、intrinsics。</p>
 <p><img alt="" src="https://static001.geekbang.org/resource/image/c6/ae/c65bbb36321c7683ea6d17155d2ee2ae.jpg?wh=2000x1125" /></p>
 <p>其中的CoroutineContext、CancellationException我都已经介绍过了，另外的CombinedContext，其实就是CoroutineContext的一个实现类，而SafeContinuation则是Continuation的实现类。</p>
-<p>所以，在整个协程基础元素当中，我们最需要关心的，其实就是 <strong>Continuation和intrinsics</strong>。</p>
-<p>在intrinsics里，有一个重要的高阶函数suspendCoroutineUninterceptedOrReturn{}，我们后面会讲到它。至于Continuation，虽然我们在前面已经介绍过它是什么，但还没有系统了解过它的用法，所以接下来，我们就先系统了解一下Continuation的两种用法。</p>
-<h2 id="continuation">Continuation到底该怎么用？</h2>
-<p>实际上，在 <a href="https://time.geekbang.org/column/article/488985">第18讲</a> 里，我们就已经学过Continuation的其中一种用法了：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>// 代码段1
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>suspend fun &lt;T : Any&gt; KtCall&lt;T&gt;.await(): T =
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    suspendCancellableCoroutine { continuation -&gt;
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        val call = call(object : Callback&lt;T&gt; {
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>            override fun onSuccess(data: T) {
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>                // 注意这里
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                continuation.resume(data)
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>            }
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>            override fun onFail(throwable: Throwable) {
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                // 注意这里
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                continuation.resumeWithException(throwable)
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>            }
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        })
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        continuation.invokeOnCancellation {
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>            println(&quot;Call cancelled!&quot;)
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>            call.cancel()
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>        }
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    }
-</code></pre></div>
-<p>当我们想要实现挂起函数的时候，可以使用suspendCoroutine{}、suspendCancellableCoroutine{}这两个高阶函数，在它们的Lambda当中，我们可以使用它暴露出来的continuation对象，把程序的执行结果或异常传到外部去。</p>
-<p><strong>这种方式，往往是用于实现挂起函数内部逻辑的。</strong></p>
-<p>比如说，我们可以用suspendCoroutine{}写一个更加简单的例子：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>// 代码段2
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>fun main() = runBlocking {
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    val result = getLengthSuspend(&quot;Kotlin&quot;)
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    println(result)
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>}
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>suspend fun getLengthSuspend(text: String): Int = suspendCoroutine { continuation-&gt;
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    thread {
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>        // 模拟耗时
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        Thread.sleep(1000L)
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>        continuation.resume(text.length)
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    }
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>}
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>/*
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>输出结果：
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>等待1秒
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>6
-<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>*/
-</code></pre></div>
-<p>以上代码里，我们是使用suspendCoroutine{}实现了挂起函数，然后在它的内部，我们使用continuation.resume()的方式，传出了挂起函数的返回值。</p>
-<p>可能你会觉得奇怪，为什么以continuation.resume()这样异步的方式传出结果以后，挂起函数就能接收到结果呢？其实，当我们把main()函数当中的调用逻辑改一下，这一切就会清晰明了。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>// 代码段3
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>// 变化在这里
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>fun main()  {
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    val func = ::getLengthSuspend as (String, Continuation&lt;Int&gt;) -&gt; Any?
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    func(&quot;Kotlin&quot;, object: Continuation&lt;Int&gt;{
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        override val context: CoroutineContext
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>            get() = EmptyCoroutineContext
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        override fun resumeWith(result: Result&lt;Int&gt;) {
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>            println(result.getOrNull())
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        }
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    })
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    // 防止程序提前结束
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    Thread.sleep(2000L)
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>}
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>suspend fun getLengthSuspend(text: String): Int = suspendCoroutine { continuation-&gt;
-<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    thread {
-<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>        // 模拟耗时
-<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>        Thread.sleep(1000L)
-<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>        continuation.resume(text.length)
-<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    }
-<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>}
-<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>/*
-<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>输出结果：
-<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>等待1秒
-<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>6
-<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>*/
-</code></pre></div>
-<p>可以看到，在这段代码里，我们借助上节课的知识，把getLengthSuspend()这个函数强转成了带有Continuation的函数类型，然后通过匿名内部类的方式，创建了一个Continuation对象传了进去。最终，程序的执行结果和代码段2是一致的。</p>
-<p>你还记得我在 <a href="https://time.geekbang.org/column/article/487085">第15讲</a> 提到过的观点吗？</p>
-<blockquote>
-<p>挂起函数的本质，就是Callback!</p>
-</blockquote>
-<p>那么现在，就让我们把Continuation改为Callback，看看代码会变成什么样子。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>// 代码段4
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>// 变化在这里
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>fun main()  {
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    func(&quot;Kotlin&quot;, object: Callback&lt;Int&gt;{
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        override fun resume(result: Int) {
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>            println(result)
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        }
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    })
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    // 防止程序提前结束
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    Thread.sleep(2000L)
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>}
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>
-<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>fun func(text: String, callback: Callback&lt;Int&gt;) {
-<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    thread {
-<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>        // 模拟耗时
-<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>        Thread.sleep(1000L)
-<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>        callback.resume(text.length)
-<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    }
-<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>}
-<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>
-<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>interface Callback&lt;T&gt; {
-<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>    fun resume(value: T)
-<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>}
-<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>
-<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>/*
-<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>输出结果：
-<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>等待1秒
-<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>6
-<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>*/
-</code></pre></div>
-<p>可见，当我们把Continuation改成Callback以后，整个代码就变成了我们曾经最熟悉的异步回调代码了。调用方，可以使用匿名内部类创建Callback用于接收异步结果；异步函数内部，使用callback.resume()将结果传出去。</p>
-<p>综上所述，Kotlin协程当中的Continuation，作用其实就相当于Callback，它既可以用于 <strong>实现挂起函数</strong>，往挂起函数的外部传递结果；也可以用于 <strong>调用挂起函数</strong>，我们可以创建Continuation的匿名内部类，来接收挂起函数传递出来的结果。</p>
-<p>所以在这里，我们也就可以轻松回答上节课的思考题了：</p>
-<blockquote>
-<p>我们都知道挂起函数是Kotlin协程里才有的概念，请问，Java代码中可以调用Kotlin的挂起函数吗？比如，下面这个函数，我们可以在Java当中调用吗？</p>
-</blockquote>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>// 代码段5
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>// 需要在Java中调用的Kotlin挂起函数
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>object SuspendFromJavaExample {
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    // 在Java当中如何调用这个方法？
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    suspend fun getUserInfo(id: Long):String {
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        delay(1000L)
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        return &quot;Kotlin&quot;
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    }
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>}
-</code></pre></div>
-<p>答案当然是肯定的，Java当中调用挂起函数的方式，其实跟前面的代码段3是一样的：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>// 代码段6
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>public static void main(String[] args) throws InterruptedException {
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    SuspendFromJavaExample.INSTANCE.getUserInfo(100L, new Continuation&lt;String&gt;() {
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        @NotNull
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        @Override
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        public CoroutineContext getContext() {
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>            return EmptyCoroutineContext.INSTANCE;
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        }
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        @Override
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>        public void resumeWith(@NotNull Object o) {
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>            System.out.println(o+&quot;&quot;);
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>        }
-<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    });
-<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>
-<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    // 防止程序提前结束
-<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    Thread.sleep(2000L);
-<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>}
-<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>
-<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>/*
-<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>输出结果
-<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>Kotlin
-<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>*/
-</code></pre></div>
-<p>在上面的代码中，我们只是把代码段3的思想应用到了Java代码中而已，唯一需要 <strong>注意</strong> 的，就是：在Java当中访问Kotlin的object单例，是需要加上INSTANCE后缀的。这一点，我们在 <a href="https://time.geekbang.org/column/article/475058">第5讲</a> 当中就已经了解过。</p>
-<p>看到这里，可以发现，我们在实现挂起函数逻辑的时候，总是离不开 <strong>suspendCoroutine{}、suspendCancellableCoroutine{}</strong>。其实，这两个高阶函数也是Kotlin协程的基础元素，让我们来进一步认识这两个高阶函数。</p>
-<h2 id="suspendcoroutineuninterceptedorreturn">suspendCoroutineUninterceptedOrReturn</h2>
-<p>实际上，suspendCoroutine{}、suspendCancellableCoroutine{}这两个高阶函数的实现原理是类似的，所以这里我们就主要解释下suspendCoroutine{}。</p>
-<p>如果你去看suspendCoroutine{}的源代码，会发现它其实也在 <a href="https://github.com/JetBrains/kotlin/blob/master/libraries/stdlib/src/kotlin/coroutines/Continuation.kt">Continuation.kt</a> 这个文件当中。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>// 代码段7
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>public interface Continuation&lt;in T&gt; {
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    public val context: CoroutineContext
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    public fun resumeWith(result: Result&lt;T&gt;)
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>}
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>public suspend inline fun &lt;T&gt; suspendCoroutine(crossinline block: (Continuation&lt;T&gt;) -&gt; Unit): T {
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    // 注意这里
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    return suspendCoroutineUninterceptedOrReturn { c: Continuation&lt;T&gt; -&gt;
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        val safe = SafeContinuation(c.intercepted())
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>        block(safe)
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>        safe.getOrThrow()
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    }
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>}
-</code></pre></div>
-<p>在上面的代码中，我们第一眼就能看到一个名字特别长的高阶函数suspendCoroutineUninterceptedOrReturn{}。它其实就是实现suspendCoroutine{}的关键。除了它之外，其他部分的代码都很好理解：</p>
+<div><strong>精选留言（9）</strong></div>
 <ul>
-<li>SafeContinuation(c.intercepted())这行代码的作用，就是把原本的Continuation包裹一遍。</li>
-<li>block(safe)这行代码，其实就是在调用Lambda当中的逻辑。</li>
-<li>safe.getOrThrow()，就是在取出block(safe)的运行结果，我们在上节课也提到过，Continuation当中是可以存储result的。这个Result可能是正确的结果，也可能是异常。</li>
+<li><img src="https://static001.geekbang.org/account/avatar/00/11/33/8a/f7a3d5e6.jpg" width="30px"><span>Allen</span> 👍（15） 💬（1）<div>关于思考题的思考：
+
+suspendCoroutine{} 或者 suspendCancellableCoroutine{} 在使用的时候，只需要知道 Continuation 接口，而接口中只有一个函数 resumeWith，相对让人比较容易和 Callback 回调关联起来，所以，使用这两个函数的成本较小，不需要对 coroutine 协程的原理有太多的理解。
+
+而 suspendCoroutineUninterceptedOrReturn{} 函数除了需要关心 Continuation 接口外，还需要关心对应的返回值，而这个返回值中有几种状态，每种状态代表什么意思，其实在对 coroutine 原理不太清楚的情况下，是完全不知道怎么调用的。
+
+总的来说，suspendCoroutineUninterceptedOrReturn{} 使用的学习成本要高很多。</div>2022-03-24</li><br/><li><img src="" width="30px"><span>Paul Shan</span> 👍（4） 💬（1）<div>suspendCoroutine 用了SafeContinuation，里面有原子读和一些状态判断，应该是处理多线程和重复resume的问题。</div>2022-03-25</li><br/><li><img src="" width="30px"><span>辉哥</span> 👍（2） 💬（1）<div>suspendCoroutine{}能保证suspendCoroutine的挂起点（也就是传入lambda的continuation参数）只会被resume一次.因为实际上传入的continuation为SafeContinuation,多次调用会抛异常,可以规范用户的使用</div>2022-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c6/78/9b1e4b15.jpg" width="30px"><span>ZircoN</span> 👍（1） 💬（1）<div>suspendCoroutineUninterceptedOrReturn 这个方法在IDE里为啥没法引用到？</div>2022-04-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqQVYE1EfqibdyNsnjFibHW4jee0Q3qMMeRhqqVQUn5Ix9fFl3Zfzf0xpdrGypxHUmBCyiczfyEaPoWA/132" width="30px"><span>ACE_Killer09</span> 👍（1） 💬（1）<div>对于 代码段 10 和 11 suspendCoroutineUninterceptedOrReturn 必须要考虑返回值，如果return的不是COROUTINE_SUSPENDED，就不是一个真正的挂起函数。而如果是使用 suspendCoroutine suspendCancellableCoroutine，就不用考虑返回值，他们一定是挂起的，只要最后通过Continuation 返回值即可。
+
+另外  Continuation中 resume resumeWith resumeWithException 的原理都是 resumewith 这三个具体应用场景除了传入值区别 还有 其他区别吗？</div>2022-04-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/4a/5a/14eb7973.jpg" width="30px"><span>杨小妞</span> 👍（1） 💬（1）<div>Continuation 的resumeWith函数只有在，回调函数转挂起函数或者java调用挂起函数的时候才发挥作用吗？
+在挂起函数执行挂起函数的状态机里面，好像没看到resumeWith的影子</div>2022-03-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/36/61/54/31a8d7e6.jpg" width="30px"><span>anmi</span> 👍（0） 💬（4）<div>理解课程的关键：
+fun &lt;T&gt; Continuation&lt;T&gt;.resume(value: T) {
+    this.resumeWith(Result.success(value))
+}
+
+fun &lt;T&gt; Continuation&lt;T&gt;.resumeWithException(exception: Throwable) {
+    this.resumeWith(Result.failure(exception))
+}</div>2024-04-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/36/61/54/31a8d7e6.jpg" width="30px"><span>anmi</span> 👍（0） 💬（0）<div>前面看了那么多次没有感觉，现在反应过来了：函数也能类型强转！！！！！</div>2023-12-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2c/01/0d/94f46a96.jpg" width="30px"><span>Emmm</span> 👍（0） 💬（0）<div>suspendCoroutine可以理解为会阻塞外层协程吧，这样就可以实现同步得到耗时任务回调出来的结果，然后进行后续的操作，这样的话看外层协程作用域的代码就是顺序同步执行</div>2022-07-06</li><br/>
 </ul>
-<p>下面我们重点来看看suspendCoroutineUninterceptedOrReturn{}这个高阶函数的作用。如果你去看它的源代码，那你看到的大概率会是这样的：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>// 代码段8
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>public suspend inline fun &lt;T&gt; suspendCoroutineUninterceptedOrReturn(crossinline block: (Continuation&lt;T&gt;) -&gt; Any?): T {
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    throw NotImplementedError(&quot;Implementation of suspendCoroutineUninterceptedOrReturn is intrinsic&quot;)
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>}
-</code></pre></div>
-<p>大部分人看到这样的代码可能都会觉得奇怪： <strong>为什么这个高阶函数的源代码会是抛出异常呢？</strong></p>
-<p>在前面的加餐二“表达式思维”里，我其实有做过说明，如果你还有印象的话，应该就能理解这样的代码也是符合函数返回值的规范的。不过，如果它总是抛异常的话，我们用suspendCoroutine{}写代码的时候，为什么不会产生崩溃呢？这个异常信息里的提示内容又是什么意思？</p>
-<blockquote>
-<p>“Implementation of suspendCoroutineUninterceptedOrReturn is intrinsic.”</p>
-</blockquote>
-<p>实际上，理解这句话的关键在于“intrinsic”这个单词，它有“固有”“本质”的意思，不过在上面这句话的语境下，这里的intrinsic其实是指编译器领域的一个术语，我们可以把它理解为“内建”。因此，上面我们看到的异常提示信息的意思就是：suspendCoroutineUninterceptedOrReturn是一个编译器内建函数， <strong>它是由Kotlin编译器来实现的</strong>。</p>
-<p>为了不偏离这节课的主题，这里我们就不去深究Kotlin编译器当中的逻辑了，感兴趣的话你可以自行研究这个 <a href="https://github.com/JetBrains/kotlin/blob/1.6.0/compiler/backend/src/org/jetbrains/kotlin/codegen/coroutines/coroutineCodegenUtil.kt">链接</a>。接下来，我们可以换一个角度，写一些Demo代码，通过运行调试来看看这个内建函数的功能和作用。</p>
-<p>让我们先来看看suspendCoroutineUninterceptedOrReturn这个高阶函数的参数，它会接收一个Lambda，类型是 <code>(Continuation&lt;T&gt;) -&gt; Any?</code>，经过上节课的学习，你是否觉得这个类型有些眼熟呢？这里的“Any?”类型，其实就能代表当前这个挂起函数是否真正挂起。</p>
-<p>因此，我们可以写出下面这样的代码：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>// 代码段9
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>fun main() = runBlocking {
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    val result = testNoSuspendCoroutine()
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    println(result)
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>}
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>private suspend fun testNoSuspendCoroutine() = suspendCoroutineUninterceptedOrReturn&lt;String&gt; {
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        continuation -&gt;
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    return@suspendCoroutineUninterceptedOrReturn &quot;Hello!&quot;
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>}
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>/*
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>输出结果：
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>Hello!
-<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>*/
-</code></pre></div>
-<p>在这段代码中，我们直接使用suspendCoroutineUninterceptedOrReturn实现了挂起函数，并且，在它的Lambda当中，我们并没有调用continuation.resume()，而是直接返回了结果“Hello!”。根据程序的运行结果，我们可以看到，在挂起函数的外部确实也可以接收到这个结果。</p>
-<p>那么这时候，如果我们把上面的代码反编译一下，会看到类似这样的代码：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>    // 代码段10
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    private static final Object testNoSuspendCoroutine(Continuation $completion) {
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>      int var2 = false;
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>      if (&quot;Hello!&quot; == IntrinsicsKt.getCOROUTINE_SUSPENDED()) {
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>         DebugProbesKt.probeCoroutineSuspended($completion);
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>      }
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>      return &quot;Hello!&quot;;
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    }
-</code></pre></div>
-<p>所以，从反编译的结果来看，testNoSuspendCoroutine()这个函数其实就是一个 <strong>伪挂起函数</strong>，它的内部并不会真正挂起。这样，当我们从外部调用这个函数的时候，这个函数会立即返回结果“Hello!”。</p>
-<p>而这时候，我们可以再写一个真正的挂起函数：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>// 代码段11
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>fun main() = runBlocking {
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    val result = testSuspendCoroutine()
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    println(result)
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>}
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>private suspend fun testSuspendCoroutine() = suspendCoroutineUninterceptedOrReturn&lt;String&gt; {
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    continuation -&gt;
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    thread {
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>        Thread.sleep(1000L)
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>        continuation.resume(&quot;Hello!&quot;)
-<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>
-<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    }
-<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>    return@suspendCoroutineUninterceptedOrReturn kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
-<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>}
-<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>
-<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>/*
-<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>输出结果：
-<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>等待1秒
-<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>Hello!
-<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>*/
-</code></pre></div>
-<p>这一次，我们并没有使用return返回结果，而是使用了continuation.resume()。通过程序运行结果，我们可以看到挂起函数的外部也能接收到这个结果。然后我们也再来反编译一下，看看它对应的Java代码：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>// 代码段12
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>private static final Object testSuspendCoroutine(Continuation $completion) {
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    int var2 = false;
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    // 1
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    ThreadsKt.thread$default(false, false, (ClassLoader)null, (String)null, 0, (Function0)(new CoroutineBasicElementsKt$testSuspendCoroutine$2$1($completion)), 31, (Object)null);
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    // 2
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    Object var10000 = IntrinsicsKt.getCOROUTINE_SUSPENDED();
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    if (var10000 == IntrinsicsKt.getCOROUTINE_SUSPENDED()) {
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>     DebugProbesKt.probeCoroutineSuspended($completion);
-<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    }
-<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>    // 3
-<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>    return var10000;
-<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>}
-<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>
-<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>final class CoroutineBasicElementsKt$testSuspendCoroutine$2$1 extends Lambda implements Function0 {
-<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>
-<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>   final Continuation $it;
-<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>
-<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>   public Object invoke() {
-<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>      this.invoke();
-<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>      return Unit.INSTANCE;
-<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>   }
-<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>
-<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>   public final void invoke() {
-<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>      // 4
-<a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>      Thread.sleep(1000L);
-<a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>      Continuation var1 = this.$it;
-<a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>      String var2 = &quot;Hello!&quot;;
-<a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a>      Companion var3 = Result.Companion;
-<a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>      var1.resumeWith(Result.constructor-impl(var2));
-<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a>   }
-<a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a>
-<a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a>   CoroutineBasicElementsKt$testSuspendCoroutine$2$1(Continuation var1) {
-<a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a>      super(0);
-<a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a>      this.$it = var1;
-<a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a>   }
-<a id="__codelineno-11-38" name="__codelineno-11-38" href="#__codelineno-11-38"></a>}
-</code></pre></div>
-<p>以上代码中一共有4个注释，我们一个个看：</p>
-<ul>
-<li>注释1、4，创建了一个新的线程，执行了thread{}当中的代码。</li>
-<li>注释2，将var10000赋值为COROUTINE_SUSPENDED这个挂起标志位。</li>
-<li>注释3，返回挂起标志位，代表testSuspendCoroutine()这个函数会真正挂起。</li>
-</ul>
-<p>所以，这两个例子其实也从侧面证明了我们在上节课当中的结论：</p>
-<blockquote>
-<p>由于 suspend 修饰的函数，既可能返回 CoroutineSingletons.COROUTINE_SUSPENDED，也可能返回实际结果，甚至可能返回 null，为了适配所有的可能性，CPS转换后的函数返回值类型就只能是Any?了。</p>
-</blockquote>
-<p>那么现在，我们也就可以总结出 <strong>suspendCoroutineUninterceptedOrReturn{}这个高阶函数的作用</strong> 了：它可以将挂起函数当中的Continuation以参数的形式暴露出来，在它的Lambda当中，我们可以直接返回结果，这时候它就是一个“伪挂起函数”；或者，我们也可以返回COROUTINE_SUSPENDED这个挂起标志位，然后使用continuation.resume()传递结果。</p>
-<p>相应的，suspendCoroutine{}、suspendCancellableCoroutine{}这两个高阶函数，只是对它的一种封装而已。</p>
-<h2 id="_2">小结</h2>
-<p>这节课，我们学习了Kotlin协程当中与挂起函数密切相关的两个基础元素，Continuation、suspendCoroutine{}。</p>
-<p>Continuation是整个协程当中最重要的基础元素，我们可以将其看做是一个Callback。它主要有两个使用场景，一种是在实现挂起函数的时候，用于传递挂起函数的执行结果；另一种是在调用挂起函数的时候，以匿名内部类的方式，用于接收挂起函数的执行结果。借助这种思路，我们也完全可以在Java当中调用挂起函数。</p>
-<p>当我们想要实现挂起函数的时候，我们往往需要使用suspendCoroutine{}、suspendCancellableCoroutine{}这两个高阶函数。它们两个都是对suspendCoroutineUninterceptedOrReturn{}的封装，这个高阶函数的作用其实就是暴露挂起函数的Continuation对象。在它的Lambda当中，我们既可以直接返回执行结果，也可以返回COROUTINE_SUSPENDED这个挂起标志位，然后使用continuation.resume()传递结果。</p>
-<h2 id="_3">思考题</h2>
-<p>你觉得，suspendCoroutine{}、suspendCancellableCoroutine{}这两个高阶函数，它对比suspendCoroutineUninterceptedOrReturn{}的优势在哪里？Kotlin官方为什么要进行这样的封装呢？</p>
-<p>欢迎在留言区分享你的答案，也欢迎你把今天的内容分享给更多的朋友。</p>
 
 
 

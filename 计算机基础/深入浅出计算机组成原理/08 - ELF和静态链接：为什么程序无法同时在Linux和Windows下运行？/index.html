@@ -467,6 +467,8 @@
       
         
       
+        
+      
     
     
       
@@ -681,6 +683,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -3017,42 +3023,6 @@
   <a href="#_1" class="md-nav__link">
     <span class="md-ellipsis">
       编译、链接和装载：拆解程序执行
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#elf" class="md-nav__link">
-    <span class="md-ellipsis">
-      ELF格式和链接：理解链接过程
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      总结延伸
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      推荐阅读
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      课后思考
     </span>
   </a>
   
@@ -5810,42 +5780,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#elf" class="md-nav__link">
-    <span class="md-ellipsis">
-      ELF格式和链接：理解链接过程
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      总结延伸
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      推荐阅读
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      课后思考
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -5875,160 +5809,120 @@
 <p>我记得以前，我自己在了解完这些知识之后，产生了一个非常大的疑问。那就是，既然我们的程序最终都被变成了一条条机器码去执行，那为什么同一个程序，在同一台计算机上，在Linux下可以运行，而在Windows下却不行呢？反过来，Windows上的程序在Linux上也是一样不能执行的。可是我们的CPU并没有换掉，它应该可以识别同样的指令呀？</p>
 <p>如果你和我有同样的疑问，那这一节，我们就一起来解开。</p>
 <h2 id="_1">编译、链接和装载：拆解程序执行</h2>
-<p><a href="https://time.geekbang.org/column/article/93359">第5节</a> 我们说过，写好的C语言代码，可以通过编译器编译成汇编代码，然后汇编代码再通过汇编器变成CPU可以理解的机器码，于是CPU就可以执行这些机器码了。你现在对这个过程应该不陌生了，但是这个描述把过程大大简化了。下面，我们一起具体来看，C语言程序是如何变成一个可执行程序的。</p>
+<p><a href="https://time.geekbang.org/column/article/93359">第5节</a>我们说过，写好的C语言代码，可以通过编译器编译成汇编代码，然后汇编代码再通过汇编器变成CPU可以理解的机器码，于是CPU就可以执行这些机器码了。你现在对这个过程应该不陌生了，但是这个描述把过程大大简化了。下面，我们一起具体来看，C语言程序是如何变成一个可执行程序的。</p>
 <p>不知道你注意到没有，过去几节，我们通过gcc生成的文件和objdump获取到的汇编指令都有些小小的问题。我们先把前面的add函数示例，拆分成两个文件add_lib.c和link_example.c。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>// add_lib.c
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>int add(int a, int b)
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>{
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    return a+b;
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>}
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>// link_example.c
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>#include &lt;stdio.h&gt;
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>int main()
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>{
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    int a = 10;
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    int b = 5;
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    int c = add(a, b);
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    printf(&quot;c = %d\n&quot;, c);
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>}
-</code></pre></div>
-<p>我们通过gcc来编译这两个文件，然后通过objdump命令看看它们的汇编代码。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ gcc -g -c add_lib.c link_example.c
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>$ objdump -d -M intel -S add_lib.o
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>$ objdump -d -M intel -S link_example.o
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>add_lib.o:     file format elf64-x86-64
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>Disassembly of section .text:
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>0000000000000000 &lt;add&gt;:
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>   0:   55                      push   rbp
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>   1:   48 89 e5                mov    rbp,rsp
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>   4:   89 7d fc                mov    DWORD PTR [rbp-0x4],edi
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>   7:   89 75 f8                mov    DWORD PTR [rbp-0x8],esi
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>   a:   8b 55 fc                mov    edx,DWORD PTR [rbp-0x4]
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>   d:   8b 45 f8                mov    eax,DWORD PTR [rbp-0x8]
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>  10:   01 d0                   add    eax,edx
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>  12:   5d                      pop    rbp
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>  13:   c3                      ret
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>link_example.o:     file format elf64-x86-64
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>Disassembly of section .text:
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>0000000000000000 &lt;main&gt;:
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>   0:   55                      push   rbp
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>   1:   48 89 e5                mov    rbp,rsp
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>   4:   48 83 ec 10             sub    rsp,0x10
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>   8:   c7 45 fc 0a 00 00 00    mov    DWORD PTR [rbp-0x4],0xa
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>   f:   c7 45 f8 05 00 00 00    mov    DWORD PTR [rbp-0x8],0x5
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>  16:   8b 55 f8                mov    edx,DWORD PTR [rbp-0x8]
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>  19:   8b 45 fc                mov    eax,DWORD PTR [rbp-0x4]
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  1c:   89 d6                   mov    esi,edx
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>  1e:   89 c7                   mov    edi,eax
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>  20:   b8 00 00 00 00          mov    eax,0x0
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>  25:   e8 00 00 00 00          call   2a &lt;main+0x2a&gt;
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>  2a:   89 45 f4                mov    DWORD PTR [rbp-0xc],eax
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>  2d:   8b 45 f4                mov    eax,DWORD PTR [rbp-0xc]
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>  30:   89 c6                   mov    esi,eax
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>  32:   48 8d 3d 00 00 00 00    lea    rdi,[rip+0x0]        # 39 &lt;main+0x39&gt;
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>  39:   b8 00 00 00 00          mov    eax,0x0
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>  3e:   e8 00 00 00 00          call   43 &lt;main+0x43&gt;
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>  43:   b8 00 00 00 00          mov    eax,0x0
-<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>  48:   c9                      leave
-<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>  49:   c3                      ret
-</code></pre></div>
-<p>既然代码已经被我们“编译”成了指令，我们不妨尝试运行一下 ./link_example.o。</p>
-<p>不幸的是，文件没有执行权限，我们遇到一个Permission denied错误。即使通过chmod命令赋予link_example.o文件可执行的权限，运行./link_example.o仍然只会得到一条cannot execute binary file: Exec format error的错误。</p>
-<p>我们再仔细看一下objdump出来的两个文件的代码，会发现两个程序的地址都是从0开始的。如果地址是一样的，程序如果需要通过call指令调用函数的话，它怎么知道应该跳转到哪一个文件里呢？</p>
-<p>这么说吧，无论是这里的运行报错，还是objdump出来的汇编代码里面的重复地址，都是因为 add_lib.o 以及 link_example.o并不是一个 <strong>可执行文件</strong>（Executable Program），而是 <strong>目标文件</strong>（Object File）。只有通过链接器（Linker）把多个目标文件以及调用的各种函数库链接起来，我们才能得到一个可执行文件。</p>
-<p>我们通过gcc的-o参数，可以生成对应的可执行文件，对应执行之后，就可以得到这个简单的加法调用函数的结果。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$ gcc -o link-example add_lib.o link_example.o
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>$ ./link_example
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>c = 15
-</code></pre></div>
-<p>实际上，“ <strong>C语言代码-汇编代码-机器码</strong>” 这个过程，在我们的计算机上进行的时候是由两部分组成的。</p>
-<p>第一个部分由编译（Compile）、汇编（Assemble）以及链接（Link）三个阶段组成。在这三个阶段完成之后，我们就生成了一个可执行文件。</p>
-<p>第二部分，我们通过装载器（Loader）把可执行文件装载（Load）到内存中。CPU从内存中读取指令和数据，来开始真正执行程序。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/99/a7/997341ed0fa9018561c7120c19cfa2a7.jpg?wh=1767*1535" /></p>
-<h2 id="elf">ELF格式和链接：理解链接过程</h2>
-<p>程序最终是通过装载器变成指令和数据的，所以其实我们生成的可执行代码也并不仅仅是一条条的指令。我们还是通过objdump指令，把可执行文件的内容拿出来看看。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>link_example:     file format elf64-x86-64
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>Disassembly of section .init:
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>...
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>Disassembly of section .plt:
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>...
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>Disassembly of section .plt.got:
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>...
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>Disassembly of section .text:
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>...
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a> 6b0:   55                      push   rbp
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a> 6b1:   48 89 e5                mov    rbp,rsp
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a> 6b4:   89 7d fc                mov    DWORD PTR [rbp-0x4],edi
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a> 6b7:   89 75 f8                mov    DWORD PTR [rbp-0x8],esi
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a> 6ba:   8b 55 fc                mov    edx,DWORD PTR [rbp-0x4]
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a> 6bd:   8b 45 f8                mov    eax,DWORD PTR [rbp-0x8]
-<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a> 6c0:   01 d0                   add    eax,edx
-<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a> 6c2:   5d                      pop    rbp
-<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a> 6c3:   c3                      ret
-<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>00000000000006c4 &lt;main&gt;:
-<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a> 6c4:   55                      push   rbp
-<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a> 6c5:   48 89 e5                mov    rbp,rsp
-<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a> 6c8:   48 83 ec 10             sub    rsp,0x10
-<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a> 6cc:   c7 45 fc 0a 00 00 00    mov    DWORD PTR [rbp-0x4],0xa
-<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a> 6d3:   c7 45 f8 05 00 00 00    mov    DWORD PTR [rbp-0x8],0x5
-<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a> 6da:   8b 55 f8                mov    edx,DWORD PTR [rbp-0x8]
-<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a> 6dd:   8b 45 fc                mov    eax,DWORD PTR [rbp-0x4]
-<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a> 6e0:   89 d6                   mov    esi,edx
-<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a> 6e2:   89 c7                   mov    edi,eax
-<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a> 6e4:   b8 00 00 00 00          mov    eax,0x0
-<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a> 6e9:   e8 c2 ff ff ff          call   6b0 &lt;add&gt;
-<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a> 6ee:   89 45 f4                mov    DWORD PTR [rbp-0xc],eax
-<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a> 6f1:   8b 45 f4                mov    eax,DWORD PTR [rbp-0xc]
-<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a> 6f4:   89 c6                   mov    esi,eax
-<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a> 6f6:   48 8d 3d 97 00 00 00    lea    rdi,[rip+0x97]        # 794 &lt;_IO_stdin_used+0x4&gt;
-<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a> 6fd:   b8 00 00 00 00          mov    eax,0x0
-<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a> 702:   e8 59 fe ff ff          call   560 &lt;printf@plt&gt;
-<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a> 707:   b8 00 00 00 00          mov    eax,0x0
-<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a> 70c:   c9                      leave
-<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a> 70d:   c3                      ret
-<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a> 70e:   66 90                   xchg   ax,ax
-<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a>...
-<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a>Disassembly of section .fini:
-<a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a>...
-</code></pre></div>
-<p>你会发现，可执行代码dump出来内容，和之前的目标代码长得差不多，但是长了很多。因为在Linux下，可执行文件和目标文件所使用的都是一种叫 <strong>ELF</strong>（Execuatable and Linkable File Format）的文件格式，中文名字叫 <strong>可执行与可链接文件格式</strong>，这里面不仅存放了编译成的汇编指令，还保留了很多别的数据。</p>
-<p>比如我们过去所有objdump出来的代码里，你都可以看到对应的函数名称，像add、main等等，乃至你自己定义的全局可以访问的变量名称，都存放在这个ELF格式文件里。这些名字和它们对应的地址，在ELF文件里面，存储在一个叫作 <strong>符号表</strong>（Symbols Table）的位置里。符号表相当于一个地址簿，把名字和地址关联了起来。</p>
-<p>我们先只关注和我们的add以及main函数相关的部分。你会发现，这里面，main函数里调用add的跳转地址，不再是下一条指令的地址了，而是add函数的入口地址了，这就是EFL格式和链接器的功劳。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/27/b3/276a740d0eabf5f4be905fe7326d9fb3.jpg?wh=2142*1116" /></p>
-<p>ELF文件格式把各种信息，分成一个一个的Section保存起来。ELF有一个基本的文件头（File Header），用来表示这个文件的基本属性，比如是否是可执行文件，对应的CPU、操作系统等等。除了这些基本属性之外，大部分程序还有这么一些Section：</p>
-<ol>
-<li>
-<p>首先是.text Section，也叫作 <strong>代码段</strong> 或者指令段（Code Section），用来保存程序的代码和指令；</p>
-</li>
-<li>
-<p>接着是.data Section，也叫作 <strong>数据段</strong>（Data Section），用来保存程序里面设置好的初始化数据信息；</p>
-</li>
-<li>
-<p>然后就是.rel.text Secion，叫作 <strong>重定位表</strong>（Relocation Table）。重定位表里，保留的是当前的文件里面，哪些跳转地址其实是我们不知道的。比如上面的 link_example.o 里面，我们在main函数里面调用了 add 和 printf 这两个函数，但是在链接发生之前，我们并不知道该跳转到哪里，这些信息就会存储在重定位表里；</p>
-</li>
-<li>
-<p>最后是.symtab Section，叫作 <strong>符号表</strong>（Symbol Table）。符号表保留了我们所说的当前文件里面定义的函数名称和对应地址的地址簿。</p>
-</li>
-</ol>
-<p>链接器会扫描所有输入的目标文件，然后把所有符号表里的信息收集起来，构成一个全局的符号表。然后再根据重定位表，把所有不确定要跳转地址的代码，根据符号表里面存储的地址，进行一次修正。最后，把所有的目标文件的对应段进行一次合并，变成了最终的可执行代码。这也是为什么，可执行文件里面的函数调用的地址都是正确的。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/f6/12/f62da9b29aa53218f8907851df27f912.jpeg?wh=3106*2026" /></p>
-<p>在链接器把程序变成可执行文件之后，要装载器去执行程序就容易多了。装载器不再需要考虑地址跳转的问题，只需要解析 ELF 文件，把对应的指令和数据，加载到内存里面供CPU执行就可以了。</p>
-<h2 id="_2">总结延伸</h2>
-<p>讲到这里，相信你已经猜到，为什么同样一个程序，在Linux下可以执行而在Windows下不能执行了。其中一个非常重要的原因就是，两个操作系统下可执行文件的格式不一样。</p>
-<p>我们今天讲的是Linux下的ELF文件格式，而Windows的可执行文件格式是一种叫作 <strong>PE</strong>（Portable Executable Format）的文件格式。Linux下的装载器只能解析ELF格式而不能解析PE格式。</p>
-<p>如果我们有一个可以能够解析PE格式的装载器，我们就有可能在Linux下运行Windows程序了。这样的程序真的存在吗？没错，Linux下著名的开源项目Wine，就是通过兼容PE格式的装载器，使得我们能直接在Linux下运行Windows程序的。而现在微软的Windows里面也提供了WSL，也就是Windows Subsystem for Linux，可以解析和加载ELF格式的文件。</p>
-<p>我们去写可以用的程序，也不仅仅是把所有代码放在一个文件里来编译执行，而是可以拆分成不同的函数库，最后通过一个静态链接的机制，使得不同的文件之间既有分工，又能通过静态链接来“合作”，变成一个可执行的程序。</p>
-<p>对于ELF格式的文件，为了能够实现这样一个静态链接的机制，里面不只是简单罗列了程序所需要执行的指令，还会包括链接所需要的重定位表和符号表。</p>
-<h2 id="_3">推荐阅读</h2>
-<p>想要更深入了解程序的链接过程和ELF格式，我推荐你阅读《程序员的自我修养——链接、装载和库》的1～4章。这是一本难得的讲解程序的链接、装载和运行的好书。</p>
-<h2 id="_4">课后思考</h2>
-<p>你可以通过readelf读取出今天演示程序的符号表，看看符号表里都有哪些信息；然后通过objdump读取出今天演示程序的重定位表，看看里面又有哪些信息。</p>
-<p>欢迎留言和我分享你的思考和疑惑，你也可以把今天的内容分享给你的朋友，和他一起学习和进步。</p>
+<div><strong>精选留言（30）</strong></div>
+<ul>
+<li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（68） 💬（2）<div>老师，我曾经在linux上使用过wine，有好多window软件不能很好兼容的运行，这是为什么呢？是不是除了执行文件格式之外，还有其他的因素影响软件的运行呢？</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/55/f2/ba68d931.jpg" width="30px"><span>有米</span> 👍（58） 💬（1）<div>Java的跨平台运行是如何做到的呢？跟本节内容有关系吗？</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f6/00/2a248fd8.jpg" width="30px"><span>二星球</span> 👍（31） 💬（4）<div>老师好，就是没有操作系统，直接在硬件上运行的可执行程序，其格式应该不是pe或elf，应该是纯的机器指令吧，pe或elf格式的可执行程序是跟操作系统绑定的，经过翻译后成为纯机器指令，才能被执行，不知道这样理解对不。</div>2019-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f6/00/2a248fd8.jpg" width="30px"><span>二星球</span> 👍（28） 💬（2）<div>老师好，我有个问题，就是我可以用编程语言写一个不依赖操作系统的可执行程序，这个可执行程序不是pe格式，也不是elf的，那为什能执行呢，是不是因为这个可执行程序全是纯的cpu指令，没有其他要解析的东西？</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a4/9c/b32ed9e9.jpg" width="30px"><span>陆离</span> 👍（24） 💬（1）<div>高级语言都是先编译成汇编语言，再汇编成机器码执行的吗？</div>2019-05-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a6/43/cb6ab349.jpg" width="30px"><span>Spring</span> 👍（22） 💬（1）<div>补充一下:
+ELF其实是一种文件格式的标准，ELF文件有三类:可重定向文件、可执行文件、共享目标文件。代码经过预处理、编译、汇编后形成可重定向文件，可重定向文件经过链接后生成可执行文件。
+另外我想请教一下，机器码是在哪一步形成的？</div>2019-05-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/3XbCueYYVWTiclv8T5tFpwiblOxLphvSZxL4ujMdqVMibZnOiaFK2C5nKRGv407iaAsrI0CDICYVQJtiaITzkjfjbvrQ/132" width="30px"><span>有铭</span> 👍（17） 💬（1）<div>所以理论上，只要不涉及到windows和linux的系统api调用，理论上只要搞定了可执行文件格式这个问题，那么C程序就是二进制可移植的？</div>2019-05-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Cib5umA0W17N9pichI08pnrXAExdbyh7AVzH4nEhD6KN3FXuELk4LJJuqUPPD7xmIy9nq5Hjbgnzic7sVZG5BKiaUQ/132" width="30px"><span>被过去推开</span> 👍（15） 💬（2）<div>Java的类加载是由jvm完成，大致过程为装载-链接-初始化-运行，所以是jvm帮我们屏蔽了操作系统之间的差异。为了加快程序启动速度，一些类会延迟加载，所以jvm中有很多动态链接。</div>2019-08-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/50/4a/04fef27f.jpg" width="30px"><span>kdb_reboot</span> 👍（9） 💬（1）<div>这里(gcc -g -c add_lib.c link_example.c)需要extern int addd(int a, int b);</div>2019-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/70/6e/27f43b70.jpg" width="30px"><span>疯狂土豆</span> 👍（8） 💬（2）<div>老师，我非科班出身，现在正在看汇编，像上面的汇编片段，我知道汇编指令，但是汇编指令之前的是什么东西，6b1:   48 89 e5                mov    rbp,中的6b1:   48 89 e5大概是干什么用的，汇编刚刚开始学，像JVM等编译的字节码都有这些东西。只希望可以看懂这些是干什么用的。谢谢老师</div>2019-10-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/ec/2a/b11d5ad8.jpg" width="30px"><span>曾经瘦过</span> 👍（7） 💬（3）<div>mark   后面去读一读 程序员的自我修养</div>2019-05-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqyicZYyW7ahaXgXUD8ZAS8x0t8jx5rYLhwbUCJiawRepKIZfsLdkxdQ9XQMo99c1UDibmNVfFnAqwPg/132" width="30px"><span>程序水果宝</span> 👍（5） 💬（1）<div>为啥通过 gcc 的 -o 参数生成对应的可执行文件后，再执行objdump命令查看到的地址不是从0开始而是从6b0开始</div>2020-02-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d8/ee/6e7c2264.jpg" width="30px"><span>Only now</span> 👍（5） 💬（1）<div>mark 
+本章内容确实在链接装载与库里有更详尽的说明。</div>2019-05-13</li><br/><li><img src="" width="30px"><span>lzhao</span> 👍（5） 💬（1）<div>上周五还在思考这个问题？这答案说来就来，及时雨宋江</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/af/00/9b49f42b.jpg" width="30px"><span>skye</span> 👍（4） 💬（1）<div>老师，嵌入式开发都需要交叉编译，这个是因为CPU的指令集差异，现在什么方法屏蔽这个差异，实现不交叉编译也能实现程序在嵌入式设备上的运行吗？</div>2019-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/03/11/f58c6278.jpg" width="30px"><span>你好呀</span> 👍（3） 💬（1）<div>整个elf文件都加载到内存吗，还是只加载一部分？</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/71/45/126cd913.jpg" width="30px"><span>袭</span> 👍（2） 💬（1）<div>老师请问下，为什么visua studio里面除了静态库以外还有动态库，以及需要指定额外依赖等？</div>2019-08-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（1） 💬（1）<div>不是很懂objdump 执行了一下-help命令
+objdump -help
+
+  -lazy-bind               - Display mach-o lazy binding info
+  -s                       - Display the content of each section
+  -section-headers         - Display summaries of the headers for each section.
+  -source                  - Display source inlined with disassembly. Implies disassemble object
+  -t                       - Display the symbol table
+  -weak-bind               - Display mach-o weak binding info
+
+
+-t 就是符号表吧？
+-s 就是每个section的内容
+-lazy-bind 就是只有在运行的时候才会链接绑定的吗？
+-weak-bind 弱绑定 (emmm 想起了java里面的弱引用， 这个是弱绑定，不敢瞎说)
+
+objdump -source link-example 
+
+link-example:   file format Mach-O 64-bit x86-64
+
+Disassembly of section __TEXT,__text:
+__text:
+省略 地址 指令 数据
+
+_add:
+省略 地址 指令 数据
+
+_main:
+省略 地址 指令 数据
+
+Disassembly of section __TEXT,__stubs:
+__stubs:
+省略 地址 指令 数据
+
+__stub_helper:
+省略 地址 指令 数据
+
+-------------------
+objdump -s link-example 
+
+link-example:   file format Mach-O 64-bit x86-64
+
+Contents of section __text:
+
+...
+
+Contents of section __stubs:
+...
+
+Contents of section __stub_helper:
+...
+
+Contents of section __cstring:
+...
+
+Contents of section __nl_symbol_ptr:
+...
+
+Contents of section __la_symbol_ptr:
+...
+Contents of section __unwind_info:
+...
+
+
+------
+
+按老师说的，是有这些东西应该。但是具体看不太懂。
+
+嗯 -o是目标文件 不是可执行文件
+gcc -o link-example add.o main.o
+将目标文件链接之后 才能生成可执行文件
+可执行文件里面不仅仅有指令和代码，还有符号表和重定位表。 进一步学习需要看老师推荐的书。</div>2020-01-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/27/f2/50ba2f35.jpg" width="30px"><span>憨豆桑</span> 👍（0） 💬（1）<div>大佬你这讲得是静态链接方式吧？动态链接过程又是咋样的，能不能给我补补课？</div>2023-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/12/fa/2bdf8cc6.jpg" width="30px"><span>指北君</span> 👍（0） 💬（1）<div>老师好，我理解程序要跨平台的痛点是两个操作系统下可执行文件的格式不一样，但是可执行文件都是由高级语言-》汇编-》机器码，然后通过链接生成的，理论上：
+1.所有语言都是要生成机器码
+2.保证Linux 有兼容 PE 格式的装载器，Windows 有兼容 WSL的装载器
+但是现在这两点都是能够保证的，那为啥还有不是跨平台的语言？而且还有什么像Java不依赖操作系统，要自己搞一套JVM来支持跨平台？</div>2021-09-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a5/98/a65ff31a.jpg" width="30px"><span>djfhchdh</span> 👍（99） 💬（0）<div>readelf -s link_example.o &#47;&#47;查看符号表
+objdump -r link_example.o &#47;&#47;查看重定位表</div>2019-06-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/42/df/a034455d.jpg" width="30px"><span>罗耀龙@坐忘</span> 👍（10） 💬（0）<div>茶艺师学编程
+
+关键词
+
+编译 complie
+汇编 assemble
+链接 link
+装载 load
+装载器 loader
+链接器 linker
+目标代码 object program
+可执行文件 executable flie
+
+可执行可链接文件 ELF executable and linkable file format
+符号表 symbols table 
+file header 
+.text section 代码段 （code section ）
+.data section 数据段
+.rel text section 重定位 （relocation  table）
+.symbols section 符号表
+
+PE protable executable format</div>2020-11-14</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqXNhbTULKiakib8lYXrvGF2zPwfedooBzC2EtSv1nt1MwV1KUvTkcJrvCBFvcdwJicnr3OEXnk9GUCg/132" width="30px"><span>WENMURAN</span> 👍（7） 💬（1）<div>ELF和静态链接
+   在“C语言代码-汇编代码-机器码”的过程中，计算机执行时由两部分组成：一：编译、汇编、链接。二：通过装载器把可执行文件装载到内存中。
+   C语言代码&gt;编译器&gt;汇编代码&gt;汇编器&gt;目标文件+静态程序库&gt;链接器&gt;可执行文件&gt;加载器&lt;内存中的过程和数据&lt; CPU
+从目标代码到可执行文件的过程中，经过了一道叫ELF的手续，它有个符号表，把之前的函数名变量名等到都保存起来，并且和地址关联起来，ELF文件格式把之前的各种信息分成一个一个section保存起来，包括跳转信息。然后CPU这边的加载器只要根据ELF的格式识别一下就可以直接执行了。
+Section还有这些东西：代码段（保存指令），数据段（保存初始化数据信息），重定位表（跳转地址），符号表。
+感觉ELF就像再加一层的编译</div>2020-04-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（4） 💬（1）<div>老师问一下Mac系统的可执行文件格式是什么，也是ELF吗？还是mac自己有自己一套？</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/e1/7a/b206cded.jpg" width="30px"><span>人在江湖龙在江湖</span> 👍（3） 💬（0）<div>这一节可执行文件最好用gdb一步一步调试，最好看看每一步汇编，详细的看看内部一些细节才好。推荐陈皓10年前写的“用GDB调试程序”系列：https:&#47;&#47;blog.csdn.net&#47;haoel&#47;article&#47;details&#47;2879</div>2020-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/f0/36/020428c7.jpg" width="30px"><span>Dana</span> 👍（2） 💬（0）<div>Linux 系统 最后可执行为的文件为 ELF</div>2019-12-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/21/c5/024e1ef1.jpg" width="30px"><span>X</span> 👍（1） 💬（0）<div>可执行文件通过装载器，将各个指令装载到内存中，cpu通过读取内存中的指令并执行，将执行结果往输出设备输出。</div>2022-08-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/21/c5/024e1ef1.jpg" width="30px"><span>X</span> 👍（1） 💬（0）<div>符号表、重定位表。
+重定位表里面存放的是一些当前文件找不到的东西。
+符号表是当前文件的一些映射信息。
+然后通过链接，先将每个文件的符号表链接在一起组成一个更大的符号表（全的）。
+这个时候重定位表的数据都可以从这个大而全的符号表里找到对应的了。</div>2022-08-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2d/93/9d/299e4d20.jpg" width="30px"><span>自强不息</span> 👍（1） 💬（0）<div>objdump -r link_example.o &#47;&#47;查看重定位表。为什么必须要重定位？在硬件上留个偏移地址接口，在多放个加法器，不可以吗？重定位应该算改代码吧，代码稳定点不好吗？</div>2022-05-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/e1/7a/b206cded.jpg" width="30px"><span>人在江湖龙在江湖</span> 👍（1） 💬（0）<div>通过一个小例子，一步步分析汇编语句，这种讲解静态链接原理，感觉很好</div>2020-11-12</li><br/>
+</ul>
 
 
 

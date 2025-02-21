@@ -467,6 +467,8 @@
       
         
       
+        
+      
     
     
       
@@ -681,6 +683,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -4335,51 +4341,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      打开字符设备
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      写入字符设备
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ioctl" class="md-nav__link">
-    <span class="md-ellipsis">
-      使用IOCTL控制设备
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      总结时刻
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
-    <span class="md-ellipsis">
-      课堂练习
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -6029,51 +5990,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      打开字符设备
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      写入字符设备
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ioctl" class="md-nav__link">
-    <span class="md-ellipsis">
-      使用IOCTL控制设备
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      总结时刻
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
-    <span class="md-ellipsis">
-      课堂练习
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -6124,477 +6040,52 @@
 <p>如果你去看上面两个驱动程序，都能找到这两个头文件。当然如果需要的话，我们还可以引入更多的头文件。</p>
 <p><strong>第二部分，定义一些函数，用于处理内核模块的主要逻辑</strong>。例如打开、关闭、读取、写入设备的函数或者响应中断的函数。</p>
 <p>例如，logibm.c里面就定义了logibm_open。logibm_close就是处理打开和关闭的，定义了logibm_interrupt就是用来响应中断的。再如，lp.c里面就定义了lp_read，lp_write就是处理读写的。</p>
-<p><strong>第三部分，定义一个file_operations结构</strong>。前面我们讲过，设备是可以通过文件系统的接口进行访问的。咱们讲文件系统的时候说过，对于某种文件系统的操作，都是放在file_operations里面的。例如ext4就定义了这么一个结构，里面都是ext4_xxx之类的函数。设备要想被文件系统的接口操作，也需要定义这样一个结构。</p>
-<p>例如，lp.c里面就定义了这样一个结构。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>static const struct file_operations lp_fops = {
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    .owner      = THIS_MODULE,
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    .write      = lp_write,
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    .unlocked_ioctl = lp_ioctl,
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>#ifdef CONFIG_COMPAT
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    .compat_ioctl   = lp_compat_ioctl,
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>#endif
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    .open       = lp_open,
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    .release    = lp_release,
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>#ifdef CONFIG_PARPORT_1284
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    .read       = lp_read,
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>#endif
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    .llseek     = noop_llseek,
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>};
-</code></pre></div>
-<p>在logibm.c里面，我们找不到这样的结构，是因为它属于众多输入设备的一种，而输入设备的操作被统一定义在drivers/input/input.c里面，logibm.c只是定义了一些自己独有的操作。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>static const struct file_operations input_devices_fileops = {
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    .owner      = THIS_MODULE,
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    .open       = input_proc_devices_open,
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    .poll       = input_proc_devices_poll,
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    .read       = seq_read,
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    .llseek     = seq_lseek,
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    .release    = seq_release,
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>};
-</code></pre></div>
-<p><strong>第四部分，定义整个模块的初始化函数和退出函数</strong>，用于加载和卸载这个ko的时候调用。</p>
-<p>例如lp.c就定义了lp_init_module和lp_cleanup_module，logibm.c就定义了logibm_init和logibm_exit。</p>
-<p><strong>第五部分，调用module_init和module_exit</strong>，分别指向上面两个初始化函数和退出函数。就像本节最开头展示的一样。</p>
-<p><strong>第六部分，声明一下lisense，调用MODULE_LICENSE</strong>。</p>
-<p>有了这六部分，一个内核模块就基本合格了，可以工作了。</p>
-<h2 id="_2">打开字符设备</h2>
-<p>字符设备可不是一个普通的内核模块，它有自己独特的行为。接下来，我们就沿着打开一个字符设备的过程，看看字符设备这个内核模块做了哪些特殊的事情。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/2e/e6/2e29767e84b299324ea7fc524a3dcee6.jpeg?wh=3037*3400" /></p>
-<p>要使用一个字符设备，我们首先要把写好的内核模块，通过insmod加载进内核。这个时候，先调用的就是module_init调用的初始化函数。</p>
-<p>例如，在lp.c的初始化函数lp_init对应的代码如下：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>static int __init lp_init (void)
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>{
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>......
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    if (register_chrdev (LP_MAJOR, &quot;lp&quot;, &amp;lp_fops)) {
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        printk (KERN_ERR &quot;lp: unable to get major %d\n&quot;, LP_MAJOR);
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        return -EIO;
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    }
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>......
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>}
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>int __register_chrdev(unsigned int major, unsigned int baseminor,
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>              unsigned int count, const char *name,
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>              const struct file_operations *fops)
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>{
-<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    struct char_device_struct *cd;
-<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    struct cdev *cdev;
-<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    int err = -ENOMEM;
-<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>......
-<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>    cd = __register_chrdev_region(major, baseminor, count, name);
-<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>    cdev = cdev_alloc();
-<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>    cdev-&gt;owner = fops-&gt;owner;
-<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    cdev-&gt;ops = fops;
-<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>    kobject_set_name(&amp;cdev-&gt;kobj, &quot;%s&quot;, name);
-<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>    err = cdev_add(cdev, MKDEV(cd-&gt;major, baseminor), count);
-<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>    cd-&gt;cdev = cdev;
-<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>    return major ? 0 : cd-&gt;major;
-<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>}
-</code></pre></div>
-<p>在字符设备驱动的内核模块加载的时候，最重要的一件事情就是，注册这个字符设备。注册的方式是调用__register_chrdev_region，注册字符设备的主次设备号和名称，然后分配一个struct cdev结构，将cdev的ops成员变量指向这个模块声明的file_operations。然后，cdev_add会将这个字符设备添加到内核中一个叫作struct kobj_map *cdev_map的结构，来统一管理所有字符设备。</p>
-<p>其中，MKDEV(cd-&gt;major, baseminor)表示将主设备号和次设备号生成一个dev_t的整数，然后将这个整数dev_t和cdev关联起来。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>/**
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a> * cdev_add() - add a char device to the system
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a> * @p: the cdev structure for the device
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a> * @dev: the first device number for which this device is responsible
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a> * @count: the number of consecutive minor numbers corresponding to this
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a> *         device
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a> *
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a> * cdev_add() adds the device represented by @p to the system, making it
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a> * live immediately.  A negative error code is returned on failure.
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a> */
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>int cdev_add(struct cdev *p, dev_t dev, unsigned count)
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>{
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    int error;
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    p-&gt;dev = dev;
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    p-&gt;count = count;
-<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>
-<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>    error = kobj_map(cdev_map, dev, count, NULL,
-<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>             exact_match, exact_lock, p);
-<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>    kobject_get(p-&gt;kobj.parent);
-<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>
-<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>    return 0;
-</code></pre></div>
-<p>在logibm.c中，我们在logibm_init找不到注册字符设备，这是因为input.c里面的初始化函数input_init会调用register_chrdev_region，注册输入的字符设备，会在logibm_init中调用input_register_device，将logibm.c这个字符设备注册到input.c里面去，这就相当于input.c对多个输入字符设备进行统一的管理。</p>
-<p>内核模块加载完毕后，接下来要通过mknod在/dev下面创建一个设备文件，只有有了这个设备文件，我们才能通过文件系统的接口，对这个设备文件进行操作。</p>
-<p>mknod也是一个系统调用，定义如下：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>SYSCALL_DEFINE3(mknod, const char __user *, filename, umode_t, mode, unsigned, dev)
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>{
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    return sys_mknodat(AT_FDCWD, filename, mode, dev);
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>}
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode,
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>        unsigned, dev)
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>{
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    struct dentry *dentry;
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    struct path path;
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>......
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    dentry = user_path_create(dfd, filename, &amp;path, lookup_flags);
-<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>......
-<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    switch (mode &amp; S_IFMT) {
-<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>......
-<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>        case S_IFCHR: case S_IFBLK:
-<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>            error = vfs_mknod(path.dentry-&gt;d_inode,dentry,mode,
-<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>                    new_decode_dev(dev));
-<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>            break;
-<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>......
-<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>    }
-<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>}
-</code></pre></div>
-<p>我们可以在这个系统调用里看到，在文件系统上，顺着路径找到/dev/xxx所在的文件夹，然后为这个新创建的设备文件创建一个dentry。这是维护文件和inode之间的关联关系的结构。</p>
-<p>接下来，如果是字符文件S_IFCHR或者设备文件S_IFBLK，我们就调用vfs_mknod。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>int vfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>{
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>......
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    error = dir-&gt;i_op-&gt;mknod(dir, dentry, mode, dev);
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>......
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>}
-</code></pre></div>
-<p>这里需要调用对应的文件系统的inode_operations。应该调用哪个文件系统呢？</p>
-<p>如果我们在linux下面执行mount命令，能看到下面这一行：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>devtmpfs on /dev type devtmpfs (rw,nosuid,size=3989584k,nr_inodes=997396,mode=755)
-</code></pre></div>
-<p>也就是说，/dev下面的文件系统的名称为devtmpfs，我们可以在内核中找到它。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>static struct dentry *dev_mount(struct file_system_type *fs_type, int flags,
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>              const char *dev_name, void *data)
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>{
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>#ifdef CONFIG_TMPFS
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    return mount_single(fs_type, flags, data, shmem_fill_super);
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>#else
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    return mount_single(fs_type, flags, data, ramfs_fill_super);
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>#endif
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>}
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>static struct file_system_type dev_fs_type = {
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    .name = &quot;devtmpfs&quot;,
-<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>    .mount = dev_mount,
-<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    .kill_sb = kill_litter_super,
-<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>};
-</code></pre></div>
-<p>从这里可以看出，devtmpfs在挂载的时候，有两种模式，一种是ramfs，一种是shmem都是基于内存的文件系统。这里你先不用管，基于内存的文件系统具体是怎么回事儿。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>static const struct inode_operations ramfs_dir_inode_operations = {
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>......
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    .mknod      = ramfs_mknod,
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>};
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>static const struct inode_operations shmem_dir_inode_operations = {
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>#ifdef CONFIG_TMPFS
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>......
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    .mknod      = shmem_mknod,
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>};
-</code></pre></div>
-<p>这两个mknod虽然实现不同，但是都会调用到同一个函数init_special_inode。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>void init_special_inode(struct inode *inode, umode_t mode, dev_t rdev)
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>{
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    inode-&gt;i_mode = mode;
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    if (S_ISCHR(mode)) {
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>        inode-&gt;i_fop = &amp;def_chr_fops;
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>        inode-&gt;i_rdev = rdev;
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    } else if (S_ISBLK(mode)) {
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>        inode-&gt;i_fop = &amp;def_blk_fops;
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>        inode-&gt;i_rdev = rdev;
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>    } else if (S_ISFIFO(mode))
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>        inode-&gt;i_fop = &amp;pipefifo_fops;
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>    else if (S_ISSOCK(mode))
-<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>        ;   /* leave it no_open_fops */
-<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>}
-</code></pre></div>
-<p>显然这个文件是个特殊文件，inode也是特殊的。这里这个inode可以关联字符设备、块设备、FIFO文件、Socket等。我们这里只看字符设备。</p>
-<p>这里的inode的file_operations指向一个def_chr_fops，这里面只有一个open，就等着你打开它。</p>
-<p>另外，inode的i_rdev指向这个设备的dev_t。还记得cdev_map吗？通过这个dev_t，可以找到我们刚在加载的字符设备cdev。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>const struct file_operations def_chr_fops = {
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    .open = chrdev_open,
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>};
-</code></pre></div>
-<p>到目前为止，我们只是创建了/dev下面的一个文件，并且和相应的设备号关联起来。但是，我们还没有打开这个/dev下面的设备文件。</p>
-<p>现在我们来打开它。打开一个文件的流程，我们在 <a href="https://time.geekbang.org/column/article/97876">文件系统</a> 那一节讲过了，这里不再重复。最终就像打开字符设备的图中一样，打开文件的进程的task_struct里，有一个数组代表它打开的文件，下标就是文件描述符fd，每一个打开的文件都有一个struct file结构，会指向一个dentry项。dentry可以用来关联inode。这个dentry就是咱们上面mknod的时候创建的。</p>
-<p>在进程里面调用open函数，最终会调用到这个特殊的inode的open函数，也就是chrdev_open。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>static int chrdev_open(struct inode *inode, struct file *filp)
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>{
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    const struct file_operations *fops;
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    struct cdev *p;
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    struct cdev *new = NULL;
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    int ret = 0;
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    p = inode-&gt;i_cdev;
-<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>    if (!p) {
-<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>        struct kobject *kobj;
-<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>        int idx;
-<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>        kobj = kobj_lookup(cdev_map, inode-&gt;i_rdev, &amp;idx);
-<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>        new = container_of(kobj, struct cdev, kobj);
-<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>        p = inode-&gt;i_cdev;
-<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>        if (!p) {
-<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>            inode-&gt;i_cdev = p = new;
-<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>            list_add(&amp;inode-&gt;i_devices, &amp;p-&gt;list);
-<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>            new = NULL;
-<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>        }
-<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a>    }
-<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a>......
-<a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a>    fops = fops_get(p-&gt;ops);
-<a id="__codelineno-14-23" name="__codelineno-14-23" href="#__codelineno-14-23"></a>......
-<a id="__codelineno-14-24" name="__codelineno-14-24" href="#__codelineno-14-24"></a>    replace_fops(filp, fops);
-<a id="__codelineno-14-25" name="__codelineno-14-25" href="#__codelineno-14-25"></a>    if (filp-&gt;f_op-&gt;open) {
-<a id="__codelineno-14-26" name="__codelineno-14-26" href="#__codelineno-14-26"></a>        ret = filp-&gt;f_op-&gt;open(inode, filp);
-<a id="__codelineno-14-27" name="__codelineno-14-27" href="#__codelineno-14-27"></a>......
-<a id="__codelineno-14-28" name="__codelineno-14-28" href="#__codelineno-14-28"></a>    }
-<a id="__codelineno-14-29" name="__codelineno-14-29" href="#__codelineno-14-29"></a>......
-<a id="__codelineno-14-30" name="__codelineno-14-30" href="#__codelineno-14-30"></a>}
-</code></pre></div>
-<p>在这个函数里面，我们首先看这个inode的i_cdev，是否已经关联到cdev。如果第一次打开，当然没有。没有没关系，inode里面有i_rdev呀，也就是有dev_t。我们可以通过它在cdev_map中找cdev。咱们上面注册过了，所以肯定能够找到。找到后我们就将inode的i_cdev，关联到找到的cdev new。</p>
-<p>找到cdev就好办了。cdev里面有file_operations，这是设备驱动程序自己定义的。我们可以通过它来操作设备驱动程序，把它付给struct file里面的file_operations。这样以后操作文件描述符，就是直接操作设备了。</p>
-<p>最后，我们需要调用设备驱动程序的file_operations的open函数，真正打开设备。对于打印机，调用的是lp_open。对于鼠标调用的是input_proc_devices_open，最终会调用到logibm_open。这些多和设备相关，你不必看懂它们。</p>
-<h2 id="_3">写入字符设备</h2>
-<p>当我们像打开一个文件一样打开一个字符设备之后，接下来就是对这个设备的读写。对于文件的读写咱们在文件系统那一章详细讲述过，读写的过程是类似的，所以这里我们只解析打印机驱动写入的过程。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/9b/e2/9bd3cd8a8705dbf69f889ba3b2b5c2e2.jpeg?wh=3037*3400" /></p>
-<p>写入一个字符设备，就是用文件系统的标准接口write，参数文件描述符fd，在内核里面调用的sys_write，在sys_write里面根据文件描述符fd得到struct file结构。接下来再调用vfs_write。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>ssize_t __vfs_write(struct file *file, const char __user *p, size_t count, loff_t *pos)
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>{
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    if (file-&gt;f_op-&gt;write)
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>        return file-&gt;f_op-&gt;write(file, p, count, pos);
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    else if (file-&gt;f_op-&gt;write_iter)
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>        return new_sync_write(file, p, count, pos);
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    else
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>        return -EINVAL;
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>}
-</code></pre></div>
-<p>我们可以看到，在__vfs_write里面，我们会调用struct file结构里的file_operations的write函数。上面我们打开字符设备的时候，已经将struct file结构里面的file_operations指向了设备驱动程序的file_operations结构，所以这里的write函数最终会调用到lp_write。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>static ssize_t lp_write(struct file * file, const char __user * buf,
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>                size_t count, loff_t *ppos)
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>{
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>    unsigned int minor = iminor(file_inode(file));
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    struct parport *port = lp_table[minor].dev-&gt;port;
-<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    char *kbuf = lp_table[minor].lp_buffer;
-<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>    ssize_t retv = 0;
-<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>    ssize_t written;
-<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>    size_t copy_size = count;
-<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>......
-<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>    /* Need to copy the data from user-space. */
-<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>    if (copy_size &gt; LP_BUFFER_SIZE)
-<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>        copy_size = LP_BUFFER_SIZE;
-<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>......
-<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a>    if (copy_from_user (kbuf, buf, copy_size)) {
-<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>        retv = -EFAULT;
-<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>        goto out_unlock;
-<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>    }
-<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>......
-<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a>    do {
-<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a>        /* Write the data. */
-<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a>        written = parport_write (port, kbuf, copy_size);
-<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a>        if (written &gt; 0) {
-<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a>            copy_size -= written;
-<a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a>            count -= written;
-<a id="__codelineno-16-26" name="__codelineno-16-26" href="#__codelineno-16-26"></a>            buf  += written;
-<a id="__codelineno-16-27" name="__codelineno-16-27" href="#__codelineno-16-27"></a>            retv += written;
-<a id="__codelineno-16-28" name="__codelineno-16-28" href="#__codelineno-16-28"></a>        }
-<a id="__codelineno-16-29" name="__codelineno-16-29" href="#__codelineno-16-29"></a>......
-<a id="__codelineno-16-30" name="__codelineno-16-30" href="#__codelineno-16-30"></a>        if (need_resched())
-<a id="__codelineno-16-31" name="__codelineno-16-31" href="#__codelineno-16-31"></a>            schedule ();
-<a id="__codelineno-16-32" name="__codelineno-16-32" href="#__codelineno-16-32"></a>
-<a id="__codelineno-16-33" name="__codelineno-16-33" href="#__codelineno-16-33"></a>        if (count) {
-<a id="__codelineno-16-34" name="__codelineno-16-34" href="#__codelineno-16-34"></a>            copy_size = count;
-<a id="__codelineno-16-35" name="__codelineno-16-35" href="#__codelineno-16-35"></a>            if (copy_size &gt; LP_BUFFER_SIZE)
-<a id="__codelineno-16-36" name="__codelineno-16-36" href="#__codelineno-16-36"></a>                copy_size = LP_BUFFER_SIZE;
-<a id="__codelineno-16-37" name="__codelineno-16-37" href="#__codelineno-16-37"></a>
-<a id="__codelineno-16-38" name="__codelineno-16-38" href="#__codelineno-16-38"></a>            if (copy_from_user(kbuf, buf, copy_size)) {
-<a id="__codelineno-16-39" name="__codelineno-16-39" href="#__codelineno-16-39"></a>                if (retv == 0)
-<a id="__codelineno-16-40" name="__codelineno-16-40" href="#__codelineno-16-40"></a>                    retv = -EFAULT;
-<a id="__codelineno-16-41" name="__codelineno-16-41" href="#__codelineno-16-41"></a>                break;
-<a id="__codelineno-16-42" name="__codelineno-16-42" href="#__codelineno-16-42"></a>            }
-<a id="__codelineno-16-43" name="__codelineno-16-43" href="#__codelineno-16-43"></a>        }
-<a id="__codelineno-16-44" name="__codelineno-16-44" href="#__codelineno-16-44"></a>    } while (count &gt; 0);
-<a id="__codelineno-16-45" name="__codelineno-16-45" href="#__codelineno-16-45"></a>......
-</code></pre></div>
-<p>这个设备驱动程序的写入函数的实现还是比较典型的。先是调用copy_from_user将数据从用户态拷贝到内核态的缓存中，然后调用parport_write写入外部设备。这里还有一个schedule函数，也即写入的过程中，给其他线程抢占CPU的机会。然后，如果count还是大于0，也就是数据还没有写完，那我们就接着copy_from_user，接着parport_write，直到写完为止。</p>
-<h2 id="ioctl">使用IOCTL控制设备</h2>
-<p>对于I/O设备来讲，我们前面也说过，除了读写设备，还会调用ioctl，做一些特殊的I/O操作。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/c3/1d/c3498dad4f15712529354e0fa123c31d.jpeg?wh=1666*703" /></p>
-<p>ioctl也是一个系统调用，它在内核里面的定义如下：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>SYSCALL_DEFINE3(ioctl, unsigned int, fd, unsigned int, cmd, unsigned long, arg)
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>{
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    int error;
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>    struct fd f = fdget(fd);
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>......
-<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    error = do_vfs_ioctl(f.file, fd, cmd, arg);
-<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    fdput(f);
-<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>    return error;
-<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>}
-</code></pre></div>
-<p>其中，fd是这个设备的文件描述符，cmd是传给这个设备的命令，arg是命令的参数。其中，对于命令和命令的参数，使用ioctl系统调用的用户和驱动程序的开发人员约定好行为即可。</p>
-<p>其实cmd看起来是一个int，其实他的组成比较复杂，它由几部分组成：</p>
+<div><strong>精选留言（14）</strong></div>
 <ul>
-<li>最低八位为NR，是命令号；</li>
-<li>然后八位是TYPE，是类型；</li>
-<li>然后十四位是参数的大小；</li>
-<li>最高两位是DIR，是方向，表示写入、读出，还是读写。</li>
+<li><img src="https://static001.geekbang.org/account/avatar/00/12/9b/a8/6a391c66.jpg" width="30px"><span>geraltlaush</span> 👍（7） 💬（2）<div>另外贴上一个字符设备或者块设备都有一个主设备号和次设备号。主设备号和次设备号统称为设备号。主设备号用来表示一个特定的驱动程序。次设备号用来表示使用该驱动程序的各设备。</div>2019-06-10</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/3XbCueYYVWTiclv8T5tFpwiblOxLphvSZxL4ujMdqVMibZnOiaFK2C5nKRGv407iaAsrI0CDICYVQJtiaITzkjfjbvrQ/132" width="30px"><span>有铭</span> 👍（4） 💬（1）<div>问一下老师你的这些图是用啥工具画的？</div>2019-06-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/9b/a8/6a391c66.jpg" width="30px"><span>geraltlaush</span> 👍（3） 💬（1）<div>还有个收获就是程序设计的面向对象的思想，之前开发一个音视频推流服务器，一个音视频类型的操作编码解码都是类中完成，现在看来可以把操作单独设计成一个基类，各种类型的音视频操作都可以继承这个类，代码可以设计的更为优雅</div>2019-06-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/78/f5/6821ac5f.jpg" width="30px"><span>ezra.xu</span> 👍（0） 💬（1）<div>除了open，close，read，write等，是不是可以加入些异常捕获，异步操作，多线程的函数……</div>2019-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/f2/c0/bf148d4f.jpg" width="30px"><span>西山薄凉</span> 👍（31） 💬（2）<div>课代表不在了，我来当课代表。
+
+## 字符设备
+### 内核模块
+- 驱动程序的内核模块，以 ko 的文件形式存在，可以通过 insmod 加载到内核中
+- 一个内核模块应该由以下几部分组成
+    - 头文件部分:include &lt;linux&#47;module.h&gt; 及 &lt;linux&#47;init.h&gt;
+    - 定义以内科模块处理逻辑的函数，如开、关、读写及响应中断。
+    - 定义一个 file_operations 接口，使得对上层接口统一
+    - 定义整个模块的初始化和退出函数
+    - 调用 module_init 和 module_exit，分别指向上面两个初始化函数和退出函数
+    - 声明一下 lisense，调用 MODULE_LICENSE
+### 打开字符设备
+- 打开字符设备
+    - 注册字符设备:通过 insmod 加载进内核
+        - 调用 __register_chrdev_region
+        - 注册设备的主次设备号和名称
+        - 初始化 cdev 结构体，将其 ops 成员指向设备定义的 file_operations
+        - 调用 cdev_add 将设备添加到内核中的 cdev_map，统一管理字符设备
+    - 创建设备文件:通过 mknod 在 &#47;dev 下面创建一个设备文件
+        - 找到设备文件所在的文件夹，然后为这个新创建的设备文件创建一个 dentry，用于关联文件和 inode
+        - 创建特殊 inode，用于关联设备（还可关联FIFO文件、socket等）
+    - 打开设备文件:调用 inode 的 open 函数
+        - 如果 cdev 还没有关联，从 cdev_map 中找到 cdev 并关联
+        - 找到 cdev 的  file_operations，将其设置给文件描述符
+        - 调用设备驱动程序的 file_operations 的 open 函数，真正打开设备
+### 写入字符设备
+- 写入字符设备
+    - 调用文件系统标准接口 write，参数为设备的文件描述符
+    - 由于已经将 file_operations 替换成了设备的，所以会直接调用设备定义的 write（多态）
+### IOCTL控制设备
+- 发送 IOCTL 信令控制设备
+    - cmd 组成(32位):
+        - 最低 8 位为 NR，是命令号；
+        - 然后 8 位是 TYPE，是类型；
+        - 然后 14 位是参数的大小；
+        - 最高 2 位是 DIR，是方向，表示写入、读出，还是读写。
+        - 有对应的宏方便操作 cmd
+    - 调用 do_vfs_ioctl，分支判断 cmd 执行对应操作，分为以下几种
+        - 默认定义好的 cmd，执行系统默认操作
+        - 普通文件，调用 file_ioctl
+        - 其他文件调用 vfs_ioctl
+        - vfs_ioctl 内部还是会直接调用设备定义的 cmd 对应的接收函数，里面对不同 cmd 执行不同操作</div>2020-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fd/08/c039f840.jpg" width="30px"><span>小鳄鱼</span> 👍（1） 💬（0）<div>虚拟文件系统，统一所有设备操作。而这个设计，看起来只是使用多态，但是实际上这是抽象出来的统一操作层。有这个想法，要实现对各种各样的设备，繁杂的功能而言，并不简单！而抽象本身，就很复杂了，值得继续深入！！！</div>2022-05-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/b0/d3/200e82ff.jpg" width="30px"><span>功夫熊猫</span> 👍（0） 💬（0）<div>老师，能不能把源代码传一份</div>2023-05-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/da/d9/f051962f.jpg" width="30px"><span>浩仔是程序员</span> 👍（0） 💬（0）<div>驱动程序里面的write方法是怎么操作打印机的？是不是要把数据写到指定io端口中？</div>2022-11-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/22/f4/9fd6f8f0.jpg" width="30px"><span>核桃</span> 👍（0） 💬（0）<div>字符设备驱动程序没有了解过，但是在github上面找到过实现自定义文件系统的hellofs，这个可以核心关键还是自定义的file operations和注册这些，大同小异的</div>2021-05-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/fc/fc/1e235814.jpg" width="30px"><span>耿长学</span> 👍（0） 💬（0）<div>&#47;proc文件系统的原理是实现是基于什么？&#47;proc里面这些文件使用的是内存存放还是磁盘存放的，当命令终止后这些文件又去了哪里，怎么销毁的，谢谢，之前买了网络协议的学了不去网络原理</div>2019-12-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/fc/fc/1e235814.jpg" width="30px"><span>耿长学</span> 👍（0） 💬（1）<div>您好老师，我想请教一个问题，nohub  ping  www.baidu.com  &amp;的输出存放到哪里去了，如果长时间ping使用kill终止的时候为什么会引起内存升高呢？</div>2019-12-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5e/96/a03175bc.jpg" width="30px"><span>莫名</span> 👍（0） 💬（0）<div>老师讲得很赞</div>2019-11-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e8/fd/035f4c94.jpg" width="30px"><span>欢乐小熊</span> 👍（0） 💬（0）<div>老师, 在系统初始化和本节的内容中, 我都看到了基于内存文件系统, 让我很好奇它是如何运作的, 不知老师什么时候可以出与之相关的文章呢?</div>2019-06-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/9b/a8/6a391c66.jpg" width="30px"><span>geraltlaush</span> 👍（0） 💬（0）<div>这节意外的收获是学会了怎么画项目结构流程图和各种色调搭配，老师真是多面小能手</div>2019-06-10</li><br/>
 </ul>
-<p>由于组成比较复杂，有一些宏是专门用于组成这个cmd值的。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>/*
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a> * Used to create numbers.
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a> */
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>#define _IO(type,nr)        _IOC(_IOC_NONE,(type),(nr),0)
-<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>#define _IOR(type,nr,size)  _IOC(_IOC_READ,(type),(nr),(_IOC_TYPECHECK(size)))
-<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>#define _IOW(type,nr,size)  _IOC(_IOC_WRITE,(type),(nr),(_IOC_TYPECHECK(size)))
-<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>#define _IOWR(type,nr,size) _IOC(_IOC_READ|_IOC_WRITE,(type),(nr),(_IOC_TYPECHECK(size)))
-<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>
-<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>/* used to decode ioctl numbers.. */
-<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>#define _IOC_DIR(nr)        (((nr) &gt;&gt; _IOC_DIRSHIFT) &amp; _IOC_DIRMASK)
-<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>#define _IOC_TYPE(nr)       (((nr) &gt;&gt; _IOC_TYPESHIFT) &amp; _IOC_TYPEMASK)
-<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>#define _IOC_NR(nr)     (((nr) &gt;&gt; _IOC_NRSHIFT) &amp; _IOC_NRMASK)
-<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>#define _IOC_SIZE(nr)       (((nr) &gt;&gt; _IOC_SIZESHIFT) &amp; _IOC_SIZEMASK)
-</code></pre></div>
-<p>在用户程序中，可以通过上面的“Used to create numbers”这些宏，根据参数生成cmd，在驱动程序中，可以通过下面的“used to decode ioctl numbers”这些宏，解析cmd后，执行指令。</p>
-<p>ioctl中会调用do_vfs_ioctl，这里面对于已经定义好的cmd，进行相应的处理。如果不是默认定义好的cmd，则执行默认操作。对于普通文件，调用file_ioctl；对于其他文件调用vfs_ioctl。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>         unsigned long arg)
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>{
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>    int error = 0;
-<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>    int __user *argp = (int __user *)arg;
-<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>    struct inode *inode = file_inode(filp);
-<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>
-<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>    switch (cmd) {
-<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>......
-<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>    case FIONBIO:
-<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>        error = ioctl_fionbio(filp, argp);
-<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>        break;
-<a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a>
-<a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a>    case FIOASYNC:
-<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>        error = ioctl_fioasync(fd, filp, argp);
-<a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a>        break;
-<a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a>......
-<a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a>    case FICLONE:
-<a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a>        return ioctl_file_clone(filp, arg, 0, 0, 0);
-<a id="__codelineno-19-20" name="__codelineno-19-20" href="#__codelineno-19-20"></a>
-<a id="__codelineno-19-21" name="__codelineno-19-21" href="#__codelineno-19-21"></a>    default:
-<a id="__codelineno-19-22" name="__codelineno-19-22" href="#__codelineno-19-22"></a>        if (S_ISREG(inode-&gt;i_mode))
-<a id="__codelineno-19-23" name="__codelineno-19-23" href="#__codelineno-19-23"></a>            error = file_ioctl(filp, cmd, arg);
-<a id="__codelineno-19-24" name="__codelineno-19-24" href="#__codelineno-19-24"></a>        else
-<a id="__codelineno-19-25" name="__codelineno-19-25" href="#__codelineno-19-25"></a>            error = vfs_ioctl(filp, cmd, arg);
-<a id="__codelineno-19-26" name="__codelineno-19-26" href="#__codelineno-19-26"></a>        break;
-<a id="__codelineno-19-27" name="__codelineno-19-27" href="#__codelineno-19-27"></a>    }
-<a id="__codelineno-19-28" name="__codelineno-19-28" href="#__codelineno-19-28"></a>    return error;
-</code></pre></div>
-<p>由于咱们这里是设备驱动程序，所以调用的是vfs_ioctl。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>/**
-<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a> * vfs_ioctl - call filesystem specific ioctl methods
-<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a> * @filp:   open file to invoke ioctl method on
-<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a> * @cmd:    ioctl command to execute
-<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a> * @arg:    command-specific argument for ioctl
-<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a> *
-<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a> * Invokes filesystem specific -&gt;unlocked_ioctl, if one exists; otherwise
-<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a> * returns -ENOTTY.
-<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a> *
-<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a> * Returns 0 on success, -errno on error.
-<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a> */
-<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>long vfs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
-<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a>{
-<a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a>    int error = -ENOTTY;
-<a id="__codelineno-20-15" name="__codelineno-20-15" href="#__codelineno-20-15"></a>
-<a id="__codelineno-20-16" name="__codelineno-20-16" href="#__codelineno-20-16"></a>    if (!filp-&gt;f_op-&gt;unlocked_ioctl)
-<a id="__codelineno-20-17" name="__codelineno-20-17" href="#__codelineno-20-17"></a>        goto out;
-<a id="__codelineno-20-18" name="__codelineno-20-18" href="#__codelineno-20-18"></a>
-<a id="__codelineno-20-19" name="__codelineno-20-19" href="#__codelineno-20-19"></a>    error = filp-&gt;f_op-&gt;unlocked_ioctl(filp, cmd, arg);
-<a id="__codelineno-20-20" name="__codelineno-20-20" href="#__codelineno-20-20"></a>    if (error == -ENOIOCTLCMD)
-<a id="__codelineno-20-21" name="__codelineno-20-21" href="#__codelineno-20-21"></a>        error = -ENOTTY;
-<a id="__codelineno-20-22" name="__codelineno-20-22" href="#__codelineno-20-22"></a> out:
-<a id="__codelineno-20-23" name="__codelineno-20-23" href="#__codelineno-20-23"></a>    return error;
-</code></pre></div>
-<p>这里面调用的是struct file里file_operations的unlocked_ioctl函数。我们前面初始化设备驱动的时候，已经将file_operations指向设备驱动的file_operations了。这里调用的是设备驱动的unlocked_ioctl。对于打印机程序来讲，调用的是lp_ioctl。可以看出来，这里面就是switch语句，它会根据不同的cmd，做不同的操作。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>static long lp_ioctl(struct file *file, unsigned int cmd,
-<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>            unsigned long arg)
-<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>{
-<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    unsigned int minor;
-<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>    struct timeval par_timeout;
-<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>    int ret;
-<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>
-<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>    minor = iminor(file_inode(file));
-<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>    mutex_lock(&amp;lp_mutex);
-<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>    switch (cmd) {
-<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>......
-<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>    default:
-<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>        ret = lp_do_ioctl(minor, cmd, arg, (void __user *)arg);
-<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>        break;
-<a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a>    }
-<a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a>    mutex_unlock(&amp;lp_mutex);
-<a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a>    return ret;
-<a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>}
-<a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a>
-<a id="__codelineno-21-20" name="__codelineno-21-20" href="#__codelineno-21-20"></a>static int lp_do_ioctl(unsigned int minor, unsigned int cmd,
-<a id="__codelineno-21-21" name="__codelineno-21-21" href="#__codelineno-21-21"></a>    unsigned long arg, void __user *argp)
-<a id="__codelineno-21-22" name="__codelineno-21-22" href="#__codelineno-21-22"></a>{
-<a id="__codelineno-21-23" name="__codelineno-21-23" href="#__codelineno-21-23"></a>    int status;
-<a id="__codelineno-21-24" name="__codelineno-21-24" href="#__codelineno-21-24"></a>    int retval = 0;
-<a id="__codelineno-21-25" name="__codelineno-21-25" href="#__codelineno-21-25"></a>
-<a id="__codelineno-21-26" name="__codelineno-21-26" href="#__codelineno-21-26"></a>    switch ( cmd ) {
-<a id="__codelineno-21-27" name="__codelineno-21-27" href="#__codelineno-21-27"></a>        case LPTIME:
-<a id="__codelineno-21-28" name="__codelineno-21-28" href="#__codelineno-21-28"></a>            if (arg &gt; UINT_MAX / HZ)
-<a id="__codelineno-21-29" name="__codelineno-21-29" href="#__codelineno-21-29"></a>                return -EINVAL;
-<a id="__codelineno-21-30" name="__codelineno-21-30" href="#__codelineno-21-30"></a>            LP_TIME(minor) = arg * HZ/100;
-<a id="__codelineno-21-31" name="__codelineno-21-31" href="#__codelineno-21-31"></a>            break;
-<a id="__codelineno-21-32" name="__codelineno-21-32" href="#__codelineno-21-32"></a>        case LPCHAR:
-<a id="__codelineno-21-33" name="__codelineno-21-33" href="#__codelineno-21-33"></a>            LP_CHAR(minor) = arg;
-<a id="__codelineno-21-34" name="__codelineno-21-34" href="#__codelineno-21-34"></a>            break;
-<a id="__codelineno-21-35" name="__codelineno-21-35" href="#__codelineno-21-35"></a>        case LPABORT:
-<a id="__codelineno-21-36" name="__codelineno-21-36" href="#__codelineno-21-36"></a>            if (arg)
-<a id="__codelineno-21-37" name="__codelineno-21-37" href="#__codelineno-21-37"></a>                LP_F(minor) |= LP_ABORT;
-<a id="__codelineno-21-38" name="__codelineno-21-38" href="#__codelineno-21-38"></a>            else
-<a id="__codelineno-21-39" name="__codelineno-21-39" href="#__codelineno-21-39"></a>                LP_F(minor) &amp;= ~LP_ABORT;
-<a id="__codelineno-21-40" name="__codelineno-21-40" href="#__codelineno-21-40"></a>            break;
-<a id="__codelineno-21-41" name="__codelineno-21-41" href="#__codelineno-21-41"></a>        case LPABORTOPEN:
-<a id="__codelineno-21-42" name="__codelineno-21-42" href="#__codelineno-21-42"></a>            if (arg)
-<a id="__codelineno-21-43" name="__codelineno-21-43" href="#__codelineno-21-43"></a>                LP_F(minor) |= LP_ABORTOPEN;
-<a id="__codelineno-21-44" name="__codelineno-21-44" href="#__codelineno-21-44"></a>            else
-<a id="__codelineno-21-45" name="__codelineno-21-45" href="#__codelineno-21-45"></a>                LP_F(minor) &amp;= ~LP_ABORTOPEN;
-<a id="__codelineno-21-46" name="__codelineno-21-46" href="#__codelineno-21-46"></a>            break;
-<a id="__codelineno-21-47" name="__codelineno-21-47" href="#__codelineno-21-47"></a>        case LPCAREFUL:
-<a id="__codelineno-21-48" name="__codelineno-21-48" href="#__codelineno-21-48"></a>            if (arg)
-<a id="__codelineno-21-49" name="__codelineno-21-49" href="#__codelineno-21-49"></a>                LP_F(minor) |= LP_CAREFUL;
-<a id="__codelineno-21-50" name="__codelineno-21-50" href="#__codelineno-21-50"></a>            else
-<a id="__codelineno-21-51" name="__codelineno-21-51" href="#__codelineno-21-51"></a>                LP_F(minor) &amp;= ~LP_CAREFUL;
-<a id="__codelineno-21-52" name="__codelineno-21-52" href="#__codelineno-21-52"></a>            break;
-<a id="__codelineno-21-53" name="__codelineno-21-53" href="#__codelineno-21-53"></a>        case LPWAIT:
-<a id="__codelineno-21-54" name="__codelineno-21-54" href="#__codelineno-21-54"></a>            LP_WAIT(minor) = arg;
-<a id="__codelineno-21-55" name="__codelineno-21-55" href="#__codelineno-21-55"></a>            break;
-<a id="__codelineno-21-56" name="__codelineno-21-56" href="#__codelineno-21-56"></a>        case LPSETIRQ:
-<a id="__codelineno-21-57" name="__codelineno-21-57" href="#__codelineno-21-57"></a>            return -EINVAL;
-<a id="__codelineno-21-58" name="__codelineno-21-58" href="#__codelineno-21-58"></a>            break;
-<a id="__codelineno-21-59" name="__codelineno-21-59" href="#__codelineno-21-59"></a>        case LPGETIRQ:
-<a id="__codelineno-21-60" name="__codelineno-21-60" href="#__codelineno-21-60"></a>            if (copy_to_user(argp, &amp;LP_IRQ(minor),
-<a id="__codelineno-21-61" name="__codelineno-21-61" href="#__codelineno-21-61"></a>                    sizeof(int)))
-<a id="__codelineno-21-62" name="__codelineno-21-62" href="#__codelineno-21-62"></a>                return -EFAULT;
-<a id="__codelineno-21-63" name="__codelineno-21-63" href="#__codelineno-21-63"></a>            break;
-<a id="__codelineno-21-64" name="__codelineno-21-64" href="#__codelineno-21-64"></a>        case LPGETSTATUS:
-<a id="__codelineno-21-65" name="__codelineno-21-65" href="#__codelineno-21-65"></a>            if (mutex_lock_interruptible(&amp;lp_table[minor].port_mutex))
-<a id="__codelineno-21-66" name="__codelineno-21-66" href="#__codelineno-21-66"></a>                return -EINTR;
-<a id="__codelineno-21-67" name="__codelineno-21-67" href="#__codelineno-21-67"></a>            lp_claim_parport_or_block (&amp;lp_table[minor]);
-<a id="__codelineno-21-68" name="__codelineno-21-68" href="#__codelineno-21-68"></a>            status = r_str(minor);
-<a id="__codelineno-21-69" name="__codelineno-21-69" href="#__codelineno-21-69"></a>            lp_release_parport (&amp;lp_table[minor]);
-<a id="__codelineno-21-70" name="__codelineno-21-70" href="#__codelineno-21-70"></a>            mutex_unlock(&amp;lp_table[minor].port_mutex);
-<a id="__codelineno-21-71" name="__codelineno-21-71" href="#__codelineno-21-71"></a>
-<a id="__codelineno-21-72" name="__codelineno-21-72" href="#__codelineno-21-72"></a>            if (copy_to_user(argp, &amp;status, sizeof(int)))
-<a id="__codelineno-21-73" name="__codelineno-21-73" href="#__codelineno-21-73"></a>                return -EFAULT;
-<a id="__codelineno-21-74" name="__codelineno-21-74" href="#__codelineno-21-74"></a>            break;
-<a id="__codelineno-21-75" name="__codelineno-21-75" href="#__codelineno-21-75"></a>        case LPRESET:
-<a id="__codelineno-21-76" name="__codelineno-21-76" href="#__codelineno-21-76"></a>            lp_reset(minor);
-<a id="__codelineno-21-77" name="__codelineno-21-77" href="#__codelineno-21-77"></a>            break;
-<a id="__codelineno-21-78" name="__codelineno-21-78" href="#__codelineno-21-78"></a>        case LPGETFLAGS:
-<a id="__codelineno-21-79" name="__codelineno-21-79" href="#__codelineno-21-79"></a>            status = LP_F(minor);
-<a id="__codelineno-21-80" name="__codelineno-21-80" href="#__codelineno-21-80"></a>            if (copy_to_user(argp, &amp;status, sizeof(int)))
-<a id="__codelineno-21-81" name="__codelineno-21-81" href="#__codelineno-21-81"></a>                return -EFAULT;
-<a id="__codelineno-21-82" name="__codelineno-21-82" href="#__codelineno-21-82"></a>            break;
-<a id="__codelineno-21-83" name="__codelineno-21-83" href="#__codelineno-21-83"></a>        default:
-<a id="__codelineno-21-84" name="__codelineno-21-84" href="#__codelineno-21-84"></a>            retval = -EINVAL;
-<a id="__codelineno-21-85" name="__codelineno-21-85" href="#__codelineno-21-85"></a>    }
-<a id="__codelineno-21-86" name="__codelineno-21-86" href="#__codelineno-21-86"></a>    return retval
-</code></pre></div>
-<h2 id="_4">总结时刻</h2>
-<p>这一节我们讲了字符设备的打开、写入和ioctl等最常见的操作。一个字符设备要能够工作，需要三部分配合。</p>
-<p>第一，有一个设备驱动程序的ko模块，里面有模块初始化函数、中断处理函数、设备操作函数。这里面封装了对于外部设备的操作。加载设备驱动程序模块的时候，模块初始化函数会被调用。在内核维护所有字符设备驱动的数据结构cdev_map里面注册，我们就可以很容易根据设备号，找到相应的设备驱动程序。</p>
-<p>第二，在/dev目录下有一个文件表示这个设备，这个文件在特殊的devtmpfs文件系统上，因而也有相应的dentry和inode。这里的inode是一个特殊的inode，里面有设备号。通过它，我们可以在cdev_map中找到设备驱动程序，里面还有针对字符设备文件的默认操作def_chr_fops。</p>
-<p>第三，打开一个字符设备文件和打开一个普通的文件有类似的数据结构，有文件描述符、有struct file、指向字符设备文件的dentry和inode。字符设备文件的相关操作file_operations一开始指向def_chr_fops，在调用def_chr_fops里面的chrdev_open函数的时候，修改为指向设备操作函数，从而读写一个字符设备文件就会直接变成读写外部设备了。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/fb/cd/fba61fe95e0d2746235b1070eb4c18cd.jpeg?wh=2323*2671" /></p>
-<h2 id="_5">课堂练习</h2>
-<p>这节我用打印机驱动程序作为例子来给你讲解字符设备，请你仔细看一下它的代码，设想一下，如果让你自己写一个字符设备驱动程序，应该实现哪些函数呢？</p>
-<p>欢迎留言和我分享你的疑惑和见解 ，也欢迎可以收藏本节内容，反复研读。你也可以把今天的内容分享给你的朋友，和他一起学习和进步。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/8c/37/8c0a95fa07a8b9a1abfd394479bdd637.jpg?wh=1110*659" /></p>
 
 
 

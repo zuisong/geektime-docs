@@ -467,6 +467,8 @@
       
         
       
+        
+      
     
     
       
@@ -681,6 +683,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -4629,42 +4635,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#tcp_sendmsg" class="md-nav__link">
-    <span class="md-ellipsis">
-      解析tcp_sendmsg函数
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tcp_write_xmit" class="md-nav__link">
-    <span class="md-ellipsis">
-      解析tcp_write_xmit函数
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      总结时刻
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      课堂练习
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -6020,42 +5990,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#tcp_sendmsg" class="md-nav__link">
-    <span class="md-ellipsis">
-      解析tcp_sendmsg函数
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tcp_write_xmit" class="md-nav__link">
-    <span class="md-ellipsis">
-      解析tcp_write_xmit函数
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      总结时刻
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      课堂练习
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -6117,370 +6051,35 @@
 <a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>}
 </code></pre></div>
 <p>在sock_write_iter中，我们通过VFS中的struct file，将创建好的socket结构拿出来，然后调用sock_sendmsg。而sock_sendmsg会调用sock_sendmsg_nosec。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>static inline int sock_sendmsg_nosec(struct socket *sock, struct msghdr *msg)
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>{
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    int ret = sock-&gt;ops-&gt;sendmsg(sock, msg, msg_data_left(msg));
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>......
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>}
-</code></pre></div>
-<p>这里调用了socket的ops的sendmsg，我们在上一节已经遇到它好几次了。根据inet_stream_ops的定义，我们这里调用的是inet_sendmsg。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>int inet_sendmsg(struct socket *sock, struct msghdr *msg, size_t size)
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>{
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    struct sock *sk = sock-&gt;sk;
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>......
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    return sk-&gt;sk_prot-&gt;sendmsg(sk, msg, size);
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>}
-</code></pre></div>
-<p>这里面，从socket结构中，我们可以得到更底层的sock结构，然后调用sk_prot的sendmsg方法。这个我们同样在上一节遇到好几次了。</p>
-<h2 id="tcp_sendmsg">解析tcp_sendmsg函数</h2>
-<p>根据tcp_prot的定义，我们调用的是tcp_sendmsg。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>int tcp_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>{
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    struct tcp_sock *tp = tcp_sk(sk);
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    struct sk_buff *skb;
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    int flags, err, copied = 0;
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    int mss_now = 0, size_goal, copied_syn = 0;
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    long timeo;
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>......
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    /* Ok commence sending. */
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    copied = 0;
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>restart:
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    mss_now = tcp_send_mss(sk, &amp;size_goal, flags);
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    while (msg_data_left(msg)) {
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>        int copy = 0;
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>        int max = size_goal;
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>        skb = tcp_write_queue_tail(sk);
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>        if (tcp_send_head(sk)) {
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>            if (skb-&gt;ip_summed == CHECKSUM_NONE)
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>                max = mss_now;
-<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>            copy = max - skb-&gt;len;
-<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>        }
-<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>
-<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>        if (copy &lt;= 0 || !tcp_skb_can_collapse_to(skb)) {
-<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>            bool first_skb;
-<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>
-<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>new_segment:
-<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>            /* Allocate new segment. If the interface is SG,
-<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>             * allocate skb fitting to single page.
-<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>             */
-<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>            if (!sk_stream_memory_free(sk))
-<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>                goto wait_for_sndbuf;
-<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>......
-<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>            first_skb = skb_queue_empty(&amp;sk-&gt;sk_write_queue);
-<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>            skb = sk_stream_alloc_skb(sk,
-<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>                          select_size(sk, sg, first_skb),
-<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>                          sk-&gt;sk_allocation,
-<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>                          first_skb);
-<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>......
-<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>            skb_entail(sk, skb);
-<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>            copy = size_goal;
-<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>            max = size_goal;
-<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>......
-<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a>        }
-<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a>
-<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a>        /* Try to append data to the end of skb. */
-<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a>        if (copy &gt; msg_data_left(msg))
-<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a>            copy = msg_data_left(msg);
-<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a>
-<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a>        /* Where to copy to? */
-<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a>        if (skb_availroom(skb) &gt; 0) {
-<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a>            /* We have some space in skb head. Superb! */
-<a id="__codelineno-4-54" name="__codelineno-4-54" href="#__codelineno-4-54"></a>            copy = min_t(int, copy, skb_availroom(skb));
-<a id="__codelineno-4-55" name="__codelineno-4-55" href="#__codelineno-4-55"></a>            err = skb_add_data_nocache(sk, skb, &amp;msg-&gt;msg_iter, copy);
-<a id="__codelineno-4-56" name="__codelineno-4-56" href="#__codelineno-4-56"></a>......
-<a id="__codelineno-4-57" name="__codelineno-4-57" href="#__codelineno-4-57"></a>        } else {
-<a id="__codelineno-4-58" name="__codelineno-4-58" href="#__codelineno-4-58"></a>            bool merge = true;
-<a id="__codelineno-4-59" name="__codelineno-4-59" href="#__codelineno-4-59"></a>            int i = skb_shinfo(skb)-&gt;nr_frags;
-<a id="__codelineno-4-60" name="__codelineno-4-60" href="#__codelineno-4-60"></a>            struct page_frag *pfrag = sk_page_frag(sk);
-<a id="__codelineno-4-61" name="__codelineno-4-61" href="#__codelineno-4-61"></a>......
-<a id="__codelineno-4-62" name="__codelineno-4-62" href="#__codelineno-4-62"></a>            copy = min_t(int, copy, pfrag-&gt;size - pfrag-&gt;offset);
-<a id="__codelineno-4-63" name="__codelineno-4-63" href="#__codelineno-4-63"></a>......
-<a id="__codelineno-4-64" name="__codelineno-4-64" href="#__codelineno-4-64"></a>            err = skb_copy_to_page_nocache(sk, &amp;msg-&gt;msg_iter, skb,
-<a id="__codelineno-4-65" name="__codelineno-4-65" href="#__codelineno-4-65"></a>                               pfrag-&gt;page,
-<a id="__codelineno-4-66" name="__codelineno-4-66" href="#__codelineno-4-66"></a>                               pfrag-&gt;offset,
-<a id="__codelineno-4-67" name="__codelineno-4-67" href="#__codelineno-4-67"></a>                               copy);
-<a id="__codelineno-4-68" name="__codelineno-4-68" href="#__codelineno-4-68"></a>......
-<a id="__codelineno-4-69" name="__codelineno-4-69" href="#__codelineno-4-69"></a>            pfrag-&gt;offset += copy;
-<a id="__codelineno-4-70" name="__codelineno-4-70" href="#__codelineno-4-70"></a>        }
-<a id="__codelineno-4-71" name="__codelineno-4-71" href="#__codelineno-4-71"></a>
-<a id="__codelineno-4-72" name="__codelineno-4-72" href="#__codelineno-4-72"></a>......
-<a id="__codelineno-4-73" name="__codelineno-4-73" href="#__codelineno-4-73"></a>        tp-&gt;write_seq += copy;
-<a id="__codelineno-4-74" name="__codelineno-4-74" href="#__codelineno-4-74"></a>        TCP_SKB_CB(skb)-&gt;end_seq += copy;
-<a id="__codelineno-4-75" name="__codelineno-4-75" href="#__codelineno-4-75"></a>        tcp_skb_pcount_set(skb, 0);
-<a id="__codelineno-4-76" name="__codelineno-4-76" href="#__codelineno-4-76"></a>
-<a id="__codelineno-4-77" name="__codelineno-4-77" href="#__codelineno-4-77"></a>        copied += copy;
-<a id="__codelineno-4-78" name="__codelineno-4-78" href="#__codelineno-4-78"></a>        if (!msg_data_left(msg)) {
-<a id="__codelineno-4-79" name="__codelineno-4-79" href="#__codelineno-4-79"></a>            if (unlikely(flags &amp; MSG_EOR))
-<a id="__codelineno-4-80" name="__codelineno-4-80" href="#__codelineno-4-80"></a>                TCP_SKB_CB(skb)-&gt;eor = 1;
-<a id="__codelineno-4-81" name="__codelineno-4-81" href="#__codelineno-4-81"></a>            goto out;
-<a id="__codelineno-4-82" name="__codelineno-4-82" href="#__codelineno-4-82"></a>        }
-<a id="__codelineno-4-83" name="__codelineno-4-83" href="#__codelineno-4-83"></a>
-<a id="__codelineno-4-84" name="__codelineno-4-84" href="#__codelineno-4-84"></a>        if (skb-&gt;len &lt; max || (flags &amp; MSG_OOB) || unlikely(tp-&gt;repair))
-<a id="__codelineno-4-85" name="__codelineno-4-85" href="#__codelineno-4-85"></a>            continue;
-<a id="__codelineno-4-86" name="__codelineno-4-86" href="#__codelineno-4-86"></a>
-<a id="__codelineno-4-87" name="__codelineno-4-87" href="#__codelineno-4-87"></a>        if (forced_push(tp)) {
-<a id="__codelineno-4-88" name="__codelineno-4-88" href="#__codelineno-4-88"></a>            tcp_mark_push(tp, skb);
-<a id="__codelineno-4-89" name="__codelineno-4-89" href="#__codelineno-4-89"></a>            __tcp_push_pending_frames(sk, mss_now, TCP_NAGLE_PUSH);
-<a id="__codelineno-4-90" name="__codelineno-4-90" href="#__codelineno-4-90"></a>        } else if (skb == tcp_send_head(sk))
-<a id="__codelineno-4-91" name="__codelineno-4-91" href="#__codelineno-4-91"></a>            tcp_push_one(sk, mss_now);
-<a id="__codelineno-4-92" name="__codelineno-4-92" href="#__codelineno-4-92"></a>        continue;
-<a id="__codelineno-4-93" name="__codelineno-4-93" href="#__codelineno-4-93"></a>......
-<a id="__codelineno-4-94" name="__codelineno-4-94" href="#__codelineno-4-94"></a>    }
-<a id="__codelineno-4-95" name="__codelineno-4-95" href="#__codelineno-4-95"></a>......
-<a id="__codelineno-4-96" name="__codelineno-4-96" href="#__codelineno-4-96"></a>}
-</code></pre></div>
-<p>tcp_sendmsg的实现还是很复杂的，这里面做了这样几件事情。</p>
-<p>msg是用户要写入的数据，这个数据要拷贝到内核协议栈里面去发送；在内核协议栈里面，网络包的数据都是由struct sk_buff维护的，因而第一件事情就是找到一个空闲的内存空间，将用户要写入的数据，拷贝到struct sk_buff的管辖范围内。而第二件事情就是发送struct sk_buff。</p>
-<p>在tcp_sendmsg中，我们首先通过强制类型转换，将sock结构转换为struct tcp_sock，这个是维护TCP连接状态的重要数据结构。</p>
-<p>接下来是tcp_sendmsg的第一件事情，把数据拷贝到struct sk_buff。</p>
-<p>我们先声明一个变量copied，初始化为0，这表示拷贝了多少数据。紧接着是一个循环，while (msg_data_left(msg))，也即如果用户的数据没有发送完毕，就一直循环。循环里声明了一个copy变量，表示这次拷贝的数值，在循环的最后有copied += copy，将每次拷贝的数量都加起来。</p>
-<p>我们这里只需要看一次循环做了哪些事情。</p>
-<p><strong>第一步</strong>，tcp_write_queue_tail从TCP写入队列sk_write_queue中拿出最后一个struct sk_buff，在这个写入队列中排满了要发送的struct sk_buff，为什么要拿最后一个呢？这里面只有最后一个，可能会因为上次用户给的数据太少，而没有填满。</p>
-<p><strong>第二步</strong>，tcp_send_mss会计算MSS，也即Max Segment Size。这是什么呢？这个意思是说，我们在网络上传输的网络包的大小是有限制的，而这个限制在最底层开始就有。</p>
-<p><strong>MTU</strong>（Maximum Transmission Unit，最大传输单元）是二层的一个定义。以以太网为例，MTU为1500个Byte，前面有6个Byte的目标MAC地址，6个Byte的源MAC地址，2个Byte的类型，后面有4个Byte的CRC校验，共1518个Byte。</p>
-<p>在IP层，一个IP数据报在以太网中传输，如果它的长度大于该MTU值，就要进行分片传输。</p>
-<p>在TCP层有个 <strong>MSS</strong>（Maximum Segment Size，最大分段大小），等于MTU减去IP头，再减去TCP头。也就是，在不分片的情况下，TCP里面放的最大内容。</p>
-<p>在这里，max是struct sk_buff的最大数据长度，skb-&gt;len是当前已经占用的skb的数据长度，相减得到当前skb的剩余数据空间。</p>
-<p><strong>第三步</strong>，如果copy小于0，说明最后一个struct sk_buff已经没地方存放了，需要调用sk_stream_alloc_skb，重新分配struct sk_buff，然后调用skb_entail，将新分配的sk_buff放到队列尾部。</p>
-<p>struct sk_buff是存储网络包的重要的数据结构，在应用层数据包叫data，在TCP层我们称为segment，在IP层我们叫packet，在数据链路层称为frame。在struct sk_buff，首先是一个链表，将struct sk_buff结构串起来。</p>
-<p>接下来，我们从headers_start开始，到headers_end结束，里面都是各层次的头的位置。这里面有二层的mac_header、三层的network_header和四层的transport_header。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>struct sk_buff {
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    union {
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        struct {
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>            /* These two members must be first. */
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>            struct sk_buff      *next;
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>            struct sk_buff      *prev;
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>......
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        };
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        struct rb_node  rbnode; /* used in netem &amp; tcp stack */
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    };
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>......
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    /* private: */
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    __u32           headers_start[0];
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    /* public: */
-<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>......
-<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    __u32           priority;
-<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    int         skb_iif;
-<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    __u32           hash;
-<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>    __be16          vlan_proto;
-<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>    __u16           vlan_tci;
-<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>......
-<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    union {
-<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>        __u32       mark;
-<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>        __u32       reserved_tailroom;
-<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>    };
-<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>
-<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>    union {
-<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>        __be16      inner_protocol;
-<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>        __u8        inner_ipproto;
-<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>    };
-<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>
-<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>    __u16           inner_transport_header;
-<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>    __u16           inner_network_header;
-<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>    __u16           inner_mac_header;
-<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>
-<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>    __be16          protocol;
-<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>    __u16           transport_header;
-<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>    __u16           network_header;
-<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a>    __u16           mac_header;
-<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>
-<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a>    /* private: */
-<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a>    __u32           headers_end[0];
-<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>    /* public: */
-<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a>
-<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a>    /* These elements must be at the end, see alloc_skb() for details.  */
-<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a>    sk_buff_data_t      tail;
-<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a>    sk_buff_data_t      end;
-<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a>    unsigned char       *head,
-<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a>                *data;
-<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a>    unsigned int        truesize;
-<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a>    refcount_t      users;
-<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a>};
-</code></pre></div>
-<p>最后几项， head指向分配的内存块起始地址。data这个指针指向的位置是可变的。它有可能随着报文所处的层次而变动。当接收报文时，从网卡驱动开始，通过协议栈层层往上传送数据报，通过增加 skb-&gt;data 的值，来逐步剥离协议首部。而要发送报文时，各协议会创建 sk_buff{}，在经过各下层协议时，通过减少 skb-&gt;data的值来增加协议首部。tail指向数据的结尾，end指向分配的内存块的结束地址。</p>
-<p>要分配这样一个结构，sk_stream_alloc_skb会最终调用到__alloc_skb。在这个函数里面，除了分配一个sk_buff结构之外，还要分配sk_buff指向的数据区域。这段数据区域分为下面这几个部分。</p>
-<p>第一部分是连续的数据区域。紧接着是第二部分，一个struct skb_shared_info结构。这个结构是对于网络包发送过程的一个优化，因为传输层之上就是应用层了。按照TCP的定义，应用层感受不到下面的网络层的IP包是一个个独立的包的存在的。反正就是一个流，往里写就是了，可能一下子写多了，超过了一个IP包的承载能力，就会出现上面MSS的定义，拆分成一个个的Segment放在一个个的IP包里面，也可能一次写一点，一次写一点，这样数据是分散的，在IP层还要通过内存拷贝合成一个IP包。</p>
-<p>为了减少内存拷贝的代价，有的网络设备支持 <strong>分散聚合</strong>（Scatter/Gather）I/O，顾名思义，就是IP层没必要通过内存拷贝进行聚合，让散的数据零散的放在原处，在设备层进行聚合。如果使用这种模式，网络包的数据就不会放在连续的数据区域，而是放在struct skb_shared_info结构里面指向的离散数据，skb_shared_info的成员变量skb_frag_t frags[MAX_SKB_FRAGS]，会指向一个数组的页面，就不能保证连续了。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/9a/b8/9ad34c3c748978f915027d5085a858b8.png?wh=2203*1843" /></p>
-<p>于是我们就有了 <strong>第四步</strong>。在注释/\* Where to copy to? */后面有个if-else分支。if分支就是skb_add_data_nocache将数据拷贝到连续的数据区域。else分支就是skb_copy_to_page_nocache将数据拷贝到struct skb_shared_info结构指向的不需要连续的页面区域。</p>
-<p><strong>第五步</strong>，就是要发生网络包了。第一种情况是积累的数据报数目太多了，因而我们需要通过调用__tcp_push_pending_frames发送网络包。第二种情况是，这是第一个网络包，需要马上发送，调用tcp_push_one。无论__tcp_push_pending_frames还是tcp_push_one，都会调用tcp_write_xmit发送网络包。</p>
-<p>至此，tcp_sendmsg解析完了。</p>
-<h2 id="tcp_write_xmit">解析tcp_write_xmit函数</h2>
-<p>接下来我们来看，tcp_write_xmit是如何发送网络包的。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>static bool tcp_write_xmit(struct sock *sk, unsigned int mss_now, int nonagle, int push_one, gfp_t gfp)
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>{
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    struct tcp_sock *tp = tcp_sk(sk);
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    struct sk_buff *skb;
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    unsigned int tso_segs, sent_pkts;
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    int cwnd_quota;
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>......
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    max_segs = tcp_tso_segs(sk, mss_now);
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    while ((skb = tcp_send_head(sk))) {
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>        unsigned int limit;
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>......
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        tso_segs = tcp_init_tso_segs(skb, mss_now);
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>......
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>        cwnd_quota = tcp_cwnd_test(tp, skb);
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>......
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>        if (unlikely(!tcp_snd_wnd_test(tp, skb, mss_now))) {
-<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>            is_rwnd_limited = true;
-<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>            break;
-<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>        }
-<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>......
-<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>        limit = mss_now;
-<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>        if (tso_segs &gt; 1 &amp;&amp; !tcp_urg_mode(tp))
-<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>            limit = tcp_mss_split_point(sk, skb, mss_now, min_t(unsigned int, cwnd_quota, max_segs), nonagle);
-<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>
-<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>        if (skb-&gt;len &gt; limit &amp;&amp;
-<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>            unlikely(tso_fragment(sk, skb, limit, mss_now, gfp)))
-<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>            break;
-<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>......
-<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>        if (unlikely(tcp_transmit_skb(sk, skb, 1, gfp)))
-<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>            break;
-<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>
-<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>repair:
-<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>        /* Advance the send_head.  This one is sent out.
-<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a>         * This call will increment packets_out.
-<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a>         */
-<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a>        tcp_event_new_data_sent(sk, skb);
-<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a>
-<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>        tcp_minshall_update(tp, mss_now, skb);
-<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a>        sent_pkts += tcp_skb_pcount(skb);
-<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>
-<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a>        if (push_one)
-<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a>            break;
-<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a>    }
-<a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a>......
-<a id="__codelineno-6-45" name="__codelineno-6-45" href="#__codelineno-6-45"></a>}
-</code></pre></div>
-<p>这里面主要的逻辑是一个循环，用来处理发送队列，只要队列不空，就会发送。</p>
-<p>在一个循环中，涉及TCP层的很多传输算法，我们来一一解析。</p>
-<p>第一个概念是 <strong>TSO</strong>（TCP Segmentation Offload）。如果发送的网络包非常大，就像上面说的一样，要进行分段。分段这个事情可以由协议栈代码在内核做，但是缺点是比较费CPU，另一种方式是延迟到硬件网卡去做，需要网卡支持对大数据包进行自动分段，可以降低CPU负载。</p>
-<p>在代码中，tcp_init_tso_segs会调用tcp_set_skb_tso_segs。这里面有这样的语句：DIV_ROUND_UP(skb-&gt;len, mss_now)。也就是sk_buff的长度除以mss_now，应该分成几个段。如果算出来要分成多个段，接下来就是要看，是在这里（协议栈的代码里面）分好，还是等待到了底层网卡再分。</p>
-<p>于是，调用函数tcp_mss_split_point，开始计算切分的limit。这里面会计算max_len = mss_now * max_segs，根据现在不切分来计算limit，所以下一步的判断中，大部分情况下tso_fragment不会被调用，等待到了底层网卡来切分。</p>
-<p>第二个概念是 <strong>拥塞窗口</strong> 的概念（cwnd，congestion window），也就是说为了避免拼命发包，把网络塞满了，定义一个窗口的概念，在这个窗口之内的才能发送，超过这个窗口的就不能发送，来控制发送的频率。</p>
-<p>那窗口大小是多少呢？就是遵循下面这个著名的拥塞窗口变化图。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/40/1f/404a6c5041452c0641ae3cba5319dc1f.png?wh=923*613" /></p>
-<p>一开始的窗口只有一个mss大小叫作slow start（慢启动）。一开始的增长速度的很快的，翻倍增长。一旦到达一个临界值ssthresh，就变成线性增长，我们就称为 <strong>拥塞避免</strong>。什么时候算真正拥塞呢？就是出现了丢包。一旦丢包，一种方法是马上降回到一个mss，然后重复先翻倍再线性对的过程。如果觉得太过激进，也可以有第二种方法，就是降到当前cwnd的一半，然后进行线性增长。</p>
-<p>在代码中，tcp_cwnd_test会将当前的snd_cwnd，减去已经在窗口里面尚未发送完毕的网络包，那就是剩下的窗口大小cwnd_quota，也即就能发送这么多了。</p>
-<p>第三个概念就是 <strong>接收窗口</strong> rwnd的概念（receive window），也叫滑动窗口。如果说拥塞窗口是为了怕把网络塞满，在出现丢包的时候减少发送速度，那么滑动窗口就是为了怕把接收方塞满，而控制发送速度。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/97/65/9791e2f9ff63a9d8f849df7cd55fe965.png?wh=1903*793" /></p>
-<p>滑动窗口，其实就是接收方告诉发送方自己的网络包的接收能力，超过这个能力，我就受不了了。因为滑动窗口的存在，将发送方的缓存分成了四个部分。</p>
+<div><strong>精选留言（14）</strong></div>
 <ul>
-<li>第一部分：发送了并且已经确认的。这部分是已经发送完毕的网络包，这部分没有用了，可以回收。</li>
-<li>第二部分：发送了但尚未确认的。这部分，发送方要等待，万一发送不成功，还要重新发送，所以不能删除。</li>
-<li>第三部分：没有发送，但是已经等待发送的。这部分是接收方空闲的能力，可以马上发送，接收方收得了。</li>
-<li>第四部分：没有发送，并且暂时还不会发送的。这部分已经超过了接收方的接收能力，再发送接收方就收不了了。</li>
+<li><img src="https://static001.geekbang.org/account/avatar/00/14/a1/46/3136ac25.jpg" width="30px"><span>是男人就开巴巴托斯</span> 👍（10） 💬（5）<div>有一次分别在服务器端和客户端抓包
+服务器端的包都是好几k 十几k.
+客户端的包是1400多 一开始没弄明白都mtu了为什么还有好几k的包
+后来查到内核可以配置网络参数，不把拆包交给网卡固件，自己分包。</div>2019-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/25/4b/4cbd001e.jpg" width="30px"><span>佳俊</span> 👍（1） 💬（3）<div>sk_buff已经对mss做了分片处理了，为什么还要在ip再做一次分片处理。sk_buff有最大的限制吗？</div>2020-05-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/b4/f6/735673f7.jpg" width="30px"><span>W.jyao</span> 👍（1） 💬（2）<div>老师，请教一个问题，为什么流媒体服务器发送的rtp包都要小于1500左右，也就是小于MTU，理论上不是大于1500会分片吗？但是好像实现的代码都会小于Mtu，为什么呢？</div>2019-07-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/ea/dc/9a970e98.jpg" width="30px"><span>一梦如是</span> 👍（0） 💬（2）<div>老师好，请教一个困惑很久的问题，cpu的L1，L2，L3级cache，缓存的数据是以内存的页为单位的吗
+oracle sga在大内存时，通常会配置hugepage以减少TLB的压力和swap的交换用来提高性能，linux（centos)下默认是2M，而一般cpu L1是32+32K,L2是256K，是不是就意味着没法使用这两级缓存了</div>2019-07-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/bf/8f/51f044dc.jpg" width="30px"><span>谛听</span> 👍（8） 💬（2）<div>VFS: 拿到 file 中的 socket，进而得到 sock，进而调用 tcp_sendmsg
+tcp_sendmsg: 将用户数据拷到 sk_buff，不断循环发送，发送过程中计算 MSS，拆分成一个个的 
+                    Segment 放在一个个的 IP 包里面，数据可拷贝到连续的区域，也可以拷到不连续的区域
+                  （ 需要网络设备支持分散聚合），最后调用 tcp_write_xmit 发送网络包
+tcp_write_xmit：TSO--分段可由内核做，比较耗CPU，也延迟到网卡做；
+                       拥塞窗口--避免把网络塞满；
+                       滑动窗口--避免把接收端塞满
+tcp_transmit_skb：填充tcp报文，发送网络包
+</div>2019-11-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/82/3d/356fc3d6.jpg" width="30px"><span>忆水寒</span> 👍（6） 💬（0）<div>从网络协议专栏看完过来的，tcp协议实际上很熟悉，所以看这篇文章大概都懂。但是每次读都能有新的体会。</div>2020-02-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4a/15/106eaaa8.jpg" width="30px"><span>stackWarn</span> 👍（1） 💬（0）<div>作为一个运维，这节算是这里面听的最轻松的一次了，之前看过这部分的代码，函数名都有点印象哈哈</div>2020-10-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/c9/b1/ef6e5707.jpg" width="30px"><span>Mr小公熊</span> 👍（0） 💬（0）<div>在 Linux 内核的 TCP&#47;IP 协议栈中，tcp_sendmsg 函数用于发送 TCP 数据。这个函数会处理数据的包装和发送，包括将数据分割成多个片段（如果需要的话）以及构造适当的网络数据包（sk_buff）。
+
+struct skb_shared_info 是否在 tcp_sendmsg 中使用，并不是由硬件决定的。这个决策完全取决于内核协议栈的逻辑。具体来说，当 TCP 数据的大小超过一个网络数据包的最大传输单元（MTU）时，内核需要将数据分割成多个片段来发送。在这种情况下，struct skb_shared_info 就会被用来存储关于这些额外片段的信息。
+
+以下是一些关键点：
+
+数据分片：如果 TCP 数据的大小超过了 MTU，tcp_sendmsg 会调用 tcp_fragment 函数来分割数据。这个函数会创建多个 sk_buff 结构体，并使用 struct skb_shared_info 来管理这些片段。
+
+硬件无关：这个决策过程完全在软件层面进行，与硬件无关。硬件只负责发送和接收原始的网络数据包，而不知道或不关心这些数据包是如何在软件中被构造和管理的。
+
+协议栈逻辑：tcp_sendmsg 和相关函数根据当前的 TCP 连接状态、可用缓冲区大小、MTU 等因素来决定是否使用 struct skb_shared_info。
+
+因此，struct skb_shared_info 在 tcp_sendmsg 中的使用是由内核协议栈的逻辑决定的，而不是由硬件决定的。这是内核网络栈处理数据包分割和发送的一部分，旨在优化数据传输效率和处理大型或分段的数据包。
+好像是否存入shared里不是由软硬件决定的啊。。。</div>2024-03-06</li><br/><li><img src="" width="30px"><span>Geek_2b44d4</span> 👍（0） 💬（0）<div>请教一下，这里进行分段后，每个段是否时类似链表结构？分包发送的时候，是不是每个包里面都标记了上一个与下一个的标识，这样接收方收到后就可以重排了，不知道是不是这样？</div>2022-05-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a5/3c/7c0d2e57.jpg" width="30px"><span>程序员老王</span> 👍（0） 💬（0）<div>send 很大数据。假如网络正常，回失败吗？skb回自动增加，没有阻塞和阻塞者 一说吧？</div>2022-05-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9b/88/34c171f1.jpg" width="30px"><span>herongwei</span> 👍（0） 💬（0）<div>老师讲的真的非常好！常看常新</div>2022-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/57/16/eef7c4ac.jpg" width="30px"><span>jackji</span> 👍（0） 💬（0）<div>老师 文中代码对应的kernel版本是？</div>2021-03-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/aa/ff/e2c331e0.jpg" width="30px"><span>bbbi</span> 👍（0） 💬（0）<div>老师一个sk_buff多大呢？这个链表可以无限长吗？</div>2019-12-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ca/e3/447aff89.jpg" width="30px"><span>记事本</span> 👍（0） 💬（0）<div>老师好  这部分的内容有没有参考书可以看看的？</div>2019-11-25</li><br/>
 </ul>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/b6/31/b62eea403e665bb196dceba571392531.png?wh=2017*793" /></p>
-<p>因为滑动窗口的存在，接收方的缓存也要分成了三个部分。</p>
-<ul>
-<li>第一部分：接受并且确认过的任务。这部分完全接收成功了，可以交给应用层了。</li>
-<li>第二部分：还没接收，但是马上就能接收的任务。这部分有的网络包到达了，但是还没确认，不算完全完毕，有的还没有到达，那就是接收方能够接受的最大的网络包数量。</li>
-<li>第三部分：还没接收，也没法接收的任务。这部分已经超出接收方能力。</li>
-</ul>
-<p>在网络包的交互过程中，接收方会将第二部分的大小，作为AdvertisedWindow发送给发送方，发送方就可以根据他来调整发送速度了。</p>
-<p>在tcp_snd_wnd_test函数中，会判断sk_buff中的end_seq和tcp_wnd_end(tp)之间的关系，也即这个sk_buff是否在滑动窗口的允许范围之内。如果不在范围内，说明发送要受限制了，我们就要把is_rwnd_limited设置为true。</p>
-<p>接下来，tcp_mss_split_point函数要被调用了。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>static unsigned int tcp_mss_split_point(const struct sock *sk,
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>                                        const struct sk_buff *skb,
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>                                        unsigned int mss_now,
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>                                        unsigned int max_segs,
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>                                        int nonagle)
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>{
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>        const struct tcp_sock *tp = tcp_sk(sk);
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>        u32 partial, needed, window, max_len;
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>        window = tcp_wnd_end(tp) - TCP_SKB_CB(skb)-&gt;seq;
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>        max_len = mss_now * max_segs;
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>
-<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>        if (likely(max_len &lt;= window &amp;&amp; skb != tcp_write_queue_tail(sk)))
-<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>                return max_len;
-<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>
-<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>        needed = min(skb-&gt;len, window);
-<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>
-<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>        if (max_len &lt;= needed)
-<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>                return max_len;
-<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>......
-<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>        return needed;
-<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>}
-</code></pre></div>
-<p>这里面除了会判断上面讲的，是否会因为超出mss而分段，还会判断另一个条件，就是是否在滑动窗口的运行范围之内，如果小于窗口的大小，也需要分段，也即需要调用tso_fragment。</p>
-<p>在一个循环的最后，是调用tcp_transmit_skb，真的去发送一个网络包。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>static int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>                gfp_t gfp_mask)
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>{
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    const struct inet_connection_sock *icsk = inet_csk(sk);
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    struct inet_sock *inet;
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    struct tcp_sock *tp;
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    struct tcp_skb_cb *tcb;
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    struct tcphdr *th;
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    int err;
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    tp = tcp_sk(sk);
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    skb-&gt;skb_mstamp = tp-&gt;tcp_mstamp;
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    inet = inet_sk(sk);
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    tcb = TCP_SKB_CB(skb);
-<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    memset(&amp;opts, 0, sizeof(opts));
-<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>
-<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>    tcp_header_size = tcp_options_size + sizeof(struct tcphdr);
-<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>    skb_push(skb, tcp_header_size);
-<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>
-<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>    /* Build TCP header and checksum it. */
-<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>    th = (struct tcphdr *)skb-&gt;data;
-<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>    th-&gt;source      = inet-&gt;inet_sport;
-<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>    th-&gt;dest        = inet-&gt;inet_dport;
-<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>    th-&gt;seq         = htonl(tcb-&gt;seq);
-<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>    th-&gt;ack_seq     = htonl(tp-&gt;rcv_nxt);
-<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>    *(((__be16 *)th) + 6)   = htons(((tcp_header_size &gt;&gt; 2) &lt;&lt; 12) |
-<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>                    tcb-&gt;tcp_flags);
-<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>
-<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>    th-&gt;check       = 0;
-<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>    th-&gt;urg_ptr     = 0;
-<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>......
-<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>    tcp_options_write((__be32 *)(th + 1), tp, &amp;opts);
-<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>    th-&gt;window  = htons(min(tp-&gt;rcv_wnd, 65535U));
-<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a>......
-<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>    err = icsk-&gt;icsk_af_ops-&gt;queue_xmit(sk, skb, &amp;inet-&gt;cork.fl);
-<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a>......
-<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a>}
-</code></pre></div>
-<p>tcp_transmit_skb这个函数比较长，主要做了两件事情，第一件事情就是填充TCP头，如果我们对着TCP头的格式。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/be/0e/be225a97816a664367f29be9046aa30e.png?wh=2023*1183" /></p>
-<p>这里面有源端口，设置为inet_sport，有目标端口，设置为inet_dport；有序列号，设置为tcb-&gt;seq；有确认序列号，设置为tp-&gt;rcv_nxt。我们把所有的flags设置为tcb-&gt;tcp_flags。设置选项为opts。设置窗口大小为tp-&gt;rcv_wnd。</p>
-<p>全部设置完毕之后，就会调用icsk_af_ops的queue_xmit方法，icsk_af_ops指向ipv4_specific，也即调用的是ip_queue_xmit函数。</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>const struct inet_connection_sock_af_ops ipv4_specific = {
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>        .queue_xmit        = ip_queue_xmit,
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>        .send_check        = tcp_v4_send_check,
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>        .rebuild_header    = inet_sk_rebuild_header,
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        .sk_rx_dst_set     = inet_sk_rx_dst_set,
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>        .conn_request      = tcp_v4_conn_request,
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>        .syn_recv_sock     = tcp_v4_syn_recv_sock,
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>        .net_header_len    = sizeof(struct iphdr),
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>        .setsockopt        = ip_setsockopt,
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>        .getsockopt        = ip_getsockopt,
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>        .addr2sockaddr     = inet_csk_addr2sockaddr,
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>        .sockaddr_len      = sizeof(struct sockaddr_in),
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>        .mtu_reduced       = tcp_v4_mtu_reduced,
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>};
-</code></pre></div>
-<h2 id="_1">总结时刻</h2>
-<p>这一节，我们解析了发送一个网络包的一部分过程，如下图所示。</p>
-<p><img alt="" src="https://static001.geekbang.org/resource/image/dc/44/dc66535fa7e1a10fd6d728865f6c9344.png?wh=2923*2923" /></p>
-<p>这个过程分成几个层次。</p>
-<ul>
-<li>VFS层：write系统调用找到struct file，根据里面的file_operations的定义，调用sock_write_iter函数。sock_write_iter函数调用sock_sendmsg函数。</li>
-<li>Socket层：从struct file里面的private_data得到struct socket，根据里面ops的定义，调用inet_sendmsg函数。</li>
-<li>Sock层：从struct socket里面的sk得到struct sock，根据里面sk_prot的定义，调用tcp_sendmsg函数。</li>
-<li>TCP层：tcp_sendmsg函数会调用tcp_write_xmit函数，tcp_write_xmit函数会调用tcp_transmit_skb，在这里实现了TCP层面向连接的逻辑。</li>
-<li>IP层：扩展struct sock，得到struct inet_connection_sock，根据里面icsk_af_ops的定义，调用ip_queue_xmit函数。</li>
-</ul>
-<h2 id="_2">课堂练习</h2>
-<p>如果你对TCP协议的结构不太熟悉，可以使用tcpdump命令截取一个TCP的包，看看里面的结构。</p>
-<p>欢迎留言和我分享你的疑惑和见解 ，也欢迎可以收藏本节内容，反复研读。你也可以把今天的内容分享给你的朋友，和他一起学习和进步。</p>
 
 
 
