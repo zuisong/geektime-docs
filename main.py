@@ -10,6 +10,7 @@ import tempfile
 import time
 import traceback
 import click
+import urllib3
 import yaml
 import requests
 
@@ -30,10 +31,10 @@ from pypdf import PdfWriter, PdfReader
 from compress import __compress
 
 
+urllib3.disable_warnings()
 
 requests.adapters.DEFAULT_RETRIES = 5
 reqsession = requests.session()
-requests.packages.urllib3.disable_warnings()
 reqsession.keep_alive = False
 reqsession.verify = False
 
@@ -111,13 +112,13 @@ def worker(driver, uri, timeout):
 
 def http_head(uri, timeout) -> None:
     try:
-        resp = requests.head(uri, timeout=timeout, headers={'User-Agent': 'Mozilla/5.0'})
+        resp = reqsession.head(uri, timeout=timeout, headers={'User-Agent': 'Mozilla/5.0'})
         print(f'head status_code: {resp.status_code}, {uri}')
     except Exception as e:
         print(f'head error: {e}, {uri}')
 
 def http_get_base64(uri, timeout) -> (str, str):
-    resp = requests.get(uri, timeout=timeout, headers={'User-Agent': 'Mozilla/5.0'})
+    resp = reqsession.get(uri, timeout=timeout, headers={'User-Agent': 'Mozilla/5.0'})
     if resp.status_code != 200:
         print(f'head status_code: {resp.status_code}, {uri}')
         return None, None
@@ -179,16 +180,12 @@ def  make_all_pdf(source, output, timeout, compress, power, port):
     webdriver_options.add_experimental_option("excludeSwitches", ['enable-automation'])
 
     http_client = requests.Session()
-    http_client.proxies = {
-        "http": "http://127.0.0.1:1087",
-        "https": "http://127.0.0.1:1087",
-    }
     download_manager = WDMDownloadManager(http_client=http_client)
     service = Service(ChromeDriverManager(download_manager=download_manager).install())
     host = f"http://127.0.0.1:{port}/"
     for dirname, _, file_lst in os.walk(source):
         for fname in file_lst:
-            if not fname in ["mkdocs.yml"]:
+            if fname not in ["mkdocs.yml"]:
                 continue
             for i in range(9):
                 try:
@@ -230,6 +227,7 @@ def  make_all_pdf(source, output, timeout, compress, power, port):
                                 match = match if match.count(')') <= 0 else match[:match.index(')')]
                                 if match.count('('):
                                     match = match[match.index('(') + 1:]
+                                match = match.rstrip('"') if match.endswith('"') else match
                                 images.append(match)
 
                             with ThreadPoolExecutor(max_workers=6) as executor:
@@ -339,6 +337,7 @@ def  make_all_pdf(source, output, timeout, compress, power, port):
                                     writer.write(output_path)
                                     print(f"writing pdf {output_path}")
 
+                        shutil.rmtree(parts_dir)
                         break
                 except Exception as e:
                     print(f"exception: {e}, traceback: {traceback.format_exc()}")
@@ -401,10 +400,6 @@ def make_pdf(source, output, timeout, compress, power, port):
     webdriver_options.experimental_options["prefs"] = webdriver_prefs
 
     http_client = requests.Session()
-    http_client.proxies = {
-        "http": "http://127.0.0.1:1087",
-        "https": "http://127.0.0.1:1087",
-    }
     download_manager = WDMDownloadManager(http_client=http_client)
     service = Service(ChromeDriverManager(download_manager=download_manager).install())
     host = f"http://127.0.0.1:{port}/"
