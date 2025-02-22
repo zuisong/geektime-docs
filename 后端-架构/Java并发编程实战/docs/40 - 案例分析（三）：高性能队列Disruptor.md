@@ -8,8 +8,189 @@
 4. 支持批量消费，消费者可以无锁方式消费多个消息。
 
 其中，前三点涉及到的知识比较多，所以今天咱们重点讲解前三点，不过在详细介绍这些知识之前，我们先来聊聊Disruptor如何使用，好让你先对Disruptor有个感官的认识。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/94/1e/973cda79.jpg" width="30px"><span>Juc</span> 👍（56） 💬（2）<div>希望老师解释下，为什么创建元素的时间离散会导致元素的内存地址不是连续的?这些元素不是存在数组中的吗？数组初始化不是已经连续分配内存了吗？</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1f/66/59e0647a.jpg" width="30px"><span>万历十五年</span> 👍（23） 💬（1）<div>单机提升性能不外乎是围绕CPU，内存和IO想办法。
+
+下面的代码出自官方示例，我略做了一些修改，相较而言，Disruptor的使用比Java SDK提供BlockingQueue要复杂一些，但是总体思路还是一致的，其大致情况如下：
+
+- 在Disruptor中，生产者生产的对象（也就是消费者消费的对象）称为Event，使用Disruptor必须自定义Event，例如示例代码的自定义Event是LongEvent；
+- 构建Disruptor对象除了要指定队列大小外，还需要传入一个EventFactory，示例代码中传入的是`LongEvent::new`；
+- 消费Disruptor中的Event需要通过handleEventsWith()方法注册一个事件处理器，发布Event则需要通过publishEvent()方法。
+
+```
+//自定义Event
+class LongEvent {
+  private long value;
+  public void set(long value) {
+    this.value = value;
+  }
+}
+//指定RingBuffer大小,
+//必须是2的N次方
+int bufferSize = 1024;
+
+//构建Disruptor
+Disruptor<LongEvent> disruptor 
+  = new Disruptor<>(
+    LongEvent::new,
+    bufferSize,
+    DaemonThreadFactory.INSTANCE);
+
+//注册事件处理器
+disruptor.handleEventsWith(
+  (event, sequence, endOfBatch) ->
+    System.out.println("E: "+event));
+
+//启动Disruptor
+disruptor.start();
+
+//获取RingBuffer
+RingBuffer<LongEvent> ringBuffer 
+  = disruptor.getRingBuffer();
+//生产Event
+ByteBuffer bb = ByteBuffer.allocate(8);
+for (long l = 0; true; l++){
+  bb.putLong(0, l);
+  //生产者生产消息
+  ringBuffer.publishEvent(
+    (event, sequence, buffer) -> 
+      event.set(buffer.getLong(0)), bb);
+  Thread.sleep(1000);
+}
+```
+
+## RingBuffer如何提升性能
+
+Java SDK中ArrayBlockingQueue使用**数组**作为底层的数据存储，而Disruptor是使用**RingBuffer**作为数据存储。RingBuffer本质上也是数组，所以仅仅将数据存储从数组换成RingBuffer并不能提升性能，但是Disruptor在RingBuffer的基础上还做了很多优化，其中一项优化就是和内存分配有关的。
+
+在介绍这项优化之前，你需要先了解一下程序的局部性原理。简单来讲，**程序的局部性原理指的是在一段时间内程序的执行会限定在一个局部范围内**。这里的“局部性”可以从两个方面来理解，一个是时间局部性，另一个是空间局部性。**时间局部性**指的是程序中的某条指令一旦被执行，不久之后这条指令很可能再次被执行；如果某条数据被访问，不久之后这条数据很可能再次被访问。而**空间局部性**是指某块内存一旦被访问，不久之后这块内存附近的内存也很可能被访问。
+
+CPU的缓存就利用了程序的局部性原理：CPU从内存中加载数据X时，会将数据X缓存在高速缓存Cache中，实际上CPU缓存X的同时，还缓存了X周围的数据，因为根据程序具备局部性原理，X周围的数据也很有可能被访问。从另外一个角度来看，如果程序能够很好地体现出局部性原理，也就能更好地利用CPU的缓存，从而提升程序的性能。Disruptor在设计RingBuffer的时候就充分考虑了这个问题，下面我们就对比着ArrayBlockingQueue来分析一下。
+
+首先是ArrayBlockingQueue。生产者线程向ArrayBlockingQueue增加一个元素，每次增加元素E之前，都需要创建一个对象E，如下图所示，ArrayBlockingQueue内部有6个元素，这6个元素都是由生产者线程创建的，由于创建这些元素的时间基本上是离散的，所以这些元素的内存地址大概率也不是连续的。
+
+![](https://static001.geekbang.org/resource/image/84/90/848fd30644355ea86f3f91b06bfafa90.png?wh=1142%2A393)
+
+ArrayBlockingQueue内部结构图
+
+下面我们再看看Disruptor是如何处理的。Disruptor内部的RingBuffer也是用数组实现的，但是这个数组中的所有元素在初始化时是一次性全部创建的，所以这些元素的内存地址大概率是连续的，相关的代码如下所示。
+
+```
+for (int i=0; i<bufferSize; i++){
+  //entries[]就是RingBuffer内部的数组
+  //eventFactory就是前面示例代码中传入的LongEvent::new
+  entries[BUFFER_PAD + i] 
+    = eventFactory.newInstance();
+}
+```
+
+Disruptor内部RingBuffer的结构可以简化成下图，那问题来了，数组中所有元素内存地址连续能提升性能吗？能！为什么呢？因为消费者线程在消费的时候，是遵循空间局部性原理的，消费完第1个元素，很快就会消费第2个元素；当消费第1个元素E1的时候，CPU会把内存中E1后面的数据也加载进Cache，如果E1和E2在内存中的地址是连续的，那么E2也就会被加载进Cache中，然后当消费第2个元素的时候，由于E2已经在Cache中了，所以就不需要从内存中加载了，这样就能大大提升性能。
+
+![](https://static001.geekbang.org/resource/image/33/37/33bc0d35615f5d5f7869871e0cfed037.png?wh=1142%2A568)
+
+Disruptor内部RingBuffer结构图
+
+除此之外，在Disruptor中，生产者线程通过publishEvent()发布Event的时候，并不是创建一个新的Event，而是通过event.set()方法修改Event， 也就是说RingBuffer创建的Event是可以循环利用的，这样还能避免频繁创建、删除Event导致的频繁GC问题。
+
+## 如何避免“伪共享”
+
+高效利用Cache，能够大大提升性能，所以要努力构建能够高效利用Cache的内存结构。而从另外一个角度看，努力避免不能高效利用Cache的内存结构也同样重要。
+
+有一种叫做“伪共享（False sharing）”的内存布局就会使Cache失效，那什么是“伪共享”呢？
+
+伪共享和CPU内部的Cache有关，Cache内部是按照缓存行（Cache Line）管理的，缓存行的大小通常是64个字节；CPU从内存中加载数据X，会同时加载X后面（64-size(X)）个字节的数据。下面的示例代码出自Java SDK的ArrayBlockingQueue，其内部维护了4个成员变量，分别是队列数组items、出队索引takeIndex、入队索引putIndex以及队列中的元素总数count。
+
+```
+/** 队列数组 */
+final Object[] items;
+/** 出队索引 */
+int takeIndex;
+/** 入队索引 */
+int putIndex;
+/** 队列中元素总数 */
+int count;
+```
+
+当CPU从内存中加载takeIndex的时候，会同时将putIndex以及count都加载进Cache。下图是某个时刻CPU中Cache的状况，为了简化，缓存行中我们仅列出了takeIndex和putIndex。
+
+![](https://static001.geekbang.org/resource/image/fd/5c/fdccf96bda79453e55ed75e418864b5c.png?wh=1142%2A681)
+
+CPU缓存示意图
+
+假设线程A运行在CPU-1上，执行入队操作，入队操作会修改putIndex，而修改putIndex会导致其所在的所有核上的缓存行均失效；此时假设运行在CPU-2上的线程执行出队操作，出队操作需要读取takeIndex，由于takeIndex所在的缓存行已经失效，所以CPU-2必须从内存中重新读取。入队操作本不会修改takeIndex，但是由于takeIndex和putIndex共享的是一个缓存行，就导致出队操作不能很好地利用Cache，这其实就是**伪共享**。简单来讲，**伪共享指的是由于共享缓存行导致缓存无效的场景**。
+
+ArrayBlockingQueue的入队和出队操作是用锁来保证互斥的，所以入队和出队不会同时发生。如果允许入队和出队同时发生，那就会导致线程A和线程B争用同一个缓存行，这样也会导致性能问题。所以为了更好地利用缓存，我们必须避免伪共享，那如何避免呢？
+
+![](https://static001.geekbang.org/resource/image/d5/27/d5d5afc11fe6b1aaf8c9be7dba643827.png?wh=1142%2A679)
+
+CPU缓存失效示意图
+
+方案很简单，**每个变量独占一个缓存行、不共享缓存行**就可以了，具体技术是**缓存行填充**。比如想让takeIndex独占一个缓存行，可以在takeIndex的前后各填充56个字节，这样就一定能保证takeIndex独占一个缓存行。下面的示例代码出自Disruptor，Sequence 对象中的value属性就能避免伪共享，因为这个属性前后都填充了56个字节。Disruptor中很多对象，例如RingBuffer、RingBuffer内部的数组都用到了这种填充技术来避免伪共享。
+
+```
+//前：填充56字节
+class LhsPadding{
+    long p1, p2, p3, p4, p5, p6, p7;
+}
+class Value extends LhsPadding{
+    volatile long value;
+}
+//后：填充56字节
+class RhsPadding extends Value{
+    long p9, p10, p11, p12, p13, p14, p15;
+}
+class Sequence extends RhsPadding{
+  //省略实现
+}
+```
+
+## Disruptor中的无锁算法
+
+ArrayBlockingQueue是利用管程实现的，中规中矩，生产、消费操作都需要加锁，实现起来简单，但是性能并不十分理想。Disruptor采用的是无锁算法，很复杂，但是核心无非是生产和消费两个操作。Disruptor中最复杂的是入队操作，所以我们重点来看看入队操作是如何实现的。
+
+对于入队操作，最关键的要求是不能覆盖没有消费的元素；对于出队操作，最关键的要求是不能读取没有写入的元素，所以Disruptor中也一定会维护类似出队索引和入队索引这样两个关键变量。Disruptor中的RingBuffer维护了入队索引，但是并没有维护出队索引，这是因为在Disruptor中多个消费者可以同时消费，每个消费者都会有一个出队索引，所以RingBuffer的出队索引是所有消费者里面最小的那一个。
+
+下面是Disruptor生产者入队操作的核心代码，看上去很复杂，其实逻辑很简单：如果没有足够的空余位置，就出让CPU使用权，然后重新计算；反之则用CAS设置入队索引。
+
+```
+//生产者获取n个写入位置
+do {
+  //cursor类似于入队索引，指的是上次生产到这里
+  current = cursor.get();
+  //目标是在生产n个
+  next = current + n;
+  //减掉一个循环
+  long wrapPoint = next - bufferSize;
+  //获取上一次的最小消费位置
+  long cachedGatingSequence = gatingSequenceCache.get();
+  //没有足够的空余位置
+  if (wrapPoint>cachedGatingSequence || cachedGatingSequence>current){
+    //重新计算所有消费者里面的最小值位置
+    long gatingSequence = Util.getMinimumSequence(
+        gatingSequences, current);
+    //仍然没有足够的空余位置，出让CPU使用权，重新执行下一循环
+    if (wrapPoint > gatingSequence){
+      LockSupport.parkNanos(1);
+      continue;
+    }
+    //从新设置上一次的最小消费位置
+    gatingSequenceCache.set(gatingSequence);
+  } else if (cursor.compareAndSet(current, next)){
+    //获取写入位置成功，跳出循环
+    break;
+  }
+} while (true);
+```
+
+## 总结
+
+Disruptor在优化并发性能方面可谓是做到了极致，优化的思路大体是两个方面，一个是利用无锁算法避免锁的争用，另外一个则是将硬件（CPU）的性能发挥到极致。尤其是后者，在Java领域基本上属于经典之作了。
+
+发挥硬件的能力一般是C这种面向硬件的语言常干的事儿，C语言领域经常通过调整内存布局优化内存占用，而Java领域则用的很少，原因在于Java可以智能地优化内存布局，内存布局对Java程序员的透明的。这种智能的优化大部分场景是很友好的，但是如果你想通过填充方式避免伪共享就必须绕过这种优化，关于这方面Disruptor提供了经典的实现，你可以参考。
+
+由于伪共享问题如此重要，所以Java也开始重视它了，比如Java 8中，提供了避免伪共享的注解：@sun.misc.Contended，通过这个注解就能轻松避免伪共享（需要设置JVM参数-XX:-RestrictContended）。不过避免伪共享是以牺牲内存为代价的，所以具体使用的时候还是需要仔细斟酌。
+
+欢迎在留言区与我分享你的想法，也欢迎你在留言区记录你的思考过程。感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>Juc</span> 👍（56） 💬（2）<div>希望老师解释下，为什么创建元素的时间离散会导致元素的内存地址不是连续的?这些元素不是存在数组中的吗？数组初始化不是已经连续分配内存了吗？</div>2019-05-30</li><br/><li><span>万历十五年</span> 👍（23） 💬（1）<div>单机提升性能不外乎是围绕CPU，内存和IO想办法。
 CPU: 
 1.避免线程切换：单线程，对于多线程进行线程绑定，使用CAS无锁技术
 2.利用CPU缓存，还有缓存填充，设计数据结构和算法
@@ -20,19 +201,10 @@ CPU: 
 解决IO产生的速度差:
 1.多路复用
 2.队列削峰
-3.协程</div>2020-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/99/c9/a7c77746.jpg" width="30px"><span>冰激凌的眼泪</span> 👍（23） 💬（5）<div>前后56个字节保证了目标字段总是独占一个cache line，不受周围变量缓存失效的影响</div>2019-07-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/07/d2/0d7ee298.jpg" width="30px"><span>惘 闻</span> 👍（18） 💬（2）<div>if (wrapPoint&gt;cachedGatingSequence || cachedGatingSequence&gt;current)这个位置的判断原本不明白,看了几遍总算是明白了.    环形队列,生产者从0生产 消费者从0消费.  wrapPoint是指生产了一圈 又达到了 消费者消费的最小的位置   如果此时继续生产,那么消费最少的消费者还未消费的消息将会被生产者覆盖,所以此处要停止.  而 最小消费位置大于生产者当前生产位置的话,说明消费到了生产者还未生产消息的位置,所以等待消息的生产,要停止.</div>2020-08-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f3/7f/2dd9409b.jpg" width="30px"><span>xinglichea</span> 👍（5） 💬（1）<div>老师，感觉填充的模式不是很靠谱，程序的健壮性要强依赖于CPU的缓存行的实现，打个比如，如果以后CPU缓存行变成了128个字节，那企不要写Disruptor的实现源码，然后原来实现的代码仍然会有伪共享的问题！！！</div>2019-08-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/00/67/e24dd940.jpg" width="30px"><span>那月真美</span> 👍（3） 💬（1）<div>老师，数组内存地址连续，数组里面的引用对象怎么做到连续呢？它不是由生产者产生的吗？何时生产只能由生产者决定，初始化数组的时候怎么一次性初始化数组元素啊？</div>2020-09-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0c/c2/bad34a50.jpg" width="30px"><span>张洋</span> 👍（2） 💬（1）<div>1.if (wrapPoint&gt;cachedGatingSequence || cachedGatingSequence&gt;current) 这点开始一直没看懂，之前写过环形队列，每次索引都会重置，就是一直在0-9之间，然后看了下RingBuffer 好像它的索引是一直累加的。这样就好懂多了。
-2.关于ArrayBlockQueue 添加的对象是不连续的还是不太明白，数组初始化 不是在内存种开辟出一段连续的内存空间吗？ 还是按照有的同学留言所说的，如果是引用对象不一定是连续的。</div>2020-12-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/55/28/66bf4bc4.jpg" width="30px"><span>荷兰小猪8813</span> 👍（2） 💬（2）<div>ArrayBlockingQueue 的入队和出队操作是用锁来保证互斥的，所以入队和出队不会同时发生。如果允许入队和出队同时发生，那就会导致线程 A 和线程 B 争用同一个缓存行，这样也会导致性能问题。
+3.协程</div>2020-12-20</li><br/><li><span>冰激凌的眼泪</span> 👍（23） 💬（5）<div>前后56个字节保证了目标字段总是独占一个cache line，不受周围变量缓存失效的影响</div>2019-07-03</li><br/><li><span>惘 闻</span> 👍（18） 💬（2）<div>if (wrapPoint&gt;cachedGatingSequence || cachedGatingSequence&gt;current)这个位置的判断原本不明白,看了几遍总算是明白了.    环形队列,生产者从0生产 消费者从0消费.  wrapPoint是指生产了一圈 又达到了 消费者消费的最小的位置   如果此时继续生产,那么消费最少的消费者还未消费的消息将会被生产者覆盖,所以此处要停止.  而 最小消费位置大于生产者当前生产位置的话,说明消费到了生产者还未生产消息的位置,所以等待消息的生产,要停止.</div>2020-08-26</li><br/><li><span>xinglichea</span> 👍（5） 💬（1）<div>老师，感觉填充的模式不是很靠谱，程序的健壮性要强依赖于CPU的缓存行的实现，打个比如，如果以后CPU缓存行变成了128个字节，那企不要写Disruptor的实现源码，然后原来实现的代码仍然会有伪共享的问题！！！</div>2019-08-29</li><br/><li><span>那月真美</span> 👍（3） 💬（1）<div>老师，数组内存地址连续，数组里面的引用对象怎么做到连续呢？它不是由生产者产生的吗？何时生产只能由生产者决定，初始化数组的时候怎么一次性初始化数组元素啊？</div>2020-09-16</li><br/><li><span>张洋</span> 👍（2） 💬（1）<div>1.if (wrapPoint&gt;cachedGatingSequence || cachedGatingSequence&gt;current) 这点开始一直没看懂，之前写过环形队列，每次索引都会重置，就是一直在0-9之间，然后看了下RingBuffer 好像它的索引是一直累加的。这样就好懂多了。
+2.关于ArrayBlockQueue 添加的对象是不连续的还是不太明白，数组初始化 不是在内存种开辟出一段连续的内存空间吗？ 还是按照有的同学留言所说的，如果是引用对象不一定是连续的。</div>2020-12-29</li><br/><li><span>荷兰小猪8813</span> 👍（2） 💬（2）<div>ArrayBlockingQueue 的入队和出队操作是用锁来保证互斥的，所以入队和出队不会同时发生。如果允许入队和出队同时发生，那就会导致线程 A 和线程 B 争用同一个缓存行，这样也会导致性能问题。
 
-想问下加锁了就没有缓存干扰了吗！为啥？</div>2019-11-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/09/d6/5f366427.jpg" width="30px"><span>码农Kevin亮</span> 👍（1） 💬（1）<div>老师，避免伪共享的逻辑有点困惑：
-伪共享逻辑上就是没实现共享，而disruptor用行填充也是没实现共享。那么为什么避免伪共享就能提升性能呢？</div>2019-06-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/93/cd/dbafc7d1.jpg" width="30px"><span>全麦小面包</span> 👍（0） 💬（1）<div>老师，有个问题哈。Disruptor创建的event不是业务数据类，里面set的东西才是业务需要的。但set对象的创建还是离散的，难道set对象的引用，能和event一起缓存？？java有这种机制吗？</div>2022-07-26</li><br/><li><img src="" width="30px"><span>Geek_8593e5</span> 👍（0） 💬（1）<div>请问下老师，这个队列可以用于替换ArrayBlockingQueue的场景对吧？还有一些什么场景可以用呢？</div>2022-02-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/1c/1b/dceaa378.jpg" width="30px"><span>于是</span> 👍（0） 💬（1）<div>disruptor中的数组结构，如果我放入一个引用对象，这个被引用对象的内存地址已经确定了。是需要拷贝到他创建的那段连续内存中吗？</div>2020-04-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/76/23/31e5e984.jpg" width="30px"><span>空知</span> 👍（0） 💬（1）<div>老师问下 
-缓存行填充之后，缓存行里加载的不是真实需要的数据 是填充数据  程序局部性会不会不适用了? </div>2019-06-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7b/57/a9b04544.jpg" width="30px"><span>QQ怪</span> 👍（0） 💬（1）<div>厉害了我的哥，尽然看懂了，又学到了谢谢老师</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/38/f1/996a070d.jpg" width="30px"><span>LW</span> 👍（12） 💬（0）<div>RingBuffer是一个环形队列？</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3b/ad/31193b83.jpg" width="30px"><span>孙志强</span> 👍（10） 💬（8）<div>程序局部性原理的空间局部性是不是cpu分支预测?缓存行一般是64字节,takeIndex那为何前后填充56个字节,大于64了,怎么独占缓存行?</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/ff/0a/12faa44e.jpg" width="30px"><span>晓杰</span> 👍（8） 💬（0）<div>mysql也利用了程序的局部性原理来减少磁盘的io，百度开源的分布式唯一id生成器也使用了RingBuffer，将提前生成的id缓存到RingBuffer中。</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4f/c9/88837387.jpg" width="30px"><span>😜哈哈</span> 👍（6） 💬（2）<div>小米将disruptor用于秒杀场景</div>2020-03-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d3/cb/f8157ad8.jpg" width="30px"><span>爱吃回锅肉的瘦子</span> 👍（4） 💬（0）<div>难度指数提升😔只能得多看几遍</div>2019-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/67/8a/babd74dc.jpg" width="30px"><span>锦</span> 👍（4） 💬（1）<div>disruptor高性能主要是以下几点设计：
-1，仅维护一个共享变量(入队索引)，减少锁竞争，并利用填充行技术解决共享变量的伪共享问题。
-2，底层使用循环数组作为存储结构，开辟一组连续的内存空间，循环利用减少gc次数，并充分利用了程序局部性原理。
-3，入队时支持一次性获取多个索引，然后在当前线程写入数据，减少锁竞争，消费时一样。
-不知道我理解的对不对？</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ec/13/49e98289.jpg" width="30px"><span>neohope</span> 👍（2） 💬（0）<div>有个地方没看懂，if (wrapPoint&gt;cachedGatingSequence || cachedGatingSequence&gt;current)，这个条件里面，为何需要cachedGatingSequence&gt;current这个限制呢？
-是当current突破最大值变为0之后，要等到cachedGatingSequence追上来才继续生产吗？</div>2019-08-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/37/8e/cf0b4575.jpg" width="30px"><span>郑晨Cc</span> 👍（2） 💬（0）<div>全他妈的是干货 满足！</div>2019-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ce/be/5cf3f1a0.jpg" width="30px"><span>junshuaizhang</span> 👍（1） 💬（0）<div>看到最后，我感觉自己拿了一个假学历</div>2020-07-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3b/36/2d61e080.jpg" width="30px"><span>行者</span> 👍（1） 💬（0）<div>关于伪共享，可以参考这篇文章
-https:&#47;&#47;time.geekbang.org&#47;column&#47;article&#47;109874</div>2020-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f7/9d/c7295d17.jpg" width="30px"><span>青铜5 周群力</span> 👍（1） 💬（0）<div>对内存优化部分有质疑:
-1申请内存要经过jvm，经过操作系统，经过层层的优化、内存管理，填充缓存行有没有用只靠逻辑推理是推理不出来的吧，有没有数据证明这个技术真的有用?
-2.预先申请所有元素对象真的有用吗，因为每个元素引用的数据对象还在离散的内存空间，取数据对象还要访问内存，会发生cache line淘汰。所以有什么数据能证明这个技术有用吗</div>2019-07-31</li><br/><li><img src="http://thirdqq.qlogo.cn/qqapp/101418266/D6DD8CB1004D442B48914656340277F3/100" width="30px"><span>henry</span> 👍（1） 💬（0）<div>我用过apache storm，之前想了解底层原理，在网上查资料说是用到了disruptor, 然后看到网上的资料说它快的原因就是用到了伪共享，但是网上都没有说到点上，就是把伪共享的原理说了一遍。。。看的云里雾里的，看了老师的文章总算是明白了，主要是针对入队和出队索引，让它们分别独占行，不够字节数的补全</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/52/3c/d6fcb93a.jpg" width="30px"><span>张三</span> 👍（1） 💬（0）<div>打卡！</div>2019-05-30</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83ersGSic8ib7OguJv6CJiaXY0s4n9C7Z51sWxTTljklFpq3ZAIWXoFTPV5oLo0GMTkqW5sYJRRnibNqOJQ/132" width="30px"><span>walle斌</span> 👍（0） 💬（0）<div>当时一看Disruptor的时候 第一个感觉是 类似tomcat的对象池技术，空间换时间性能优势，再看 Disruptor更优化 get~</div>2024-12-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/93/d4/dd2ee398.jpg" width="30px"><span>刘凯</span> 👍（0） 💬（2）<div>解决伪共享填充方式和局部性原理感觉是互相矛盾的，Disruptor是怎么平衡这个关系的</div>2023-01-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8f/4d/65fb45e6.jpg" width="30px"><span>大海</span> 👍（0） 💬（0）<div>对于 ”当 CPU 从内存中加载 takeIndex 的时候，会同时将 putIndex 以及 count 都加载进 Cache。“ 文中的这句话我有一个小疑惑，ArrayBlockingQueue 对象初始化之后，takeIndex，putIndex，count 等其他属性的内存地址一定会是相邻的吗？
-如果不相邻，这些属性就可能不在同一个 Cache Line 上，伪共享问题可能就出现的没有那么频繁。</div>2022-11-24</li><br/>
+想问下加锁了就没有缓存干扰了吗！为啥？</div>2019-11-26</li><br/><li><span>码农Kevin亮</span> 👍（1） 💬（1）<div>老师，避免伪共享的逻辑有点困惑：
+伪共享逻辑上就是没实现共享，而disruptor用行填充也是没实现共享。那么为什么避免伪共享就能提升性能呢？</div>2019-06-02</li><br/><li><span>全麦小面包</span> 👍（0） 💬（1）<div>老师，有个问题哈。Disruptor创建的event不是业务数据类，里面set的东西才是业务需要的。但set对象的创建还是离散的，难道set对象的引用，能和event一起缓存？？java有这种机制吗？</div>2022-07-26</li><br/><li><span>Geek_8593e5</span> 👍（0） 💬（1）<div>请问下老师，这个队列可以用于替换ArrayBlockingQueue的场景对吧？还有一些什么场景可以用呢？</div>2022-02-08</li><br/><li><span>于是</span> 👍（0） 💬（1）<div>disruptor中的数组结构，如果我放入一个引用对象，这个被引用对象的内存地址已经确定了。是需要拷贝到他创建的那段连续内存中吗？</div>2020-04-11</li><br/><li><span>空知</span> 👍（0） 💬（1）<div>老师问下 
+缓存行填充之后，缓存行里加载的不是真实需要的数据 是填充数据  程序局部性会不会不适用了? </div>2019-06-09</li><br/><li><span>QQ怪</span> 👍（0） 💬（1）<div>厉害了我的哥，尽然看懂了，又学到了谢谢老师</div>2019-05-30</li><br/><li><span>LW</span> 👍（12） 💬（0）<div>RingBuffer是一个环形队列？</div>2019-05-30</li><br/>
 </ul>

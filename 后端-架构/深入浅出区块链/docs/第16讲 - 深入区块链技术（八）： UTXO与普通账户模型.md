@@ -156,9 +156,33 @@ UTXO似乎天然是为数字货币设计的，具有较高频次跨账户转移�
 以太坊中并没有使用比特币的这种UTXO设计，这与以太坊的宗旨有关，以太坊的目标是构建通用计算，而比特币是数字货币，需求不同导致设计的不同。
 
 V神指出了UTXO的缺陷，一共有三类。
-<div><strong>精选留言（23）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/d9/a3/2856b5b5.jpg" width="30px"><span>Sonny721</span> 👍（6） 💬（1）<div>老师你好。如果我的账户里有三条输入交易，分别为1，2，3，那么我现在要转给他人账户5.5，那么可以三个输入对应一个输出么？</div>2018-05-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/2f/f4/2dede51a.jpg" width="30px"><span>小老鼠</span> 👍（2） 💬（1）<div>什么叫公链？区块链body中记录的交易是明文还是密文。</div>2019-12-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/db/79/9426c6ce.jpg" width="30px"><span>Super~琪琪</span> 👍（1） 💬（1）<div>有点不明白，数据库截断那里，原先的数据删除只保留古老的输入。那不会造成数据丢失吗？</div>2018-08-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/53/d5/6a0dde61.jpg" width="30px"><span>活泼君</span> 👍（0） 💬（2）<div>在比特币中将小于 100kb 的交易称为标准交易，超过 100kb 的称为非标准交易。它的前向 input 以及生成一个 out 约占用 161~250 bytes 。所以在比特币中，大约的 inputs&#47;ouputs 的最大数目限制为 100KB&#47;161B ~= 600 个。
----请问这个kb等于KB吗？</div>2018-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ab/10/b812ff3e.jpg" width="30px"><span>Hesher</span> 👍（0） 💬（1）<div>找零的那条输出，如果忘了，这部分找零会作为交易费用。那这个找零给自己的动作，一般是钱包构造好的吗？</div>2018-05-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d9/a3/2856b5b5.jpg" width="30px"><span>Sonny721</span> 👍（0） 💬（1）<div>老师你好。如果我的账户里有三条输入交易，分别为1，2，3，那么我现在要转给他人账户5.5，那么可以三个输入对应一个输出么？</div>2018-05-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5d/52/458a3b68.jpg" width="30px"><span>农村闲散劳动力</span> 👍（0） 💬（1）<div>UTXO 的脚本只能看到自己这条历史轨迹，无法看到区块链的数据的全貌，是指无法看到整个区块的货币用量？</div>2018-05-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/60/90/b3b0b03c.jpg" width="30px"><span>郑涛</span> 👍（0） 💬（1）<div>以太坊的代币算是账户模型的吗</div>2018-05-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5b/1e/07d9b188.jpg" width="30px"><span>Geek_05a054</span> 👍（8） 💬（1）<div>最近以太坊的漏洞问题，估计V神自己也会发现UTXO的设计是有道理的</div>2018-05-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5e/2b/df3983e2.jpg" width="30px"><span>朱显杰</span> 👍（8） 💬（0）<div>历史上账户模型产生的严重安全问题很多，一类是中心系统的bug，比如前几年发生的光大乌龙事件；另一类是内部腐败，银行内部人员偷偷修改账户的事件也不少见</div>2018-05-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/9a/89/babe8b52.jpg" width="30px"><span>A君</span> 👍（3） 💬（0）<div>Utxo记录的是账户交易的过程而非账户余额，相比后者，它更适合网络复杂的分布式系统，它的安全性较好，但它的问题是数据量也比只记余额要多很多，而且在支付上需要合并多个utxo，无法直观得到账户余额。这类数字货币的钱包需要开发遍历utxo计算余额的功能，而且还要动态合并utxo，为减少钱包存储交易数据量，只截取部分交易节点，其他交易节点通过网络查询获取，这些都增加了程序开发的难度，因此，以太坊这类的智能合约并没有使用utxo而是传统的账户余额设计。</div>2021-02-19</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/g1icQRbcv1QvJ5U8Cqk0ZqMH5PcMTXcZ8TpS5utE4SUzHcnJA3FYGelHykpzTfDh55ehE8JO9Zg9VGSJW7Wxibxw/132" width="30px"><span>杨家荣</span> 👍（3） 💬（0）<div>极客时间第二期
+
+### 1.可表达的状态少 。
+
+UTXO只能是已花费或者未花费状态，这就没有给需要任何其它内部状态的多阶段合约或者脚本留出生存空间，这也意味着UTXO只能用于建立简单的、一次性的合约，UTXO更像是一种二进制控制位。
+
+### 2.区块链盲点（Blockchain-blindness）。
+
+UTXO的脚本只能看到自己这条历史轨迹，无法看到区块链的数据的全貌，这导致了功能性扩展受到了限制，我们在花费比特币的过程中需要小心翼翼的组合UTXO，这也导致了系统状态逻辑复杂，不适合设计成智能合约的基础结构。
+
+### 3.价值盲点（Value-blindness）。
+
+UTXO脚本不能提供非常精细的金额控制，基于账户模型的余额在花费过程中，可以任意的按值存取，它仅取决于程序能表示的最小精度。
+
+而UTXO要求必须全部移动，如果要满足一个目标值金额，对组合UTXO算法的要求会比较高，采用许多有不同面值的UTXO，一方面要求尽可能地精确，另一方面又要求输入输出的数量尽可能的小。
+
+UTXO是比特币上的原生设计，在区块链以前是没有这种逻辑数据结构，UTXO的出现给了人们看待数据转移的不同视角，但UTXO不是所有区块链所必需的，公链开发过程中的是否选用UTXO模型可以根据业务场景进行判断。
+
+## 总结
+
+好了，今天我们分别介绍了普通账户模型和UTXO模型，并从不同角度比较了二者的优劣。
+
+从技术选择上来看，比特币选择UTXO是为了满足支付的安全性，以太坊选择普通账户模型是为了智能合约的自由度。
+
+最后留给你一个问题，历史上UTXO或账户模型是否引发过比较严重的使用缺陷呢？你可以给我留言，我们一起讨论，感谢你的收听，我们下期再见。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>Sonny721</span> 👍（6） 💬（1）<div>老师你好。如果我的账户里有三条输入交易，分别为1，2，3，那么我现在要转给他人账户5.5，那么可以三个输入对应一个输出么？</div>2018-05-16</li><br/><li><span>小老鼠</span> 👍（2） 💬（1）<div>什么叫公链？区块链body中记录的交易是明文还是密文。</div>2019-12-10</li><br/><li><span>Super~琪琪</span> 👍（1） 💬（1）<div>有点不明白，数据库截断那里，原先的数据删除只保留古老的输入。那不会造成数据丢失吗？</div>2018-08-29</li><br/><li><span>活泼君</span> 👍（0） 💬（2）<div>在比特币中将小于 100kb 的交易称为标准交易，超过 100kb 的称为非标准交易。它的前向 input 以及生成一个 out 约占用 161~250 bytes 。所以在比特币中，大约的 inputs&#47;ouputs 的最大数目限制为 100KB&#47;161B ~= 600 个。
+---请问这个kb等于KB吗？</div>2018-07-17</li><br/><li><span>Hesher</span> 👍（0） 💬（1）<div>找零的那条输出，如果忘了，这部分找零会作为交易费用。那这个找零给自己的动作，一般是钱包构造好的吗？</div>2018-05-17</li><br/><li><span>Sonny721</span> 👍（0） 💬（1）<div>老师你好。如果我的账户里有三条输入交易，分别为1，2，3，那么我现在要转给他人账户5.5，那么可以三个输入对应一个输出么？</div>2018-05-16</li><br/><li><span>农村闲散劳动力</span> 👍（0） 💬（1）<div>UTXO 的脚本只能看到自己这条历史轨迹，无法看到区块链的数据的全貌，是指无法看到整个区块的货币用量？</div>2018-05-07</li><br/><li><span>郑涛</span> 👍（0） 💬（1）<div>以太坊的代币算是账户模型的吗</div>2018-05-01</li><br/><li><span>Geek_05a054</span> 👍（8） 💬（1）<div>最近以太坊的漏洞问题，估计V神自己也会发现UTXO的设计是有道理的</div>2018-05-03</li><br/><li><span>朱显杰</span> 👍（8） 💬（0）<div>历史上账户模型产生的严重安全问题很多，一类是中心系统的bug，比如前几年发生的光大乌龙事件；另一类是内部腐败，银行内部人员偷偷修改账户的事件也不少见</div>2018-05-01</li><br/><li><span>A君</span> 👍（3） 💬（0）<div>Utxo记录的是账户交易的过程而非账户余额，相比后者，它更适合网络复杂的分布式系统，它的安全性较好，但它的问题是数据量也比只记余额要多很多，而且在支付上需要合并多个utxo，无法直观得到账户余额。这类数字货币的钱包需要开发遍历utxo计算余额的功能，而且还要动态合并utxo，为减少钱包存储交易数据量，只截取部分交易节点，其他交易节点通过网络查询获取，这些都增加了程序开发的难度，因此，以太坊这类的智能合约并没有使用utxo而是传统的账户余额设计。</div>2021-02-19</li><br/><li><span>杨家荣</span> 👍（3） 💬（0）<div>极客时间第二期
 21天打卡行动 14&#47;21
 &lt;&lt;深入浅出区块链16&gt;&gt;UTXO与普通账户模型
 今日所学:
@@ -166,18 +190,7 @@ V神指出了UTXO的缺陷，一共有三类。
 2,UTXO 似乎天然是为数字货币设计的，具有较高频次跨账户转移场景都使用 UTXO 会比较好，考虑到智能合约的普适性，UTXO 与智能合约并不能很好地兼容，但是这也对开发者的自身水平提出了更高的要求。
 3,UTXO 的特性及缺点:可表达的状态少, 区块链盲点（Blockchain-blindness）。
  价值盲点（Value-blindness）。
-4,UTXO 是比特币上的原生设计，在区块链以前是没有这种逻辑数据结构，UTXO 的出现给了人们看待数据转移的不同视角，但 UTXO 不是所有区块链所必需的，公链开发过程中的是否选用 UTXO 模型可以根据业务场景进行判断</div>2020-01-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/21/20/1299e137.jpg" width="30px"><span>秋天</span> 👍（2） 💬（0）<div>意思就是 TX2 中的付款人使用了 Output1 中指向的比特币转移给 TX5 中的收款人，接着 TX5 中的人又把收到的比特币转移给了 TX6 中的收款人，成为了 TX6 中 Output0。
-这一句写错了应该  应该是 TX6中的『Input0』或者『Input1』</div>2022-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/11/4b/fa64f061.jpg" width="30px"><span>xfan</span> 👍（2） 💬（2）<div>个人觉得没有人自称神，厉害只是某方面罢了，没必要称v神</div>2019-12-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/25/60/c0/d95f0f40.jpg" width="30px"><span>Gabriel</span> 👍（1） 💬（0）<div>从存储的角度来说，UTXO 具有较好的可裁剪特性，可裁剪性指的是 UTXO 类型的交易，如果从最老的那一笔 UTXO 开始截断数据库，那么之前的数据可以删除掉了。
-—意思是只要计算出utxo，这个地址之前的交易记录都可以删除吗？</div>2021-04-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/5d/d4/e5ea1c25.jpg" width="30px"><span>sun留白</span> 👍（1） 💬（0）<div>  Dapp是通过在区块链上部署一层智能合约，然后通过交互而实现智能合约的执行。例如：供应链的追踪以及交易解决方案；预测市场等等都可以通过智能合约来实现。.
-
-
-   智能合约的最大优势就是将信任商品化，可以说是一项技术革命。通过智能合约，我们可以省掉不必要的中间环节，降低运行成本，提升运行效率。
-
-   我们举个例子来说明：现在的二手房产交易都是需要通过中介来完成交易，那么中间会在交易完成后收取中介费，这就无形之中增加了我们的购房成本。另一方面，我们有的时候还是会担心中间会偏向于其中一方，从而提高价格来从中牟利。这些都是在三方交易过程中会常见的问题。
-
-   但是，当我们通过智能合约的时候，这些问题就会迎刃而解。因为，智能合约不会偏向任何一方，也不会知道什么叫“自私”，不会从中多赚我们一分钱。那么这个交易就变得很简单了，买卖双方，通过智能合约的撮合来完成了交易，简单快捷，而且成本降低了。</div>2020-02-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/84/78/c246f6d5.jpg" width="30px"><span>Jeff</span> 👍（1） 💬（0）<div>一笔交易可以包含任意笔输入输出，同时也没有次序要求，在一笔交易中哪一个 UTXO 在前，哪个在后面不影响最终结果。
-不分前后，那么交易中就不会出现了“双花”现象吗？这一点没搞明白，可能会出现双花呀。</div>2019-12-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/48/8f/7ecd4eed.jpg" width="30px"><span>FF</span> 👍（1） 💬（0）<div>如果想进一步压缩数据尺寸，可以在任意位置截断，只记录交易哈希即可
-————
-截断后原输入输出是怎么找回的？任意截断不会导致断片的数据不完整吗</div>2018-05-02</li><br/><li><img src="" width="30px"><span>gracegao</span> 👍（1） 💬（0）<div>讲的很透彻，受教！</div>2018-05-02</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/gIE15oOl1IicE8hicpPzuoARricgaL3y4nHDXaFCPX0U3UX3szgtrKCa4zCPc5GkdpceP0mftbJg3MdKHOLJOKJww/132" width="30px"><span>Geek_66a431</span> 👍（0） 💬（0）<div>为什么utxo 可以你每次付款或者收款就能换个地址</div>2022-04-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/cf/09/b92f8558.jpg" width="30px"><span>白日梦想家</span> 👍（0） 💬（0）<div>但是账户余额模型不是也保存交易记录吗，和Utxo保存交易记录有啥区别？有人解答一下吗</div>2021-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/df/cb/81317179.jpg" width="30px"><span>汪玉斌</span> 👍（0） 💬（0）<div>看了那么多 UXTO的介绍, 在这里才看懂 UXTO 是什么意思.
-感谢陈老师 !!!</div>2019-09-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/5b/1b/78a937d8.jpg" width="30px"><span>gopherliu</span> 👍（0） 💬（1）<div>你好，问个问题。矿工收到的交易费也要计算到整个的UTXO集合吗？</div>2018-10-31</li><br/>
+4,UTXO 是比特币上的原生设计，在区块链以前是没有这种逻辑数据结构，UTXO 的出现给了人们看待数据转移的不同视角，但 UTXO 不是所有区块链所必需的，公链开发过程中的是否选用 UTXO 模型可以根据业务场景进行判断</div>2020-01-19</li><br/><li><span>秋天</span> 👍（2） 💬（0）<div>意思就是 TX2 中的付款人使用了 Output1 中指向的比特币转移给 TX5 中的收款人，接着 TX5 中的人又把收到的比特币转移给了 TX6 中的收款人，成为了 TX6 中 Output0。
+这一句写错了应该  应该是 TX6中的『Input0』或者『Input1』</div>2022-06-12</li><br/><li><span>xfan</span> 👍（2） 💬（2）<div>个人觉得没有人自称神，厉害只是某方面罢了，没必要称v神</div>2019-12-06</li><br/><li><span>Gabriel</span> 👍（1） 💬（0）<div>从存储的角度来说，UTXO 具有较好的可裁剪特性，可裁剪性指的是 UTXO 类型的交易，如果从最老的那一笔 UTXO 开始截断数据库，那么之前的数据可以删除掉了。
+—意思是只要计算出utxo，这个地址之前的交易记录都可以删除吗？</div>2021-04-05</li><br/>
 </ul>

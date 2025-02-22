@@ -12,28 +12,132 @@
 **因此Tomcat设计了两个核心组件连接器（Connector）和容器（Container）来分别做这两件事情。连接器负责对外交流，容器负责内部处理。**
 
 所以连接器和容器可以说是Tomcat架构里最重要的两部分，需要你花些精力理解清楚。这两部分内容我会分成两期，今天我来分析连接器是如何设计的，下一期我会介绍容器的设计。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/75/a8/dfe4cade.jpg" width="30px"><span>电光火石</span> 👍（173） 💬（9）<div>对Tomcat的结构有个清晰的了解，其中有两个问题：
+
+在开始讲连接器前，我先铺垫一下Tomcat支持的多种I/O模型和应用层协议。
+
+Tomcat支持的I/O模型有：
+
+- NIO：非阻塞I/O，采用Java NIO类库实现。
+- NIO.2：异步I/O，采用JDK 7最新的NIO.2类库实现。
+- APR：采用Apache可移植运行库实现，是C/C++编写的本地库。
+
+Tomcat支持的应用层协议有：
+
+- HTTP/1.1：这是大部分Web应用采用的访问协议。
+- AJP：用于和Web服务器集成（如Apache）。
+- HTTP/2：HTTP 2.0大幅度的提升了Web性能。
+
+Tomcat为了实现支持多种I/O模型和应用层协议，一个容器可能对接多个连接器，就好比一个房间有多个门。但是单独的连接器或者容器都不能对外提供服务，需要把它们组装起来才能工作，组装后这个整体叫作Service组件。这里请你注意，Service本身没有做什么重要的事情，只是在连接器和容器外面多包了一层，把它们组装在一起。Tomcat内可能有多个Service，这样的设计也是出于灵活性的考虑。通过在Tomcat中配置多个Service，可以实现通过不同的端口号来访问同一台机器上部署的不同应用。
+
+到此我们得到这样一张关系图：
+
+![](https://static001.geekbang.org/resource/image/ee/d6/ee880033c5ae38125fa91fb3c4f8cad6.jpg?wh=1580%2A836)
+
+从图上你可以看到，最顶层是Server，这里的Server指的就是一个Tomcat实例。一个Server中有一个或者多个Service，一个Service中有多个连接器和一个容器。连接器与容器之间通过标准的ServletRequest和ServletResponse通信。
+
+## 连接器
+
+连接器对Servlet容器屏蔽了协议及I/O模型等的区别，无论是HTTP还是AJP，在容器中获取到的都是一个标准的ServletRequest对象。
+
+我们可以把连接器的功能需求进一步细化，比如：
+
+- 监听网络端口。
+- 接受网络连接请求。
+- 读取网络请求字节流。
+- 根据具体应用层协议（HTTP/AJP）解析字节流，生成统一的Tomcat Request对象。
+- 将Tomcat Request对象转成标准的ServletRequest。
+- 调用Servlet容器，得到ServletResponse。
+- 将ServletResponse转成Tomcat Response对象。
+- 将Tomcat Response转成网络字节流。
+- 将响应字节流写回给浏览器。
+
+需求列清楚后，我们要考虑的下一个问题是，连接器应该有哪些子模块？优秀的模块化设计应该考虑**高内聚、低耦合**。
+
+- **高内聚**是指相关度比较高的功能要尽可能集中，不要分散。
+- **低耦合**是指两个相关的模块要尽可能减少依赖的部分和降低依赖的程度，不要让两个模块产生强依赖。
+
+通过分析连接器的详细功能列表，我们发现连接器需要完成3个**高内聚**的功能：
+
+- 网络通信。
+- 应用层协议解析。
+- Tomcat Request/Response与ServletRequest/ServletResponse的转化。
+
+因此Tomcat的设计者设计了3个组件来实现这3个功能，分别是Endpoint、Processor和Adapter。
+
+组件之间通过抽象接口交互。这样做还有一个好处是**封装变化。**这是面向对象设计的精髓，将系统中经常变化的部分和稳定的部分隔离，有助于增加复用性，并降低系统耦合度。
+
+网络通信的I/O模型是变化的，可能是非阻塞I/O、异步I/O或者APR。应用层协议也是变化的，可能是HTTP、HTTPS、AJP。浏览器端发送的请求信息也是变化的。
+
+但是整体的处理逻辑是不变的，Endpoint负责提供字节流给Processor，Processor负责提供Tomcat Request对象给Adapter，Adapter负责提供ServletRequest对象给容器。
+
+如果要支持新的I/O方案、新的应用层协议，只需要实现相关的具体子类，上层通用的处理逻辑是不变的。
+
+由于I/O模型和应用层协议可以自由组合，比如NIO + HTTP或者NIO.2 + AJP。Tomcat的设计者将网络通信和应用层协议解析放在一起考虑，设计了一个叫ProtocolHandler的接口来封装这两种变化点。各种协议和通信模型的组合有相应的具体实现类。比如：Http11NioProtocol和AjpNioProtocol。
+
+除了这些变化点，系统也存在一些相对稳定的部分，因此Tomcat设计了一系列抽象基类来**封装这些稳定的部分**，抽象基类AbstractProtocol实现了ProtocolHandler接口。每一种应用层协议有自己的抽象基类，比如AbstractAjpProtocol和AbstractHttp11Protocol，具体协议的实现类扩展了协议层抽象基类。下面我整理一下它们的继承关系。
+
+![](https://static001.geekbang.org/resource/image/13/55/13850ee56c3f09cbabe9892e84502155.jpg?wh=1438%2A856)
+
+通过上面的图，你可以清晰地看到它们的继承和层次关系，这样设计的目的是尽量将稳定的部分放到抽象基类，同时每一种I/O模型和协议的组合都有相应的具体实现类，我们在使用时可以自由选择。
+
+小结一下，连接器模块用三个核心组件：Endpoint、Processor和Adapter来分别做三件事情，其中Endpoint和Processor放在一起抽象成了ProtocolHandler组件，它们的关系如下图所示。
+
+![](https://static001.geekbang.org/resource/image/6e/ce/6eeaeb93839adcb4e76c15ee93f545ce.jpg?wh=1778%2A662)
+
+下面我来详细介绍这两个顶层组件ProtocolHandler和Adapter。
+
+**ProtocolHandler组件**
+
+由上文我们知道，连接器用ProtocolHandler来处理网络连接和应用层协议，包含了2个重要部件：Endpoint和Processor，下面我来详细介绍它们的工作原理。
+
+- Endpoint
+
+Endpoint是通信端点，即通信监听的接口，是具体的Socket接收和发送处理器，是对传输层的抽象，因此Endpoint是用来实现TCP/IP协议的。
+
+Endpoint是一个接口，对应的抽象实现类是AbstractEndpoint，而AbstractEndpoint的具体子类，比如在NioEndpoint和Nio2Endpoint中，有两个重要的子组件：Acceptor和SocketProcessor。
+
+其中Acceptor用于监听Socket连接请求。SocketProcessor用于处理接收到的Socket请求，它实现Runnable接口，在run方法里调用协议处理组件Processor进行处理。为了提高处理能力，SocketProcessor被提交到线程池来执行。而这个线程池叫作执行器（Executor)，我在后面的专栏会详细介绍Tomcat如何扩展原生的Java线程池。
+
+- Processor
+
+如果说Endpoint是用来实现TCP/IP协议的，那么Processor用来实现HTTP协议，Processor接收来自Endpoint的Socket，读取字节流解析成Tomcat Request和Response对象，并通过Adapter将其提交到容器处理，Processor是对应用层协议的抽象。
+
+Processor是一个接口，定义了请求的处理等方法。它的抽象实现类AbstractProcessor对一些协议共有的属性进行封装，没有对方法进行实现。具体的实现有AjpProcessor、Http11Processor等，这些具体实现类实现了特定协议的解析方法和请求处理方式。
+
+我们再来看看连接器的组件图：
+
+![](https://static001.geekbang.org/resource/image/30/cf/309cae2e132210489d327cf55b284dcf.jpg?wh=1816%2A828)
+
+从图中我们看到，Endpoint接收到Socket连接后，生成一个SocketProcessor任务提交到线程池去处理，SocketProcessor的run方法会调用Processor组件去解析应用层协议，Processor通过解析生成Request对象后，会调用Adapter的Service方法。
+
+到这里我们学习了ProtocolHandler的总体架构和工作原理，关于Endpoint的详细设计，后面我还会专门介绍Endpoint是如何最大限度地利用Java NIO的非阻塞以及NIO.2的异步特性，来实现高并发。
+
+**Adapter组件**
+
+我在前面说过，由于协议不同，客户端发过来的请求信息也不尽相同，Tomcat定义了自己的Request类来“存放”这些请求信息。ProtocolHandler接口负责解析请求并生成Tomcat Request类。但是这个Request对象不是标准的ServletRequest，也就意味着，不能用Tomcat Request作为参数来调用容器。Tomcat设计者的解决方案是引入CoyoteAdapter，这是适配器模式的经典运用，连接器调用CoyoteAdapter的sevice方法，传入的是Tomcat Request对象，CoyoteAdapter负责将Tomcat Request转成ServletRequest，再调用容器的service方法。
+
+## 本期精华
+
+Tomcat的整体架构包含了两个核心组件连接器和容器。连接器负责对外交流，容器负责内部处理。连接器用ProtocolHandler接口来封装通信协议和I/O模型的差异，ProtocolHandler内部又分为Endpoint和Processor模块，Endpoint负责底层Socket通信，Processor负责应用层协议解析。连接器通过适配器Adapter调用容器。
+
+通过对Tomcat整体架构的学习，我们可以得到一些设计复杂系统的基本思路。首先要分析需求，根据高内聚低耦合的原则确定子模块，然后找出子模块中的变化点和不变点，用接口和抽象基类去封装不变点，在抽象基类中定义模板方法，让子类自行实现抽象方法，也就是具体子类去实现变化点。
+
+## 课后思考
+
+回忆一下你在工作中曾经独立设计过的系统，或者你碰到过的设计类面试题，结合今天专栏的内容，你有没有一些新的思路？
+
+不知道今天的内容你消化得如何？如果还有疑问，请大胆的在留言区提问，也欢迎你把你的课后思考和心得记录下来，与我和其他同学一起讨论。如果你觉得今天有所收获，欢迎你把它分享给你的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>电光火石</span> 👍（173） 💬（9）<div>对Tomcat的结构有个清晰的了解，其中有两个问题：
 1. PorotocolHandler的继承关系是不是太重了，看起来像典型的多维度扩展，nio2在apj和1HTTP11都要做一遍，用组合会不会更好
 2. 为什么要多一层adapter，在processor直接转换为容器的servletrequest和servletresponse不是更好，为什么要先转化Tomcat的request和response，再用adapter做一层转换消耗性能？
-谢谢了！</div>2019-05-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/67/8a/babd74dc.jpg" width="30px"><span>锦</span> 👍（115） 💬（12）<div>两个问题请教一下老师
+谢谢了！</div>2019-05-21</li><br/><li><span>锦</span> 👍（115） 💬（12）<div>两个问题请教一下老师
 第一，如何debug源码呢？
-第二，tomcat和netty有什么区别呢？为什么netty常常用做底层通讯模块，而tomcat作为web容器呢？</div>2019-05-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/96/d9/a252585b.jpg" width="30px"><span>喆</span> 👍（63） 💬（3）<div>“EndPoint 是通信端点，即通信监听的接口，是具体的 Socket 接收和发送处理器，是对传输层的抽象，因此 EndPoint 是用来实现 TCP&#47;IP 协议的。”，【EndPoint是用来实现TCP&#47;IP协议的】这个没有太明白，据我有限的知识所知，TCP&#47;IP协议是【由操作系统实现】的，而socket只是在TCP&#47;IP之上展现给用户层的一个接口，而EndPoint又用到了socket接口（我瞎猜的）。所以，我是否可以把这句话理解为，EndPoint利用Socket接口来将底层传来的数据转化成为HTTP格式的数据，这种行为就可以看作是对TCP&#47;IP协议的一种间接实现。</div>2019-05-22</li><br/><li><img src="" width="30px"><span>ty_young</span> 👍（49） 💬（3）<div>老师，我看您说socket = endpoint.serverSocketAccept()这个是阻塞式accept;但是连接器使用的IO模型是NIO或者AIO啊，都是非阻塞的吧，只是同步或者非同步的区别吧</div>2019-06-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/37/8e/cf0b4575.jpg" width="30px"><span>郑晨Cc</span> 👍（45） 💬（3）<div>老师有个问题想请教： tomcat既然已经使用了java的nio模型 而nio模型在linx上是基于epoll 实现的 那为什么和同样的使用epoll的nginx相比 他对于http请求处理的性能远不如nginx呢</div>2019-05-31</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTK4biaeBuuqvR3SB4H8atcmreszjIPRZgNeVXFMMPbVZht7yqx01PE0CJPOmyL4jLAiaCdib9lAkPpjw/132" width="30px"><span>zhycareer</span> 👍（31） 💬（3）<div>老师，源码如何阅读效果好啊？现在源码一大堆，不知从何下手。谢谢</div>2019-05-21</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqLcWH3mSPmhjrs1aGL4b3TqI7xDqWWibM4nYFrRlp0z7FNSWaJz0mqovrgIA7ibmrPt8zRScSfRaqQ/132" width="30px"><span>易儿易</span> 👍（24） 💬（1）<div>这个专栏期待已久，一出立马就订阅了，但是因为其他课程没结束，导致这个课程没有跟上老师的节奏，目前正在努力追赶，我订阅了不少课程，李号双老师是回答问题最详细最用心的一个没有之一，虽然我还没来得及提一个问题，但是已经从老师给其他学生的回复中学习了不少……给老师点赞!!!</div>2019-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c5/e6/50c5b805.jpg" width="30px"><span>欠债太多</span> 👍（24） 💬（1）<div>io是盲区啊，老师有什么建议呢</div>2019-05-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fe/7c/626f3351.jpg" width="30px"><span>鱼乐</span> 👍（20） 💬（3）<div>老师，有个问题，根据网络协议分层模型，请求不应该是先经过Http协议，然后才经过TCP协议处理的吗，上面的图处理顺序感觉反了</div>2019-06-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/24/5d/65e61dcb.jpg" width="30px"><span>学无涯</span> 👍（19） 💬（3）<div>一个service对应tomcat中部署的一个项目，一个连接器对应一个请求，这样理解对吗</div>2019-05-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/f6/26/bfd6d48a.jpg" width="30px"><span>面白i小黄毛</span> 👍（14） 💬（4）<div>老师您好，&quot;通过在 Tomcat 中配置多个 Service，可以实现通过不同的端口号来访问同一台机器上部署的不同应用。&quot;这句话应该怎样理解？如果仅仅针对http来说的话，同一个tomcat可以设置多个端口号来启动多个应用吗？</div>2019-05-27</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eoRiaKX0ulEibbbwM4xhjyMeza0Pyp7KO1mqvfJceiaM6ZNtGpXJibI6P2qHGwBP9GKwOt9LgHicHflBXw/132" width="30px"><span>Geek_ebda96</span> 👍（14） 💬（1）<div>老师请教两个问题
+第二，tomcat和netty有什么区别呢？为什么netty常常用做底层通讯模块，而tomcat作为web容器呢？</div>2019-05-21</li><br/><li><span>喆</span> 👍（63） 💬（3）<div>“EndPoint 是通信端点，即通信监听的接口，是具体的 Socket 接收和发送处理器，是对传输层的抽象，因此 EndPoint 是用来实现 TCP&#47;IP 协议的。”，【EndPoint是用来实现TCP&#47;IP协议的】这个没有太明白，据我有限的知识所知，TCP&#47;IP协议是【由操作系统实现】的，而socket只是在TCP&#47;IP之上展现给用户层的一个接口，而EndPoint又用到了socket接口（我瞎猜的）。所以，我是否可以把这句话理解为，EndPoint利用Socket接口来将底层传来的数据转化成为HTTP格式的数据，这种行为就可以看作是对TCP&#47;IP协议的一种间接实现。</div>2019-05-22</li><br/><li><span>ty_young</span> 👍（49） 💬（3）<div>老师，我看您说socket = endpoint.serverSocketAccept()这个是阻塞式accept;但是连接器使用的IO模型是NIO或者AIO啊，都是非阻塞的吧，只是同步或者非同步的区别吧</div>2019-06-07</li><br/><li><span>郑晨Cc</span> 👍（45） 💬（3）<div>老师有个问题想请教： tomcat既然已经使用了java的nio模型 而nio模型在linx上是基于epoll 实现的 那为什么和同样的使用epoll的nginx相比 他对于http请求处理的性能远不如nginx呢</div>2019-05-31</li><br/><li><span>zhycareer</span> 👍（31） 💬（3）<div>老师，源码如何阅读效果好啊？现在源码一大堆，不知从何下手。谢谢</div>2019-05-21</li><br/><li><span>易儿易</span> 👍（24） 💬（1）<div>这个专栏期待已久，一出立马就订阅了，但是因为其他课程没结束，导致这个课程没有跟上老师的节奏，目前正在努力追赶，我订阅了不少课程，李号双老师是回答问题最详细最用心的一个没有之一，虽然我还没来得及提一个问题，但是已经从老师给其他学生的回复中学习了不少……给老师点赞!!!</div>2019-06-29</li><br/><li><span>欠债太多</span> 👍（24） 💬（1）<div>io是盲区啊，老师有什么建议呢</div>2019-05-21</li><br/><li><span>鱼乐</span> 👍（20） 💬（3）<div>老师，有个问题，根据网络协议分层模型，请求不应该是先经过Http协议，然后才经过TCP协议处理的吗，上面的图处理顺序感觉反了</div>2019-06-27</li><br/><li><span>学无涯</span> 👍（19） 💬（3）<div>一个service对应tomcat中部署的一个项目，一个连接器对应一个请求，这样理解对吗</div>2019-05-21</li><br/><li><span>面白i小黄毛</span> 👍（14） 💬（4）<div>老师您好，&quot;通过在 Tomcat 中配置多个 Service，可以实现通过不同的端口号来访问同一台机器上部署的不同应用。&quot;这句话应该怎样理解？如果仅仅针对http来说的话，同一个tomcat可以设置多个端口号来启动多个应用吗？</div>2019-05-27</li><br/><li><span>Geek_ebda96</span> 👍（14） 💬（1）<div>老师请教两个问题
 1.应用层的i&#47;o模型和http1，ajp等协议是指在endpoint接受网络请求后，对请求内容解析才会用到吧，就是在processor里面，这里面就是根据请求的协议类型，采用指定i&#47;o读取网络流，是不是这样？
 2.ajp也是指一种网络协议么，类似于http这种，processor里面是根据什么来判定请求的协议类型，比如浏览器里面请求的header里面的内容吗
-3.endpoint里面的aceptor本身是监听和获取网络请求没有用多线程，这里会成为高并发的瓶颈点不</div>2019-05-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d3/6e/281b85aa.jpg" width="30px"><span>永光</span> 👍（13） 💬（2）<div>老师，你看这样理解对不，
-采用何种I&#47;O模式（NIO、NIO2、ARP），以及采用何种应用协议（HTTP1.1、AJP、HTTP&#47;2)都是在processor这一层决定的。EndPoint只负责接收连接，并读取网络字节流但是不对字节流本身就进行任何解析。</div>2019-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/5b/83a35681.jpg" width="30px"><span>Monday</span> 👍（10） 💬（2）<div>从上一节突然跳转到本节，感觉跳跃性很大。突然进入整体架构后，即使我花了大量时间多次阅读本节，也很难消化。真的捉急！
+3.endpoint里面的aceptor本身是监听和获取网络请求没有用多线程，这里会成为高并发的瓶颈点不</div>2019-05-23</li><br/><li><span>永光</span> 👍（13） 💬（2）<div>老师，你看这样理解对不，
+采用何种I&#47;O模式（NIO、NIO2、ARP），以及采用何种应用协议（HTTP1.1、AJP、HTTP&#47;2)都是在processor这一层决定的。EndPoint只负责接收连接，并读取网络字节流但是不对字节流本身就进行任何解析。</div>2019-06-05</li><br/><li><span>Monday</span> 👍（10） 💬（2）<div>从上一节突然跳转到本节，感觉跳跃性很大。突然进入整体架构后，即使我花了大量时间多次阅读本节，也很难消化。真的捉急！
 不知道老师上面提到的类名，是基于Tomcat的哪个版本。
-今天我刻意花时间把tomcat7.0.94的源码下载下来，导入IDEA。发现org.apache.tomcat.util.net.AbstractEndpoint是一个抽象类，既没有实现EndPoint，也没有声明内部类SocketProcessor。和老师讲上面提到的有出入，难道我下了一个假的Tomato源码。&gt;大哭&lt;</div>2019-05-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/78/c7/083a3a0b.jpg" width="30px"><span>新世界</span> 👍（10） 💬（2）<div>对tomcat的结构的连接器部分收获不少，有一问题，tomcat的endpoint的功能和netty的实现功能很多方面一样，tomcat为什么没有用netty作为底层通讯框架？</div>2019-05-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f9/5f/b0a125a9.jpg" width="30px"><span>chp</span> 👍（9） 💬（2）<div>老师，请求来的时候，源码入口在哪里？</div>2019-05-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/77/61/adf1c799.jpg" width="30px"><span>KL3</span> 👍（9） 💬（1）<div>您好，我不太理解io模型，是指若干个请求的网络字节流经过网络适配器，由连接器通过一个什么样的方式读到吗？
-我对io理解的不深，表达会有问题。</div>2019-05-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/36/d2/c7357723.jpg" width="30px"><span>发条橙子 。</span> 👍（8） 💬（2）<div>老师 ，我有个疑问 ：
-层次结构是 一个server表示一个应用实例（java进程）。 一个server中可以有多个service , service中又有多个连接器和容器 。 并且每个service可以监听一个不同的端口号 。
-
-但是我们的一个应用一般不都是一个端口号么 ， url地址：端口号 。 为什么会有多个端口号。是我哪个点理解的有偏差么老师</div>2019-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/05/7f/a7df049a.jpg" width="30px"><span>Standly</span> 👍（8） 💬（1）<div>“如果说 EndPoint 是用来实现 TCP&#47;IP 协议的，那么 Processor 用来实现 HTTP 协议”，这句话不太理解，TCP&#47;IP协议不是由linux系统内核实现的么？</div>2019-05-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（8） 💬（1）<div>老师好!Tomcat配置的并发数是文中endpoint里那个线程池么?IO方面知识比较薄弱，希望老师后期讲解时多花点心思。</div>2019-05-21</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/xYQgB3IEFRAVQTDHEI1NpQBialaNGyrUibLPpUoXByVeKibNZicdMLP7Vaahc1sHTNdtMqpGfct2ichwpia98qbjGWrQ/132" width="30px"><span>？？？</span> 👍（7） 💬（1）<div>老师，连接器就是前面章节说的http服务器吗</div>2019-06-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0b/4e/fd946cb2.jpg" width="30px"><span>allean</span> 👍（7） 💬（1）<div>可以理解为一个连接器对应一个应用吗</div>2019-05-22</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/6LaITPQ4Lk5fZn8ib1tfsPW8vI9icTuSwAddiajVfibPDiaDvMU2br6ZT7K0LWCKibSQuicT7sIEVmY4K7ibXY0T7UQEiag/132" width="30px"><span>尔东橙</span> 👍（6） 💬（1）<div>老师，有两个问题，第一个是您常说的servletrequest 是不是只是个抽象概念，实际上并没有这个对象（类），具体到代码里是Httprequest和Httpresponse或者具体其他协议类？第二个问题，您文章最后提到的系统架构面试题，最近也是我头疼的一个问题。对于应届生来说，没有参与 过具体的项目，如何回答才能达到面试官的要求？从文章中和评论中看来，是不是抓住需求中的变与不变，然后使用一些设计模式实现高内聚低耦合，这样回答可行？</div>2019-05-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/79/69/5960a2af.jpg" width="30px"><span>王智</span> 👍（6） 💬（1）<div>老师您好,我有两个问题,
-一个是上面说到一个容器对接多个连接器,也就是service,这个具体是不是可以在tomcat的conf目录下的server.xml中发现呢? 但是一般情况下,也就是默认的,tomcat的一个server下只会有一个service组件,而connector就是在service组件中配置的呢?  
-另一个是一个server中有一个或多个service,一个service中有多个连接器和一个容器,这里的容器到底是什么?我并没有在server.xml中找到相关的配置等呀.</div>2019-05-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/24/5d/65e61dcb.jpg" width="30px"><span>学无涯</span> 👍（5） 💬（1）<div>老师，我可以这么理解吗：一个service里面多个连接器，每个连接器监听一个协议的端口，如果需要监听某个协议的多个端口，就需要多个service。比如我在一个service中不能有多个监听http协议的端口，如果需要开放多个http协议的端口，就需要多个service</div>2019-06-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0b/4e/fd946cb2.jpg" width="30px"><span>allean</span> 👍（5） 💬（1）<div>一个service有多个连接器和一个容器，多个Service就可能有n个连接器和n个容器吗？还是有且只有一个容器，所有的连接器都指向这个容器，请老师解答，谢谢！</div>2019-05-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/97/1a/389eab84.jpg" width="30px"><span>而立斋</span> 👍（5） 💬（1）<div>看懂了，但是没有一个形象化的记忆点。</div>2019-05-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/8a/76/4abc8ac1.jpg" width="30px"><span>完美世界</span> 👍（4） 💬（1）<div>select，accept，read，send，是标准的网络标准API。
-
-这几个应该都在protocolhandler里吧( •̥́</div>2019-05-28</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eofKOpMHg2BzjrZHuadMG1UB6Mpz47XmTqtX6JqArPWh21T4rFgSibOicYf5picvhMawYzGIWszVKxMg/132" width="30px"><span>Aaron</span> 👍（3） 💬（1）<div>老师，你好，请问下连接器和容器是多对多的关系么，就是多个连接器可以对应一个容器，多个容器也能对应一个连接器？</div>2019-05-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/76/12/8dd9bfa6.jpg" width="30px"><span>泉清</span> 👍（3） 💬（1）<div>一、课后题：刚好最近独立设计开发过一个以第三方为标准的项目，其实无论谁为标准，要做的事情非自己系统与别人系统高度耦合的定制项目，都可以进行抽离。
-1、自己先把流程分析，确定那些是固定的，哪些是变的；
-2、定义自己标准版的数据结构，对于任何来自第三方的数据都可以用适配器模式转化为自己标准版的。
-二、关于老师的课件版本代码是否是在github上获取的对应源码，我获取的tomcat源码中AbstractEndpoint并未包含任何内部类。</div>2019-05-21</li><br/>
+今天我刻意花时间把tomcat7.0.94的源码下载下来，导入IDEA。发现org.apache.tomcat.util.net.AbstractEndpoint是一个抽象类，既没有实现EndPoint，也没有声明内部类SocketProcessor。和老师讲上面提到的有出入，难道我下了一个假的Tomato源码。&gt;大哭&lt;</div>2019-05-21</li><br/><li><span>新世界</span> 👍（10） 💬（2）<div>对tomcat的结构的连接器部分收获不少，有一问题，tomcat的endpoint的功能和netty的实现功能很多方面一样，tomcat为什么没有用netty作为底层通讯框架？</div>2019-05-21</li><br/>
 </ul>

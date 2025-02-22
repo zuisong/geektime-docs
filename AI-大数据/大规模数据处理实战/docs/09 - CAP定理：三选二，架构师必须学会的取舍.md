@@ -17,56 +17,135 @@ CAP这个概念最初是由埃里克·布鲁尔博士（Dr. Eric Brewer）在200
 ![](https://static001.geekbang.org/resource/image/2b/8f/2bfd96a97ce8d38834105964d0cb0e8f.png?wh=1278%2A1346)
 
 他们在这篇论文中证明了：在任意的分布式系统中，一致性（Consistency），可用性（Availability）和分区容错性（Partition-tolerance）这三种属性最多只能同时存在两个属性。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/56/cf/53f64618.jpg" width="30px"><span>王燊 شن ون</span> 👍（14） 💬（3）<div>我的理解：A是机器挂掉仍可用，P是网络挂掉仍可用。如果我的理解正确，那老师您说Kafka不支持P的解释，即当Kafka leader挂掉整个系统不可用，其实是不是表明Kafka是不支持A，而不是不支持P的？</div>2019-05-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5f/e9/95ef44f3.jpg" width="30px"><span>常超</span> 👍（27） 💬（1）<div>关于大家出现很多疑问的Kafka是否有P属性的问题，上网搜了一下，找到一个可以说明Kafka不具备P属性的例子，不知道理解对不对，请老师和大家批评指正。
 
-比如：在以下的场景序列下，会出现数据写入丢失的情况，所以不能说kafka是有P属性
+下面，我来为你解读一下这三种属性在这篇论文里的具体意思。
 
-前提：leader和两个slave 1、2
-序列：
-1.机器leader跟两个slave之间发生partion
-这是leader成为唯一服务节点，继续接受写入请求w1,但是w1只保存在了leader机器上，无法复制到slave1和2
-2.leader和zookeeper之间发生partition，导致kafka选取slave 1为新leader，新leader接受新写入w1
-这时候，上面1的w1写入丢失了。即使之后旧leader复活，w1的写入数据也不会被恢复出来。
-参考：https:&#47;&#47;bit.ly&#47;2VGKtu1
-</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/67/8a/babd74dc.jpg" width="30px"><span>锦</span> 👍（2） 💬（2）<div>AP，发微博保证最终一致性就可以。
-疑问一，mongodb采用CP，那么它在可用性方面有做什么事情吗？
-疑问二，kafka这种通过选举leader的方式不就是分区容错性吗？为什么说放弃了P呢？</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5f/e9/95ef44f3.jpg" width="30px"><span>常超</span> 👍（14） 💬（3）<div>老师您好，文中说kafka放弃了P属性。
-但是从后面的解释来看，即使出现分区（领导者节点和副本1无法通讯），整个系统也能正常工作，这种行为难道不是保持了P属性吗。您能否举一个P属性被放弃的例子？</div>2019-05-06</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLhMtBwGqqmyhxp5uaDTvvp18iaalQj8qHv6u8rv1FQXGozfl3alPvdPHpEsTWwFPFVOoP6EeKT4bw/132" width="30px"><span>Codelife</span> 👍（19） 💬（2）<div>严格来说,CAP理论是针对分区副本来定义的，之所以说kafka放弃P，只支持CA，是因为，kafka原理中当出现单个broke宕机，将要出现分区的时候，直接将该broke从集群中剔除，确保整个集群不会出现P现象</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/26/1b/4caf36bd.jpg" width="30px"><span>coldpark</span> 👍（8） 💬（1）<div>有一个形象的比喻不知道恰当不恰当，一个系统相当于一个团队，有C属性说明这个团队每次都能保质保量完成任务，A属性说明这个团队每次都能及时完成任务，P属性相当于这个团队内部偶尔会犯一些小错误。犯错是很常见的，所以一般都具有P属性。
-CP类型的团队对外的形象相当于：我的团队不是完美的，但我的产品绝对不会出问题，只要你给我足够的时间让我们把问题排查清楚。
-AP类型的团队给人的感觉就是：人非圣贤，孰能无过，我的队员会犯错，我的团队也有估计不足的时候，但是客户的需求我们总会最快响应。
-CA类型的团队有个强人领袖（leader节点）：任何事务无论大小都过问一遍，一旦发现手下有人犯错，立马剔除出团队，如果自己犯错，让出领袖地位，整个团队一定要保证最快最好完成任务。</div>2019-08-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/87/25/898dea4e.jpg" width="30px"><span>桃园悠然在</span> 👍（3） 💬（1）<div>另外，增加一个评论：蔡老师的文章头图每张都跟内容强相关（不知是否自己P图或者照相的），而且右上角有文章序号很用心，点赞！</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/a3/06/9fa93074.jpg" width="30px"><span>王聪 Claire</span> 👍（3） 💬（1）<div>kafka 的replication机制，即使出现分区这样的错误，系统也能够通过领导者节点返回消息。怎么算放弃了P呢？谢谢。</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/4f/a5/71358d7b.jpg" width="30px"><span>J.M.Liu</span> 👍（2） 💬（1）<div>老师，我好像懂了。kafka replication不保证p，指的是当网络出现分区后，和主有一台副本比如replicatin1和leader失联了，那replication1就会被踢出去，相当它于宕机了。在这里，分区导致replication1不可用了，所以说不保证p。
-是这样理解吗？</div>2019-05-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/ef/67/bb9d9358.jpg" width="30px"><span>LaimanYeung</span> 👍（2） 💬（2）<div>A：集群某个或某几节点挂掉时，客户端仍然可以访问服务端.
-C：客户访问集群中任一服务端，返回的状态都是一致的.
-P：集群内部机器通讯出现问题导致服务A的数据无法同步到其他节点时，客户端访问服务A，服务A扔能返回未同步到其他节点的数据.</div>2019-05-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/4f/a5/71358d7b.jpg" width="30px"><span>J.M.Liu</span> 👍（2） 💬（1）<div>不太理解ca系统，允许有机子挂掉，却不允许网络分区。机子都挂掉了，到这台机子的网络可不就是连不通了吗？ 允许机子化掉却不允许机子和集群失联，这是个悖论呀。怎么理解这个呢老师</div>2019-05-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/87/25/898dea4e.jpg" width="30px"><span>桃园悠然在</span> 👍（2） 💬（1）<div>我理解kafka作为一个消息系统平台，是不允许消息丢失的，所以通过replication机制冗余数据保证。但是P属性更像是一个缺点（容忍了消息丢失），它的好处该怎么理解呢？谢谢老师！</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/53/d4/2ed767ea.jpg" width="30px"><span>wmg</span> 👍（2） 💬（1）<div>老师，如果kafka支持必须同步节点写成功，那是不是就是一个cp系统，如果支持非健康节点选举为leader，是不是就是ap系统？</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/dc/c3/e4ba51d5.jpg" width="30px"><span>Flash</span> 👍（1） 💬（1）<div>谢谢老师，是不了解微博的机制，请问老师，发微博应该要用什么CAP属性？
-看到留言有人说，发微博保证最终一致性就好，不知道这个跟CAP的线性一致性是不是一个意思？
-</div>2019-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/41/27/3ff1a1d6.jpg" width="30px"><span>hua168</span> 👍（1） 💬（1）<div>Availability和Partition Tolerance并不是由是否允许数据丢失来判断的。
+## C属性：一致性
 
-我来举个例子说明吧。假设现在有一个由两个节点组成的集群，这两个节点都可以独立运作也可以与对方通讯，而客户端是与这个集群通讯的。作为一个集群来说，Availability指的是不管这两个节点哪一个节点坏掉不能运作了，对于客户端来说还是可以继续与这个集群进行通讯的。Partition Tolerance指得是，本来这两个节点可能是需要互相通讯来同步数据的，而因为Network Partition使得它们之间不能通讯了，但是对于客户端来说还是可以继续与这个集群进行通讯的。
+一致性在这里指的是**线性一致性（Linearizability Consistency）**。在线性一致性的保证下，所有分布式环境下的操作都像是在单机上完成的一样，也就是说图中Sever A、B、C的状态一直是一致的。
 
-按照您这样说，我疑惑的是：
-1. 节点是所有节点，包括主节点吧？
-2. 两个节点之间，如果有数据分别写入的话，那不就是数据不一致吗？
-  如果node1写入A数据，node2被写入B数据，怎同步？那数据不是乱套了？读也出现不一的情况
-比如是金钱类的，不能是负数，我请求node1花完了，我刷新一下又访问到node2发现还是原来，我又花完了，那我不是可以花双倍？一同步那不是出错？同步不了，因为扣双倍，已小于0
+![](https://static001.geekbang.org/resource/image/17/41/17a4df9ff551c932bf60ca459fe3b641.jpg?wh=380%2A391)
 
-3. 如果是CA的话，P出问题，不是出现不一致吗，那么我怎么保证C？</div>2019-05-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/ee/16/742956ac.jpg" width="30px"><span>涵</span> 👍（1） 💬（1）<div>老师好，通过您对kafka replication的讲解，以及同学们分析的其他系统，感觉一个分布式平台在设计时需要选择保障CP或AP，被拿掉的A或C也不是完全不考虑，会通过一些其他的辅助系统来支持保障，所以对于平台来说绝大多数时间是可以做到CAP的。不知道这样理解是否正确?</div>2019-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/f4/32/c4550f66.jpg" width="30px"><span>刘万里</span> 👍（1） 💬（1）<div>老师，您有apache beam相关的书推荐吗？谢谢</div>2019-05-07</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/9chAb6SjxFiapSeicsAsGqzziaNlhX9d5aEt8Z0gUNsZJ9dICaDHqAypGvjv4Bx3PryHnj7OFnOXFOp7Ik21CVXEA/132" width="30px"><span>挖矿的小戈</span> 👍（1） 💬（1）<div>1. kafka作为CA系统的理解：
-      kafka的设计是只需要保证单个数据中心的broker之间能够数据复制就好，出现网络分区的情况比较少，因此他主攻高可用和强一致性
-2.  文中，老师提到kafka的Leader选举是由Zookeeper选举的，这儿有点不严谨
-     原因：kafka会由Zookeeper选举一台broker作为controller，之后由controller来维护partition的leader、flower，而leader宕机之后进行新leader的选举也是由controller负责的
-3. 微博发微博的功能，满足AP就行，C的话只需要是最终一致性就好，就跟微信朋友圈一样</div>2019-05-06</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/9chAb6SjxFiapSeicsAsGqzziaNlhX9d5aEt8Z0gUNsZJ9dICaDHqAypGvjv4Bx3PryHnj7OFnOXFOp7Ik21CVXEA/132" width="30px"><span>挖矿的小戈</span> 👍（1） 💬（1）<div>1. kafka作为CA系统的理解：
-      kafka的设计是只需要保证单个数据中心的broker之间能够数据复制就好，出现网络分区的情况比较少，因此他主攻高可用和强一致性
-2.  文中，老师提到kafka的Leader选举是由Zookeeper选举的，这儿有点不严谨
-     原因：kafka会由Zookeeper选举一台broker作为controller，之后由controller来维护partition的leader、flower，而leader宕机之后进行新leader的选举也是由controller负责的
-3. 微博发微博的功能，满足AP就行，C的话只需要是最终一致性就好，就跟微信朋友圈一样</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/80/1e/784e50c9.jpg" width="30px"><span>coder</span> 👍（1） 💬（1）<div>Kafka集群leader维护了一个in-sync replica (ISR) set，表示一个和leader保持同步的follower集合，如果follower长时间未向leader同步数据，时间超过一个设置的参数，则该follower就会被踢出ISR，而后该follower回重启自己并向leader同步数据，通过这种方法避免长时间不能同步数据的问题</div>2019-05-06</li><br/><li><img src="" width="30px"><span>kris37</span> 👍（1） 💬（1）<div>kafka之所以说是ca系统，是因为他跟本就不保证p，因为发生了p kafka 的被独立的分区部分无法保证c 也无法保证a</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/60/95/0b2a67fa.jpg" width="30px"><span>Geek_f80wzm</span> 👍（1） 💬（1）<div>redis是ap 吧，redis集群挂一台，key会rehash，保证可用。redis做分不式锁，主节点挂了，假如主还没来得及同步数据，数据丢了，锁会被申请多次。保证你能申请，这是可用性，不限制你申请多次，这是没有一致性。</div>2019-05-06</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/lUOVNGBvDTqss5XExibXsOrx1mAM7raMhQbdEHdkAeIEGLoK2wJXjy1QiaDKZlQ9vLjTyZcia39KVmrpzJB8zRhqA/132" width="30px"><span>Geek_1987v5</span> 👍（1） 💬（1）<div>CP</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c2/1f/343f2dec.jpg" width="30px"><span>9527</span> 👍（1） 💬（1）<div>老师好，我有几个问题不明白
-1.文中提到的一致性是线性一致的，这个是相当于强一致性吗
+打个比方，现在有两个操作（Operation），操作A和操作B，都需要在同一个分布式系统上完成。
 
-2.Cassandra是AP的，HBase是CP的，很多项目都将HBase替代了Cassandra，是因为运维水平上来了，可以用运维来弥补HBase中高可用的不足吗，而Cassandra被很多项目弃用是因为它不是最终一致性的，导致在一段时间窗口内会出现数据不一致，这样理解对吗？
+我们假设操作A作用在系统上的时候，所看见的所有系统状态（State）叫作状态A。而操作B作用在系统上的时候，所看见的所有系统状态叫作状态B。
 
-3.HBase的Master可以起多个作为备份避免单点问题，那不是应该是CA吗，为什么是CP呢？
+如果操作A是在操作B之前发生的，并且操作A成功了。那么系统状态B必须要比系统状态A更加新。
 
-4.MySql集群应该是属于CA还是CP呢？</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/29/1be3dd40.jpg" width="30px"><span>ykkk88</span> 👍（1） 💬（1）<div>kafka replication和放弃p有什么关系么</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/dc/c3/e4ba51d5.jpg" width="30px"><span>Flash</span> 👍（0） 💬（1）<div>看完本篇文章，我也不知道微博是用什么CAP中的哪两个属性啊，更别说去思考重新设计怎么做呢？？</div>2019-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/2b/fa/1cde88d4.jpg" width="30px"><span>大俊stan</span> 👍（0） 💬（1）<div>老师您好 能否把kaffka的ca类比为zookeeper作为注册中心时也缺少p，还有就是zookeeper在进行大量节点重新选取时是缺少a的</div>2019-05-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/1b/4a/f9df2d06.jpg" width="30px"><span>蒙开强</span> 👍（0） 💬（1）<div>老师，你好，我看到在留言区里你回答提问者时，说了kafka选择了ca，这个是在官网的那个地方可以查看这个说明呢</div>2019-05-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/41/27/3ff1a1d6.jpg" width="30px"><span>hua168</span> 👍（0） 💬（1）<div>老师，我想问一下A与P是怎区别的，是不是从是否允许数据丢失上判断？
-A所有节点间发数据是没有丢失的
-P节点间数据是允许丢失的，
-如果这样的话，那么主节点和节点间数据不是产生不一致的情况吗，又怎么保证C，一致性？</div>2019-05-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f5/80/baddf03b.jpg" width="30px"><span>zhihai.tu</span> 👍（0） 💬（1）<div>AP吧，C只要保持最终一致性就可以了。用户发送微博，写和读之间可以容忍一定的延迟。</div>2019-05-09</li><br/>
-</ul>
+可能光看理论的话你还是会觉得这个概念有点模糊，那下面我就以一个具体例子来说明吧。
+
+假设我们设计了一个分布式的购物系统，在这个系统中，商品的存货状态分别保存在服务器A和服务器B中。我们把存货状态定义为“有货状态”或者“无货状态”。在最开始的时候，服务器A和服务器B都会显示商品为有货状态。
+
+![](https://static001.geekbang.org/resource/image/ed/38/ed38011a91fdd19021b6450415f5a738.jpg?wh=494%2A229)
+
+等一段时间过后，商品卖完了，后台就必须将这两台服务器上的商品状态更新为无货状态。
+
+因为是在分布式的环境下，商品状态的更新在服务器A上完成了，显示为无货状态。而服务器B的状态因为网络延迟的原因更新还未完成，还是显示着有货状态。
+
+这时，恰好有两个用户使用着这个购物系统，先后发送了一个查询操作（Query Operation）到后台服务器中查询商品状态。
+
+我们假设是用户A先查询的，这个查询操作A被发送到了服务器A上面，并且成功返回了商品是无货状态的。用户B在随后也对同一商品进行查询，而这个查询操作B被发送到了服务器B上面，并且成功返回了商品是有货状态的。
+
+![](https://static001.geekbang.org/resource/image/c3/08/c3421ee2650ba291bbf630448d3f5f08.jpg?wh=469%2A350)
+
+我们知道，对于整个系统来说，商品的系统状态应该为无货状态。而操作A又是在操作B之前发送并且成功完成的，所以如果这个系统有线性一致性这个属性的话，操作B所看到的系统状态理论上应该是无货状态。
+
+但在我们这个例子中，操作B却返回了有货状态。所以我们说，这个分布式的购物系统并不满足论文里所讲到的线性一致性。
+
+聊完了一致性，我们一起来看看可用性的含义。
+
+## A属性：可用性
+
+可用性的概念比较简单，在这里指的是**在分布式系统中，任意非故障的服务器都必须对客户的请求产生响应**。
+
+当系统满足可用性的时候，不管出现什么状况（除非所有的服务器全部崩溃），都能返回消息。
+
+![](https://static001.geekbang.org/resource/image/a2/80/a22d6b3032f045565b952076f5f1ce80.jpg?wh=457%2A353)
+
+也就是说，当客户端向系统发送请求，只要系统背后的服务器有一台还未崩溃，那么这个未崩溃的服务器必须最终响应客户端。
+
+## P属性：分区容错性
+
+在了解了可用性之后，你还需要了解分区容错性。它分为两个部分，“分区”和“容错”。
+
+在一个分布式系统里，如果出现一些故障，可能会使得部分节点之间无法连通。由于这些故障节点无法联通，造成整个网络就会被分成几块区域，从而使数据分散在这些无法连通的区域中的情况，你可以认为这就是发生了分区错误。
+
+![](https://static001.geekbang.org/resource/image/59/d4/59b52bb37de477286a70c355fe0fe1d4.jpg?wh=426%2A383)
+
+如图所示，如果你要的数据只在Sever A中保存，当系统出现分区错误，在不能直接连接Sever A时，你是无法获取数据的。我们要“分区容错”，意思是即使出现这样的“错误”，系统也需要能“容忍”。也就是说，就算错误出现，系统也必须能够返回消息。
+
+分区容错性，在这里指的是我们的**系统允许网络丢失从一个节点发送到另一个节点的任意多条消息**。
+
+我们知道，在现代网络通信中，节点出现故障或者网络出现丢包这样的情况是时常会发生的。
+
+如果没有了分区容错性，也就是说系统不允许这些节点间的通讯出现任何错误的话，那我们日常所用到的很多系统就不能再继续工作了。
+
+所以在**大部分情况下，系统设计都会保留P属性，而在C和A中二选一**。
+
+论文中论证了在任意系统中，我们最多可以保留CAP属性中的两种，也就是CP或者AP或者CA。关于具体的论证过程，如果你感兴趣的话，可以自行翻阅论文查看。
+
+你可能会问，在我们平常所用到的开发架构中，有哪些系统是属于CP系统，有哪些是AP系统又有哪些是CA系统呢？我来给你介绍一下：
+
+- CP系统：Google BigTable, Hbase, MongoDB, Redis, MemCacheDB，这些存储架构都是放弃了高可用性（High Availablity）而选择CP属性的。
+- AP系统：Amazon Dynamo系统以及它的衍生存储系统Apache Cassandra和Voldemort都是属于AP系统
+- CA系统：Apache Kafka是一个比较典型的CA系统。
+
+我在上面说过，P属性在现代网络时代中基本上是属于一个必选项，那为什么Apache Kafka会放弃P选择CA属性呢？我来给你解释一下它的架构思想。
+
+## 放弃了P属性的Kafka Replication
+
+在Kafka发布了0.8版本之后，Kafka系统引入了Replication的概念。Kafka Relocation通过将数据复制到不同的节点上，从而增强了数据在系统中的持久性（Durability）和可用性（Availability）。在Kafka Replication的系统设计中，所有的数据日志存储是设计在同一个数据中心（Data Center）里面的，也就是说，在同一个数据中心里网络分区出现的可能性是十分之小的。
+
+它的具体架构是这样的，在Kafka数据副本（Data Replication）的设计中，先通过Zookeeper选举出一个领导者节点（Leader）。这个领导者节点负责维护一组被称作同步数据副本（In-sync-replica）的节点，所有的数据写入都必须在这个领导者节点中记录。
+
+我来举个例子，假设现在数据中心有三台服务器，一台被选为作为领导者节点，另外两台服务器用来保存数据副本，分别是Replication1和Replication2，它们两个节点就是被领导者节点维护的同步数据副本了。领导者节点知道它维护着两个同步数据副本。
+
+如果用户想写入一个数据，假设是“Geekbang”
+
+1. 用户会发请求到领导者节点中想写入“Geekbang”。
+2. 领导者节点收到请求后先在本地保存好，然后也同时发消息通知Replication1和Replication2。
+3. Replication1和Replication2收到消息后也保存好这条消息并且回复领导者节点写入成功。
+4. 领导者节点记录副本1和副本2都是健康（Healthy）的，并且回复用户写入成功。
+
+红色的部分是领导者节点本地日志，记录着有哪些同步数据副本是健康的。
+
+![](https://static001.geekbang.org/resource/image/d7/ca/d731b39103542c83c98bbe57aca1ecca.jpg?wh=451%2A443)
+
+往后用户如果想查询写入的数据，无论是领导者节点还是两个副本都可以返回正确同步的结果。
+
+那假如分区出现了该怎么办呢？例如领导者节点和副本1无法通讯了，这个时候流程就变成这样了。
+
+1. 用户会发请求到领导者节点中想写入“Geekbang”。
+2. 领导者节点收到请求后先在本地保存好，然后也同时发消息通知Replication1和Replication2。
+3. 只有Replication2收到消息后也保存好这条消息并且回复领导者节点写入成功。
+4. 领导者节点记录副本2是健康的，并且回复用户写入成功。
+
+同样，红色的部分是领导者节点本地日志，记录着有哪些同步数据副本是健康的。
+
+![](https://static001.geekbang.org/resource/image/9d/f6/9d97ad203e7869019a84363c847b3cf6.jpg?wh=451%2A443)
+
+如果所有副本都无法通讯的时候，Apache Kafka允许系统只有一个节点工作，也就是领导者节点。这个时候所有的写入都只保存在领导者节点了。过程如下，
+
+1. 用户会发请求到领导者节点中想写入“Geekbang”。
+2. 领导者节点收到请求后先在本地保存好，然后也同时发消息通知Replication1和Replication2。
+3. 没有任何副本回复领导者节点写入成功，领导者节点记录无副本是健康的，并且回复用户写入成功。
+
+![](https://static001.geekbang.org/resource/image/7a/5c/7a0b62273c39bbf0dbda1ca3513f595c.jpg?wh=451%2A443)
+
+当然，在最坏的情况下，连领导者节点也挂了，Zookeeper会重新去寻找健康的服务器节点来当选新的领导者节点。
+
+## 小结
+
+通过今天的学习，我们知道在CAP定理中，一致性，可用性和分区容错性这三个属性最多只能选择两种属性保留。CAP定理在经过了差不多20年的讨论与演化之后，大家对这三个属性可能会有着自己的一些定义。
+
+例如在讨论一致性的时候，有的系统宣称自己是拥有C属性，也就拥有一致性的，但是这个一致性并不是论文里所讨论到的线性一致性。
+
+在我看来，作为大规模数据处理的架构师，我们应该熟知自己的系统到底应该保留CAP中的哪两项属性，同时也需要熟知，自己所应用到的平台架构是保留着哪两项属性。
+
+## 思考题
+
+如果让你重新设计微博系统中的发微博功能，你会选择CAP的哪两个属性呢？为什么呢？
+
+欢迎你把答案写在留言区，与我和其他同学一起讨论。
+
+如果你觉得有所收获，也欢迎把文章分享给你的朋友。

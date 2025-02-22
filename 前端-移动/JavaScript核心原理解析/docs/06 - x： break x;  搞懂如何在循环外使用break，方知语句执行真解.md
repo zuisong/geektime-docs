@@ -13,8 +13,226 @@
 所有这些“为代码语句标示一个位置”的做法，其根本目的都是为了实现“GOTO跳转”，任何时候都可以通过“GOTO 标号”的语法来转移执行流程。
 
 然而，这种黑科技在20世纪的60~70年代就已经普遍地被先辈们批判过了。这样的编程方式只会大大地降低程序的可维护性，其正确性或正确性验证都难以保障。所以，后面的故事想必你都知道了，半个多世纪之前开始的**“结构化”运动**一直影响至今，包括现在我与你讨论的这个JavaScript，都是“结构化程序设计”思想的产物。
-<div><strong>精选留言（27）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/16/50/96/dd23dcb0.jpg" width="30px"><span>不将就</span> 👍（30） 💬（2）<div>老师，问个问题，
+
+所以，简单地说：JavaScript中没有GOTO语句了。取而代之的，是**分块代码**，以及**基于代码分块的流程控制技术**。这些控制逻辑基于一个简单而明了的原则：如果代码分块中需要GOTO的逻辑，那么就为它设计一个“自己的GOTO”。
+
+这样一来，所有的GOTO都是“块（或块所在语句）自己知道的”。这使得程序可以在“自己知情的前提下自由地GOTO”。整体看起来还不错，很酷。然而，问题是那些“标号”啊，或者“程序地址”之类的东西已经被先辈们干掉了，因此就算设计了GOTO也找不到去处，那该怎么办呢？
+
+### 第一种中断
+
+第一种处理方法最为简洁，就是**约定“可以通过GOTO到达的位置”**。
+
+在这种情况下，JavaScript将GOTO的“离开某个语句”这一行为理解为“中断（Break）该语句的执行”。由于这个中断行为是明确针对于该语句的，所以“GOTO到达的位置”也就可以毫无分歧地约定为该语句（作为代码块）的结束位置。这是“break”作为子句的由来。它用在某些“可中断语句（*BreakableStatement*）”的内部，用于中断并将程序流程“跳转（GOTO）到语句的结束位置”。
+
+在语法上，这表示为（该语法只作用于对“可中断语句”的中断）：
+
+> ***break***;
+
+所谓“可中断语句”其实只有两种，包括全部的**循环语句**，以及**switch语句**。在这两种语句内部使用的“break;”，采用的就是这种处理机制——中断当前语句，将执行逻辑交给下一语句。
+
+### 第二种中断
+
+与第一种处理方法的限制不同，第二种中断语句可以中断“任意的标签化语句”。所谓标签化语句，就是在一般语句之前加上“xxx:”这样的标签，用以指示该语句。就如我在文章中写的这两段示例：
+
+```
+// 标签aaa
+aaa: {
+   ...
+}
+
+// 标符bbb
+bbb: if (true) {
+   ...
+}
+```
+
+对比这两段示例代码，你难道不会有这么一个疑惑吗？在标签aaa中，显然aaa指示的是后续的“块语句”的块级作用域；而在标签bbb中，`if`语句是没有块级作用域的，那么bbb到底指示的是“if语句”呢，还是其后的`then`分支中的“块语句”呢？
+
+这个问题本质上是在“块级作用域”与“标签作用的（语句）范围”之间撕裂了一条鸿沟。由于标签bbb在语义上只是要“标识其后的一行语句”，因此这种指示是与“块级作用域（或词法环境）”没有关系的。简单地说，标签化语句理解的是“位置”，而不是“（语句在执行环境中的）范围”。
+
+因此，中断这种标签化语句的“break”的语法，也是显式地用“标签”来标示位置的。例如：
+
+> ***break*** *labelName;*
+
+所以你才会看到，我在文章中写的这两种语句都是可行的：
+
+```
+// 在if语句的两个分支中都可以使用break；
+// （在分支中深层嵌套的语句中也是可以使用break的）
+aaa: if (true) {
+   ...
+}
+else {
+  ...
+  break aaa;
+}
+ 
+// 在try...catch...finally中也可以使用break;
+bbb: try {
+  ...
+}
+finally {
+  break bbb;
+}
+```
+
+对于标签bbb的finally块中使用的这个特例，我需要再特别说明：如果在try或try..finally块中使用了return，那么这个break将发生于最后一行语句之后，但是却是在return语句之前。例如我在文章中写的这段代码：
+
+```
+var i = 100;
+function foo() {
+  bbb: try {
+    console.log("Hi");
+    return i++; //  <-位置1：i++表达式将被执行
+  }
+  finally {
+    break bbb;
+  }
+  console.log("Here");
+  return i; //  <-位置2
+}
+```
+
+测试如下：
+
+```
+> foo()
+Hi
+Here
+101
+```
+
+在这个例子中，你的预期可能会是“位置1”返回的100，而事实上将执行到输出“Here”并通过位置2返回101。这也很好地说明了\*\*`break`语句本质上就是作用于其后的“一个语句”，而与它“有多少个块级作用域”无关\*\*。
+
+## 执行现场的回收
+
+break将“语句的‘代码块’”理解为**位置**，而不是理解为作用域/环境，这是非常重要的前设！
+
+然而，我在上面已经讲过了，程序代码中的“位置”已经被先辈们干掉了。他们用了半个世纪来证明了一件事情：**想要更好、更稳定和更可读的代码，那么就忘掉“（程序的）位置”这个东西吧！**
+
+通过“作用域”来管理代码的确很好，但是作用域与“语句的位置”以及“GOTO到新的程序执行”这样的理念是矛盾的。它们并不在同一个语义系统内，这也是**标签**与**变量**可以重名而不相互影响的根本原因。由于这个原因，在使用标签的代码上下文中，**执行现场的回收**就与传统的“块”以及“块级作用域”根本上不同。
+
+JavaScript的执行机制包括“执行权”和“数据资源”两个部分，分别映射可计算系统中的“逻辑”与“数据”。而块级作用域（也称为词法作用域）以及其他的作用域本质上就是一帧数据，以保存执行现场的一个瞬时状态（也就是每一个执行步骤后的现场快照）。而JavaScript的运行环境被描述为一个后入先出的栈，这个栈顶永远就是当前“执行权”的所有者持用的那一帧数据，也就是代码活动的现场。
+
+JavaScript的运行环境通过函数的CALL/RETURN来模拟上述“数据帧”在栈上的入栈与出栈过程。任何一次函数的调用，即是向栈顶压入该函数的上下文环境（也就是作用域、数据帧等等，它们在不同场合下的相同概念）。所以，包括那些在全局或模块全局中执行的代码，以及Promise中执行调度的那些内部处理，所有的这些JavaScript内部过程或外部程序都统一地被封装成函数，通过CALL/RETURN来激活、挂起。
+
+所以，“作用域”就是在上述过程中被操作的一个对象。
+
+- 作用域退出，就是函数RETURN。
+- 作用域挂起，就是执行权的转移。
+- 作用域的创建，就是一个闭包的初始化。
+- ……
+
+然而如之前所说的，“**break** labelName;”这一语法独立于“执行过程”的体系，它表达一个位置的跳转，而不是一个数据帧在栈上的进出栈。这是labelName独立于标识符体系（也就是词法环境）所带来的附加收益！
+
+基于对“语句”的不同理解，JavaScript设计了一种全新方法，用来清除这个跳转所带来的影响（也就是回收跳转之前的资源分配）。而这多余出来的设计，其实也是上述收益所需要付出的代价。
+
+## 语句执行的意义
+
+对于语句的跳转来说，“离开语句”意味着清除语句所持有的一切资源，如同函数退出时回收闭包。但是，这也同样意味着“语句”中发生的一切都消失了，对于函数来说，return和yield是唯二从这个现场发出信息的方式。那么语句呢？语句的执行现场从这个“程序逻辑的世界”中湮灭之后，又留下了什么呢？
+
+> NOTE: 确实存在从函数中传出信息的其他结构，但这些也将援引别的解释方式，这些就留待今后再讲了。
+
+语句执行与函数执行并不一样。函数是求值，所以返回的是对该函数求值的结果（Result），该结果或是值（Value），或是结果的引用（Reference）。而语句是命令，语句执行的返回结果是该命令得以完成的状态（Completion, Completion Record Specification Type）。
+
+注意，JavaScript是一门混合了函数式与命令式范型的语言，而这里对函数和语句的不同处理，正是两种语言范型根本上的不同抽象模型带来的差异。
+
+在ECMAScript规范层面，本质上所有JavaScript的执行都是语句执行（这很大程度上解释了为什么eval是执行语句）。因此，ECMAScript规范中对执行的描述都称为“运行期语义（Runtime Semantics）”，它描述一个JavaScript内部的行为或者用户逻辑的行为的过程与结果。也就是说这些运行期语义都最终会以一个完成状态（Completion）来返回。例如：
+
+- 一个函数的调用：调用函数——执行函数体（EvaluateBody）并得到它的“完成”结果（result）。
+- 一个块语句的执行：执行块中的每行语句，得到它们的“完成”结果（result）。
+
+这些结果（result）包括的状态有五种，称为完成的类型：normal、break、continue、return、throw。也就是说，任何语句的行为，要么是包含了有效的、可用于计算的数据值（Value）：
+
+- 正常完成（normal）
+- 一个函数调用的返回（return）
+
+要么是一个不可（像数据那样）用于计算或传递的纯粹状态：
+
+- 循环过程中的继续下次迭代（continue）
+- 中断（break）
+- 异常（throw）
+
+> NOTE: throw是一个很特殊的流程控制语句，它与这里的讨论的流程控制有相似性，不同的地方在于：它并不需要标签。关于throw更多的特性，我还会在稍后的课程中给你具体地分析。
+
+所以当运行期出现了一这个称为“中断（break）”的状态时，JavaScript引擎需要找到这个“break”标示的目标位置（**result**.Target），然后与当前语句的标签（如果有的话）对比：
+
+- 如果一样，则取break源位置的语句执行结果为值（Value）并以正常完成状态返回；
+- 如果不一样，则继续返回break状态。
+
+这与函数调用的过程有一点类似之处：由于对“break状态”的拦截交给语句退出（完成）之后的下一个语句，因此如果语句是嵌套的，那么其后续（也就是外层的）语句就可以得到处理这个“break状态”的机会。举例来说：
+
+```
+console.log(eval(`
+  aaa: {
+    1+2;
+    bbb: {
+     3+4;
+     break aaa;
+    }
+  }
+`)); // 输出值：7
+```
+
+在这个示例中，“break aaa”语句是发生于bbb标签所示块中的。但当这个中断发生时，
+
+- 标签化语句bbb将首先捕获到这个语句完成状态，并携带有标签aaa；
+- 由于bbb语句完成时检查到的状态中的中断目标（Target）与自己的标签不同，所以它将这个状态继续作为自己的完成状态，返回给外层的aaa标签化语句aaa；
+- 语句aaa得到上述状态，并对比标签成功，返回结果为语句`3+4`的值（作为完成状态传出）。
+
+所以，语句执行总是返回它的完成状态，且如果这个完成状态是包含值（Value）的话，那么它是可以作为JavaScript代码可访问的数据来使用的。例如，如果该语句被作为`eval()`来执行，那么它就是eval()函数返回的值。
+
+## 中断语句的特殊性
+
+最后的一个问题是：标题中的这行代码有什么特殊性呢？
+
+相信你知道我总是会设计一些难解的，以及表面上矛盾和歧义的代码，并围绕这样的代码来组织我的专题的每一讲的内容。而今天这行代码在“貌似难解”的背后，其实并不包含任何特殊的执行效果，它的执行过程并不会对其他任何代码构成任何影响。
+
+我列出这行代码的原因有两点。
+
+1. 它是最小化的break语句的用法，你不可能写出更短的代码来做break的示例了；
+2. 这种所谓“不会对其他任何代码构成任何影响”的语句，也是JavaScript中的特有设计。
+
+首先，由于“标签化语句”必须作用于“一个”语句，而**语句**理论上的最小化形式是“空语句”。但是将空语句作为break的目标标签语句是不可能的，因为你还必须在标签语句所示的语句范围内使用break来中断。空语句以及其他一些单语句是没有这样的语句范围的，因此最小化的示例就只能是对break语句自身的中断。
+
+其次，语句的返回与函数的返回有相似性。例如，函数可以不返回任何东西给外部，这种情况下外部代码得到的函数出口信息会是undefined值。
+
+由于典型的函数式语言的“函数”应该是没有副作用的，所以这意味着该函数的执行过程不影响任何其他逻辑——也不在这个“程序逻辑的世界”中留下任何的状态。事实上，你还可以用“void”运算符来阻止一个函数返回的值影响它的外部世界。函数是“表达式运算”这个体系中的，因此用一个运算符来限制它的逻辑，这很合理。
+
+虽然“**break** labelName”的中止过程是可以传出“最后执行语句”的状态的，但是你只要回忆一下这个过程就会发现一个悖论：任何被break的代码上下文中，最后执行语句必然会是“break语句”本身！所以，如果要在这个逻辑中实现“语句执行状态”的传递，那么就必须确保：
+
+1. “break语句”不返回任何值（ECMAScript内部约定用“Empty”值来表示）；
+2. 上述“不返回任何值”的语句，也不会影响任何语句的既有返回值。
+
+所以，事实上我们已经探究了“break语句”返回值的两个关键特性的由来：
+
+- 它的类型必然是“break”；
+- 它的返回值必然是“空（Empty）”。
+
+对于Empty值，在ECMAScript中约定：在多行语句执行时它可以被其他非Empty值更新（UpdateEmpty），而Empty不可以覆盖其他任何值。
+
+这就是空语句等也同样“不会对其他任何代码构成任何影响”的原因了。
+
+## 知识回顾
+
+今天的内容有一些非常重要的、关键的点，主要包括：
+
+1. “GOTO语句是有害的。”——1972年图灵奖得主艾兹格·迪科斯彻（Edsger Wybe Dijkstra, 1968）。
+2. 很多新的语句或语法被设计出来用来替代GOTO的效果的，但考虑到GOTO的失败以及无与伦比的破坏性，这些新语法都被设计为功能受限的了。
+3. 任何的一种GOTO带来的都是对“顺序执行”过程的中断以及现场的破坏，所以也都存在相应的执行现场回收的机制。
+4. 有两种中断语句，它们的语义和应用场景都不相同。
+5. 语句有返回值。
+6. 在顺序执行时，当语句返回Empty的时候，不会改写既有的其他语句的返回值。
+7. 标题中的代码，是一个“最小化的break语句示例”。
+
+## 思考题
+
+- 找到其他返回Empty的语句。
+- 尝试完整地对比函数执行与语句执行的过程。
+
+欢迎你在进行深入思考后，与其他同学分享自己的想法，也让我有机会能听听你的收获。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>不将就</span> 👍（30） 💬（2）<div>老师，问个问题，
 {
 let a=10
 }
@@ -28,7 +246,7 @@ if(1){
 let b=10
 }
 这个if语句有括号而且用了let，老师为什么又说if语句没有块级作用域？
-</div>2019-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/6f/10/bfbf81dc.jpg" width="30px"><span>海绵薇薇</span> 👍（20） 💬（1）<div>Hello，老师好：）阅读完文章还存在如下问题，期待有解答或方向，感谢：）
+</div>2019-11-22</li><br/><li><span>海绵薇薇</span> 👍（20） 💬（1）<div>Hello，老师好：）阅读完文章还存在如下问题，期待有解答或方向，感谢：）
 
 try { 
 
@@ -80,10 +298,10 @@ function foo() {
 return 1   Result是{type: return, value: 1}
 break      Result是{type: break, value: empty, target: aaa}
 
-2. 这里finally中语句的结果却覆盖了try中语句的结果，这是一个特例吗？</div>2019-11-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d4/37/528a43e7.jpg" width="30px"><span>Elmer</span> 👍（10） 💬（3）<div>觉得函数执行应该是语句执行的一部分或者一个特例，返回值都已经统一为文中的result。
+2. 这里finally中语句的结果却覆盖了try中语句的结果，这是一个特例吗？</div>2019-11-28</li><br/><li><span>Elmer</span> 👍（10） 💬（3）<div>觉得函数执行应该是语句执行的一部分或者一个特例，返回值都已经统一为文中的result。
 只不过函数执行具体实现了本身的上下文创建与回收，并用额外的栈来记录当前执行状况。
 两者都是流程控制的一种形式。关系应为语句执行包含函数执行。
-不知道理解的对不对。</div>2019-12-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/52/36/18f5d218.jpg" width="30px"><span>zcdll</span> 👍（9） 💬（1）<div>返回 Empty 的语句，是不是还有 单独的一个 分号，和  if 不写大括号，或者大括号中为空？</div>2019-11-22</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/bOFMGebia5L9r0srOd8lblaoWHNSATQrAabGQgcL6MnvAP7V1QqU8sjwdnZib4Hsia5Kv8ozex7KDcYRKrrhiaQLqg/132" width="30px"><span>Geek_q04ku5</span> 👍（6） 💬（2）<div>尝试完整地对比函数执行与语句执行的过程：
+不知道理解的对不对。</div>2019-12-10</li><br/><li><span>zcdll</span> 👍（9） 💬（1）<div>返回 Empty 的语句，是不是还有 单独的一个 分号，和  if 不写大括号，或者大括号中为空？</div>2019-11-22</li><br/><li><span>Geek_q04ku5</span> 👍（6） 💬（2）<div>尝试完整地对比函数执行与语句执行的过程：
 
 ·操作返回值：
 函数执行：在函数体的最后进行一次返回值的赋值
@@ -132,7 +350,7 @@ foo();
 
 ·操作Result的对象
 函数：getValue(ref)||ref传递给上一层表达式使用
-语句：Completion传递给引擎进行使用</div>2020-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/07/36/d677e741.jpg" width="30px"><span>黑山老妖</span> 👍（5） 💬（1）<div>1、传统习惯上过来的开发人员会把“if () { ... }”理解成一个语句，而在JavaScript中，这是两个语句。
+语句：Completion传递给引擎进行使用</div>2020-04-06</li><br/><li><span>黑山老妖</span> 👍（5） 💬（1）<div>1、传统习惯上过来的开发人员会把“if () { ... }”理解成一个语句，而在JavaScript中，这是两个语句。
 2、在try{}块中使用return语句，那么在return之前会执行到finally{}块，而finally{}执行完之后，还会回到try{}块里的return语句来返回。所以最终“完成并退出”整个try语句的，还是try块。
 3、·操作Result的对象
 函数：getValue(ref)||ref传递给上一层表达式使用
@@ -189,9 +407,9 @@ JavaScript的执行（运行）环境：是一个后入先出的栈，栈顶就�
 在js中，语句执行跟表达式执行是分开的，是两种不同概念的东西。而函数执行其实是表达式执行的一种，其中函数名（亦即是函数）是运算数，而一对括号是运算符。——这是确实的，并且这个称为“函数调用运算符”的括号也是有优先级的，你可以直接在MDN里面查到。
 
 表面来看，函数就是一堆语句，但其实“函数执行”时的返回值是由return来决定的，对吧。而语句执行却不是，语句执行的结果值是由“最后一个有效语句”来决定的。当你使用eval()来执行一批语句时，就可以看到这个结果值了。——并且，这也是语句执行要被拿出来讨论的原因，亦即是“动态执行”执行的是语句，而不是函数，也不是表达式。
-</div>2022-01-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/ae/a0/707350ef.jpg" width="30px"><span>穿秋裤的男孩</span> 👍（5） 💬（6）<div>所谓“可中断语句”其实只有两种，包括全部的循环语句，以及 swtich 语句。
+</div>2022-01-13</li><br/><li><span>穿秋裤的男孩</span> 👍（5） 💬（6）<div>所谓“可中断语句”其实只有两种，包括全部的循环语句，以及 swtich 语句。
 
-老师，那forEach不属于循环语句吗？为什么break不可以在forEach中使用呢</div>2019-11-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c2/49/6d68160e.jpg" width="30px"><span>Real Aaron</span> 👍（4） 💬（2）<div>【学习方式大变化】
+老师，那forEach不属于循环语句吗？为什么break不可以在forEach中使用呢</div>2019-11-26</li><br/><li><span>Real Aaron</span> 👍（4） 💬（2）<div>【学习方式大变化】
 
 前5讲看下来，主要有两个感觉：
 
@@ -237,8 +455,8 @@ JavaScript的执行（运行）环境：是一个后入先出的栈，栈顶就�
 
 1、函数执行和语句执行返回的都是一个完成状态？还是函数执行返回的只能是值或引用？亦或是其他说法？
 
-希望老师能解答一下，非常感谢。</div>2019-12-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/2d/44/0a209c31.jpg" width="30px"><span>桔右</span> 👍（4） 💬（1）<div>1、可以理解为函数中return的设计是为了传递函数的状态，break的设计则是为了传递语句的状态么？
-2、可以认为break;只可以中断语句，不能用在函数中，break label;可以用在函数中，它返回了上一行语句的完成状态并作为所在函数的返回值？</div>2019-11-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d4/37/528a43e7.jpg" width="30px"><span>Elmer</span> 👍（3） 💬（1）<div>求函数执行与语句执行的过程对比。</div>2019-12-26</li><br/><li><img src="" width="30px"><span>Geek8740</span> 👍（2） 💬（3）<div>老师，try finaly中return的执行机制到底是怎样的？我下面几个例子彻底弄懵了
+希望老师能解答一下，非常感谢。</div>2019-12-12</li><br/><li><span>桔右</span> 👍（4） 💬（1）<div>1、可以理解为函数中return的设计是为了传递函数的状态，break的设计则是为了传递语句的状态么？
+2、可以认为break;只可以中断语句，不能用在函数中，break label;可以用在函数中，它返回了上一行语句的完成状态并作为所在函数的返回值？</div>2019-11-23</li><br/><li><span>Elmer</span> 👍（3） 💬（1）<div>求函数执行与语句执行的过程对比。</div>2019-12-26</li><br/><li><span>Geek8740</span> 👍（2） 💬（3）<div>老师，try finaly中return的执行机制到底是怎样的？我下面几个例子彻底弄懵了
 
 &#47;&#47; 测试样例1：try里有return finally里没有return
 let x = 0;
@@ -323,7 +541,7 @@ try end: 1
 finally: start 1
 finally: end 3
 3
-*&#47;</div>2022-05-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/cb/ce/d9e00eb5.jpg" width="30px"><span>undefined</span> 👍（1） 💬（1）<div>我又来了…
+*&#47;</div>2022-05-23</li><br/><li><span>undefined</span> 👍（1） 💬（1）<div>我又来了…
 
 原文 ↓
 
@@ -332,7 +550,7 @@ finally: end 3
 应该是
 
 try...finally
-</div>2021-04-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/25/0c/d2ad7cb7.jpg" width="30px"><span>王美红</span> 👍（1） 💬（1）<div>老师，想问下，函数不就是语句构成的，为什么要说 函数执行和语句执行的结果不一样呢？不太懂为啥要这样分开讨论？</div>2021-03-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/89/5b/d8f78c1e.jpg" width="30px"><span>孜孜</span> 👍（1） 💬（1）<div>表达式的result引用和语句的result有联系吗？</div>2020-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/3a/93/d7be8a1a.jpg" width="30px"><span>晓小东</span> 👍（1） 💬（2）<div>老师有一个表达式执行让我感到困惑， 我在做位运算符的时候碰到这么一个现象
+</div>2021-04-29</li><br/><li><span>王美红</span> 👍（1） 💬（1）<div>老师，想问下，函数不就是语句构成的，为什么要说 函数执行和语句执行的结果不一样呢？不太懂为啥要这样分开讨论？</div>2021-03-05</li><br/><li><span>孜孜</span> 👍（1） 💬（1）<div>表达式的result引用和语句的result有联系吗？</div>2020-06-15</li><br/><li><span>晓小东</span> 👍（1） 💬（2）<div>老师有一个表达式执行让我感到困惑， 我在做位运算符的时候碰到这么一个现象
 let n = 2;
     let c1 = n != 0;
     let c2 = (n &amp; (n - 1)) === 0;
@@ -340,47 +558,5 @@ let n = 2;
     console.log(c1, c2, c3);  
 
 打印： true true 0   
-c3 结果为什么变成了0  按照表达式 左右操作数的逻辑</div>2019-11-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/6d/70/25ba4287.jpg" width="30px"><span>明月</span> 👍（0） 💬（1）<div>基于对“语句”的不同理解，JavaScript 设计了一种全新方法，用来清除这个跳转所带来的影响（也就是回收跳转之前的资源分配）。而这多余出来的设计，其实也是上述收益所需要付出的代价。
-有个地方有疑惑还希望获得老师的解答：块语句存在块级作用域的，当块语句中执行到break中断语句后，块级作用域会如何（没有break中断语句时块级作用域是出栈的）</div>2022-08-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/08/43/90edecba.jpg" width="30px"><span>ayu</span> 👍（0） 💬（1）<div>eval( &#39;aaa: {     1+2;     bbb: {      void 7;      break aaa;     }   }&#39;) &#47;&#47; NaN
-
-老师能解释下返回 NaN 而不是 undefined 的原理吗</div>2022-01-11</li><br/><li><img src="" width="30px"><span>Sam</span> 👍（0） 💬（1）<div>function testBlock () {
-    let t = 1;
-    try {
-        t = 2;
-        return t;
-    }
-    finally {
-        t = 3
-    }
-}
-console.log(testBlock()) &#47;&#47;输出为2
-想请教下老师：
-1. 如果finally块，是在try的块中return语句执行前执行话，怎么返回的变量t是try块中赋的值
-2. 在try和finally中的t变量与外部let定义的t是同一个吗？</div>2021-07-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9a/e8/37163caf.jpg" width="30px"><span>爱呀顶呀</span> 👍（0） 💬（1）<div>
-&#47;&#47; 在if语句的两个分支中都可以使用break；
-&#47;&#47; （在分支中深层嵌套的语句中也是可以使用break的）
-aaa: if (true) {
-   ...
-}
-else {
-  ...
-  break aaa;
-}
- 
-&#47;&#47; 在try...catch...finally中也可以使用break;
-bbb: try {
-  ...
-}
-finally {
-  break bbb;
-}
-
-
-能详细解释下吗？ 看不懂呀</div>2020-07-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/10/30/c07d419c.jpg" width="30px"><span>卡尔</span> 👍（0） 💬（2）<div>函数执行，语句执行，表达式执行。后两者是什么关系？</div>2020-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a3/ea/53333dd5.jpg" width="30px"><span>HoSalt</span> 👍（0） 💬（1）<div>aaa: if (true) {
-  ...
-} else {  
-  ...  
-  break bbb;
-}
-这惹人应该是break aaa 吧</div>2020-05-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/ea/05/9976b871.jpg" width="30px"><span>westfall</span> 👍（1） 💬（0）<div>第一次看到标签化语句，请问老师，标签化语句除了用来 break，在实际的开发中还有哪些应用场景?</div>2019-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/45/da/71b7599d.jpg" width="30px"><span>antimony</span> 👍（0） 💬（0）<div>因为从没用过标签语句所以一开始看这篇文章时有些难以理解，有相同问题的同学可以先在mdn上了解一下标签的使用https:&#47;&#47;developer.mozilla.org&#47;en-US&#47;docs&#47;Web&#47;JavaScript&#47;Reference&#47;Statements&#47;label。</div>2020-02-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c5/e9/4013a191.jpg" width="30px"><span>阿鑫</span> 👍（0） 💬（0）<div>居然还有标签语句，涨见识了</div>2019-12-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/cf/14/384258ba.jpg" width="30px"><span>Wiggle Wiggle</span> 👍（0） 💬（0）<div>我觉得函数执行与语句执行的区别就是：函数调用涉及到入栈出栈，语句执行不涉及。</div>2019-11-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/1f/86/3a7eeac4.jpg" width="30px"><span>leslee</span> 👍（0） 💬（0）<div>这篇看来要看很多次了……</div>2019-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/49/f6/ef3e5c81.jpg" width="30px"><span>shengsheng</span> 👍（0） 💬（0）<div>03年我在学vb的时候，并没有提到goto有学，不过后面越来越多资料指出goto问题。</div>2019-11-22</li><br/>
+c3 结果为什么变成了0  按照表达式 左右操作数的逻辑</div>2019-11-26</li><br/>
 </ul>

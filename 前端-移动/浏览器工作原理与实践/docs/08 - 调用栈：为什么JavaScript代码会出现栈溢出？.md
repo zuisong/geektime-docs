@@ -19,14 +19,210 @@
 栈溢出的错误
 
 那为什么会出现这种错误呢？这就涉及到了**调用栈**的内容。你应该知道JavaScript中有很多函数，经常会出现在一个函数中调用另外一个函数的情况，**调用栈就是用来管理函数调用关系的一种数据结构**。因此要讲清楚调用栈，你还要先弄明白**函数调用**和**栈结构**。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/14/8e/fc/6c3dbc46.jpg" width="30px"><span>黄晓杰</span> 👍（37） 💬（2）<div>老师，我有一个疑问，调用栈是后进先出，那么当存在闭包时，某个函数的执行上下文还存在，那么其他函数的出栈是否受影响？</div>2019-09-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/f5/b8/9f165f4b.jpg" width="30px"><span>mfist</span> 👍（20） 💬（12）<div>1. 改成尾递归调用（需要在严格模式下面生效）
+
+## 什么是函数调用
+
+函数调用就是运行一个函数，具体使用方式是使用函数名称跟着一对小括号。下面我们看个简单的示例代码：
+
+```
+var a = 2
+function add(){
+var b = 10
+return  a+b
+}
+add()
+```
+
+这段代码很简单，先是创建了一个add函数，接着在代码的最下面又调用了该函数。
+
+那么下面我们就利用这段简单的代码来解释下函数调用的过程。
+
+在执行到函数add()之前，JavaScript引擎会为上面这段代码创建全局执行上下文，包含了声明的函数和变量，你可以参考下图：
+
+![](https://static001.geekbang.org/resource/image/7f/da/7fa2ed18e702861890d767ea547533da.png?wh=1142%2A644)
+
+全局执行上下文
+
+从图中可以看出，代码中全局变量和函数都保存在全局上下文的变量环境中。
+
+执行上下文准备好之后，便开始执行全局代码，当执行到add这儿时，JavaScript判断这是一个函数调用，那么将执行以下操作：
+
+- 首先，从**全局执行上下文**中，取出add函数代码。
+- 其次，对add函数的这段代码进行编译，并创建**该函数的执行上下文**和**可执行代码**。
+- 最后，执行代码，输出结果。
+
+完整流程你可以参考下图：
+
+![](https://static001.geekbang.org/resource/image/53/ca/537efd9e96771dc50737117e615533ca.png?wh=1142%2A558)
+
+函数调用过程
+
+就这样，当执行到add函数的时候，我们就有了两个执行上下文了——全局执行上下文和add函数的执行上下文。
+
+也就是说在执行JavaScript时，可能会存在多个执行上下文，那么JavaScript引擎是如何管理这些执行上下文的呢？
+
+答案是**通过一种叫栈的数据结构来管理的**。那什么是栈呢？它又是如何管理这些执行上下文呢？
+
+## 什么是栈
+
+关于栈，你可以结合这么一个贴切的例子来理解，一条单车道的单行线，一端被堵住了，而另一端入口处没有任何提示信息，堵住之后就只能后进去的车子先出来，这时这个堵住的单行线就可以被看作是一个**栈容器**，车子开进单行线的操作叫做**入栈**，车子倒出去的操作叫做**出栈**。
+
+在车流量较大的场景中，就会发生反复的入栈、栈满、出栈、空栈和再次入栈，一直循环。
+
+所以，栈就是类似于一端被堵住的单行线，车子类似于栈中的元素，栈中的元素满足**后进先出**的特点。你可以参看下图：
+
+![](https://static001.geekbang.org/resource/image/5e/05/5e2bb65019053abfd5e7710e41d1b405.png?wh=1142%2A667)
+
+栈示意图
+
+## 什么是JavaScript的调用栈
+
+JavaScript引擎正是利用栈的这种结构来管理执行上下文的。在执行上下文创建好后，JavaScript引擎会将执行上下文压入栈中，通常把这种用来管理执行上下文的栈称为**执行上下文栈**，又称**调用栈**。
+
+为便于你更好地理解调用栈，下面我们再来看段稍微复杂点的示例代码：
+
+```
+var a = 2
+function add(b,c){
+  return b+c
+}
+function addAll(b,c){
+var d = 10
+result = add(b,c)
+return  a+result+d
+}
+addAll(3,6)
+```
+
+在上面这段代码中，你可以看到它是在addAll函数中调用了add函数，那在整个代码的执行过程中，调用栈是怎么变化的呢？
+
+下面我们就一步步地分析在代码的执行过程中，调用栈的状态变化情况。
+
+**第一步，创建全局上下文，并将其压入栈底**。如下图所示：
+
+![](https://static001.geekbang.org/resource/image/a5/1d/a5d7ec1f8f296412acc045835b85431d.png?wh=1142%2A765)
+
+全局执行上下文压栈
+
+从图中你也可以看出，变量a、函数add和addAll都保存到了全局上下文的变量环境对象中。
+
+全局执行上下文压入到调用栈后，JavaScript引擎便开始执行全局代码了。首先会执行a=2的赋值操作，执行该语句会将全局上下文变量环境中a的值设置为2。设置后的全局上下文的状态如下图所示：
+
+![](https://static001.geekbang.org/resource/image/1d/1d/1d50269dbc5b4c69f83662ecdd977b1d.png?wh=1142%2A383)
+
+赋值操作改变执行上下文中的值
+
+接下来，**第二步是调用addAll函数**。当调用该函数时，JavaScript引擎会编译该函数，并为其创建一个执行上下文，最后还将该函数的执行上下文压入栈中，如下图所示：
+
+![](https://static001.geekbang.org/resource/image/7d/52/7d6c4c45db4ef9b900678092e6c53652.png?wh=1142%2A794)
+
+执行addAll函数时的调用栈
+
+addAll函数的执行上下文创建好之后，便进入了函数代码的执行阶段了，这里先执行的是d=10的赋值操作，执行语句会将addAll函数执行上下文中的d由undefined变成了10。
+
+然后接着往下执行，**第三步，当执行到add函数**调用语句时，同样会为其创建执行上下文，并将其压入调用栈，如下图所示：
+
+![](https://static001.geekbang.org/resource/image/cc/37/ccfe41d906040031a7df1e4f1bce5837.png?wh=1142%2A843)
+
+执行add函数时的调用栈
+
+当add函数返回时，该函数的执行上下文就会从栈顶弹出，并将result的值设置为add函数的返回值，也就是9。如下图所示：
+
+![](https://static001.geekbang.org/resource/image/03/96/03ca801a5372f941bf17d6088fee0f96.png?wh=1142%2A863)
+
+add函数执行结束时的调用栈
+
+紧接着addAll执行最后一个相加操作后并返回，addAll的执行上下文也会从栈顶部弹出，此时调用栈中就只剩下全局上下文了。最终如下图所示：
+
+![](https://static001.geekbang.org/resource/image/d0/7b/d0ac1d6e77735338fa97cc9a3f6c717b.png?wh=1142%2A641)
+
+addAll函数执行结束时的调用栈
+
+至此，整个JavaScript流程执行结束了。
+
+好了，现在你应该知道了**调用栈是JavaScript引擎追踪函数执行的一个机制**，当一次有多个函数被调用时，通过调用栈就能够追踪到哪个函数正在被执行以及各函数之间的调用关系。
+
+## 在开发中，如何利用好调用栈
+
+鉴于调用栈的重要性和实用性，那么接下来我们就一起来看看在实际工作中，应该如何查看和利用好调用栈。
+
+### 1. 如何利用浏览器查看调用栈的信息
+
+当你执行一段复杂的代码时，你可能很难从代码文件中分析其调用关系，这时候你可以在你想要查看的函数中加入断点，然后当执行到该函数时，就可以查看该函数的调用栈了。
+
+这么说可能有点抽象，这里我们拿上面的那段代码做个演示，你可以打开“开发者工具”，点击“Source”标签，选择JavaScript代码的页面，然后在第3行加上断点，并刷新页面。你可以看到执行到add函数时，执行流程就暂停了，这时可以通过右边“call stack”来查看当前的调用栈的情况，如下图：
+
+![](https://static001.geekbang.org/resource/image/c0/a2/c0d303a289a535b87a6c445ba7f34fa2.png?wh=1142%2A636)
+
+查看函数调用关系
+
+从图中可以看出，右边的“call stack”下面显示出来了函数的调用关系：栈的最底部是anonymous，也就是全局的函数入口；中间是addAll函数；顶部是add函数。这就清晰地反映了函数的调用关系，所以**在分析复杂结构代码，或者检查Bug时，调用栈都是非常有用的**。
+
+除了通过断点来查看调用栈，你还可以使用console.trace()来输出当前的函数调用关系，比如在示例代码中的add函数里面加上了console.trace()，你就可以看到控制台输出的结果，如下图：
+
+![](https://static001.geekbang.org/resource/image/ab/ce/abfba06cd23a7704a6eb148cff443ece.png?wh=1142%2A832)
+
+使用trace函数输出当前调用栈信息
+
+### 2. 栈溢出（Stack Overflow）
+
+现在你知道了调用栈是一种用来管理执行上下文的数据结构，符合后进先出的规则。不过还有一点你要注意，**调用栈是有大小的**，当入栈的执行上下文超过一定数目，JavaScript引擎就会报错，我们把这种错误叫做**栈溢出**。
+
+特别是在你写递归代码的时候，就很容易出现栈溢出的情况。比如下面这段代码：
+
+```
+function division(a,b){
+    return division(a,b)
+}
+console.log(division(1,2))
+```
+
+当执行时，就会抛出栈溢出错误，如下图：
+
+![](https://static001.geekbang.org/resource/image/b4/4d/b4f7196077d9ef4eac1ca6a279f2054d.png?wh=1142%2A652)
+
+栈溢出错误
+
+从上图你可以看到，抛出的错误信息为：超过了最大栈调用大小（Maximum call stack size exceeded）。
+
+那为什么会出现这个问题呢？这是因为当JavaScript引擎开始执行这段代码时，它首先调用函数division，并创建执行上下文，压入栈中；然而，这个函数是**递归的，并且没有任何终止条件**，所以它会一直创建新的函数执行上下文，并反复将其压入栈中，但栈是有容量限制的，超过最大数量后就会出现栈溢出的错误。
+
+理解了栈溢出原因后，你就可以使用一些方法来避免或者解决栈溢出的问题，比如把递归调用的形式改造成其他形式，或者使用加入定时器的方法来把当前任务拆分为其他很多小任务。
+
+## 总结
+
+好了，今天的内容就讲到这里，下面来总结下今天的内容。
+
+- 每调用一个函数，JavaScript引擎会为其创建执行上下文，并把该执行上下文压入调用栈，然后JavaScript引擎开始执行函数代码。
+- 如果在一个函数A中调用了另外一个函数B，那么JavaScript引擎会为B函数创建执行上下文，并将B函数的执行上下文压入栈顶。
+- 当前函数执行完毕后，JavaScript引擎会将该函数的执行上下文弹出栈。
+- 当分配的调用栈空间被占满时，会引发“堆栈溢出”问题。
+
+栈是一种非常重要的数据结构，不光应用在JavaScript语言中，其他的编程语言，如C/C++、Java、Python等语言，在执行过程中也都使用了栈来管理函数之间的调用关系。所以栈是非常基础且重要的知识点，你必须得掌握。
+
+## 思考时间
+
+最后，我给你留个思考题，你可以看下面这段代码：
+
+```
+function runStack (n) {
+  if (n === 0) return 100;
+  return runStack( n- 2);
+}
+runStack(50000)
+```
+
+这是一段递归代码，可以通过传入参数n，让代码递归执行n次，也就意味着调用栈的深度能达到n，当输入一个较大的数时，比如50000，就会出现栈溢出的问题，那么你能优化下这段代码，以解决栈溢出的问题吗？
+
+欢迎在留言区与我分享你的想法，也欢迎你在留言区记录你的思考过程。感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>黄晓杰</span> 👍（37） 💬（2）<div>老师，我有一个疑问，调用栈是后进先出，那么当存在闭包时，某个函数的执行上下文还存在，那么其他函数的出栈是否受影响？</div>2019-09-11</li><br/><li><span>mfist</span> 👍（20） 💬（12）<div>1. 改成尾递归调用（需要在严格模式下面生效）
 function runStack (n, result=100) {
   if (n === 0) return result;
   return runStack( n- 2, result);
 }
 runStack(50000, 100)
-2. 改成循环调用，不使用递归函数，就不存在堆栈溢出</div>2019-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（10） 💬（5）<div>关于调用栈的大小，不用的平台，比如浏览器，nodejs 怎么查看设置的，还是硬编码的？</div>2019-08-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/30/57/29266196.jpg" width="30px"><span>心飞扬</span> 👍（8） 💬（3）<div>addAll函数中的result并不在变量环境中，而是执行完add后才被放在this中</div>2019-11-14</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/ibZVAmmdAibBeVpUjzwId8ibgRzNk7fkuR5pgVicB5mFSjjmt2eNadlykVLKCyGA0GxGffbhqLsHnhDRgyzxcKUhjg/132" width="30px"><span>pyhhou</span> 👍（8） 💬（1）<div>思考题当中的函数，如果输入参数是正偶数，那么不管数值多大，最后结果都是 100，除此之外，如果输入参数是负数或者是正奇数，甚至说是浮点数，那么使用递归方式调用会导致栈溢出，使用循环方式去实现会导致死循环，如果仅仅是基于当前的输入参数（50000）改写的话：
+2. 改成循环调用，不使用递归函数，就不存在堆栈溢出</div>2019-08-22</li><br/><li><span>奕</span> 👍（10） 💬（5）<div>关于调用栈的大小，不用的平台，比如浏览器，nodejs 怎么查看设置的，还是硬编码的？</div>2019-08-24</li><br/><li><span>心飞扬</span> 👍（8） 💬（3）<div>addAll函数中的result并不在变量环境中，而是执行完add后才被放在this中</div>2019-11-14</li><br/><li><span>pyhhou</span> 👍（8） 💬（1）<div>思考题当中的函数，如果输入参数是正偶数，那么不管数值多大，最后结果都是 100，除此之外，如果输入参数是负数或者是正奇数，甚至说是浮点数，那么使用递归方式调用会导致栈溢出，使用循环方式去实现会导致死循环，如果仅仅是基于当前的输入参数（50000）改写的话：
 function runStack (n) {
   return 100;
 }
@@ -40,7 +236,7 @@ function runStack (n) {
 
   return 100;
 }
-runStack(50000);</div>2019-08-23</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKYicHMnUdXqWMiaxqe3L3C20UTh2FgKpOyBwpZVVLYf7Z6gaCLoh6e0bgXQcH162IYVvUAiaXKJ53iaQ/132" width="30px"><span>Claire</span> 👍（7） 💬（1）<div>运用尾递归，其实尾递归也会产生栈溢出问题，但是查资料看，很多编译器已经优化了尾递归，当编译器检测到一个函数调用是尾递归的时候，它就覆盖当前的活动记录而不是在栈中去创建一个新的</div>2019-08-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4d/fd/0aa0e39f.jpg" width="30px"><span>许童童</span> 👍（7） 💬（5）<div>将递归改成迭代就好了，还可以使用尾递归优化。感觉老师这道题改成斐波那契数列会更好。
+runStack(50000);</div>2019-08-23</li><br/><li><span>Claire</span> 👍（7） 💬（1）<div>运用尾递归，其实尾递归也会产生栈溢出问题，但是查资料看，很多编译器已经优化了尾递归，当编译器检测到一个函数调用是尾递归的时候，它就覆盖当前的活动记录而不是在栈中去创建一个新的</div>2019-08-23</li><br/><li><span>许童童</span> 👍（7） 💬（5）<div>将递归改成迭代就好了，还可以使用尾递归优化。感觉老师这道题改成斐波那契数列会更好。
 
 function runStack (n) {
   while (n &gt; 0) {
@@ -48,9 +244,9 @@ function runStack (n) {
   }
   return 100
 }
-runStack(50000)</div>2019-08-22</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqXKSvfaeicog2Ficx4W3pNeA1KRLOS7iaFy2uoxCDoYpGkGnP6KPGecKia6Dr3MtCkNGpHxAzmTMd0LA/132" width="30px"><span>Geek_East</span> 👍（4） 💬（1）<div>执行上下问的本质是一个object吗</div>2019-12-06</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKOASyV1lpdkW6It8WQltNGj9021PTibqOwRUTccaSUEM1GmQThOTIRp9Eu7XNZZFfGGNveLbUSw9Q/132" width="30px"><span>tick</span> 👍（3） 💬（2）<div>老师，我可不可以这样理解，您所说的调用栈并不是严格意义上的栈，因为在addAll中调用add时，add的函数代码还是在全局上下文中，即此时栈中有全局上下文，addAll上下文，但此时还需要去访问栈底的全局上下文中取出add的函数代码，这样是不是不算是严格意义上的栈？</div>2019-08-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/fd/90/ae39017f.jpg" width="30px"><span>爱吃锅巴的沐泡</span> 👍（3） 💬（1）<div>老师，有两个问题：
+runStack(50000)</div>2019-08-22</li><br/><li><span>Geek_East</span> 👍（4） 💬（1）<div>执行上下问的本质是一个object吗</div>2019-12-06</li><br/><li><span>tick</span> 👍（3） 💬（2）<div>老师，我可不可以这样理解，您所说的调用栈并不是严格意义上的栈，因为在addAll中调用add时，add的函数代码还是在全局上下文中，即此时栈中有全局上下文，addAll上下文，但此时还需要去访问栈底的全局上下文中取出add的函数代码，这样是不是不算是严格意义上的栈？</div>2019-08-25</li><br/><li><span>爱吃锅巴的沐泡</span> 👍（3） 💬（1）<div>老师，有两个问题：
 1、老师在文中写到“首先，从全局执行上下文中，取出 add 函数代码。”，这里是取到函数的引用，还是整个函数代码，函数的存储是怎样的？
-2、声明带参的函数并调用的编译过程是怎样的，参数应该是和arguments有关吧，老师能详细说一下编译过程嘛？</div>2019-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/22/7b/f8736786.jpg" width="30px"><span>林展翔</span> 👍（1） 💬（2）<div>老师, 可以问一下, 除了去捕获异常以外,  有没有什么办法能够跳过异常语句去执行剩下的 JS 语句.</div>2019-08-22</li><br/><li><img src="" width="30px"><span>Jim</span> 👍（1） 💬（1）<div>老师，您的执行上下文图里都会有一个变量环境和词法环境，可是为什么词法环境没有东西呢？请问变量环境和词法环境的区别是什么呢？</div>2019-08-22</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLHOZjqhVkWgUrUibLnXkiaFkhJdfWT2BZP3LldE3tArIoHASlhTSp8tiatiamLbQOjKeMcYHkAexoyCg/132" width="30px"><span>江霖</span> 👍（0） 💬（1）<div>
+2、声明带参的函数并调用的编译过程是怎样的，参数应该是和arguments有关吧，老师能详细说一下编译过程嘛？</div>2019-08-22</li><br/><li><span>林展翔</span> 👍（1） 💬（2）<div>老师, 可以问一下, 除了去捕获异常以外,  有没有什么办法能够跳过异常语句去执行剩下的 JS 语句.</div>2019-08-22</li><br/><li><span>Jim</span> 👍（1） 💬（1）<div>老师，您的执行上下文图里都会有一个变量环境和词法环境，可是为什么词法环境没有东西呢？请问变量环境和词法环境的区别是什么呢？</div>2019-08-22</li><br/><li><span>江霖</span> 👍（0） 💬（1）<div>
 var a = 2
 function add(b,c){
   return b+c
@@ -61,69 +257,5 @@ result = add(b,c)
 return  a+result+d
 }
 addAll(3,6)
-老师这段代码的result是不是应该在全局的context下</div>2019-11-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f0/61/68462a07.jpg" width="30px"><span>无名</span> 👍（0） 💬（2）<div>看文中的代码表达式中大部分结尾都没有加“;”号；JS规范中建议加还是不加“;”号？</div>2019-08-29</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/ExHHyMiauDKhjmy4n8rgA1e3IVRd8vegMAnOFC7u6p9aiaefEJEZKa2Pu5rARLbeNicuz9NFicpF5YXEFf35gNn2vQ/132" width="30px"><span>阿段</span> 👍（0） 💬（1）<div>算法经典思想：循环消除尾递归</div>2019-08-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/c9/ba/f50e9ea4.jpg" width="30px"><span>潘启宝</span> 👍（0） 💬（2）<div>有一个词叫函数尾优化</div>2019-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/4d/04/5e0d3713.jpg" width="30px"><span>李懂</span> 👍（0） 💬（1）<div>想知道js原始类型和引用类型怎么创建的，存储在什么位置？变量对引用类型保存的是内存地址么？</div>2019-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4d/fd/0aa0e39f.jpg" width="30px"><span>许童童</span> 👍（0） 💬（1）<div>老师你好，如果函数中有闭包，那执行上下文就不会被弹出了，这是一种什么情况？
-栈的大小具体是多大，哪里可以看？
-老师的图画得很好，用的是什么软件？</div>2019-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/eb/09/ba5f0135.jpg" width="30px"><span>Chao</span> 👍（0） 💬（1）<div>递归是比较好理解的一种方式。 
-
-runstack 目的是否最后能被减为0  return 100。
-或者直接改循环  递减 </div>2019-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/c7/1c/3bec7786.jpg" width="30px"><span>徐承银</span> 👍（93） 💬（17）<div>不进栈，就不会栈溢出了。function runStack (n) {
-  if (n === 0) return 100;
-  return setTimeout(function(){runStack( n- 2)},0);
-}
-runStack(50000)</div>2019-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/80/7a/02fdf1a2.jpg" width="30px"><span>FreezeSoul</span> 👍（34） 💬（1）<div>评论比文章更丰富系列</div>2020-03-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d9/c6/8be8664d.jpg" width="30px"><span>ytd</span> 👍（32） 💬（4）<div>改成循环不会栈溢出了，不过就有可能陷入死循环：
-&#47;&#47; 优化
-function runStack(n) {
-    while (true) {
-        if (n === 0) {
-            return 100;
-        }
-
-        if (n === 1) { &#47;&#47; 防止陷入死循环
-            return 200;
-        }
-
-        n = n - 2;
-    }
-}
-
-console.log(runStack(50000));</div>2019-08-22</li><br/><li><img src="" width="30px"><span>Geek_8476da</span> 👍（31） 💬（9）<div>我测试出了栈的深度为12574</div>2019-09-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/df/30/95743ba5.jpg" width="30px"><span>黄榆</span> 👍（17） 💬（0）<div> https:&#47;&#47;kangax.github.io&#47;compat-table&#47;es6&#47;  这个网站可以看到各平台对作为es6特性的尾调用优化的支持情况，表格里面显示：桌面浏览器中只有safari 12 支持尾调用优化。我自己使用safari 12测试，严格模式下运行作者代码能正常得出结果。https:&#47;&#47;node.green&#47;#ESNEXT-strawman--stage-0--syntactic-tail-calls 这个网站则显示，目前版本的node.js不支持尾递归优化</div>2019-09-03</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/uqaRIfRCAhJ6t1z92XYEzbVf8eoPm5Tsu5Zgl0rKdYNFiaGKOOOn79rMClvWGoOJKRJgvrTCGD3ZK4JiaZic72wicrG72I5APGB4/132" width="30px"><span>yetta_xy</span> 👍（16） 💬（5）<div>老师您好，有个疑问。
-addAll函数中的result变量没有用var声明，直接赋值的，这个变量应该存在于全局上下文的环境变量对象中吧？</div>2019-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/93/4a/de82f373.jpg" width="30px"><span>AICC</span> 👍（7） 💬（0）<div>老师会在什么地方讲解每节内容留下的思考题？比如像这节的尾调用问题，是否存在尾调用优化，至少目前看到的尝试方式在chrome上都会出现栈溢出，有说是v8移除了TCO,即尾调用优化，参考：https:&#47;&#47;stackoverflow.com&#47;questions&#47;42788139&#47;es6-tail-recursion-optimisation-stack-overflow
-还有目前google提供的优化方式，但在chrome上目前还不支持，如下
-function factorial(n, acc = 1) {
-  if (n === 1) return acc;
-  return continue factorial(n - 1, acc * n)
-}</div>2019-08-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/20/4b/b9/2449c7b7.jpg" width="30px"><span>‏5102</span> 👍（6） 💬（0）<div>   思考题：基于迭代、模拟栈、异步的解决方案
-
-    &#47;&#47; 使用迭代循环来代替栈
-    function runStack(n) {
-      while (n !== 0) n -= 2;
-      return console.log(100) &amp;&amp; 100;
-    }
-    &#47;&#47; 使用数组来模拟栈
-    function runStack(n) {
-      const stack = [n]
-      while (n !== 0) {
-        n -= 2
-        if (n !== 0) {
-          stack.push(n)
-        } else {
-          return console.log(100) &amp;&amp; 100;
-        }
-      }
-    }
-    &#47;&#47; 使用异步来分块处理，注意异步队列也有上限，分块粒度不能太细
-    function runStack(n, count = 0) {
-      if (n === 0) return console.log(100) &amp;&amp; 100;
-      if (count &gt; 5000) return setTimeout(runStack, 0, n - 2);
-      return runStack(n - 2, count + 1)
-    }
-    runStack(50000)
-    至于尾递归，很多浏览器都不支持，不然可以直接使用尾递归</div>2020-08-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9f/1d/ec173090.jpg" width="30px"><span>melon</span> 👍（6） 💬（2）<div>老师没有提函数的入参和返回值，函数的入参和返回值是不是也在函数上下文的变量环境里呢？</div>2019-10-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/83/52/d67f276d.jpg" width="30px"><span>轩爷</span> 👍（6） 💬（0）<div>亲测，Chrome【版本 77.0.3865.75（正式版本）（64 位）】和Firefox【67.0.4 (64 位)】都不支持尾调用优化，只有Safari【版本 12.1.2 (14607.3.9)】支持</div>2019-09-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/cc/8b/0060a75c.jpg" width="30px"><span>tomision</span> 👍（5） 💬（2）<div>加入定时器的方法来把当前任务拆分为其他很多小任务：
-
-function runStackPromise(n) {
-  if (n === 0) return Promise.resolve(100)
-  return Promise.resolve(n - 2).then(runStackPromise)
-}
-
-runStackPromise(500000).then(console.log)</div>2020-02-09</li><br/>
+老师这段代码的result是不是应该在全局的context下</div>2019-11-14</li><br/><li><span>无名</span> 👍（0） 💬（2）<div>看文中的代码表达式中大部分结尾都没有加“;”号；JS规范中建议加还是不加“;”号？</div>2019-08-29</li><br/><li><span>阿段</span> 👍（0） 💬（1）<div>算法经典思想：循环消除尾递归</div>2019-08-26</li><br/>
 </ul>

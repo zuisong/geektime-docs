@@ -285,9 +285,30 @@ interface ComponentProvider<T> {
 - 自定义Scope标注
   
   - 可向容器注册自定义Scope标注的回调
+
+## 视频演示
+
+让我们进入今天的部分：
+
+## 思考题
+
+在进入下节课之前，希望你能认真思考如下两个问题，并选择最有感触的一道进行回答。
+
+1. 我们要如何重构ContextConfig内部的实现，从而可以使用Component代替Class&lt;?&gt; ?
+2. 你最近是怎样学习TDD的？可以分享一下你的学习方式，为其他同学提供参考。
+
+**编辑来信**：
+
+> 第二期“TDD·代码评点”活动启动啦！为了帮助你更平滑地过渡到第三个实战项目，徐老师发起了代码评点活动。  
+> 　  
+> 你可以填写[学习问卷](https://jinshuju.net/f/fnh84B)提交项目代码，而后，徐老师会一一查看，并进行评点与答疑。关于评点的详细内容，我们也将制成加餐展示在专栏里，供其他同学学习与参考。  
+> 　  
+> 请注意，此次收集时间截至5月27日晚上12点。此外，我也会从中选出1-2位同学，送出《重构与模式》一书。请抓紧上车，入股不亏哦！
+
+欢迎把你的想法分享在留言区，也欢迎把你的项目代码的链接分享出来。相信经过你的思考与实操，学习效果会更好！
 <div><strong>精选留言（4）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/e9/22/7606c6ba.jpg" width="30px"><span>张铁林</span> 👍（1） 💬（0）<div>这章又要开启替换大法，先完成一个同级别的实现，再替换。</div>2022-05-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/65/21/101a7075.jpg" width="30px"><span>davix</span> 👍（0） 💬（0）<div>我们要如何重构 ContextConfig 内部的实现，从而可以使用 Component 代替 Class ?
-所有bind時先components.put()一份，然後所有providers.get()都替換為components.get()，然後刪掉providers</div>2022-08-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/65/21/101a7075.jpg" width="30px"><span>davix</span> 👍（0） 💬（0）<div>老師能講講測試數據的組織嗎？像不同case都要用的，或有微小差別的，位置放在哪些文件，哪些類，哪些行？</div>2022-08-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（0）<div>如何学习 TDD
+<li><span>张铁林</span> 👍（1） 💬（0）<div>这章又要开启替换大法，先完成一个同级别的实现，再替换。</div>2022-05-12</li><br/><li><span>davix</span> 👍（0） 💬（0）<div>我们要如何重构 ContextConfig 内部的实现，从而可以使用 Component 代替 Class ?
+所有bind時先components.put()一份，然後所有providers.get()都替換為components.get()，然後刪掉providers</div>2022-08-21</li><br/><li><span>davix</span> 👍（0） 💬（0）<div>老師能講講測試數據的組織嗎？像不同case都要用的，或有微小差別的，位置放在哪些文件，哪些類，哪些行？</div>2022-08-21</li><br/><li><span>aoe</span> 👍（0） 💬（0）<div>如何学习 TDD
 1. 跟着老师敲代码
 2.参与微信群互动
 - 例如我丢掉了30多个测试，在群里请教同学，同学说“不影响”，还真是！

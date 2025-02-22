@@ -74,5 +74,5 @@ class UriTemplateString implements UriTemplate {
 
 欢迎把你的想法分享在留言区，也欢迎把你的项目代码分享出来。相信经过你的思考与实操，学习效果会更好！
 <div><strong>精选留言（1）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（0）<div>group方法加了之后代码确实好理解多了</div>2022-07-22</li><br/>
+<li><span>aoe</span> 👍（0） 💬（0）<div>group方法加了之后代码确实好理解多了</div>2022-07-22</li><br/>
 </ul>

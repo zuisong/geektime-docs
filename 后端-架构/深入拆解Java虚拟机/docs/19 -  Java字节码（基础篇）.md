@@ -19,8 +19,223 @@
 Java字节码中有好几条指令是直接作用在操作数栈上的。最为常见的便是dup： 复制栈顶元素，以及pop：舍弃栈顶元素。
 
 dup指令常用于复制new指令所生成的未经初始化的引用。例如在下面这段代码的foo方法中，当执行new指令时，Java虚拟机将指向一块已分配的、未初始化的内存的引用压入操作数栈中。
-<div><strong>精选留言（22）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（23） 💬（2）<div>1:.Java代码由Java的语言语法组成，有开发人员来编写
+
+```
+  public void foo() {
+    Object o = new Object();
+  }
+  // 对应的字节码如下：
+  public void foo();
+    0  new java.lang.Object [3]
+    3  dup
+    4  invokespecial java.lang.Object() [8]
+    7  astore_1 [o]
+    8  return
+```
+
+接下来，我们需要以这个引用为调用者，调用其构造器，也就是上面字节码中的invokespecial指令。要注意，该指令将消耗操作数栈上的元素，作为它的调用者以及参数（不过Object的构造器不需要参数）。
+
+因此，我们需要利用dup指令复制一份new指令的结果，并用来调用构造器。当调用返回之后，操作数栈上仍有原本由new指令生成的引用，可用于接下来的操作（即偏移量为7的字节码，下面会介绍到）。
+
+pop指令则常用于舍弃调用指令的返回结果。例如在下面这段代码的foo方法中，我将调用静态方法bar，但是却不用其返回值。
+
+由于对应的invokestatic指令仍旧会将返回值压入foo方法的操作数栈中，因此Java虚拟机需要额外执行pop指令，将返回值舍弃。
+
+```
+  public static boolean bar() {
+    return false;
+  }
+
+  public void foo() {
+    bar();
+  }
+  // foo方法对应的字节码如下：
+  public void foo();
+    0  invokestatic FooTest.bar() : boolean [24]
+    3  pop
+    4  return
+```
+
+需要注意的是，上述两条指令只能处理非long或者非double类型的值，这是因为long类型或者double类型的值，需要占据两个栈单元。当遇到这些值时，我们需要同时复制栈顶两个单元的dup2指令，以及弹出栈顶两个单元的pop2指令。
+
+除此之外，不算常见但也是直接作用于操作数栈的还有swap指令，它将交换栈顶两个元素的值。
+
+在Java字节码中，有一部分指令可以直接将常量加载到操作数栈上。以int类型为例，Java虚拟机既可以通过iconst指令加载-1至5之间的int值，也可以通过bipush、sipush加载一个字节、两个字节所能代表的int值。
+
+Java虚拟机还可以通过ldc加载常量池中的常量值，例如ldc #18将加载常量池中的第18项。
+
+这些常量包括int类型、long类型、float类型、double类型、String类型以及Class类型的常量。
+
+![](https://static001.geekbang.org/resource/image/0c/99/0cd25310027d1fbcca1d6f3301186199.jpg?wh=1242x1120)
+
+**常数加载指令表**
+
+正常情况下，操作数栈的压入弹出都是一条条指令完成的。唯一的例外情况是在抛异常时，Java虚拟机会清除操作数栈上的所有内容，而后将异常实例压入操作数栈上。
+
+## 局部变量区
+
+Java方法栈桢的另外一个重要组成部分则是局部变量区，字节码程序可以将计算的结果缓存在局部变量区之中。
+
+实际上，Java虚拟机将局部变量区当成一个数组，依次存放this指针（仅非静态方法），所传入的参数，以及字节码中的局部变量。
+
+和操作数栈一样，long类型以及double类型的值将占据两个单元，其余类型仅占据一个单元。
+
+```
+public void foo(long l, float f) {
+  {
+    int i = 0;
+  }
+  {
+    String s = "Hello, World";
+  }
+}
+```
+
+以上面这段代码中的foo方法为例，由于它是一个实例方法，因此局部变量数组的第0个单元存放着this指针。
+
+第一个参数为long类型，于是数组的1、2两个单元存放着所传入的long类型参数的值。第二个参数则是float类型，于是数组的第3个单元存放着所传入的float类型参数的值。
+
+![](https://static001.geekbang.org/resource/image/22/d9/228d0f5f2d6437e7aca87c6df2d01bd9.png?wh=1248%2A142)
+
+在方法体里的两个代码块中，我分别定义了两个局部变量i和s。由于这两个局部变量的生命周期没有重合之处，因此，Java编译器可以将它们编排至同一单元中。也就是说，局部变量数组的第4个单元将为i或者s。
+
+存储在局部变量区的值，通常需要加载至操作数栈中，方能进行计算，得到计算结果后再存储至局部变量数组中。这些加载、存储指令是区分类型的。例如，int类型的加载指令为iload，存储指令为istore。
+
+![](https://static001.geekbang.org/resource/image/60/73/60615f212fe3c40e152eb1829d5c0073.jpg?wh=1230x514)
+
+**局部变量区访问指令表**
+
+局部变量数组的加载、存储指令都需要指明所加载单元的下标。举例来说，aload 0指的是加载第0个单元所存储的引用，在前面示例中的foo方法里指的便是加载this指针。
+
+在我印象中，Java字节码中唯一能够直接作用于局部变量区的指令是iinc M N（M为非负整数，N为整数）。该指令指的是将局部变量数组的第M个单元中的int值增加N，常用于for循环中自增量的更新。
+
+```
+  public void foo() {
+    for (int i = 100; i>=0; i--) {}
+  }
+  // 对应的字节码如下：
+  public void foo();
+     0  bipush 100
+     2  istore_1 [i]
+     3  goto 9
+     6  iinc 1 -1 [i] // i--
+     9  iload_1 [i]
+    10  ifge 6
+    13  return
+```
+
+## 综合示例
+
+下面我们来看一个综合的例子：
+
+```
+public static int bar(int i) {
+  return ((i + 1) - 2) * 3 / 4;
+}
+// 对应的字节码如下：
+Code:
+  stack=2, locals=1, args_size=1
+     0: iload_0
+     1: iconst_1
+     2: iadd
+     3: iconst_2
+     4: isub
+     5: iconst_3
+     6: imul
+     7: iconst_4
+     8: idiv
+     9: ireturn
+```
+
+这里我定义了一个bar方法。它将接收一个int类型的参数，进行一系列计算之后再返回。
+
+对应的字节码中的stack=2, locals=1代表该方法需要的操作数栈空间为2，局部变量数组空间为1。当调用bar(5)时，每条指令执行前后局部变量数组空间以及操作数栈的分布如下：
+
+![](https://static001.geekbang.org/resource/image/c5/32/c57cb9c2222f0f79459bf4c58e1a4c32.png?wh=662%2A1406)
+
+## Java字节码简介
+
+前面我已经介绍了加载常量指令、操作数栈专用指令以及局部变量区访问指令。下面我们来看看其他的类别。
+
+Java相关指令，包括各类具备高层语义的字节码，即new（后跟目标类，生成该类的未初始化的对象），instanceof（后跟目标类，判断栈顶元素是否为目标类/接口的实例。是则压入1，否则压入0），checkcast（后跟目标类，判断栈顶元素是否为目标类/接口的实例。如果不是便抛出异常），athrow（将栈顶异常抛出），以及monitorenter（为栈顶对象加锁）和monitorexit（为栈顶对象解锁）。
+
+此外，该类型的指令还包括字段访问指令，即静态字段访问指令getstatic、putstatic，和实例字段访问指令getfield、putfield。这四条指令均附带用以定位目标字段的信息，但所消耗的操作数栈元素皆不同。
+
+![](https://static001.geekbang.org/resource/image/da/d9/da3ff3aa4aaa2531d23286fec65b08d9.png?wh=1228%2A174)
+
+以putfield为例，在上图中，它会把值v存储至对象obj的目标字段之中。
+
+方法调用指令，包括invokestatic，invokespecial，invokevirtual，invokeinterface以及invokedynamic。这几条字节码我们已经反反复复提及了，就不再具体介绍各自的含义了。
+
+除invokedynamic外，其他的方法调用指令所消耗的操作数栈元素是根据调用类型以及目标方法描述符来确定的。在进行方法调用之前，程序需要依次压入调用者（invokestatic不需要），以及各个参数。
+
+```
+  public int neg(int i) {
+    return -i;
+  }
+
+  public int foo(int i) {
+    return neg(neg(i));
+  }
+  // foo方法对应的字节码如下：foo方法对应的字节码如下：
+  public int foo(int i);
+    0  aload_0 [this]
+    1  aload_0 [this]
+    2  iload_1 [i]
+    3  invokevirtual FooTest.neg(int) : int [25]
+    6  invokevirtual FooTest.neg(int) : int [25]
+    9  ireturn
+```
+
+以上面这段代码为例，当调用foo(2)时，每条指令执行前后局部变量数组空间以及操作数栈的分布如下所示：
+
+![](https://static001.geekbang.org/resource/image/47/95/476fa1bcb6b36b5b651c2a4101073295.png?wh=908%2A1292)
+
+数组相关指令，包括新建基本类型数组的newarray，新建引用类型数组的anewarray，生成多维数组的multianewarray，以及求数组长度的arraylength。另外，它还包括数组的加载指令以及存储指令。这些指令是区分类型的。例如，int数组的加载指令为iaload，存储指令为iastore。
+
+![](https://static001.geekbang.org/resource/image/8e/f1/8ee0ed86242a63b566d55297a88da9f1.jpg?wh=1246x764)
+
+**数组访问指令表**
+
+控制流指令，包括无条件跳转goto，条件跳转指令，tableswitch和lookupswtich（前者针对密集的cases，后者针对稀疏的cases），返回指令，以及被废弃的jsr，ret指令。其中返回指令是区分类型的。例如，返回int值的指令为ireturn。
+
+![](https://static001.geekbang.org/resource/image/f5/f0/f5195b5425a9547af9ce8371aef5c4f0.jpg?wh=624%2A331)
+
+**返回指令表**
+
+除返回指令外，其他的控制流指令均附带一个或者多个字节码偏移量，代表需要跳转到的位置。例如下面的abs方法中偏移量为1的条件跳转指令，当栈顶元素小于0时，跳转至偏移量为6的字节码。
+
+```
+  public int abs(int i) {
+    if (i >= 0) {
+      return i;
+    }
+    return -i;
+  }
+  // 对应的字节码如下所示：
+  public int abs(int i);
+    0  iload_1 [i]
+    1  iflt 6
+    4  iload_1 [i]
+    5  ireturn
+    6  iload_1 [i]
+    7  ineg
+    8  ireturn
+```
+
+剩余的Java字节码几乎都和计算相关，这里就不再详细阐述了。
+
+## 总结与实践
+
+今天我简单介绍了各种类型的Java字节码。
+
+Java方法的栈桢分为操作数栈和局部变量区。通常来说，程序需要将变量从局部变量区加载至操作数栈中，进行一番运算之后再存储回局部变量区中。
+
+Java字节码可以划分为很多种类型，如加载常量指令，操作数栈专用指令，局部变量区访问指令，Java相关指令，方法调用指令，数组相关指令，控制流指令，以及计算相关指令。
+
+今天的实践环节，你可以尝试自己分析一段较为复杂的字节码，在草稿上画出局部变量数组以及操作数栈分布图。当碰到不熟悉的指令时，你可以查阅[Java虚拟机规范第6.5小节](https://docs.oracle.com/javase/specs/jvms/se10/html/jvms-6.html#jvms-6.5) ，或者[此链接](https://cs.au.dk/~mis/dOvs/jvmspec/ref-Java.html)。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>钱</span> 👍（23） 💬（2）<div>1:.Java代码由Java的语言语法组成，有开发人员来编写
 
 2:.class 代码有Java编译器来编译，Java编译器也是有对应的开发人员来编写的，.class代码有字节码指令来组成，如果人理解Java字节码指令集比较简单也可以直接编写.class代码
 
@@ -29,17 +244,17 @@ dup指令常用于复制new指令所生成的未经初始化的引用。例如�
 4:高级语言的出现是为提高人编写代码的效率，我们学习.class字节码指令集、JVM、机器码等的知识，是为了使我们编写高级语言代码能更好的在机器硬件上的执行效率更高，从高级语言的代码到能在机器上运行的机器码，中间经过了好几层的转换，所以，了解每一层是怎么转换就能更快的定位出高级语言代码的性能瓶颈了，感觉是为了在人的编码效率和机器的执行效率之间找平衡点
 
 有个疑问❓
-没太理解，JVM基于栈的计算模型的原因，推测可能是为了更简单的实现和更高的性能但是是怎么做到的呢？请老师解释一下</div>2018-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/f3/129d6dfe.jpg" width="30px"><span>李二木</span> 👍（12） 💬（3）<div>为什么局部变量要初始化？想请老师专业解答下！</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f8/0e/de697f9b.jpg" width="30px"><span>熊猫酒仙</span> 👍（9） 💬（1）<div>C&#47;C++的汇编指令，会有大量寄存器的操作
-请问java的指令会用到寄存器吗？</div>2018-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9a/68/92caeed6.jpg" width="30px"><span>Shine</span> 👍（7） 💬（3）<div>“因此，我们需要利用 dup 指令复制一份 new 指令的结果，并用来调用构造器。当调用返回之后，操作数栈上仍有原本由 new 指令生成的引用去...”
+没太理解，JVM基于栈的计算模型的原因，推测可能是为了更简单的实现和更高的性能但是是怎么做到的呢？请老师解释一下</div>2018-09-07</li><br/><li><span>李二木</span> 👍（12） 💬（3）<div>为什么局部变量要初始化？想请老师专业解答下！</div>2018-09-03</li><br/><li><span>熊猫酒仙</span> 👍（9） 💬（1）<div>C&#47;C++的汇编指令，会有大量寄存器的操作
+请问java的指令会用到寄存器吗？</div>2018-09-07</li><br/><li><span>Shine</span> 👍（7） 💬（3）<div>“因此，我们需要利用 dup 指令复制一份 new 指令的结果，并用来调用构造器。当调用返回之后，操作数栈上仍有原本由 new 指令生成的引用去...”
 
 第一步栈顶压入new对象的引用r0，执行dup后复制r0得到r1，压入栈顶。r1用于调用构造器,完成后会pop, 留下栈顶元素r0。不知我这样理解对不？
-我的问题是为什么要dup呢？直接用r0不做pop不好吗？</div>2018-09-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/30/2b/bc5873c6.jpg" width="30px"><span>对方正在输入</span> 👍（5） 💬（1）<div>在JVM中,每个方法中,代码语句执行完毕,是不是都会默认有个return</div>2018-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/57/0f/1f229bf5.jpg" width="30px"><span>Void_seT</span> 👍（1） 💬（1）<div>数组访问指令表，int文稿中写的iaload，iastore；表格中列的iastore和istore</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f8/db/c4edf697.jpg" width="30px"><span>曲东方</span> 👍（37） 💬（0）<div>详尽，赞👍
+我的问题是为什么要dup呢？直接用r0不做pop不好吗？</div>2018-09-06</li><br/><li><span>对方正在输入</span> 👍（5） 💬（1）<div>在JVM中,每个方法中,代码语句执行完毕,是不是都会默认有个return</div>2018-11-12</li><br/><li><span>Void_seT</span> 👍（1） 💬（1）<div>数组访问指令表，int文稿中写的iaload，iastore；表格中列的iastore和istore</div>2018-09-03</li><br/><li><span>曲东方</span> 👍（37） 💬（0）<div>详尽，赞👍
 
-随便找几断代码，javap反编译，查jvm手册一会儿就明白了</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/63/14/06eff9a4.jpg" width="30px"><span>Jerry银银</span> 👍（3） 💬（0）<div>老师，请教下，在专栏中（关于虚拟机的书籍中）有提到：Java虚拟机大部分都是基于栈，有些虚拟机是基于寄存器的，比如Android的Dalvik和ART。
+随便找几断代码，javap反编译，查jvm手册一会儿就明白了</div>2018-09-03</li><br/><li><span>Jerry银银</span> 👍（3） 💬（0）<div>老师，请教下，在专栏中（关于虚拟机的书籍中）有提到：Java虚拟机大部分都是基于栈，有些虚拟机是基于寄存器的，比如Android的Dalvik和ART。
 
 这听起来挺抽象的，老师能具体讲讲它们的区别？
 
-是字节码执行的时候有区别的吗？  还是说字节码本身就有区别？</div>2019-12-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/99/af/d29273e2.jpg" width="30px"><span>饭粒</span> 👍（3） 💬（0）<div>图文并茂，总结详尽！感觉这篇放在前面可能更好。</div>2019-12-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d9/61/4999fbc3.jpg" width="30px"><span>啸疯</span> 👍（2） 💬（0）<div>看的真爽，了解了很多字节码层面的细节，例如常量相加后赋值给变量，那么在字节码层面其实直接就是相加后的值，再比如两个string的相加，字节码层面其实也是调用stringbuiler不断append后tostring来实现的</div>2021-12-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/a4/ee/cffd8ee6.jpg" width="30px"><span>魏全运</span> 👍（2） 💬（0）<div>
+是字节码执行的时候有区别的吗？  还是说字节码本身就有区别？</div>2019-12-28</li><br/><li><span>饭粒</span> 👍（3） 💬（0）<div>图文并茂，总结详尽！感觉这篇放在前面可能更好。</div>2019-12-23</li><br/><li><span>啸疯</span> 👍（2） 💬（0）<div>看的真爽，了解了很多字节码层面的细节，例如常量相加后赋值给变量，那么在字节码层面其实直接就是相加后的值，再比如两个string的相加，字节码层面其实也是调用stringbuiler不断append后tostring来实现的</div>2021-12-28</li><br/><li><span>魏全运</span> 👍（2） 💬（0）<div>
   public void foo() {
     Object o = new Object();
   }
@@ -51,16 +266,6 @@ dup指令常用于复制new指令所生成的未经初始化的引用。例如�
     7  astore_1 [o]
     8  return
 
-通过对象创建的字节码就能明白对象的创建不是原子操作，所以需要双重检查锁保证单例安全</div>2020-03-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d9/9f/7b2f2a97.jpg" width="30px"><span>师爷</span> 👍（2） 💬（0）<div>某些方法阻塞会不会导致弹栈阻塞呢</div>2019-09-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/cf/2f/4f89f22a.jpg" width="30px"><span>李鑫磊</span> 👍（2） 💬（0）<div>笔记：https:&#47;&#47;www.jianshu.com&#47;p&#47;b395ed905e0d</div>2018-11-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/51/6f/f33beea5.jpg" width="30px"><span>YIFENG</span> 👍（2） 💬（3）<div>64位虚拟机中long和double也都是占用两个栈单元吗？</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/80/bf/3041138b.jpg" width="30px"><span>　素丶　　</span> 👍（1） 💬（0）<div>可以配合美团的这篇文章一起观看
-https:&#47;&#47;tech.meituan.com&#47;2019&#47;09&#47;05&#47;java-bytecode-enhancement.html</div>2022-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/11/e9/b6aa6364.jpg" width="30px"><span>shenfl</span> 👍（1） 💬（1）<div>想请教下 编译后匿名内部类会生成一个class文件，但是函数式接口实现的代码却不会生成一个class文件，这是什么原理？</div>2019-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/27/1d/1cb36854.jpg" width="30px"><span>小辉辉</span> 👍（0） 💬（2）<div>有个疑问，如果在本地变量表中用 lload 或者 fload 时，怎么保证两个单元的数值同时被 load 到栈中。比如说方法有一个局部变量 long a = 5，然后在本地变量表中占用两个单元格，JVM是怎么保证这两个单元格中的数值都被 load 过去。</div>2021-03-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/9a/28/03613c22.jpg" width="30px"><span>track6688</span> 👍（0） 💬（0）<div>写得很详细，比较好理解， 相当于总结了一下。</div>2020-10-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/cc/de/e28c01e1.jpg" width="30px"><span>剑八</span> 👍（0） 💬（0）<div>讲的比较清晰了
-java方法的栈帧包括了：
-局部变量表，操作数栈
-局部变量表是在编绎时刻就确定的，用于存储局部变量
-操作数栈则用于存储在方法字节码执行的时候涉及到的变量值，以及运算完的结果
-
-java虚拟机制定了一系列的java执行指令，有：
-dup（用于将new指令生成的的引用复制到操作数栈）
-iload：用于加载局部变量表中的变量到操作数栈
-iadd&#47;imup等用于执行运算
-</div>2020-06-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4e/60/0d5aa340.jpg" width="30px"><span>gogo</span> 👍（0） 💬（0）<div>老师您好，从第一篇看到现在，对某个方法的执行流程还不是很理解，有哪一篇文章是说整个流程的吗，从主类加载初始化到某个方法执行结束的</div>2019-09-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/07/8c/0d886dcc.jpg" width="30px"><span>蚂蚁内推+v</span> 👍（0） 💬（0）<div>就是说如果是解释执行就在栈桢内完成了，不用寄存器。如果是即时编译执行，就用寄存器来存放操作数，对么</div>2019-07-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/25/80/fdd5a88f.jpg" width="30px"><span>ゞ﹏雨天____゛</span> 👍（0） 💬（0）<div>讲解内容中，这几张总结表，写的真的给力。赞</div>2019-03-27</li><br/>
+通过对象创建的字节码就能明白对象的创建不是原子操作，所以需要双重检查锁保证单例安全</div>2020-03-11</li><br/><li><span>师爷</span> 👍（2） 💬（0）<div>某些方法阻塞会不会导致弹栈阻塞呢</div>2019-09-25</li><br/><li><span>李鑫磊</span> 👍（2） 💬（0）<div>笔记：https:&#47;&#47;www.jianshu.com&#47;p&#47;b395ed905e0d</div>2018-11-19</li><br/><li><span>YIFENG</span> 👍（2） 💬（3）<div>64位虚拟机中long和double也都是占用两个栈单元吗？</div>2018-09-03</li><br/><li><span>　素丶　　</span> 👍（1） 💬（0）<div>可以配合美团的这篇文章一起观看
+https:&#47;&#47;tech.meituan.com&#47;2019&#47;09&#47;05&#47;java-bytecode-enhancement.html</div>2022-02-24</li><br/>
 </ul>

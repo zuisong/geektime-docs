@@ -16,8 +16,123 @@
 我们先来回顾下数字证书的申请流程，比如极客时间向一个CA机构申请数字证书，流程是什么样的呢？
 
 首先极客时间填写了一张含有**自己身份信息**的表单，身份信息包括了自己公钥、站点资料、公司资料等信息，然后将其提交给了CA机构；CA机构会审核表单中内容的真实性；审核通过后，CA机构会拿出自己的私钥，对表单的内容进行一连串操作，包括了对明文资料进行Hash计算得出信息摘要， 利用CA的私钥加密信息摘要得出数字签名，最后将数字签名也写在表单上，并将其返还给极客时间，这样就完成了一次数字证书的申请操作。
-<div><strong>精选留言（26）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/1a/45/b5/2a268b7e.jpg" width="30px"><span>世界和平</span> 👍（40） 💬（1）<div>工作两年，对很多前端知识有的还是比较乱的，一知半解禁不住深究，老师的课程帮助很好的梳理了这些知识，也详细的讲解了，让我有了系统的认知，也为之后的继续学习提供了方向，非常的感谢老师，很值。已经推荐给朋友，以后如果老师再出课，也会继续跟着学习。 我不是托，我不是托，我就是真诚的表示一下感谢。谢谢 ~ </div>2019-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/6c/32/7ff3ae1d.jpg" width="30px"><span>雨儿</span> 👍（2） 💬（1）<div>老师太好了，每天都会看看，是否老师有新的更新，期待老师不定期能更新一些</div>2020-01-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/74/ba/0599cc8a.jpg" width="30px"><span>pacos</span> 👍（11） 💬（0）<div>期待老师的 Promise 加餐</div>2020-01-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7f/0c/2ebdc487.jpg" width="30px"><span>魔兽rpg足球</span> 👍（8） 💬（1）<div>盗版的操作系统也有可能安装了恶意根证书啊，所以大家支持正版吧</div>2019-12-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/fe/21/df75ca94.jpg" width="30px"><span>林浩</span> 👍（4） 💬（0）<div>总结：
+
+大致流程你也可以参考下图：
+
+![](https://static001.geekbang.org/resource/image/f5/a6/f569c80f8f4b25b3bf384037813cdca6.png?wh=1880%2A502)
+
+数字证书申请过程
+
+## 浏览器验证证书的流程
+
+现在极客时间的官网有了CA机构签发的数字证书，那么接下来就可以将数字证书应用在HTTPS中了。
+
+我们知道，在浏览器和服务器建立HTTPS链接的过程中，浏览器首先会向服务器请求数字证书，之后浏览器要做的第一件事就是验证数字证书。那么，这里所说的“验证”，它到底是在验证什么呢？
+
+具体地讲，浏览器需要验证**证书的有效期**、**证书是否被CA吊销**、**证书是否是合法的CA机构颁发的。**
+
+数字证书和身份证一样也是有时间期限的，所以**第一部分就是验证证书的有效期**，这部分比较简单，因为证书里面就含有证书的有效期，所以浏览器只需要判断当前时间是否在证书的有效期范围内即可。
+
+有时候有些数字证书被CA吊销了，吊销之后的证书是无法使用的，所以**第二部分就是验证数字证书是否被吊销了**。通常有两种方式，一种是下载吊销证书列表-CRL (Certificate Revocation Lists)，第二种是在线验证方式-OCSP (Online Certificate Status Protocol) ，它们各有优缺点，在这里我就不展开介绍了。
+
+最后，还要**验证极客时间的数字证书是否是CA机构颁发的，**验证的流程非常简单：
+
+- 首先，浏览器利用证书的原始信息计算出信息摘要；
+- 然后，利用**CA的公钥**来解密数字证书中的**数字签名**，解密出来的数据也是信息摘要；
+- 最后，判断这两个信息摘要是否相等就可以了。
+
+![](https://static001.geekbang.org/resource/image/ae/08/ae7dbe9f8785441721deb1f7b316f708.png?wh=1056%2A552)
+
+通过这种方式就验证了数字证书是否是由CA机构所签发的，不过这种方式又带来了一个新的疑问：**浏览器是怎么获取到CA公钥的**？
+
+## 浏览器是怎么获取到CA公钥的？
+
+通常，当你部署HTTP服务器的时候，除了部署当前的数字证书之外，还需要部署CA机构的数字证书，CA机构的数字证书包括了CA的公钥，以及CA机构的一些基础信息。
+
+因此，极客时间服务器就有了两个数字证书:
+
+- 给极客时间域名的数字证书；
+- 给极客时间签名的CA机构的数字证书。
+
+然后在建立HTTPS链接时，服务器会将这两个证书一同发送给浏览器，于是浏览器就可以获取到CA的公钥了。
+
+如果有些服务器没有部署CA的数字证书，那么浏览器还可以通过网络去下载CA证书，不过这种方式多了一次证书下载操作，会拖慢首次打开页面的请求速度，一般不推荐使用。
+
+现在浏览器端就有了极客时间的证书和CA的证书，完整的验证流程就如下图所示：
+
+![](https://static001.geekbang.org/resource/image/cb/d3/cb150e316f4847c71288a8df50bfebd3.png?wh=1066%2A946)
+
+CA证书
+
+我们有了CA的数字证书，也就可以获取得CA的公钥来验证极客时间数字证书的可靠性了。
+
+解决了获取CA公钥的问题，新的问题又来了，如果这个证书是一个恶意的CA机构颁发的怎么办？所以我们还需要**浏览器证明这个CA机构是个合法的机构。**
+
+## 证明CA机构的合法性
+
+这里并没有一个非常好的方法来证明CA的合法性，妥协的方案是，直接在操作系统中内置这些CA机构的数字证书，如下图所示：
+
+![](https://static001.geekbang.org/resource/image/43/0b/43a732eb2ba47d06fbef20c515bd990b.png?wh=1494%2A1090)
+
+操作系统内部内置CA数字证书
+
+我们将所有CA机构的数字证书都内置在操作系统中，这样当需要使用某CA机构的公钥时，我们只需要依据CA机构名称，就能查询到对应的数字证书了，然后再从数字证书中取出公钥。
+
+可以看到，这里有一个假设条件，浏览器默认信任操作系统内置的证书为合法证书，虽然这种方式不完美，但是却是最实用的一个。
+
+不过这种方式依然存在问题，因为在实际情况下，**CA机构众多，因此操作系统不可能将每家CA的数字证书都内置进操作系统**。
+
+## 数字证书链
+
+于是人们又想出来一个折中的方案，将颁发证书的机构划分为两种类型，**根CA(Root CAs)和中间CA(Intermediates CAs)**，通常申请者都是向中间CA去申请证书的，而根CA作用就是给中间CA做认证，一个根CA会认证很多中间的CA，而这些中间CA又可以去认证其他的中间CA。
+
+因此，每个根CA机构都维护了一个树状结构，一个根CA下面包含多个中间CA，而中间CA又可以包含多个中间CA。这样就形成了一个证书链，你可以沿着证书链从用户证书追溯到根证书。
+
+比如你可以在Chrome上打开极客时间的官网，然后点击地址栏前面的那把小锁，你就可以看到\*.geekbang.org的证书是由中间CA GeoTrust RSA CA2018颁发的，而中间CA GeoTrust RSA CA2018又是由根CA DigiCert Global Root CA颁发的，所以这个证书链就是：\*.geekbang.org—&gt;GeoTrust RSA CA2018–&gt;DigiCert Global Root CA。你可以参看下图：
+
+![](https://static001.geekbang.org/resource/image/10/b7/10616d8fc323d33bdecb09b503551cb7.png?wh=968%2A906)
+
+数字证书链
+
+因此浏览器验证极客时间的证书时，会先验证\*.geekbang.org的证书，如果合法，再验证中间CA的证书，如果中间CA也是合法的，那么浏览器会继续验证这个中间CA的根证书。
+
+到了这里，依然存在一个问题，那就是**浏览器怎么证明根证书是合法的？**
+
+## 如何验证根证书的合法性
+
+其实浏览器的判断策略很简单，它只是简单地判断这个根证书在不在操作系统里面，如果在，那么浏览器就认为这个根证书是合法的，如果不在，那么就是非法的。
+
+如果某个机构想要成为根CA，并让它的根证书内置到操作系统中，那么这个机构首先要通过WebTrust国际安全审计认证。
+
+什么是WebTrust认证？
+
+WebTrust是由两大著名注册会计师协会AICPA（美国注册会计师协会）和CICA（加拿大注册会计师协会）共同制定的安全审计标准，主要对互联网服务商的系统及业务运作逻辑安全性、保密性等共计七项内容进行近乎严苛的审查和鉴证。 只有通过WebTrust国际安全审计认证，根证书才能预装到主流的操作系统，并成为一个可信的认证机构。
+
+目前通过WebTrust认证的根CA有 Comodo、geotrust、rapidssl、symantec、thawte、digicert等。也就是说，这些根CA机构的根证书都内置在个大操作系统中，只要能从数字证书链往上追溯到这几个根证书，浏览器就会认为使用者的证书是合法的。
+
+## 总结
+
+好了，今天的内容就介绍到这里，下面我们总结下本文的主要内容：
+
+我们先回顾了数字证书的申请流程，接着我们重点介绍了浏览器是如何验证数字证书的。
+
+首先浏览器需要CA的数字证书才能验证极客时间的数字证书，接下来我们需要验证CA证书的合法性，最简单的方法是将CA证书内置在操作系统中。
+
+不过CA机构非常多，内置每家的证书到操作系统中是不现实的，于是我们采用了一个折中的策略，将颁发证书的机构划分为两种类型，**根CA(Root CAs)和中间CA(Intermediates CAs)**，通常申请者都是向中间CA去申请证书的，而根CA作用就是给中间CA做认证，一个根CA会认证很多中间的CA，而这些中间CA又可以去认证其他的中间CA。
+
+于是又引出了数字证书链，浏览器先利用中间CA的数字证书来验证用户证书，再利用根证书来验证中间CA证书的合法性，最后，浏览器会默认相信内置在系统中的根证书。不过要想在操作系统内部内置根证书却并不容易，这需要通过WebTrust认证，这个认证审核非常严格。
+
+通过分析这个流程可以发现，浏览器默认信任操作系统内置的根证书，这也会带来一个问题，如果黑客入侵了你的电脑，那么黑客就有可能往你系统中添加恶意根数字证书，那么当你访问黑客站点的时候，浏览器甚至有可能会提示该站点是安全的。
+
+因此，HTTPS并非是绝对安全的，采用HTTPS只是加固了城墙的厚度，但是城墙依然有可能被突破。
+
+## 课后思考
+
+今天留给你的任务是复述下浏览器是怎么验证数字证书的，如果中间卡住了，欢迎在留言区提问交流。
+
+感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>世界和平</span> 👍（40） 💬（1）<div>工作两年，对很多前端知识有的还是比较乱的，一知半解禁不住深究，老师的课程帮助很好的梳理了这些知识，也详细的讲解了，让我有了系统的认知，也为之后的继续学习提供了方向，非常的感谢老师，很值。已经推荐给朋友，以后如果老师再出课，也会继续跟着学习。 我不是托，我不是托，我就是真诚的表示一下感谢。谢谢 ~ </div>2019-12-20</li><br/><li><span>雨儿</span> 👍（2） 💬（1）<div>老师太好了，每天都会看看，是否老师有新的更新，期待老师不定期能更新一些</div>2020-01-11</li><br/><li><span>pacos</span> 👍（11） 💬（0）<div>期待老师的 Promise 加餐</div>2020-01-05</li><br/><li><span>魔兽rpg足球</span> 👍（8） 💬（1）<div>盗版的操作系统也有可能安装了恶意根证书啊，所以大家支持正版吧</div>2019-12-25</li><br/><li><span>林浩</span> 👍（4） 💬（0）<div>总结：
 浏览器怎么验证证书？
 一般通过 验证证书有效期， 证书是否被CA吊销，证书是否是合法CA机构颁发
 
@@ -42,10 +157,8 @@
 要成为“根CA”需要得到“Web Trust”认证通过才会内置到操作系统中，Web Trust 包括两个机构（AICPA【美国注册会计师协会】和 CICA【加拿大注册会计师协会】）
 
 如果操作系统被入侵如何保证跟证书合法性？
-凉凉。。。</div>2020-10-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/1e/71/54ff7b4e.jpg" width="30px"><span>3Spiders</span> 👍（4） 💬（8）<div>这篇文章就解决了客户端验证服务器正确性的问题。但是我有一个小疑问，如果我伪造了一个客户端，同时拿到数字签名和CA公钥，通过CA公钥解密数字信息，这样是否能骗取服务端的信任？老师可以讲讲这中间的细节吗？</div>2020-01-01</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJeUiajzIgiaAicogQkfjBm4wKVtkc1vKYAA3BfCV85V9ZOovJRCBROpZOweO2zMwFgLhxpJ458qohbA/132" width="30px"><span>Geek_c9436e</span> 👍（3） 💬（0）<div>我看完了，酣畅淋漓的感觉，满满干货，意犹未尽啊，给老师点赞，希望继续学习老师的课！</div>2020-09-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/0e/94/4a2bb019.jpg" width="30px"><span>Lorin</span> 👍（2） 💬（0）<div>老师开一个前端专栏吧，前端领域里面找一个如此高质量的课程简直是太少了。</div>2020-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/1e/71/54ff7b4e.jpg" width="30px"><span>3Spiders</span> 👍（2） 💬（1）<div>我感觉老师这篇是看到了我之前的留言，专门延伸的一篇文章，点赞！</div>2020-01-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/0f/c0/e6151cce.jpg" width="30px"><span>花仙子</span> 👍（2） 💬（1）<div>众所周知，青花瓷工作原理就是在个人主机上设置了一个代理，浏览器信任代理，代理验证并信任服务器的证书，所以可以在青花瓷中看到https的请求内容，同样原理，有没有可能在我们的浏览器在访问服务器之间设置一个代理，而致使浏览器无知觉的先请求到”代理服务器“，而”代理服务器“也拥有CA颁发的合法证书，”代理服务器“可以肆无忌惮的查看甚至修改浏览器与服务器间的通信</div>2019-12-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/77/70/466368e1.jpg" width="30px"><span>杰森莫玛</span> 👍（1） 💬（1）<div>那CA机构的数字证书到底是操作系统内置的还是服务端传过来的呢？</div>2023-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b8/28/8c83d109.jpg" width="30px"><span>子曰</span> 👍（1） 💬（0）<div>通过图解的方式把一些底层的原理阐述的很清晰，老师辛苦，干货满满的课程������</div>2020-11-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ef/a2/6ea5bb9e.jpg" width="30px"><span>LEON</span> 👍（1） 💬（1）<div>如果有些服务器没有部署 CA 的数字证书，那么浏览器还可以通过网络去下载 CA 证书，不过这种方式多了一次证书下载操作，会拖慢首次打开页面的请求速度，一般不推荐使用。
+凉凉。。。</div>2020-10-10</li><br/><li><span>3Spiders</span> 👍（4） 💬（8）<div>这篇文章就解决了客户端验证服务器正确性的问题。但是我有一个小疑问，如果我伪造了一个客户端，同时拿到数字签名和CA公钥，通过CA公钥解密数字信息，这样是否能骗取服务端的信任？老师可以讲讲这中间的细节吗？</div>2020-01-01</li><br/><li><span>Geek_c9436e</span> 👍（3） 💬（0）<div>我看完了，酣畅淋漓的感觉，满满干货，意犹未尽啊，给老师点赞，希望继续学习老师的课！</div>2020-09-15</li><br/><li><span>Lorin</span> 👍（2） 💬（0）<div>老师开一个前端专栏吧，前端领域里面找一个如此高质量的课程简直是太少了。</div>2020-02-23</li><br/><li><span>3Spiders</span> 👍（2） 💬（1）<div>我感觉老师这篇是看到了我之前的留言，专门延伸的一篇文章，点赞！</div>2020-01-01</li><br/><li><span>花仙子</span> 👍（2） 💬（1）<div>众所周知，青花瓷工作原理就是在个人主机上设置了一个代理，浏览器信任代理，代理验证并信任服务器的证书，所以可以在青花瓷中看到https的请求内容，同样原理，有没有可能在我们的浏览器在访问服务器之间设置一个代理，而致使浏览器无知觉的先请求到”代理服务器“，而”代理服务器“也拥有CA颁发的合法证书，”代理服务器“可以肆无忌惮的查看甚至修改浏览器与服务器间的通信</div>2019-12-30</li><br/><li><span>杰森莫玛</span> 👍（1） 💬（1）<div>那CA机构的数字证书到底是操作系统内置的还是服务端传过来的呢？</div>2023-05-14</li><br/><li><span>子曰</span> 👍（1） 💬（0）<div>通过图解的方式把一些底层的原理阐述的很清晰，老师辛苦，干货满满的课程������</div>2020-11-16</li><br/><li><span>LEON</span> 👍（1） 💬（1）<div>如果有些服务器没有部署 CA 的数字证书，那么浏览器还可以通过网络去下载 CA 证书，不过这种方式多了一次证书下载操作，会拖慢首次打开页面的请求速度，一般不推荐使用。
 
 老师这块没听明白？这是默认因为吗？下载的是中间CA证书吗？去网络中什么地方下载？如何确保下载CA的有效性？
-感谢。</div>2019-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡，看完了，非常不错，干货满满</div>2024-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/40/2e/eff62a47.jpg" width="30px"><span>hadiss</span> 👍（0） 💬（0）<div>浏览器的hash算法是怎么和CA的hash一样的呢</div>2023-04-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/e8/e2/ffb29a7d.jpg" width="30px"><span>雷厉</span> 👍（0） 💬（0）<div>感谢老师的分享</div>2021-08-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/46/16/7eab6017.jpg" width="30px"><span>undefined</span> 👍（0） 💬（0）<div>看完了 感谢分享</div>2021-03-26</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/ajNVdqHZLLC4IhKmJDYdWhQms3dmZqJ5YMDGTlPa1o52DnKSErYjsqfc6iaRJrBDZpx0RqQx7eZAED797kiaV6aw/132" width="30px"><span>陈启航</span> 👍（0） 💬（0）<div>值得之后前端开发经验更多之后 回来重读</div>2021-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c9/d5/b08a27ed.jpg" width="30px"><span>灵感_idea</span> 👍（0） 💬（0）<div>学完打个卡，老师讲的挺全面的，虽然很多地方稍显粗略，但或许是更利于接受的，还是要多学几遍，反复琢磨。</div>2021-01-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/20/4b/b9/2449c7b7.jpg" width="30px"><span>‏5102</span> 👍（0） 💬（0）<div>虽然之前有到处查询百度过这些知识，到目前为止，这个专栏让我彻底重新认识浏览器等，也理清很多的疑惑，真是醍醐灌顶的感觉，非常赞，v8那篇我还是会继续订阅的。</div>2020-08-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/bc/25/1c92a90c.jpg" width="30px"><span>tt</span> 👍（0） 💬（0）<div>中间CA众多，如果证书链很长的话，浏览器对每一个中间证书都需要发起https请求去中间网站的CA获取么？</div>2020-05-21</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eokuZYcbHTG2HAICdczY7LX1dmFdIOPdJSJVWrzDQEP19QeUssibEvUoWaB7ode6zTYj2Wen0jFhZQ/132" width="30px"><span>Learning</span> 👍（0） 💬（0）<div>谢谢老师的加餐</div>2020-03-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/39/08/09055b47.jpg" width="30px"><span>淡</span> 👍（0） 💬（0）<div>很好的解答了客户端是如何拿到CA公钥以及根CA的存储问题。说好的promise呢，哈哈。
-题外话，极客时间课程更新没提示了，之前都有的。不知道是不是因为课程标记为”选学“的原因。
-</div>2020-01-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/44/0e/ce14b7d3.jpg" width="30px"><span>-_-|||</span> 👍（0） 💬（1）<div>文中“通常，当你部署 HTTP 服务器的时候，除了部署当前的数字证书之外”，那个应该是HTTPS吧</div>2019-12-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4d/fd/0aa0e39f.jpg" width="30px"><span>许童童</span> 👍（0） 💬（0）<div>良心老师！</div>2019-12-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/c2/82/58debf3e.jpg" width="30px"><span>lang</span> 👍（0） 💬（0）<div>老师辛苦啦</div>2019-12-20</li><br/>
+感谢。</div>2019-12-22</li><br/><li><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡，看完了，非常不错，干货满满</div>2024-06-01</li><br/><li><span>hadiss</span> 👍（0） 💬（0）<div>浏览器的hash算法是怎么和CA的hash一样的呢</div>2023-04-10</li><br/>
 </ul>

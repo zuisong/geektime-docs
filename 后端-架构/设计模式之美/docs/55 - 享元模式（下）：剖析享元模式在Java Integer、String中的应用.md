@@ -23,10 +23,201 @@ System.out.println(i3 == i4);
 - 什么是自动装箱（Autoboxing）和自动拆箱（Unboxing）？
 
 在[加餐一](https://time.geekbang.org/column/article/166698)中，我们讲到，Java为基本数据类型提供了对应的包装器类型。具体如下所示：
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/19/25/40/4d68fa96.jpg" width="30px"><span>一丨丿丶乙</span> 👍（1） 💬（1）<div>享元---&gt;复用，线程池等。通过复用对象，以达到节省内存的目的
+
+![](https://static001.geekbang.org/resource/image/5f/a0/5f93c0412c9ee8b563383c3583693ba0.jpg?wh=1543%2A1303)
+
+所谓的自动装箱，就是自动将基本数据类型转换为包装器类型。所谓的自动拆箱，也就是自动将包装器类型转化为基本数据类型。具体的代码示例如下所示：
+
+```
+Integer i = 56; //自动装箱
+int j = i; //自动拆箱
+```
+
+数值56是基本数据类型int，当赋值给包装器类型（Integer）变量的时候，触发自动装箱操作，创建一个Integer类型的对象，并且赋值给变量i。其底层相当于执行了下面这条语句：
+
+```
+Integer i = 59；底层执行了：Integer i = Integer.valueOf(59);
+```
+
+反过来，当把包装器类型的变量i，赋值给基本数据类型变量j的时候，触发自动拆箱操作，将i中的数据取出，赋值给j。其底层相当于执行了下面这条语句：
+
+```
+int j = i; 底层执行了：int j = i.intValue();
+```
+
+弄清楚了自动装箱和自动拆箱，我们再来看，如何判定两个对象是否相等？不过，在此之前，我们先要搞清楚，Java对象在内存中是如何存储的。我们通过下面这个例子来说明一下。
+
+```
+User a = new User(123, 23); // id=123, age=23
+```
+
+针对这条语句，我画了一张内存存储结构图，如下所示。a存储的值是User对象的内存地址，在图中就表现为a指向User对象。
+
+![](https://static001.geekbang.org/resource/image/04/dc/04f879d7d72b96965f4e06a21ff13bdc.jpg?wh=2103%2A524)
+
+当我们通过“==”来判定两个对象是否相等的时候，实际上是在判断两个局部变量存储的地址是否相同，换句话说，是在判断两个局部变量是否指向相同的对象。
+
+了解了Java的这几个语法之后，我们重新看一下开头的那段代码。
+
+```
+Integer i1 = 56;
+Integer i2 = 56;
+Integer i3 = 129;
+Integer i4 = 129;
+System.out.println(i1 == i2);
+System.out.println(i3 == i4);
+```
+
+前4行赋值语句都会触发自动装箱操作，也就是会创建Integer对象并且赋值给i1、i2、i3、i4这四个变量。根据刚刚的讲解，i1、i2尽管存储的数值相同，都是56，但是指向不同的Integer对象，所以通过“==”来判定是否相同的时候，会返回false。同理，i3==i4判定语句也会返回false。
+
+不过，上面的分析还是不对，答案并非是两个false，而是一个true，一个false。看到这里，你可能会比较纳闷了。实际上，这正是因为Integer用到了享元模式来复用对象，才导致了这样的运行结果。当我们通过自动装箱，也就是调用valueOf()来创建Integer对象的时候，如果要创建的Integer对象的值在-128到127之间，会从IntegerCache类中直接返回，否则才调用new方法创建。看代码更加清晰一些，Integer类的valueOf()函数的具体代码如下所示：
+
+```
+public static Integer valueOf(int i) {
+    if (i >= IntegerCache.low && i <= IntegerCache.high)
+        return IntegerCache.cache[i + (-IntegerCache.low)];
+    return new Integer(i);
+}
+```
+
+实际上，这里的IntegerCache相当于，我们上一节课中讲的生成享元对象的工厂类，只不过名字不叫xxxFactory而已。我们来看它的具体代码实现。这个类是Integer的内部类，你也可以自行查看JDK源码。
+
+```
+/**
+ * Cache to support the object identity semantics of autoboxing for values between
+ * -128 and 127 (inclusive) as required by JLS.
+ *
+ * The cache is initialized on first usage.  The size of the cache
+ * may be controlled by the {@code -XX:AutoBoxCacheMax=<size>} option.
+ * During VM initialization, java.lang.Integer.IntegerCache.high property
+ * may be set and saved in the private system properties in the
+ * sun.misc.VM class.
+ */
+private static class IntegerCache {
+    static final int low = -128;
+    static final int high;
+    static final Integer cache[];
+
+    static {
+        // high value may be configured by property
+        int h = 127;
+        String integerCacheHighPropValue =
+            sun.misc.VM.getSavedProperty("java.lang.Integer.IntegerCache.high");
+        if (integerCacheHighPropValue != null) {
+            try {
+                int i = parseInt(integerCacheHighPropValue);
+                i = Math.max(i, 127);
+                // Maximum array size is Integer.MAX_VALUE
+                h = Math.min(i, Integer.MAX_VALUE - (-low) -1);
+            } catch( NumberFormatException nfe) {
+                // If the property cannot be parsed into an int, ignore it.
+            }
+        }
+        high = h;
+
+        cache = new Integer[(high - low) + 1];
+        int j = low;
+        for(int k = 0; k < cache.length; k++)
+            cache[k] = new Integer(j++);
+
+        // range [-128, 127] must be interned (JLS7 5.1.7)
+        assert IntegerCache.high >= 127;
+    }
+
+    private IntegerCache() {}
+}
+```
+
+为什么IntegerCache只缓存-128到127之间的整型值呢？
+
+在IntegerCache的代码实现中，当这个类被加载的时候，缓存的享元对象会被集中一次性创建好。毕竟整型值太多了，我们不可能在IntegerCache类中预先创建好所有的整型值，这样既占用太多内存，也使得加载IntegerCache类的时间过长。所以，我们只能选择缓存对于大部分应用来说最常用的整型值，也就是一个字节的大小（-128到127之间的数据）。
+
+实际上，JDK也提供了方法来让我们可以自定义缓存的最大值，有下面两种方式。如果你通过分析应用的JVM内存占用情况，发现-128到255之间的数据占用的内存比较多，你就可以用如下方式，将缓存的最大值从127调整到255。不过，这里注意一下，JDK并没有提供设置最小值的方法。
+
+```
+//方法一：
+-Djava.lang.Integer.IntegerCache.high=255
+//方法二：
+-XX:AutoBoxCacheMax=255
+```
+
+现在，让我们再回到最开始的问题，因为56处于-128和127之间，i1和i2会指向相同的享元对象，所以i1==i2返回true。而129大于127，并不会被缓存，每次都会创建一个全新的对象，也就是说，i3和i4指向不同的Integer对象，所以i3==i4返回false。
+
+实际上，除了Integer类型之外，其他包装器类型，比如Long、Short、Byte等，也都利用了享元模式来缓存-128到127之间的数据。比如，Long类型对应的LongCache享元工厂类及valueOf()函数代码如下所示：
+
+```
+private static class LongCache {
+    private LongCache(){}
+
+    static final Long cache[] = new Long[-(-128) + 127 + 1];
+
+    static {
+        for(int i = 0; i < cache.length; i++)
+            cache[i] = new Long(i - 128);
+    }
+}
+
+public static Long valueOf(long l) {
+    final int offset = 128;
+    if (l >= -128 && l <= 127) { // will cache
+        return LongCache.cache[(int)l + offset];
+    }
+    return new Long(l);
+}
+```
+
+在我们平时的开发中，对于下面这样三种创建整型对象的方式，我们优先使用后两种。
+
+```
+Integer a = new Integer(123);
+Integer a = 123;
+Integer a = Integer.valueOf(123);
+```
+
+第一种创建方式并不会使用到IntegerCache，而后面两种创建方法可以利用IntegerCache缓存，返回共享的对象，以达到节省内存的目的。举一个极端一点的例子，假设程序需要创建1万个-128到127之间的Integer对象。使用第一种创建方式，我们需要分配1万个Integer对象的内存空间；使用后两种创建方式，我们最多只需要分配256个Integer对象的内存空间。
+
+## 享元模式在Java String中的应用
+
+刚刚我们讲了享元模式在Java Integer类中的应用，现在，我们再来看下，享元模式在Java String类中的应用。同样，我们还是先来看一段代码，你觉得这段代码输出的结果是什么呢？
+
+```
+String s1 = "小争哥";
+String s2 = "小争哥";
+String s3 = new String("小争哥");
+
+System.out.println(s1 == s2);
+System.out.println(s1 == s3);
+```
+
+上面代码的运行结果是：一个true，一个false。跟Integer类的设计思路相似，String类利用享元模式来复用相同的字符串常量（也就是代码中的“小争哥”）。JVM会专门开辟一块存储区来存储字符串常量，这块存储区叫作“字符串常量池”。上面代码对应的内存存储结构如下所示：
+
+![](https://static001.geekbang.org/resource/image/2d/2d/2dfc18575c22efccca191c566b24a22d.jpg?wh=1963%2A1393)
+
+不过，String类的享元模式的设计，跟Integer类稍微有些不同。Integer类中要共享的对象，是在类加载的时候，就集中一次性创建好的。但是，对于字符串来说，我们没法事先知道要共享哪些字符串常量，所以没办法事先创建好，只能在某个字符串常量第一次被用到的时候，存储到常量池中，当之后再用到的时候，直接引用常量池中已经存在的即可，就不需要再重新创建了。
+
+## 重点回顾
+
+好了，今天的内容到此就讲完了。我们一块来总结回顾一下，你需要重点掌握的内容。
+
+在Java Integer的实现中，-128到127之间的整型对象会被事先创建好，缓存在IntegerCache类中。当我们使用自动装箱或者valueOf()来创建这个数值区间的整型对象时，会复用IntegerCache类事先创建好的对象。这里的IntegerCache类就是享元工厂类，事先创建好的整型对象就是享元对象。
+
+在Java String类的实现中，JVM开辟一块存储区专门存储字符串常量，这块存储区叫作字符串常量池，类似于Integer中的IntegerCache。不过，跟IntegerCache不同的是，它并非事先创建好需要共享的对象，而是在程序的运行期间，根据需要来创建和缓存字符串常量。
+
+除此之外，这里我再补充强调一下。
+
+实际上，享元模式对JVM的垃圾回收并不友好。因为享元工厂类一直保存了对享元对象的引用，这就导致享元对象在没有任何代码使用的情况下，也并不会被JVM垃圾回收机制自动回收掉。因此，在某些情况下，如果对象的生命周期很短，也不会被密集使用，利用享元模式反倒可能会浪费更多的内存。所以，除非经过线上验证，利用享元模式真的可以大大节省内存，否则，就不要过度使用这个模式，为了一点点内存的节省而引入一个复杂的设计模式，得不偿失啊。
+
+## 课堂讨论
+
+IntegerCache只能缓存事先指定好的整型对象，那我们是否可以借鉴String的设计思路，不事先指定需要缓存哪些整型对象，而是在程序的运行过程中，当用到某个整型对象的时候，创建好放置到IntegerCache，下次再被用到的时候，直接从IntegerCache中返回呢？
+
+如果可以这么做，请你按照这个思路重新实现一下IntegerCache类，并且能够做到在某个对象没有任何代码使用的时候，能被JVM垃圾回收机制回收掉。
+
+欢迎留言和我分享你的想法，如果有收获，欢迎你把这篇文章分享给你的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>一丨丿丶乙</span> 👍（1） 💬（1）<div>享元---&gt;复用，线程池等。通过复用对象，以达到节省内存的目的
 1.懒加载，dubble check
-2.weak reference持有享元对象</div>2020-11-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a0/cb/aab3b3e7.jpg" width="30px"><span>张三丰</span> 👍（1） 💬（1）<div>为什么说垃圾回收的时候如果保存了对象的&quot;引用&quot;就不友好，垃圾回收的依据不是只看这个对象还有没有被&quot;使用&quot;吗？ </div>2020-07-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b3/c5/7fc124e2.jpg" width="30px"><span>Liam</span> 👍（76） 💬（7）<div>享元池用weak reference持有享元对象</div>2020-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/47/31/f35367c8.jpg" width="30px"><span>小晏子</span> 👍（52） 💬（8）<div>如果IntegerCache不事先指定缓存哪些整形对象，那么每次用到的时候去new一个，这样会稍微影响一些效率，尤其在某些情况下如果常用到-128~127之间的数，可能会不停的new&#47;delete, 不过这个性能问题在大部分时候影响不是很大，所以按照string的设计思路也是可行的，
+2.weak reference持有享元对象</div>2020-11-18</li><br/><li><span>张三丰</span> 👍（1） 💬（1）<div>为什么说垃圾回收的时候如果保存了对象的&quot;引用&quot;就不友好，垃圾回收的依据不是只看这个对象还有没有被&quot;使用&quot;吗？ </div>2020-07-31</li><br/><li><span>Liam</span> 👍（76） 💬（7）<div>享元池用weak reference持有享元对象</div>2020-03-09</li><br/><li><span>小晏子</span> 👍（52） 💬（8）<div>如果IntegerCache不事先指定缓存哪些整形对象，那么每次用到的时候去new一个，这样会稍微影响一些效率，尤其在某些情况下如果常用到-128~127之间的数，可能会不停的new&#47;delete, 不过这个性能问题在大部分时候影响不是很大，所以按照string的设计思路也是可行的，
 按照这个思路设计IntegerCache类的话，如下
 private static class IntegerCache {
 
@@ -47,15 +238,15 @@ public static Integer valueOf(int i) {
     WeakReference&lt;Integer&gt; val = new WeakReference&lt;Integer&gt;(i);
     IntegerCache.cache.put(i, val);
     return val.get(); 
-}</div>2020-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/50/d7/f82ed283.jpg" width="30px"><span>辣么大</span> 👍（48） 💬（7）<div>谢谢各位的讨论，今天学到了软引用，弱引用，和WeakHashMap。内存吃紧的时候可以考虑使用WeakHashMap。
+}</div>2020-03-09</li><br/><li><span>辣么大</span> 👍（48） 💬（7）<div>谢谢各位的讨论，今天学到了软引用，弱引用，和WeakHashMap。内存吃紧的时候可以考虑使用WeakHashMap。
 https:&#47;&#47;www.baeldung.com&#47;java-weakhashmap
 https:&#47;&#47;www.baeldung.com&#47;java-soft-references
-https:&#47;&#47;www.baeldung.com&#47;java-weak-reference</div>2020-03-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fa/ab/0d39e745.jpg" width="30px"><span>李小四</span> 👍（32） 💬（0）<div>设计模式_55:
+https:&#47;&#47;www.baeldung.com&#47;java-weak-reference</div>2020-03-11</li><br/><li><span>李小四</span> 👍（32） 💬（0）<div>设计模式_55:
 # 作业
 原来还有个WeakHashMap，学习了。
 
 # 感想
-自己尝试了写了一个，然后分别测试了10,000次、100,000次，1,000,000次创建，value从1-100，100-200，10000-10100，发现不管哪个场景，总是JVM的Integer时间更短，我写的要3倍左右的时间，不禁感叹，Java二十几年了，大部分的优化应该都做了，不要期望自己花20分钟能改出超过JVM的性能。</div>2020-03-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/1e/71/54ff7b4e.jpg" width="30px"><span>3Spiders</span> 👍（25） 💬（1）<div>课后题。因为整型对象长度固定，且内容固定，可以直接申请一块连续的内存地址，可以加快访问，节省内存？而String类不行。</div>2020-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/0a/dd/88fa7b52.jpg" width="30px"><span>Geek_41d472</span> 👍（14） 💬（0）<div>我勒个擦 ,这好像是我碰到的两道面试题,包装和拆箱这道题简直就是个坑,有踩坑的举个手</div>2020-03-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f9/e6/47742988.jpg" width="30px"><span>webmin</span> 👍（10） 💬（1）<div>抛砖引玉实现了一个有限范围的缓存（-128~2048383(127 * 127 * 127)）
+自己尝试了写了一个，然后分别测试了10,000次、100,000次，1,000,000次创建，value从1-100，100-200，10000-10100，发现不管哪个场景，总是JVM的Integer时间更短，我写的要3倍左右的时间，不禁感叹，Java二十几年了，大部分的优化应该都做了，不要期望自己花20分钟能改出超过JVM的性能。</div>2020-03-17</li><br/><li><span>3Spiders</span> 👍（25） 💬（1）<div>课后题。因为整型对象长度固定，且内容固定，可以直接申请一块连续的内存地址，可以加快访问，节省内存？而String类不行。</div>2020-03-09</li><br/><li><span>Geek_41d472</span> 👍（14） 💬（0）<div>我勒个擦 ,这好像是我碰到的两道面试题,包装和拆箱这道题简直就是个坑,有踩坑的举个手</div>2020-03-10</li><br/><li><span>webmin</span> 👍（10） 💬（1）<div>抛砖引玉实现了一个有限范围的缓存（-128~2048383(127 * 127 * 127)）
 public class IntegerCache {
     private static final int bucketSize = 127;
     private static final int level1Max = bucketSize * bucketSize;
@@ -106,7 +297,7 @@ public class IntegerCache {
             return sum;
         }
     }
-}</div>2020-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/3d/00/7daa7403.jpg" width="30px"><span>Eden Ma</span> 👍（9） 💬（2）<div>突然理解OC中NSString等也用到了享元设计模式.</div>2020-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/f7/eb/e7127bb8.jpg" width="30px"><span>，</span> 👍（7） 💬（9）<div>补充 深入理解java虚拟机 里的两道有意思的题,请思考输出结果:
+}</div>2020-03-09</li><br/><li><span>Eden Ma</span> 👍（9） 💬（2）<div>突然理解OC中NSString等也用到了享元设计模式.</div>2020-03-09</li><br/><li><span>，</span> 👍（7） 💬（9）<div>补充 深入理解java虚拟机 里的两道有意思的题,请思考输出结果:
 自动装箱 拆箱:
  public static void main(String[] args){
         Integer a = 1;
@@ -132,60 +323,5 @@ public class IntegerCache {
         String str2 = new StringBuilder(&quot;ja&quot;).append(&quot;va&quot;).toString();
         System.out.println(str2==str2.intern());
     }
-考察知识点:1.intern的作用;2.玩</div>2020-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/07/41/2d477385.jpg" width="30px"><span>柠檬C</span> 👍（5） 💬（0）<div>可以使用weakReference，当没有其他变量引用时，被JVM回收</div>2020-03-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3b/47/f6c772a1.jpg" width="30px"><span>Jackey</span> 👍（5） 💬（0）<div>这节的例子可以拿来做笔试的题目😃</div>2020-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/58/62/346dd248.jpg" width="30px"><span>Q罗</span> 👍（4） 💬（0）<div>享元模式讲解很透彻，赞👍</div>2020-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9f/8d/d725d32c.jpg" width="30px"><span>李德政</span> 👍（3） 💬（0）<div>终于明白了Python中[-5,256)之间的整数的地址id都是一样的</div>2020-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/ef/5b/ff28088f.jpg" width="30px"><span>郑大钱</span> 👍（2） 💬（0）<div>听说过很多次字符串的常量池，却没有真正去理解过。原来就是享元模式</div>2021-04-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/54/9a/76c0af70.jpg" width="30px"><span>每天晒白牙</span> 👍（2） 💬（4）<div>新的一周开始了，坚持跟下去</div>2020-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ca/c7/00e544c2.jpg" width="30px"><span>黄林晴</span> 👍（2） 💬（4）<div>打卡 
-做java 的我第一题竟然做错了
-如果定义为int 就返回ture 了吧😂</div>2020-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/ef/0e/bbc35830.jpg" width="30px"><span>一杯绿绿</span> 👍（1） 💬（0）<div>性能的角度来看 IntegerCache，JDK 的加载类时创建好 Integer 缓存有如下的优势：
-1. 不需要考虑并发问题（加锁）。
-2. 可以直接使用 Integer cache[] 数组来存储，数组在计算机上有天然的空间、时间局部性，这对性能的提升会很大。
-
-而且 JDK 的 Integer 有了上述优势后，设计上也简化了很多，不需要引入 map 等复杂的数据结构和考虑并发问题，只需要一个数组即可。</div>2022-03-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/55/7a/d44df1d6.jpg" width="30px"><span>freesocean</span> 👍（1） 💬（0）<div>思考：
-1.这里借鉴字符串常量池的话，我想到可以用一个HashMap保存使用过的Integer对象，其中key和value都是该Integer。在要创建Integer时，先判断Map中是否已经存在，如果有就复用，如果没有就新建一个，并放入Map.
-2.考虑到很多Integer对象可能使用一次，随着时间推移，Map中会保存大量不会再使用的对象，而Map对其的引用如果是强引用，这些对象就不会被JVM垃圾回收。按照思考题的要求：要在没有任何代码使用时，进行回收，这种行为如果用软引用，可以减轻内存压力，但是jvm的垃圾回收并不保证一定回收软引用，只是在内存不够时，会优先回收软引用。</div>2021-10-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/0b/c8/15f055d3.jpg" width="30px"><span>图灵机</span> 👍（1） 💬（0）<div>曾经用== 比较两个Integer的值，用小于127的数测的仿佛没问题，险些酿成大祸</div>2020-07-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/43/3e/960d12cb.jpg" width="30px"><span>DY</span> 👍（1） 💬（0）<div>老师的文章越往后面越牛</div>2020-07-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/be/e6/7808520d.jpg" width="30px"><span>Edward Lee</span> 👍（1） 💬（1）<div>我倒是想了解一下 String 常量池的最大能缓存的大小</div>2020-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ce/be/5cf3f1a0.jpg" width="30px"><span>junshuaizhang</span> 👍（1） 💬（0）<div>终于弄明白困扰我多年的问题了。另外评论区很多精华呀</div>2020-03-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f9/e6/47742988.jpg" width="30px"><span>webmin</span> 👍（1） 💬（0）<div>&#47;&#47;调用例子
-public class FlyweightExample {
-    public static void main(String[] args) {
-        Integer i = IntegerCache.intern(16129);
-        System.out.println(&quot;16129:&quot; + i);
-
-        i = IntegerCache.intern(1612);
-        System.out.println(&quot;1612:&quot; + i);
-
-        i = IntegerCache.intern(161);
-        System.out.println(&quot;161:&quot; + i);
-
-        i = IntegerCache.intern(127);
-        System.out.println(&quot;127:&quot; + i);
-
-        i = IntegerCache.intern(100);
-        System.out.println(&quot;100:&quot; + i);
-
-        i = IntegerCache.intern(16129);
-        System.out.println(&quot;16129:&quot; + i);
-
-        i = IntegerCache.intern(1612);
-        System.out.println(&quot;1612:&quot; + i);
-
-        i = IntegerCache.intern(161);
-        System.out.println(&quot;161:&quot; + i);
-
-        i = IntegerCache.intern(2048383);
-        System.out.println(&quot;2048383:&quot; + i);
-
-        i = IntegerCache.intern(16130);
-        System.out.println(&quot;16130:&quot; + i);
-
-        i = IntegerCache.intern(2048383);
-        System.out.println(&quot;2048383:&quot; + i);
-
-        i = IntegerCache.intern(16130);
-        System.out.println(&quot;16130:&quot; + i);
-
-        System.out.println(&quot;Integer objects in cache: &quot; + IntegerCache.integersInCache());
-    }
-}</div>2020-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8a/02/828938c9.jpg" width="30px"><span>Frank</span> 👍（1） 💬（0）<div>打卡 今天学习享元模式（下），收获进一步加深了对String类的字符串常量池的理解。在jdk中Integer和String都使用了享元模式来存储享元对象。
-Integer类会存储-128~127之间的数字对应的包装类型对象，这些对象的创建时在类初始化阶段就创建好的。String类在运行时使用JVM提供的一块称之为“字符串常量池”的区域中来存储首次使用到的字符串常量，当后面再次使用到该常量时，直接去字符串常量池中取出引用使用即可。由于使用工厂来来存储享元对象，使得享元对象在JVM的根搜索算法中GC Roots可达，因此垃圾回收效果不友好。
-课堂讨论题中的“并且能够做到在某个对象没有任何代码使用的时候，能被 JVM 垃圾回收机制回收掉” 对垃圾回收机制理解不深，不知道有啥好办法。</div>2020-03-09</li><br/><li><img src="" width="30px"><span>Geek_d99793</span> 👍（0） 💬（0）<div>&quot;String 类的享元模式的设计没法事先知道要共享哪些字符串常量，所以没办法事先创建好，只能在某个字符串常量第一次被用到的时候，存储到常量池中&quot;
-享元模式前提是享元对象是不可变对象，这里又动态新增到常量池，是不是有点矛盾？</div>2024-07-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/01/b9/73435279.jpg" width="30px"><span>学习学个屁</span> 👍（0） 💬（0）<div>使用弱引用</div>2023-01-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/4b/dd/41614582.jpg" width="30px"><span>HomeyLiu</span> 👍（0） 💬（0）<div>最牛逼的做法是 linkHashMap&lt; Integer, SoftReference&lt; Integer &gt;&gt; ,实现LRU淘汰算法.
-防止OOM.
-Weak引用太弱了,gc就被回收,重复创建浪费cpu.
-</div>2021-12-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/90/0a/50f89814.jpg" width="30px"><span>dexia</span> 👍（0） 💬（1）<div>字符串常量池满了之后会OOM吗，GC不清理常量池的话那常量池满了怎么办？</div>2021-09-10</li><br/>
+考察知识点:1.intern的作用;2.玩</div>2020-03-09</li><br/><li><span>柠檬C</span> 👍（5） 💬（0）<div>可以使用weakReference，当没有其他变量引用时，被JVM回收</div>2020-03-14</li><br/><li><span>Jackey</span> 👍（5） 💬（0）<div>这节的例子可以拿来做笔试的题目😃</div>2020-03-09</li><br/><li><span>Q罗</span> 👍（4） 💬（0）<div>享元模式讲解很透彻，赞👍</div>2020-03-24</li><br/><li><span>李德政</span> 👍（3） 💬（0）<div>终于明白了Python中[-5,256)之间的整数的地址id都是一样的</div>2020-06-19</li><br/>
 </ul>

@@ -17,8 +17,89 @@
 ![](https://static001.geekbang.org/resource/image/ff/ad/ffd41494a39ef737b3c1151929c3c4ad.png?wh=1010%2A270)
 
 整体长度通常是64 （1 + 41 + 10+ 12 = 64）位，适合使用Java语言中的long类型来存储。
-<div><strong>精选留言（18）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/23/3a/5df9735f.jpg" width="30px"><span>董朱明</span> 👍（60） 💬（3）<div>69年的极限问题不难解决，timestamp减个常量就可以了，对于已生成的历史id，可以导表刷id，当然，这里涉及到个数据库设计原则，系统之间传递数据不应使用物理主键，这样刷id 就容易了</div>2018-08-10</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/3XbCueYYVWTiclv8T5tFpwiblOxLphvSZxL4ujMdqVMibZnOiaFK2C5nKRGv407iaAsrI0CDICYVQJtiaITzkjfjbvrQ/132" width="30px"><span>有铭</span> 👍（3） 💬（1）<div>为啥最后一段是12的长度而不是别的数</div>2018-08-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/cf/5c/d4e19eb6.jpg" width="30px"><span>安小依</span> 👍（2） 💬（1）<div>老师自己有没有计划，针对分布式单独出一个专栏，一直以来自己都想研究分布式，但是很多问题依旧搞不懂: zookeeper 选举过程、hdfs 存储出现故障namenode是怎么处理、MapReduce 作业调度问题需要做哪些权衡，不同异常下应该怎么解决，是忽略错误，还是直接退出…各个方案背后是什么样的利弊在协调着这些…</div>2018-08-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/2e/8b/32a8c5a0.jpg" width="30px"><span>卡特</span> 👍（31） 💬（1）<div>因为snowflake的可预测性，可以提前生成好放到队列里，获取的时候直接获取。相当于做了一层缓存；
-理论上可以解决短时间大量获取id的需求；</div>2018-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/45/9e/57e18908.jpg" width="30px"><span>袁伟</span> 👍（11） 💬（2）<div>一直有个疑问就是Snowflake 文中说的极限问题，目前确定它只能用69年，大家都用数据库的数字类型来存储，那么到了69年之后，后来人怎么处理，也许那个时候有更大数字来表示。但我还是想不出更合理的方式，也许我想多了，这个问题交给69年后的人来考虑，但我也想知道老师您是如何思考这个问题的</div>2018-08-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/2b/8a/b99b5a2d.jpg" width="30px"><span>大西瓜</span> 👍（8） 💬（0）<div>缩减workID长度，增加序列号长度</div>2018-08-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/30/8a/b5ca7286.jpg" width="30px"><span>业余草</span> 👍（7） 💬（0）<div>19 年写的《5 大分布式 ID 生成器优缺点简单对比》值得一看，https:&#47;&#47;mp.weixin.qq.com&#47;s&#47;OnH7Xrow5-TlkAh5gxz_XQ</div>2020-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/72/84/3f116ac8.jpg" width="30px"><span>大继</span> 👍（7） 💬（0）<div>非常感谢大佬的教程，面试是我进步最快的状态， 这种状态维持一年，估计我可以上天，终于看完了。 。 总结，大佬给出的教程非常有营养，也看到大家都要看几遍，我也是一边看一边百度。 受益匪浅。</div>2019-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fc/38/59dda970.jpg" width="30px"><span>RoverYe</span> 👍（5） 💬（0）<div>我们这边利用zk的唯一id特性</div>2018-09-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b4/1a/baf765a4.jpg" width="30px"><span>影子</span> 👍（3） 💬（0）<div>生成32位的自增长Id(int)老师有什么思路嘛</div>2019-01-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/22/89/5757eb43.jpg" width="30px"><span>XiaoYeGe</span> 👍（3） 💬（0）<div>前后历时半年多 终于看完了, 下面就是再回头巩固一遍!</div>2018-11-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ef/0e/7abc67bf.jpg" width="30px"><span>三碗猪脚</span> 👍（2） 💬（1）<div>关于第二个问题，Snowflake 是否受冬令时切换影响？
-冬令时不是回拨一个小时吗？那例如我10月3号3时被回拨10月3号2时，中间是走了两次的，到当前时间也会重复，不是吗？</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/01/7c/836cf29e.jpg" width="30px"><span>Yang.🍭</span> 👍（2） 💬（3）<div>使用System.currentTimeMillis的话不是存在时钟回拨问题么，能不能从网络获取时间，去生成这个😂😂</div>2018-09-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f9/e3/2529c7dd.jpg" width="30px"><span>吴科🍀</span> 👍（1） 💬（0）<div>我们通常用UUID或者数据自增主键，这样的方式效率都不高。snowflake分布式全局生成的ID，效率高，设计优雅。</div>2018-12-29</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/6KJcYf8PnO0knxk6EDCETYQHc19KMiaBW2U6EVdPKYNOjObiaibm46KjbJtL5WS5cg7HVY7nEIqiakCgWEg137Okbw/132" width="30px"><span>airong</span> 👍（1） 💬（1）<div>请问大牛10集群编号怎么获取的啊</div>2018-12-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/65/9c/5c94692c.jpg" width="30px"><span>_关旭_</span> 👍（0） 💬（0）<div>一搬资源池里面都有时钟机器的，所有资源均向其同步即可，除非时钟机器发生时钟回拨，短时间内应该没事的，毕竟其他的就是运行一段时间后才会发生时钟不对。</div>2021-06-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/98/bc/6d5affd3.jpg" width="30px"><span>大风歌</span> 👍（0） 💬（1）<div>第一遍结束</div>2020-01-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/03/c9/9a9d82ab.jpg" width="30px"><span>Aaron_涛</span> 👍（0） 💬（0）<div>能讲下下时钟偏斜和时钟回拨吗，不是理解</div>2018-08-07</li><br/>
+
+头部是1位的正负标识位。
+
+紧跟着的高位部分包含41位时间戳，通常使用System.currentTimeMillis()。
+
+后面是10位的WorkerID，标准定义是5位数据中心 + 5位机器ID，组成了机器编号，以区分不同的集群节点。
+
+最后的12位就是单位毫秒内可生成的序列号数目的理论极限。
+
+Snowflake的[官方版本](https://github.com/twitter/snowflake)是基于Scala语言，Java等其他语言的[参考实现](https://github.com/relops/snowflake)有很多，是一种非常简单实用的方式，具体位数的定义是可以根据分布式系统的真实场景进行修改的，并不一定要严格按照示意图中的设计。
+
+- Redis、ZooKeeper、MongoDB等中间件，也都有各种唯一ID解决方案。其中一些设计也可以算作是Snowflake方案的变种。例如，MongoDB的[ObjectId](http://mongodb.github.io/node-mongodb-native/2.0/tutorials/objectid/)提供了一个12 byte（96位）的ID定义，其中32位用于记录以秒为单位的时间，机器ID则为24位，16位用作进程ID，24位随机起始的计数序列。
+- 国内的一些大厂开源了其自身的部分分布式ID实现，InfoQ就曾经介绍过微信的[seqsvr](http://www.infoq.com/cn/articles/wechat-serial-number-generator-architecture)，它采取了相对复杂的两层架构，并根据社交应用的数据特点进行了针对性设计，具体请参考相关[代码实现](https://github.com/nebula-im/seqsvr)。另外，[百度](https://github.com/baidu/uid-generator/blob/master/README.zh_cn.md)、美团等也都有开源或者分享了不同的分布式ID实现，都可以进行参考。
+
+关于第二个问题，**Snowflake是否受冬令时切换影响？**
+
+我认为没有影响，你可以从Snowflake的具体算法实现寻找答案。我们知道Snowflake算法的Java实现，大都是依赖于System.currentTimeMillis()，这个数值代表什么呢？从Javadoc可以看出，它是返回当前时间和1970年1月1号UTC时间相差的毫秒数，这个数值与夏/冬令时并没有关系，所以并不受其影响。
+
+## 考点分析
+
+今天的问题不仅源自面试的热门考点，并且也存在着广泛的应用场景，我前面给出的回答只是一个比较精简的典型方案介绍。我建议你针对特定的方案进行深入分析，以保证在面试官可能会深入追问时能有充分准备；如果恰好在现有系统使用分布式ID，理解其设计细节是很有必要的。
+
+涉及分布式，很多单机模式下的简单问题突然就变得复杂了，这是分布式天然的复杂性，需要从不同角度去理解适用场景、架构和细节算法，我会从下面的角度进行适当解读：
+
+- 我们的业务到底需要什么样的分布式ID，除了唯一和有序，还有哪些必须要考虑的要素？
+- 在实际场景中，针对典型的方案，有哪些可能的局限性或者问题，可以采取什么办法解决呢？
+
+## 知识扩展
+
+如果试图深入回答这个问题，首先需要明确业务场景的需求要点，我们到底需要一个什么样的分布式ID？
+
+除了唯一和有序，考虑到分布式系统的功能需要，通常还会额外希望分布式ID保证：
+
+- 有意义，或者说包含更多信息，例如时间、业务等信息。这一点和有序性要求存在一定关联，如果ID中包含时间，本身就能保证一定程度的有序，虽然并不能绝对保证。ID中包含额外信息，在分布式数据存储等场合中，有助于进一步优化数据访问的效率。
+- 高可用性，这是分布式系统的必然要求。前面谈到的方案中，有的是真正意义上的分布式，有得还是传统主从的思路，这一点没有绝对的对错，取决于我们业务对扩展性、性能等方面的要求。
+- 紧凑性，ID的大小可能受到实际应用的制约，例如数据库存储往往对长ID不友好，太长的ID会降低MySQL等数据库索引的性能；编程语言在处理时也可能受数据类型长度限制。
+
+在具体的生产环境中，还有可能提出对QPS等方面的具体要求，尤其是在国内一线互联网公司的业务规模下，更是需要考虑峰值业务场景的数量级层次需求。
+
+第二，**主流方案的优缺点分析**。
+
+对于数据库自增方案，除了实现简单，它生成的ID还能够保证固定步长的递增，使用很方便。
+
+但是，因为每获取一个ID就会触发数据库的写请求，是一个代价高昂的操作，构建高扩展性、高性能解决方案比较复杂，性能上限明显，更不要谈扩容等场景的难度了。与此同时，保证数据库方案的高可用性也存在挑战，数据库可能发生宕机，即使采取主从热备等各种措施，也可能出现ID重复等问题。
+
+实际大厂商往往是构建了多层的复合架构，例如美团公开的数据库方案[Leaf-Segment](https://tech.meituan.com/MT_Leaf.html)，引入了起到缓存等作用的Leaf层，对数据库操作则是通过数据库中间件提供的批量操作，这样既能保证性能、扩展性，也能保证高可用。但是，这种方案对基础架构层面的要求很多，未必适合普通业务规模的需求。
+
+与其相比，Snowflake方案的好处是算法简单，依赖也非常少，生成的序列可预测，性能也非常好，比如Twitter的峰值超过10万/s。
+
+但是，它也存在一定的不足，例如：
+
+- 时钟偏斜问题（Clock Skew）。我们知道普通的计算机系统时钟并不能保证长久的一致性，可能发生时钟回拨等问题，这就会导致时间戳不准确，进而产生重复ID。
+
+针对这一点，Twitter曾经在文档中建议开启[NTP](http://doc.ntp.org/4.1.0/ntpd.htm)，毕竟Snowflake对时间存在依赖，但是也有人提议关闭NTP。我个人认为还是应该开启NTP，只是可以考虑将stepback设置为0，以禁止回调。
+
+从设计和具体编码的角度，还有一个很有效的措施就是缓存历史时间戳，然后在序列生成之前进行检验，如果出现当前时间落后于历史时间的不合理情况，可以采取相应的动作，要么重试、等待时钟重新一致，或者就直接提示服务不可用。
+
+- 另外，序列号的可预测性是把双刃剑，虽然简化了一些工程问题，但很多业务场景并不适合可预测的ID。如果你用它作为安全令牌之类，则是非常危险的，很容易被黑客猜测并利用。
+- ID设计阶段需要谨慎考虑暴露出的信息。例如，[Erlang版本](https://github.com/boundary/flake)的flake实现基于MAC地址计算WorkerID，在安全敏感的领域往往是不可以这样使用的。
+- 从理论上来说，类似Snowflake的方案由于时间数据位数的限制，存在与[2038年问题](https://en.wikipedia.org/wiki/Year_2038_problem)相似的理论极限。虽然目前的系统设计考虑数十年后的问题还太早，但是理解这些可能的极限是有必要的，也许会成为面试的过程中的考察点。
+
+如果更加深入到时钟和分布式系统时序的问题，还有与分布式ID相关但又有所区别的问题，比如在分布式系统中，不同机器的时间很可能是不一致的，如何保证事件的有序性？Lamport在1978年的论文（[Time, Clocks, and the Ording of Events in a Distributed System](https://amturing.acm.org/p558-lamport.pdf)）中就有很深入的阐述，有兴趣的同学可以去查找相应的翻译和解读。
+
+最后，我再补充一些当前分布式领域的面试热点，例如：
+
+- 分布式事务，包括其产生原因、业务背景、主流的解决方案等。
+- 理解[CAP](https://en.wikipedia.org/wiki/CAP_theorem)、[BASE](https://en.wikipedia.org/wiki/Eventual_consistency)等理论，懂得从最终一致性等角度来思考问题，理解[Paxos](https://en.wikipedia.org/wiki/Paxos_%28computer_science%29)、[Raft](https://raft.github.io/)等一致性算法。
+- 理解典型的分布式锁实现，例如最常见的[Redis分布式锁](https://redis.io/topics/distlock)。
+- 负载均衡等分布式领域的典型算法，至少要了解主要方案的原理。
+
+这些方面目前都已经有相对比较深入的分析，尤其是来自于一线大厂的实践经验。另外，在[左耳听风专栏的“程序员练级攻略”](http://time.geekbang.org/column/48)里，提供了非常全面的分布式学习资料，感兴趣的同学可以参考。
+
+今天我简要梳理了当前典型的分布式ID生成方案，并探讨了ID设计的一些考量，尤其是应用相对广泛的Snowflake的不足之处，希望对你有所帮助。
+
+## 一课一练
+
+关于今天我们讨论的题目你做到心中有数了吗？今天的思考题是，从理论上来看，Snowflake这种基于时间的算法，从形式上天然地限制了ID的并发生成数量，如果在极端情况下，短时间需要更多ID，有什么办法解决呢？
+
+请你在留言区写写你对这个问题的思考，我会选出经过认真思考的留言，送给你一份学习奖励礼券，欢迎你与我一起讨论。
+
+你的朋友是不是也在准备面试呢？你可以“请朋友读”，把今天的题目分享给好友，或许你能帮到他。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>董朱明</span> 👍（60） 💬（3）<div>69年的极限问题不难解决，timestamp减个常量就可以了，对于已生成的历史id，可以导表刷id，当然，这里涉及到个数据库设计原则，系统之间传递数据不应使用物理主键，这样刷id 就容易了</div>2018-08-10</li><br/><li><span>有铭</span> 👍（3） 💬（1）<div>为啥最后一段是12的长度而不是别的数</div>2018-08-07</li><br/><li><span>安小依</span> 👍（2） 💬（1）<div>老师自己有没有计划，针对分布式单独出一个专栏，一直以来自己都想研究分布式，但是很多问题依旧搞不懂: zookeeper 选举过程、hdfs 存储出现故障namenode是怎么处理、MapReduce 作业调度问题需要做哪些权衡，不同异常下应该怎么解决，是忽略错误，还是直接退出…各个方案背后是什么样的利弊在协调着这些…</div>2018-08-08</li><br/><li><span>卡特</span> 👍（31） 💬（1）<div>因为snowflake的可预测性，可以提前生成好放到队列里，获取的时候直接获取。相当于做了一层缓存；
+理论上可以解决短时间大量获取id的需求；</div>2018-09-12</li><br/><li><span>袁伟</span> 👍（11） 💬（2）<div>一直有个疑问就是Snowflake 文中说的极限问题，目前确定它只能用69年，大家都用数据库的数字类型来存储，那么到了69年之后，后来人怎么处理，也许那个时候有更大数字来表示。但我还是想不出更合理的方式，也许我想多了，这个问题交给69年后的人来考虑，但我也想知道老师您是如何思考这个问题的</div>2018-08-08</li><br/><li><span>大西瓜</span> 👍（8） 💬（0）<div>缩减workID长度，增加序列号长度</div>2018-08-07</li><br/><li><span>业余草</span> 👍（7） 💬（0）<div>19 年写的《5 大分布式 ID 生成器优缺点简单对比》值得一看，https:&#47;&#47;mp.weixin.qq.com&#47;s&#47;OnH7Xrow5-TlkAh5gxz_XQ</div>2020-07-16</li><br/><li><span>大继</span> 👍（7） 💬（0）<div>非常感谢大佬的教程，面试是我进步最快的状态， 这种状态维持一年，估计我可以上天，终于看完了。 。 总结，大佬给出的教程非常有营养，也看到大家都要看几遍，我也是一边看一边百度。 受益匪浅。</div>2019-12-22</li><br/><li><span>RoverYe</span> 👍（5） 💬（0）<div>我们这边利用zk的唯一id特性</div>2018-09-15</li><br/><li><span>影子</span> 👍（3） 💬（0）<div>生成32位的自增长Id(int)老师有什么思路嘛</div>2019-01-24</li><br/><li><span>XiaoYeGe</span> 👍（3） 💬（0）<div>前后历时半年多 终于看完了, 下面就是再回头巩固一遍!</div>2018-11-30</li><br/><li><span>三碗猪脚</span> 👍（2） 💬（1）<div>关于第二个问题，Snowflake 是否受冬令时切换影响？
+冬令时不是回拨一个小时吗？那例如我10月3号3时被回拨10月3号2时，中间是走了两次的，到当前时间也会重复，不是吗？</div>2019-07-02</li><br/><li><span>Yang.🍭</span> 👍（2） 💬（3）<div>使用System.currentTimeMillis的话不是存在时钟回拨问题么，能不能从网络获取时间，去生成这个😂😂</div>2018-09-06</li><br/><li><span>吴科🍀</span> 👍（1） 💬（0）<div>我们通常用UUID或者数据自增主键，这样的方式效率都不高。snowflake分布式全局生成的ID，效率高，设计优雅。</div>2018-12-29</li><br/><li><span>airong</span> 👍（1） 💬（1）<div>请问大牛10集群编号怎么获取的啊</div>2018-12-28</li><br/>
 </ul>

@@ -11,7 +11,85 @@
 可以预见的是，**这次版本升级带来的新特性，会让Spark在未来5到10年继续雄霸大数据生态圈。**
 
 而说到我和Spark的缘分，可以追溯到2014年。一次偶然的机会，我参与到了Spark的调研。深入研究之后，我对Spark高效的执行性能深深着迷，这也让我未来的职业发展都和Spark紧紧地绑在了一起。就这样，我从数据分析、数据挖掘领域，转移到了现在的商业智能和机器学习领域，一直不停地尝试探索数据中蕴含的核心价值。
-<div><strong>精选留言（24）</strong></div><ul>
-<li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKerOHGs8VAMWj0ysxZpTPcARHEITiaH8YDJR7aoDNYhRpbLsZ0pJdJXIfzvR7u06iaKPBUoWfic5Zww/132" width="30px"><span>Geek_qsftko</span> 👍（15） 💬（1）<div>四年Spark经验  乖乖的来听课</div>2021-03-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/4f/d5/1666b7d0.jpg" width="30px"><span>zhongmin</span> 👍（5） 💬（1）<div>老师平时是怎么利用spark的官网文档的呢？感觉官网文档很全，但是比较的多，看着看着就忘记了</div>2021-08-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/37/d0/26975fba.jpg" width="30px"><span>西南偏北</span> 👍（3） 💬（1）<div>这个五一打算把这门课从头开始学完赶上老师更新的进度。先分享下自己在使用Spark过程中的一些经验吧：很多的调优参数都是需要根据任务的数据量、计算量来动态调整的，很多时候并不是是说资源申请的越多性能就越好，有时候资源申请过多反而会出问题。</div>2021-05-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/3a/96/9fddfb4a.jpg" width="30px"><span>赵鹏举</span> 👍（2） 💬（1）<div>请问下对于几万列的标签表，应该如何存储？ 宽表本身会不会写入非常慢？是将所有字段打横到宽表还是压缩到map？业界有什么通用做法吗？</div>2021-12-22</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/PNmB3mOQ4jTSoDMGPwp5j8a2NL1Mibu4iaebBNnuDQltb2yZ3sygJpxTHuLrG9ewCDLEialorSK3pzXBCQ3JFCZPA/132" width="30px"><span>果子</span> 👍（2） 💬（4）<div>老师可不可以分享一下数据探索，特征工程的一些经验。</div>2021-05-13</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJ2tyVlQiaqp5kEOf1LlZB6nJPicN8lzcEkAsSEDmicvib8T3xUEcDibRichLrh3Qiclo3UyuAhhKNGQxGmg/132" width="30px"><span>威猛的小老虎</span> 👍（1） 💬（1）<div>老师，请问下你是如何系统的学习spark的优化。目前学习感觉没有什么切入点</div>2021-05-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ae/1e/8c6cb465.jpg" width="30px"><span>lumos</span> 👍（0） 💬（1）<div>从零基础入门spark来的，老师的课不仅知识含量丰富，也很有趣，能感受到字里行间都是对技术的热爱</div>2022-02-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2c/05/b0/3f9fe47e.jpg" width="30px"><span>Ping E Lee</span> 👍（0） 💬（1）<div>没有Spark使用经验可以学习该课程吗?</div>2022-01-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/3a/96/9fddfb4a.jpg" width="30px"><span>赵鹏举</span> 👍（0） 💬（3）<div>请问有介绍如何能看懂sparksql执行计划吗？</div>2021-10-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/8e/a7/92d1b90e.jpg" width="30px"><span>浩然</span> 👍（0） 💬（1）<div>用的比较多的是SparkSQL,大概是18年开始搞的。听课学习学习。</div>2021-10-10</li><br/><li><img src="" width="30px"><span>黄神齐</span> 👍（0） 💬（1）<div>开始学习</div>2021-09-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/70/49/d7690979.jpg" width="30px"><span>tommyCmd</span> 👍（0） 💬（1）<div>期待讲解下spark streaming啊</div>2021-04-16</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIiaeebUYxl7e4jicPshDRKMbiculHUjKgZZ2ygDibn2S7bbsjeqYIdsEUdVyoryKNa43ZGnDQmWjv3ibQ/132" width="30px"><span>Geek_d794f8</span> 👍（0） 💬（1）<div>这个专栏真是良心和超值，虽然还在更新中，但我开始刷第二遍，每一遍都有收获，提的问题，老师也会耐心解答。感谢老师！</div>2021-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/b9/50/30eea9a0.jpg" width="30px"><span>BigData～兰兴星</span> 👍（0） 💬（1）<div>像读小说一样去弄懂 Spark--希望弄懂spark就指定了</div>2021-03-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/91/56/f714ad14.jpg" width="30px"><span>老A</span> 👍（0） 💬（1）<div>上车学习了。</div>2021-03-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ea/23/508f71e3.jpg" width="30px"><span>Jefitar</span> 👍（0） 💬（1）<div>开始学习啦！目前SPARK性能调优只是稍有了解，相信跟着老师学习后，会达到熟练的程度！</div>2021-03-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/2d/42/6e3be953.jpg" width="30px"><span>Will</span> 👍（0） 💬（1）<div>已经使用spark多年，有一定基础，希望可以跟随吴老师一同梳理下知识</div>2021-03-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/25/c7/edd74dfb.jpg" width="30px"><span>淡C</span> 👍（2） 💬（0）<div>看完零基础入门Spark来的，老师零基础入门Spark+Spark性能调优感觉可以让我在简历上写熟悉Spark了，干货很多
-</div>2022-06-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTI2oY8ENiaMbvm3OzHheCwibR5ArwgicrqvWAnzXxcmMYoFia9FfhIneXAf1kGXwRyWKaoHVJplCAhsfw/132" width="30px"><span>lyz</span> 👍（0） 💬（0）<div>囫囵吞枣的看完了spark入门，接着看性能调优，后面再细嚼里面知识点，加油</div>2023-12-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/90/19/b3403815.jpg" width="30px"><span>Juha</span> 👍（0） 💬（0）<div>老师好，咨询一个比较基础的问题，咱们日常工作中，是使用纯Spark SQL多还是使用Scala写程序多呢</div>2022-10-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/23/70/d2/00d9e595.jpg" width="30px"><span>cookie</span> 👍（0） 💬（0）<div>一起学习，起飞！</div>2021-03-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/22/d7/ae0ed31f.jpg" width="30px"><span>云超</span> 👍（0） 💬（0）<div>开始学习了</div>2021-03-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fe/a2/5252a278.jpg" width="30px"><span>对方正在输入。。。</span> 👍（0） 💬（0）<div>好激动，早就开始期待了，希望和老师一起学习</div>2021-03-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/2d/42/6e3be953.jpg" width="30px"><span>Will</span> 👍（0） 💬（0）<div>期待学习！</div>2021-03-15</li><br/>
+
+目前，我在FreeWheel带领团队负责机器学习的应用与落地。我们所有已落地和正在启动的项目，都在使用Spark进行数据探索、数据处理、数据分析、特征工程和样本工程。除此之外，我们还会经常基于Spark在海量数据上进行模型训练和模型推理。
+
+如果你也和我一样，正沿着数据规划自己的职业路径，那么精通Spark也必定是你的职业目标之一。
+
+## 精通Spark，你需要一把叫做“性能调优”的万能钥匙
+
+目前，Spark有海量批处理、实时流计算、图计算、数据分析和机器学习这5大应用场景，不论你打算朝哪个方向深入，性能调优都是你职业进阶必须要跨越的一步。
+
+![](https://static001.geekbang.org/resource/image/1b/be/1b271125207a917916f0a45389df75be.jpg?wh=1896%2A1446)
+
+为什么这么说呢？原因很简单，**对于这5大场景来说，提升执行性能是刚需**。
+
+图计算和机器学习往往需要上百次迭代才能收敛，如果没有性能保障，这类作业不可能完成计算。流计算和数据分析对于响应实时性的要求非常高，没有高效的执行性能，不可能做到在亚秒级完成处理。
+
+相比其他场景，批处理对于执行效率的要求是最低的，但是，在日增数据量以TB、甚至PB为单位计数的当下，想要在小时级别完成海量数据处理，不做性能调优简直是天方夜谭。
+
+因此，我认为这5大场景就像是5扇门，每扇门背后都别有洞天，而**性能调优就像是一把“万能钥匙”**。有了这把钥匙在手，你才能如入无人之境，去探索更广阔的世界。
+
+## 为什么性能调优不能“照葫芦画瓢”？
+
+其实，我身边很多开发人员也都意识到了这一点，他们会去网上搜集一些教程进行学习。但是，目前关于Spark性能调优的资料，大都不是很系统，或者只是在讲一些常规的调优技巧和方法。而对于一些大神分享的调优手段，我们往往“照葫芦画瓢”做出来的东西，也总是达不到预期的效果，比如：
+
+- 明明都是内存计算，为什么我用了RDD/DataFrame Cache，性能反而更差了？
+- 网上吹得神乎其神的调优手段，为啥到了我这就不好使呢？
+- 并行度设置得也不低，为啥我的CPU利用率还是上不去？
+- 节点内存几乎全都划给Spark用了，为啥我的应用还是OOM？
+
+这些问题看似简单，但真不是一两句话就能说得清的。**这需要我们深入Spark的核心原理，不断去尝试每一个API、算子，设置不同的配置参数，最终找出最佳的排列组合。**
+
+那么问题来了，这该怎么做呢？接下来，我就和你分享一下，我是怎么学习性能调优的。
+
+刚刚接触Spark那会儿，我觉得它的开发效率是真高啊！MapReduce上千行代码才能实现的业务功能，Spark几十行代码就搞定了！
+
+后来，随着客户要求的不断提高，以及我个人的“较真行为”，为了让应用能跑得更快，我几乎把所有的RDD API查了个遍，仔细研究每一个算子的含义和运行原理，汇总不同算子的适用场景，总结哪些算子会引入Shuffle，对比同类功能算子的差异与优劣势，比如map和mapPartitions，再比如groupByKey、reduceByKey和aggregateByKey。
+
+除此之外，Spark官网的Configuration页面我也查阅了无数次，汇总与性能有关的配置项，不停地做对比实验，比较不同参数配置下的执行性能。遇到与认知不符的实验结果，就再回去反复咀嚼Spark的核心原理，从RDD和调度系统，到内存管理和存储系统，再到内存计算和Shuffle，如此往复，乐此不疲。
+
+虽然失败的次数非常多，但成倍的性能提升带来的惊喜让我久久不能忘怀。后来，我就把我的经验分享给身边的同事，在帮助他们进行调优的过程中，我也有意识地把我接触到的案例整理了起来，**从点到线、从线到面，**我逐渐摸清了性能调优的脉络，最终总结出一套关于性能调优的方法论，也因此建立起了以性能为导向的开发习惯。
+
+![](https://static001.geekbang.org/resource/image/b5/eb/b53099170df81c6dfb629254f5bf82eb.jpg?wh=2568%2A3066)
+
+**遵循这套方法论，开发者可以按图索骥地去开展性能调优工作，做到有的放矢、事半功倍。**我希望在这个专栏里把它分享给你。
+
+## 学得快，也要学得好
+
+结合方法论，我把专栏划分为了3个部分：原理篇、性能篇和实战篇。
+
+原理篇：聚焦Spark底层原理，打通性能调优的任督二脉
+
+Spark的原理非常多，但我会聚焦于那些与性能调优息息相关的核心概念，包括**RDD、DAG、调度系统、存储系统和内存管理**。我会力求用最贴切的故事和类比、最少的篇幅，让你在最短的时间内掌握这5大概念的核心原理，为后续的性能调优打下坚实的基础。
+
+性能篇：实际案例驱动，多角度解读，全方位解析性能调优技巧
+
+我们刚才说了，Spark的应用场景非常多，主要分为海量批处理、实时流计算、图计算、数据分析和机器学习这5个。但在所有的子框架里，Spark对Spark SQL的倾斜和倚重也是有目共睹，所以性能篇我主要分两部分来讲。
+
+**一部分是讲解性能调优的通用技巧，包括应用开发的基本原则、配置项的设置、Shuffle的优化，以及资源利用率的提升。**首先，我会从常见的例子入手，教你怎么在不改变代码逻辑的情况下快速提升执行能。其次，我会带你去归纳与执行效率相关的配置项。接着，针对Shuffle、数据关联这些典型场景，我们一起去分析有效的应对策略。最后，我们再从硬件视角出发，带你探讨如何最大化资源利用率，在整体上提升Spark的执行性能。
+
+虽然，不同应用场景的开发API和运行原理都有所不同，但是性能调优的本质和方法论是一样的。因此，这类技巧不限定应用场景，适用于所有Spark子框架。
+
+**另一部分我会专注于数据分析领域，借助如Tungsten、AQE这样的Spark内置优化项和数据关联这样的典型场景，来和你聊聊Spark SQL中的调优方法和技巧。**
+
+首先，我会带你深入挖掘Tungsten、Catalyst优化器和Spark 3.0发布的诸多新特性，充分利用Spark已有的优化机制，让性能调优站到一个更高的起点上。接着，我会借助数据分析的典型场景案例，如数据清洗、数据关联、数据转换等等，带你case-by-case地去归纳调优的思路与方法。
+
+值得一提的是，随着所有子框架的开发API陆续迁移到DataFrame，我们在每个子框架之上开发的应用，都将受益于Spark SQL的性能提升。换句话说，尽管这部分调优技巧围绕数据分析领域展开，但其中的思路和方法，也同样适用于其他子框架。
+
+实战篇：打造属于自己的分布式应用
+
+在实战篇，为了帮助你实践我们的方法论和调优技巧。我会以2011~2019的《北京市汽油车摇号》数据为例，**手把手教你打造一个分布式应用，带你从不同角度洞察汽油车摇号的趋势和走向**。我相信，通过这个实战案例，你对性能调优技巧和思路的把控肯定会有一个“质的飞跃”。
+
+除此之外，我还会不定期地针对一些热点话题进行加餐：比如和Flink、Presto相比，Spark有哪些优势；再比如Spark的一些新特性，以及业界对于Spark的新探索。这也能帮助我们更好地面对变化，把握先机。
+
+![](https://static001.geekbang.org/resource/image/88/1e/8886909e1eda59a1d7e7ab45243b991e.jpg?wh=1563%2A5760)
+
+最后我想说，我一直希望把学习变成一件有趣又轻松的事情，所以在这个专栏里，我会用一个个小故事和实例，来帮助你理解Spark的核心原理，引导你建立以性能为导向的开发思维，以及从不同视角汇总性能调优的方法和技巧，**让你像读小说一样去弄懂Spark**。
+
+我也期望，你能像小说里的主人公一样，利用“调优技巧和方法论”这本武功秘籍，一路过五关、斩六将，打败现实中层出不穷的开发问题，在职业发展中更上一层楼。
+
+最后，欢迎你在这里畅所欲言，提出你的困惑和疑问，也欢迎多多给我留言，你们的鼓励是我的动力。让我们一起拿起性能调优这把万能钥匙，去开启全新的Spark职业生涯吧！
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>Geek_qsftko</span> 👍（15） 💬（1）<div>四年Spark经验  乖乖的来听课</div>2021-03-16</li><br/><li><span>zhongmin</span> 👍（5） 💬（1）<div>老师平时是怎么利用spark的官网文档的呢？感觉官网文档很全，但是比较的多，看着看着就忘记了</div>2021-08-23</li><br/><li><span>西南偏北</span> 👍（3） 💬（1）<div>这个五一打算把这门课从头开始学完赶上老师更新的进度。先分享下自己在使用Spark过程中的一些经验吧：很多的调优参数都是需要根据任务的数据量、计算量来动态调整的，很多时候并不是是说资源申请的越多性能就越好，有时候资源申请过多反而会出问题。</div>2021-05-01</li><br/><li><span>赵鹏举</span> 👍（2） 💬（1）<div>请问下对于几万列的标签表，应该如何存储？ 宽表本身会不会写入非常慢？是将所有字段打横到宽表还是压缩到map？业界有什么通用做法吗？</div>2021-12-22</li><br/><li><span>果子</span> 👍（2） 💬（4）<div>老师可不可以分享一下数据探索，特征工程的一些经验。</div>2021-05-13</li><br/><li><span>威猛的小老虎</span> 👍（1） 💬（1）<div>老师，请问下你是如何系统的学习spark的优化。目前学习感觉没有什么切入点</div>2021-05-19</li><br/><li><span>lumos</span> 👍（0） 💬（1）<div>从零基础入门spark来的，老师的课不仅知识含量丰富，也很有趣，能感受到字里行间都是对技术的热爱</div>2022-02-09</li><br/><li><span>Ping E Lee</span> 👍（0） 💬（1）<div>没有Spark使用经验可以学习该课程吗?</div>2022-01-06</li><br/><li><span>赵鹏举</span> 👍（0） 💬（3）<div>请问有介绍如何能看懂sparksql执行计划吗？</div>2021-10-30</li><br/><li><span>浩然</span> 👍（0） 💬（1）<div>用的比较多的是SparkSQL,大概是18年开始搞的。听课学习学习。</div>2021-10-10</li><br/><li><span>黄神齐</span> 👍（0） 💬（1）<div>开始学习</div>2021-09-26</li><br/><li><span>tommyCmd</span> 👍（0） 💬（1）<div>期待讲解下spark streaming啊</div>2021-04-16</li><br/><li><span>Geek_d794f8</span> 👍（0） 💬（1）<div>这个专栏真是良心和超值，虽然还在更新中，但我开始刷第二遍，每一遍都有收获，提的问题，老师也会耐心解答。感谢老师！</div>2021-04-06</li><br/><li><span>BigData～兰兴星</span> 👍（0） 💬（1）<div>像读小说一样去弄懂 Spark--希望弄懂spark就指定了</div>2021-03-30</li><br/><li><span>老A</span> 👍（0） 💬（1）<div>上车学习了。</div>2021-03-18</li><br/>
 </ul>

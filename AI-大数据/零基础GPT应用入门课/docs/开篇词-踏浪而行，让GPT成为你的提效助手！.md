@@ -15,11 +15,134 @@ GPT 作为通用智能模型带来了新的可能。商业应用方面，目前�
 ## 当我们和GPT交流的时候，会遇到哪些问题？
 
 因为对 GPT 的能力认知还不清晰，大多数人还保持着**搜索时代的惯性——提交简单的问题，寻找答案。**甚至更多时候这个“问题”还只是关键词，无法上升到“需求”的高度。这个现象隐藏的逻辑是：预设了 AI 没有超越人类的知识，只能把“记住”的数据掏出来。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/1a/0f/3d/96a83336.jpg" width="30px"><span>余飞</span> 👍（6） 💬（1）<div>更新有点慢啊</div>2023-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/88/c8/6af6d27e.jpg" width="30px"><span>Y024</span> 👍（5） 💬（1）<div>与其恐惧不如驾驭，一起学起来。</div>2023-06-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2a/f0/82/f235d91d.jpg" width="30px"><span>Yj.yolo</span> 👍（3） 💬（1）<div>看起来不错，期待后面的更新</div>2023-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/56/3c/94a3186d.jpg" width="30px"><span>redtax</span> 👍（3） 💬（1）<div>对于 ChatGPT，它的出现为人们在沟通交流上提供了新的思路和途径，带来了巨大的便利和效率。而对于使用者来说，在应用 ChatGPT 的过程中，如何用更加丰富的思维方式来引导、扩展和优化对话流程，也是至关重要的。非常期待老师接下来的分享，作为一个小白，已经报名参加了6月12日尹会生老师的GPT训练营，但是看了提前召集的同学们在群里的发言，吓得都不敢吱声，实在是看不懂很多对话，于是赶紧报了这门课先修炼一下基础再进训练营吧。希望在键盘老师这里能够学有所成😅
-GPT目前只用过3.5的镜像站，主要用于文本简单的对话，辅助学习一些课程，最大的帮助就是在论文方面能够提供前所未有的思路，虽然它提供的大部分内容都查无实据，需要特别核对，但是它的思维框架真的非常新颖和开阔，不得不佩服。👍👍👍</div>2023-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/b3/04/791d0f5e.jpg" width="30px"><span>凡之</span> 👍（1） 💬（1）<div>支持！我看现在招聘网站已经出现了prompt工程师,怎么成为一个prompt公司师呢，我现在是个运维工程师，我觉得再ai应该把握下职业发展上的机会，能上升一个高度。</div>2023-06-19</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eptFASJ42FicKtoBDzjicucxAktbLj5sjB38kHdXQ4nXXpcG5PHxUmHEvV1ia4Bs5RCOAlgBCibicf0XUw/132" width="30px"><span>行之</span> 👍（1） 💬（1）<div>指挥 GPT 输出可交付的工作成果。比如密码管理...
+
+其实，你把 ChatGPT 当作一位专业的智能助理来协助，上手感受会更加顺滑。即使面对的问题非常复杂，只要正确拆解给 GPT，就能良好执行。TA 既可以是全能的提效助手，也可以轻松切换为特别垂直的课题解决专家。
+
+### 问题1：它都可以帮我干什么？
+
+2023 年 3月 开始，各大厂纷纷跑步入场探索类 ChatGPT 的智能解决方案，优化工作流，降本增效。举个例子：
+
+> 飞书公布了类似微软 Office Copilot 的智能助手 “My AI”，可为用户做会议纪要、自动创建待办事项、一键整理销售报告、对齐 OKR 等等，通过自然语言交互就能实现。
+
+那我们又可以用来干什么呢？作为个人提效的工具。
+
+比如说现在许多人副业是自媒体博主，平时有制作视频的需求，**现在让 GPT 一分钟内做一条卡点视频**，顺带输出图文并茂的推文，甚至包含数据解读和动态可视化图表……等等，说好是个文本生成模型呢？还能这么骚？
+
+不要急，后面我会带你一步步实现 GPT 和工作流完美结合。**踏浪而行的前提，是不断尝试、不断验证。**
+
+如果你还无法快速转变搜索时代简单提问的思维，这里我可以给你提供几个常见的 ChatGPT 可介入场景：
+
+- 加班浑身酸痛，给我定制一个可行的提效方案和锻炼计划。
+- 接管日常所有零碎的文件整理。
+- 写脚本、修 bug、自动测试。
+- 产品官网的特性文档缺人力撰写，ChatGPT 你上。
+- 明早就要给老板汇报，帮我设计一个 PPT（预算是不可能有的）。
+
+相信我，这些问题GPT通通能打，你需要做的更多是提升精度和可用性的问题，这完全可以通过本课程解决。
+
+这里我列出了基于任务分类的 7 大类应用，底层都是内容生成（Generated Content），文本任务和编码是其中 2 大基本盘。更多详细的实例体验可见官方范例[传送门](https://platform.openai.com/examples)。
+
+![](https://static001.geekbang.org/resource/image/fe/f6/fe64ebebe24367b4f9203cf4b1b012f6.png?wh=1996x1161 "ChatGPT 的 7 大类应用")
+
+### **问题2：这些需求如何快速实现？**
+
+传闻道，AI 除了无法代坐牢，啥都能做。实际上呢，**我就是想让 ChatGPT 代上班而已**！这样都遇到不少问题。
+
+- **提问**：怎么才能向 AI 提出高质量、少冗余的需求？
+- **设计**：如何独立设计 prompt，指挥 GPT 干活？
+- **蜕变**：GPT 的答案总是及格以上，交付未满，迭代秘诀是什么？
+- **核心**：智能时代的“原话师”需要掌握哪些核心魔法？
+- **重塑**：如何使用 GPT 重塑工作流，高效“代上班”？
+- **套路**：一份需求多次使用，事半功倍的套路是什么？
+
+这些问题的产生，都是因为在实际应用的过程中，想要获得超越预期的结果，我们还需要掌握一些方法来精细驾驭 GPT，这些技巧被定义为提示词工程（Prompt Engineering）。更精确地说，**好提示决定了需求解决的质量。**
+
+比如，想快速实现一个批量转格式的需求，以前的路径：
+
+1. 找工具 ▸ 安装，了解使用 ▸ 对比评测 ▸ 留下最好的解决方案 ▸ 持续这个筛选过程。
+2. 开发一个特定产品，耗费的人力和研发周期可想而之，最后通过推出市场来回收成本，赚取收益，接着就是无尽地迭代。
+
+而现在，我不假思索地打开了 GPT，甩下 1 句话需求。
+
+```plain
+写一个 python 脚本，指定 Mac 桌面文件夹 WP，实现 webp to png 批量转格式。
+```
+
+> 定义给 AI 的“1 句话需求”——明确、清晰，并且简洁的 prompt。  
+> 模版结构：**主题**：做什么；**细节**：背景和要求；**目标**：达到什么目的。
+
+一稿过，神仙助理。
+
+![](https://static001.geekbang.org/resource/image/6f/f6/6f1f437a6ea62d1573a4cd77168ec3f6.png?wh=3582x2063 "一键批量转格式")
+
+请注意，我并没有学习过 python。让我现在告诉你怎么配置、怎么写，我肯定办不到。但是，能够解决问题不就好了？这就是我**使用 GPT 的核心思路：从结果反推。真正实现了产品经理的“治理”名言：“这个需求很简单，怎么实现我不管。”**
+
+有人会说，我都读不懂它提供的代码，怎么玩？看下 ChatGPT 感人的容错策略——使用清晰的注释，识字就能“懂”。
+
+![](https://static001.geekbang.org/resource/image/d3/ea/d3e43332b4c800feb1bf72e4f570b6ea.png?wh=1860x1674 "ChatGPT 的代码注释")
+
+**这就是从搜索时代到解决需求的新范式：从结果反推，根据掌握的综合知识来拆解问题，指挥 AI 解决问题。**
+
+![](https://static001.geekbang.org/resource/image/c8/98/c8cd7fd16df6eb7b8a82bdf4855a6498.png?wh=1260x480 "从结果反推")
+
+当然，想要驯服这位跨时代的智能助理，将 TA 打造成自己的万能首席，深度地介入日常的各种场景，让需求实现变得简单，还有更多的思维和方法需要我们去掌握、运用。
+
+结合 AI 狂飙进化的特征，这门课旨在让你刷新认知，更快地进入提效节奏，分享我从大量综合体验和试错中提炼的系统方法，好复用，可延展。更重要的是，用“玩”的心态一起愉快探索新的浪潮之巅。应对焦虑，我们选择舞蹈，而不是奔跑。
+
+课程共有三个模块。
+
+**✦ 第一章：基础速通**
+
+欢迎来到新世界。相信有不少同学和GPT的交流还停留在询问关键词的阶段。这个模块会让你对GPT有一个快速的初步了解，提供一些由简入繁的实例指引。
+
+同时，我也会带你了解GPT的局限性，从而在当前的能力边界内“求最优解”。甚至转换思维来拓宽边界，把 GPT 当做一个超级中枢，真正实现迷人的“万物无联”，把 AI 孤岛用成小宇宙。
+
+最后，通过 Markdown 和实用符号的加持，让你的“智能答案”图文并貌，交付质量秒速提升。
+
+**✦ 第二章：黄金秘钥**
+
+这个模块会重点深入讲解玩转 GPT 的独家秘诀，和你一起拓展、掌握“人-智”交互的新思路。学完这个模块，你一定能快速驯服GPT，成为一名懂设计、有套路、有心法的 GPT Master。这些方法可以快速应用到其他 AI 工具，比如 Claude、Bard。
+
+最后，你也能通过轻量的输入法神技，让 GPT 领衔主演的私人智囊团随时随地由你支配，即使在寸土寸金的手机单行对话框，也能解决复杂需求。
+
+**✦ 第三章：综合实战**
+
+这里主要会带你运用掌握的系统知识来进行实战检验，帮助你融会贯通，举一反三，对具体的挑战能正确地转化为专业的 prompt 设计，指挥 GPT 输出可交付的工作成果。比如密码管理、自学助手、材料整理、数据清洗、数据分析、智能画师等等，这些高频需求的应用都会在这个板块给你参考答案。在工作上、生活上、学习上都有令人惊艳的收益。
+
+特别说明，在课程中，当名称没有特指“ChatGPT”时，会用“GPT”来代表 ChatGPT、GPT-4、GPT with Browsing 等一系列 GPT 模型，你可以灵活地根据自己的课题，选择合适的子模型。
+
+## 踏浪而行
+
+OpenAI 引领的第 4 次工业革命仿佛在一夜间浩浩汤汤地拉开史诗巨幕。AI 产品的爆发和令人咋舌的迭代，给人惊喜，也给惊吓。“AI 让人失业、xx 不存在了、AI 毁灭人类……”各种 AI 降临派说法甚嚣尘上。
+
+更多的 AI 还在井喷、在疯狂互卷，而 ChatGPT 无疑是其中最闪亮的星辰，这门课，专为心中的星辰定制，与你分享。关于 AI 的一切，目前只是开端。身处混沌，我们也知道**“恐惧源于未知”**，ChatGPT 这层未知的面纱如今也揭开了，清晰的认识，能够为正确前进指引方向，这也是题图以巨浪中的灯塔为意象来设计的原因。
+
+我们应该以什么样的心态和方式来应对变化？相信学完这门课，我们一定能携手 GPT 踏浪而行，淡定自若地面对新机遇、新挑战。
+
+我将会在课程中分享与 GPT 疯狂过招期间的奇思妙想，拓宽你的思维，找到使用 GPT 解决需求的秘诀。慢慢地，你会发现，**玩 GPT，思维远比技术重要**。我还想分享一个新的实用思路：当 “GPT 能不能……”这样的念头冒出，你可以大胆畅想**“假如交给 GPT 来做，会怎样”**。立即行动，期待你尝试之后和我分享惊喜。
+
+![](https://static001.geekbang.org/resource/image/37/b7/374fbda159176d4b0dc4289157661eb7.png?wh=1326x350 "新思路、新逻辑")
+
+**AI 巨浪奔涌不息，谁都无处可逃，与其等待未知的激荡，不如一起抓住机遇，勇敢踏上新的征程。乱局中，再开新局。**
+
+最后我也想听听你的声音，你最近都问过GPT什么问题？用它解决过什么需求吗？效果怎么样呢？关于这门课，你有什么样的期待？
+
+期待在评论区看到你的思考或感受分享，也欢迎你将这节课分享给感兴趣的朋友们，加入[课程交流群](http://jinshuju.net/f/oI1KKM)，我们正式课程中再会。
+
+**小黑板：**
+
+1. 通过微调模型或训练来解决问题，是当前 GPT 的主流应用方向之一。
+2. 除了解惑，ChatGPT 还能解决需求。
+3. ChatGPT 的基本盘是解决文本任务和编码。
+4. 不妨将 GPT 视为智能答疑助理来协作，磨合更顺滑。
+5. 好提示决定了需求解决的质量。
+6. 从结果反推，实现这个需求很简单，怎么实现我不管。
+7. 解题新思路：“假如交给 GPT 来做，会怎样？”
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>余飞</span> 👍（6） 💬（1）<div>更新有点慢啊</div>2023-05-30</li><br/><li><span>Y024</span> 👍（5） 💬（1）<div>与其恐惧不如驾驭，一起学起来。</div>2023-06-10</li><br/><li><span>Yj.yolo</span> 👍（3） 💬（1）<div>看起来不错，期待后面的更新</div>2023-05-30</li><br/><li><span>redtax</span> 👍（3） 💬（1）<div>对于 ChatGPT，它的出现为人们在沟通交流上提供了新的思路和途径，带来了巨大的便利和效率。而对于使用者来说，在应用 ChatGPT 的过程中，如何用更加丰富的思维方式来引导、扩展和优化对话流程，也是至关重要的。非常期待老师接下来的分享，作为一个小白，已经报名参加了6月12日尹会生老师的GPT训练营，但是看了提前召集的同学们在群里的发言，吓得都不敢吱声，实在是看不懂很多对话，于是赶紧报了这门课先修炼一下基础再进训练营吧。希望在键盘老师这里能够学有所成😅
+GPT目前只用过3.5的镜像站，主要用于文本简单的对话，辅助学习一些课程，最大的帮助就是在论文方面能够提供前所未有的思路，虽然它提供的大部分内容都查无实据，需要特别核对，但是它的思维框架真的非常新颖和开阔，不得不佩服。👍👍👍</div>2023-06-01</li><br/><li><span>凡之</span> 👍（1） 💬（1）<div>支持！我看现在招聘网站已经出现了prompt工程师,怎么成为一个prompt公司师呢，我现在是个运维工程师，我觉得再ai应该把握下职业发展上的机会，能上升一个高度。</div>2023-06-19</li><br/><li><span>行之</span> 👍（1） 💬（1）<div>指挥 GPT 输出可交付的工作成果。比如密码管理...
 ----
-“密码管理“具体什么意思？没太理解呀</div>2023-06-11</li><br/><li><img src="" width="30px"><span>Caneverything</span> 👍（0） 💬（1）<div>我在今年开启了gpt使用之旅&#xff0c;但是目前还停留在了把ai当搜索工具的阶段&#xff0c;不知道如何将ai于自己的工作流结合起来&#xff0c;就比如如何运用ai帮助我提升剪辑视频的效率。</div>2024-12-11</li><br/><li><img src="" width="30px"><span>2401_86300455</span> 👍（0） 💬（1）<div>键盘老师的课就象“键盘”一样&#xff0c;声音清脆流畅&#xff0c;内容循序渐进&#xff0c;排列有序。虽然语速有点快。但总算找到了正规的课程和学习平台。
+“密码管理“具体什么意思？没太理解呀</div>2023-06-11</li><br/><li><span>Caneverything</span> 👍（0） 💬（1）<div>我在今年开启了gpt使用之旅&#xff0c;但是目前还停留在了把ai当搜索工具的阶段&#xff0c;不知道如何将ai于自己的工作流结合起来&#xff0c;就比如如何运用ai帮助我提升剪辑视频的效率。</div>2024-12-11</li><br/><li><span>2401_86300455</span> 👍（0） 💬（1）<div>键盘老师的课就象“键盘”一样&#xff0c;声音清脆流畅&#xff0c;内容循序渐进&#xff0c;排列有序。虽然语速有点快。但总算找到了正规的课程和学习平台。
 虽然年龄大点、基础薄些&#xff0c;有些跟不上。但可以暂停下来&#xff0c;对对文本讲解&#xff0c;试着案例操作一下。相信会有的收获的。
-谢谢“小键盘”老师</div>2024-11-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/2f/c5/55832856.jpg" width="30px"><span>Edison Zhou</span> 👍（0） 💬（1）<div>老师的文笔太好了，不像是做技术的👍</div>2024-04-17</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLu7SYgsvC9IQfEfZUrgNJxDwiaZ8vj7khBXWmX1FRI0OdKytvXseu5feCIyCmv1y9MWtHicfVhTKzQ/132" width="30px"><span>Geek_be2f0e</span> 👍（0） 💬（1）<div>问题1的，传送门不可访问</div>2024-04-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/45/e9/c6512e9e.jpg" width="30px"><span>黄松</span> 👍（0） 💬（1）<div>老师，怎么添加班级群呀？</div>2023-12-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/fd/58/1af629c7.jpg" width="30px"><span>6点无痛早起学习的和尚</span> 👍（0） 💬（1）<div>重读，我模仿键盘的 Python 脚本，写了一个给自己拍的照片加水印的工具</div>2023-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c6/39/0b837f63.jpg" width="30px"><span>不過勝負</span> 👍（0） 💬（1）<div>请问作者，您这篇开篇词使用 GPT 了吗？感受是什么？</div>2023-08-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c6/55/976024f9.jpg" width="30px"><span>张璋Angus</span> 👍（0） 💬（1）<div>現在開老師的專欄比較遲了哈 繼續學習 目前我針對情感對答上比較敢興趣，用prompt 和 一些代碼緩存機制，自己寫了類似日本的戀愛遊戲，下一步想大量訓練自己的模型。</div>2023-07-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/fd/58/1af629c7.jpg" width="30px"><span>6点无痛早起学习的和尚</span> 👍（0） 💬（1）<div>买课了，来了来了，在群里蹲了一段时间来买课</div>2023-07-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/37/bf/5d/213c821d.jpg" width="30px"><span>自由生长【因時差9-17點休息】</span> 👍（0） 💬（1）<div>虽然懵但依然觉得好厉害</div>2023-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/37/b7/81/156cb4d1.jpg" width="30px"><span>果冻</span> 👍（0） 💬（1）<div>所以封面图也是ai画的吗</div>2023-06-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/36/f5/a9/0268a580.jpg" width="30px"><span>洪传霖</span> 👍（0） 💬（1）<div>just prompt it</div>2023-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2a/4c/26/b3b32c69.jpg" width="30px"><span>Figo</span> 👍（0） 💬（1）<div>购买课程啦，一起乘风破浪，多说说利用GPT，搭建自己的GPT模型的方法吧</div>2023-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/5e/81/82709d6e.jpg" width="30px"><span>码小呆</span> 👍（0） 💬（1）<div>期待al有更多的应用</div>2023-06-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/20/f5/85/5cd2ce4c.jpg" width="30px"><span>仗剑走天涯</span> 👍（0） 💬（1）<div>AI 巨浪奔涌不息，谁都无处可逃，与其等待未知的激荡，不如一起抓住机遇，勇敢踏上新的征程。乱局中，再开新局。</div>2023-06-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/ea/5d/ccb4c205.jpg" width="30px"><span>绘世浮夸 つ</span> 👍（0） 💬（1）<div>感觉更多的停留在问问题上面，期待能结合实际工作</div>2023-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/4a/57/3f68946c.jpg" width="30px"><span>On</span> 👍（0） 💬（1）<div>看起来不错，期待后续课程…</div>2023-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/38/63/bd/d6019938.jpg" width="30px"><span>想干嘛!?</span> 👍（1） 💬（1）<div>麻烦问一下，有没有GPT的下载链接啊？？？</div>2023-08-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/9a/52/93416b65.jpg" width="30px"><span>不明真相的群众</span> 👍（0） 💬（0）<div>打卡学习</div>2023-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a0/c3/c5db35df.jpg" width="30px"><span>石云升</span> 👍（0） 💬（1）<div>同学们，这课不难，学起来！</div>2023-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2e/2d/c3/772b815b.jpg" width="30px"><span>Geek_TW</span> 👍（0） 💬（0）<div>继续看。</div>2023-06-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/04/f6/1ded6a3b.jpg" width="30px"><span>brady</span> 👍（0） 💬（0）<div>打卡打卡</div>2023-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/87/78/01c07962.jpg" width="30px"><span>极客时间</span> 👍（0） 💬（0）<div>开始期待了</div>2023-05-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/c5/86/f64f2642.jpg" width="30px"><span>Emma-乌鸦</span> 👍（0） 💬（0）<div>来啦</div>2023-05-29</li><br/>
+谢谢“小键盘”老师</div>2024-11-10</li><br/><li><span>Edison Zhou</span> 👍（0） 💬（1）<div>老师的文笔太好了，不像是做技术的👍</div>2024-04-17</li><br/><li><span>Geek_be2f0e</span> 👍（0） 💬（1）<div>问题1的，传送门不可访问</div>2024-04-16</li><br/><li><span>黄松</span> 👍（0） 💬（1）<div>老师，怎么添加班级群呀？</div>2023-12-12</li><br/><li><span>6点无痛早起学习的和尚</span> 👍（0） 💬（1）<div>重读，我模仿键盘的 Python 脚本，写了一个给自己拍的照片加水印的工具</div>2023-08-22</li><br/><li><span>不過勝負</span> 👍（0） 💬（1）<div>请问作者，您这篇开篇词使用 GPT 了吗？感受是什么？</div>2023-08-03</li><br/><li><span>张璋Angus</span> 👍（0） 💬（1）<div>現在開老師的專欄比較遲了哈 繼續學習 目前我針對情感對答上比較敢興趣，用prompt 和 一些代碼緩存機制，自己寫了類似日本的戀愛遊戲，下一步想大量訓練自己的模型。</div>2023-07-22</li><br/><li><span>6点无痛早起学习的和尚</span> 👍（0） 💬（1）<div>买课了，来了来了，在群里蹲了一段时间来买课</div>2023-07-14</li><br/>
 </ul>

@@ -21,19 +21,158 @@ from sklearn.mixture import GaussianMixture
 我们看下如何在sklearn中创建GMM聚类。
 
 首先我们使用gmm = GaussianMixture(n\_components=1, covariance\_type=‘full’, max\_iter=100)来创建GMM聚类，其中有几个比较主要的参数（GMM类的构造参数比较多，我筛选了一些主要的进行讲解），我分别来讲解下：
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/15/c4/83/d1c4237a.jpg" width="30px"><span>哆哩咪fa👻</span> 👍（15） 💬（5）<div>才买的课，请问有vx群或者可以相互沟通的群么</div>2019-02-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a0/3a/312ce1b7.jpg" width="30px"><span>高桥凉瓜</span> 👍（11） 💬（2）<div>之所以热力图不显示最大攻速和攻击范围，是因为这两列的数据的类型是string，想要在热力图也显示这两项的话可以在构建热力图前就进行数据清洗：
+
+1.n\_components：即高斯混合模型的个数，也就是我们要聚类的个数，默认值为1。如果你不指定n\_components，最终的聚类结果都会为同一个值。
+
+2.covariance\_type：代表协方差类型。一个高斯混合模型的分布是由均值向量和协方差矩阵决定的，所以协方差的类型也代表了不同的高斯混合模型的特征。协方差类型有4种取值：
+
+- covariance\_type=full，代表完全协方差，也就是元素都不为0；
+- covariance\_type=tied，代表相同的完全协方差；
+- covariance\_type=diag，代表对角协方差，也就是对角不为0，其余为0；
+- covariance\_type=spherical，代表球面协方差，非对角为0，对角完全相同，呈现球面的特性。
+
+3.max\_iter：代表最大迭代次数，EM算法是由E步和M步迭代求得最终的模型参数，这里可以指定最大迭代次数，默认值为100。
+
+创建完GMM聚类器之后，我们就可以传入数据让它进行迭代拟合。
+
+我们使用fit函数，传入样本特征矩阵，模型会自动生成聚类器，然后使用prediction=gmm.predict(data)来对数据进行聚类，传入你想进行聚类的数据，可以得到聚类结果prediction。
+
+你能看出来拟合训练和预测可以传入相同的特征矩阵，这是因为聚类是无监督学习，你不需要事先指定聚类的结果，也无法基于先验的结果经验来进行学习。只要在训练过程中传入特征值矩阵，机器就会按照特征值矩阵生成聚类器，然后就可以使用这个聚类器进行聚类了。
+
+## 如何用EM算法对王者荣耀数据进行聚类
+
+了解了GMM聚类工具之后，我们看下如何对王者荣耀的英雄数据进行聚类。
+
+首先我们知道聚类的原理是“人以群分，物以类聚”。通过聚类算法把特征值相近的数据归为一类，不同类之间的差异较大，这样就可以对原始数据进行降维。通过分成几个组（簇），来研究每个组之间的特性。或者我们也可以把组（簇）的数量适当提升，这样就可以找到可以互相替换的英雄，比如你的对手选择了你擅长的英雄之后，你可以选择另一个英雄作为备选。
+
+我们先看下数据长什么样子：
+
+![](https://static001.geekbang.org/resource/image/3c/a0/3c4e14e7b33fc211f96fe0108f6196a0.png?wh=1726%2A396)  
+这里我们收集了69名英雄的20个特征属性，这些属性分别是最大生命、生命成长、初始生命、最大法力、法力成长、初始法力、最高物攻、物攻成长、初始物攻、最大物防、物防成长、初始物防、最大每5秒回血、每5秒回血成长、初始每5秒回血、最大每5秒回蓝、每5秒回蓝成长、初始每5秒回蓝、最大攻速和攻击范围等。
+
+具体的数据集你可以在GitHub上下载：[https://github.com/cystanford/EM\_data](https://github.com/cystanford/EM_data)。
+
+现在我们需要对王者荣耀的英雄数据进行聚类，我们先设定项目的执行流程：
+
+![](https://static001.geekbang.org/resource/image/8a/78/8af94562f6bd3ac42036ec47f5ad2578.jpg?wh=2373%2A1087)
+
+1. 首先我们需要加载数据源；
+2. 在准备阶段，我们需要对数据进行探索，包括采用数据可视化技术，让我们对英雄属性以及这些属性之间的关系理解更加深刻，然后对数据质量进行评估，是否进行数据清洗，最后进行特征选择方便后续的聚类算法；
+3. 聚类阶段：选择适合的聚类模型，这里我们采用GMM高斯混合模型进行聚类，并输出聚类结果，对结果进行分析。
+
+按照上面的步骤，我们来编写下代码。完整的代码如下：
+
+```
+# -*- coding: utf-8 -*-
+import pandas as pd
+import csv
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.mixture import GaussianMixture
+from sklearn.preprocessing import StandardScaler
+ 
+# 数据加载，避免中文乱码问题
+data_ori = pd.read_csv('./heros7.csv', encoding = 'gb18030')
+features = [u'最大生命',u'生命成长',u'初始生命',u'最大法力', u'法力成长',u'初始法力',u'最高物攻',u'物攻成长',u'初始物攻',u'最大物防',u'物防成长',u'初始物防', u'最大每5秒回血', u'每5秒回血成长', u'初始每5秒回血', u'最大每5秒回蓝', u'每5秒回蓝成长', u'初始每5秒回蓝', u'最大攻速', u'攻击范围']
+data = data_ori[features]
+ 
+# 对英雄属性之间的关系进行可视化分析
+# 设置plt正确显示中文
+plt.rcParams['font.sans-serif']=['SimHei'] #用来正常显示中文标签
+plt.rcParams['axes.unicode_minus']=False #用来正常显示负号
+# 用热力图呈现features_mean字段之间的相关性
+corr = data[features].corr()
+plt.figure(figsize=(14,14))
+# annot=True显示每个方格的数据
+sns.heatmap(corr, annot=True)
+plt.show()
+ 
+# 相关性大的属性保留一个，因此可以对属性进行降维
+features_remain = [u'最大生命', u'初始生命', u'最大法力', u'最高物攻', u'初始物攻', u'最大物防', u'初始物防', u'最大每5秒回血', u'最大每5秒回蓝', u'初始每5秒回蓝', u'最大攻速', u'攻击范围']
+data = data_ori[features_remain]
+data[u'最大攻速'] = data[u'最大攻速'].apply(lambda x: float(x.strip('%'))/100)
+data[u'攻击范围']=data[u'攻击范围'].map({'远程':1,'近战':0})
+# 采用Z-Score规范化数据，保证每个特征维度的数据均值为0，方差为1
+ss = StandardScaler()
+data = ss.fit_transform(data)
+# 构造GMM聚类
+gmm = GaussianMixture(n_components=30, covariance_type='full')
+gmm.fit(data)
+# 训练数据
+prediction = gmm.predict(data)
+print(prediction)
+# 将分组结果输出到CSV文件中
+data_ori.insert(0, '分组', prediction)
+data_ori.to_csv('./hero_out.csv', index=False, sep=',')
+```
+
+运行结果如下：
+
+![](https://static001.geekbang.org/resource/image/db/fb/dbe96b767d7f3ff2dd9f44b651cde8fb.png?wh=1729%2A1396)
+
+```
+[28 14  8  9  5  5 15  8  3 14 18 14  9  7 16 18 13  3  5  4 19 12  4 12
+ 12 12  4 17 24  2  7  2  2 24  2  2 24  6 20 22 22 24 24  2  2 22 14 20
+ 14 24 26 29 27 25 25 28 11  1 23  5 11  0 10 28 21 29 29 29 17]
+```
+
+同时你也能看到输出的聚类结果文件hero\_out.csv（它保存在你本地运行的文件夹里，程序会自动输出这个文件，你可以自己看下）。
+
+我来简单讲解下程序的几个模块。
+
+**关于引用包**
+
+首先我们会用DataFrame数据结构来保存读取的数据，最后的聚类结果会写入到CSV文件中，因此会用到pandas和CSV工具包。另外我们需要对数据进行可视化，采用热力图展现属性之间的相关性，这里会用到matplotlib.pyplot和seaborn工具包。在数据规范化中我们使用到了Z-Score规范化，用到了StandardScaler类，最后我们还会用到sklearn中的GaussianMixture类进行聚类。
+
+**数据可视化的探索**
+
+你能看到我们将20个英雄属性之间的关系用热力图呈现了出来，中间的数字代表两个属性之间的关系系数，最大值为1，代表完全正相关，关系系数越大代表相关性越大。从图中你能看出来“最大生命”“生命成长”和“初始生命”这三个属性的相关性大，我们只需要保留一个属性即可。同理我们也可以对其他相关性大的属性进行筛选，保留一个。你在代码中可以看到，我用features\_remain数组保留了特征选择的属性，这样就将原本的20个属性降维到了13个属性。
+
+**关于数据规范化**
+
+我们能看到“最大攻速”这个属性值是百分数，不适合做矩阵运算，因此我们需要将百分数转化为小数。我们也看到“攻击范围”这个字段的取值为远程或者近战，也不适合矩阵运算，我们将取值做个映射，用1代表远程，0代表近战。然后采用Z-Score规范化，对特征矩阵进行规范化。
+
+**在聚类阶段**
+
+我们采用了GMM高斯混合模型，并将结果输出到CSV文件中。
+
+这里我将输出的结果截取了一段（设置聚类个数为30）：
+
+![](https://static001.geekbang.org/resource/image/5c/ce/5c74ffe6741f1bf1bfdf7711932d47ce.png?wh=1262%2A446)  
+第一列代表的是分组（簇），我们能看到张飞、程咬金分到了一组，牛魔、白起是一组，老夫子自己是一组，达摩、典韦是一组。聚类的特点是相同类别之间的属性值相近，不同类别的属性值差异大。因此如果你擅长用典韦这个英雄，不防试试达摩这个英雄。同样你也可以在张飞和程咬金中进行切换。这样就算你的英雄被别人选中了，你依然可以有备选的英雄可以使用。
+
+## 总结
+
+今天我带你一起做了EM聚类的实战，具体使用的是GMM高斯混合模型。从整个流程中可以看出，我们需要经过数据加载、数据探索、数据可视化、特征选择、GMM聚类和结果分析等环节。
+
+聚类和分类不一样，聚类是无监督的学习方式，也就是我们没有实际的结果可以进行比对，所以聚类的结果评估不像分类准确率一样直观，那么有没有聚类结果的评估方式呢？这里我们可以采用Calinski-Harabaz指标，代码如下：
+
+```
+from sklearn.metrics import calinski_harabaz_score
+print(calinski_harabaz_score(data, prediction))
+```
+
+指标分数越高，代表聚类效果越好，也就是相同类中的差异性小，不同类之间的差异性大。当然具体聚类的结果含义，我们需要人工来分析，也就是当这些数据被分成不同的类别之后，具体每个类表代表的含义。
+
+另外聚类算法也可以作为其他数据挖掘算法的预处理阶段，这样我们就可以将数据进行降维了。
+
+![](https://static001.geekbang.org/resource/image/43/d7/43b35b8f49ac83799ea1ca88383609d7.png?wh=1729%2A984)  
+最后依然是两道思考题。针对王者荣耀的英雄数据集，我进行了特征选择，实际上王者荣耀的英雄数量并不多，我们可以省略特征选择这个阶段，你不妨用全部的特征值矩阵进行聚类训练，来看下聚类得到的结果。第二个问题是，依然用王者荣耀英雄数据集，在聚类个数为3以及聚类个数为30的情况下，请你使用GMM高斯混合模型对数据集进行聚类，并得出Calinski\_Harabaz分数。
+
+欢迎在评论区与我分享你的答案，也欢迎点击“请朋友读”，把这篇文章分享给你的朋友或者同事。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>哆哩咪fa👻</span> 👍（15） 💬（5）<div>才买的课，请问有vx群或者可以相互沟通的群么</div>2019-02-18</li><br/><li><span>高桥凉瓜</span> 👍（11） 💬（2）<div>之所以热力图不显示最大攻速和攻击范围，是因为这两列的数据的类型是string，想要在热力图也显示这两项的话可以在构建热力图前就进行数据清洗：
 ```
 data[u&#39;最大攻速&#39;] = data[u&#39;最大攻速&#39;].apply(lambda x: float(x.strip(&#39;%&#39;))&#47;100)
 data[u&#39;攻击范围&#39;]=data[u&#39;攻击范围&#39;].map({&#39;远程&#39;:1,&#39;近战&#39;:0})
-```</div>2019-03-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f8/99/8e760987.jpg" width="30px"><span>許敲敲</span> 👍（7） 💬（1）<div>最后一个 data_to_csv()也最好加上encoding=&#39;gb18030&#39;;不然会乱码</div>2019-02-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ab/5d/430ed3b6.jpg" width="30px"><span>从未在此</span> 👍（4） 💬（1）<div>问下老师，当几个特征相关性较大时，怎么选择最具有代表性的那个呢</div>2019-02-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/60/de/5c67895a.jpg" width="30px"><span>周飞</span> 👍（2） 💬（2）<div>1.不做特征选择的情况下，得到的Calinski_Harabaz 分数 大约是 23.1530273621 ,做特征选择的情况下 大约是：21.2142191471.
-2.聚类个数为3的时候 Calinski_Harabaz 分数 大约是 22.9119297953 。聚类个数为30的时候 Calinski_Harabaz 分数 大约是 21.2142191471</div>2019-04-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ab/5d/430ed3b6.jpg" width="30px"><span>从未在此</span> 👍（2） 💬（2）<div>还有，非数值型的特征怎么进行聚类？</div>2019-02-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/17/01/1c5309a3.jpg" width="30px"><span>McKee Chen</span> 👍（1） 💬（1）<div>分别针对以下三种情况进行聚类操作，得到的Calinski_Harabaz 分数分别为：
+```</div>2019-03-27</li><br/><li><span>許敲敲</span> 👍（7） 💬（1）<div>最后一个 data_to_csv()也最好加上encoding=&#39;gb18030&#39;;不然会乱码</div>2019-02-19</li><br/><li><span>从未在此</span> 👍（4） 💬（1）<div>问下老师，当几个特征相关性较大时，怎么选择最具有代表性的那个呢</div>2019-02-18</li><br/><li><span>周飞</span> 👍（2） 💬（2）<div>1.不做特征选择的情况下，得到的Calinski_Harabaz 分数 大约是 23.1530273621 ,做特征选择的情况下 大约是：21.2142191471.
+2.聚类个数为3的时候 Calinski_Harabaz 分数 大约是 22.9119297953 。聚类个数为30的时候 Calinski_Harabaz 分数 大约是 21.2142191471</div>2019-04-27</li><br/><li><span>从未在此</span> 👍（2） 💬（2）<div>还有，非数值型的特征怎么进行聚类？</div>2019-02-18</li><br/><li><span>McKee Chen</span> 👍（1） 💬（1）<div>分别针对以下三种情况进行聚类操作，得到的Calinski_Harabaz 分数分别为：
 1.使用所有特征数，聚类类别为30，得分为33.286020580818494
 2.特征数降维处理后，聚类类别为30，得分为27.964658388803077
 3.特征数降维处理后，聚类类别为3，得分为19.358008332914284
 
-根据以上结果，可以总结出：当聚类类别数相同时，特征数越多，聚类效果越好；当进行特征数降维处理时，聚类类别数越多，聚类效果越好</div>2021-01-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/9d/eb/2c7f3d3b.jpg" width="30px"><span>Ricky</span> 👍（0） 💬（1）<div>问个问题：关于calinski_harabaz_score的使用，同一套样本数据，用不同的模型计算prediction后，对比值得大小么？
-谢谢！</div>2020-04-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/36/88/20b6a6ee.jpg" width="30px"><span>Simon</span> 👍（0） 💬（1）<div>&#39;攻击范围&#39; 特征进行映射为0,1后，是不是可以不用z-score了？</div>2020-04-09</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/oseia6IjJIPziamTI2EQ0Bpr8icUicXTea2UuH105t4Bia4yFwBHld49cIQbjORvDdTtMCVdL39H9WxFwzyXspqqHUg/132" width="30px"><span>groot888</span> 👍（0） 💬（2）<div>热力图展现出来，相关的分数大，是不是也可以当做一种聚类算法。</div>2020-01-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a3/87/c415e370.jpg" width="30px"><span>滢</span> 👍（0） 💬（1）<div>全部特征，聚类个数为3个：
+根据以上结果，可以总结出：当聚类类别数相同时，特征数越多，聚类效果越好；当进行特征数降维处理时，聚类类别数越多，聚类效果越好</div>2021-01-13</li><br/><li><span>Ricky</span> 👍（0） 💬（1）<div>问个问题：关于calinski_harabaz_score的使用，同一套样本数据，用不同的模型计算prediction后，对比值得大小么？
+谢谢！</div>2020-04-16</li><br/><li><span>Simon</span> 👍（0） 💬（1）<div>&#39;攻击范围&#39; 特征进行映射为0,1后，是不是可以不用z-score了？</div>2020-04-09</li><br/><li><span>groot888</span> 👍（0） 💬（2）<div>热力图展现出来，相关的分数大，是不是也可以当做一种聚类算法。</div>2020-01-22</li><br/><li><span>滢</span> 👍（0） 💬（1）<div>全部特征，聚类个数为3个：
 [0 0 2 0 2 2 2 2 0 0 0 0 0 0 0 0 0 0 2 1 1 1 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1
  1 0 1 1 1 1 1 1 1 0 0 0 1 2 0 2 0 0 0 0 0 1 2 0 2 2 0 2 1 1 0 1]
 22.91192979526994
@@ -41,7 +180,7 @@ data[u&#39;攻击范围&#39;]=data[u&#39;攻击范围&#39;].map({&#39;远程&#39
 [16 12 11 13  2  2 19 11  3 12 15 12 13  8 24 15 25 13 21 27 26  7 27  7
   7  7 27 22 28  1  8  1 29 28  1  1 28  6 20 18 29 28 28  1 28 18 12 20
  12 28 17 14 21  4  4 16  0 12 23 21  0  5  9 16 10 14 14 16 22]
-22.211084900636873</div>2019-04-20</li><br/><li><img src="" width="30px"><span>hlz-123</span> 👍（0） 💬（1）<div>老师，同一程序每次运行结果不一样，有时赵云和孙悟空聚在一类，有时赵云和兰陵王聚在一类，这种情况正常吗？</div>2019-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0c/0f/93d1c8eb.jpg" width="30px"><span>mickey</span> 👍（0） 💬（1）<div># -*- coding: utf-8 -*-
+22.211084900636873</div>2019-04-20</li><br/><li><span>hlz-123</span> 👍（0） 💬（1）<div>老师，同一程序每次运行结果不一样，有时赵云和孙悟空聚在一类，有时赵云和兰陵王聚在一类，这种情况正常吗？</div>2019-03-24</li><br/><li><span>mickey</span> 👍（0） 💬（1）<div># -*- coding: utf-8 -*-
 import sys
 reload(sys)
 sys.setdefaultencoding(&#39;utf8&#39;)
@@ -102,7 +241,7 @@ print(calinski_harabaz_score(data, prediction))
 68   2  百里守约  5611  185.1  3019  ...         16  28.00%    远程    射手     刺客
 
 [69 rows x 24 columns]
-23.869655882044263</div>2019-03-01</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/wJphZ3HcvhjVUyTWCIsCugzfQY5NAy6VJ0XoPLibDlcHWMswFmFe678zd0lUjFETia80NQhyQcVnGDlKgKPcRGyw/132" width="30px"><span>JingZ</span> 👍（0） 💬（1）<div># EM算法
+23.869655882044263</div>2019-03-01</li><br/><li><span>JingZ</span> 👍（0） 💬（1）<div># EM算法
 全部特征值
 [20 11  9 27  5  5  0  9  6  2 16 22 27 11 25 16 24  6  5 14  7 14 13 14
  14 14 13 18 21  8 11  8 28 21  8  8 21 23  1 11 28 21 21  8  8 28 22  1
@@ -118,7 +257,7 @@ print(calinski_harabaz_score(data, prediction))
 [10  1  9  8  2  2  6  9  8 27  4  5  8  1 19  4 25  8 12  3 23 17  3 17
  17 17  3 11  0 13  1 18 18  0 13 18  0  7 20 22 22  0  0 18  0 22  5 20
   5  0 28 14 12 24 24 10 10 26 21  2 10 29 15 10 16 26 26 10 11]
-21.034625759895164</div>2019-02-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7d/05/4bad0c7c.jpg" width="30px"><span>Geek_hve78z</span> 👍（0） 💬（1）<div>1、用全部的特征值矩阵进行聚类训练
+21.034625759895164</div>2019-02-27</li><br/><li><span>Geek_hve78z</span> 👍（0） 💬（1）<div>1、用全部的特征值矩阵进行聚类训练
 [12 17  9 13  1  1 15  9  3 27 18 24 13 17 14 18 12  3  1  5 23 11  5 11
  11 11  5 22  7 26 17  7 21  7 26  7  7  4  0 28 21  7  7  7  7 28 24  0
  17  7 25  2  8 19 19 12 10  2 20  1 10  8 16 12  6  2 29  2 22]
@@ -134,84 +273,5 @@ print(calinski_harabaz_score(data, prediction))
 [20 12  9 16  3  3 18  9  6 20 15  4 16 28 26 15  0  6 23 14  7  5 14  5
   5  5 14 24 10 29 28 10 10 10 29 10  1 21 25 19 10  1 10 10 10 19  4 25
   4 10  8  2 23 17 17 20  2 12 19  3  2 11 13 20 22 27 27 12 24]
-聚类结果评估：21.300387287083122</div>2019-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/26/53/60fe31fb.jpg" width="30px"><span>深白浅黑</span> 👍（0） 💬（1）<div>全部特征
-聚类个数为3：
-[2 2 0 2 0 0 0 0 2 2 2 2 2 2 2 2 2 2 0 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 1 1
- 1 1 2 1 1 1 1 1 1 2 1 2 1 0 2 0 1 1 2 2 2 1 0 2 0 0 2 0 1 1 2 1]
-34.46996086536748
-聚类个数为30：
-[22 23 11 16  1  1 25 11  2  7  9  7 16 24 28  9 14  2  1  4  5  4 20  4
-  4  4 20 27  0  8 23  0 26  0  8  0  0 17 15 10 26  0  0 26  0 10 29 15
-  7  0  6  3 12 13 13 22 22 23 18  1 22 12 21 22 19  3  3 23 27]
-25.04467629288216</div>2019-02-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7d/05/4bad0c7c.jpg" width="30px"><span>Geek_hve78z</span> 👍（28） 💬（2）<div>有一个疑惑，在数据规范化的时候，为何Z-Score进行规范化，而不是Min-Max进行规范化，虽然最后的结果是差不多的。
-请问在数据规范化时，何时用Z-Score进行规范化，何时是Min-Max</div>2019-02-24</li><br/><li><img src="" width="30px"><span>iamtalent123</span> 👍（12） 💬（0）<div>老师，请问有没有什么方法在得到相关性系数后，自动筛选出不太相关的特征呢？在特征比较多的时候，自己一个一个的看是不是有点太费时了？</div>2019-03-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/25/bb/20c876ce.jpg" width="30px"><span>Frank</span> 👍（8） 💬（0）<div>老师，covariance_type这个参数，什么情况下选择什么类型，能不能再说的详细点儿呢？</div>2019-03-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a4/5a/e708e423.jpg" width="30px"><span>third</span> 👍（8） 💬（0）<div>思考：为什么分类越少，反而指标分数越高，分类效果越好？
-总样本过少，分成的类越多，每个类的所拥有的个体相对越少，类中个体差异变大，导致指标分数变低
-为3个
-[2 2 1 2 1 1 1 1 2 2 2 2 2 0 2 2 2 2 1 0 0 0 0 0 0 0 0 0 0 0 2 0 0 0 0 0 0
- 0 0 0 0 0 0 0 0 0 2 0 2 0 1 0 1 0 0 2 2 0 0 1 2 1 1 2 1 0 0 0 0]
-34.74970397246901
-
-为30
-[ 1 20  5 13 26 15 14  5  8 20 16 20 13  0 22 16 19 22 26 10  6  4 10  4
-  4  4 10 12  3 27  0 27 29  3 27  3  3 24 27 18 29  3  3 27  3 18 20 27
- 20  3 21 11  2 23 23  1 28 11 25 26 28  2 17  1  9 11 11  7 12]
-24.220124542171177</div>2019-02-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/d4/47/6d9f2da6.jpg" width="30px"><span>Miracle</span> 👍（6） 💬（1）<div>老师，我有一个疑惑，  这个EM算法算硬币的那个看明白了，但是放到一个具体的项目里面，很好奇究竟是怎么聚类的呢？   比如就拿上面这个王者荣耀英雄聚类来讲，我们给的输入是好多条数据，然后我假设聚成3类。 那么这里的隐藏变量是啥？  E步和M步又都是怎么操作的啊？  能不能讲讲这个流程啊？    </div>2020-02-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/a9/32/eb71b457.jpg" width="30px"><span>Grandia_Z</span> 👍（5） 💬（1）<div>画热力图时 为什么没有“最大攻速”和“攻击范围”这两项</div>2019-02-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/8e/0a/31ec5392.jpg" width="30px"><span>挠头侠</span> 👍（2） 💬（0）<div>老师能否说明一下不同的协方差类型会带来一个什么样的效果呢？</div>2019-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0c/0f/93d1c8eb.jpg" width="30px"><span>mickey</span> 👍（2） 💬（0）<div>跑案例提示如下，请问老师怎么破？谢谢。
-
-SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: http:&#47;&#47;pandas.pydata.org&#47;pandas-docs&#47;stable&#47;indexing.html#indexing-view-versus-copy
-  data[u&#39;最大攻速&#39;] = data[u&#39;最大攻速&#39;].apply(lambda x: float(x.strip(&#39;%&#39;)) &#47; 100)
-E:\DevelopTool\Python\Python27\lib\site-packages\pandas\core\indexes\base.py:3259: UnicodeWarning: Unicode equal comparison failed to convert both arguments to Unicode - interpreting them as being unequal
-  indexer = self._engine.get_indexer(target._ndarray_values)
-G:&#47;Program&#47;python&#47;Geekbang&#47;DataAnalysis&#47;Part01&#47;Lesson29&#47;01_GMM.py:31: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: http:&#47;&#47;pandas.pydata.org&#47;pandas-docs&#47;stable&#47;indexing.html#indexing-view-versus-copy
-  data[u&#39;攻击范围&#39;] = data[u&#39;攻击范围&#39;].map({&#39;远程&#39;: 1, &#39;近战&#39;: 0})
-E:\DevelopTool\Python\Python27\lib\site-packages\sklearn\preprocessing\data.py:625: DataConversionWarning: Data with input dtype int64, float64 were all converted to float64 by StandardScaler.
-  return self.partial_fit(X, y)
-E:\DevelopTool\Python\Python27\lib\site-packages\sklearn\utils\extmath.py:776: RuntimeWarning: invalid value encountered in true_divide
-  updated_mean = (last_sum + new_sum) &#47; updated_sample_count
-...
-Traceback (most recent call last):
-  ...
-ValueError: Input contains NaN, infinity or a value too large for dtype(&#39;float64&#39;).</div>2019-03-01</li><br/><li><img src="" width="30px"><span>yanyu-xin</span> 👍（1） 💬（0）<div>出现两个问题：
-一、发生异常: ValueError could not convert string to float: &#39;近战&#39; File &quot;D:\EM_data-master\here_em.py&quot;, line 21, in &lt;module&gt; corr = data[features].corr() ^^^^^^^^^^^^^^^^^^^^^ ValueError: could not convert string to float: &#39;近战&#39;
-解决：在尝试计算数据帧（DataFrame）中特征之间的相关性时，使用了corr()方法。这个方法默认情况下只能在数值型数据上进行计算，无法处理字符串类型的数据。为了解决这个问题，需要确保所有参与相关性计算的特征都是数值型数据。为此需要在代码中　“　corr = data[features].corr()　”　前，增加两行实现的：
-data[u&#39;最大攻速&#39;] = data[u&#39;最大攻速&#39;].apply(lambda x: float(x.strip(&#39;%&#39;))&#47;100)
-data[u&#39;攻击范围&#39;]=data[u&#39;攻击范围&#39;].map({&#39;远程&#39;:1,&#39;近战&#39;:0})
-
-二、发生异常: ImportError cannot import name &#39;calinski_harabaz_score&#39; from &#39;sklearn.metrics&#39; (c:\Python311\Lib\site-packages\sklearn\metrics\__init__.py) File &quot;D:\EM_data-master\here_em1.py&quot;, line 49, in &lt;module&gt; from sklearn.metrics import calinski_harabaz_score ImportError: cannot import name &#39;calinski_harabaz_score&#39; from &#39;sklearn.metrics&#39; (c:\Python311\Lib\site-packages\sklearn\metrics\__init__.py)
-这个问题的原因是在较新版本的scikit-learn中，calinski_harabaz_score已经被重命名为calinski_harabasz_score。因此，正确的导入方式应该是从sklearn.metrics导入calinski_harabasz_score。为了解决这个问题，安装更新最新scikit-learn版本，
-将代码：
-from sklearn.metrics import calinski_harabaz_score
-print(calinski_harabaz_score(data, prediction))
-改为：
-from sklearn.metrics import calinski_harabasz_score
-print(calinski_harabasz_score(data, prediction))</div>2024-04-11</li><br/><li><img src="" width="30px"><span>Geek_e888b2</span> 👍（1） 💬（0）<div>最后.insert()和.to_scv()括号里面怎么理解？</div>2021-09-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/aa/d1/076482f3.jpg" width="30px"><span>白夜</span> 👍（1） 💬（1）<div>这个相关性的计算原理能扩展讲讲吗？蛮好奇的</div>2019-02-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/86/79/066a062a.jpg" width="30px"><span>非同凡想</span> 👍（0） 💬（0）<div>1.全部特征 30个聚类
-[25 13  8  5  1  1 21  8 12 13  2 13  5  4 28  2 15 12  1 24 18  9 24  9
-  9  9 24 22  6  6  4  6  6  6  6  6  6  7 23  0  6  6  6  6  6  0 27 23
- 13  6 16 26  1  3  3 25 11 26 14  1 11 10 17 25 20 26 19 29 22]
-23.507078366657264
-
-2.全部特征 3个聚类
-[2 2 1 2 1 1 1 1 2 2 2 2 2 0 2 2 2 2 1 0 0 0 0 0 0 0 0 0 0 0 2 0 0 0 0 0 0
- 0 0 0 0 0 0 0 0 0 2 0 2 0 1 0 1 0 0 2 2 0 0 1 2 1 1 2 1 0 0 0 0]
-34.74970397246901
-
-3. 12个特征，30个聚类
-[ 9 19  5 12  3  3 23 29 12  1  7 19 12  6 20  7 28 12  3  2 17  2  2  2
-  2  2  2  0 21 26  6 21  4 21 26 21 21 10 14 11  4 21 21  4 21 11 19 14
- 19 21 27 13  8 16 16  9 25 19 24  3 25  8 15  9 18 13 13 22  0]
-20.931148834796
-
-4.12个特征，3个聚类
-[0 0 1 1 1 1 2 1 1 0 1 0 1 0 1 1 0 1 1 2 2 2 2 2 2 2 2 2 2 2 0 2 2 2 2 2 2
- 2 0 2 2 2 2 2 2 2 0 0 0 2 0 0 0 0 0 0 0 0 2 1 0 0 0 0 0 0 0 0 2]
-20.773369734506527</div>2020-11-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/33/07/8f351609.jpg" width="30px"><span>JustDoDT</span> 👍（0） 💬（0）<div>交作业：
-https:&#47;&#47;github.com&#47;LearningChanging&#47;Data-analysis-in-action&#47;tree&#47;master&#47;29-EM%E8%81%9A%E7%B1%BB%EF%BC%88%E4%B8%8B%EF%BC%89%EF%BC%9A%E7%94%A8EM%E7%AE%97%E6%B3%95%E5%AF%B9%E7%8E%8B%E8%80%85%E8%8D%A3%E8%80%80%E8%8B%B1%E9%9B%84%E8%BF%9B%E8%A1%8C%E5%88%92%E5%88%86</div>2020-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/5d/27/74e152d3.jpg" width="30px"><span>滨滨</span> 👍（0） 💬（0）<div>为什么分类越少，反而指标分数越高，分类效果越好？
-总样本过少，分成的类越多，每个类的所拥有的个体相对越少，类中个体差异变大，导致指标分数变低</div>2019-04-05</li><br/>
+聚类结果评估：21.300387287083122</div>2019-02-24</li><br/>
 </ul>

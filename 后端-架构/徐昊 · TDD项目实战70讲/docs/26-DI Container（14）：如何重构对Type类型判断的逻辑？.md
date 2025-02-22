@@ -267,7 +267,28 @@ public class ContextConfig {
 - 自定义Scope标注
   
   - 可向容器注册自定义Scope标注的回调
+
+## 视频演示
+
+让我们进入今天的部分：
+
+## 思考题
+
+在进入下节课之前，希望你能认真思考如下两个问题，并选择最有感触的一道进行回答。
+
+1. 如何封装类型判断逻辑以替换对于Type的依赖？
+2. 在最近的学习与实操过程中，有什么困难或疑惑的地方吗？
+
+**编辑来信**：
+
+> 第二期“TDD·代码评点”活动启动啦！为了帮助你更平滑地过渡到第三个实战项目，徐老师发起了代码评点活动。  
+> 　  
+> 你可以填写[学习问卷](https://jinshuju.net/f/fnh84B)提交项目代码，而后，徐老师会一一查看，并进行评点与答疑。关于评点的详细内容，我们也将制成加餐展示在专栏里，供其他同学学习与参考。  
+> 　  
+> 请注意，此次收集时间截至5月27日晚上12点。此外，我也会从中选出1-2位同学，送出《重构与模式》一书。请抓紧上车，入股不亏哦！
+
+欢迎把你的想法分享在留言区，也欢迎把你的项目代码的链接分享出来。相信经过你的思考与实操，学习效果会更好！
 <div><strong>精选留言（4）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/ac/87/8ed5880a.jpg" width="30px"><span>大碗</span> 👍（0） 💬（0）<div>在多个类出现重复的代码，是散单式修改的坏味道</div>2022-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/65/21/101a7075.jpg" width="30px"><span>davix</span> 👍（0） 💬（0）<div>去掉if&#47;else就是引入interface，用兩個class實現分離行為</div>2022-08-19</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/rAqwExT20D9WdnlEmZpzXp9HrorvyeGOdpicPCwfAREPJuM1F5I3A8cTbCg2LwggfxdEP0qPwCuAWjrIRiaNj4MQ/132" width="30px"><span>夏天</span> 👍（0） 💬（0）<div>containerTypeContext
-classTypeContext</div>2022-05-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（0）<div>原来针对不同类型的不同处理可以通过封装进行解决</div>2022-05-18</li><br/>
+<li><span>大碗</span> 👍（0） 💬（0）<div>在多个类出现重复的代码，是散单式修改的坏味道</div>2022-08-22</li><br/><li><span>davix</span> 👍（0） 💬（0）<div>去掉if&#47;else就是引入interface，用兩個class實現分離行為</div>2022-08-19</li><br/><li><span>夏天</span> 👍（0） 💬（0）<div>containerTypeContext
+classTypeContext</div>2022-05-21</li><br/><li><span>aoe</span> 👍（0） 💬（0）<div>原来针对不同类型的不同处理可以通过封装进行解决</div>2022-05-18</li><br/>
 </ul>

@@ -49,8 +49,22 @@ public class StudentsResource {
     }
 }
 ```
+
+## 依赖注入容器的大致功能
+
+首先让我们从依赖注入容器开始。关于依赖注入的来龙去脉可以参看Martin Fowler在2004年写的文章[《](https://martinfowler.com/articles/injection.html)[IoC容器与依赖注入模式](https://martinfowler.com/articles/injection.html)[》](https://martinfowler.com/articles/injection.html)。
+
+Jakarta Dependency Injection的功能主要分为三部分：组件的构造、依赖的选择以及生命周期控制。详细说明如视频中所示：
+
+Jakarta Dependency Injection中没有规定而又常用的部分有：配置容器如何配置、容器层级结构以及生命周期回调。详细说明如视频中所示：
+
+## 思考题
+
+那么以此为基础，要如何分解功能点呢？请你自行练习。下节课，我会给出我做的分解列表。
+
+欢迎把你的思考和想法分享在留言区，也欢迎你扫描详情页的二维码加入读者交流群。我们下节课再见！
 <div><strong>精选留言（9）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/21/69/79/b4132042.jpg" width="30px"><span>🐑</span> 👍（0） 💬（0）<div>TDD专栏福利大合集：
+<li><span>🐑</span> 👍（0） 💬（0）<div>TDD专栏福利大合集：
 
 1、打卡赢好礼（4月23日-5月10日）：正在进行中，学习专栏第1-10讲并在留言区打卡，结束后奖励；
 
@@ -58,12 +72,12 @@ public class StudentsResource {
 
 3、线上带你练：根据专栏更新节奏和老师时间安排确定，徐昊老师会线上带四个同学手把手地改代码，敬请期待！
 
-具体活动介绍见 👉 http:&#47;&#47;gk.link&#47;a&#47;11jPi</div>2022-04-28</li><br/><li><img src="" width="30px"><span>Flynn</span> 👍（0） 💬（1）<div>&#47;&#47;TODO 1.注入框架是否注册该对象
+具体活动介绍见 👉 http:&#47;&#47;gk.link&#47;a&#47;11jPi</div>2022-04-28</li><br/><li><span>Flynn</span> 👍（0） 💬（1）<div>&#47;&#47;TODO 1.注入框架是否注册该对象
 &#47;&#47;TODO 2.constructor注入获取到的对象是期望的
 &#47;&#47;TODO 2.filed注入获取到的对象是期望的
 &#47;&#47;TODO 3.method注入获取到的对象是期望的
 &#47;&#47;TODO 4.同一scope生命周期是同一个对象
-&#47;&#47;TODO 5.不同scope生命周期是不同对象</div>2022-04-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/de/cf/ef2e0501.jpg" width="30px"><span>奇小易</span> 👍（3） 💬（0）<div>&gt; 功能梳理
+&#47;&#47;TODO 5.不同scope生命周期是不同对象</div>2022-04-16</li><br/><li><span>奇小易</span> 👍（3） 💬（0）<div>&gt; 功能梳理
 
 ```text
 jakarata dependency injection 核心功能
@@ -122,7 +136,7 @@ Sad Path:
 
 ```
 
-</div>2022-05-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（3） 💬（0）<div>笔记 https:&#47;&#47;wyyl1.com&#47;post&#47;19&#47;07&#47;
+</div>2022-05-04</li><br/><li><span>aoe</span> 👍（3） 💬（0）<div>笔记 https:&#47;&#47;wyyl1.com&#47;post&#47;19&#47;07&#47;
 
 希望留言可以支持 Markdown 格式，这样更容易阅读
 
@@ -182,7 +196,7 @@ Sad Path:
 - 多个 @Named 重名
 - 不支持第三方 jar 中类由容器统一管理
 
-单例模式下创建对象需要考虑内存消耗、线程安全的问题</div>2022-04-14</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKPuKKjuhiaOGQ8kfMmEnMkQAwdZib5NI3EQzn9lAU0ewX8msoqt36T2k7Z9Sh1JUUDCCn6jwBTvgHA/132" width="30px"><span>于</span> 👍（2） 💬（0）<div>用一个一般复杂度的业务系统更有实用价值，更利于大家跟随、模仿</div>2022-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/65/21/101a7075.jpg" width="30px"><span>davix</span> 👍（2） 💬（0）<div>請老師指導下go programmer怎麼學、練習這個項目。</div>2022-05-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/9d/c0/cb5341ec.jpg" width="30px"><span>leesper</span> 👍（1） 💬（0）<div>思考题：因为暂时不存在架构愿景，因此可以把功能点当成功能上下文：组件构造、依赖选择、生命周期管理</div>2023-01-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/20/57/22927d52.jpg" width="30px"><span>霜期飞敛</span> 👍（1） 💬（0）<div>
+单例模式下创建对象需要考虑内存消耗、线程安全的问题</div>2022-04-14</li><br/><li><span>于</span> 👍（2） 💬（0）<div>用一个一般复杂度的业务系统更有实用价值，更利于大家跟随、模仿</div>2022-07-02</li><br/><li><span>davix</span> 👍（2） 💬（0）<div>請老師指導下go programmer怎麼學、練習這個項目。</div>2022-05-03</li><br/><li><span>leesper</span> 👍（1） 💬（0）<div>思考题：因为暂时不存在架构愿景，因此可以把功能点当成功能上下文：组件构造、依赖选择、生命周期管理</div>2023-01-21</li><br/><li><span>霜期飞敛</span> 👍（1） 💬（0）<div>
 - 组件的构造
   - 扫描指定目录的所有类，识别出所有带有注解@Inject的类
     - sad path：不同包名下的同名class，通过加上包名区分
@@ -232,5 +246,5 @@ Sad Path:
     - singleton 单例实现，多次获取Class的实例返回一个实例
     - prototype 和默认情况相同
     - default value： prototype
-</div>2022-04-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/65/21/101a7075.jpg" width="30px"><span>davix</span> 👍（1） 💬（1）<div>學這門課最遺憾的是身為go程序員，不知道Java 這些都是啥</div>2022-04-15</li><br/>
+</div>2022-04-30</li><br/><li><span>davix</span> 👍（1） 💬（1）<div>學這門課最遺憾的是身為go程序員，不知道Java 這些都是啥</div>2022-04-15</li><br/>
 </ul>

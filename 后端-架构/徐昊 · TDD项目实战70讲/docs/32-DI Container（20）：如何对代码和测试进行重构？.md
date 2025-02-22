@@ -337,12 +337,33 @@ class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
 - 自定义Scope标注
   
   - 可向容器注册自定义Scope标注的回调
+
+## 视频演示
+
+让我们进入今天的部分：
+
+## 思考题
+
+在进入下节课之前，希望你能认真思考如下两个问题，并选择最有感触的一道进行回答。
+
+1. WithQualifier在不同的测试上下文中，持续出现，这意味着什么？
+2. 在今天的视频演示中，最让你有收获的部分是什么？
+
+**编辑来信**：
+
+> 第二期“TDD·代码评点”活动正式启动啦！为了帮助你更平滑地过渡到第三个实战项目，徐老师发起了代码评点活动。  
+> 　  
+> 你可以填写[学习问卷](https://jinshuju.net/f/fnh84B)提交项目代码，而后，徐老师会一一查看，并进行评点与答疑。关于评点的详细内容，我们也将制成加餐展示在专栏里，供其他同学学习与参考。  
+> 　  
+> 请注意，此次收集时间截至5月27日12点。此外，我也会从中选出1-2位同学，送出《重构与模式》一书。请抓紧上车，入股不亏哦！
+
+欢迎把你的想法分享在留言区，也欢迎把你的项目代码的链接分享出来。相信经过你的思考与实操，学习效果会更好！
 <div><strong>精选留言（3）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/e9/22/7606c6ba.jpg" width="30px"><span>张铁林</span> 👍（1） 💬（0）<div>https:&#47;&#47;github.com&#47;vfbiby&#47;tdd-di-container&#47;tree&#47;master
-104个测试的数字对上了，就是不知道是不是一致</div>2022-06-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（1） 💬（0）<div>建模上的缺陷
+<li><span>张铁林</span> 👍（1） 💬（0）<div>https:&#47;&#47;github.com&#47;vfbiby&#47;tdd-di-container&#47;tree&#47;master
+104个测试的数字对上了，就是不知道是不是一致</div>2022-06-03</li><br/><li><span>aoe</span> 👍（1） 💬（0）<div>建模上的缺陷
 
 - 模型冗余：相同的计算逻辑同时出现在构造方法、实现方法中
 - 模型不能真正反应需求上要解决的问题
 - 对概念上的封装存在缺失
-- 在工作中很难发现，缓慢的让代码进入到一个滑坡状态、越来越复杂</div>2022-05-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fe/fa/2a046821.jpg" width="30px"><span>人间四月天</span> 👍（0） 💬（0）<div>厉害，重构真厉害</div>2022-05-24</li><br/>
+- 在工作中很难发现，缓慢的让代码进入到一个滑坡状态、越来越复杂</div>2022-05-24</li><br/><li><span>人间四月天</span> 👍（0） 💬（0）<div>厉害，重构真厉害</div>2022-05-24</li><br/>
 </ul>

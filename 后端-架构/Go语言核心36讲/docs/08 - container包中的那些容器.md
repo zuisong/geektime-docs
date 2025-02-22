@@ -23,14 +23,131 @@ func (l *List) MoveToBack(e *Element)
 具体问题是，如果我们自己生成这样的值，然后把它作为“给定的元素”传给链表的方法，那么会发生什么？链表会接受它吗？
 
 这里，给出一个**典型回答**：不会接受，这些方法将不会对链表做出任何改动。因为我们自己生成的`Element`值并不在链表中，所以也就谈不上“在链表中移动元素”。更何况链表不允许我们把自己生成的`Element`值插入其中。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/46/50/511205c3.jpg" width="30px"><span>louis</span> 👍（45） 💬（5）<div>郝老师，这里不太理解什么叫“自己生成的Element类型值”？把自己生成的Element类型值传给链表——这个能不能再通俗点描述？</div>2019-04-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b7/b5/07fc5f58.jpg" width="30px"><span>fliter</span> 👍（10） 💬（2）<div>为什么不把list像slice，map一样作为一种不需要import其他包就能使用的数据类型？是因为使用场景较后两者比较少吗</div>2018-08-29</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKdiaUiaCYQe9tibemaNU5ya7RrU3MYcSGEIG7zF27u0ZDnZs5lYxPb7KPrAsj3bibM79QIOnPXAatfIw/132" width="30px"><span>Geek_a8be59</span> 👍（7） 💬（2）<div>您好 能否出一个list 链表生成的一个图解，现在我看源码用图去模拟生成 一直搞混掉，特别是在初始化的时候prev和next都指向自身的root 这个很迷糊
+
+## 问题解析
+
+在`List`包含的方法中，用于插入新元素的那些方法都只接受`interface{}`类型的值。这些方法在内部会使用`Element`值，包装接收到的新元素。
+
+这样做正是为了避免直接使用我们自己生成的元素，主要原因是避免链表的内部关联，遭到外界破坏，这对于链表本身以及我们这些使用者来说都是有益的。
+
+`List`的方法还有下面这几种：
+
+`Front`和`Back`方法分别用于获取链表中最前端和最后端的元素，  
+`InsertBefore`和`InsertAfter`方法分别用于在指定的元素之前和之后插入新元素，`PushFront`和`PushBack`方法则分别用于在链表的最前端和最后端插入新元素。
+
+```
+func (l *List) Front() *Element
+func (l *List) Back() *Element
+
+func (l *List) InsertBefore(v interface{}, mark *Element) *Element
+func (l *List) InsertAfter(v interface{}, mark *Element) *Element
+
+func (l *List) PushFront(v interface{}) *Element
+func (l *List) PushBack(v interface{}) *Element
+```
+
+这些方法都会把一个`Element`值的指针作为结果返回，它们就是链表留给我们的安全“接口”。拿到这些内部元素的指针，我们就可以去调用前面提到的用于移动元素的方法了。
+
+**知识扩展**
+
+**1. 问题：为什么链表可以做到开箱即用？**
+
+`List`和`Element`都是结构体类型。结构体类型有一个特点，那就是它们的零值都会是拥有特定结构，但是没有任何定制化内容的值，相当于一个空壳。值中的字段也都会被分别赋予各自类型的零值。
+
+> 广义来讲，所谓的零值就是只做了声明，但还未做初始化的变量被给予的缺省值。每个类型的零值都会依据该类型的特性而被设定。
+> 
+> 比如，经过语句`var a [2]int`声明的变量`a`的值，将会是一个包含了两个`0`的整数数组。又比如，经过语句`var s []int`声明的变量`s`的值将会是一个`[]int`类型的、值为`nil`的切片。
+
+那么经过语句`var l list.List`声明的变量`l`的值将会是什么呢？\[1] 这个零值将会是一个长度为`0`的链表。这个链表持有的根元素也将会是一个空壳，其中只会包含缺省的内容。那这样的链表我们可以直接拿来使用吗？
+
+答案是，可以的。这被称为“开箱即用”。Go语言标准库中很多结构体类型的程序实体都做到了开箱即用。这也是在编写可供别人使用的代码包（或者说程序库）时，我们推荐遵循的最佳实践之一。那么，语句`var l list.List`声明的链表`l`可以直接使用，这是怎么做到的呢？
+
+关键在于它的“延迟初始化”机制。
+
+所谓的**延迟初始化**，你可以理解为把初始化操作延后，仅在实际需要的时候才进行。延迟初始化的优点在于“延后”，它可以分散初始化操作带来的计算量和存储空间消耗。
+
+例如，如果我们需要集中声明非常多的大容量切片的话，那么那时的CPU和内存空间的使用量肯定都会一个激增，并且只有设法让其中的切片及其底层数组被回收，内存使用量才会有所降低。
+
+如果数组是可以被延迟初始化的，那么计算量和存储空间的压力就可以被分散到实际使用它们的时候。这些数组被实际使用的时间越分散，延迟初始化带来的优势就会越明显。
+
+> 实际上，Go语言的切片就起到了延迟初始化其底层数组的作用，你可以想一想为什么会这么说的理由。
+> 
+> 延迟初始化的缺点恰恰也在于“延后”。你可以想象一下，如果我在调用链表的每个方法的时候，它们都需要先去判断链表是否已经被初始化，那这也会是一个计算量上的浪费。在这些方法被非常频繁地调用的情况下，这种浪费的影响就开始显现了，程序的性能将会降低。
+
+在这里的链表实现中，一些方法是无需对是否初始化做判断的。比如`Front`方法和`Back`方法，一旦发现链表的长度为`0`,直接返回`nil`就好了。
+
+又比如，在用于删除元素、移动元素，以及一些用于插入元素的方法中，只要判断一下传入的元素中指向所属链表的指针，是否与当前链表的指针相等就可以了。
+
+如果不相等，就一定说明传入的元素不是这个链表中的，后续的操作就不用做了。反之，就一定说明这个链表已经被初始化了。
+
+原因在于，链表的`PushFront`方法、`PushBack`方法、`PushBackList`方法以及`PushFrontList`方法总会先判断链表的状态，并在必要时进行初始化，这就是延迟初始化。
+
+而且，我们在向一个空的链表中添加新元素的时候，肯定会调用这四个方法中的一个，这时新元素中指向所属链表的指针，一定会被设定为当前链表的指针。所以，指针相等是链表已经初始化的充分必要条件。
+
+明白了吗？`List`利用了自身以及`Element`在结构上的特点，巧妙地平衡了延迟初始化的优缺点，使得链表可以开箱即用，并且在性能上可以达到最优。
+
+**问题 2：`Ring`与`List`的区别在哪儿？**
+
+`container/ring`包中的`Ring`类型实现的是一个循环链表，也就是我们俗称的环。其实`List`在内部就是一个循环链表。它的根元素永远不会持有任何实际的元素值，而该元素的存在就是为了连接这个循环链表的首尾两端。
+
+所以也可以说，`List`的零值是一个只包含了根元素，但不包含任何实际元素值的空链表。那么，既然`Ring`和`List`在本质上都是循环链表，那它们到底有什么不同呢？
+
+最主要的不同有下面几种。
+
+1. `Ring`类型的数据结构仅由它自身即可代表，而`List`类型则需要由它以及`Element`类型联合表示。这是表示方式上的不同，也是结构复杂度上的不同。
+2. 一个`Ring`类型的值严格来讲，只代表了其所属的循环链表中的一个元素，而一个`List`类型的值则代表了一个完整的链表。这是表示维度上的不同。
+3. 在创建并初始化一个`Ring`值的时候，我们可以指定它包含的元素的数量，但是对于一个`List`值来说却不能这样做（也没有必要这样做）。循环链表一旦被创建，其长度是不可变的。这是两个代码包中的`New`函数在功能上的不同，也是两个类型在初始化值方面的第一个不同。
+4. 仅通过`var r ring.Ring`语句声明的`r`将会是一个长度为`1`的循环链表，而`List`类型的零值则是一个长度为`0`的链表。别忘了`List`中的根元素不会持有实际元素值，因此计算长度时不会包含它。这是两个类型在初始化值方面的第二个不同。
+5. `Ring`值的`Len`方法的算法复杂度是O(N)的，而`List`值的`Len`方法的算法复杂度则是O(1)的。这是两者在性能方面最显而易见的差别。
+
+其他的不同基本上都是方法方面的了。比如，循环链表也有用于插入、移动或删除元素的方法，不过用起来都显得更抽象一些，等等。
+
+**总结**
+
+我们今天主要讨论了`container/list`包中的链表实现。我们详细讲解了链表的一些主要的使用技巧和实现特点。由于此链表实现在内部就是一个循环链表，所以我们还把它与`container/ring`包中的循环链表实现做了一番比较，包括结构、初始化以及性能方面。
+
+**思考题**
+
+1. `container/ring`包中的循环链表的适用场景都有哪些？
+2. 你使用过`container/heap`包中的堆吗？它的适用场景又有哪些呢？
+
+在这里，我们先不求对它们的实现了如指掌，能用对、用好才是我们进阶之前的第一步。好了，感谢你的收听，我们下次再见。
+
+* * *
+
+\[1]：`List`这个结构体类型有两个字段，一个是`Element`类型的字段`root`，另一个是`int`类型的字段`len`。顾名思义，前者代表的就是那个根元素，而后者用于存储链表的长度。注意，它们都是包级私有的，也就是说使用者无法查看和修改它们。
+
+像前面那样声明的`l`，其字段`root`和`len`都会被赋予相应的零值。`len`的零值是`0`，正好可以表明该链表还未包含任何元素。由于`root`是`Element`类型的，所以它的零值就是该类型的空壳，用字面量表示的话就是`Element{}`。
+
+`Element`类型包含了几个包级私有的字段，分别用于存储前一个元素、后一个元素以及所属链表的指针值。另外还有一个名叫`Value`的公开的字段，该字段的作用就是持有元素的实际值，它是`interface{}`类型的。在`Element`类型的零值中，这些字段的值都会是`nil`。
+
+## 参考阅读
+
+### 切片与数组的比较
+
+切片本身有着占用内存少和创建便捷等特点，但它的本质上还是数组。切片的一大好处是可以让我们通过窗口快速地定位并获取，或者修改底层数组中的元素。
+
+不过，当我们想删除切片中的元素的时候就没那么简单了。元素复制一般是免不了的，就算只删除一个元素，有时也会造成大量元素的移动。这时还要注意空出的元素槽位的“清空”，否则很可能会造成内存泄漏。
+
+另一方面，在切片被频繁“扩容”的情况下，新的底层数组会不断产生，这时内存分配的量以及元素复制的次数可能就很可观了，这肯定会对程序的性能产生负面的影响。
+
+尤其是当我们没有一个合理、有效的”缩容“策略的时候，旧的底层数组无法被回收，新的底层数组中也会有大量无用的元素槽位。过度的内存浪费不但会降低程序的性能，还可能会使内存溢出并导致程序崩溃。
+
+由此可见，正确地使用切片是多么的重要。不过，一个更重要的事实是，任何数据结构都不是银弹。不是吗？数组的自身特点和适用场景都非常鲜明，切片也是一样。它们都是Go语言原生的数据结构，使用起来也都很方便.不过，你的集合类工具箱中不应该只有它们。这就是我们使用链表的原因。
+
+不过，对比来看，一个链表所占用的内存空间，往往要比包含相同元素的数组所占内存大得多。这是由于链表的元素并不是连续存储的，所以相邻的元素之间需要互相保存对方的指针。不但如此，每个元素还要存有它所属链表的指针。
+
+有了这些关联，链表的结构反倒更简单了。它只持有头部元素（或称为根元素）基本上就可以了。当然了，为了防止不必要的遍历和计算，链表的长度记录在内也是必须的。
+
+[戳此查看Go语言专栏文章配套详细代码。](https://github.com/hyper0x/Golang_Puzzlers)
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>louis</span> 👍（45） 💬（5）<div>郝老师，这里不太理解什么叫“自己生成的Element类型值”？把自己生成的Element类型值传给链表——这个能不能再通俗点描述？</div>2019-04-23</li><br/><li><span>fliter</span> 👍（10） 💬（2）<div>为什么不把list像slice，map一样作为一种不需要import其他包就能使用的数据类型？是因为使用场景较后两者比较少吗</div>2018-08-29</li><br/><li><span>Geek_a8be59</span> 👍（7） 💬（2）<div>您好 能否出一个list 链表生成的一个图解，现在我看源码用图去模拟生成 一直搞混掉，特别是在初始化的时候prev和next都指向自身的root 这个很迷糊
 比如:
 	c.PushBack(&quot;123&quot;)
 	c.PushFront(&quot;456&quot;)
 	c.PushFront(&quot;789&quot;)
-根据个人图解应该是789-》456-》nil，为什么能遍历出来很不清楚。能否有一个从初始化到最后生成的样例看一下 万分感谢</div>2019-06-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e9/71/40b04914.jpg" width="30px"><span>Zer0</span> 👍（6） 💬（1）<div>不能把自己生成的Element传给List主要是因为Element的list成员是不开放的，我们不能操作，而在List上操作Element的时候是会判断Element的list成员是否是自己。是这样吗？</div>2019-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5f/09/80484e2e.jpg" width="30px"><span>李斌</span> 👍（5） 💬（3）<div>用 vscode 就蛮好的，我之前是八年 vim 党，写 golang 时硬生生地被掰成 vscode</div>2018-10-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/16/2a/68913d36.jpg" width="30px"><span>杨震</span> 👍（4） 💬（1）<div>以后再有课的话  希望老师多加点图   虽然费点事  但应该更多为学员着想吧。文字阐述一点也不直观。</div>2020-08-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9d/a4/5d2b5aed.jpg" width="30px"><span>雷朝建</span> 👍（3） 💬（1）<div>老师， 我看了一下list.go的源码，发现一个疑问是：延迟初始化的含义就是调用lazyInit，它的一个判断条件是：l.root.next==nil； 但是我们在使用list时候，不是先调用New函数吗？那么不应该会出现l.root.next为nil的情况的。
-什么时候回出现l.root.next==nil, 从而导致源码中每次的PushFront等操作调用lazyInit呢？</div>2021-04-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5a/37/8775d714.jpg" width="30px"><span>jackstraw</span> 👍（3） 💬（1）<div>我尝试打印了 “var l = list.New()” 与 “var l list.List”两种方式的l类型，发现是不一样的，但是下面的操作却都是可以的
+根据个人图解应该是789-》456-》nil，为什么能遍历出来很不清楚。能否有一个从初始化到最后生成的样例看一下 万分感谢</div>2019-06-26</li><br/><li><span>Zer0</span> 👍（6） 💬（1）<div>不能把自己生成的Element传给List主要是因为Element的list成员是不开放的，我们不能操作，而在List上操作Element的时候是会判断Element的list成员是否是自己。是这样吗？</div>2019-08-06</li><br/><li><span>李斌</span> 👍（5） 💬（3）<div>用 vscode 就蛮好的，我之前是八年 vim 党，写 golang 时硬生生地被掰成 vscode</div>2018-10-30</li><br/><li><span>杨震</span> 👍（4） 💬（1）<div>以后再有课的话  希望老师多加点图   虽然费点事  但应该更多为学员着想吧。文字阐述一点也不直观。</div>2020-08-25</li><br/><li><span>雷朝建</span> 👍（3） 💬（1）<div>老师， 我看了一下list.go的源码，发现一个疑问是：延迟初始化的含义就是调用lazyInit，它的一个判断条件是：l.root.next==nil； 但是我们在使用list时候，不是先调用New函数吗？那么不应该会出现l.root.next为nil的情况的。
+什么时候回出现l.root.next==nil, 从而导致源码中每次的PushFront等操作调用lazyInit呢？</div>2021-04-02</li><br/><li><span>jackstraw</span> 👍（3） 💬（1）<div>我尝试打印了 “var l = list.New()” 与 “var l list.List”两种方式的l类型，发现是不一样的，但是下面的操作却都是可以的
 func main() {
     &#47;&#47;l := list.New()
     var l list.List
@@ -40,99 +157,20 @@ func main() {
     l.InsertAfter(2, e1)
     &#47;&#47;travel(l)
     travel(&amp;l)
-}</div>2019-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/3f/c9/1ccefb9a.jpg" width="30px"><span>Sky</span> 👍（2） 💬（1）<div>这一讲没有实例代码</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/1c/c0d14793.jpg" width="30px"><span>白有才</span> 👍（0） 💬（1）<div>这课程就像小说里的武功秘籍, 看了你不一定会练, 所以练成绝世武功的人就少之又少</div>2021-08-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/92/6d/becd841a.jpg" width="30px"><span>escray</span> 👍（0） 💬（1）<div>这一课没有示例代码，确实不太习惯，去看了一下 list.go 的源码，才平复了一下心情。
+}</div>2019-07-09</li><br/><li><span>Sky</span> 👍（2） 💬（1）<div>这一讲没有实例代码</div>2019-06-12</li><br/><li><span>白有才</span> 👍（0） 💬（1）<div>这课程就像小说里的武功秘籍, 看了你不一定会练, 所以练成绝世武功的人就少之又少</div>2021-08-12</li><br/><li><span>escray</span> 👍（0） 💬（1）<div>这一课没有示例代码，确实不太习惯，去看了一下 list.go 的源码，才平复了一下心情。
 
 List 实现了一个双向链表，Ring 实现一个循环链表。
 
 对于思考题，container&#47;ring 包中的循环链表可能的适用场景可能有类似于滑动窗口协议的缓存实现，可以实现 FIFO 的队列；
 
-container&#47;heap 没有用过，看了一下 heap.go 的源码，以及附带的 example_intheap_test.go 和 example_pq_test.go，感觉设计还是很巧妙的，可以用于堆排序和优先队列。</div>2021-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/96/47/93838ff7.jpg" width="30px"><span>青鸟飞鱼</span> 👍（0） 💬（1）<div>老师你好，go内置的数据结构是不是挺少的？</div>2020-11-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c6/73/abb7bfe3.jpg" width="30px"><span>疯琴</span> 👍（0） 💬（1）<div>请问老师，为什么切片扩容以后”旧的底层数组无法被回收“？是指扩容太频繁GC没来得及清理么？</div>2020-10-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/0b/0f/8a524cab.jpg" width="30px"><span>漫步跑小鸡</span> 👍（0） 💬（1）<div>container&#47;list 的元素Element为啥还要设置自己所属的列表，这样设计解决的是什么问题？
+container&#47;heap 没有用过，看了一下 heap.go 的源码，以及附带的 example_intheap_test.go 和 example_pq_test.go，感觉设计还是很巧妙的，可以用于堆排序和优先队列。</div>2021-05-06</li><br/><li><span>青鸟飞鱼</span> 👍（0） 💬（1）<div>老师你好，go内置的数据结构是不是挺少的？</div>2020-11-05</li><br/><li><span>疯琴</span> 👍（0） 💬（1）<div>请问老师，为什么切片扩容以后”旧的底层数组无法被回收“？是指扩容太频繁GC没来得及清理么？</div>2020-10-07</li><br/><li><span>漫步跑小鸡</span> 👍（0） 💬（1）<div>container&#47;list 的元素Element为啥还要设置自己所属的列表，这样设计解决的是什么问题？
 &#47;&#47; The list to which this element belongs.
-	list *List</div>2020-05-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/94/12/15558f28.jpg" width="30px"><span>Jason</span> 👍（0） 💬（1）<div>老师，读了list.go源码后有点理解您说的自定义的elem不被List接受的含义了，因为自定义的elem里的list成员为nil,在List的成员函数中和自身的指针不同。但是我还有两个疑问，希望老师能解答：
+	list *List</div>2020-05-27</li><br/><li><span>Jason</span> 👍（0） 💬（1）<div>老师，读了list.go源码后有点理解您说的自定义的elem不被List接受的含义了，因为自定义的elem里的list成员为nil,在List的成员函数中和自身的指针不同。但是我还有两个疑问，希望老师能解答：
 1）使用显示的elem构造，可以被list接受，是否和您说的自定义elem含义不同呢？
 fmt.Println(&quot;***********custom pushback*************&quot;)
 	em := list.Element{}
 	li.PushBack(&amp;em)
 	fmt.Println(li.Len())
 
-2）如果elem不是list的元素，像Remove或moveToFront都是不影响源list,那开发者该如何知道成功还是失败呢？</div>2020-03-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/84/5e/79568644.jpg" width="30px"><span>兔子高</span> 👍（0） 💬（2）<div>你好，有个问题想问一下，你在文中有说每次判断链表是否初始化很浪费性能，但是你后面又说每次判断链表的长度或者它是否为空，问题如下
-1.如何判断是否初始化
-2.判断初始化和判断为空的区别
-3.判断链表长度和是否为空比判断是否初始化更节约性能是吗？性能大概会节约多少倍呢？
-麻烦解答一下，谢谢</div>2018-09-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/50/99/44378317.jpg" width="30px"><span>李皮皮皮皮皮</span> 👍（124） 💬（3）<div>1.list可以作为queue和
-stack的基础数据结构
-2.ring可以用来保存固定数量的元素，例如保存最近100条日志，用户最近10次操作
-3.heap可以用来排序。游戏编程中是一种高效的定时器实现方案</div>2018-08-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/6b/23/73f18275.jpg" width="30px"><span>陌上人 .</span> 👍（113） 💬（10）<div>老师,之后的课可不可以多加一些图形解释,原理性的知识只用文字确实有些晦涩难懂</div>2018-11-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/df/1e/cea897e8.jpg" width="30px"><span>传说中的成大大</span> 👍（49） 💬（4）<div>关于 container包中的链表list 和环ring的知识总结
-按我的思考
-1. 为什么go语言会出现list这个包
-    首先一个语言或者新技术的出现肯定是为了解决一些疑难杂症 在go语言中数组的特点非常鲜明 固定不可变 访问方便,但是如果不适合动态增长，所以出现了slice切片 切片是对数组的一层封装为了解决数组动态扩容问题， 但是实际上底层依赖的还是数组，但是问题来了 如果slice切片 在添加或者删除元素的时候如果没一个好的策略 扩容或者缩容过后旧的切片没有释放 则会造成内存泄漏 就是c语言的malloc 久而久之 内存越来越少 程序就会崩溃, 而List的出现就是为了解决动态扩容或者缩容的后遗症 因为依赖指针这个东西 所以删除和增加都非常方便
-2. 延迟初始化机制
-   延迟初始化机制 主要是为了解决像数组这种 声明的时候就分配了内存空间的问题，有的时候我们只需要声明，但还不需要使用它，这个时候没有必要分配内存空间，再如文中提到的 在同一时刻声明大量的内存空间的话 那么cpu的使用和内存空间的使用将会激增
-   所以我们需要延迟初始化机制(设计模式中的单例模式也提到了延迟初始化问题,避免声明出来没人使用的尴尬局面)
-3. list关于延迟初始化机制的一些处理
-   延迟初始化机制的缺点就在于在使用的时候需要判断是否已经初始化了,如果使用比较频繁的话，就会造成大量的计算浪费(cpu浪费)
-   所以list当中关于延迟初始化机制的处理方案如下
-   3.1 在插入新元素时 需要检查是否已经初始化好了
-   3.2 在移动 或者将已有元素再修改位置插入时 需要判断元素身上的链表是否和要操作的链表的指针相同 如果不相同说明元素不存在该链表中 如果相同则说明这个链表肯定已经初始化好了
-4. ring包和list包的区别
-    首先从源码来看
-   type Ring struct {
-       next, prev *Ring
-       Value
-   }
-
-  type Element struct {
-       next, prev *Element
-       list *List &#47;&#47;它所属的链表的指针
-       Value interface{} 
-  }
-
-   type List struct {
-       root element
-       len int
-   }
-   从源码的定义分析得出 ring 的元素就是ring结构体(只代表了一个元素)  而list的元素 是list+element(代表了一个链表)
-  list在创建的时候不需要指定元素也没有必要,因为它会不停的增长 而ring的创建需要指定元素个数 且不再增长
-  并且list的还存在一个没有实际意义的根元素  该根元素还可以用来连接首位两端 使其成为一个循环链表
-关于文中 两个结论的思考
-结论1 go语言中切片实现了数组的延迟初始化机制
-       我的思考是 因为切片延迟初始化了， 所以他的底层数组在切片声明时也没有被初始化出来
-结论2 ring 使用len方法是o(n) 而list使用len方法是o(1)
-       还没看讲解我就去翻看了源码(我比较喜欢的一句话是源码之下无秘密),从上面两个结构体的声明和list的insert方法可以看出 因为list的根元素这个根元素也代表了链表(突然想明白ring和list的第二点区别) 在这个根元素上存放了一个len数据表示链表的长度 insert时这个长度会执行+1,所以执行len方法时只需要取出这个长度即可从而达到了o(1)的时间复杂度 而ring结构体中却不存在这样的len所以需要遍历完整个环,所以时间复杂度为o(n)
-关于思考题
-1. ring包从实现来分析得出 适合用来执行长度固定的循环事件
-2. heap包 则适合用来做堆排序 求第k大 第k小等问题 还有就是前面某些同学提到的优先调度问题
-关于优先调度问题我觉得思路大概如下
-首先维护一个堆 然后针对每个要调度的事件 分配一个优先级 然后从下到上执行堆化过程 让优先级(最低或者最高的放到堆的顶部) 当处理完成之后 再把堆尾部的事件放到堆顶部 然后执行从上往下进行堆化维护好堆的顺序 再执行逻辑</div>2020-03-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/77/a4/e57f2014.jpg" width="30px"><span>Err</span> 👍（39） 💬（0）<div>我觉得写一个实际的例子能帮助更好理解</div>2018-10-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9f/1d/ec173090.jpg" width="30px"><span>melon</span> 👍（22） 💬（1）<div>list的一个典型应用场景是构造FIFO队列；ring的一个典型应用场景是构造定长环回队列，比如网页上的轮播；heap的一个典型应用场景是构造优先级队列。</div>2018-08-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ac/a1/43d83698.jpg" width="30px"><span>云学</span> 👍（10） 💬（0）<div>在内存上，和ring的区别是list多了一个特殊表头节点，充当哨兵</div>2018-08-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/39/04/a8817ecf.jpg" width="30px"><span>会网络的老鼠</span> 👍（8） 💬（2）<div>现在大家写golang程序，一般用什么IDE？</div>2018-08-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/2d/18/918eaecf.jpg" width="30px"><span>后端进阶</span> 👍（7） 💬（2）<div>前面的网友，goland了解一下，超赞的ide</div>2018-09-06</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLDpvdcQA8KSxEh9NRlyWZJR8icuefKbSpapgIDuKVYdEgeT9X0NC5VsOaQBPvIOLRbWC15qp6eGmQ/132" width="30px"><span>为中华之崛起而卷</span> 👍（1） 💬（0）<div>数据结构的使用，我觉得是实际开发过程中最重要，最高频的部分，感觉这边有些过于简单了不是吗，没有代码示例，纯靠文字描述，你可以认为是写给有go语言开发经验的人看的，但是真的有go语言开发经验的从你这一节也没啥太大的收获吧。</div>2024-01-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/9d/a4/e481ae48.jpg" width="30px"><span>lesserror</span> 👍（1） 💬（0）<div>对于这一讲的内容，确实要用IDE（例如Goland）打开源码文件一边阅读一边对着课中的文字，一边推敲、实验。
-
-几个源码文件都是一两百来行，读起来不吃力。（前提是已经有了Go的基础）</div>2021-07-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/37/3f/a9127a73.jpg" width="30px"><span>KK</span> 👍（1） 💬（0）<div>关于list的结构，画个图会更加直观</div>2020-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c9/a8/98507423.jpg" width="30px"><span>lixiaofeng</span> 👍（1） 💬（0）<div>func flist(){
-    link := list.New()
-    for i:=1; i&lt; 11; i++  {
-        link.PushBack(i)
-    }
-    for p:= link.Front(); p!=link.Back(); p=p.Next(){
-        fmt.Println(&quot;Number&quot;, p.Value)
-    }
-}
-#链表的常用方法
-func (e *Element) Next() *Element
-func (e *Element) Prev() *Element
-func (l *List) Init() *List
- New() *List { return new(List).Init() }
- func (l *List) Len() int { return l.len }
- func (l *List) Front() *Element
- func (l *List) Back() *Element
- func (l *List) Remove(e *Element) interface{}
- func (l *List) PushFront(v interface{}) *Element
- func (l *List) PushBack(v interface{}) *Element
- func (l *List) InsertBefore(v interface{}, mark *Element) *Element 
- func (l *List) InsertAfter(v interface{}, mark *Element) *Element
- func (l *List) MoveToFront(e *Element)
- func (l *List) MoveToBack(e *Element) 
- func (l *List) MoveBefore(e, mark *Element)
- func (l *List) MoveAfter(e, mark *Element)
- func (l *List) PushBackList(other *List)
- func (l *List) PushFrontList(other *List)</div>2019-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/50/46/3573d1d0.jpg" width="30px"><span>缘木求鱼</span> 👍（1） 💬（0）<div>又比如，在用于删除元素、移动元素，以及一些用于插入元素的方法中，只要判断一下传入的元素中指向所属链表的指针，是否与当前链表的指针相等就可以了。   这里传入的元素的所属链表指针是如何赋值的</div>2018-10-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/91/15/3657d6ee.jpg" width="30px"><span>citi 城</span> 👍（0） 💬（0）<div>container包含list、ring、heap三个子包，分别是链表、循环链表、堆。
-是golang sdk原生支持的3个容器类。
-list开箱即用，通过lazyinit在操作链表时进行初始化的动作。</div>2023-12-17</li><br/>
+2）如果elem不是list的元素，像Remove或moveToFront都是不影响源list,那开发者该如何知道成功还是失败呢？</div>2020-03-25</li><br/>
 </ul>

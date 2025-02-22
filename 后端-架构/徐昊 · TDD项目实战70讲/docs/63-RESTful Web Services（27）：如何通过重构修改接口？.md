@@ -197,6 +197,3 @@ class SubResourceLocators {
 如何重构Resource、SubResource等接口与实现？
 
 欢迎把你的想法分享在留言区，也欢迎把你的项目代码分享出来。相信经过你的思考与实操，学习效果会更好！
-<div><strong>精选留言（1）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（2） 💬（0）<div>代码写着写着确实会发现很多不好的地方，之前没测试不敢改，现在有测试了，想改就改</div>2022-08-07</li><br/>
-</ul>

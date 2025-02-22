@@ -32,29 +32,246 @@ avgqu-sz   await r_await w_await  svctm  %util
 我解释一下其中几个关键计数器的含义。
 
 `svctm`代表I/O平均响应时间。请注意，这个计数器，有很多人还把它当个宝一样，实际上在man手册中已经明确说了：“Warning! Do not trust this field any more. This field will be removed in a future sysstat version.” 也就是说，这个数据你爱看就爱，不一定准。
-<div><strong>精选留言（24）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/14/20/1d/0c1a184c.jpg" width="30px"><span>罗辑思维</span> 👍（21） 💬（2）<div>当操作系统中配置了vm.swappiness是 30%，那么当内存用到1-30%=70%的时候，就会发生 Swap。
 
-高老师，文中对swappiness参数设置值描述跟倪鹏飞老师在专栏讲解有不一样的地方。个人还是认同swappiness不是内存的百分比。下面这段是摘自是倪鹏飞老师《Linux性能分析实战》第19讲。
----------------------------
-&#47;proc&#47;sys&#47;vm&#47;swappiness 选项，用来调整使用 Swap 的积极程度。
-swappiness 的范围是 0-100，数值越大，越积极使用 Swap，也就是更倾向于回收匿名页；数值越小，越消极使用 Swap，也就是更倾向于回收文件页。
-虽然 swappiness 的范围是 0-100，不过要注意，这并不是内存的百分比，而是调整 Swap 积极程度的权重，即使你把它设置成 0，当剩余内存 + 文件页小于页高阈值时，还是会发生 Swap。</div>2020-04-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/58/eb/963ea7fe.jpg" width="30px"><span>木剑温华</span> 👍（9） 💬（1）<div>一个 TCP 连接大概占 3KB，创建 10 万个连接，才100000x3KB≈300M左右，何况最多才 65535 呢？服务器有那么穷吗？
-这里感觉老师说的有一点问题，一个tcp链接由四元组组成：sip：sport---cip：cport，单机最多65535个端口，但是可以根据公式可以看到只影响了sport的数量，但是cip和cport的组合是无穷尽的，所以单机理论最大连接数远大于65535，我之前在iot项目和消息推送项目做过相关的压测，成功地把单机最大长连接数提高到100w以上。</div>2021-08-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7e/3e/82202cc8.jpg" width="30px"><span>月亮和六便士</span> 👍（4） 💬（1）<div>高老师，看完您的课程，有一些思路了，但是我发现思路和实战之间有一道鸿沟，我已经掉到沟里了，比如 分析的起点拆分响应时间，但是不知道怎么拆分，开发更是一头雾水。应用又是部署在docker里面，好不容易配置了个Tomcat监控，结果重启了一下配置又没了，运维说docker里没法暴露监控端口，真是寸步难行啊</div>2020-03-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/44/b0/c196c056.jpg" width="30px"><span>SeaYang</span> 👍（3） 💬（1）<div>使用Linux服务器作为压力机，TPS达到比较高的时候压力机会大量报无法分配请求地址的错误，从而导致TPS直接降为0，命令看了下TIME_WAIT的数量很多，调整了一下几个内核参数，就解决了</div>2020-10-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（3） 💬（1）<div>老师硬核调优！测试、开发、运维后期在操作系统、网络上都这么强了！</div>2020-10-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e3/b3/d8bdddad.jpg" width="30px"><span>黑脸龙猫酱</span> 👍（3） 💬（1）<div>老师可否说下对于云服务器，io有些时间段不稳定的情况应该如何处理？</div>2020-03-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/2f/f4/2dede51a.jpg" width="30px"><span>小老鼠</span> 👍（3） 💬（1）<div>由于上下文切换过多引起性能降低的情形多吗？</div>2020-02-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/41/44/00ea2279.jpg" width="30px"><span>悦霖</span> 👍（2） 💬（1）<div>高老师问一下，每次性能测试看io较高基本都是jbd2这个进程占用大量的IO，怎么进一步分析，而且这个jdb2是个啥？</div>2020-02-18</li><br/><li><img src="" width="30px"><span>Geek_6add55</span> 👍（1） 💬（1）<div>老师你好，netstat命令Recv_Q和Send_Q的值显示的是环形缓冲区的队列还是套接字缓冲区的队列</div>2023-06-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/4b/1e/107db99f.jpg" width="30px"><span>闲鱼超人</span> 👍（1） 💬（1）<div>监控平台为什么不重要呢？
-监控平台的主要用途是为了提供运行时状态数据给我们的，利用这些数据，我们分析性能情况。所以关键是数据、是证据链，是这些数据反馈出来的问题，这是核心。所以从这个角度来说，监控平台是不重要的，因为只要能提供这些你需要的数据，哪个平台都可以。</div>2021-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/de/d4/b83c4185.jpg" width="30px"><span>David.cui</span> 👍（1） 💬（1）<div>高老师讲的还是很透彻的，能分析到非常细微的差别。
-高手！</div>2020-12-03</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJJ6G2xZvNRmhyXBjmGbI5G8icGCCMPupr6yxZ1IcURwp7GTRHcpWGWpg9A0fLlyicmVdDwzqZqwiaOQ/132" width="30px"><span>jy</span> 👍（0） 💬（1）<div>老师，请教一个问题，
-文中：&quot;在我们做性能分析的过程中，基本上，基于上面这个表格就够通过接收和发送判断瓶颈点发生在谁身上了&quot;
+`w_await`表示写入的平均响应时间；`r_await`表示读取的平均响应时间；`r/s`表示每秒读取次数；`w/s`表示每秒写入次数。
 
-感觉这里没说完整呢
+而IO/s的关键计算是这样的：
 
-比如发送端Send_Q有值，接收端Recv_Q也有值，说明瓶颈点在接收端，那下一步如何分析接收端呢？
-比如发送端Send_Q有值，接收端Recv_Q没有值，说明瓶颈点在发送端或者网络设备，这种情况，那下一步又该如何分析发送端呢？
+```
+IO/s = r/s + w/s = 18.33+114.33 = 132.66
+%util = ( (IO/s * svctm) /1000) * 100% = 100.02564%
+```
 
-谢谢老师指导。</div>2022-10-21</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKfbvRdpx6zMkyHc6t5BdP2TN6sZic29MHmt5TwHHt1ksvPAiaSqVgRVwljBchH1lcX4iaxeXzaTP8fw/132" width="30px"><span>Fzz</span> 👍（0） 💬（2）<div>老师你好，想问下系统tps到顶，系统CPU只有20%，系统相响应时间1秒以下，感觉压力发起端也没有瓶颈，想问下这个瓶颈在哪？看了资源的使用也不高，不知道是不是jvm或者应用的的问题？</div>2022-06-13</li><br/><li><img src="" width="30px"><span>学员141</span> 👍（0） 💬（2）<div>在测试环境压测，发现服务器端口占满了，服务器的端口配置是否需要修改？网上说过大又容易被攻击（我们是docker，一个节点上部署了18个应用，节点主机16C16G，有些应用CPU和内存都分配很小，导致都到一个节点上来）</div>2021-07-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/0b/c9/b53037df.jpg" width="30px"><span>0909</span> 👍（0） 💬（1）<div>因为数据来源都是一样的，重要的还是要根据数据去找到瓶颈和优化方案</div>2021-06-21</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJlkFFx4N8ice8UcQRu3AMP0QAXdib17lyFI8G6QLje9iaumOXhsNq50PyLowAwg0umho89o1amN2UGQ/132" width="30px"><span>Geek_7cf52a</span> 👍（0） 💬（1）<div>老师我之前说的端口不够用的问题我知道了，听了音频知道老师说的客户端的端口了，不是服务端的，刚开始还以为是服务端的端口</div>2020-07-10</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJlkFFx4N8ice8UcQRu3AMP0QAXdib17lyFI8G6QLje9iaumOXhsNq50PyLowAwg0umho89o1amN2UGQ/132" width="30px"><span>Geek_7cf52a</span> 👍（0） 💬（1）<div>至于为什么要处理TIME_WAIT，却没几个人能回答得上来。在我的性能工作经验中，只有一种情况要处理TIME_WAIT，那就是端口不够用的时候。TCP&#47;IPv4的标准中，端口最大是 65535，还有一些被用了的，所以当我们做压力测试的时候，有些应用由于响应时间非常快，端口就会不够用，这时我们去处理TIME_WAIT的端口，让它复用或尽快释放掉，以支持更多的压力。所以处理TIME_WAIT的端口要先判断清楚，如果是其他原因导致的，即使你处理了TIME_WAIT，也没有提升性能的希望。如果还有人说，还有一种情况，就是内存不够用。我必须得说，那是我没见过世面了，我至今没见过因为TIME_WAIT的连接数把内存耗光了的。一个 TCP 连接大概占 3KB，创建 10 万个连接，才100000x3KB≈300M左右，何况最多才 65535 呢？服务器有那么穷吗？
------来自原文
-老师你好，你上面说的端口不够用的时候处理time_wait是不是有问题？应该是连接不够用才对吧？一个应用在一开始就指定了具体的tcp端口，端口是不会变的，只有连接数才会不断的增多</div>2020-07-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3f/39/a4c2154b.jpg" width="30px"><span>小昭</span> 👍（0） 💬（1）<div>今日思考题
-为什么说用什么监控平台并不重要呢？
-监控平台再花哨，都只是提供数据来给性能测试人员分析的。作为性能测试人员，重点是要知道数据的来源、原理、含义。
+这个`%util`是用`svctm`算来的，既然`svctm`都不一定准了，那这个值也只能参考了。还好我们还有其他工具可以接着往深了去定位，那就是`iotop`。
 
-知易行难，信息量好大。一节课够学一个月系列……</div>2020-04-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7e/3e/82202cc8.jpg" width="30px"><span>月亮和六便士</span> 👍（0） 💬（1）<div>老师，怎么查看端口够用不够用，或者说端口用了多少？Linux系统的命令是什么，window系统的命令是什么？</div>2020-04-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/9f/c2/3d1c2f88.jpg" width="30px"><span>蔡森冉</span> 👍（0） 💬（1）<div>平台就像是每个人用着不同品牌手机都用着差不多的功能。老师现在使用着云平台，平台上就会有一个监控模块，公司应用都是在云服务器上，那是否我只用在服务器提供商上的这个监控模块看就可以了？</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/2f/f4/2dede51a.jpg" width="30px"><span>小老鼠</span> 👍（0） 💬（1）<div>在固态硬盘中还存在扇区与磁道吗？</div>2020-02-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/42/84/e0a6fc1c.jpg" width="30px"><span>wjh</span> 👍（0） 💬（1）<div>测试某场景的时候，发现该场景的network出入都非常少，但其他场景又都正常（同一服务器），请问高老师，这种情况的分析思路是怎么样的？明显不是带宽不够，那还有设么其他原因呢？</div>2020-02-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/d4/84/7f584cb2.jpg" width="30px"><span>杜艳</span> 👍（0） 💬（1）<div>对于基础差的人，这一块就看不懂了，对于这些命令需要去哪里输入都不知道，请问怎么入手补习这块知识</div>2020-02-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/bc/25/1c92a90c.jpg" width="30px"><span>tt</span> 👍（0） 💬（2）<div>我们用的是REDHAT，WAS挂过几次，IBM的人说要给他们的实验室分析以下，下次我用dmesg命令看看。</div>2020-02-04</li><br/>
-</ul>
+```
+Total DISK READ :       2.27 M/s | Total DISK WRITE :	  574.86 M/s
+Actual DISK READ:       3.86 M/s | Actual DISK WRITE:      34.13 M/s
+  TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO>    COMMAND
+  394 be/3 root        0.00 B/s  441.15 M/s  0.00 % 85.47 % [jbd2/vda1-8]
+32616 be/4 root     1984.69 K/s    3.40 K/s  0.00 % 42.89 % kube-controllers
+13787 be/4 root        0.00 B/s    0.00 B/s  0.00 % 35.41 % [kworker/u4:1]
+...............................
+```
+
+从上面的`Total DISK WRITE/READ`就可以知道当前的读写到底有多少了，默认是按照`I/O`列来排序的，这里有`Total`，也有`Actual`，并且这两个并不相等，为什么呢？
+
+因为Total的值显示的是用户态进程与内核态进程之间的速度，而Actual显示的是内核块设备子系统与硬件之间的速度。
+
+而在`I/O`交互中，由于存在`cache`和在内核中会做`I/O`排序，因此这两个值并不会相同。那如果你要说磁盘的读写能力怎么样，我们应该看的是`Actual`。这个没啥好说的，因为`Total`再大，不能真实写到硬盘上也是没用的。
+
+在下面的线程列表中，通过排序，就可以知道是哪个线程（注意在第一列是TID哦）占的`I/O`高了。
+
+## Memory
+
+关于内存，要说操作系统的内存管理，那大概开一个新专栏也不为过。但是在性能测试的项目中，如果不做底层的测试，基本上在上层语言开发的系统中，比如说Java、Go、C++等，在分析过程中都直接看业务系统就好了。
+
+在操作系统中，分析业务应用的时候，我们会关注的内存内容如下面的命令所示：
+
+```
+[root@7dgroup ~]# free -m             
+ 	     total        used        free      shared  buff/cache   available
+Mem:           3791        1873         421         174        1495        1512
+Swap:             0           0           0
+[root@7dgroup ~]#
+
+```
+
+`total`肯定是要优先看的，其次是`available`，这个值才是系统真正可用的内存，而不是`free`。
+
+因为Linux通常都会把用的内存给`cache`，但是不一定会用，所以`free`肯定会越来越少，但是`available`是计算了`buff`和`cache`中不用的内存的，所以只要`available`多，就表示内存够用。
+
+当出现内存泄露或因其他原因导致物理内存不够用的时候，操作系统就会调用`OOM Killer`，这个进程会强制杀死消耗内存大的应用。这个过程是不商量的，然后你在“`dmesg`”中就会看到如下信息。
+
+```
+[12766211.187745] Out of memory: Kill process 32188 (java) score 177 or sacrifice child
+[12766211.190964] Killed process 32188 (java) total-vm:5861784kB, anon-rss:1416044kB, file-rss:0kB, shmem-rss:0kB
+```
+
+这种情况只要出现，TPS肯定会掉下来，如果你有负载均衡的话，压力工具中的事务还是可能有成功的。但如果你只有一个应用节点，或者所有应用节点都被`OOM Killer`给干掉了，那TPS就会是这样的结果。
+
+![](https://static001.geekbang.org/resource/image/38/83/38825aee9c3d56819c3e242382bbb483.png?wh=826%2A208)
+
+对内存监控，可以看到这样的趋势：
+
+![](https://static001.geekbang.org/resource/image/7b/3a/7b2cf887b969f5684b266ee82869663a.png?wh=1412%2A281)
+
+内存慢慢被耗光，但是杀掉应用进程之后，`free`内存立即就有了。你看上面这个图，就是一个机器上有两个节点，先被杀了一个，另一个接着泄露，又把内存耗光了，于是又被杀掉，最后内存全都空闲了。
+
+在我的性能工作生涯中，这样的例子还挺常见。当然对这种情况的分析定位，只看物理内存已经没有意义了，更重要的是看应用的内存是如何被消耗光的。
+
+对于内存的分析，你还可以用`nmon`和`cat/proc/meminfo`看到更多信息。如果你的应用是需要大页处理的，特别是大数据类的应用，需要关注下`HugePages`相关的计数器。
+
+内存我们就说到这里，总之，要关注`available`内存的值。
+
+## NetWork
+
+这里我们就来到了网络分析的部分了，在说握手之前，我们先看网络的分析决策链。
+
+![](https://static001.geekbang.org/resource/image/ed/2c/ed8a7d9ca55cc58d25db9f07bc57b42c.jpg?wh=1116%2A1094)
+
+请看上图中，在判断了瓶颈在网络上之后，如果知道某个进程的网络流量大，首先肯定是要考虑减少流量，当然要在保证业务正常运行，TPS也不降低的情况下。
+
+### Recv\_Q和Send\_Q
+
+当然我们还要干一件事，就是可能你并不知道是在哪个具体的环节上出了问题，那就要学会判断了。网络`I/O`栈也并不简单，看下图：
+
+![](https://static001.geekbang.org/resource/image/58/0f/5837c5a68264aaf8b5a870281cf8060f.png?wh=1592%2A895)
+
+数据发送过程是这样的。
+
+应用把数据给到`tcp_wmem`就结束它的工作了，由内核接过来之后，经过传输层，再经过队列、环形缓冲区，最后通过网卡发出去。
+
+数据接收过程则是这样的。
+
+网卡把数据接过来，经过队列、环形缓冲区，再经过传输层，最后通过`tcp_rmem`给到应用。
+
+你似乎懂了对不对？那么在这个过程中，我们有什么需要关注的呢？
+
+首先肯定是看队列，通过`netstat`或其他命令可以看到`Recv_Q`和`Send_Q`，这两项至少可以告诉你瓶颈会在哪一端。如下图所示：
+
+![](https://static001.geekbang.org/resource/image/6f/13/6f2fbd3c7299a64a8a28ace03bf84613.jpg?wh=2063%2A681)
+
+我画个表清晰地判断一下瓶颈点。
+
+![](https://static001.geekbang.org/resource/image/be/d1/bef88cefe67796c856f29dc89f4510d1.png?wh=1068%2A383)
+
+其实这个过程中，我还没有把防火墙加进去，甚至我都没说`NAT`的逻辑，这些基础知识你需要自己先做足功课。
+
+在我们做性能分析的过程中，基本上，基于上面这个表格就够通过接收和发送判断瓶颈点发生在谁身上了。
+
+但是，要是这些队列都没有值，是不是网络就算好了呢？还不是。
+
+### 三次握手和四次挥手
+
+我们先看握手图：
+
+![](https://static001.geekbang.org/resource/image/a6/45/a68fb795457f127bb0c24a065bf11945.jpg?wh=1307%2A620)
+
+我发现一点，很多人以为三次握手是非常容易理解的，但是没几个人能判断出和它相关的问题。
+
+握手的过程，我就不说了，主要看这里面的两个队列：半连接队列和全连接队列。
+
+在B只接到第一个`syn`包的时候，把这个连接放到半连接队列中，当接到`ack`的时候才放到全连接队列中。这两个队列如果有问题，都到不了发送接收数据的时候，你就看到报错了。
+
+查看半连接全连接溢出的手段也很简单，像下面这种情况就是半连接没建立起来，半连接队列满了，`syn`包都被扔掉了。
+
+```
+[root@7dgroup ~]# netstat -s |grep -i listen    
+8866 SYNs to LISTEN sockets dropped
+```
+
+那么半连接队列和什么参数有关呢？
+
+1. 代码中的`backlog`：你是不是想起来了`ServerSocket(int port, int backlog)中的backlog`？是的，它就是半连接的队列长度，如果它不够了，就会丢掉`syn`包了。
+2. 还有操作系统的内核参数`net.ipv4.tcp_max_syn_backlog`。
+
+而像下面这样的情况呢，就是全连接队列已经满了，但是还有连接要进来，已经超过负荷了。
+
+```
+[root@7dgroup2 ~]# netstat -s |grep overflow    
+154864 times the listen queue of a socket overflowed
+```
+
+这是在性能分析过程中经常遇到的连接出各种错的原因之一，它和哪些参数有关呢？我列在这里。
+
+1. `net.core.somaxconn`：系统中每一个端口最大的监听队列的长度。
+2. `net.core.netdev_max_backlog`：每个网络接口接收数据包的速率比内核处理这些包的速率快时，允许送到队列的数据包的最大数目。
+3. `open_file`：文件句柄数。
+
+我们再来看下四次挥手。我遇到性能测试过程中的挥手问题，有很多都是做性能分析的人在不了解的情况下就去做各种优化动作而产生的。
+
+先看一下TCP挥手图：
+
+![](https://static001.geekbang.org/resource/image/69/88/69a6fc7664ae937d13d241a255989988.jpg?wh=1307%2A890)
+
+在挥手的逻辑中，和性能相关的问题真的非常少。
+
+但有一个点是经常会问到的，那就是`TIME_WAIT`。不知道为什么，很多人看到`TIME_WAIT`就紧张，就想去处理掉，于是搜索一圈，哦，要改`recycle/reuse`的TCP参数，要改`fin_time_out`值。
+
+至于为什么要处理`TIME_WAIT`，却没几个人能回答得上来。
+
+在我的性能工作经验中，只有一种情况要处理`TIME_WAIT`，那就是**端口不够用**的时候。
+
+`TCP/IPv4`的标准中，端口最大是65535，还有一些被用了的，所以当我们做压力测试的时候，有些应用由于响应时间非常快，端口就会不够用，这时我们去处理`TIME_WAIT`的端口，让它复用或尽快释放掉，以支持更多的压力。
+
+所以处理`TIME_WAIT`的端口要先判断清楚，如果是其他原因导致的，即使你处理了`TIME_WAIT`，也没有提升性能的希望。
+
+如果还有人说，还有一种情况，就是内存不够用。我必须得说，那是我没见过世面了，我至今没见过因为`TIME_WAIT`的连接数把内存耗光了的。
+
+一个TCP连接大概占3KB，创建10万个连接，才`100000x3KB≈300M`左右，服务器有那么穷吗？
+
+## System
+
+确切地说，在性能测试分析的领域里，System似乎实在是没有什么可写的地方。
+
+我们最常见的System的计数器是`in(interrupts:中断)`和`cs(context switch：上下文切换)`。
+
+![](https://static001.geekbang.org/resource/image/c4/06/c4b16ca370a2ffa1482915cf3ad57206.png?wh=946%2A395)
+
+因为这是我能找得到的最疯狂的System计数器了。
+
+中断的逻辑在前面跟你说过了。
+
+`cs`也比较容易理解，就是CPU不得不转到另一件事情上，听这一句你就会知道，中断时肯定会有`cs`。但是不止中断会引起cs，还有多任务处理也会导致`cs`。
+
+因为`cs`是被动的，这个值的高和低都不会是问题的原因，只会是一种表现，所以它只能用来做性能分析中的证据数据。
+
+在我们的这个图中，显然是由于`in`引起的`cs`，CPU队列那么高也是由`in`导致的。像这样的问题，你可以去看我们在上篇文章中提到的`si CPU`高的那个分析链了。
+
+## Swap
+
+Swap的逻辑是什么呢？它是在磁盘上创建的一个空间，当物理内存不够的时候，可以保存物理内存里的数据。如下图所示：
+
+![](https://static001.geekbang.org/resource/image/18/6b/1805402973701416c23c16003af5c06b.jpg?wh=2412%2A820)
+
+先看和它相关的几个参数。
+
+![](https://static001.geekbang.org/resource/image/e2/7f/e29ec84d980fb9e667e41010b209427f.png?wh=735%2A268)
+
+在操作系统中，vm.swappiness是用来定义使用swap的倾向性。官方说明如下：
+
+> swappiness  
+> This control is used to define how aggressive the kernel will swap memory pages. Higher values will increase agressiveness, lower values decrease the amount of swap.  
+> A value of 0 instructs the kernel not to initiate swap until the amount of free and file-backed pages is less than the high water mark in a zone.  
+> The default value is 60.
+
+1. 值越高，则使用swap的倾向性越大。
+2. 值越低，则使用swap的倾向性越小。
+
+但这个倾向性是谁跟谁比呢？简单地说，在内存中有anon内存(匿名而链表，分为：inactive/active)和file内存(映射页链表，也分为：inactive/active)，而swappiness是定义了对anon页链表扫描的倾向性。在Linux源码vmscan.c中有这样的定义：
+
+```
+ /*
+  * With swappiness at 100, anonymous and file have the same priority.
+  * This scanning priority is essentially the inverse of IO cost.
+  */
+ anon_prio = swappiness;
+ file_prio = 200 - anon_prio;
+```
+
+也就是说如果swappiness设置为100时，则anon和file内存会同等的扫描；如果设置为0时，则file内存扫描的优先级会高。但是这并不是说设置为了0就没有swap了，在操作系统中还有其他的逻辑使用swap。
+
+`swapiness`默认是60%。注意，下面还有一个参数叫`vm.min_free_kbytes`。即使把`vm.swappiness`改为0，当内存用到小于`vm.min_free_kbytes`时照样会发生Swap。
+
+想关掉Swap就`swapoff -a`。
+
+和Swap相关的计数器有：`top`中的`Total`、`free`、`used`和`vmstat`里的`si`、`so`。
+
+说到Swap，在性能测试和分析中，我的建议是直接把它关了。
+
+为什么呢？因为当物理内存不足的时候，不管怎么交换性能都是会下降的，不管是Swap还是磁盘上的其他空间，都是从磁盘上取数据，性能肯定会刷刷往下掉。
+
+## 总结
+
+对操作系统的监控及常用计数器的分析会涉及到很多的内容，所以两篇文章可能也是覆盖不全的，我只把在性能测试分析工作中经常见到的计数器解析了一遍。总体来说，你需要记住以下三点：
+
+1. 监控平台再花哨，都只是提供数据来给你分析的。只要知道了数据的来源、原理、含义，用什么工具都不重要。
+2. 性能分析的时候，不会只看操作系统一个模块或哪几个固定计数器的。这些动态的数据，需要有分析链把它们串起来。
+3. 操作系统提供的监控数据是分析链路中不可缺少的一环，除非你能绕过操作系统，又能很确切地定位出根本原因。
+
+## 思考题
+
+我为什么说用什么监控平台并不重要呢？
+
+欢迎你在评论区写下你的思考，也欢迎把这篇文章分享给你的朋友或者同事，一起交流进步。

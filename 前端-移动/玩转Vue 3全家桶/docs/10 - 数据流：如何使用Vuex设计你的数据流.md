@@ -11,76 +11,307 @@
 首先，我们需要掌握前端的数据怎么管理，现代Web应用都是由三大件构成，分别是：组件、数据和路由。关于组件化开发，在前面的[第8讲](https://time.geekbang.org/column/article/435439)中，已经有详细的讲解了。这一讲我们思考一个这样的场景，就是有一些数据组件之间需要共享的时候，应该如何实现？
 
 解决这个问题的最常见的一种思路就是：专门定义一个全局变量，任何组件需要数据的时候都去这个全局变量中获取。一些通用的数据，比如用户登录信息，以及一个跨层级的组件通信都可以通过这个全局变量很好地实现。在下面的代码中我们使用\_store这个全局变量存储数据。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/13/c8/4a/3a322856.jpg" width="30px"><span>ll</span> 👍（39） 💬（2）<div>非常棒的一节，在学习内容的过程中，我也在回顾之前学习关于 Vuex 的知识，在写miniVuex 的实现的代码后，对组件化有了新的认识，简单说下体会。
 
- “组件化” 是解决“复杂”问题的重要思想。其实现就是一个个“组件”，即使表现方式不同，核心还是 MVX 的模型。
+```xml
+window._store = {}
+```
 
- 这样理解，组件内的 state 就是 model，渲染出来的“图形”就是 view，而这个 X 是这 model 与 view 的“沟通方式”，它可以是 control，也可以是 view model，大概就这个意思。这里要注意，model 和 view 不应该直接沟通。
+数据存储的结构图大致如下，任何组件内部都可以通过window.\_store获取数据并且修改。
 
-我们现在的工作就是在“搭积木”，怎么搭很重要，但是了解手中的“积木”也同样重要。
+![图片](https://static001.geekbang.org/resource/image/4d/4b/4de32506d33f278704d2edd7b2d8914b.jpg?wh=1920x936)
 
-Vue2 提供的积木有 MVX(一般组件)，VX(函数式组件)，MX(vuex)；而 Vue3 通过 CompositionAPI 提供了 M，一个只有 M 的“组件”，也是Vue3灵活原因之一。
+但这样就会产生一个问题，window.\_store并不是响应式的，如果在Vue项目中直接使用，那么就无法自动更新页面。所以我们需要用ref和reactive去把数据包裹成响应式数据，并且提供统一的操作方法，这其实就是数据管理框架Vuex的雏形了。
 
-到这，我发现，其实 Vuex 也是组件，没有 View 的组件，有 Model（state），有 X（mutation，action），它的逻辑和其他组件一样，想要变更“状态”，必须通过X。就这样“管家”诞生了。
+## Vuex是什么
 
-可是具体这个是怎么实现的？
-大概说下几个API：install，provide，use 等，大圣讲的很清楚，回头多看几遍，最主要的是多写写。</div>2021-11-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/42/59/67b7709b.jpg" width="30px"><span>一个小🍎</span> 👍（23） 💬（1）<div>我Vuex4都还没学完，Pinia就出来了，学不完了。
-（话说想请教大圣老师，在前端技术发展如此之快的情况下，我们应该如何做取舍呢？）</div>2021-11-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/23/27/d6/c318bd20.jpg" width="30px"><span>乐叶</span> 👍（16） 💬（5）<div>  constructor(options) {
+你现在肯定跟小圣有同样的困惑，那就是感觉Vue已经够用了，这个Vuex又是做什么的？其实，Vuex存在的意义，就是管理我们项目的数据。
+
+我们是使用组件化机制来搭建整个项目，每个组件内部有自己的数据和模板。但是总有些数据是需要共享的，比如当前登录的用户名、权限等数据，如果都在组件内部传递，会变得非常混乱。
+
+如果把开发的项目比作公司的话，我们项目中的各种数据就非常像办公用品。很多小公司在初创时期不需要管理太多，大家随便拿办公用品就行。但是公司大了之后，就需要一个专门的办公用品申报的流程，对数据做统一地申请和发放，这样才能方便做资产管理。**Vuex就相当于我们项目中的大管家，集中式存储管理应用的所有组件的状态**。
+
+下面，我们先来上手使用一下Vuex。我们项目结构中的src/store目录，就是专门留给Vuex的，在项目的目录下，我们执行下面这个命令，进行Vuex的安装工作。
+
+```
+npm install vuex@next
+```
+
+安装完成后，我们在src/store中先新建 index.js，在下面的代码中，我们使用createStore来创建一个数据存储，我们称之为store。
+
+store内部除了数据，还需要一个mutation配置去修改数据，你可以把这个mutation理解为数据更新的申请单，mutation内部的函数会把state作为参数，我们直接操作state.count就可以完成数据的修改。
+
+```xml
+import { createStore } from 'vuex'
+
+const store = createStore({
+  state () {
+    return {
+      count: 666
+    }
+  },
+  mutations: {
+    add (state) {
+      state.count++
+    }
+  }
+})
+```
+
+现在你会发现，我们的代码里，在Vue的组件系统之外，多了一个数据源，里面只有一个变量count，并且有一个方法可以累加这个count。然后，我们在Vue中注册这个数据源，在项目入口文件src/main.js中，使用app.use(store)进行注册，这样Vue和Vuex就连接上了。
+
+然后，我们使用 `.use` 就可以对路由进行注册，使用 `.mount` 就可以把 Vue 这个应用挂载到页面上，代码如下。
+
+```xml
+const app = createApp(App)
+app.use(store)
+    .use(router)
+    .mount('#app')
+```
+
+之后，我们在src/components文件夹下新建一个Count.vue组件，在下面的代码中，template中的代码我们很熟悉了，就是一个div渲染了count变量，并且点击的时候触发add方法。在script中，我们使用useStore去获取数据源，初始化值和修改的函数有两个变化：
+
+- count不是使用ref直接定义，而是使用计算属性返回了store.state.count，也就是刚才在src/store/index.js中定义的count。
+- add函数是用来修改数据，这里我们不能直接去操作 store.state.count +=1，因为这个数据属于Vuex统一管理，所以我们要使用store.commit(‘add’)去触发Vuex中的mutation去修改数据。
+
+```xml
+<template>
+<div @click="add">
+    {{count}}
+</div>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+import {useStore} from 'vuex'
+let store = useStore()
+let count = computed(()=>store.state.count)
+
+function add(){
+    store.commit('add')
+}
+</script>
+```
+
+在浏览器中打开项目页面，我们就会有一个累加器的效果。相比起来之前用ref的方式，真的很简单，这时候小圣就问了我一个问题：什么时候的数据用Vuex管理，什么时候数据要放在组件内部使用ref管理呢？
+
+答案就是，**对于一个数据，如果只是组件内部使用就是用ref管理；如果我们需要跨组件，跨页面共享的时候，我们就需要把数据从Vue的组件内部抽离出来，放在Vuex中去管理**。
+
+我再结合例子具体说说：比如项目中的登录用户名，页面的右上角需要显示，有些信息弹窗也需要显示。这样的数据就需要放在Vuex中统一管理，每当需要抽离这样的数据的时候，我们都需要思考这个数据的初始化和更新逻辑。
+
+就像下图中，项目初始化的时候没有登录状态，我们是在用户登录成功之后，才能获取用户名这个信息，去修改Vuex的数据，再通过Vuex派发到所有的组件中。
+
+![图片](https://static001.geekbang.org/resource/image/9f/b9/9fca00b12fb51d52bbb48277a3c4e2b9.jpg?wh=1920x1224)
+
+## 手写迷你Vuex
+
+知道了Vuex是什么，接下来我们不妨动手实现一个迷你的Vuex，这能让你看到Vuex的大致原理。
+
+首先，我们需要创建一个变量store用来存储数据。下一步就是把这个store的数据包转成响应式的数据，并且提供给Vue组件使用。在Vue中有 [provide/inject](https://v3.cn.vuejs.org/guide/component-provide-inject.html#%E5%A4%84%E7%90%86%E5%93%8D%E5%BA%94%E6%80%A7) 这两个函数专门用来做数据共享，provide注册了数据后，所有的子组件都可以通过inject获取数据，这两个函数官方文档介绍得比较详细，我在这里就不过多解释了。
+
+完成刚才的数据转换之后，我们直接进入到src/store文件夹下，新建gvuex.js。下面的代码中，我们使用一个Store类来管理数据，类的内部使用\_state存储数据，使用mutations来存储数据修改的函数，注意这里的state已经使用reactive包裹成响应式数据了。
+
+```xml
+import { inject, reactive } from 'vue'
+
+const STORE_KEY = '__store__'
+function useStore() {
+  return inject(STORE_KEY)
+}
+function createStore(options) {
+  return new Store(options)
+}
+class Store {
+  constructor(options) {
     this._state = reactive({
-      &#47;&#47;  data: options.state
       data: options.state()
     })
-    this.mutations = options.mutations
+    this._mutations = options.mutations
   }
+}
+export { createStore, useStore }
+```
 
+上面的代码还暴露了createStore去创建Store的实例，并且可以在任意组件的setup函数内，使用useStore去获取store的实例。下一步我们回到src/store/index.js中，把vuex改成 ./gvuex。
+
+下面的代码中，我们使用createStore创建了一个store实例，并且实例内部使用state定义了count变量和修改count值的add函数。
+
+```
+// import { createStore } from 'vuex'
+import { createStore } from './gvuex'
+const store = ...
+export default store
+```
+
+最终我们使用store的方式，在项目入口文件src/main.js中使用app.use(store)注册。为了让useStore能正常工作，下面的代码中，我们需要给store新增一个install方法，这个方法会在app.use函数内部执行。我们通过app.provide函数注册store给全局的组件使用。
+
+```xml
+class Store {
+  // main.js入口处app.use(store)的时候，会执行这个函数
+  install(app) {
+    app.provide(STORE_KEY, this)
+  }
+}
+```
+
+下面的代码中，Store类内部变量\_state存储响应式数据，读取state的时候直接获取响应式数据\_state.data，并且提供了commit函数去执行用户配置好的mutations。
+
+```xml
+import { inject, reactive } from 'vue'
+const STORE_KEY = '__store__'
+function useStore() {
+  return inject(STORE_KEY)
+}
+function createStore(options) {
+  return new Store(options)
+}
+class Store {
+  constructor(options) {
+    this.$options = options
+    this._state = reactive({
+      data: options.state
+    })
+    this._mutations = options.mutations
+  }
   get state() {
     return this._state.data
   }
+  commit = (type, payload) => {
+    const entry = this._mutations[type]
+    entry && entry(this.state, payload)
+  }
+  install(app) {
+    app.provide(STORE_KEY, this)
+  }
+}
+export { createStore, useStore }
+```
 
-options.state这样写使用调试发现获取到的是函数
-options.state()写成这样才可以正常运行</div>2021-11-08</li><br/><li><img src="" width="30px"><span>Geek_4578dc</span> 👍（7） 💬（1）<div>建议大圣老师把每节的代码放出来，这样有利于阅读</div>2021-11-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/fd/6b/d91521bf.jpg" width="30px"><span>也許有一天</span> 👍（6） 💬（1）<div>我们公司导入rxjs来取代vuex，不得不说rxjs是真的猛...</div>2021-12-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/9a/f5/71eee10b.jpg" width="30px"><span>深蓝</span> 👍（4） 💬（1）<div>状态管理感觉是前端代码的核心，其他所有组件，监听数据流的变化，或改变数据，然后与这个数据流相关的页面组件作出响应变化，动态菜单，导航栏，以及主页面的组件就随之改变了，整个Web服务就动起来了，最近几天vuex 看的有点晕，有个地方有点疑惑
+这样在组件内部，我们就可以使用这个迷你的Vuex去实现一个累加器了。下面的代码中，我们使用useStore获取store的实例，并且使用计算属性返回count，在修改count的时候使用store.commit(‘add’)来修改count的值。
 
-1  vue &lt; script&gt; computed &lt;&#47;script&gt;
-2 vuex  也有 getters 
-
-两者都是计算属性，这里绕来绕去，还是理不清这里怎么使用最好？
-
-</div>2021-11-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/fc/e6/2cff4a89.jpg" width="30px"><span>醉月</span> 👍（4） 💬（1）<div>大圣老师Pinia会有涉及吗</div>2021-11-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/78/7f/ef0e0ec8.jpg" width="30px"><span>uncle 邦</span> 👍（3） 💬（1）<div>count 不是使用 ref 直接定义，而是使用计算属性返回了 state.state.count，也就是刚才在 src&#47;store&#47;index.js 中定义的 count。这个 &quot; state.state.count&quot; 是不是要改成 “store.state.count”</div>2021-11-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/7c/c6/dd01049e.jpg" width="30px"><span>Mercurywithu</span> 👍（2） 💬（1）<div>请问下大圣老师。install 方法为什么会在main.js入口处app.use(store)的时候，执行这个函数调用。是内置的api么、</div>2022-01-15</li><br/><li><img src="" width="30px"><span>xiaxiaxiaxia</span> 👍（2） 💬（1）<div>为什么在代码示例里总是省略那么多你觉得我们都会懂的代码呢。。。。对新手一点也不友好。。。</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/fa/e4/0b55683f.jpg" width="30px"><span>小灰</span> 👍（2） 💬（1）<div>大圣老师   请教下vuex的模块化   </div>2021-12-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/9a/f5/71eee10b.jpg" width="30px"><span>深蓝</span> 👍（2） 💬（1）<div>在看GitHub 其他开源项目代码，使用vuex 创建好store 引用的时候经常看到$store 一直不太理解这的$的含义？</div>2021-11-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/20/88/42d3b1fb.jpg" width="30px"><span>JIo</span> 👍（2） 💬（3）<div>真心觉得这种设计到多段代码的课程应该出视频课 而不是音频课 各种中英文错综穿插 代码还需要截图在旁边才能听讲 效果真的不如视频来的快。。。</div>2021-11-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/bd/7a/37df606b.jpg" width="30px"><span>乔帆 Kayla</span> 👍（1） 💬（1）<div>STORE_KEY 的值定为 __store__ , 有什么特殊含义或特殊处理吗?</div>2021-12-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/1c/e2/8048fff4.jpg" width="30px"><span>KLonILo</span> 👍（1） 💬（1）<div>盛哥，最近刚好碰到一个用户信息存储的问题，我们是多页面，vuex的话刷新就没了，所以是否将用户名同时存储本地来结合使用呢？或者你有没有比较好的方案提点提点，感恩~</div>2021-12-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/39/8c/3be6991a.jpg" width="30px"><span>韩仕杰</span> 👍（1） 💬（1）<div>老师，vue3中，尤大不推荐用vuex来做状态管理，您对这方面怎么看呢？</div>2021-11-22</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/8YX35AFKL60uUNM5YGloEx8uDbv0VGB5VddYvqKDgPRiauyW1ggJIs9p6B7ad3AricFMZAp8ahAqP4FmzaTP1few/132" width="30px"><span>葱味黑咖啡</span> 👍（1） 💬（1）<div> 第一次使用vuex是在vue2时，用来存储登录的用户数据，但vuex是没有持久化数据的，所以还得配合着localstorage和sessionstorage来用，比较好奇为什么vuex不提供数据持久化的实现？</div>2021-11-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/8d/ff/986ffb41.jpg" width="30px"><span>轻飘飘过</span> 👍（1） 💬（1）<div>1. 看provide和inject那地方mini-vuex的封装有点懵，说“provide 注册了数据后，所有的子组件都可以通过 inject 获取数据”，但是mini-vuex只是封装了函数并不是组件，后来看官方文档才知道这个在调用use的时候进行注入了全局组件上了。要是大圣老师再写详细点就好了。
-2. 有个疑问，使用app.use(store)进行注入vuex，为啥不封装成vueuse模块，在app.ts中用composition Api引入呢？</div>2021-11-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/23/20/5fd6ed6f.jpg" width="30px"><span>碎竹落棋</span> 👍（1） 💬（1）<div>github源码中，this.getters[name] = computed(() =&gt; fn(this.state))，为什么需要用computed去包住呢？</div>2021-11-13</li><br/><li><img src="" width="30px"><span>Ty丶汤圆圆</span> 👍（1） 💬（4）<div>想问下大圣啊，因为vuex有刷新的问题，所以项目里通常把 vuex 和 Storage 结合在一起做数据持久化，但是用多了就会产生为什么不直接用 Storage 存取数据的疑问。封装后存取数据也一样很方便嘛，还是说仅仅是因为 vuex 有响应式功能呢。希望大圣帮忙解答下，谢谢~</div>2021-11-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/8e/80/2ad9e9f5.jpg" width="30px"><span>Q</span> 👍（0） 💬（1）<div>老师,为什么我在组件内import { useStore } from &#39;vuex&#39;之后在下面获取不到store的实例,并且总是给我[Vue warn]: inject() can only be used inside setup() or functional components这个警告,我在挂载store的地方实际上是可以获取到store的实例的</div>2022-01-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/48/7c/2aaf50e5.jpg" width="30px"><span>coder</span> 👍（0） 💬（1）<div>这章的代码github上没有啊</div>2022-01-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/27/1f/24/24f15e57.jpg" width="30px"><span>朗</span> 👍（0） 💬（1）<div>class Store {
-    constructor(opts) {
-        this.$options = opts
-        this._state = reactive({
-            data: opts.state()
-        })
-
-        this._mutations = opts.mutations
-
-    }
-
-    get state() {
-        return this._state.data
-    }
-
-    commit = (type, payload) =&gt; {
-        const entry = this._mutations[type]
-
-        return entry &amp;&amp; entry(this.state, payload)
-    }
-
-    install(app) {
-        app.provide(STORE_KEY, this)
-    }
+```xml
+import {useStore} from '../store/gvuex'
+let store =useStore()
+let count = computed(()=>store.state.count)
+function add(){
+    store.commit('add')
 }
 
-export { useStore, createStore }
+```
 
-问下 return entry &amp;&amp; entry(this.state, payload)  中的this.state参数，是个方法，但这里没有调用，是怎么获取这个方法里return的this._state.data呢</div>2021-11-25</li><br/><li><img src="" width="30px"><span>一块小砖头</span> 👍（0） 💬（1）<div>The requested module &#39;&#47;src&#47;store&#47;gvuex.js?t=1637723171450&#39; does not provide an export named &#39;default&#39;     有人遇到了这个问题么？</div>2021-11-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2a/f7/0b/b01f1d68.jpg" width="30px"><span>百事可乐</span> 👍（0） 💬（1）<div>constructor （）{
+恭喜你，这样借助vue的插件机制和reactive响应式功能，我们只用30行代码，就实现了一个最迷你的数据管理工具，也就是一个迷你的Vuex实现，下面我们再结合例子，正式介绍一下Vuex看一看Vuex具体怎么用？
 
- this.$options = options;
-        this._state = reactive({
-            data: options.state()     &#47;&#47; 这里文章这里最后改成  options.state  好像不对吧
-        })
-        this._mutations = options.mutations
-}</div>2021-11-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/d6/d0/288c673c.jpg" width="30px"><span>瓦力</span> 👍（0） 💬（1）<div>感觉vuex的很大部分逻辑来自于redux，概念基本相同：store、state、action、reducer(mutation)、middleware(commit)，UI与逻辑分离，action触发state改变，并且state是immutable的。</div>2021-11-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e6/e5/b6980a7a.jpg" width="30px"><span>无双</span> 👍（0） 💬（1）<div>大圣老师,请问vuex如何处理刷新丢失数据的问题，我自己的处理方式是把Storage封装到vuex中，但感觉不是很好。</div>2021-11-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/02/9d/566b9065.jpg" width="30px"><span>拼搏、进取</span> 👍（0） 💬（1）<div>getters:{ double(state){ return state.count*2 } }, 这个getters如何实现的呢</div>2021-11-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/c9/f9/39492855.jpg" width="30px"><span>阿阳</span> 👍（0） 💬（1）<div>在实现mini版的vuex时，以下代码this._state = reactive({ data: options.state })，这里是不是应该是options.state()，是一个函数调用。因为在创建store时，state已经写成了一个函数了。</div>2021-11-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2a/fc/5a/3d4cb5ab.jpg" width="30px"><span>1023</span> 👍（0） 💬（7）<div>第一个示例报错，获取不到store是什么原因呢</div>2021-11-08</li><br/>
-</ul>
+## Vuex实战
+
+从上面的例子你可以立即看出，Vuex就是一个公用版本的ref，提供响应式数据给整个项目使用。现在的功能还比较简单，项目大部分情况都是像之前的清单应用一样，除了简单的数据修改，还会有一些异步任务的触发，这些场景Vuex都有专门的处理方式。
+
+在Vuex中，你可以使用getters配置，来实现computed的功能，比如我们想显示累加器数字乘以2之后的值，那么我们就需要引入getters配置。
+
+下面的代码中，我们实现了计算累加器数字乘以2以后的值。我们在Vuex中新增了getters配置，其实getters配置和Vue中的computed是一样的写法和功能。我们配置了doubule函数，用于显示count乘以2的计算结果。
+
+```xml
+import { createStore } from 'vuex'
+const store = createStore({
+  state () {
+    return {
+      count: 666
+    }
+  },
+  getters:{
+    double(state){
+          return state.count*2
+      }
+  },
+  mutations: {
+    add (state) {
+      state.count++
+    }
+  }
+})
+
+export default store
+```
+
+然后，我们可以很方便地在组件中使用getters，把double处理和计算的逻辑交给Vuex。
+
+```xml
+let double = computed(()=>store.getters.double)
+```
+
+实际项目开发中，有很多数据我们都是从网络请求中获取到的。在Vuex中，mutation的设计就是用来实现同步地修改数据。如果数据是异步修改的，我们需要一个新的配置action。现在我们模拟一个异步的场景，就是点击按钮之后的1秒，再去做数据的修改。
+
+面对这种异步的修改需求，在Vuex中你需要新增action的配置，在action中你可以做任意的异步处理。这里我们使用setTimeout来模拟延时，然后在action内部调用mutation就可以了。
+
+听起来是不是很绕？不过你不用担心，下面的代码就很清晰地演示了这个过程。
+
+首先，我们在createStore的配置中，新增了actions配置，这个配置中所有的函数，可以通过解构获得commit函数。内部的异步任务完成后，就随时可以调用commit来执行mutations去更新数据。
+
+```xml
+const store = createStore({
+  state () {
+    return {
+      count: 666
+    }
+  },
+  ...
+  actions:{
+      asyncAdd({commit}){
+          setTimeout(()=>{
+            commit('add')
+          },1000)
+      }
+  }
+})
+
+```
+
+**action并不是直接修改数据，而是通过mutations去修改，这是我提醒你需要注意的**。actions的调用方式是使用store.dispatch，在下面的代码中你可以看到这样的变化效果：页面中新增了一个asyncAdd的按钮，点击后会延迟一秒做累加。
+
+```xml
+function asyncAdd(){
+    store.dispatch('asyncAdd')
+}
+```
+
+代码执行的效果如下：
+
+![图片](https://static001.geekbang.org/resource/image/d0/b4/d07df967ed262e3fd02751fdc55171b4.gif?wh=435x239)
+
+Vuex在整体上的逻辑如下图所示，从宏观来说，Vue的组件负责渲染页面，组件中用到跨页面的数据，就是用state来存储，但是Vue不能直接修改state，而是要通过actions/mutations去做数据的修改。
+
+![](https://static001.geekbang.org/resource/image/85/28/851478d3f2b0393474de6e5b3b355a28.png?wh=1280x866)
+
+下面这个图也是Vuex官方的结构图，很好地拆解了Vuex在Vue全家桶中的定位，我们项目中也会用Vuex来管理所有的跨组件的数据，并且我们也会在Vuex内部根据功能模块去做拆分，会把用户、权限等不同模块的组件分开去管理。
+
+![图片](https://static001.geekbang.org/resource/image/23/7a/237557819e2148ac022305eaf86c0b7a.png?wh=701x551)
+
+由于Vuex所有的数据修改都是通过mutations来完成的，因而我们可以很方便地监控到数据的动态变化，后面我们可以借助官方的调试工具，非常方便地去调试项目中的数据变化。
+
+回到正在做的这个项目中，有大量的数据交互需求、用户的登录状态、登录的有效期、布局的设置，不同用户还会有不同的菜单权限等。
+
+不过面对眼花缭乱的交互需求，你不能自乱阵脚。总体来说，**我们在决定一个数据是否用Vuex来管理的时候，核心就是要思考清楚，这个数据是否有共享给其他页面或者是其他组件的需要**。如果需要，就放置在Vuex中管理；如果不需要，就应该放在组件内部使用ref或者reactive去管理。
+
+## 下一代Vuex
+
+Vuex由于在API的设计上，对TypeScript的类型推导的支持比较复杂，用起来很是痛苦。因为我们的项目一直用的都是JavaScript，你可能感触并不深，但对于使用TypeScript的用户来说，Vuex的这种问题是很明显的。
+
+为了解决Vuex的这个问题，Vuex的作者最近发布了一个新的作品叫Pinia，并将其称之为下一代的Vuex。Pinia的API的设计非常接近Vuex5的提案，首先，Pinia不需要Vuex自定义复杂的类型去支持TypeScript，天生对类型推断就非常友好，并且对Vue Devtool的支持也非常好，是一个很有潜力的状态管理框架。
+
+## 总结
+
+今天的学习内容并不难，主要是引入了一个新的框架Vuex和数据管理的概念，让我们一起来回顾一下。
+
+首先，我们从前端数据管理概念开始讲起。每个组件内部有自己的数据和模板，那共享的数据怎么科学管理呢？这就需要Vuex出马了。
+
+简单来说，Vuex是一个状态和数据管理的框架，负责管理项目中多个组件和多个页面共享的数据。在开发项目的时候，我们就会把数据分成两个部分，一种数据是在某个组件内部使用，我们使用ref或者reactive定义即可，另外一种数据需要跨页面共享，就需要使用Vuex来进行管理。
+
+之后，我们还讲到了Vuex带来了几个新的概念，我们使用state定义数据，使用mutation定义修改数据的逻辑，并且在组件中使用commit去调用mutations。在此基础之上，还可以用getters去实现Vuex世界的计算属性，使用action来去定义异步任务，并且在内部调用mutation去同步数据。
+
+Vuex的出现，让我们整个项目中的数据流动变得非常自然。数据流向组件，但组件不能直接修改数据，而是要通过mutation提出申请，mutation去修改数据，形成了一个圆环。这种方式对于我们项目的开发、维护和调试都是有很大的帮助。之后，我们一起手写了一个迷你的Vuex，通过实战巩固前面的学习。
+
+最后，我还简单介绍了一下Pinia这个框架，Pinia算是下一代的Vuex，感兴趣的同学可以去Pinia的官网学习一下。
+
+## 思考题
+
+相信今天的课程结束后，你对Vuex会有不一样的了解，那么你的项目里哪些数据要放在Vuex中呢？
+
+欢迎在留言区分享你的答案，并和我一起交流讨论，我们下一讲见！

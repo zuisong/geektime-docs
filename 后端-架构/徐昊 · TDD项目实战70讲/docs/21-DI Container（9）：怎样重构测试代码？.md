@@ -518,8 +518,21 @@ class DependencyDependedOnAnotherDependency implements Dependency {
 - 自定义Scope标注
   
   - 可向容器注册自定义Scope标注的回调
+
+## 视频演示
+
+让我们进入今天的部分：
+
+## 思考题
+
+在进入下节课之前，希望你能认真思考如下两个问题，并选择最有感触的一道进行回答。
+
+1. 要怎样将大粒度的测试，重构为等效的小粒度测试代码？可以分享一下你的大致思路。
+2. 请对比一下重构前后的代码结构，体会其中的改变。这会让你逐渐养成习惯，建立重构的大局观。
+
+欢迎把你的想法分享在留言区，也欢迎把你的项目代码的链接分享出来。相信经过你的思考与实操，学习效果会更好！
 <div><strong>精选留言（5）</strong></div><ul>
-<li><img src="" width="30px"><span>Flynn</span> 👍（0） 💬（1）<div>DI这个项目会在下个项目用上不</div>2022-04-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（3） 💬（0）<div>- 通过 TDD 获得的测试，可以驱动我们的开发，但不代表获得的是一个良好的 Test Case 组合
+<li><span>Flynn</span> 👍（0） 💬（1）<div>DI这个项目会在下个项目用上不</div>2022-04-28</li><br/><li><span>aoe</span> 👍（3） 💬（0）<div>- 通过 TDD 获得的测试，可以驱动我们的开发，但不代表获得的是一个良好的 Test Case 组合
 - TDD 主要是为我们开发生产代码提供驱动力
 - 天然得出的结果并不能认为是很好的 Test Case
 - 所以需要对 Test Case 进行重构
@@ -527,8 +540,8 @@ class DependencyDependedOnAnotherDependency implements Dependency {
   - 使 Test Case 能真实反应代码的意图
   - 按测试意图将零散的测试方法收集到一起（放入同一个 Nested 中或者单独的测试类中）
   - 同一个上下文中，测试粒度尽量保持一致
-  - 清理没有用的测试</div>2022-05-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4d/fe/882eaf0f.jpg" width="30px"><span>威</span> 👍（0） 💬（0）<div>老师您好，请问为什么把测试类往外面移的时候，要先把它声明为static？</div>2023-03-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/65/21/101a7075.jpg" width="30px"><span>davix</span> 👍（0） 💬（0）<div>才知道TDD寫過的cases要重新組織，之前看到的TDD介紹太淺，都未提過。
-請教老師，developer寫的test cases的好標準是啥？有延展閱讀嗎？</div>2022-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/2d/93/0f1cbf44.jpg" width="30px"><span>枫中的刀剑</span> 👍（0） 💬（0）<div>本篇总结：
+  - 清理没有用的测试</div>2022-05-03</li><br/><li><span>威</span> 👍（0） 💬（0）<div>老师您好，请问为什么把测试类往外面移的时候，要先把它声明为static？</div>2023-03-14</li><br/><li><span>davix</span> 👍（0） 💬（0）<div>才知道TDD寫過的cases要重新組織，之前看到的TDD介紹太淺，都未提過。
+請教老師，developer寫的test cases的好標準是啥？有延展閱讀嗎？</div>2022-05-25</li><br/><li><span>枫中的刀剑</span> 👍（0） 💬（0）<div>本篇总结：
 测试重构的目的：让TDD的 Test Case 更好的反映出我们代码的意图，而不仅仅是单纯展示实现功能的过程。
 测试代码的坏味道：
 主要体现在「不一致」。

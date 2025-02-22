@@ -220,5 +220,5 @@ class SubResourceLocators {
 
 欢迎把你的想法分享在留言区，也欢迎把你的项目代码分享出来。相信经过你的思考与实操，学习效果会更好！
 <div><strong>精选留言（1）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/17/0d/fe/4e5ba578.jpg" width="30px"><span>Jason</span> 👍（0） 💬（0）<div>函数式接口有点难懂</div>2022-09-07</li><br/>
+<li><span>Jason</span> 👍（0） 💬（0）<div>函数式接口有点难懂</div>2022-09-07</li><br/>
 </ul>

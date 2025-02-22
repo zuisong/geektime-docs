@@ -22,8 +22,16 @@
 3. D → 请学习《[03 | 如何在企业中有效落地OKR？你必须掌握这些技巧](https://time.geekbang.org/column/article/104370)》
 4. A → 请学习《[12 | 落地OKR效果不理想？可能是你身边缺少一位“教练”](https://time.geekbang.org/column/article/110514)》
 5. D → 请学习《[22 | 面试人才好纠结，新人试用难考核？你其实可以这样做](https://time.geekbang.org/column/article/119619)》
+
+### 三、多选题
+
+1. ABD → 请学习《[01 | 你想要快速理解OKR吗？看这篇文章就够了](https://time.geekbang.org/column/article/103858)》
+2. ABCD → 请学习《[02 | 如果有人再问你，OKR与KPI有何区别？你可以这样告诉他](https://time.geekbang.org/column/article/103986)》
+3. BCD → 请学习《[04 | 在落地OKR之前，需要具备哪些先决条件？](https://time.geekbang.org/column/article/104433)》
+4. ABD → 请学习《[10 | OKR评估没你想象的那么难，其实你可以这么做！](https://time.geekbang.org/column/article/107931)》
+5. ABC → 请学习《[19 | 敏捷与OKR都是为了“拥抱变化”，两者如何无缝整合？](https://time.geekbang.org/column/article/117125)》
 <div><strong>精选留言（4）</strong></div><ul>
-<li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJoo6fHYEsGZUGnYphQZDS4dicEMAA95xxAicibYPXC0VTredd1c7jQVncCqy0zCw8OhLZdDkDmbpEKA/132" width="30px"><span>Svip</span> 👍（3） 💬（0）<div>1.✔2.×3.✔4.×5.×6.✔7.×8×9.✔10.✔
+<li><span>Svip</span> 👍（3） 💬（0）<div>1.✔2.×3.✔4.×5.×6.✔7.×8×9.✔10.✔
 11.B12.c13.D14.A15.D
-16.ABCD 17.ABCD 18.ABCD 19.ABD 20.ABC</div>2019-09-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ed/9a/bbeec5bb.jpg" width="30px"><span>liu</span> 👍（1） 💬（0）<div>串起来效果蛮好的</div>2019-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/0f/28/b69d6634.jpg" width="30px"><span>Bruce Talk</span> 👍（0） 💬（0）<div>老师用心了，知识串成线，还配合对应的文章。赞👍。收获颇丰。感谢老师为这个系列的辛苦付出。</div>2020-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/44/a4/7a45d979.jpg" width="30px"><span>IT蜗壳-Tango</span> 👍（0） 💬（0）<div>收藏了，以后复习用。</div>2020-03-29</li><br/>
+16.ABCD 17.ABCD 18.ABCD 19.ABD 20.ABC</div>2019-09-18</li><br/><li><span>liu</span> 👍（1） 💬（0）<div>串起来效果蛮好的</div>2019-09-20</li><br/><li><span>Bruce Talk</span> 👍（0） 💬（0）<div>老师用心了，知识串成线，还配合对应的文章。赞👍。收获颇丰。感谢老师为这个系列的辛苦付出。</div>2020-05-30</li><br/><li><span>IT蜗壳-Tango</span> 👍（0） 💬（0）<div>收藏了，以后复习用。</div>2020-03-29</li><br/>
 </ul>

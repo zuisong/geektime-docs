@@ -15,14 +15,209 @@ Unicode至今仍在不断增修，每个新版本都加入更多新的字符。�
 ![](https://static001.geekbang.org/resource/image/8c/61/8c1c6b9b87f10eec04dbc2224f755d61.png?wh=1660%2A684)
 
 Unicode标准也在不断发展和完善。目前，使用4个字节的编码表示一个字符，就可以表示出全世界所有的字符。那么Unicode在计算机中如何存储和传输的呢？这就涉及编码的知识了。
-<div><strong>精选留言（22）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/39/8c/ff48ece3.jpg" width="30px"><span>小乙哥</span> 👍（10） 💬（6）<div>有点看着蒙圈了，unicode和utf-8不都是编码吗？不都是对字符的编码？他们之间的关系没有搞太清楚</div>2020-08-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/6c/67/07bcc58f.jpg" width="30px"><span>虹炎</span> 👍（10） 💬（12）<div>我的答案：
+
+Unicode相当于规定了字符对应的码值，这个码值得编码成字节的形式去传输和存储。最常见的编码方式是UTF-8，另外还有UTF-16，UTF-32 等。UTF-8 之所以能够流行起来，是因为其编码比较巧妙，采用的是变长的方法。也就是一个Unicode字符，在使用UTF-8编码表示时占用1到4个字节不等。最重要的是Unicode兼容ASCII编码，在表示纯英文时，并不会占用更多存储空间。而汉字呢，在UTF-8中，通常是用三个字节来表示。
+
+```
+>>> u'正'.encode('utf-8')
+b'\xe6\xad\xa3'
+>>> u'则'.encode('utf-8')
+b'\xe5\x88\x99'
+
+```
+
+下面是 Unicode 和 UTF-8 的转换规则，你可以参考一下。
+
+![](https://static001.geekbang.org/resource/image/c8/ed/c8055321ed7e4782b3d862f5d06297ed.png?wh=852%2A570)
+
+## Unicode中的正则
+
+在你大概了解了Unicode的基础知识后，接下来我来给你讲讲，在用Unicode中可能会遇到的坑，以及其中的点号匹配和字符组匹配的问题。
+
+### 编码问题的坑
+
+如果你在编程语言中使用正则，编码问题可能会让正则的匹配行为很奇怪。先说结论，在使用时一定尽可能地使用Unicode编码。
+
+如果你需要在Python语言中使用正则，我建议你使用Python3。如果你不得不使用Python2，一定要记得使用 Unicode 编码。在Python2中，一般是以u开头来表示Unicode。如果不加u，会导致匹配出现问题。比如我们在“极客”这个文本中查找“时间”。你可能会很惊讶，竟然能匹配到内容。
+
+下面是Python语言示例：
+
+```
+# 测试环境 macOS/Linux/Windows， Python2.7
+>>> import re
+>>> re.search(r'[时间]', '极客') is not None
+True
+>>> re.findall(r'[时间]', '极客')
+['\xe6']
+# Windows下输出是 ['\xbc']
+```
+
+通过分析原因，我们可以发现，不使用Unicode编码时，正则会被编译成其它编码表示形式。比如，在macOS或Linux下，一般会编码成UTF-8，而在Windows下一般会编码成GBK。
+
+下面是我在macOS上做的测试，“时间”这两个汉字表示成了UTF-8编码，正则不知道要每三个字节看成一组，而是把它们当成了6个单字符。
+
+```
+# 测试环境 macOS/Linux，Python 2.7
+>>> import re
+>>> re.compile(r'[时间]', re.DEBUG)
+in
+  literal 230
+  literal 151
+  literal 182
+  literal 233
+  literal 151
+  literal 180
+<_sre.SRE_Pattern object at 0x1053e09f0>
+>>> re.compile(ur'[时间]', re.DEBUG)
+in
+  literal 26102
+  literal 38388
+<_sre.SRE_Pattern object at 0x1053f8710>
+```
+
+我们再看一下 “极客” 和 “时间” 这两个词语对应的UTF-8编码。你可以发现，这两个词语都含有 16进制表示的e6，而GBK编码时都含有16进制的bc，所以才会出现前面的表现。
+
+下面是查看文本编码成UTF-8或GBK方式，以及编码的结果：
+
+```
+
+# UTF-8
+>>> u'极客'.encode('utf-8')
+'\xe6\x9e\x81\xe5\xae\xa2'  # 含有 e6
+>>> u'时间'.encode('utf-8')
+'\xe6\x97\xb6\xe9\x97\xb4'  # 含有 e6
+
+# GBK
+>>> u'极客'.encode('gbk')
+'\xbc\xab\xbf\xcd'  # 含有 bc
+>>> u'时间'.encode('gbk')
+'\xca\xb1\xbc\xe4'  # 含有 bc
+```
+
+这也是前面我们花时间讲编码基础知识的原因，只有理解了编码的知识，你才能明白这些。在学习其它知识的时候也是一样的思路，不要去死记硬背，搞懂了底层原理，你自然就掌握了。因此在使用时，一定要指定 Unicode 编码，这样就可以正常工作了。
+
+```
+# Python2 或 Python3 都可以
+>>> import re
+>>> re.search(ur'[时间]', u'极客') is not None
+False
+>>> re.findall(ur'[时间]', u'极客')
+[]
+
+```
+
+### 点号匹配
+
+之前我们学过，**点号**可以匹配除了换行符以外的任何字符，但之前我们接触的大多是单字节字符。在Unicode中，点号可以匹配上Unicode字符么？这个其实情况比较复杂，不同语言支持的也不太一样，具体的可以通过测试来得到答案。
+
+下面我给出了在Python和JavaScript测试的结果：
+
+```
+# Python 2.7
+>>> import re
+>>> re.findall(r'^.$', '学')
+[]
+>>> re.findall(r'^.$', u'学')
+[u'\u5b66']
+>>> re.findall(ur'^.$', u'学')
+[u'\u5b66']
+
+# Python 3.7
+>>> import re
+>>> re.findall(r'^.$', '学')
+['学']
+>>> re.findall(r'(?a)^.$', '学')
+['学']
+```
+
+```
+/* JavaScript(ES6) 环境 */
+> /^.$/.test("学")
+true
+
+```
+
+至于其它的语言里面能不能用，你可以自己测试一下。在这个课程里，我更多地是希望你掌握这些学习的方法和思路，而不是单纯地记住某个知识点，一旦掌握了方法，之后就会简单多了。
+
+### 字符组匹配
+
+之前我们学习了很多字符组，比如\\d表示数字，\\w表示大小写字母、下划线、数字，\\s表示空白符号等，那 Unicode 下的数字，比如全角的1、2、３等，算不算数字呢？全角的空格算不算空白呢？同样，你可以用我刚刚说的方法，来测试一下你所用的语言对这些字符组的支持程度。
+
+## Unicode 属性
+
+在正则中使用Unicode，还可能会用到Unicode的一些属性。这些属性把Unicode字符集划分成不同的字符小集合。
+
+在正则中常用的有三种，分别是**按功能划分**的Unicode Categories（有的也叫 Unicode Property），比如标点符号，数字符号；按**连续区间划分**的Unicode Blocks，比如只是中日韩字符；按**书写系统划分**的Unicode Scripts，比如汉语中文字符。
+
+![](https://static001.geekbang.org/resource/image/2y/ae/2yy1c343b4151d14e088a795c4ec77ae.jpg?wh=1542%2A653)
+
+在正则中如何使用这些Unicode属性呢？在正则中，这三种属性在正则中的表示方式都是\\p{属性}。比如，我们可以使用 Unicode Script 来实现查找连续出现的中文。
+
+![](https://static001.geekbang.org/resource/image/38/9c/383a10b093d483c095603930f968c29c.png?wh=1076%2A562)
+
+你可以在[这里](https://regex101.com/r/Bgt4hl/1)进行测试。
+
+其中，Unicode Blocks在不同的语言中记法有差异，比如Java需要加上In前缀，类似于 \\p{**InBopomofo**} 表示注音字符。
+
+知道Unicode属性这些知识，基本上就够用了，在用到相关属性的时候，可以再查阅一下参考手册。如果你想知道Unicode属性更全面的介绍，可以看一下维基百科的对应链接。
+
+- [Unicode Property](https://en.wikipedia.org/wiki/Unicode_character_property)
+- [Unicode Block](https://en.wikipedia.org/wiki/Unicode_block)
+- [Unicode Script](https://en.wikipedia.org/wiki/Script_%28Unicode%29)
+
+## 表情符号
+
+表情符号其实是“图片字符”，最初与日本的手机使用有关，在日文中叫“绘文字”，在英文中叫emoji，但现在从日本流行到了世界各地。不少同学在聊天的时候喜欢使用表情。下面是办公软件钉钉中一些表情的截图。
+
+![](https://static001.geekbang.org/resource/image/0e/e8/0ee6f3c217a13337b46c0ff41dc866e8.png?wh=958%2A202)
+
+在2020 年 3 月 10 日公布的Unicode标准 13.0.0 中，新增了55个新的emoji表情，完整的表情列表你可以在这里查看[这个链接](http://www.unicode.org/emoji/charts/full-emoji-list.html)。
+
+这些表情符号有如下特点。
+
+1. 许多表情不在BMP内，码值超过了 FFFF。使用 UTF-8编码时，普通的 ASCII 是1个字节，中文是3个字节，而有一些表情需要4个字节来编码。
+2. 这些表情分散在BMP和各个补充平面中，要想用一个正则来表示所有的表情符号非常麻烦，即便使用编程语言处理也同样很麻烦。
+3. 一些表情现在支持使用颜色修饰（Fitzpatrick modifiers），可以在5种色调之间进行选择。这样一个表情其实就是8个字节了。
+
+在这里我给出了你有关于表情颜色修饰的5种色调，你可以看一看。
+
+![](https://static001.geekbang.org/resource/image/2e/75/2e74dd14262807c7ab80c4867c3a8975.png?wh=944%2A390)
+
+下面是使用IPython测试颜色最深的点赞表情，在macOS上的测试结果。你可以发现，它是由8个字节组成，这样用正则处理起来就很不方便了。因此，在处理表情符号时，我不建议你使用正则来处理。你可以使用专门的库，这样做一方面代码可读性更好，另一方面是表情在不断增加，使用正则的话不好维护，会给其它同学留坑。而使用专门的库可以通过升级版本来解决这个问题。
+
+![](https://static001.geekbang.org/resource/image/cf/69/cf9fbeddf035820a9303512dbedb2969.png?wh=946%2A250)
+
+## 总结
+
+好了，讲到这，今天的内容也就基本结束了。最后我来给你总结一下。
+
+今天我们学习了Unicode编码的基础知识、了解了UTF-8编码、变长存储、以及它和Unicode的关系。Unicode字符按照功能，码值区间和书写系统等方式进行分类，比如按书写系统划分 \\p{Han} 可以表示中文汉字。
+
+在正则中使用Unicode有一些坑主要是因为编码问题，使用的时候你要弄明白是拿Unicode去匹配，还是编码后的某部分字节去进行匹配的，这可以让你避开这些坑。
+
+而在处理表情时，由于表情比较复杂，我不建议使用正则来处理，更建议使用专用的表情库来处理。
+
+![](https://static001.geekbang.org/resource/image/76/3f/76924343bfb8d3f1612b92b6cab4703f.png?wh=1852%2A1468)
+
+## 课后思考
+
+最后，我们来做一个小练习吧。在正则 xy{3} 中，你应该知道， y是重复3次，那如果正则是“极客{3}”的时候，代表是“客”这个汉字重复3次，还是“客”这个汉字对应的编码最后一个字节重复3次呢？如果是重复的最后一个字节，应该如何解决？
+
+```
+'极客{3}'
+```
+
+你可以自己来动动手，用自己熟悉的编程语言来试一试，经过不断练习你才能更好地掌握学习的内容。
+
+今天的课程就结束了，希望可以帮助到你，也希望你在下方的留言区和我参与讨论，同时欢迎你把这节课分享给你的朋友或者同事，一起交流一下。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>小乙哥</span> 👍（10） 💬（6）<div>有点看着蒙圈了，unicode和utf-8不都是编码吗？不都是对字符的编码？他们之间的关系没有搞太清楚</div>2020-08-25</li><br/><li><span>虹炎</span> 👍（10） 💬（12）<div>我的答案：
 客重复3次，如果重复的是最后一个字节，就这样‘极(客){3}’, 给客加个括号分组。
-请老师指正？</div>2020-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/1b/6e/cd8fea9f.jpg" width="30px"><span>RecordLiu</span> 👍（5） 💬（1）<div>解释一下UTF-8的编码规则，会比较好理解文章中提到的Unicode和UTF-8的转化：
+请老师指正？</div>2020-06-29</li><br/><li><span>RecordLiu</span> 👍（5） 💬（1）<div>解释一下UTF-8的编码规则，会比较好理解文章中提到的Unicode和UTF-8的转化：
 对于单个字节的字符，第一位设为 0，后面的 7 位对应这个字符的 Unicode 码点。因此，对于英文中的 0 - 127 号字符，与 ASCII 码完全相同。这意味着 ASCII 码那个年代的文档用 UTF-8 编码打开完全没有问题。
 
-对于需要使用 N 个字节来表示的字符（N &gt; 1），第一个字节的前 N 位都设为 1，第 N + 1 位设为 0，剩余的 N - 1 个字节的前两位都设位 10，剩下的二进制位则使用这个字符的 Unicode 码点来填充。</div>2021-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/07/af/351a9fe7.jpg" width="30px"><span>天蓬太帅</span> 👍（3） 💬（1）<div>请问例子里有一个表达式是findall(r’(?a)^.$’, ‘学’)，这里面的?a是啥意思？</div>2020-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/9d/49/372ced1b.jpg" width="30px"><span>Blue D</span> 👍（1） 💬（1）<div>python2中的str等同于python3中的bytes类型，
-而python2中的unicode等于python3中的str类型</div>2021-10-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/82/8b/5340fb27.jpg" width="30px"><span>gsz</span> 👍（1） 💬（1）<div>Unicode和gbk编码时，即刻，时间两个词都包含相同的16位数，为什么unicode匹配不了，而gbk的可以匹配？</div>2020-08-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/fc/58/102835d4.jpg" width="30px"><span>jooe</span> 👍（1） 💬（2）<div>感谢老师加了 js 的代码示例，对于不会后端语言的还是很友好的</div>2020-07-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ff/51/9d5cfadd.jpg" width="30px"><span>好运来</span> 👍（1） 💬（1）<div>    print(u&#39;正&#39;.encode(&#39;utf-8&#39;))
+对于需要使用 N 个字节来表示的字符（N &gt; 1），第一个字节的前 N 位都设为 1，第 N + 1 位设为 0，剩余的 N - 1 个字节的前两位都设位 10，剩下的二进制位则使用这个字符的 Unicode 码点来填充。</div>2021-03-24</li><br/><li><span>天蓬太帅</span> 👍（3） 💬（1）<div>请问例子里有一个表达式是findall(r’(?a)^.$’, ‘学’)，这里面的?a是啥意思？</div>2020-07-19</li><br/><li><span>Blue D</span> 👍（1） 💬（1）<div>python2中的str等同于python3中的bytes类型，
+而python2中的unicode等于python3中的str类型</div>2021-10-29</li><br/><li><span>gsz</span> 👍（1） 💬（1）<div>Unicode和gbk编码时，即刻，时间两个词都包含相同的16位数，为什么unicode匹配不了，而gbk的可以匹配？</div>2020-08-20</li><br/><li><span>jooe</span> 👍（1） 💬（2）<div>感谢老师加了 js 的代码示例，对于不会后端语言的还是很友好的</div>2020-07-03</li><br/><li><span>好运来</span> 👍（1） 💬（1）<div>    print(u&#39;正&#39;.encode(&#39;utf-8&#39;))
     # 全角正则和全角字符串，不能匹配到
     print(re.findall(r&#39;＼ｗ＋&#39;, &#39;ａｂｃｄｅｆ&#39;)) # 输出[]
     # 半角正则和全角字符串，能够匹配到
@@ -44,21 +239,8 @@ Unicode标准也在不断发展和完善。目前，使用4个字节的编码表
 
     # 思考题没有想到好的解决方法
     print(re.compile(str(u&#39;极客&#39;.encode(&#39;utf-8&#39;)[-1:]).replace(&#39;b&#39;, &#39;&#39;)), re.DEBUG)
-</div>2020-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/03/5b/3cdbc9fa.jpg" width="30px"><span>宁悦</span> 👍（1） 💬（1）<div>py3下测试
+</div>2020-06-29</li><br/><li><span>宁悦</span> 👍（1） 💬（1）<div>py3下测试
 re.findall(&#39;极客{3}&#39;, &#39;极客客客客气气气&#39;)
-结果：[&#39;极客客客&#39;]</div>2020-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/30/3c/0668d6ae.jpg" width="30px"><span>盘胧</span> 👍（1） 💬（1）<div>对编码知识一直模棱两可的，顺着这个再梳理一下吧</div>2020-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/ef/59/6eda594b.jpg" width="30px"><span>octopus</span> 👍（0） 💬（2）<div>客重复三次，如果要极客重复三次‘(极客){3}’</div>2021-02-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/db/ba/304a9a4a.jpg" width="30px"><span>Juntíng</span> 👍（0） 💬（1）<div>JS 语言里, 客重复三次，
-重复的是最后一个字节的话,将“客”独立为组再进行</div>2020-08-03</li><br/><li><img src="" width="30px"><span>岁月轻狂</span> 👍（0） 💬（1）<div>老师，点好通配那里，（？a）是什么意思？</div>2020-07-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f0/50/c348c2ea.jpg" width="30px"><span>吕伟</span> 👍（0） 💬（1）<div>老师，为什么在sublime text3的正则搜索中输入\p{Han}，没有显示匹配结果。</div>2020-07-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f0/50/c348c2ea.jpg" width="30px"><span>吕伟</span> 👍（0） 💬（1）<div>极(客){3}</div>2020-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（0） 💬（1）<div>对于 emoji 表情 ， unicode 没有一个属性可以表示的吗？ 比如 \p{P} 标点符号</div>2020-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/07/21/b3394aa2.jpg" width="30px"><span>Robot</span> 👍（0） 💬（3）<div>本来想把python3、pyhon2统一处理为 re.findall(ur&#39;极客{3}&#39;, u&#39;极客客客&#39;)
-
-碰到Unicode类型的统一加u
-
-结果在python3下报错
-
-&gt;&gt;&gt; re.findre.findall(ur&#39;极客{3}&#39;, u&#39;极客客客&#39;)
-  File &quot;&lt;stdin&gt;&quot;, line 1
-    re.findre.findall(ur&#39;极客{3}&#39;, u&#39;极客客客&#39;)
-                        ^
-SyntaxError: invalid syntax
-
-</div>2020-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/07/21/b3394aa2.jpg" width="30px"><span>Robot</span> 👍（0） 💬（2）<div>课后思考：re.findall(ur&#39;极{3}&#39;, u&#39;极极极&#39;)
-</div>2020-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/5e/28/c0a8f859.jpg" width="30px"><span>Thinker</span> 👍（0） 💬（0）<div>极(?:客){3}</div>2023-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>在使用时一定尽可能地使用 Unicode 编码。--记下来</div>2022-11-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2022-11-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/b4/94/2796de72.jpg" width="30px"><span>追风筝的人</span> 👍（0） 💬（0）<div>Unicode（中文：万国码、国际码、统一码、单一码）是计算机科学领域里的一项业界标准。它对世界上大部分的文字进行了整理、编码。Unicode 使计算机呈现和处理文字变得简单。</div>2020-10-24</li><br/>
+结果：[&#39;极客客客&#39;]</div>2020-06-29</li><br/><li><span>盘胧</span> 👍（1） 💬（1）<div>对编码知识一直模棱两可的，顺着这个再梳理一下吧</div>2020-06-29</li><br/><li><span>octopus</span> 👍（0） 💬（2）<div>客重复三次，如果要极客重复三次‘(极客){3}’</div>2021-02-01</li><br/><li><span>Juntíng</span> 👍（0） 💬（1）<div>JS 语言里, 客重复三次，
+重复的是最后一个字节的话,将“客”独立为组再进行</div>2020-08-03</li><br/><li><span>岁月轻狂</span> 👍（0） 💬（1）<div>老师，点好通配那里，（？a）是什么意思？</div>2020-07-20</li><br/><li><span>吕伟</span> 👍（0） 💬（1）<div>老师，为什么在sublime text3的正则搜索中输入\p{Han}，没有显示匹配结果。</div>2020-07-20</li><br/><li><span>吕伟</span> 👍（0） 💬（1）<div>极(客){3}</div>2020-07-19</li><br/>
 </ul>

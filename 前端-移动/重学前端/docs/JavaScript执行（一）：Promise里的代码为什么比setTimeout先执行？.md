@@ -11,8 +11,188 @@
 在ES3和更早的版本中，JavaScript本身还没有异步执行代码的能力，这也就意味着，宿主环境传递给JavaScript引擎一段代码，引擎就把代码直接顺次执行了，这个任务也就是宿主发起的任务。
 
 但是，在ES5之后，JavaScript引入了Promise，这样，不需要浏览器的安排，JavaScript引擎本身也可以发起任务了。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/15/04/b3/3f0b69f9.jpg" width="30px"><span>杨学茂</span> 👍（557） 💬（16）<div>function sleep(duration){
+
+由于我们这里主要讲JavaScript语言，那么采纳JSC引擎的术语，我们把宿主发起的任务称为宏观任务，把JavaScript引擎发起的任务称为微观任务。
+
+## 宏观和微观任务
+
+JavaScript引擎等待宿主环境分配宏观任务，在操作系统中，通常等待的行为都是一个事件循环，所以在Node术语中，也会把这个部分称为事件循环。
+
+不过，术语本身并非我们需要重点讨论的内容，我们在这里把重点放在事件循环的原理上。在底层的C/C++代码中，这个事件循环是一个跑在独立线程中的循环，我们用伪代码来表示，大概是这样的：
+
+```C
+while(TRUE) {
+    r = wait();
+    execute(r);
+}
+```
+
+我们可以看到，整个循环做的事情基本上就是反复“等待-执行”。当然，实际的代码中并没有这么简单，还有要判断循环是否结束、宏观任务队列等逻辑，这里为了方便你理解，我就把这些都省略掉了。
+
+这里每次的执行过程，其实都是一个宏观任务。我们可以大概理解：宏观任务的队列就相当于事件循环。
+
+在宏观任务中，JavaScript的Promise还会产生异步代码，JavaScript必须保证这些异步代码在一个宏观任务中完成，因此，每个宏观任务中又包含了一个微观任务队列：
+
+![](https://static001.geekbang.org/resource/image/16/65/16f70a9a51a65d5302166b0d78414d65.jpg?wh=1398%2A1636)
+
+有了宏观任务和微观任务机制，我们就可以实现JavaScript引擎级和宿主级的任务了，例如：Promise永远在队列尾部添加微观任务。setTimeout等宿主API，则会添加宏观任务。
+
+接下来，我们来详细介绍一下Promise。
+
+## Promise
+
+Promise是JavaScript语言提供的一种标准化的异步管理方式，它的总体思想是，需要进行io、等待或者其它异步操作的函数，不返回真实结果，而返回一个“承诺”，函数的调用方可以在合适的时机，选择等待这个承诺兑现（通过Promise的then方法的回调）。
+
+Promise的基本用法示例如下：
+
+```
+    function sleep(duration) {
+        return new Promise(function(resolve, reject) {
+            setTimeout(resolve,duration);
+        })
+    }
+    sleep(1000).then( ()=> console.log("finished"));
+```
+
+这段代码定义了一个函数sleep，它的作用是等候传入参数指定的时长。
+
+Promise的then回调是一个异步的执行过程，下面我们就来研究一下Promise函数中的执行顺序，我们来看一段代码示例：
+
+```
+    var r = new Promise(function(resolve, reject){
+        console.log("a");
+        resolve()
+    });
+    r.then(() => console.log("c"));
+    console.log("b")
+```
+
+我们执行这段代码后，注意输出的顺序是 a b c。在进入console.log(“b”) 之前，毫无疑问 r 已经得到了resolve，但是Promise的resolve始终是异步操作，所以c无法出现在b之前。
+
+接下来我们试试跟setTimeout混用的Promise。
+
+在这段代码中，我设置了两段互不相干的异步操作：通过setTimeout执行console.log(“d”)，通过Promise执行console.log(“c”)。
+
+```
+    var r = new Promise(function(resolve, reject){
+        console.log("a");
+        resolve()
+    });
+    setTimeout(()=>console.log("d"), 0)
+    r.then(() => console.log("c"));
+    console.log("b")
+```
+
+我们发现，不论代码顺序如何，d必定发生在c之后，因为Promise产生的是JavaScript引擎内部的微任务，而setTimeout是浏览器API，它产生宏任务。
+
+为了理解微任务始终先于宏任务，我们设计一个实验：执行一个耗时1秒的Promise。
+
+```
+    setTimeout(()=>console.log("d"), 0)
+    var r = new Promise(function(resolve, reject){
+        resolve()
+    });
+    r.then(() => { 
+        var begin = Date.now();
+        while(Date.now() - begin < 1000);
+        console.log("c1") 
+        new Promise(function(resolve, reject){
+            resolve()
+        }).then(() => console.log("c2"))
+    });
+```
+
+这里我们强制了1秒的执行耗时，这样，我们可以确保任务c2是在d之后被添加到任务队列。
+
+我们可以看到，即使耗时一秒的c1执行完毕，再enque的c2，仍然先于d执行了，这很好地解释了微任务优先的原理。
+
+通过一系列的实验，我们可以总结一下如何分析异步执行的顺序：
+
+- 首先我们分析有多少个宏任务；
+- 在每个宏任务中，分析有多少个微任务；
+- 根据调用次序，确定宏任务中的微任务执行次序；
+- 根据宏任务的触发规则和调用次序，确定宏任务的执行次序；
+- 确定整个顺序。
+
+我们再来看一个稍微复杂的例子：
+
+```
+    function sleep(duration) {
+        return new Promise(function(resolve, reject) {
+            console.log("b");
+            setTimeout(resolve,duration);
+        })
+    }
+    console.log("a");
+    sleep(5000).then(()=>console.log("c"));
+```
+
+这是一段非常常用的封装方法，利用Promise把setTimeout封装成可以用于异步的函数。
+
+我们首先来看，setTimeout把整个代码分割成了2个宏观任务，这里不论是5秒还是0秒，都是一样的。
+
+第一个宏观任务中，包含了先后同步执行的 console.log(“a”); 和 console.log(“b”);。
+
+setTimeout后，第二个宏观任务执行调用了resolve，然后then中的代码异步得到执行，所以调用了console.log(“c”)，最终输出的顺序才是： a b c。
+
+Promise是JavaScript中的一个定义，但是实际编写代码时，我们可以发现，它似乎并不比回调的方式书写更简单，但是从ES6开始，我们有了async/await，这个语法改进跟Promise配合，能够有效地改善代码结构。
+
+## 新特性：async/await
+
+async/await是ES2016新加入的特性，它提供了用for、if等代码结构来编写异步的方式。它的运行时基础是Promise，面对这种比较新的特性，我们先来看一下基本用法。
+
+async函数必定返回Promise，我们把所有返回Promise的函数都可以认为是异步函数。
+
+async函数是一种特殊语法，特征是在function关键字之前加上async关键字，这样，就定义了一个async函数，我们可以在其中使用await来等待一个Promise。
+
+```
+function sleep(duration) {
+    return new Promise(function(resolve, reject) {
+        setTimeout(resolve,duration);
+    })
+}
+async function foo(){
+    console.log("a")
+    await sleep(2000)
+    console.log("b")
+}
+```
+
+这段代码利用了我们之前定义的sleep函数。在异步函数foo中，我们调用sleep。
+
+async函数强大之处在于，它是可以嵌套的。我们在定义了一批原子操作的情况下，可以利用async函数组合出新的async函数。
+
+```
+function sleep(duration) {
+    return new Promise(function(resolve, reject) {
+        setTimeout(resolve,duration);
+    })
+}
+async function foo(name){
+    await sleep(2000)
+    console.log(name)
+}
+async function foo2(){
+    await foo("a");
+    await foo("b");
+}
+```
+
+这里foo2用await调用了两次异步函数foo，可以看到，如果我们把sleep这样的异步操作放入某一个框架或者库中，使用者几乎不需要了解Promise的概念即可进行异步编程了。
+
+此外，generator/iterator也常常被跟异步一起来讲，我们必须说明 generator/iterator 并非异步代码，只是在缺少async/await的时候，一些框架（最著名的要数co）使用这样的特性来模拟async/await。
+
+但是generator并非被设计成实现异步，所以有了async/await之后，generator/iterator来模拟异步的方法应该被废弃。
+
+## 结语
+
+在今天的文章里，我们学习了JavaScript执行部分的知识，首先我们学习了JavaScript的宏观任务和微观任务相关的知识。我们把宿主发起的任务称为宏观任务，把JavaScript引擎发起的任务称为微观任务。许多的微观任务的队列组成了宏观任务。
+
+除此之外，我们还展开介绍了用Promise来添加微观任务的方式，并且介绍了async/await这个语法的改进。
+
+最后，留给你一个小练习：我们现在要实现一个红绿灯，把一个圆形div按照绿色3秒，黄色1秒，红色2秒循环改变背景色，你会怎样编写这个代码呢？欢迎你留言讨论。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>杨学茂</span> 👍（557） 💬（16）<div>function sleep(duration){
     return new Promise(function(resolve){
         setTimeout(resolve, duration);
     })
@@ -29,7 +209,7 @@ async function main(){
         await changeColor(2000, &quot;red&quot;);
     }
 }
-main()</div>2019-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/29/39/0aec7827.jpg" width="30px"><span>费马</span> 👍（35） 💬（5）<div>const lightEle = document.getElementById(&#39;traffic-light&#39;);
+main()</div>2019-02-23</li><br/><li><span>费马</span> 👍（35） 💬（5）<div>const lightEle = document.getElementById(&#39;traffic-light&#39;);
 function changeTrafficLight(color, duration) {
   return new Promise(function(resolve, reject) {
     lightEle.style.background = color;
@@ -44,7 +224,7 @@ async function trafficScheduler() {
   trafficScheduler();
 }
 
-trafficScheduler();</div>2019-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/cb/82/d01f40b4.jpg" width="30px"><span>deiphi</span> 👍（33） 💬（8）<div>&#47;&#47; 比较原始的写法
+trafficScheduler();</div>2019-02-23</li><br/><li><span>deiphi</span> 👍（33） 💬（8）<div>&#47;&#47; 比较原始的写法
 function color () { 
 	console.log(&#39;green&#39;);
 	
@@ -58,9 +238,9 @@ function color () {
 			}, 1000)
 	}, 3000);
 }
-color();</div>2019-02-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/4a/13/42e02b09.jpg" width="30px"><span>许吉中</span> 👍（13） 💬（2）<div>async&#47;await函数属于宏观还是微观？</div>2019-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/0e/04/d710d928.jpg" width="30px"><span>奥斯特洛夫斯基</span> 👍（12） 💬（1）<div>同步的代码和setTimeout都是宏任务？</div>2019-02-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/6f/60/edbb8b8a.jpg" width="30px"><span>小孔</span> 👍（8） 💬（2）<div>1. async&#47;await ，遇到await时就会退出执行，我想问下，退出之后是处于等待await执行完再开始之后吗？
+color();</div>2019-02-26</li><br/><li><span>许吉中</span> 👍（13） 💬（2）<div>async&#47;await函数属于宏观还是微观？</div>2019-02-24</li><br/><li><span>奥斯特洛夫斯基</span> 👍（12） 💬（1）<div>同步的代码和setTimeout都是宏任务？</div>2019-02-26</li><br/><li><span>小孔</span> 👍（8） 💬（2）<div>1. async&#47;await ，遇到await时就会退出执行，我想问下，退出之后是处于等待await执行完再开始之后吗？
 2. 如果promise中产生setTimeout函数，那么在这里的setTimeout是处于微观任务对吗？因为这是js引擎直接发起的？
-</div>2019-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/f7/d9/3014889f.jpg" width="30px"><span>周序猿</span> 👍（4） 💬（1）<div>&#47;&#47; 另类的写法
+</div>2019-04-09</li><br/><li><span>周序猿</span> 👍（4） 💬（1）<div>&#47;&#47; 另类的写法
  var lightDiv = document.getElementById(&#39;light&#39;)
     function wait(seconds){
       return new Promise((resolve)=&gt;{
@@ -87,10 +267,10 @@ color();</div>2019-02-26</li><br/><li><img src="https://static001.geekbang.org/a
     yellowLight.nextLight = redLight
     greenLight.nextLight = yellowLight
 
-    redLight.run()</div>2019-02-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/de/3e/2e87843c.jpg" width="30px"><span>不曾潇洒</span> 👍（4） 💬（2）<div>老师你好，看了这篇文章后受益匪浅，有个小问题:
+    redLight.run()</div>2019-02-26</li><br/><li><span>不曾潇洒</span> 👍（4） 💬（2）<div>老师你好，看了这篇文章后受益匪浅，有个小问题:
 在Promise段的最后一个例子中，最后一句代码:
 sleep(5000).then(()=&gt;{console.log(&#39;c&#39;)})，
-这里面的打印c是属于第一个宏任务还是属于setTime产生的第二个宏任务呢?</div>2019-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4d/fd/0aa0e39f.jpg" width="30px"><span>许童童</span> 👍（4） 💬（6）<div>async function controlLoop () {
+这里面的打印c是属于第一个宏任务还是属于setTime产生的第二个宏任务呢?</div>2019-02-23</li><br/><li><span>许童童</span> 👍（4） 💬（6）<div>async function controlLoop () {
   await changeColor(&#39;green&#39;, 3000)
   await changeColor(&#39;yellow&#39;, 1000)
   await changeColor(&#39;red&#39;, 2000)
@@ -107,7 +287,7 @@ async function changeColor (color, time) {
   })
 }
 
-controlLoop()</div>2019-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9c/e2/368f6734.jpg" width="30px"><span>🇨🇳🇨🇳🇨🇳</span> 👍（3） 💬（2）<div>async&#47;awiat 只是generator&#47;iterator的语法糖而已</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/d1/81/89ba9d81.jpg" width="30px"><span>大力</span> 👍（3） 💬（1）<div>用了async, await后貌似宏观与微观任务分得没那么清晰了。</div>2019-06-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJEPMj69Hy9qq8SuEsiccKKaJQt20vvjl9Z9DMJxNmvrq6X3LrDMONTT6Jkg70kEVg13Lkdc6eMWlA/132" width="30px"><span>Geek_e21f0d</span> 👍（3） 💬（1）<div>let lightStates = [{
+controlLoop()</div>2019-02-23</li><br/><li><span>🇨🇳🇨🇳🇨🇳</span> 👍（3） 💬（2）<div>async&#47;awiat 只是generator&#47;iterator的语法糖而已</div>2019-07-08</li><br/><li><span>大力</span> 👍（3） 💬（1）<div>用了async, await后貌似宏观与微观任务分得没那么清晰了。</div>2019-06-18</li><br/><li><span>Geek_e21f0d</span> 👍（3） 💬（1）<div>let lightStates = [{
         color: &#39;green&#39;,
         duration: 3000
     },
@@ -136,8 +316,8 @@ controlLoop()</div>2019-02-23</li><br/><li><img src="https://static001.geekbang.
         }
         
     };
-    startShowLight();</div>2019-02-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/0a/de/8c4810b0.jpg" width="30px"><span>NeverEver</span> 👍（3） 💬（1）<div>我想到的方法是用Recursion。写一个函数setColor，需要一个参数color，函数里首先把div的backgroundColor设置color，然后用setTimeout来设置下一个颜色，根据传入的color相应更改时间和颜色即可</div>2019-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/bf/bb/c0e9847e.jpg" width="30px"><span>Geek_55d7cf</span> 👍（2） 💬（1）<div>除了setTimeout还有哪些宏观任务呢？
-</div>2019-04-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/35/d0/f2ac6d91.jpg" width="30px"><span>阿成</span> 👍（2） 💬（1）<div>略简陋...
+    startShowLight();</div>2019-02-26</li><br/><li><span>NeverEver</span> 👍（3） 💬（1）<div>我想到的方法是用Recursion。写一个函数setColor，需要一个参数color，函数里首先把div的backgroundColor设置color，然后用setTimeout来设置下一个颜色，根据传入的color相应更改时间和颜色即可</div>2019-02-23</li><br/><li><span>Geek_55d7cf</span> 👍（2） 💬（1）<div>除了setTimeout还有哪些宏观任务呢？
+</div>2019-04-05</li><br/><li><span>阿成</span> 👍（2） 💬（1）<div>略简陋...
 &#47;&#47; sleep,green,red,yellow already defined
 async function main () {
   while (true) {
@@ -149,183 +329,5 @@ async function main () {
     await sleep(2)
   }
 }
-main()</div>2019-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/26/4b/d1fc46d6.jpg" width="30px"><span>奋逗的码农哥</span> 👍（0） 💬（1）<div>&#47;&#47; 实现一个红绿灯，把一个圆形 div 按照绿色3 秒，黄色 1 秒，红色 2 秒循环改变背景色
-&#47;&#47; 初始化创建元素
-var div = document.createElement(&quot;div&quot;)
-div.className = &#39;light&#39;
-div.innerText=&#39;&#39;
-div.style.backgroundColor = &#39;&#39;
-div.align = &#39;center&#39;
-div.style.fontSize = &#39;30px&#39;
-div.style.lineHeight = &#39;100px&#39;
-div.style.color = &#39;#fff&#39;
-div.style.height = 100
-div.style.width = 100
-div.style.borderRadius = &#39;50px&#39;
-document.body.appendChild(div)
-
-var sleep = function (duration) {
-    return new Promise(function(resolve, reject) {
-        setTimeout(resolve,duration);
-    })
-}
-
-&#47;&#47; 绿灯
-var green = function () {
-  document.querySelector(&#39;.light&#39;).style.backgroundColor = &#39;green&#39;
-  sleep(3000).then(()=&gt; { yellow() });
-}
-
-&#47;&#47; 黄灯
-var yellow = function () {
-  document.querySelector(&#39;.light&#39;).style.backgroundColor = &#39;yellow&#39;
-  sleep(1000).then(()=&gt; { red() });
-}
-
-&#47;&#47; 红灯
-var red = function () {
-  document.querySelector(&#39;.light&#39;).style.backgroundColor = &#39;red&#39;
-  sleep(2000).then(()=&gt; { green() });
-}
-
-var init = function() {
-  &#47;&#47; 绿灯启动
-  green()
-}
-
-&#47;&#47; 执行
-init()</div>2019-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c6/28/d6f49ec2.jpg" width="30px"><span>MarlboroKay</span> 👍（0） 💬（1）<div>function main(duration,color){
-			return new Promise(function(resolve,reject){
-				setTimeout(resolve,duration)
-			});
-		}
-		function changeColor(color){
-			var lamp = document.getElementById(&#39;#lapm&#39;);
-			lapm.style.backgroundColor = color;
-		}
-
-		async function change(){
-			await main(3000).then(()=&gt;changeColor(&#39;yellow&#39;));
-			await main(1000).then(()=&gt;changeColor(&#39;red&#39;));
-			await main(2000).then(()=&gt;changeColor(&#39;green&#39;));
-			return change();
-		}
-		change();
-PS:执行耗时1秒的Promis 代码段第5行：应该是 r1.then(...)</div>2019-02-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c1/cc/6b6bbd41.jpg" width="30px"><span>周小成</span> 👍（0） 💬（1）<div>讲的很通俗易懂，认识更清晰了。执行耗时1秒的Promise那里的代码有些小问题哦，r.then应该改成r1.then</div>2019-02-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/42/e7/e5afadf7.jpg" width="30px"><span>风吹一个大耳东</span> 👍（0） 💬（1）<div>function light(time, color) {
-	return new Promise(function(resolve,reject) {
-		setTimeout(()=&gt; {
-			resolve();
-			console.log(color)
-		}, time)
-    })
-}
-
-async function run() {
-	await light(3000, &#39;green&#39;)
-	await light(1000, &#39;red&#39;)
-	await light(2000, &#39;yellow&#39;)
-}
-
-run()</div>2019-02-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/18/3f/93e02812.jpg" width="30px"><span>xlm</span> 👍（0） 💬（1）<div>async&#47;await的实现原理是Generator +Promise的语法糖😳 ？</div>2019-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/93/4a/de82f373.jpg" width="30px"><span>AICC</span> 👍（0） 💬（1）<div>function sleep(duration) {
-  return new Promise(function(resolve, reject) {
-      setTimeout(resolve,duration);
-  })
-}
-async function foo(duration,name){
-  console.log(name)
-  await sleep(duration)
-}
-async function foo2(){
-  await foo(3000,&quot;绿&quot;);
-  await foo(1000,&quot;黄&quot;);
-  await foo(2000,&quot;红&quot;);
-}
-
-while(true) {
-  foo2()
-}</div>2019-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/2e/64/10182523.jpg" width="30px"><span>whatever</span> 👍（192） 💬（12）<div>https:&#47;&#47;jakearchibald.com&#47;2015&#47;tasks-microtasks-queues-and-schedules&#47;
-为了更深入的理解宏任务和微任务，读了这篇。感觉文中说的微任务总是先于宏任务会让人产生误解，更准确的说法应该是微任务总会在下一个宏任务之前执行，在本身所属的宏任务结束后立即执行。</div>2019-03-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/80/c3/82923c17.jpg" width="30px"><span>马克豚</span> 👍（65） 💬（1）<div>宏任务和微任务的执行顺序其实很好理解。首先一个js脚本本身对于浏览器而言就是一个宏任务，也是第一个宏任务，而处于其中的代码可能有3种：非异步代码、产生微任务的异步代码（promise等）、产生宏任务的异步代码(settimeout、setinterval等)。
-我们知道宏任务处于一个队列中，应当先执行完一个宏任务才会执行下一个宏任务，所以在js脚本中，会先执行非异步代码，再执行微任务代码，最后执行宏任务代码。这时候我们进行到了下一个宏任务中，又按照这个顺序执行。
-微任务总是先于宏任务这个说法不准确，应该是处于同一级的情况下才能这么说。实际上微任务永远是宏任务的一部分，它处于一个大的宏任务内。
-
-
-</div>2020-06-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/be/e2/57d62270.jpg" width="30px"><span>奇奇</span> 👍（26） 💬（2）<div>怎么区分是宿主环境还是js引擎发起的任务呢</div>2019-02-28</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/s0bx4WXQNkAJ3c3map0g6dlt3sKDgTtN7Ria96YoufjQcVVI8Shv5CN1jnK1ZTImNnlPcibRqvyiaUuhpIvV1TpnQ/132" width="30px"><span>wingsico</span> 👍（17） 💬（3）<div>这一节主要讲了一下JS的执行栈，从宿主环境到JS引擎，分为宏任务和微任务。但实际上并没有阐述的十分清楚，只是根据一些比较浅显的现象来说明了一下这些任务的执行机制。
-
-对于为什么采用事件循环，以及多种宏任务队列以及浏览器渲染，IO，网络请求等均无涉及。
-
-实际上事件循环依赖于宿主，是宿主需要事件循环来协调js中多种事件源进行交互。而事件循环并不是js本身具有的能力。
-
-对于浏览器中的多种的宏任务队列，可分为页面渲染、用户交互、网络请求、History API以及计时器等，不同种类的宏任务队列之间的优先级不同，也跟实际执行的时机有关，不同时机得到的结果也会不同。
-
-而浏览器中的事件循环与Node中的事件循环也有区别（原因上面说了），Node中没有DOM，没有页面渲染，但多了文件读取等。在Node11之前，Node中一次事件循环可以执行完所有宏任务后再进入下一次事件循环。在Node中，各种不同的宏任务之间也有优先级，并且是固定的，但跟执行的时机也有关系。所以我们也经常看到重复执行一段代码会得到不同的结果。但具体的一个运作机制我目前仍然没有搞清楚，翻看了很多资料也没有对这部分有着详细的阐述。
-
-</div>2020-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/8b/7e/f78e86a8.jpg" width="30px"><span>顾盼神飞👻</span> 👍（16） 💬（5）<div>js 版本 最高赞同学够标准 来个 css 版本 哈哈
-&lt;div class=&quot;toggle-color&quot;&gt;&lt;&#47;div&gt;
-.toggle-color {
-			width: 100px;
-			height: 100px;
-			animation: toggle_color linear 6s infinite
-		}
-
-		@keyframes toggle_color {
-
-			0%,
-			50% {
-				background: green
-			}
-
-			51%,
-			67% {
-				background: yellow
-			}
-
-			68%,
-			100% {
-				background: red
-			}
-		}</div>2020-04-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/8e/7f/4ff4472f.jpg" width="30px"><span>CaveShao</span> 👍（6） 💬（0）<div>   function func(color, duration) {
-        return new Promise(function(resolve, reject) {
-            light.style.backgroundColor = color;
-            setTimeout(function() {
-                it.next();
-            }, duration)
-        })
-    }
-
-    function* main() {
-        while (1) {
-            yield func(&#39;red&#39;,2000);
-            yield func(&#39;yellow&#39;,1000);
-            yield func(&#39;green&#39;,3000);
-        }
-    }
-
-    var it = main();
-    it.next();</div>2019-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/98/f7/abb7bfe3.jpg" width="30px"><span>帅气小熊猫</span> 👍（6） 💬（3）<div>怎么确定这个微任务属于一个宏任务呢，js主线程跑下来，遇到setTImeout会放到异步队列宏任务中，那下面的遇到的promise怎么判断出它是属于这个宏任务呢？是不是只有这个宏任务没有从异步队列中取出，中间所碰到的所有微任务都属于这个宏任务？</div>2019-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/49/e4/fb47bfcd.jpg" width="30px"><span>dellyoung</span> 👍（4） 💬（0）<div>15行代码最简实现：
-const changeNowColor = (time) =&gt; {
-    setTimeout(() =&gt; {
-        switch (document.getElementById(&#39;root&#39;).style.background) {
-            case &#39;green&#39;:
-                document.getElementById(&#39;root&#39;).style.background = &#39;yellow&#39;;
-                return changeNowColor(1000);
-            case &#39;yellow&#39;:
-                document.getElementById(&#39;root&#39;).style.background = &#39;red&#39;;
-                return changeNowColor(2000);
-            case &#39;red&#39;:
-                document.getElementById(&#39;root&#39;).style.background = &#39;green&#39;;
-                return changeNowColor(3000);
-        }
-    }, time);
-};
-changeNowColor(3000);</div>2019-09-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/dc/0b/0baff83d.jpg" width="30px"><span>拒绝第十七次🤤</span> 👍（3） 💬（1）<div>    let sleep = (color,deep)=&gt;{
-      return new Promise(reslove=&gt;{
-        setTimeout(()=&gt;reslove(color) ,deep)
-      })
-    }
-    async function  changColor (color){
-      await sleep (&#39;green&#39;,3000),
-      await sleep (&#39;yellow&#39;,1000)
-      await sleep (&#39;red&#39;,2000)
-    }
-    changColor();</div>2019-04-10</li><br/>
+main()</div>2019-02-23</li><br/>
 </ul>

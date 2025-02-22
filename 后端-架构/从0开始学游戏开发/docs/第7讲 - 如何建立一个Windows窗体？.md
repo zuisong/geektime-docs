@@ -42,6 +42,167 @@ typedef struct tagWNDCLASSEX {
 ## 使用C/C++编写Windows窗体
 
 接下来，我将使用C/C++IDE来编写代码，完成一个默认窗体的开发，并让它运行起来。
-<div><strong>精选留言（16）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/4d/ce/771c25b0.jpg" width="30px"><span>壬大师</span> 👍（1） 💬（1）<div>老师，python能开发手机游戏吗，游戏引擎用的是pygame吗？</div>2018-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/6b/05/582fd240.jpg" width="30px"><span>@浩</span> 👍（1） 💬（1）<div>用QT写窗口如何，MFC有点晦涩难懂。</div>2018-06-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/55/4d/c57092e4.jpg" width="30px"><span>立春</span> 👍（1） 💬（1）<div>C++用的是MFC了……</div>2018-06-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/93/cc/dfe92ee1.jpg" width="30px"><span>宋桓公</span> 👍（0） 💬（1）<div>最大化，加无边框等于全屏</div>2018-06-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4d/ce/771c25b0.jpg" width="30px"><span>壬大师</span> 👍（0） 💬（1）<div>老师，那手游的开发目前也都是C++咯？像简单游戏比如手机棋牌类游戏一般用什么语言？</div>2018-06-13</li><br/><li><img src="" width="30px"><span>呵呵</span> 👍（0） 💬（1）<div>用c++建立窗体，默认用的什么图形库？</div>2018-06-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/63/26/3f35f1f3.jpg" width="30px"><span>Geek_King@技术爱好者</span> 👍（10） 💬（0）<div>c++窗口那段程序，编译时需加上-mwindows或者-lgdi32,又或者在建工程的时候选择建立gui程序🙄🙄🙄</div>2018-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e8/ba/6d318c08.jpg" width="30px"><span>GS</span> 👍（4） 💬（0）<div>python3 要用小写的tkinter</div>2018-07-28</li><br/><li><img src="" width="30px"><span>呵呵</span> 👍（4） 💬（0）<div>要是能提供远嘛就好了，跟着后面敲太麻烦</div>2018-06-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fd/f3/77223a8c.jpg" width="30px"><span>清新灬小柠檬</span> 👍（1） 💬（0）<div>直接将显示器的大小当作参数传到绘制窗体的函数中？</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d6/b4/0808999d.jpg" width="30px"><span>白马</span> 👍（1） 💬（0）<div>是调用windows api中获取当前屏幕窗口尺寸的方法获得吗？</div>2018-06-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2024-03-15</li><br/><li><img src="" width="30px"><span>Geek_569f22</span> 👍（0） 💬（0）<div>windows那个照着输入，生成不了窗口，python那个可以</div>2021-06-16</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/8SdpYbicwXVXt0fIN7L0f2TSGIScQIhWXT7vTze9GHBsjTvDyyQW9KEPsKBpRNs4anV61oF59BZqHf586b3o4ibw/132" width="30px"><span>Leolee</span> 👍（0） 💬（0）<div>python3导入模块要改小写，调用tk库的方法时也要改小写，就可以用了。一开始还担心要c++等一堆软件。</div>2021-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/92/1e/c108b65a.jpg" width="30px"><span>louis</span> 👍（0） 💬（0）<div>把窗体的大小设置为屏幕大小，设置屏幕的起始位置设置为（0，0）吗？具体调用什么函数不清楚。</div>2020-10-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/16/65/c22b4415.jpg" width="30px"><span>风华神使</span> 👍（0） 💬（0）<div>楼上，cxx默认不用图形库，用winapi</div>2018-06-09</li><br/>
+
+```
+#include <windows.h>
+LRESULT CALLBACK WindowProcedure(HWND, UINT, WPARAM, LPARAM);
+char szClassName[ ] = "WindowsApp";
+int WINAPI WinMain(HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszArgument, int nFunsterStil)
+
+ {
+    HWND hwnd;               /* 指向我们窗体的句柄 */
+    MSG messages;            /* 保存发往应用的消息 */
+    WNDCLASSEX wincl;        /* 前面详细介绍过的WNDCLASSEX结构的对象 */
+    wincl.hInstance = hThisInstance;
+    wincl.lpszClassName = szClassName;
+    wincl.lpfnWndProc = WindowProcedure;      
+    wincl.style = CS_DBLCLKS;                
+    wincl.cbSize = sizeof(WNDCLASSEX);
+```
+
+上述代码开始给WNDCLASSEX结构对象赋值。
+
+```
+ /* 使用默认图标以及鼠标指针 */
+    wincl.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wincl.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+    wincl.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wincl.lpszMenuName = NULL; /* 没有菜单栏 */
+    wincl.cbClsExtra = 0;                      /* 没有多余的字节跟在窗体类的后面 */
+    wincl.cbWndExtra = 0;                      
+    wincl.hbrBackground = (HBRUSH) GetStockObject(LTGRAY_BRUSH);
+    if(!RegisterClassEx(&wincl)) return 0;
+```
+
+代码在窗口过程调用函数的时候，将地址赋值给lpfnWndProc，然后呼叫RegisterClassEx(&amp;wincl)注册窗口类，系统就拥有了窗口过程函数的地址。如果注册失败，则返回0。
+
+```
+ hwnd = CreateWindowEx( 0,            /* 扩展风格为0*/                               
+           szClassName,         /* 类名 */
+           "Windows App",         /* 窗体抬头标题 */
+           WS_OVERLAPPEDWINDOW, /* 默认窗体 */
+           CW_USEDEFAULT,       /* 让操作系统决定窗体对应Windows的X位置在哪里 */
+           CW_USEDEFAULT,       /* 让操作系统决定窗体对应Windows的Y位置在哪里 */
+           544,                 /* 程序宽度 */
+           375,                 /* 程序高度 */
+           HWND_DESKTOP,        /* 父窗体的句柄，父窗体定义为Windows桌面，HWND_DESKTOP 是系统定义的最顶层的托管的窗体 */
+           NULL,                /* 没有菜单 */
+           hThisInstance,       /* 程序实例化句柄 */
+           NULL                 /* 指向窗体的创建数据为空 */
+           );
+    ShowWindow(hwnd, nFunsterStil);
+    /* 要显示窗体，使用的是ShowWindow函数 */
+    while(GetMessage(&messages, NULL, 0, 0))
+    {      
+           TranslateMessage(&messages);
+           DispatchMessage(&messages);    
+    }
+    return messages.wParam;
+}
+```
+
+建立并显示窗体，在循环内将虚拟键消息转换为字符串消息，随后调度一个消息给窗体程序。
+
+```
+LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message)                  /* 指向消息的句柄 */
+    {
+           case WM_DESTROY:
+           PostQuitMessage(0);        
+           break;
+           default:                   
+           return DefWindowProc(hwnd, message, wParam, lParam);
+                 
+    }
+    return 0;
+}
+```
+
+最后是消息处理。当窗体程序接收到某些操作的时候，比如键盘、鼠标等等，就会呼叫 DispatchMessage(&amp;messages)；函数将消息回调给系统，系统通过注册的窗口类得到函数指针并且通过函数指针调用函数对消息进行处理。
+
+还有一个经常用到的函数就是MoveWindow，就是移动已经建立的窗体。MoveWindow函数用来改变窗口的位置和尺寸，如果窗体本身就按照计算机的屏幕对齐左上角，对于窗体内的子窗体，就对齐父窗体的左上角。
+
+```
+BOOL MoveWindow( HWND hWnd,/* 窗体句柄 */
+         int x,  /* 窗体左上角起点x轴 */
+         int y,  /* 窗体左上角起点y轴 */
+         int nWidth, /* 窗体宽度 */
+         int nHeight, /* 窗体高度 */
+         BOOL bRepaint = TRUE /* 是否重新绘制，如果是true系统会发送WM_PAINT到窗体，然后呼叫UpdateWindow函数进行重新绘制，如果是false则不重新绘制*/
+        );
+```
+
+MoveWindow会给窗体发送WM\_WINDOWPOSCHANGING，WM\_WINDOWPOSCHANGED，WM\_MOVE，WM\_SIZE和WM\_NCCALCSIZE消息。
+
+类似的功能还有SetWindowPos，SetWindowPos功能更强大，可以设置更多的参数。
+
+这是基本的使用C/C++绘制Windows窗体的流程，也是标准的Windows窗体的创建和显示。在后续的分享中，我也会使用GDI或者GDI+来绘制一些的内容。
+
+## 使用Python编写Windows窗体
+
+说完了C/C++系统编程编写的Windows窗体，接下来来看一下，如何使用Python来编写Windows窗体。
+
+Python的Windows窗体编程一般会使用默认的Tinker库。不过用别的窗体库也可一建立一个窗体，比如Python版本的QT库或者wxPython。
+
+现在来看一下，使用默认的Tinker来建立一个窗体。
+
+```
+import Tkinter
+
+def my_window(w, h):
+  ws = root.winfo_screenwidth()
+  hs = root.winfo_screenheight()
+  x = (ws/2) - (w/2)
+  y = (hs/2) - (h/2)
+  root.geometry("%dx%d+%d+%d" % (w, h, x, y))
+
+root = Tkinter.Tk(className='python windows app')
+my_window(100, 100)
+root.mainloop()
+```
+
+运行的结果是这样的。
+
+![](https://static001.geekbang.org/resource/image/65/b8/657a175b08898385f555f7613d1a55b8.jpg?wh=316%2A339)
+
+我们可以看到左上角有一个Tk的标识，这是Tinker的默认图标。目前，我们只是建立了一个Windows的窗体，并不能直接编写游戏。除此之外，我们还必须要知道这些建立窗体的具体的细节。
+
+不过，就像前面的文章所说，OpenGL并不附带任何关联窗体的编程，所以如果你使用的是OpenGL的接口来编写代码，稍微修改一下，这些窗体就能成为游戏屏幕窗体。
+
+**游戏所有的内容都是在一个循环内完成的，即我们所有的绘图、线程、操作、刷新，都在一个大循环内完成**，类似我们在前面看到的代码。
+
+```
+while(GetMessage(&messages, NULL, 0, 0))
+  {
+      TranslateMessage(&messages);
+      DispatchMessage(&messages);
+  }
+```
+
+以及使用Python编写的代码的窗体中，也会看到一个循环函数：
+
+```
+root.mainloop()
+```
+
+在这个while循环中，消息的派发都在此完成。游戏也一样，我们所有游戏内的代码几乎都在循环内完成。你可以想象**一个循环完成一个大的绘制过程，第二个循环刷新前一次绘制过程，最终类似电影一样，完成整个动画的绘制以及不间断的操作。**
+
+在建立Windows窗体的时候，程序会从入口函数WinMain开始运行，定义和初始化窗体类，然后将窗体类实例化，随后进行消息循环获取消息，然后将消息发送给消息处理函数，最后做出相应的操作。
+
+## 小结
+
+总结一下今天所说的内容，我们编写了一个标准的Windows窗体，在编写的过程中：
+
+- 窗体的结构是在建立窗体之前就定义下来的；
+- 所有长时间运行的程序，包括游戏，包括Windows本身都是一个大循环。我们在这个循环里做我们想做的事情，直到循环结束；
+- 如果使用脚本语言的方式编写窗体，就不需要关心那么多的东西，只需要定义坐标、位置和窗体名称即可。
+
+最后，给你留一道小思考题吧。
+
+你经常会看到有一些游戏是需要全屏才能进行的。既然我们在这里建立了一个窗体，那请问你，全屏是怎么做到的呢？
+
+欢迎留言说出你的看法，我在下一节的挑战中等你！
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>壬大师</span> 👍（1） 💬（1）<div>老师，python能开发手机游戏吗，游戏引擎用的是pygame吗？</div>2018-06-11</li><br/><li><span>@浩</span> 👍（1） 💬（1）<div>用QT写窗口如何，MFC有点晦涩难懂。</div>2018-06-09</li><br/><li><span>立春</span> 👍（1） 💬（1）<div>C++用的是MFC了……</div>2018-06-09</li><br/><li><span>宋桓公</span> 👍（0） 💬（1）<div>最大化，加无边框等于全屏</div>2018-06-27</li><br/><li><span>壬大师</span> 👍（0） 💬（1）<div>老师，那手游的开发目前也都是C++咯？像简单游戏比如手机棋牌类游戏一般用什么语言？</div>2018-06-13</li><br/><li><span>呵呵</span> 👍（0） 💬（1）<div>用c++建立窗体，默认用的什么图形库？</div>2018-06-09</li><br/><li><span>Geek_King@技术爱好者</span> 👍（10） 💬（0）<div>c++窗口那段程序，编译时需加上-mwindows或者-lgdi32,又或者在建工程的时候选择建立gui程序🙄🙄🙄</div>2018-06-15</li><br/><li><span>GS</span> 👍（4） 💬（0）<div>python3 要用小写的tkinter</div>2018-07-28</li><br/><li><span>呵呵</span> 👍（4） 💬（0）<div>要是能提供远嘛就好了，跟着后面敲太麻烦</div>2018-06-09</li><br/><li><span>清新灬小柠檬</span> 👍（1） 💬（0）<div>直接将显示器的大小当作参数传到绘制窗体的函数中？</div>2019-06-24</li><br/><li><span>白马</span> 👍（1） 💬（0）<div>是调用windows api中获取当前屏幕窗口尺寸的方法获得吗？</div>2018-06-09</li><br/><li><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2024-03-15</li><br/><li><span>Geek_569f22</span> 👍（0） 💬（0）<div>windows那个照着输入，生成不了窗口，python那个可以</div>2021-06-16</li><br/><li><span>Leolee</span> 👍（0） 💬（0）<div>python3导入模块要改小写，调用tk库的方法时也要改小写，就可以用了。一开始还担心要c++等一堆软件。</div>2021-04-20</li><br/><li><span>louis</span> 👍（0） 💬（0）<div>把窗体的大小设置为屏幕大小，设置屏幕的起始位置设置为（0，0）吗？具体调用什么函数不清楚。</div>2020-10-21</li><br/>
 </ul>

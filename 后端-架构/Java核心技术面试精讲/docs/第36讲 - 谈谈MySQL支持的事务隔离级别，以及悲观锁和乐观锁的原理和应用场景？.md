@@ -12,50 +12,88 @@
 - 读已提交（Read committed），事务能够看到的数据都是其他事务已经提交的修改，也就是保证不会看到任何中间性状态，当然脏读也不会出现。读已提交仍然是比较低级别的隔离，并不保证再次读取时能够获取同样的数据，也就是允许其他事务并发修改数据，允许不可重复读和幻象读（Phantom Read）出现。
 - 可重复读（Repeatable reads），保证同一个事务中多次读取的数据是一致的，这是MySQL InnoDB引擎的默认隔离级别，但是和一些其他数据库实现不同的是，可以简单认为MySQL在可重复读级别不会出现幻象读。
 - 串行化（Serializable），并发事务之间是串行化的，通常意味着读取需要获取共享读锁，更新需要获取排他写锁，如果SQL使用WHERE语句，还会获取区间锁（MySQL以GAP锁形式实现，可重复读级别中默认也会使用），这是最高的隔离级别。
-<div><strong>精选留言（21）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/22/8f/00468236.jpg" width="30px"><span>lizishushu</span> 👍（113） 💬（2）<div>mybatis架构自下而上分为基础支撑层、数据处理层、API接口层这三层。
+
+至于悲观锁和乐观锁，也并不是MySQL或者数据库中独有的概念，而是并发编程的基本概念。主要区别在于，操作共享数据时，“悲观锁”即认为数据出现冲突的可能性更大，而“乐观锁”则是认为大部分情况不会出现冲突，进而决定是否采取排他性措施。
+
+反映到MySQL数据库应用开发中，悲观锁一般就是利用类似SELECT … FOR UPDATE这样的语句，对数据加锁，避免其他事务意外修改数据。乐观锁则与Java并发包中的AtomicFieldUpdater类似，也是利用CAS机制，并不会对数据加锁，而是通过对比数据的时间戳或者版本号，来实现乐观锁需要的版本判断。
+
+我认为前面提到的MVCC，其本质就可以看作是种乐观锁机制，而排他性的读写锁、双阶段锁等则是悲观锁的实现。
+
+有关它们的应用场景，你可以构建一下简化的火车余票查询和购票系统。同时查询的人可能很多，虽然具体座位票只能是卖给一个人，但余票可能很多，而且也并不能预测哪个查询者会购票，这个时候就更适合用乐观锁。
+
+## 考点分析
+
+今天的问题来源于实际面试，这两部分问题反映了面试官试图考察面试者在日常应用开发中，是否学习或者思考过数据库内部的机制，是否了解并发相关的基础概念和实践。
+
+我从普通数据库应用开发者的角度，提供了一个相对简化的答案，面试官很有可能进一步从实例的角度展开，例如设计一个典型场景重现脏读、幻象读，或者从数据库设计的角度，可以用哪些手段避免类似情况。我建议你在准备面试时，可以在典型的数据库上试验一下，验证自己的观点。
+
+其他可以考察的点也有很多，在准备这个问题时你也可以对比Java语言的并发机制，进行深入理解，例如，随着隔离级别从低到高，竞争性（Contention）逐渐增强，随之而来的代价同样是性能和扩展性的下降。
+
+数据库衍生出很多不同的职责方向：
+
+- 数据库管理员（DBA），这是一个单独的专业领域。
+- 数据库应用工程师，很多业务开发者就是这种定位，综合利用数据库和其他编程语言等技能，开发业务应用。
+- 数据库工程师，更加侧重于开发数据库、数据库中间件等基础软件。
+
+后面两者与Java开发更加相关，但是需要的知识和技能是不同的，所以面试的考察角度也有区别，今天我会分析下对相关知识学习和准备面试的看法。
+
+另外，在数据库相关领域，Java工程师最常接触到的就是O/R Mapping框架或者类似的数据库交互类库，我会选取最广泛使用的框架进行对比和分析。
+
+## 知识扩展
+
+首先，我来谈谈对数据库相关领域学习的看法，从最广泛的应用开发者角度，至少需要掌握：
+
+- 数据库设计基础，包括数据库设计中的几个基本范式，各种数据库的基础概念，例如表、视图、索引、外键、序列号生成器等，清楚如何将现实中业务实体和其依赖关系映射到数据库结构中，掌握典型实体数据应该使用什么样的数据库数据类型等。
+- 每种数据库的设计和实现多少会存在差异，所以至少要精通你使用过的数据库的设计要点。我今天开篇谈到的MySQL事务隔离级别，就区别于其他数据库，进一步了解MVCC、Locking等机制对于处理进阶问题非常有帮助；还需要了解，不同索引类型的使用，甚至是底层数据结构和算法等。
+- 常见的SQL语句，掌握基础的SQL调优技巧，至少要了解基本思路是怎样的，例如SQL怎样写才能更好利用索引、知道如何分析[SQL执行计划](https://dev.mysql.com/doc/workbench/en/wb-performance-explain.html)等。
+- 更进一步，至少需要了解针对高并发等特定场景中的解决方案，例如读写分离、分库分表，或者如何利用缓存机制等，目前的数据存储也远不止传统的关系型数据库了。
+
+![](https://static001.geekbang.org/resource/image/ae/9d/ae0959aafa30d1530ad4bdf7b1a8a19d.png?wh=891%2A532)
+
+上面的示意图简单总结了我对数据库领域的理解，希望可以给你进行准备时提供个借鉴。当然在准备面试时并不是一味找一堆书闷头苦读，我还是建议从实际工作中使用的数据库出发，侧重于结合实践，完善和深化自己的知识体系。
+
+接下来我们还是回到Java本身，目前最为通用的Java和数据库交互技术就是JDBC，最常见的开源框架基本都是构建在JDBC之上，包括我们熟悉的[JPA](https://www.tutorialspoint.com/jpa/jpa_introduction.htm)/[Hibernate](https://en.wikipedia.org/wiki/Hibernate_%28framework%29)、[MyBatis](http://www.mybatis.org/mybatis-3/)、Spring JDBC Template等，各自都有独特的设计特点。
+
+Hibernate是最负盛名的O/R Mapping框架之一，它也是一个JPA Provider。顾名思义，它是以对象为中心的，其强项更体现在数据库到Java对象的映射，可以很方便地在Java对象层面体现外键约束等相对复杂的关系，提供了强大的持久化功能。内部大量使用了[Lazy-load](https://en.wikipedia.org/wiki/Lazy_loading)等技术提高效率。并且，为了屏蔽数据库的差异，降低维护开销，Hibernate提供了类SQL的HQL，可以自动生成某种数据库特定的SQL语句。
+
+Hibernate应用非常广泛，但是过度强调持久化和隔离数据库底层细节，也导致了很多弊端，例如HQL需要额外的学习，未必比深入学习SQL语言更高效；减弱程序员对SQL的直接控制，还可能导致其他代价，本来一句SQL的事情，可能被Hibernate生成几条，隐藏的内部细节也阻碍了进一步的优化。
+
+而MyBatis虽然仍然提供了一些映射的功能，但更加以SQL为中心，开发者可以侧重于SQL和存储过程，非常简单、直接。如果我们的应用需要大量高性能的或者复杂的SELECT语句等，“半自动”的MyBatis就会比Hibernate更加实用。
+
+而Spring JDBC Template也是更加接近于SQL层面，Spring本身也可以集成Hibernate等O/R Mapping框架。
+
+关于这些具体开源框架的学习，我的建议是：
+
+- 从整体上把握主流框架的架构和设计理念，掌握主要流程，例如SQL解析生成、SQL执行到结果映射等处理过程到底发生了什么。
+- 掌握映射等部分的细节定义和原理，根据我在准备专栏时整理的面试题目，发现很多题目都是偏向于映射定义的细节。
+- 另外，对比不同框架的设计和实现，既有利于你加深理解，也是面试考察的热点方向之一。
+
+今天我从数据库应用开发者的角度，分析了MySQL数据库的部分内部机制，并且补充了我对数据库相关面试准备和知识学习的建议，最后对主流O/R Mapping等框架进行了简单的对比。
+
+## 一课一练
+
+关于今天我们讨论的题目你做到心中有数了吗？ 今天的思考题是，从架构设计的角度，可以将MyBatis分为哪几层？每层都有哪些主要模块？
+
+请你在留言区写写你对这个问题的思考，我会选出经过认真思考的留言，送给你一份学习奖励礼券，欢迎你与我一起讨论。
+
+你的朋友是不是也在准备面试呢？你可以“请朋友读”，把今天的题目分享给好友，或许你能帮到他。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>lizishushu</span> 👍（113） 💬（2）<div>mybatis架构自下而上分为基础支撑层、数据处理层、API接口层这三层。
 
 基础支撑层，主要是用来做连接管理、事务管理、配置加载、缓存管理等最基础组件，为上层提供最基础的支撑。
 数据处理层，主要是用来做参数映射、sql解析、sql执行、结果映射等处理，可以理解为请求到达，完成一次数据库操作的流程。
-API接口层，主要对外提供API，提供诸如数据的增删改查、获取配置等接口。</div>2018-07-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d1/87/b8308152.jpg" width="30px"><span>一首歌一种心情一段路</span> 👍（53） 💬（9）<div>悲观锁和乐观锁在哪儿用的.......平时写sql没接触过啊</div>2018-11-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/97/77/dac7d3b3.jpg" width="30px"><span>文彦</span> 👍（14） 💬（1）<div>晓峰老师。最近感觉基础有点差，开始看jdk的源码，主要是结合api来看。但是感觉事倍功半，有什么好的建议吗？</div>2018-11-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ff/a5/eccc7653.jpg" width="30px"><span>clz1341521</span> 👍（13） 💬（2）<div>mysql inndb默认可重复读级别，不会出现幻读。
+API接口层，主要对外提供API，提供诸如数据的增删改查、获取配置等接口。</div>2018-07-31</li><br/><li><span>一首歌一种心情一段路</span> 👍（53） 💬（9）<div>悲观锁和乐观锁在哪儿用的.......平时写sql没接触过啊</div>2018-11-24</li><br/><li><span>文彦</span> 👍（14） 💬（1）<div>晓峰老师。最近感觉基础有点差，开始看jdk的源码，主要是结合api来看。但是感觉事倍功半，有什么好的建议吗？</div>2018-11-08</li><br/><li><span>clz1341521</span> 👍（13） 💬（2）<div>mysql inndb默认可重复读级别，不会出现幻读。
 mybatis架构自下而上分为基础支撑层、数据处理层、API接口层这三层。
 
 基础支撑层，主要是用来做连接管理、事务管理、配置加载、缓存管理等最基础组件，为上层提供最基础的支撑。
 数据处理层，主要是用来做参数映射、sql解析、sql执行、结果映射等处理，可以理解为请求到达，完成一次数据库操作的流程。
-API接口层，主要对外提供API，提供诸如数据的增删改查、获取配置等接口。</div>2018-08-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/51/0d/14d9364a.jpg" width="30px"><span>L.B.Q.Y</span> 👍（12） 💬（2）<div>mysql（innodb）的可重复读隔离级别下，为什么可以认为不会出现幻像读呢?</div>2018-07-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/99/af/d29273e2.jpg" width="30px"><span>饭粒</span> 👍（8） 💬（5）<div>SQL标准的隔离级别可重复读还是有幻读问题的。 InnoDB 和 XtraDB存储引擎 通过多版本并发控制（ MVCC， Multiversion Concurrency Control） 解决了幻读的问题。</div>2019-02-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/f3/129d6dfe.jpg" width="30px"><span>李二木</span> 👍（5） 💬（2）<div>说到mybatis,就想起了分页，现在绝大多分页都用到了pagehelper插件，我想问下老师为啥mybatis没有设计一个好用的分页了？</div>2018-07-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ae/cd/3bffed26.jpg" width="30px"><span>kitten</span> 👍（1） 💬（1）<div>mysql，可重复读的隔离级别，也在有gap间隙锁吧？</div>2018-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/1b/6b/4a6b774c.jpg" width="30px"><span>互联网联络员</span> 👍（0） 💬（1）<div>老师是不是写错了，在可重复读隔离级别中，基于锁的并发控制 DBMS实现保持读取和写入锁定（在选定数据上获取），直到事务结束。但是，range-locks没有被管理 ，因此可能会发生幻像读取。
+API接口层，主要对外提供API，提供诸如数据的增删改查、获取配置等接口。</div>2018-08-11</li><br/><li><span>L.B.Q.Y</span> 👍（12） 💬（2）<div>mysql（innodb）的可重复读隔离级别下，为什么可以认为不会出现幻像读呢?</div>2018-07-31</li><br/><li><span>饭粒</span> 👍（8） 💬（5）<div>SQL标准的隔离级别可重复读还是有幻读问题的。 InnoDB 和 XtraDB存储引擎 通过多版本并发控制（ MVCC， Multiversion Concurrency Control） 解决了幻读的问题。</div>2019-02-12</li><br/><li><span>李二木</span> 👍（5） 💬（2）<div>说到mybatis,就想起了分页，现在绝大多分页都用到了pagehelper插件，我想问下老师为啥mybatis没有设计一个好用的分页了？</div>2018-07-31</li><br/><li><span>kitten</span> 👍（1） 💬（1）<div>mysql，可重复读的隔离级别，也在有gap间隙锁吧？</div>2018-08-01</li><br/><li><span>互联网联络员</span> 👍（0） 💬（1）<div>老师是不是写错了，在可重复读隔离级别中，基于锁的并发控制 DBMS实现保持读取和写入锁定（在选定数据上获取），直到事务结束。但是，range-locks没有被管理 ，因此可能会发生幻像读取。
 
-事物的隔离级别增强分别解决由脏读、不可重复读再到幻读，只有串行化能解决三者，但是损失了效率。</div>2018-10-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d8/d6/47da34bf.jpg" width="30px"><span>任鹏斌</span> 👍（13） 💬（6）<div>对于mysql四个隔离级别中的不可重复读的最后一句不是很理解。不可重复读应该是不能避免幻读，为什么说是不产生幻读呢？</div>2018-08-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/19/a1/d25786fc.jpg" width="30px"><span>郝国梁</span> 👍（6） 💬（0）<div>乐观锁 悲观锁 脏读 幻读 不可重复读 CAS MVCC 隔离级别 锁队列 2PC TCC</div>2018-07-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a1/5d/6f754b1f.jpg" width="30px"><span>anji</span> 👍（4） 💬（0）<div>0.sql工厂-主要设定数据库连接信息
+事物的隔离级别增强分别解决由脏读、不可重复读再到幻读，只有串行化能解决三者，但是损失了效率。</div>2018-10-22</li><br/><li><span>任鹏斌</span> 👍（13） 💬（6）<div>对于mysql四个隔离级别中的不可重复读的最后一句不是很理解。不可重复读应该是不能避免幻读，为什么说是不产生幻读呢？</div>2018-08-12</li><br/><li><span>郝国梁</span> 👍（6） 💬（0）<div>乐观锁 悲观锁 脏读 幻读 不可重复读 CAS MVCC 隔离级别 锁队列 2PC TCC</div>2018-07-31</li><br/><li><span>anji</span> 👍（4） 💬（0）<div>0.sql工厂-主要设定数据库连接信息
 1.接口层-主要有mapper接口用于对外提供具体的sql执行方法
 2.xml文件-有具体的sql实现语句，以及数据库字段对应java类字段的映射关系，每个mapper对应每个数据库表
-</div>2018-07-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/56/54/abb7bfe3.jpg" width="30px"><span>Geek_j5i7lb</span> 👍（3） 💬（1）<div>杨老师 您好，关于“可以简单认为MySQL在可重复读级别不会出现幻象读”没能理解，个人认为正是因为可重复读，即每个事务保存了快照，才导致了幻读的现象。想要解决幻读，只能加共享锁或者排它锁吧。 可能是因为知识浅导致无法理解，还望方便的话，您能点拨一下，感谢</div>2018-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/bc/43/11acdc02.jpg" width="30px"><span>Allen</span> 👍（3） 💬（0）<div>请问什么时候可以细说一哈ORM映射😋</div>2018-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/46/0b/c57f4f43.jpg" width="30px"><span>sunnyrqw</span> 👍（1） 💬（0）<div>评论有说悲观锁和乐观锁在哪里用，说下我的理解
+</div>2018-07-31</li><br/><li><span>Geek_j5i7lb</span> 👍（3） 💬（1）<div>杨老师 您好，关于“可以简单认为MySQL在可重复读级别不会出现幻象读”没能理解，个人认为正是因为可重复读，即每个事务保存了快照，才导致了幻读的现象。想要解决幻读，只能加共享锁或者排它锁吧。 可能是因为知识浅导致无法理解，还望方便的话，您能点拨一下，感谢</div>2018-08-22</li><br/><li><span>Allen</span> 👍（3） 💬（0）<div>请问什么时候可以细说一哈ORM映射😋</div>2018-08-01</li><br/><li><span>sunnyrqw</span> 👍（1） 💬（0）<div>评论有说悲观锁和乐观锁在哪里用，说下我的理解
 悲观锁和乐观锁是概念，如专栏说的
 悲观锁是完全排他性的，我在执行的时候，你不能动，具体实现 java的synchronized、ReentrantLock
-乐观锁就是我在执行的时候不限制你的操作，通过对比前后的值看有没人操作，没人操作就更新，有人操作就重来一次，具体实现是java cas</div>2020-10-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/45/9b/b11a2421.jpg" width="30px"><span>尚有智</span> 👍（1） 💬（2）<div>亲测后，发现一个问题，没搞懂，希望老师指点一下（自动提交修改成了手动提交）：
-start transaction；
-select * from  user where status = 0 and id = 1;
-update user set status = 1 where id =1;
-select * from user where status = 0 and id =1;
-并未commit，第一个select能查询到数据，第二个select 不能查询到数据，我的理解是事务没有提交的时候，第二个select也能查询到数据，不清楚这个是怎么回事，isolation level 设置为read committed 和 repeatable read 都有这个问题，望解答！
-</div>2020-01-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/10/7b/eed9d6d6.jpg" width="30px"><span>小笨蛋</span> 👍（1） 💬（0）<div>sql方面我们从来没有使用过悲观锁，一直都是用的乐观锁，怎么办？</div>2019-01-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fb/8d/6c3cccc7.jpg" width="30px"><span>Dream</span> 👍（1） 💬（0）<div>MVCC到底有没有加锁？如何应用的？</div>2018-08-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/ba/ec/2b1c6afc.jpg" width="30px"><span>李飞</span> 👍（0） 💬（0）<div>数据库管理系统（DBMS）中的并发控制的任务是确保在多个事务同时存取数据库中同一数据时不破坏事务的隔离性和统一性以及数据库的统一性。
-
-乐观并发控制(乐观锁)和悲观并发控制（悲观锁）是并发控制主要采用的技术手段。
-
-无论是悲观锁还是乐观锁，都是人们定义出来的概念，可以认为是一种思想。其实不仅仅是关系型数据库系统中有乐观锁和悲观锁的概念，像memcache、hibernate、tair等都有类似的概念。
-
-针对于不同的业务场景，应该选用不同的并发控制方式。所以，不要把乐观并发控制和悲观并发控制狭义的理解为DBMS中的概念，更不要把他们和数据中提供的锁机制（行锁、表锁、排他锁、共享锁）混为一谈。其实，在DBMS中，悲观锁正是利用数据库本身提供的锁机制来实现的。
-
-当我们要对一个数据库中的一条数据进行修改的时候，为了避免同时被其他人修改，最好的办法就是直接对该数据进行加锁以防止并发。
-
-这种借助数据库锁机制在修改数据之前先锁定，再修改的方式被称之为悲观并发控制（又名“悲观锁”，Pessimistic Concurrency Control，缩写“PCC”）。
-
-在关系数据库管理系统里，悲观并发控制（又名“悲观锁”，Pessimistic Concurrency Control，缩写“PCC”）是一种并发控制的方法。它可以阻止一个事务以影响其他用户的方式来修改数据。如果一个事务执行的操作都某行数据应用了锁，那只有当这个事务把锁释放，其他事务才能够执行与该锁冲突的操作。
-悲观并发控制主要用于数据争用激烈的环境，以及发生并发冲突时使用锁保护数据的成本要低于回滚事务的成本的环境中。
-
-悲观锁，正如其名，它指的是对数据被外界（包括本系统当前的其他事务，以及来自外部系统的事务处理）修改持保守态度(悲观)，因此，在整个数据处理过程中，将数据处于锁定状态。 悲观锁的实现，往往依靠数据库提供的锁机制 （也只有数据库层提供的锁机制才能真正保证数据访问的排他性，否则，即使在本系统中实现了加锁机制，也无法保证外部系统不会修改数据）
-
-在数据库中，悲观锁的流程如下：
-在对任意记录进行修改前，先尝试为该记录加上排他锁（exclusive locking）。
-如果加锁失败，说明该记录正在被修改，那么当前查询可能要等待或者抛出异常。 具体响应方式由开发者根据实际需要决定。
-如果成功加锁，那么就可以对记录做修改，事务完成后就会解锁了。
-其间如果有其他对该记录做修改或加排他锁的操作，都会等待我们解锁或直接抛出异常。</div>2020-05-16</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/E3XKbwTv6WTssolgqZjZCkiazHgl2IdBYfwVfAcB7Ff3krsIQeBIBFQLQE1Kw91LFbl3lic2EzgdfNiciaYDlJlELA/132" width="30px"><span>rike</span> 👍（0） 💬（0）<div>这个数据库的隔离级别个人认为是停留在理论的层次上，我在学习专栏《SQL必知必会》中，做过实验，按照例子中执行的实际结果跟隔离级别的定义不一样，不清楚这是在什么场景下才会出现这些问题。</div>2020-02-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/42/4f/ff1ac464.jpg" width="30px"><span>又双叒叕是一年啊</span> 👍（0） 💬（0）<div>不同的事务隔离级别分别怎么实现事务机制一样吗</div>2018-08-01</li><br/>
+乐观锁就是我在执行的时候不限制你的操作，通过对比前后的值看有没人操作，没人操作就更新，有人操作就重来一次，具体实现是java cas</div>2020-10-13</li><br/>
 </ul>

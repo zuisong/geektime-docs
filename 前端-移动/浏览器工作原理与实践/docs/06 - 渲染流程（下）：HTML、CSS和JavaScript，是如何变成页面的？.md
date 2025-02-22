@@ -17,129 +17,226 @@
 渲染引擎给页面多图层示意图
 
 从上图可以看出，渲染引擎给页面分了很多图层，这些图层按照一定顺序叠加在一起，就形成了最终的页面，你可以参考下图：
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/5f/80/51269d88.jpg" width="30px"><span>Hurry</span> 👍（212） 💬（16）<div>减少重排重绘, 方法很多：
+
+![](https://static001.geekbang.org/resource/image/cd/78/cd6aac705501d48bda6e8eebca058b78.png?wh=1142%2A868)
+
+图层叠加的最终展示页面
+
+现在你知道了**浏览器的页面实际上被分成了很多图层，这些图层叠加后合成了最终的页面**。下面我们再来看看这些图层和布局树节点之间的关系，如文中图所示：
+
+![](https://static001.geekbang.org/resource/image/e8/61/e8a7e60a2a08e05239456284d2aa4061.png?wh=1142%2A674)
+
+布局树和图层树关系示意图
+
+通常情况下，**并不是布局树的每个节点都包含一个图层，如果一个节点没有对应的层，那么这个节点就从属于父节点的图层**。如上图中的span标签没有专属图层，那么它们就从属于它们的父节点图层。但不管怎样，最终每一个节点都会直接或者间接地从属于一个层。
+
+那么需要满足什么条件，渲染引擎才会为特定的节点创建新的图层呢？通常满足下面两点中任意一点的元素就可以被提升为单独的一个图层。
+
+**第一点，拥有层叠上下文属性的元素会被提升为单独的一层。**
+
+页面是个二维平面，但是层叠上下文能够让HTML元素具有三维概念，这些HTML元素按照自身属性的优先级分布在垂直于这个二维平面的z轴上。你可以结合下图来直观感受下：
+
+![](https://static001.geekbang.org/resource/image/a0/19/a03eb12053aac1ac496b61a424f20119.png?wh=1142%2A601)
+
+层叠上下文示意图
+
+从图中可以看出，明确定位属性的元素、定义透明属性的元素、使用CSS滤镜的元素等，都拥有层叠上下文属性。
+
+若你想要了解更多层叠上下文的知识，你可以[参考这篇文章](https://developer.mozilla.org/zh-CN/docs/Web/Guide/CSS/Understanding_z_index/The_stacking_context)。
+
+**第二点，需要剪裁（clip）的地方也会被创建为图层。**
+
+不过首先你需要了解什么是剪裁，结合下面的HTML代码：
+
+```
+<style>
+      div {
+            width: 200;
+            height: 200;
+            overflow:auto;
+            background: gray;
+        } 
+</style>
+<body>
+    <div >
+        <p>所以元素有了层叠上下文的属性或者需要被剪裁，那么就会被提升成为单独一层，你可以参看下图：</p>
+        <p>从上图我们可以看到，document层上有A和B层，而B层之上又有两个图层。这些图层组织在一起也是一颗树状结构。</p>
+        <p>图层树是基于布局树来创建的，为了找出哪些元素需要在哪些层中，渲染引擎会遍历布局树来创建层树（Update LayerTree）。</p> 
+    </div>
+</body>
+```
+
+在这里我们把div的大小限定为200 * 200像素，而div里面的文字内容比较多，文字所显示的区域肯定会超出200 * 200的面积，这时候就产生了剪裁，渲染引擎会把裁剪文字内容的一部分用于显示在div区域，下图是运行时的执行结果：
+
+![](https://static001.geekbang.org/resource/image/6a/0c/6a583733735edc1e4d7946740eb6fc0c.png?wh=664%2A466)
+
+剪裁执行结果
+
+出现这种裁剪情况的时候，渲染引擎会为文字部分单独创建一个层，如果出现滚动条，滚动条也会被提升为单独的层。你可以参考下图：
+
+![](https://static001.geekbang.org/resource/image/7b/97/7b6ceaab23c6c6d8e5930864ff9d7097.png?wh=1142%2A403)
+
+被裁剪的内容会出现在单独一层
+
+所以说，元素有了层叠上下文的属性或者需要被剪裁，满足其中任意一点，就会被提升成为单独一层。
+
+## 图层绘制
+
+在完成图层树的构建之后，渲染引擎会对图层树中的每个图层进行绘制，那么接下来我们看看渲染引擎是怎么实现图层绘制的？
+
+试想一下，如果给你一张纸，让你先把纸的背景涂成蓝色，然后在中间位置画一个红色的圆，最后再在圆上画个绿色三角形。你会怎么操作呢？
+
+通常，你会把你的绘制操作分解为三步：
+
+1. 绘制蓝色背景；
+2. 在中间绘制一个红色的圆；
+3. 再在圆上绘制绿色三角形。
+
+渲染引擎实现图层的绘制与之类似，会把一个图层的绘制拆分成很多小的**绘制指令**，然后再把这些指令按照顺序组成一个待绘制列表，如下图所示：
+
+![](https://static001.geekbang.org/resource/image/40/08/40825a55214a7990bba6b9bec6e54108.png?wh=1142%2A603)
+
+绘制列表
+
+从图中可以看出，绘制列表中的指令其实非常简单，就是让其执行一个简单的绘制操作，比如绘制粉色矩形或者黑色的线等。而绘制一个元素通常需要好几条绘制指令，因为每个元素的背景、前景、边框都需要单独的指令去绘制。所以在图层绘制阶段，输出的内容就是这些待绘制列表。
+
+你也可以打开“开发者工具”的“Layers”标签，选择“document”层，来实际体验下绘制列表，如下图所示：
+
+![](https://static001.geekbang.org/resource/image/30/70/303515c26fcd4eaa9b9966ad7f190370.png?wh=1142%2A512)
+
+一个图层的绘制列表
+
+在该图中，区域1就是document的绘制列表，拖动区域2中的进度条可以重现列表的绘制过程。
+
+## 栅格化（raster）操作
+
+绘制列表只是用来记录绘制顺序和绘制指令的列表，而实际上绘制操作是由渲染引擎中的合成线程来完成的。你可以结合下图来看下渲染主线程和合成线程之间的关系：
+
+![](https://static001.geekbang.org/resource/image/46/41/46d33b6e5fca889ecbfab4516c80a441.png?wh=1142%2A464)
+
+渲染进程中的合成线程和主线程
+
+如上图所示，当图层的绘制列表准备好之后，主线程会把该绘制列表**提交（commit）**给合成线程，那么接下来合成线程是怎么工作的呢？
+
+那我们得先来看看什么是视口，你可以参看下图：
+
+![](https://static001.geekbang.org/resource/image/24/72/242225112f2a3ec97e736c960b88d972.png?wh=1142%2A1091)
+
+视口
+
+通常一个页面可能很大，但是用户只能看到其中的一部分，我们把用户可以看到的这个部分叫做**视口**（viewport）。
+
+在有些情况下，有的图层可以很大，比如有的页面你使用滚动条要滚动好久才能滚动到底部，但是通过视口，用户只能看到页面的很小一部分，所以在这种情况下，要绘制出所有图层内容的话，就会产生太大的开销，而且也没有必要。
+
+基于这个原因，**合成线程会将图层划分为图块（tile）**，这些图块的大小通常是256x256或者512x512，如下图所示：
+
+![](https://static001.geekbang.org/resource/image/bc/52/bcc7f6983d5ece8e2dd716f431d0e052.png?wh=1142%2A995)
+
+图层被划分为图块示意图
+
+然后**合成线程会按照视口附近的图块来优先生成位图，实际生成位图的操作是由栅格化来执行的。所谓栅格化，是指将图块转换为位图**。而图块是栅格化执行的最小单位。渲染进程维护了一个栅格化的线程池，所有的图块栅格化都是在线程池内执行的，运行方式如下图所示：
+
+![](https://static001.geekbang.org/resource/image/d8/20/d8d77356211e12b47bb9f508e2db8520.png?wh=1142%2A677)
+
+合成线程提交图块给栅格化线程池
+
+通常，栅格化过程都会使用GPU来加速生成，使用GPU生成位图的过程叫快速栅格化，或者GPU栅格化，生成的位图被保存在GPU内存中。
+
+相信你还记得，GPU操作是运行在GPU进程中，如果栅格化操作使用了GPU，那么最终生成位图的操作是在GPU中完成的，这就涉及到了跨进程操作。具体形式你可以参考下图：
+
+![](https://static001.geekbang.org/resource/image/a8/87/a8d954cd8e4722ee03d14afaa14c3987.png?wh=1142%2A857)
+
+GPU栅格化
+
+从图中可以看出，渲染进程把生成图块的指令发送给GPU，然后在GPU中执行生成图块的位图，并保存在GPU的内存中。
+
+## 合成和显示
+
+一旦所有图块都被光栅化，合成线程就会生成一个绘制图块的命令——“DrawQuad”，然后将该命令提交给浏览器进程。
+
+浏览器进程里面有一个叫viz的组件，用来接收合成线程发过来的DrawQuad命令，然后根据DrawQuad命令，将其页面内容绘制到内存中，最后再将内存显示在屏幕上。
+
+到这里，经过这一系列的阶段，编写好的HTML、CSS、JavaScript等文件，经过浏览器就会显示出漂亮的页面了。
+
+## 渲染流水线大总结
+
+好了，我们现在已经分析完了整个渲染流程，从HTML到DOM、样式计算、布局、图层、绘制、光栅化、合成和显示。下面我用一张图来总结下这整个渲染流程：
+
+![](https://static001.geekbang.org/resource/image/97/37/975fcbf7f83cc20d216f3d68a85d0f37.png?wh=1142%2A745)
+
+完整的渲染流水线示意图
+
+结合上图，一个完整的渲染流程大致可总结为如下：
+
+1. 渲染进程将HTML内容转换为能够读懂的**DOM树**结构。
+2. 渲染引擎将CSS样式表转化为浏览器可以理解的**styleSheets**，计算出DOM节点的样式。
+3. 创建**布局树**，并计算元素的布局信息。
+4. 对布局树进行分层，并生成**分层树**。
+5. 为每个图层生成**绘制列表**，并将其提交到合成线程。
+6. 合成线程将图层分成**图块**，并在**光栅化线程池**中将图块转换成位图。
+7. 合成线程发送绘制图块命令**DrawQuad**给浏览器进程。
+8. 浏览器进程根据DrawQuad消息**生成页面**，并**显示**到显示器上。
+
+## 相关概念
+
+有了上面介绍渲染流水线的基础，我们再来看看三个和渲染流水线相关的概念——**“重排”“重绘”和“合成”**。理解了这三个概念对于你后续Web的性能优化会有很大帮助。
+
+### 1. 更新了元素的几何属性（重排）
+
+你可先参考下图：
+
+![](https://static001.geekbang.org/resource/image/b3/e5/b3ed565230fe4f5c1886304a8ff754e5.png?wh=1142%2A318)
+
+更新元素的几何属性
+
+从上图可以看出，如果你通过JavaScript或者CSS修改元素的几何位置属性，例如改变元素的宽度、高度等，那么浏览器会触发重新布局，解析之后的一系列子阶段，这个过程就叫**重排**。无疑，**重排需要更新完整的渲染流水线，所以开销也是最大的**。
+
+### 2. 更新元素的绘制属性（重绘）
+
+接下来，我们再来看看重绘，比如通过JavaScript更改某些元素的背景颜色，渲染流水线会怎样调整呢？你可以参考下图：
+
+![](https://static001.geekbang.org/resource/image/3c/03/3c1b7310648cccbf6aa4a42ad0202b03.png?wh=1142%2A286)
+
+更新元素背景
+
+从图中可以看出，如果修改了元素的背景颜色，那么布局阶段将不会被执行，因为并没有引起几何位置的变换，所以就直接进入了绘制阶段，然后执行之后的一系列子阶段，这个过程就叫**重绘**。相较于重排操作，**重绘省去了布局和分层阶段，所以执行效率会比重排操作要高一些**。
+
+### 3. 直接合成阶段
+
+那如果你更改一个既不要布局也不要绘制的属性，会发生什么变化呢？渲染引擎将跳过布局和绘制，只执行后续的合成操作，我们把这个过程叫做**合成**。具体流程参考下图：
+
+![](https://static001.geekbang.org/resource/image/02/2c/024bf6c83b8146d267f476555d953a2c.png?wh=1142%2A270)
+
+避开重排和重绘
+
+在上图中，我们使用了CSS的transform来实现动画效果，这可以避开重排和重绘阶段，直接在非主线程上执行合成动画操作。这样的效率是最高的，因为是在非主线程上合成，并没有占用主线程的资源，另外也避开了布局和绘制两个子阶段，所以**相对于重绘和重排，合成能大大提升绘制效率**。
+
+至于如何用这些概念去优化页面，我们会在后面相关章节做详细讲解的，这里你只需要先结合“渲染流水线”弄明白这三个概念及原理就行。
+
+## 总结
+
+通过本文的分析，你应该可以看到，Chrome的渲染流水线还是相当复杂晦涩，且难以理解，不过Chrome团队在不断添加新功能的同时，也在不断地重构一些子阶段，目的就是**让整体渲染架构变得更加简单和高效**，正所谓大道至简。
+
+通过这么多年的生活和工作经验来看，无论是做架构设计、产品设计，还是具体到代码的实现，甚至处理生活中的一些事情，能够把复杂问题简单化的人都是具有大智慧的。所以，在工作或生活中，你若想要简化遇到的问题，就要刻意地练习，练就抓住问题本质的能力，把那些复杂的问题简单化，从而最终真正解决问题。
+
+## 思考时间
+
+在优化Web性能的方法中，减少重绘、重排是一种很好的优化方式，那么结合文中的分析，你能总结出来为什么减少重绘、重排能优化Web性能吗？那又有那些具体的实践方法能减少重绘、重排呢？
+
+欢迎在留言区与我分享你的想法，也欢迎你在留言区记录你的思考过程。感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>Hurry</span> 👍（212） 💬（16）<div>减少重排重绘, 方法很多：
 1. 使用 class 操作样式，而不是频繁操作 style
 2. 避免使用 table 布局
 3. 批量dom 操作，例如 createDocumentFragment，或者使用框架，例如 React
 4. Debounce window resize 事件
 5. 对 dom 属性的读写要分离 
-6. will-change: transform 做优化</div>2019-08-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4e/94/0b22b6a2.jpg" width="30px"><span>Luke</span> 👍（124） 💬（1）<div>关于浏览器渲染的知识点讲的很细致，我想问下，关于浏览器的渲染细节的知识老师是从哪里学到的？，是通过研究源码学习的吗？有没有一些好的学习资料或者学习方法推荐？能否专门出一篇“授人以渔”的文章，谢谢！</div>2019-09-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/c5/0c/03bd4b4e.jpg" width="30px"><span>朙</span> 👍（63） 💬（6）<div>渲染进程里的帧的概念是什么样子的呢？一个page是一帧吗</div>2019-08-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/f5/b8/9f165f4b.jpg" width="30px"><span>mfist</span> 👍（42） 💬（3）<div>减少重排重绘，相当于少了渲染进程的主线程和非主线程的很多计算和操作，能够加快web的展示。
+6. will-change: transform 做优化</div>2019-08-18</li><br/><li><span>Luke</span> 👍（124） 💬（1）<div>关于浏览器渲染的知识点讲的很细致，我想问下，关于浏览器的渲染细节的知识老师是从哪里学到的？，是通过研究源码学习的吗？有没有一些好的学习资料或者学习方法推荐？能否专门出一篇“授人以渔”的文章，谢谢！</div>2019-09-27</li><br/><li><span>朙</span> 👍（63） 💬（6）<div>渲染进程里的帧的概念是什么样子的呢？一个page是一帧吗</div>2019-08-17</li><br/><li><span>mfist</span> 👍（42） 💬（3）<div>减少重排重绘，相当于少了渲染进程的主线程和非主线程的很多计算和操作，能够加快web的展示。
 1 触发repaint reflow的操作尽量放在一起，比如改变dom高度和设置margin分开写，可能会出发两次重排
 2 通过虚拟dom层计算出操作总得差异，一起提交给浏览器。之前还用过createdocumentfragment来汇总append的dom,来减少触发重排重绘次数。
-</div>2019-08-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqXKSvfaeicog2Ficx4W3pNeA1KRLOS7iaFy2uoxCDoYpGkGnP6KPGecKia6Dr3MtCkNGpHxAzmTMd0LA/132" width="30px"><span>Geek_East</span> 👍（29） 💬（8）<div>渲染流程的最后，应该是浏览器进程将Compositor Frame发送到GPU, GPU进行显示吧？</div>2019-11-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e9/e9/1f95e422.jpg" width="30px"><span>杨陆伟</span> 👍（25） 💬（1）<div>最后的一段话非常经典，赞！大道至简，这真是做软件该秉持的原则，如果实现功能时感受到复杂和无序，那一定是那里错了</div>2019-08-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d9/c6/8be8664d.jpg" width="30px"><span>ytd</span> 👍（19） 💬（6）<div>请教下老师，canvas的渲染流程是什么样的呢？它不涉及dom，也就不涉及dom树、样式计算、布局、分层，canvas的绘制过程也是在渲染进程中进行的吗？</div>2019-08-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJS0jwYKhjm1hq96go05J4R7XDd5FFXXaoyIfX9TgoI3mLURAu2ET72SvYGM2iaET7IV3WDvMibAVfw/132" width="30px"><span>tokey</span> 👍（11） 💬（4）<div>老师您好！
+</div>2019-08-17</li><br/><li><span>Geek_East</span> 👍（29） 💬（8）<div>渲染流程的最后，应该是浏览器进程将Compositor Frame发送到GPU, GPU进行显示吧？</div>2019-11-28</li><br/><li><span>杨陆伟</span> 👍（25） 💬（1）<div>最后的一段话非常经典，赞！大道至简，这真是做软件该秉持的原则，如果实现功能时感受到复杂和无序，那一定是那里错了</div>2019-08-17</li><br/><li><span>ytd</span> 👍（19） 💬（6）<div>请教下老师，canvas的渲染流程是什么样的呢？它不涉及dom，也就不涉及dom树、样式计算、布局、分层，canvas的绘制过程也是在渲染进程中进行的吗？</div>2019-08-17</li><br/><li><span>tokey</span> 👍（11） 💬（4）<div>老师您好！
 我想问以下两个问题：
 问题1：手机端开发，body 被内容撑开了，超过一屏，在滑动的过程中会不会触发重排，为什么？
-问题2：如果 body 高度设置了100%</div>2019-08-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/2a/bc/03c2c8cf.jpg" width="30px"><span>不存在的</span> 👍（9） 💬（1）<div>什么叫既不要布局也不要绘制的属性呢?</div>2019-10-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/d1/ee/96fcadbc.jpg" width="30px"><span>Warrior</span> 👍（5） 💬（1）<div>重排是否只在当前分层中，会不会影响其他分层的重排？</div>2019-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/98/f7/abb7bfe3.jpg" width="30px"><span>帅气小熊猫</span> 👍（4） 💬（1）<div>这里的合成线程属于哪个进程？浏览器进程是指主进程吗？前面进程线程那块没有啊</div>2019-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/3c/c1/30a7efa3.jpg" width="30px"><span>frankh</span> 👍（3） 💬（2）<div>transform为什么可以避免重排和重绘啊</div>2019-08-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/32/1d/d4e03718.jpg" width="30px"><span>Rahim</span> 👍（2） 💬（3）<div>http:&#47;&#47;www.chromium.org&#47;developers&#47;design-documents&#47;gpu-accelerated-compositing-in-chrome?spm=taofed.bloginfo.blog.1.19585ac8aQLUrh
-你好，源码中到RenderLayer跟教程中到图层树是同一个意思吗？那后续GraphicsLayer是什么意思</div>2019-12-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a4/eb/c092f833.jpg" width="30px"><span>晓东</span> 👍（1） 💬（1）<div>老师，关于视口附近的图块会优先生成位图这块有点疑惑。因为当所有图块都栅格化后，才会通知浏览器进程去合成图层并显示，那么视口图块优先栅格化的意义体现在哪里？</div>2019-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/f7/7b/bd2d9d0c.jpg" width="30px"><span>(ಡωಡ)hahaha</span> 👍（1） 💬（1）<div>老师，你好，我想请教一下，渲染进程中，有哪些线程，以及各线程的作用，可以讲解一下吗</div>2019-11-07</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJS0jwYKhjm1hq96go05J4R7XDd5FFXXaoyIfX9TgoI3mLURAu2ET72SvYGM2iaET7IV3WDvMibAVfw/132" width="30px"><span>tokey</span> 👍（1） 💬（1）<div>老师的课程可以加个浏览器中的事件循环和js的事件机智么？</div>2019-08-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d9/c6/8be8664d.jpg" width="30px"><span>ytd</span> 👍（1） 💬（2）<div>重排和重绘都是渲染进程的主线程中进行的，减少这类操作可以减少主线程的资源占用，提高主线程绘制效率。在编写js时尽量减少dom操作或合并dom操作，dom操作需要重新生成dom树，如果影响布局就需要重新生成布局树，再重新生成分层树，再进行绘制。ps：感觉生成个页面好复杂呀，另外，以前从没注意过chrome开发者工具还有个Layers标签，chrome开发者工具真是一堆宝呀。</div>2019-08-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/e7/d9/83d1346c.jpg" width="30px"><span>Lx</span> 👍（0） 💬（2）<div>老师，简单页面，只有一个div。我想问下是会产生一个分层吗？光栅化的过程会利用gpu吗？因为我记得gpu处理3d</div>2019-09-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e7/8d/d381883a.jpg" width="30px"><span>漠</span> 👍（0） 💬（4）<div>老师，为什么我的devtool里面没有layer这个面板</div>2019-08-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/b4/61/1db459e5.jpg" width="30px"><span>哎姆哦剋</span> 👍（0） 💬（2）<div>请问老师，我改变了宽高，是不是只对同一图层有影响，其他图层不会重排？</div>2019-08-20</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJOBwR7MCVqwZbPA5RQ2mjUjd571jUXUcBCE7lY5vSMibWn8D5S4PzDZMaAhRPdnRBqYbVOBTJibhJg/132" width="30px"><span>ヾ(◍°∇°◍)ﾉﾞ</span> 👍（0） 💬（1）<div>减少重排重绘可以减少gpu等的调用频次，gpu调用本身开销不小</div>2019-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/1a/f4/a40453e7.jpg" width="30px"><span>man-moonth</span> 👍（0） 💬（2）<div>请教老师，因为重绘(paint)的输入是图层树，“重绘省去了布局和分层阶段”是否可以理解为：因为修改绘制属性并不改变元素的布局计算，所以重绘渲染的布局(layout)、分层(layer)两个阶段处理得非常快以至于可以忽略不计。</div>2019-08-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c9/1d/c7586cfc.jpg" width="30px"><span>Snail</span> 👍（223） 💬（4）<div>浏览器工作流程『从输入 URL 到页面展示』学习笔记
-
-导航
-
-用户输入
-
-1. 用户在地址栏按下回车，检查输入（关键字 or 符合 URL 规则），组装完整 URL；
-2. 回车前，当前页面执行 onbeforeunload 事件；
-3. 浏览器进入加载状态。
-
-URL 请求
-
-1. 浏览器进程通过 IPC 把 URL 请求发送至网络进程；
-2. 查找资源缓存（有效期内）；
-3. DNS 解析（查询 DNS 缓存）；
-4. 进入 TCP 队列（单个域名 TCP 连接数量限制）；
-5. 创建 TCP 连接（三次握手）；
-6. HTTPS 建立 TLS 连接（client hello, server hello, pre-master key 生成『对话密钥』）；
-7. 发送 HTTP 请求（请求行[方法、URL、协议]、请求头 Cookie 等、请求体 POST）；
-8. 接受请求（响应行[协议、状态码、状态消息]、响应头、响应体等）；
-   - 状态码 301 &#47; 302，根据响应头中的 Location 重定向；
-   - 状态码 200，根据响应头中的 Content-Type 决定如何响应（下载文件、加载资源、渲染 HTML）。
-
-准备渲染进程
-
-1. 根据是否同一站点（相同的协议和根域名），决定是否复用渲染进程。
-
-提交文档
-
-1. 浏览器进程接受到网路进程的响应头数据，向渲染进程发送『提交文档』消息；
-2. 渲染进程收到『提交文档』消息后，与网络进程建立传输数据『管道』；
-3. 传输完成后，渲染进程返回『确认提交』消息给浏览器进程；
-4. 浏览器接受『确认提交』消息后，移除旧文档、更新界面、地址栏，导航历史状态等；
-5. 此时标识浏览器加载状态的小圆圈，从此前 URL 网络请求时的逆时针选择，即将变成顺时针旋转（进入渲染阶段）。
-
-渲染
-
-渲染流水线
-
-构建 DOM 树
-
-1. 输入：HTML 文档；
-2. 处理：HTML 解析器解析；
-3. 输出：DOM 数据解构。
-
-样式计算
-
-1. 输入：CSS 文本；
-2. 处理：属性值标准化，每个节点具体样式（继承、层叠）；
-3. 输出：styleSheets(CSSOM)。
-
-布局(DOM 树中元素的计划位置)
-
-1. DOM &amp; CSSOM 合并成渲染树；
-2. 布局树（DOM 树中的可见元素）；
-3. 布局计算。
-
-分层
-
-1. 特定节点生成专用图层，生成一棵图层树（层叠上下文、Clip，类似 PhotoShop 里的图层）；
-2. 拥有层叠上下文属性（明确定位属性、透明属性、CSS 滤镜、z-index 等）的元素会创建单独图层；
-3. 没有图层的 DOM 节点属于父节点图层；
-4. 需要剪裁的地方也会创建图层。
-
-绘制指令
-
-1. 输入：图层树；
-2. 渲染引擎对图层树中每个图层进行绘制；
-3. 拆分成绘制指令，生成绘制列表，提交到合成线程；
-4. 输出：绘制列表。
-
-分块
-
-1. 合成线程会将较大、较长的图层（一屏显示不完，大部分不在视口内）划分为图块（tile, 256*256, 512*512）。
-
-光栅化（栅格化）
-
-1. 在光栅化线程池中，将视口附近的图块优先生成位图（栅格化执行该操作）；
-2. 快速栅格化：GPU 加速，生成位图（GPU 进程）。
-
-合成绘制
-
-1. 绘制图块命令——DrawQuad，提交给浏览器进程；
-2. 浏览器进程的 viz 组件，根据DrawQuad命令，绘制在屏幕上。
-
-相关概念
-
-重排
-
-1. 更新了元素的几何属性（如宽、高、边距）；
-2. 触发重新布局，解析之后的一系列子阶段；
-3. 更新完成的渲染流水线，开销最大。
-
-重绘
-
-1. 更新元素的绘制属性（元素的颜色、背景色、边框等）；
-2. 布局阶段不会执行（无几何位置变换），直接进入绘制阶段。
-
-合成
-
-1. 直接进入合成阶段（例如CSS 的 transform 动画）；
-2. 直接执行合成阶段，开销最小。
-</div>2020-03-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/32/0d/9ffc70dd.jpg" width="30px"><span>番茄</span> 👍（13） 💬（1）<div>最后一部分，合成和显示讲的太模糊的，不是很理解。</div>2019-10-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4e/94/0b22b6a2.jpg" width="30px"><span>Luke</span> 👍（10） 💬（2）<div>老师，你好，我有几个问题一直都很很困惑，也没找到答案，希望老师能解惑一下，感谢！
-1、图层、图块与BFC有什么区别联系吗？为什么BFC内元素的变动不会对BFC外的元素产生任何影响？是因为BFC会产生一个独立的图层或图块，渲染的时候只用重新渲染这一个图层或图块吗？BFC的原理是什么？
-2、在划分图层的时候，每个图层都会生成一系列的绘制指令，而在划分图块的时候，一个图块可能包含多个图层，一个图层也可能分成多个图块，那么在将图块绘制成位图的时候，是如何执行绘制指令的？需要将绘制指令再划分到不同的图块中吗？</div>2019-09-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/6c/e9/072b33b9.jpg" width="30px"><span>splm</span> 👍（8） 💬（4）<div>在GPU进程完成栅格化，并把结果保存在GPU内存中，此时的结果仍然保存在独立进程中。那么从渲染进程的合成线程发送Drawquad命令到浏览器主线程调用Viz组件，主进程是在什么时候拿到之前存在GPU内存中的位图结果的？是Viz主动去GPU内存获取这部分结果进行合成的吗？这里没太看懂。</div>2019-10-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/31/72/817e88b4.jpg" width="30px"><span>Fred 鱼</span> 👍（6） 💬（1）<div>对于使用transform的元素，要事先定义好will-change:transform; ，才能避免layout 和paint。</div>2020-06-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b3/26/cc28a05a.jpg" width="30px"><span>悬炫</span> 👍（6） 💬（7）<div>老师文中说需要剪裁（clip）的地方也会被创建为图层，但是我复制了老师的代码后，发现需要剪裁的地方并没有单独的被创建为图层，难道是最新版本的谷歌浏览器改了渲染规则？
-我的浏览器版本是 76.0.3809.100（正式版本） （64 位）
-</div>2019-08-26</li><br/><li><img src="" width="30px"><span>Geek_a4a510</span> 👍（5） 💬（0）<div>Chrome原版文档里说合成compositing是分割成layer的过程，而不是图块。这个更能解释transform只调用合成线程，因为一个layer挪来挪去就行了
-
-Compositing is a technique to separate parts of a page into layers, rasterize them separately, and composite as a page in a separate thread called compositor thread.
-
-https:&#47;&#47;developer.chrome.com&#47;blog&#47;inside-browser-part3&#47;</div>2022-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ce/b2/1f914527.jpg" width="30px"><span>海盗船长</span> 👍（4） 💬（0）<div>“栅格化过程都会使用 GPU 来加速生成”，请问下老师，如果用户的电脑没有GPU，栅格化就使用CPU吗</div>2020-05-19</li><br/>
+问题2：如果 body 高度设置了100%</div>2019-08-17</li><br/><li><span>不存在的</span> 👍（9） 💬（1）<div>什么叫既不要布局也不要绘制的属性呢?</div>2019-10-20</li><br/><li><span>Warrior</span> 👍（5） 💬（1）<div>重排是否只在当前分层中，会不会影响其他分层的重排？</div>2019-09-20</li><br/><li><span>帅气小熊猫</span> 👍（4） 💬（1）<div>这里的合成线程属于哪个进程？浏览器进程是指主进程吗？前面进程线程那块没有啊</div>2019-08-19</li><br/><li><span>frankh</span> 👍（3） 💬（2）<div>transform为什么可以避免重排和重绘啊</div>2019-08-21</li><br/><li><span>Rahim</span> 👍（2） 💬（3）<div>http:&#47;&#47;www.chromium.org&#47;developers&#47;design-documents&#47;gpu-accelerated-compositing-in-chrome?spm=taofed.bloginfo.blog.1.19585ac8aQLUrh
+你好，源码中到RenderLayer跟教程中到图层树是同一个意思吗？那后续GraphicsLayer是什么意思</div>2019-12-15</li><br/><li><span>晓东</span> 👍（1） 💬（1）<div>老师，关于视口附近的图块会优先生成位图这块有点疑惑。因为当所有图块都栅格化后，才会通知浏览器进程去合成图层并显示，那么视口图块优先栅格化的意义体现在哪里？</div>2019-11-12</li><br/><li><span>(ಡωಡ)hahaha</span> 👍（1） 💬（1）<div>老师，你好，我想请教一下，渲染进程中，有哪些线程，以及各线程的作用，可以讲解一下吗</div>2019-11-07</li><br/>
 </ul>

@@ -9,8 +9,146 @@
 因此，计算机工程师们，就发明了DMA技术，也就是**直接内存访问**（Direct Memory Access）技术，来减少CPU等待的时间。
 
 ## 理解DMA，一个协处理器
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/bf/aa/abb7bfe3.jpg" width="30px"><span>免费的人</span> 👍（36） 💬（1）<div>从kafka论文里摘的：
+
+其实DMA技术很容易理解，本质上，DMA技术就是我们在主板上放一块独立的芯片。在进行内存和I/O设备的数据传输的时候，我们不再通过CPU来控制数据传输，而直接通过**DMA控制器**（DMA Controller，简称DMAC）。这块芯片，我们可以认为它其实就是一个**协处理器**（Co-Processor）。
+
+**DMAC最有价值的地方体现在，当我们要传输的数据特别大、速度特别快，或者传输的数据特别小、速度特别慢的时候。**
+
+比如说，我们用千兆网卡或者硬盘传输大量数据的时候，如果都用CPU来搬运的话，肯定忙不过来，所以可以选择DMAC。而当数据传输很慢的时候，DMAC可以等数据到齐了，再发送信号，给到CPU去处理，而不是让CPU在那里忙等待。
+
+好了，现在你应该明白DMAC的价值，知道了它适合用在什么情况下。那我们现在回过头来看。我们上面说，DMAC是一块“协处理器芯片”，这是为什么呢？
+
+注意，这里面的“协”字。DMAC是在“协助”CPU，完成对应的数据传输工作。在DMAC控制数据传输的过程中，我们还是需要CPU的。
+
+除此之外，DMAC其实也是一个特殊的I/O设备，它和CPU以及其他I/O设备一样，通过连接到总线来进行实际的数据传输。总线上的设备呢，其实有两种类型。一种我们称之为**主设备**（Master），另外一种，我们称之为**从设备**（Slave）。
+
+想要主动发起数据传输，必须要是一个主设备才可以，CPU就是主设备。而我们从设备（比如硬盘）只能接受数据传输。所以，如果通过CPU来传输数据，要么是CPU从I/O设备读数据，要么是CPU向I/O设备写数据。
+
+这个时候你可能要问了，那我们的I/O设备不能向主设备发起请求么？可以是可以，不过这个发送的不是数据内容，而是控制信号。I/O设备可以告诉CPU，我这里有数据要传输给你，但是实际数据是CPU拉走的，而不是I/O设备推给CPU的。
+
+![](https://static001.geekbang.org/resource/image/99/bc/9998b67238044aad60d2aa0735b98ebc.jpeg?wh=2269%2A1513)
+
+不过，DMAC就很有意思了，它既是一个主设备，又是一个从设备。对于CPU来说，它是一个从设备；对于硬盘这样的IO设备来说呢，它又变成了一个主设备。那使用DMAC进行数据传输的过程究竟是什么样的呢？下面我们来具体看看。
+
+1.首先，CPU还是作为一个主设备，向DMAC设备发起请求。这个请求，其实就是在DMAC里面修改配置寄存器。
+
+2.CPU修改DMAC的配置的时候，会告诉DMAC这样几个信息：
+
+- 首先是**源地址的初始值以及传输时候的地址增减方式**。  
+  所谓源地址，就是数据要从哪里传输过来。如果我们要从内存里面写入数据到硬盘上，那么就是要读取的数据在内存里面的地址。如果是从硬盘读取数据到内存里，那就是硬盘的I/O接口的地址。  
+  我们讲过总线的时候说过，I/O的地址可以是一个内存地址，也可以是一个端口地址。而地址的增减方式就是说，数据是从大的地址向小的地址传输，还是从小的地址往大的地址传输。
+- 其次是**目标地址初始值和传输时候的地址增减方式**。目标地址自然就是和源地址对应的设备，也就是我们数据传输的目的地。
+- 第三个自然是**要传输的数据长度**，也就是我们一共要传输多少数据。
+
+3.设置完这些信息之后，DMAC就会变成一个空闲的状态（Idle）。
+
+4.如果我们要从硬盘上往内存里面加载数据，这个时候，硬盘就会向DMAC发起一个数据传输请求。这个请求并不是通过总线，而是通过一个额外的连线。
+
+5.然后，我们的DMAC需要再通过一个额外的连线响应这个申请。
+
+6.于是，DMAC这个芯片，就向硬盘的接口发起要总线读的传输请求。数据就从硬盘里面，读到了DMAC的控制器里面。
+
+7.然后，DMAC再向我们的内存发起总线写的数据传输请求，把数据写入到内存里面。
+
+8.DMAC会反复进行上面第6、7步的操作，直到DMAC的寄存器里面设置的数据长度传输完成。
+
+9.数据传输完成之后，DMAC重新回到第3步的空闲状态。
+
+所以，整个数据传输的过程中，我们不是通过CPU来搬运数据，而是由DMAC这个芯片来搬运数据。但是CPU在这个过程中也是必不可少的。因为传输什么数据，从哪里传输到哪里，其实还是由CPU来设置的。这也是为什么，DMAC被叫作“协处理器”。
+
+![](https://static001.geekbang.org/resource/image/c9/8e/c9ed34b47b0cd33867c581772d8eff8e.jpeg?wh=1456%2A1336)
+
+现在的外设里面，很多都内置了DMAC
+
+最早，计算机里是没有DMAC的，所有数据都是由CPU来搬运的。随着人们对于数据传输的需求越来越多，先是出现了主板上独立的DMAC控制器。到了今天，各种I/O设备越来越多，数据传输的需求越来越复杂，使用的场景各不相同。加之显示器、网卡、硬盘对于数据传输的需求都不一样，所以各个设备里面都有自己的DMAC芯片了。
+
+## 为什么那么快？一起来看Kafka的实现原理
+
+了解了DMAC是怎么回事儿，那你可能要问了，这和我们实际进行程序开发有什么关系呢？有什么API，我们直接调用一下，就能加速数据传输，减少CPU占用吗？
+
+你还别说，过去几年的大数据浪潮里面，还真有一个开源项目很好地利用了DMA的数据传输方式，通过DMA的方式实现了非常大的性能提升。这个项目就是**Kafka**。下面我们就一起来看看它究竟是怎么利用DMA的。
+
+Kafka是一个用来处理实时数据的管道，我们常常用它来做一个消息队列，或者用来收集和落地海量的日志。作为一个处理实时数据和日志的管道，瓶颈自然也在I/O层面。
+
+Kafka里面会有两种常见的海量数据传输的情况。一种是从网络中接收上游的数据，然后需要落地到本地的磁盘上，确保数据不丢失。另一种情况呢，则是从本地磁盘上读取出来，通过网络发送出去。
+
+我们来看一看后一种情况，从磁盘读数据发送到网络上去。如果我们自己写一个简单的程序，最直观的办法，自然是用一个文件读操作，从磁盘上把数据读到内存里面来，然后再用一个Socket，把这些数据发送到网络上去。
+
+```
+File.read(fileDesc, buf, len);
+Socket.send(socket, buf, len);
+```
+
+[代码来源](https://developer.ibm.com/articles/j-zerocopy/)这段伪代码，来自IBM Developer Works上关于Zero Copy的文章
+
+在这个过程中，数据一共发生了四次传输的过程。其中两次是DMA的传输，另外两次，则是通过CPU控制的传输。下面我们来具体看看这个过程。
+
+第一次传输，是从硬盘上，读到操作系统内核的缓冲区里。这个传输是通过DMA搬运的。
+
+第二次传输，需要从内核缓冲区里面的数据，复制到我们应用分配的内存里面。这个传输是通过CPU搬运的。
+
+第三次传输，要从我们应用的内存里面，再写到操作系统的Socket的缓冲区里面去。这个传输，还是由CPU搬运的。
+
+最后一次传输，需要再从Socket的缓冲区里面，写到网卡的缓冲区里面去。这个传输又是通过DMA搬运的。
+
+![](https://static001.geekbang.org/resource/image/e0/d5/e0e85505e793e804e3b396fc50871cd5.jpg?wh=2376%2A1653)
+
+这个时候，你可以回过头看看这个过程。我们只是要“搬运”一份数据，结果却整整搬运了四次。而且这里面，从内核的读缓冲区传输到应用的内存里，再从应用的内存里传输到Socket的缓冲区里，其实都是把同一份数据在内存里面搬运来搬运去，特别没有效率。
+
+像Kafka这样的应用场景，其实大部分最终利用到的硬件资源，其实又都是在干这个搬运数据的事儿。所以，我们就需要尽可能地减少数据搬运的需求。
+
+事实上，Kafka做的事情就是，把这个数据搬运的次数，从上面的四次，变成了两次，并且只有DMA来进行数据搬运，而不需要CPU。
+
+```
+@Override
+public long transferFrom(FileChannel fileChannel, long position, long count) throws IOException {
+    return fileChannel.transferTo(position, count, socketChannel);
+}
+```
+
+如果你层层追踪Kafka的代码，你会发现，最终它调用了Java NIO库里的transferTo方法
+
+Kafka的代码调用了Java NIO库，具体是FileChannel里面的transferTo方法。我们的数据并没有读到中间的应用内存里面，而是直接通过Channel，写入到对应的网络设备里。并且，对于Socket的操作，也不是写入到Socket的Buffer里面，而是直接根据描述符（Descriptor）写入到网卡的缓冲区里面。于是，在这个过程之中，我们只进行了两次数据传输。
+
+![](https://static001.geekbang.org/resource/image/59/ab/596042d111ad9b871045d970a10464ab.jpg?wh=2116%2A1578)
+
+第一次，是通过DMA，从硬盘直接读到操作系统内核的读缓冲区里面。第二次，则是根据Socket的描述符信息，直接从读缓冲区里面，写入到网卡的缓冲区里面。
+
+这样，我们同一份数据传输的次数从四次变成了两次，并且没有通过CPU来进行数据搬运，所有的数据都是通过DMA来进行传输的。
+
+在这个方法里面，我们没有在内存层面去“复制（Copy）”数据，所以这个方法，也被称之为**零拷贝**（Zero-Copy）。
+
+IBM Developer Works里面有一篇文章，专门写过程序来测试过，在同样的硬件下，使用零拷贝能够带来的性能提升。我在这里放上这篇文章[链接](https://developer.ibm.com/articles/j-zerocopy/)。在这篇文章最后，你可以看到，无论传输数据量的大小，传输同样的数据，使用了零拷贝能够缩短65%的时间，大幅度提升了机器传输数据的吞吐量。想要深入了解零拷贝，建议你可以仔细读一读这篇文章。
+
+## 总结延伸
+
+讲到这里，相信你对DMA的原理、作用和效果都有所理解了。那么，我们一起来回顾总结一下。
+
+如果我们始终让CPU来进行各种数据传输工作，会特别浪费。一方面，我们的数据传输工作用不到多少CPU核心的“计算”功能。另一方面，CPU的运转速度也比I/O操作要快很多。所以，我们希望能够给CPU“减负”。
+
+于是，工程师们就在主板上放上了DMAC这样一个协处理器芯片。通过这个芯片，CPU只需要告诉DMAC，我们要传输什么数据，从哪里来，到哪里去，就可以放心离开了。后续的实际数据传输工作，都会由DMAC来完成。随着现代计算机各种外设硬件越来越多，光一个通用的DMAC芯片不够了，我们在各个外设上都加上了DMAC芯片，使得CPU很少再需要关心数据传输的工作了。
+
+在我们实际的系统开发过程中，利用好DMA的数据传输机制，也可以大幅提升I/O的吞吐率。最典型的例子就是Kafka。
+
+传统地从硬盘读取数据，然后再通过网卡向外发送，我们需要进行四次数据传输，其中有两次是发生在内存里的缓冲区和对应的硬件设备之间，我们没法节省掉。但是还有两次，完全是通过CPU在内存里面进行数据复制。
+
+在Kafka里，通过Java的NIO里面FileChannel的transferTo方法调用，我们可以不用把数据复制到我们应用程序的内存里面。通过DMA的方式，我们可以把数据从内存缓冲区直接写到网卡的缓冲区里面。在使用了这样的零拷贝的方法之后呢，我们传输同样数据的时间，可以缩减为原来的1/3，相当于提升了3倍的吞吐率。
+
+这也是为什么，Kafka是目前实时数据传输管道的标准解决方案。
+
+## 推荐阅读
+
+学完了这一讲之后，我推荐你阅读一下Kafka的论文，[Kakfa:a Distrubted Messaging System for Log Processing](http://notes.stephenholiday.com/Kafka.pdf)。Kafka的论文其实非常简单易懂，是一个很好的让你了解系统、日志、分布式系统的入门材料。
+
+如果你想要进一步去了解Kafka，也可以订阅极客时间的专栏“[Kafka核心技术与实战](https://time.geekbang.org/column/intro/191)”。
+
+## 课后思考
+
+你可以自己尝试写一段使用零拷贝和不使用零拷贝传输数据的代码，然后看一看两者之间的性能差异。你可以看看，零拷贝能够带来多少吞吐量提升。
+
+欢迎你把你运行程序的结果写在留言区，和大家一起讨论、分享。你也可以把这个问题分享给你的朋友，一起试一试，看看DMA和零拷贝，是否真的可以大幅度提升性能。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>免费的人</span> 👍（36） 💬（1）<div>从kafka论文里摘的：
 In addition we optimize the network access for consumers. Kafka
 is a multi-subscriber system and a single message may be
 consumed multiple times by different consumer applications. A
@@ -24,13 +162,7 @@ Unix operating systems, there exists a sendfile API [5] that can
 directly transfer bytes from a file channel to a socket channel.
 This typically avoids 2 of the copies and 1 system call introduced
 in steps (2) and (3). Kafka exploits the sendfile API to efficiently
-deliver bytes in a log segment file from a broker to a consumer.</div>2019-08-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/dc/ce/a144dea1.jpg" width="30px"><span>yhh</span> 👍（23） 💬（5）<div>如果我们的应用程序需要对数据做进一步的加工，那还能使用零拷贝吗</div>2019-08-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6e/c8/ed2926b5.jpg" width="30px"><span>soimage</span> 👍（20） 💬（3）<div>看到最后，也没看出kafka快跟dma有关系，倒是跟zero-copy关系大一些，通过砍掉两次内核空间和用户空间的数据拷贝，以及内核态和用户态的切换成本来优化</div>2019-09-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/0d/40/f70e5653.jpg" width="30px"><span>前端西瓜哥</span> 👍（5） 💬（1）<div>我记得 Nginx 的静态服务器貌似也是零拷贝。市面上常见的web服务器的静态服务器应该都实现了零拷贝吧？</div>2019-10-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/5b/79/d55044ac.jpg" width="30px"><span>coder</span> 👍（5） 💬（1）<div> 超算里面核与核之间的数据拷贝，一般会通过基于IB总线的RDMA来完成，可以避免过cpu内核的开销，希望徐老师能讲一下rDMA</div>2019-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/97/5e/3a9928eb.jpg" width="30px"><span>纵横四海1949</span> 👍（3） 💬（2）<div>从C盘复制数据到D盘是怎么个过程呢？</div>2019-09-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/39/fa/a7edbc72.jpg" width="30px"><span>安排</span> 👍（3） 💬（3）<div>C语言可以直接调Linux系统api实现零拷贝吗？有哪些api？</div>2019-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/fa/fd/ec24cba7.jpg" width="30px"><span>fcb的鱼</span> 👍（2） 💬（3）<div>cpu处理的是用户内存中的数据,访问不到操作系统中的数据。DMA处理的是操作系统内核中的数据，访问不到用户内存。可以这也理解吧？要不然为啥不让DMAC直接将数据从硬盘读到用户的内存呢？</div>2020-02-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/71/45/126cd913.jpg" width="30px"><span>袭</span> 👍（1） 💬（2）<div>如果不是由硬盘而是要从程序到网卡，可以省略socket buffer这一步吗？</div>2019-08-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/3a/4c/b6200773.jpg" width="30px"><span>一步</span> 👍（0） 💬（1）<div>&gt;第一次，是通过 DMA，从硬盘直接读到操作系统内核的读缓冲区里面。第二次，则是根据 Socket 的描述符信息，直接从读缓冲区里面，写入到网卡的缓冲区里面。
+deliver bytes in a log segment file from a broker to a consumer.</div>2019-08-20</li><br/><li><span>yhh</span> 👍（23） 💬（5）<div>如果我们的应用程序需要对数据做进一步的加工，那还能使用零拷贝吗</div>2019-08-20</li><br/><li><span>soimage</span> 👍（20） 💬（3）<div>看到最后，也没看出kafka快跟dma有关系，倒是跟zero-copy关系大一些，通过砍掉两次内核空间和用户空间的数据拷贝，以及内核态和用户态的切换成本来优化</div>2019-09-16</li><br/><li><span>前端西瓜哥</span> 👍（5） 💬（1）<div>我记得 Nginx 的静态服务器貌似也是零拷贝。市面上常见的web服务器的静态服务器应该都实现了零拷贝吧？</div>2019-10-02</li><br/><li><span>coder</span> 👍（5） 💬（1）<div> 超算里面核与核之间的数据拷贝，一般会通过基于IB总线的RDMA来完成，可以避免过cpu内核的开销，希望徐老师能讲一下rDMA</div>2019-08-19</li><br/><li><span>纵横四海1949</span> 👍（3） 💬（2）<div>从C盘复制数据到D盘是怎么个过程呢？</div>2019-09-04</li><br/><li><span>安排</span> 👍（3） 💬（3）<div>C语言可以直接调Linux系统api实现零拷贝吗？有哪些api？</div>2019-08-19</li><br/><li><span>fcb的鱼</span> 👍（2） 💬（3）<div>cpu处理的是用户内存中的数据,访问不到操作系统中的数据。DMA处理的是操作系统内核中的数据，访问不到用户内存。可以这也理解吧？要不然为啥不让DMAC直接将数据从硬盘读到用户的内存呢？</div>2020-02-07</li><br/><li><span>袭</span> 👍（1） 💬（2）<div>如果不是由硬盘而是要从程序到网卡，可以省略socket buffer这一步吗？</div>2019-08-23</li><br/><li><span>一步</span> 👍（0） 💬（1）<div>&gt;第一次，是通过 DMA，从硬盘直接读到操作系统内核的读缓冲区里面。第二次，则是根据 Socket 的描述符信息，直接从读缓冲区里面，写入到网卡的缓冲区里面。
 
-这个实现过程是硬盘向DMAC发出控制信号，由DMAC拉取数据，然后又因为目标地址是网卡，地址固定？所以不用经过寻址的过程吗？</div>2021-09-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/fd/be/079c78c7.jpg" width="30px"><span>焰火</span> 👍（75） 💬（2）<div>DMAC：我们不加工数据，只是数据的搬运工</div>2019-10-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/0e/3a/a84da865.jpg" width="30px"><span>Hellboy1989</span> 👍（28） 💬（2）<div>kafkad那么快，零拷贝是其中一面，他的硬盘顺序读写也是一个重要的原因。</div>2020-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/83/fb/621adceb.jpg" width="30px"><span>linker</span> 👍（18） 💬（0）<div>其实底层还是调用了linux的系统调用sendfile这个函数</div>2020-03-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/5b/83a35681.jpg" width="30px"><span>Monday</span> 👍（14） 💬（1）<div>面试被问到为什么kafka这么快，这篇文章至少可以作为原因之一。可惜今天才看到</div>2020-06-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7b/57/a9b04544.jpg" width="30px"><span>QQ怪</span> 👍（9） 💬（0）<div>以前只知道kafka通过零拷贝技术提高了吞吐量，但不知道为什么？这下老师通过硬件知识体系理解了相关技术原理，简直太棒了</div>2019-12-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/e0/6b/f61d7466.jpg" width="30px"><span>prader26</span> 👍（9） 💬（1）<div>  因为cpu比较快，而io比较慢，所以在处理数据的时候，主板或者外部设备上添加了DMA这个io读取操作的协处理器。
- kafaka 是利用dma的硬件条件，减少，cpu对于数据的搬运次数，因为kafuka在处理实时消息方面比较快。</div>2019-10-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/56/c6/0b449bc6.jpg" width="30px"><span>斐波那契</span> 👍（9） 💬（3）<div>老师 我想问一下 对于传统的四步读取文件然后网络发送里 操作系统的内核缓冲区是不是也在内存的某一个地方（只是用户访问不到）然后第二步 复制到应用程序内存中 事实上就是从内存的某一个地方复制到内存另一个地方 然后应用程序就可以操作了</div>2019-08-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5a/34/4cbadca6.jpg" width="30px"><span>吃饭睡觉打酱油</span> 👍（6） 💬（1）<div>老师，看完后对DMAC进行数据传输流程有疑问：1、为什么需要刚开始的第3步  2、第4的发起为什么是硬盘发起的，而不是DMAC ？</div>2021-01-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/09/d6/5f366427.jpg" width="30px"><span>码农Kevin亮</span> 👍（6） 💬（0）<div>请问老师，我是不是可以这样理解，java的fileChannel的api都是基于DMAC的实现？</div>2019-10-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e7/2e/1522a7d6.jpg" width="30px"><span>活的潇洒</span> 👍（3） 💬（0）<div>从去年一直在在用elk+kafka 作为日志系统，之所以选择kafka是因为知道他快，但是具体怎么快？为什么快只有学完这篇你会觉得一下通透了
-day 48天笔记：https:&#47;&#47;www.cnblogs.com&#47;luoahong&#47;p&#47;11412797.html</div>2019-08-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ff/1e/2a40a5ca.jpg" width="30px"><span>大明</span> 👍（3） 💬（0）<div>哈哈哈哈</div>2019-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e2/b1/f2ac07ab.jpg" width="30px"><span>红泥小火炉</span> 👍（3） 💬（2）<div>对DMAC的长度配置时机有个疑问，一个DMAC下面可以挂多个设备吧，如果可以的话，不同设备的buffer长度是不同的，DMAC的长度配置做不到通用啊，难道是在每次传输前都需要配置一次？</div>2019-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4d/fd/0aa0e39f.jpg" width="30px"><span>许童童</span> 👍（2） 💬（1）<div>老师讲得好啊，之前一直不是很理解DMA是什么原理，到底是怎么工作的，这篇文章，深入浅出，感谢老师。</div>2019-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/f8/49/0c3a380d.jpg" width="30px"><span>Geek_aeeb45</span> 👍（1） 💬（0）<div>“DMAC 最有价值的地方体现在，当我们要传输的数据特别大、速度特别快，或者传输的数据特别小、速度特别慢的时候。”老师好，这句话中的“数据特别大、速度特别快，或者传输的数据特别小、速度特别慢”没太理解，可以详细解释一下吗？</div>2023-04-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/42/9d/c36b7ef7.jpg" width="30px"><span>顾骨</span> 👍（1） 💬（0）<div>传统的 sendfile 经历的过程：硬盘 -》kernel buffer -》socket buffer -》 NIC
-
-只有网卡支持 scatter-gather 才是文中所描述的过程：硬盘 -》kernel buffer -》NIC
-
-而且 Linux kernel 2.6.33 版本之后引入了新的系统调用 splice，一种软件实现的零拷贝技术</div>2021-10-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/18/4c/e12f3b41.jpg" width="30px"><span>姜姜</span> 👍（1） 💬（1）<div>如果用mmap内存映射到文件，也可以实现领拷贝，这种方式会使用到DMAC吗？</div>2020-11-06</li><br/><li><img src="" width="30px"><span>Geek_88604f</span> 👍（0） 💬（0）<div>提升 I&#47;O 设备速度的方法:把 HDD 硬盘换成 SSD 硬盘；用 PCI Express 接口的 SSD 硬盘替代 SATA 接口的 SSD 硬盘；DMA技术</div>2024-01-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fa/64/457325e6.jpg" width="30px"><span>Sam Fu</span> 👍（0） 💬（0）<div>老师，这么说我理解凡是非阻塞 IO  都是由CPU 控制如，然后教给 DMA 实现的。 比如NIO，netty？</div>2023-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/7b/03/03583011.jpg" width="30px"><span>天天有吃的</span> 👍（0） 💬（0）<div>老师请问下，为什么说dmac适合数据量大，速度快的，或者数据量小，速度慢的，数据量大，速度慢的也可以不。或者说只有数据量小，速度快的不适合dmac？</div>2023-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/35/85/2f/547661e4.jpg" width="30px"><span>Retro0</span> 👍（0） 💬（0）<div>零拷贝是省略了在内存中， 从一个地址中把数据拷贝到另一个地址中吗？</div>2023-02-05</li><br/>
+这个实现过程是硬盘向DMAC发出控制信号，由DMAC拉取数据，然后又因为目标地址是网卡，地址固定？所以不用经过寻址的过程吗？</div>2021-09-29</li><br/><li><span>焰火</span> 👍（75） 💬（2）<div>DMAC：我们不加工数据，只是数据的搬运工</div>2019-10-02</li><br/><li><span>Hellboy1989</span> 👍（28） 💬（2）<div>kafkad那么快，零拷贝是其中一面，他的硬盘顺序读写也是一个重要的原因。</div>2020-07-17</li><br/><li><span>linker</span> 👍（18） 💬（0）<div>其实底层还是调用了linux的系统调用sendfile这个函数</div>2020-03-08</li><br/><li><span>Monday</span> 👍（14） 💬（1）<div>面试被问到为什么kafka这么快，这篇文章至少可以作为原因之一。可惜今天才看到</div>2020-06-16</li><br/><li><span>QQ怪</span> 👍（9） 💬（0）<div>以前只知道kafka通过零拷贝技术提高了吞吐量，但不知道为什么？这下老师通过硬件知识体系理解了相关技术原理，简直太棒了</div>2019-12-11</li><br/>
 </ul>

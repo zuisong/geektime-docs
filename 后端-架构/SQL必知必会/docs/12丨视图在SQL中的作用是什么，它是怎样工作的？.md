@@ -13,14 +13,206 @@
 ## 如何创建，更新和删除视图
 
 视图作为一张虚拟表，帮我们封装了底层与数据表的接口。它相当于是一张表或多张表的数据结果集。视图的这一特点，可以帮我们简化复杂的SQL查询，比如在编写视图后，我们就可以直接重用它，而不需要考虑视图中包含的基础查询的细节。同样，我们也可以根据需要更改数据格式，返回与底层数据表格式不同的数据。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/ed/1a/269eb3d6.jpg" width="30px"><span>cfanbo</span> 👍（58） 💬（1）<div>视图的底层原理是什么？执行一个查询语句是会有哪些操作步骤？</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/f1/84/7d21bd9e.jpg" width="30px"><span>Goal</span> 👍（44） 💬（1）<div>视图的作用：
+
+通常情况下，小型项目的数据库可以不使用视图，但是在大型项目中，以及数据表比较复杂的情况下，视图的价值就凸显出来了，它可以帮助我们把经常查询的结果集放到虚拟表中，提升使用效率。理解和使用起来都非常方便。
+
+### 创建视图：CREATE VIEW
+
+那么该如何创建视图呢？创建视图的语法是：
+
+```
+CREATE VIEW view_name AS
+SELECT column1, column2
+FROM table
+WHERE condition
+```
+
+实际上就是我们在SQL查询语句的基础上封装了视图VIEW，这样就会基于SQL语句的结果集形成一张虚拟表。其中view\_name为视图名称，column1、column2代表列名，condition代表查询过滤条件。
+
+我们以NBA球员数据表为例。我们想要查询比NBA球员平均身高高的球员都有哪些，显示他们的球员ID和身高。假设我们给这个视图起个名字player\_above\_avg\_height，那么创建视图可以写成：
+
+```
+CREATE VIEW player_above_avg_height AS
+SELECT player_id, height
+FROM player
+WHERE height > (SELECT AVG(height) from player)
+```
+
+视图查询结果（18条记录）：
+
+![](https://static001.geekbang.org/resource/image/a0/35/a05ac6169562c0f95bf8387df3577635.png?wh=519%2A357)  
+当视图创建之后，它就相当于一个虚拟表，可以直接使用：
+
+```
+SELECT * FROM player_above_avg_height
+```
+
+运行结果和上面一样。
+
+### 嵌套视图
+
+当我们创建好一张视图之后，还可以在它的基础上继续创建视图，比如我们想在虚拟表player\_above\_avg\_height的基础上，找到比这个表中的球员平均身高高的球员，作为新的视图player\_above\_above\_avg\_height，那么可以写成：
+
+```
+CREATE VIEW player_above_above_avg_height AS
+SELECT player_id, height
+FROM player
+WHERE height > (SELECT AVG(height) from player_above_avg_height)
+```
+
+视图查询结果（11条记录）：
+
+![](https://static001.geekbang.org/resource/image/6b/5b/6b7416b24d91786c023bf10eee50355b.png?wh=520%2A355)
+
+你能看到这个视图的数据记录数为11个，比之前的记录少了7个。
+
+### 修改视图：ALTER VIEW
+
+修改视图的语法是：
+
+```
+ALTER VIEW view_name AS
+SELECT column1, column2
+FROM table
+WHERE condition
+```
+
+你能看出来它的语法和创建视图一样，只是对原有视图的更新。比如我们想更新视图player\_above\_avg\_height，增加一个player\_name字段，可以写成：
+
+```
+ALTER VIEW player_above_avg_height AS
+SELECT player_id, player_name, height
+FROM player
+WHERE height > (SELECT AVG(height) from player)
+```
+
+这样的话，下次再对视图进行查询的时候，视图结果就进行了更新。
+
+```
+SELECT * FROM player_above_avg_height
+```
+
+运行结果（18条记录）：
+
+![](https://static001.geekbang.org/resource/image/d9/bb/d91a3d7978b12fc52c194d1ce58410bb.png?wh=879%2A354)
+
+### 删除视图：DROP VIEW
+
+删除视图的语法是：
+
+```
+DROP VIEW view_name
+```
+
+比如我们想把刚才创建的视图删除，可以使用：
+
+```
+DROP VIEW player_above_avg_height
+```
+
+需要说明的是，SQLite不支持视图的修改，仅支持只读视图，也就是说你只能使用CREATE VIEW和DROP VIEW，如果想要修改视图，就需要先DROP然后再CREATE。
+
+## 如何使用视图简化SQL操作
+
+从上面这个例子中，你能看出视图就是对SELECT语句进行了封装，方便我们重用它们。下面我们再来看几个视图使用的例子。
+
+### 利用视图完成复杂的连接
+
+我在讲解SQL99标准连接操作的时候，举了一个NBA球员和身高等级连接的例子，有两张表，分别为player和height\_grades。其中height\_grades记录了不同身高对应的身高等级。这里我们可以通过创建视图，来完成球员以及对应身高等级的查询。
+
+首先我们对player表和height\_grades表进行连接，关联条件是球员的身高height（在身高等级表规定的最低身高和最高身高之间），这样就可以得到这个球员对应的身高等级，对应的字段为height\_level。然后我们通过SELECT得到我们想要查询的字段，分别为球员姓名player\_name、球员身高height，还有对应的身高等级height\_level。然后把取得的查询结果集放到视图player\_height\_grades中，即：
+
+```
+CREATE VIEW player_height_grades AS
+SELECT p.player_name, p.height, h.height_level
+FROM player as p JOIN height_grades as h
+ON height BETWEEN h.height_lowest AND h.height_highest
+```
+
+运行结果（37条记录）：
+
+![](https://static001.geekbang.org/resource/image/31/d2/3185f62845a19162c19b22673da6c8d2.png?wh=887%2A357)
+
+以后我们进行查询的时候，可以直接通过视图查询，比如我想查询身高介于1.90m和2.08m之间的球员及他们对应的身高：
+
+```
+SELECT * FROM player_height_grades WHERE height >= 1.90 AND height <= 2.08
+```
+
+运行结果（26条记录）：
+
+![](https://static001.geekbang.org/resource/image/8c/89/8c060eb06386b95cb31ff43c95948a89.png?wh=883%2A355)
+
+这样就把一个相对复杂的连接查询转化成了视图查询。
+
+### 利用视图对数据进行格式化
+
+我们经常需要输出某个格式的内容，比如我们想输出球员姓名和对应的球队，对应格式为player\_name(team\_name)，就可以使用视图来完成数据格式化的操作：
+
+```
+CREATE VIEW player_team AS 
+SELECT CONCAT(player_name, '(' , team.team_name , ')') AS player_team FROM player JOIN team WHERE player.team_id = team.team_id
+```
+
+首先我们将player表和team表进行连接，关联条件是相同的team\_id。我们想要的格式是`player_name(team_name)`，因此我们使用CONCAT函数，即`CONCAT(player_name, '(' , team.team_name , ')')`，将player\_name字段和team\_name字段进行拼接，得到了拼接值被命名为player\_team的字段名，将它放到视图player\_team中。
+
+这样的话，我们直接查询视图，就可以得到格式化后的结果：
+
+```
+SELECT * FROM player_team
+```
+
+运行结果（37条记录）：
+
+![](https://static001.geekbang.org/resource/image/28/0d/280a22627fd84cd8450245041a3bba0d.png?wh=506%2A355)
+
+### 使用视图与计算字段
+
+我们在数据查询中，有很多统计的需求可以通过视图来完成。正确地使用视图可以帮我们简化复杂的数据处理。
+
+我以球员比赛成绩表为例，对应的是player\_score表。这张表中一共有19个字段，它们代表的含义如下：
+
+![](https://static001.geekbang.org/resource/image/8a/d2/8a77858d8c9633c7c4128dd454ad38d2.png?wh=968%2A367)  
+如果我想要统计每位球员在每场比赛中的二分球、三分球和罚球的得分，可以通过创建视图完成：
+
+```
+CREATE VIEW game_player_score AS
+SELECT game_id, player_id, (shoot_hits-shoot_3_hits)*2 AS shoot_2_points, shoot_3_hits*3 AS shoot_3_points, shoot_p_hits AS shoot_p_points, score  FROM player_score
+```
+
+然后通过查询视图就可以完成。
+
+```
+SELECT * FROM game_player_score
+```
+
+运行结果（19条记录）：
+
+![](https://static001.geekbang.org/resource/image/b0/dc/b0edf8453df44d018315f68e89f7e3dc.png?wh=1766%2A550)
+
+你能看出正确使用视图可以简化复杂的SQL查询，让SQL更加清爽易用。不过有一点需要注意，视图是虚拟表，它只是封装了底层的数据表查询接口，因此有些RDBMS不支持对视图创建索引（有些RDBMS则支持，比如新版本的SQL Server）。
+
+## 总结
+
+今天我讲解了视图的使用，包括创建，修改和删除视图。使用视图有很多好处，比如安全、简单清晰。
+
+1. 安全性：虚拟表是基于底层数据表的，我们在使用视图时，一般不会轻易通过视图对底层数据进行修改，即使是使用单表的视图，也会受到限制，比如计算字段，类型转换等是无法通过视图来对底层数据进行修改的，这也在一定程度上保证了数据表的数据安全性。同时，我们还可以针对不同用户开放不同的数据查询权限，比如人员薪酬是个敏感的字段，那么只给某个级别以上的人员开放，其他人的查询视图中则不提供这个字段。
+2. 简单清晰：视图是对SQL查询的封装，它可以将原本复杂的SQL查询简化，在编写好查询之后，我们就可以直接重用它而不必要知道基本的查询细节。同时我们还可以在视图之上再嵌套视图。这样就好比我们在进行模块化编程一样，不仅结构清晰，还提升了代码的复用率。
+
+另外，我们也需要了解到视图是虚拟表，本身不存储数据，如果想要通过视图对底层数据表的数据进行修改也会受到很多限制，通常我们是把视图用于查询，也就是对SQL查询的一种封装。那么它和临时表又有什么区别呢？在实际工作中，我们可能会见到各种临时数据。比如你可能会问，如果我在做一个电商的系统，中间会有个购物车的功能，需要临时统计购物车中的商品和金额，那该怎么办呢？这里就需要用到临时表了，临时表是真实存在的数据表，不过它不用于长期存放数据，只为当前连接存在，关闭连接后，临时表就会自动释放。
+
+![](https://static001.geekbang.org/resource/image/8a/30/8afa99e7d1ac1de2c802cf0c61004b30.jpg?wh=3341%2A1916)  
+今天我们对视图进行了讲解，你能用自己的语言来说下视图的优缺点么？另外视图在更新的时候会影响到数据表吗？
+
+欢迎你在评论区写下你的思考，也欢迎把这篇文章分享给你的朋友或者同事，一起交流一下。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>cfanbo</span> 👍（58） 💬（1）<div>视图的底层原理是什么？执行一个查询语句是会有哪些操作步骤？</div>2019-07-08</li><br/><li><span>Goal</span> 👍（44） 💬（1）<div>视图的作用：
 
 1、视图隐藏了底层的表结构，简化了数据访问操作，客户端不再需要知道底层表的结构及其之间的关系。
 
 2、视图提供了一个统一访问数据的接口。（即可以允许用户通过视图访问数据的安全机制，而不授予用户直接访问底层表的权限），从而加强了安全性，使用户只能看到视图所显示的数据。
 3、视图还可以被嵌套，一个视图中可以嵌套另一个视图。
-注意：视图总是显示最新的数据！每当用户查询视图时，数据库引擎通过使用视图的 SQL 语句重建数据。</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/0d/45/b88a1794.jpg" width="30px"><span>一叶知秋</span> 👍（22） 💬（4）<div>优点：在总结中有写，安全、清晰 。
+注意：视图总是显示最新的数据！每当用户查询视图时，数据库引擎通过使用视图的 SQL 语句重建数据。</div>2019-07-08</li><br/><li><span>一叶知秋</span> 👍（22） 💬（4）<div>优点：在总结中有写，安全、清晰 。
 缺点：的话感觉就是如果需要额外的字段就需要更新视图吧...(感觉说的也不对
 
 更新视图对基本表数据有影响。（比如update视图实际上就是对基本表的更新操作）
@@ -49,26 +241,15 @@ mysql&gt; select * from team_score;
 |   10002 |      1002 |      1003 |          135 |          134 | 2019-04-10 |
 +---------+-----------+-----------+--------------+--------------+------------+
 2 rows in set (0.00 sec)
-</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/e6/6e/062da5e4.jpg" width="30px"><span>肥而不腻</span> 👍（8） 💬（1）<div>我理解，视图是一个查询结果集，随实体数据表数据变化而变化。</div>2019-08-09</li><br/><li><img src="" width="30px"><span>Geek_weizhi</span> 👍（8） 💬（1）<div>本文章对我帮助很大！</div>2019-07-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/48/f3/65c7e3ef.jpg" width="30px"><span>cricket1981</span> 👍（8） 💬（1）<div>视图都是只读的吗？</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f3/6a/6d82e7a3.jpg" width="30px"><span>暮雨</span> 👍（5） 💬（1）<div>视图查询效率很低</div>2019-11-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/11/2b/4053b256.jpg" width="30px"><span>醉红颜</span> 👍（4） 💬（2）<div>陈老师，您好！我这儿有个问题，当视图创建成功后，之后对相应表有更新，该视图会自动更新吗？</div>2019-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/f8/58/f02a565f.jpg" width="30px"><span>不才~</span> 👍（4） 💬（1）<div>视图创建之后会保留在数据库吗？以后可以调用吗？
-</div>2019-08-08</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/ic8KF0sfxicsx4F25HZrtZwP2fQEibicfibFeYIQBibxnVlHIiaqkfictJuvLCKia0p7liaQvbTzCYWLibjJK6B8kc8e194ng/132" width="30px"><span>爱思考的仙人球</span> 👍（2） 💬（1）<div>视图的优点是隔绝数据表操作，可以对不同的用户提供不同的结果集，让用户只看到自己该看到的内容；缺点是灵活性差，有时候可能缺少想看的数据。</div>2019-10-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKT9Tk01eiaQ9aAhszthzGm6lwruRWPXia1YYFozctrdRvKg0Usp8NbwuKBApwD0D6Fty2tib3RdtFJg/132" width="30px"><span>欧阳洲</span> 👍（1） 💬（1）<div>老师，视图主要作用是重用吗，
-那视图与自定义函数的区别是什么呢？</div>2020-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d8/4f/65abc6f0.jpg" width="30px"><span>KaitoShy</span> 👍（1） 💬（1）<div>视图优点：简单清晰，安全。
+</div>2019-07-08</li><br/><li><span>肥而不腻</span> 👍（8） 💬（1）<div>我理解，视图是一个查询结果集，随实体数据表数据变化而变化。</div>2019-08-09</li><br/><li><span>Geek_weizhi</span> 👍（8） 💬（1）<div>本文章对我帮助很大！</div>2019-07-13</li><br/><li><span>cricket1981</span> 👍（8） 💬（1）<div>视图都是只读的吗？</div>2019-07-08</li><br/><li><span>暮雨</span> 👍（5） 💬（1）<div>视图查询效率很低</div>2019-11-21</li><br/><li><span>醉红颜</span> 👍（4） 💬（2）<div>陈老师，您好！我这儿有个问题，当视图创建成功后，之后对相应表有更新，该视图会自动更新吗？</div>2019-09-20</li><br/><li><span>不才~</span> 👍（4） 💬（1）<div>视图创建之后会保留在数据库吗？以后可以调用吗？
+</div>2019-08-08</li><br/><li><span>爱思考的仙人球</span> 👍（2） 💬（1）<div>视图的优点是隔绝数据表操作，可以对不同的用户提供不同的结果集，让用户只看到自己该看到的内容；缺点是灵活性差，有时候可能缺少想看的数据。</div>2019-10-17</li><br/><li><span>欧阳洲</span> 👍（1） 💬（1）<div>老师，视图主要作用是重用吗，
+那视图与自定义函数的区别是什么呢？</div>2020-08-13</li><br/><li><span>KaitoShy</span> 👍（1） 💬（1）<div>视图优点：简单清晰，安全。
 缺点：不能索引，不能有关联的触发器或默认值，不包含数据可能会有性能问题。
-综上：我们现在平时很少会用到视图，可能是因为小项目，意义并不大。但是大项目的时候是不是会有性能问题呢？</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/7f/21/8ef07609.jpg" width="30px"><span>Dawson</span> 👍（0） 💬（1）<div>那 通过视图去修改 视图展示的数据 是否会直接影响到原数据表</div>2019-12-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/69/bf/58f70a2a.jpg" width="30px"><span>程序员花卷</span> 👍（0） 💬（4）<div>视图的作用
+综上：我们现在平时很少会用到视图，可能是因为小项目，意义并不大。但是大项目的时候是不是会有性能问题呢？</div>2019-07-08</li><br/><li><span>Dawson</span> 👍（0） 💬（1）<div>那 通过视图去修改 视图展示的数据 是否会直接影响到原数据表</div>2019-12-16</li><br/><li><span>程序员花卷</span> 👍（0） 💬（4）<div>视图的作用
 对SQL的语句进行封装，提高SQL的复用率
 可以完成复杂的连接
 可以对数据进行格式化操作
 简洁高效
 
-视图是一张虚拟表，所以更新数据的时候并不会对实际的表产生影响</div>2019-12-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/b5/98/ffaf2aca.jpg" width="30px"><span>Ronnyz</span> 👍（0） 💬（2）<div>多基表视图不允许操作，单基表数据可以增删改，但新增是视图须包含基表中所有不允许为空的字段</div>2019-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/5a/5e/a897cb0d.jpg" width="30px"><span>grey927</span> 👍（0） 💬（1）<div>MySQL里面似乎不支持视图里面包含子查询，这种情况要如何解决呢？</div>2019-07-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c7/40/66a203cd.jpg" width="30px"><span>忙碌了一天的周师傅</span> 👍（0） 💬（1）<div>个人理解视图可以类比下编程里类的概念，根据需求固定了相应的字段（类属性），MTV里的model就像视图，view就像select不同视图的动作。</div>2019-07-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/61/47/0a6e9729.jpg" width="30px"><span>竹影</span> 👍（0） 💬（2）<div>通过视图怎么会把原始数据删掉？
-</div>2019-07-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/18/ee/a1ed60d1.jpg" width="30px"><span>ABC</span> 👍（0） 💬（1）<div>视图简化了查询,在另外一方面确实提供了更好的安全保障。只是不确定在数据很多的情况下，查询效率会不会比直接查询低一些。
-
-</div>2019-07-08</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eoT9nVNcyrunC5RjsOZwLObffWPgKnsCVcjctqFPNSK6j1XHNibDPQpBVmO6jyIemnepILyTIJ7SQw/132" width="30px"><span>canownu</span> 👍（0） 💬（3）<div>老师 如果是数据更新了 视图返回的结果是更新的还是旧的呢</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4a/c7/ec18673b.jpg" width="30px"><span>大斌</span> 👍（0） 💬（1）<div>我的理解是：
-视图优点：减少命令输入，可以简化思考过程，方便自己后续查询和他人使用，
-视图缺点：视图只适合用来封装查询，不存储数据，想要修改数据比较麻烦，不利于后期维护
-总结：合理使用，不能滥用
-视图在更新的时候不会影响到数据表，因为视图本身只是个查询命令封装，本身不存储数据，想通过视图对数据修改也有很多限制。</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/7e/f5/85b5931b.jpg" width="30px"><span>LittleWanng</span> 👍（0） 💬（2）<div>视图是一个虚拟表，其实也就是一个SQL查询语句，在更新这个视图时，就像我们执行一条…新的查询语句，并不能改变原始数据表。</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/f9/9f/515d1686.jpg" width="30px"><span>Sam</span> 👍（12） 💬（0）<div>视图可以理解成给一个查询SQL起个别名，以后想执行同样的SQL，就不需要每次都输入同样的SQL文本，只需要查询视图就可以了；
-当然视图也有特殊的功能，比如权限控制，通过视图只开发特定的列的查询权限给其他人，还有物化视图。</div>2019-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/9a/64/94737463.jpg" width="30px"><span>我</span> 👍（11） 💬（0）<div>可是工作中我们实际都是将权限控制放到了代码层面去控制的，希望老师也能讲解下物化视图和普通视图区别及底层原理。</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/36/a9/2437b1d9.jpg" width="30px"><span>化作春泥</span> 👍（7） 💬（4）<div>用视图查询效率比直接sql连接查询，效率怎么样？</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6a/a1/6270eeb7.jpg" width="30px"><span>极客星星</span> 👍（5） 💬（1）<div>你好  想问下  当我接到一个需求时  我可以创建一个新表来实现   也可以创建一个视图来实现  这两种之间应该如何做选择呢</div>2019-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/73/38/7ef1bd5d.jpg" width="30px"><span>Victor.</span> 👍（3） 💬（0）<div>每次打开视图是的时候，是不是想当于运营一个sql，视图的数据是否占用存储空间？
-如果占用空间，那么视图作为一个虚拟表它占用的是内存空间，还是磁盘空间？
-如果是内存空间，那么我每次运行的时候都需要查找一遍，对于服务器的资源占用很大？
-如果仅作为一个sql的封装，调用视图我是否可以理解为，它首先得执行本身视图的sql，然后在能输出，简洁在sql上，然而对于服务器计算压力并没有缓解？</div>2019-11-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（3） 💬（2）<div>视图我的理解是对 SQL 查询语句的提前封装，不保存数据。所以更新视图的时候，只是更新提前封装好的查询语句，不会影响到数据表</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/64/78/78c84aa5.jpg" width="30px"><span>滇池</span> 👍（2） 💬（0）<div>类似于Excel透视表</div>2020-07-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/8f/82/374f43a1.jpg" width="30px"><span>假装自己不胖</span> 👍（2） 💬（1）<div>视图在什么时候创建?在初始化的时候?什么时候消失?只要在drop的时候才会失效吗?如果是这样,那和表的区别也就不大了,虚拟表和真表有什么区别?</div>2019-07-15</li><br/>
+视图是一张虚拟表，所以更新数据的时候并不会对实际的表产生影响</div>2019-12-12</li><br/><li><span>Ronnyz</span> 👍（0） 💬（2）<div>多基表视图不允许操作，单基表数据可以增删改，但新增是视图须包含基表中所有不允许为空的字段</div>2019-07-28</li><br/>
 </ul>

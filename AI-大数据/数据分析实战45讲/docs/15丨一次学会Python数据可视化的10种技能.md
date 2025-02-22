@@ -16,308 +16,355 @@
 单变量分析指的是一次只关注一个变量。比如我们只关注“身高”这个变量，来看身高的取值分布，而暂时忽略其他变量。
 
 多变量分析可以让你在一张图上可以查看两个以上变量的关系。比如“身高”和“年龄”，你可以理解是同一个人的两个参数，这样在同一张图中可以看到每个人的“身高”和“年龄”的取值，从而分析出来这两个变量之间是否存在某种联系。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/15/51/86/b5fd8dd8.jpg" width="30px"><span>建强</span> 👍（14） 💬（4）<div>思考题1：对车祸数据成对关系的的探索，程序代码如下：
 
-#车祸数据分析
+可视化的视图可以说是分门别类，多种多样，今天我主要介绍常用的10种视图，这些视图包括了散点图、折线图、直方图、条形图、箱线图、饼图、热力图、蜘蛛图、二元变量分布和成对关系。
+
+![](https://static001.geekbang.org/resource/image/46/75/4673a17085302cfe9177f8ee687ac675.png?wh=574%2A441)
+
+下面我给你一一进行介绍。
+
+**散点图**
+
+散点图的英文叫做scatter plot，它将两个变量的值显示在二维坐标中，非常适合展示两个变量之间的关系。当然，除了二维的散点图，我们还有三维的散点图。
+
+我在上一讲中给你简单介绍了下Matplotlib这个工具，在Matplotlib中，我们经常会用到pyplot这个工具包，它包括了很多绘图函数，类似Matlab的绘图框架。在使用前你需要进行引用：
+
+```
 import matplotlib.pyplot as plt
+```
+
+在工具包引用后，画散点图，需要使用plt.scatter(x, y, marker=None)函数。x、y 是坐标，marker代表了标记的符号。比如“x”、“&gt;”或者“o”。选择不同的marker，呈现出来的符号样式也会不同，你可以自己试一下。
+
+下面三张图分别对应“x”“&gt;”和“o”。
+
+![](https://static001.geekbang.org/resource/image/7a/f9/7a3e19e006a354eacc230fe87f623cf9.png?wh=603%2A154)  
+除了Matplotlib外，你也可以使用Seaborn进行散点图的绘制。在使用Seaborn前，也需要进行包引用：
+
+```
 import seaborn as sns
-import pandas as pd
-# 数据准备
-crashes = sns.load_dataset(&#39;car_crashes&#39;)
-crashes_data = pd.DataFrame(crashes)
+```
 
-# 用 Seaborn 画成对关系
-sns.pairplot(crashes)
-plt.show()
+在引用seaborn工具包之后，就可以使用seaborn工具包的函数了。如果想要做散点图，可以直接使用sns.jointplot(x, y, data=None, kind='scatter')函数。其中x、y是data中的下标。data就是我们要传入的数据，一般是DataFrame类型。kind这类我们取scatter，代表散点的意思。当然kind还可以取其他值，这个我在后面的视图中会讲到，不同的kind代表不同的视图绘制方式。
 
-思考题2：模拟企业隐患数据分析，代码如下：
+好了，让我们来模拟下，假设我们的数据是随机的1000个点。
 
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+```
 import numpy as np
-
-#定义生成隐患数量函数
-def GenerateHDNum(hdtimes):
-    #hdtimes表示要生成多少隐患数量
-    HD_NumList = list(pd.Series(np.random.rand(hdtimes)))
-    return [int(x * 100) for x in HD_NumList]
-
-#数据准备函数
-def MakeData():
-
-    #创建以月份为单位的时间索引
-    dti = pd.date_range(start=&#39;2017-01-01&#39;, end=&#39;2018-12-31&#39;, freq=&#39;M&#39;)
-    monthlist = [str(x * 100 + y) for x,y in zip(dti.year,dti.month)]
-    
-    hdtimes = len(monthlist)
-    #生成各种隐患数量
-    NormalHD = GenerateHDNum(hdtimes)
-    ImportHD = GenerateHDNum(hdtimes)
-    HDNum = { &#39;Normal&#39;: NormalHD
-             ,&#39;Import&#39;: ImportHD}
-
-    HD_Frame = pd.DataFrame(data = HDNum, index=monthlist)
-
-    print(HD_Frame)
-    return HD_Frame
-
-def AnalyData(HDSet,AnalyType=&#39;0&#39;):
-
-    #AnalyType取值：1：成对关系图；2：散点图；3：核密度图；4：Hexbin图
-
-    #成对关系图
-    if AnalyType == &#39;1&#39;:
-        sns.pairplot(HDSet)
-
-    #散点图
-    if AnalyType == &#39;2&#39;:
-        sns.jointplot(x=&#39;Normal&#39;, y=&#39;Import&#39;, data=HDSet, kind=&#39;scatter&#39;)
-
-    #核密度图
-    if AnalyType == &#39;3&#39;:
-        sns.jointplot(x=&#39;Normal&#39;, y=&#39;Import&#39;, data=HDSet, kind=&#39;kde&#39;)
-
-    #Hexbin图
-    if AnalyType == &#39;4&#39;:
-        sns.jointplot(x=&#39;Normal&#39;, y=&#39;Import&#39;, data=HDSet, kind=&#39;hex&#39;)
-    
-    plt.show()
-
-def ShowMenu():
-    print(&#39;=&#39;*20)
-    print(&#39;1.显示成对关系图&#39;)
-    print(&#39;2.显示散点图&#39;)
-    print(&#39;3.显示核密度图&#39;)
-    print(&#39;4.显示Hexbin图&#39;)
-    print(&#39;R.换一批数据&#39;)
-    print(&#39;0.退出&#39;)
-    print(&#39;=&#39;*20)
-    return input(&#39;请输入命令:&#39;)
-
-def main():
-
-    HDSet = MakeData()
-    while True:
-        command = ShowMenu()
-
-        if command == &#39;0&#39;:
-            break
-        elif command == &#39;R&#39;:
-            HDSet = MakeData()
-        else:
-            AnalyData(HDSet, command)
-
-main()</div>2019-08-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/yYzf0yonEqKny7dHlvLibc7OrQJ6HszX3VP1fciaMD3hITFySbayL9vULch5hvicoqGA2EBzcPicss2ciaB7ibodgQ6w/132" width="30px"><span>sxpujs</span> 👍（9） 💬（1）<div>在 Mac 下设置中文字体，可以使用以下路径：
-# 设置中文字体
-font = FontProperties(fname=&quot;&#47;System&#47;Library&#47;Fonts&#47;STHeiti Medium.ttc&quot;, size=14)</div>2019-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/e5/43/7bc7cfe3.jpg" width="30px"><span>跳跳</span> 👍（4） 💬（1）<div>第一题：seaborn car_crashes成对关系探索
-iris=sns.load_dataset(&quot;car_crashes&quot;)
-sns.pairplot(iris)
-plt.show()
-第二题：由第一题可以看出酒精和速度由类似线性关系，因此做酒精和速度二元变量的分布图
-iris=sns.load_dataset(&quot;car_crashes&quot;)
-print(iris.head(10))
-sns.jointplot(x=&#39;alcohol&#39;,y=&#39;speeding&#39;,data=iris,kind=&#39;scatter&#39;)
-sns.jointplot(x=&#39;alcohol&#39;,y=&#39;speeding&#39;,data=iris,kind=&#39;kde&#39;)
-sns.jointplot(x=&#39;alcohol&#39;,y=&#39;speeding&#39;,data=iris,kind=&#39;hex&#39;)
-碎碎念一下：为啥留言不支持图片？难受</div>2019-01-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/ef/23/1f192e21.jpg" width="30px"><span>jion</span> 👍（3） 💬（1）<div>你好，练习成对关系图时，除下如下错误，是何原因？
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn import datasets
 # 数据准备
-iris_datas = datasets.load_iris()
-iris = pd.DataFrame(iris_datas.data, columns=[&#39;SpealLength&#39;, &#39;Spealwidth&#39;, &#39;PetalLength&#39;, &#39;PetalLength&#39;])
-print(iris.shape,&quot;\n&quot;,iris)
+N = 1000
+x = np.random.randn(N)
+y = np.random.randn(N)
+# 用Matplotlib画散点图
+plt.scatter(x, y,marker='x')
+plt.show()
+# 用Seaborn画散点图
+df = pd.DataFrame({'x': x, 'y': y})
+sns.jointplot(x="x", y="y", data=df, kind='scatter');
+plt.show()
+```
+
+我们运行一下这个代码，就可以看到下面的视图（第一张图为Matplotlib绘制的，第二张图为Seaborn绘制的）。其实你能看到Matplotlib和Seaborn的视图呈现还是有差别的。Matplotlib默认情况下呈现出来的是个长方形。而Seaborn呈现的是个正方形，而且不仅显示出了散点图，还给了这两个变量的分布情况。
+
+Matplotlib绘制：
+
+![](https://static001.geekbang.org/resource/image/28/03/2823ea9c7c2d988c1fdb3e7c8fb1e603.png?wh=393%2A301)
+
+Seaborn绘制：
+
+![](https://static001.geekbang.org/resource/image/5f/b9/5f06e23188cb31bc549cfd60696e75b9.png?wh=392%2A397)
+
+**折线图**
+
+折线图可以用来表示数据随着时间变化的趋势。
+
+在Matplotlib中，我们可以直接使用plt.plot()函数，当然需要提前把数据按照x轴的大小进行排序，要不画出来的折线图就无法按照x轴递增的顺序展示。
+
+在Seaborn中，我们使用sns.lineplot (x, y, data=None)函数。其中x、y是data中的下标。data就是我们要传入的数据，一般是DataFrame类型。
+
+这里我们设置了x、y的数组。x数组代表时间（年），y数组我们随便设置几个取值。下面是详细的代码。
+
+```
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+# 数据准备
+x = [2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]
+y = [5, 3, 6, 20, 17, 16, 19, 30, 32, 35]
+# 使用Matplotlib画折线图
+plt.plot(x, y)
+plt.show()
+# 使用Seaborn画折线图
+df = pd.DataFrame({'x': x, 'y': y})
+sns.lineplot(x="x", y="y", data=df)
+plt.show()
+```
+
+然后我们分别用Matplotlib和Seaborn进行画图，可以得到下面的图示。你可以看出这两个图示的结果是完全一样的，只是在seaborn中标记了x和y轴的含义。
+
+![](https://static001.geekbang.org/resource/image/25/88/258c6a2fbd7786ed7bd86a5f50c49b88.png?wh=423%2A322)
+
+![](https://static001.geekbang.org/resource/image/77/60/77d619cc2a4131e97478df490cc43d60.png?wh=417%2A316)
+
+**直方图**
+
+直方图是比较常见的视图，它是把横坐标等分成了一定数量的小区间，这个小区间也叫作“箱子”，然后在每个“箱子”内用矩形条（bars）展示该箱子的箱子数（也就是y值），这样就完成了对数据集的直方图分布的可视化。
+
+在Matplotlib中，我们使用plt.hist(x, bins=10)函数，其中参数x是一维数组，bins代表直方图中的箱子数量，默认是10。
+
+在Seaborn中，我们使用sns.distplot(x, bins=10, kde=True)函数。其中参数x是一维数组，bins代表直方图中的箱子数量，kde代表显示核密度估计，默认是True，我们也可以把kde设置为False，不进行显示。核密度估计是通过核函数帮我们来估计概率密度的方法。
+
+这是一段绘制直方图的代码。
+
+```
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+# 数据准备
+a = np.random.randn(100)
+s = pd.Series(a) 
+# 用Matplotlib画直方图
+plt.hist(s)
+plt.show()
+# 用Seaborn画直方图
+sns.distplot(s, kde=False)
+plt.show()
+sns.distplot(s, kde=True)
+plt.show()
+```
+
+我们创建一个随机的一维数组，然后分别用Matplotlib和Seaborn进行直方图的显示，结果如下，你可以看出，没有任何差别，其中最后一张图就是kde默认为Ture时的显示情况。
+
+![](https://static001.geekbang.org/resource/image/fc/0d/fccd31462e7de6f56b4aca262b46650d.png?wh=549%2A403)
+
+![](https://static001.geekbang.org/resource/image/fb/af/fb7a2db332dcd5c7c18a4961794923af.png?wh=536%2A401)
+
+![](https://static001.geekbang.org/resource/image/9c/19/9cded19e1c877f98f55d4c6726ff2f19.png?wh=547%2A400)
+
+**条形图**
+
+如果说通过直方图可以看到变量的数值分布，那么条形图可以帮我们查看类别的特征。在条形图中，长条形的长度表示类别的频数，宽度表示类别。
+
+在Matplotlib中，我们使用plt.bar(x, height)函数，其中参数x代表x轴的位置序列，height是y轴的数值序列，也就是柱子的高度。
+
+在Seaborn中，我们使用sns.barplot(*x=None, y=None, data=None*)函数。其中参数data为DataFrame类型，x、y是data中的变量。
+
+```
+import matplotlib.pyplot as plt
+import seaborn as sns
+# 数据准备
+x = ['Cat1', 'Cat2', 'Cat3', 'Cat4', 'Cat5']
+y = [5, 4, 8, 12, 7]
+# 用Matplotlib画条形图
+plt.bar(x, y)
+plt.show()
+# 用Seaborn画条形图
+sns.barplot(x, y)
+plt.show()
+```
+
+我们创建了x、y两个数组，分别代表类别和类别的频数，然后用Matplotlib和Seaborn进行条形图的显示，结果如下：
+
+![](https://static001.geekbang.org/resource/image/d9/3a/d9a247a6fbee488cc8eb62f96947173a.png?wh=380%2A284)
+
+![](https://static001.geekbang.org/resource/image/75/31/7553f2fa08e3962ed9902d4cef796c31.png?wh=379%2A288)
+
+**箱线图**
+
+箱线图，又称盒式图，它是在1977年提出的，由五个数值点组成：最大值(max)、最小值(min)、中位数(median)和上下四分位数(Q3, Q1)。它可以帮我们分析出数据的差异性、离散程度和异常值等。
+
+在Matplotlib中，我们使用plt.boxplot(x, labels=None)函数，其中参数x代表要绘制箱线图的数据，labels是缺省值，可以为箱线图添加标签。
+
+在Seaborn中，我们使用sns.boxplot(*x=None, y=None, data=None*)函数。其中参数data为DataFrame类型，x、y是data中的变量。
+
+```
+# 数据准备
+# 生成10*4维度数据
+data=np.random.normal(size=(10,4)) 
+labels = ['A','B','C','D']
+# 用Matplotlib画箱线图
+plt.boxplot(data,labels=labels)
+plt.show()
+# 用Seaborn画箱线图
+df = pd.DataFrame(data, columns=labels)
+sns.boxplot(data=df)
+plt.show()
+```
+
+这段代码中，我生成0-1之间的10\*4维度数据，然后分别用Matplotlib和Seaborn进行箱线图的展示，结果如下。
+
+Matplotlib绘制：
+
+![](https://static001.geekbang.org/resource/image/60/e0/6083f7fc15028eae5e3f49e60fad90e0.png?wh=399%2A309)
+
+Seaborn绘制：
+
+![](https://static001.geekbang.org/resource/image/42/e0/42fe2a9864bbc2bc0034a0973673d1e0.png?wh=409%2A309)
+
+**饼图**
+
+饼图是常用的统计学模块，可以显示每个部分大小与总和之间的比例。在Python数据可视化中，它用的不算多。我们主要采用Matplotlib的pie函数实现它。
+
+在Matplotlib中，我们使用plt.pie(x, labels=None)函数，其中参数x代表要绘制饼图的数据，labels是缺省值，可以为饼图添加标签。
+
+这里我设置了labels数组，分别代表高中、本科、硕士、博士和其他几种学历的分类标签。nums代表这些学历对应的人数。
+
+```
+import matplotlib.pyplot as plt
+# 数据准备
+nums = [25, 37, 33, 37, 6]
+labels = ['High-school','Bachelor','Master','Ph.d', 'Others']
+# 用Matplotlib画饼图
+plt.pie(x = nums, labels=labels)
+plt.show()
+```
+
+通过Matplotlib的pie函数，我们可以得出下面的饼图：
+
+![](https://static001.geekbang.org/resource/image/45/f7/45c38de6563d528f610bfcef5c8874f7.png?wh=435%2A341)
+
+**热力图**
+
+热力图，英文叫heat map，是一种矩阵表示方法，其中矩阵中的元素值用颜色来代表，不同的颜色代表不同大小的值。通过颜色就能直观地知道某个位置上数值的大小。另外你也可以将这个位置上的颜色，与数据集中的其他位置颜色进行比较。
+
+热力图是一种非常直观的多元变量分析方法。
+
+我们一般使用Seaborn中的sns.heatmap(data)函数，其中data代表需要绘制的热力图数据。
+
+这里我们使用Seaborn中自带的数据集flights，该数据集记录了1949年到1960年期间，每个月的航班乘客的数量。
+
+```
+import matplotlib.pyplot as plt
+import seaborn as sns
+# 数据准备
+flights = sns.load_dataset("flights")
+data=flights.pivot('year','month','passengers')
+# 用Seaborn画热力图
+sns.heatmap(data)
+plt.show()
+```
+
+通过seaborn的heatmap函数，我们可以观察到不同年份，不同月份的乘客数量变化情况，其中颜色越浅的代表乘客数量越多，如下图所示：
+
+![](https://static001.geekbang.org/resource/image/57/93/57e1bc17d943620620fb087d6190df93.png?wh=542%2A440)
+
+**蜘蛛图**
+
+蜘蛛图是一种显示一对多关系的方法。在蜘蛛图中，一个变量相对于另一个变量的显著性是清晰可见的。
+
+假设我们想要给王者荣耀的玩家做一个战力图，指标一共包括推进、KDA、生存、团战、发育和输出。那该如何做呢？
+
+这里我们需要使用Matplotlib来进行画图，首先设置两个数组：labels和stats。他们分别保存了这些属性的名称和属性值。
+
+因为蜘蛛图是一个圆形，你需要计算每个坐标的角度，然后对这些数值进行设置。当画完最后一个点后，需要与第一个点进行连线。
+
+因为需要计算角度，所以我们要准备angles数组；又因为需要设定统计结果的数值，所以我们要设定stats数组。并且需要在原有angles和stats数组上增加一位，也就是添加数组的第一个元素。
+
+```
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from matplotlib.font_manager import FontProperties  
+# 数据准备
+labels=np.array([u"推进","KDA",u"生存",u"团战",u"发育",u"输出"])
+stats=[83, 61, 95, 67, 76, 88]
+# 画图数据准备，角度、状态值
+angles=np.linspace(0, 2*np.pi, len(labels), endpoint=False)
+stats=np.concatenate((stats,[stats[0]]))
+angles=np.concatenate((angles,[angles[0]]))
+# 用Matplotlib画蜘蛛图
+fig = plt.figure()
+ax = fig.add_subplot(111, polar=True)   
+ax.plot(angles, stats, 'o-', linewidth=2)
+ax.fill(angles, stats, alpha=0.25)
+# 设置中文字体
+font = FontProperties(fname=r"C:\Windows\Fonts\simhei.ttf", size=14)  
+ax.set_thetagrids(angles * 180/np.pi, labels, FontProperties=font)
+plt.show()
+```
+
+代码中flt.figure是创建一个空白的figure对象，这样做的目的相当于画画前先准备一个空白的画板。然后add\_subplot(111)可以把画板划分成1行1列。再用ax.plot和ax.fill进行连线以及给图形上色。最后我们在相应的位置上显示出属性名。这里需要用到中文，Matplotlib对中文的显示不是很友好，因此我设置了中文的字体font，这个需要在调用前进行定义。最后我们可以得到下面的蜘蛛图，看起来是不是很酷？
+
+![](https://static001.geekbang.org/resource/image/19/7d/1924d3cbf035053fa3d5043794624c7d.png?wh=405%2A395)
+
+**二元变量分布**
+
+如果我们想要看两个变量之间的关系，就需要用到二元变量分布。当然二元变量分布有多种呈现方式，开头给你介绍的散点图就是一种二元变量分布。
+
+在Seaborn里，使用二元变量分布是非常方便的，直接使用sns.jointplot(x, y, data=None, kind)函数即可。其中用kind表示不同的视图类型：“kind='scatter'”代表散点图，“kind='kde'”代表核密度图，“kind='hex' ”代表Hexbin图，它代表的是直方图的二维模拟。
+
+这里我们使用Seaborn中自带的数据集tips，这个数据集记录了不同顾客在餐厅的消费账单及小费情况。代码中total\_bill保存了客户的账单金额，tip是该客户给出的小费金额。我们可以用Seaborn中的jointplot来探索这两个变量之间的关系。
+
+```
+import matplotlib.pyplot as plt
+import seaborn as sns
+# 数据准备
+tips = sns.load_dataset("tips")
+print(tips.head(10))
+# 用Seaborn画二元变量分布图（散点图，核密度图，Hexbin图）
+sns.jointplot(x="total_bill", y="tip", data=tips, kind='scatter')
+sns.jointplot(x="total_bill", y="tip", data=tips, kind='kde')
+sns.jointplot(x="total_bill", y="tip", data=tips, kind='hex')
+plt.show()
+```
+
+代码中我用kind分别显示了他们的散点图、核密度图和Hexbin图，如下图所示。
+
+散点图：
+
+![](https://static001.geekbang.org/resource/image/a3/54/a3efa7acabdb7ab7976c826ca5a76754.png?wh=283%2A275)
+
+核密度图：
+
+![](https://static001.geekbang.org/resource/image/6b/f7/6bd77fa07d150546c0f23e5a0d12b1f7.png?wh=272%2A263)
+
+Hexbin图：
+
+![](https://static001.geekbang.org/resource/image/7c/aa/7cbdbb115e7d984c3086acb689b661aa.png?wh=287%2A276)
+
+**成对关系**
+
+如果想要探索数据集中的多个成对双变量的分布，可以直接采用sns.pairplot()函数。它会同时展示出DataFrame中每对变量的关系，另外在对角线上，你能看到每个变量自身作为单变量的分布情况。它可以说是探索性分析中的常用函数，可以很快帮我们理解变量对之间的关系。
+
+pairplot函数的使用，就像在DataFrame中使用describe()函数一样方便，是数据探索中的常用函数。
+
+这里我们使用Seaborn中自带的iris数据集，这个数据集也叫鸢尾花数据集。鸢尾花可以分成Setosa、Versicolour和Virginica三个品种，在这个数据集中，针对每一个品种，都有50个数据，每个数据中包括了4个属性，分别是花萼长度、花萼宽度、花瓣长度和花瓣宽度。通过这些数据，需要你来预测鸢尾花卉属于三个品种中的哪一种。
+
+```
+import matplotlib.pyplot as plt
+import seaborn as sns
+# 数据准备
+iris = sns.load_dataset('iris')
 # 用Seaborn画成对关系
 sns.pairplot(iris)
-出现如下错误：ValueError: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().</div>2021-03-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/f9/ce/4985c6fc.jpg" width="30px"><span>求知鸟</span> 👍（3） 💬（3）<div>python在慢慢追赶R，我的R语言分析水平停止了，python水平在往上涨，现在的状态是，有老师的课就学课，没有就看《精益数据分析》。
-</div>2019-01-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/88/4c/2c3d2c7d.jpg" width="30px"><span>小强</span> 👍（2） 💬（2）<div>各种场景的视图，试用什么场景，怎么分析，例子太少了，理解不够深。</div>2020-07-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/3c/a2/09a2215c.jpg" width="30px"><span>夕子</span> 👍（1） 💬（1）<div>car_crashes = sns.load_dataset(&#39;car_crashes&#39;)
-car_crashes.head(10)
-
-# 成对关系探索
-sns.pairplot(car_crashes)
 plt.show()
+```
 
-# 画散点图
-sns.jointplot(x = &#39;speeding&#39;, y = &#39;total&#39;, data = car_crashes, kind = &#39;scatter&#39;)
-plt.show()
+这里我们用Seaborn中的pairplot函数来对数据集中的多个双变量的关系进行探索，如下图所示。从图上你能看出，一共有sepal\_length、sepal\_width、petal\_length和petal\_width4个变量，它们分别是花萼长度、花萼宽度、花瓣长度和花瓣宽度。
 
-# 画核密度图
-sns.jointplot(x = &#39;speeding&#39;, y = &#39;total&#39;, data = car_crashes, kind = &#39;kde&#39;)
-plt.show()
+下面这张图相当于这4个变量两两之间的关系。比如矩阵中的第一张图代表的就是花萼长度自身的分布图，它右侧的这张图代表的是花萼长度与花萼宽度这两个变量之间的关系。
 
-# 画hexbin图
-sns.jointplot(x = &#39;speeding&#39;, y = &#39;total&#39;, data = car_crashes, kind = &#39;hex&#39;)
-plt.show()</div>2021-03-18</li><br/><li><img src="" width="30px"><span>丁思森</span> 👍（1） 💬（2）<div>请问一下，有人在运行sns.load_dataset(&#39;tips&#39;),遇到报错urllib.error.URLError: &lt;urlopen error [Errno 11004] getaddrinfo failed&gt;么？这里直接加载数据集会报错，你们是怎么解决的？</div>2020-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/a1/d6/1407001c.jpg" width="30px"><span>毛毛🐛虫🌻</span> 👍（1） 💬（2）<div>热力图那个是颜色越浅，值越大么？</div>2019-01-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/a9/a7/de3ee890.jpg" width="30px"><span>拉我吃</span> 👍（1） 💬（1）<div># coding:utf-8
-import matplotlib.pyplot as plt
-import seaborn as sns
+![](https://static001.geekbang.org/resource/image/88/0d/885450d23f468b9cbcabd90ff9a3480d.png?wh=676%2A681)
 
-# Data Prep
-car_crashes = sns.load_dataset(&#39;car_crashes&#39;)
-sns.pairplot(car_crashes)
-plt.show()
+## 总结
 
-# plot with seaborn (scatter, kde, hex)
-sns.jointplot(x=&#39;alcohol&#39;, y=&#39;speeding&#39;, data=car_crashes, kind=&#39;scatter&#39;)
-sns.jointplot(x=&#39;alcohol&#39;, y=&#39;speeding&#39;, data=car_crashes, kind=&#39;kde&#39;)
-sns.jointplot(x=&#39;alcohol&#39;, y=&#39;speeding&#39;, data=car_crashes, kind=&#39;hex&#39;)
-plt.show()
+我今天给你讲了Python可视化工具包Matplotlib和Seaborn工具包的使用。他们两者之间的关系就相当于NumPy和Pandas的关系。Seaborn是基于Matplotlib更加高级的可视化库。
 
-二元关系选了喝酒和超速的对比，基本上在大部分区间下是线性关系，就是喝得多速度快:)</div>2019-01-17</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/u4OemUpkKSvWIo55u5MfCXKEEdAJCdJjUWpibk4wxXavqo6CBscrbRgpxffsbAklLKggmX7B2cNxzbdQ5W8Orlg/132" width="30px"><span>陶铖</span> 👍（0） 💬（1）<div>持续学习中，受益匪浅！</div>2020-05-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d1/af/49b0b4ee.jpg" width="30px"><span>Dorothy</span> 👍（0） 💬（1）<div>运行sns.load_dataset()的时候遇到这个问题：
-URLError: &lt;urlopen error [Errno 61] Connection refused&gt; 请问大家有解决办法吗？</div>2020-05-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/0c/2c/e905e970.jpg" width="30px"><span>如果</span> 👍（0） 💬（1）<div>麻烦问下，seaborn数据集导入报错，在网上查了资料以后加入ssl认证，还是报错，怎么解决的</div>2020-04-18</li><br/><li><img src="" width="30px"><span>十六。</span> 👍（0） 💬（1）<div>import matplotlib.pyplot as plt
-import seaborn as sns
-# 数据准备
-crashes = sns.load_dataset(&quot;car_crashes&quot;)
-sns.pairplot(crashes)
-plt.show()</div>2020-03-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d5/cb/cffd466b.jpg" width="30px"><span>王辉</span> 👍（0） 💬（2）<div>老师我一点基础都没有 感觉听这个像天书</div>2020-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e8/ba/6d318c08.jpg" width="30px"><span>GS</span> 👍（0） 💬（1）<div>奉上我的笔记  https:&#47;&#47;github.com&#47;leledada&#47;jupyter&#47;blob&#47;master&#47;matplotlibDemo.ipynb</div>2019-11-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e8/ba/6d318c08.jpg" width="30px"><span>GS</span> 👍（0） 💬（1）<div>遇到个问题：&#39;module&#39; object has no attribute &#39;lineplot&#39;. 
-https:&#47;&#47;stackoverflow.com&#47;questions&#47;51846948&#47;seaborn-lineplot-module-object-has-no-attribute-lineplot
-解决方案：
-pip install seaborn==0.9.0</div>2019-11-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a2/bf/4998c844.jpg" width="30px"><span>Geek_592dcb</span> 👍（0） 💬（1）<div>可以把三维图、曲面图加上，这两个非常重要，用的也比较多</div>2019-07-22</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIc88LLmwU7RU1tGcmo5OZyPibKeXPg31wMxyc2uByEO3g44f6uLcu1bXGNO9AHVgn0PK5hwkcfYZA/132" width="30px"><span>董大琳儿</span> 👍（0） 💬（1）<div>import matplotlib.pyplot as plt
-import seaborn as sns
-# 数据准备
-iris = sns.load_dataset(&#39;iris&#39;)
-# 用 Seaborn 画成对关系
-sns.pairplot(iris)
-plt.show()
-</div>2019-06-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a3/87/c415e370.jpg" width="30px"><span>滢</span> 👍（0） 💬（1）<div>语言Python3.6， 环境IDLE
-&gt;&gt;&gt; car_crashes = sns.load_dataset(&#39;car_crashes&#39;)
-第一个问题：
-&gt;&gt;&gt; sns.pairplot(car_crashes)
-&lt;seaborn.axisgrid.PairGrid object at 0x125a9cdd8&gt;
-第二个问题：查看获取到的数据维度，针对车祸数与速度画二元变量分布图，以及针对车祸数与酒精含量画二元变量分布图
-&gt;&gt;&gt; sns.jointplot(x=&#39;total&#39;,y=&#39;speeding&#39;,data=car_crashes,kind=&#39;scatter&#39;)
-&lt;seaborn.axisgrid.JointGrid object at 0x1259d7d68&gt;
-&gt;&gt;&gt; sns.jointplot(x=&#39;total&#39;,y=&#39;speeding&#39;,data=car_crashes,kind=&#39;kde&#39;)
-&lt;seaborn.axisgrid.JointGrid object at 0x129fe9ba8&gt;
-&gt;&gt;&gt; sns.jointplot(x=&#39;total&#39;,y=&#39;speeding&#39;,data=car_crashes,kind=&#39;hex&#39;)
-&lt;seaborn.axisgrid.JointGrid object at 0x12ff26eb8&gt;
-&gt;&gt;&gt; sns.jointplot(x=&#39;total&#39;,y=&#39;alcohol&#39;,data=car_crashes,kind=&#39;scatter&#39;)
-&lt;seaborn.axisgrid.JointGrid object at 0x131b19550&gt;
-&gt;&gt;&gt; sns.jointplot(x=&#39;total&#39;,y=&#39;alcohol&#39;,data=car_crashes,kind=&#39;kde&#39;)
-&lt;seaborn.axisgrid.JointGrid object at 0x129f5a630&gt;
-&gt;&gt;&gt; sns.jointplot(x=&#39;total&#39;,y=&#39;alcohol&#39;,data=car_crashes,kind=&#39;hex&#39;)
-&lt;seaborn.axisgrid.JointGrid object at 0x12605c630&gt;
-&gt;&gt;&gt; plt.show()
+另外针对我讲到的这10种可视化视图，可以按照变量之间的关系对它们进行分类，这些关系分别是比较、联系、构成和分布。当然我们也可以按照随机变量的个数来进行划分，比如单变量分析和多变量分析。在数据探索中，成对关系pairplot()的使用，相好比Pandas中的describe()使用一样方便，常用于项目初期的数据可视化探索。
 
-最后执行一次plt.show() 所创建的图片都会显示出来</div>2019-04-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a4/67/681dcf02.jpg" width="30px"><span>Y2Y</span> 👍（0） 💬（1）<div>为什么sns画图操作之后也要plt.show()一下呢？</div>2019-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/5a/94/1d064846.jpg" width="30px"><span>靳学佳</span> 👍（0） 💬（1）<div>老师很全面 就是很深 我零基础</div>2019-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/60/de/5c67895a.jpg" width="30px"><span>周飞</span> 👍（0） 💬（1）<div>1.车祸数据集的成对关系：
-import matplotlib.pyplot as plt
-import seaborn as sns
-# 数据准备
-car_crash = sns.load_dataset(&#39;car_crashes&#39;)
-# 用 Seaborn 画成对关系
-sns.pairplot(car_crash)
-plt.show()
-2.seaborn 画二元变量分布图：
-# 用 Seaborn 画二元变量分布图（散点图，核密度图，Hexbin 图）
-sns.jointplot(x=&quot;total_bill&quot;, y=&quot;tip&quot;, data=tips, kind=&#39;scatter&#39;)
-sns.jointplot(x=&quot;total_bill&quot;, y=&quot;tip&quot;, data=tips, kind=&#39;kde&#39;)
-sns.jointplot(x=&quot;total_bill&quot;, y=&quot;tip&quot;, data=tips, kind=&#39;hex&#39;)
-plt.show()
+在Matplotlib和Seaborn的函数中，我只列了最基础的使用，也方便你快速上手。当然如果你也可以设置修改颜色、宽度等视图属性。你可以自己查看相关的函数帮助文档。这些留给你来进行探索。
 
-</div>2019-02-27</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJnryDfaYkQh7mTgVIQqk4vdeuY2oa82w0yxOVNfsz4qfSMqEqPFE9gKFvlhS53xY6YOrib86Z6vPA/132" width="30px"><span>Lambert</span> 👍（0） 💬（1）<div>第一题答案
-import matplotlib.pyplot as plt
-import seaborn as sns
-car_crashes = sns.load_dataset(&#39;car_crashes&#39;)
-sns.pairplot(car_crashes)
-plt.show()
+关于本次Python可视化的学习，我希望你能掌握：
 
-第二题答案
-import matplotlib.pyplot as plt
-import seaborn as sns
-car_crashes = sns.load_dataset(&quot;car_crashes&quot;)
-print(car_crashes.head(10))
-sns.jointplot(x=&quot;total&quot;, y=&quot;speeding&quot;, data=car_crashes, kind=&#39;scatter&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;speeding&quot;, data=car_crashes, kind=&#39;kde&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;speeding&quot;, data=car_crashes, kind=&#39;hex&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;alcohol&quot;, data=car_crashes, kind=&#39;scatter&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;alcohol&quot;, data=car_crashes, kind=&#39;kde&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;alcohol&quot;, data=car_crashes, kind=&#39;hex&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;not_distracted&quot;, data=car_crashes, kind=&#39;scatter&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;not_distracted&quot;, data=car_crashes, kind=&#39;kde&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;not_distracted&quot;, data=car_crashes, kind=&#39;hex&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;no_previous&quot;, data=car_crashes, kind=&#39;scatter&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;no_previous&quot;, data=car_crashes, kind=&#39;kde&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;no_previous&quot;, data=car_crashes, kind=&#39;hex&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;ins_premium&quot;, data=car_crashes, kind=&#39;scatter&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;ins_premium&quot;, data=car_crashes, kind=&#39;kde&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;ins_premium&quot;, data=car_crashes, kind=&#39;hex&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;ins_losses&quot;, data=car_crashes, kind=&#39;scatter&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;ins_losses&quot;, data=car_crashes, kind=&#39;kde&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;ins_losses&quot;, data=car_crashes, kind=&#39;hex&#39;)
-plt.show()</div>2019-02-21</li><br/><li><img src="" width="30px"><span>xiaoyu0309</span> 👍（0） 💬（1）<div>#第15课作业,微信：xiaoyu41102126
-import matplotlib.pyplot as plt
-import seaborn as sns
-# 数据准备
-data = sns.load_dataset(&#39;car_crashes&#39;)
-print(data.head(20))
-sns.pairplot(data)
-sns.jointplot(x=&quot;total&quot;, y=&quot;speeding&quot;, data=data, kind=&#39;scatter&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;speeding&quot;, data=data, kind=&#39;kde&#39;)
-sns.jointplot(x=&quot;total&quot;, y=&quot;speeding&quot;, data=data, kind=&#39;hex&#39;)
-plt.show()</div>2019-02-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83erBSoNm28CNCYpvytDbhfSYpgCo6T9vuzKkSoflr3sX8VucMz8ykrichKDY9vVoMVomUIakXSQq9icw/132" width="30px"><span>xfoolin</span> 👍（0） 💬（1）<div>一、
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
-#准备数据
-car_crashes = sns.load_dataset(&#39;car_crashes&#39;)
-#探索成对关系
-sns.pairplot(car_crashes)
-plt.show()
+1. 视图的分类，以及可以从哪些维度对它们进行分类；
+2. 十种常见视图的概念，以及如何在Python中进行使用，都需要用到哪些函数；
+3. 需要自己动手跑一遍案例中的代码，体验下Python数据可视化的过程。
 
-二、
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
-#准备数据
-car_crashes = sns.load_dataset(&#39;car_crashes&#39;)
-print(car_crashes.head(5))
-df = pd.DataFrame({&#39;x&#39;:car_crashes[&#39;total&#39;],&#39;y&#39;:car_crashes[&#39;alcohol&#39;]})
-#画散点图
-sns.jointplot(x = &#39;x&#39;,y = &#39;y&#39;,data = df,kind = &#39;scatter&#39;)
-#画核密度图
-sns.jointplot(x = &#39;x&#39;,y = &#39;y&#39;,data = df,kind  = &#39;kde&#39;)
-#画hexbin图
-sns.jointplot(x = &#39;x&#39;,y = &#39;y&#39;,data = df,kind = &#39;hex&#39;)
-plt.show()</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7d/05/4bad0c7c.jpg" width="30px"><span>Geek_hve78z</span> 👍（0） 💬（1）<div>使用mac的同学，在加载中文字体时，路径可使用
-font=FontProperties(fname=&#39;&#47;Library&#47;Fonts&#47;Songti.ttc&#39;,size=14)</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7d/05/4bad0c7c.jpg" width="30px"><span>Geek_hve78z</span> 👍（0） 💬（1）<div>作业：
-通过成对关系探索，发现total和no_previous成线性关系，在二元变量分布选取该俩变量
-# 探索car_crashes数据集的成对关系
-# 成对关系
-import matplotlib.pyplot as plt
-import seaborn as sns
-# 数据准备
-crashes=sns.load_dataset(&#39;car_crashes&#39;)
-print(crashes.head(10))
+![](https://static001.geekbang.org/resource/image/8e/d2/8ed2addb00a4329dd63bba669f427fd2.png?wh=865%2A1073)
 
-#用seaborn画成对关系
-sns.pairplot(crashes)
-plt.show()
+最后，我给你留两道思考题吧，Seaborn数据集中自带了car\_crashes数据集，这是一个国外车祸的数据集，你要如何对这个数据集进行成对关系的探索呢？第二个问题就是，请你用Seaborn画二元变量分布图，如果想要画散点图，核密度图，Hexbin图，函数该怎样写？
 
-# 二元变量分布
-# 用seaborn画二元变量分布图（散点图，核密度图，hexbin图）
-sns.jointplot(x=&quot;total&quot;,y=&quot;no_previous&quot;,data=crashes,kind=&#39;scatter&#39;)
-sns.jointplot(x=&quot;total&quot;,y=&quot;no_previous&quot;,data=crashes,kind=&#39;kde&#39;)
-sns.jointplot(x=&quot;total&quot;,y=&quot;no_previous&quot;,data=crashes,kind=&#39;hex&#39;)
-plt.show()</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/2f/e2/3640e491.jpg" width="30px"><span>小熊猫</span> 👍（0） 💬（1）<div>import matplotlib.pyplot as plt
-import seaborn as sns
-
-car_crashes = sns.load_dataset(&#39;car_crashes&#39;)
-car_crashes.head()
-# 成对关系
-sns.pairplot(car_crashes)
-# 二元变量
-sns.jointplot(x=&#39;alcohol&#39;, y=&#39;speeding&#39;, data=car_crashes, kind=&#39;scatter&#39;)
-sns.jointplot(x=&#39;alcohol&#39;, y=&#39;speeding&#39;, data=car_crashes, kind=&#39;kde&#39;)
-sns.jointplot(x=&#39;alcohol&#39;, y=&#39;speeding&#39;, data=car_crashes, kind=&#39;hex&#39;)</div>2019-02-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTI45zO9GOMquk9JymTibN9sC25Sy4WtsDGRQzIRVIoIzPnaJGKmGe3jXqxP0zKZyTYazrXHBGYjBzw/132" width="30px"><span>柚子</span> 👍（0） 💬（1）<div>1、seaborn car_crashes成对关系探索：
-import matplotlib.pyplot as plt
-import seaborn as sns
-%matplotlib inline
-car_crashes = sns.load_dataset(&#39;car_crashes&#39;)
-sns.pairplot(car_crashes)
-
-2、以酒精和超速画二元变量分布图：
-散点图：sns.jointplot(x = &#39;alcohol&#39;,y = &#39;speeding&#39;,data =car_crashes, kind = &#39;scatter&#39;)
-核密度图：sns.jointplot(x = &#39;alcohol&#39;,y = &#39;speeding&#39;,data =car_crashes, kind = &#39;kde&#39;)
-hexbin图：sns.jointplot(x = &#39;alcohol&#39;,y = &#39;speeding&#39;,data =car_crashes, kind = &#39;hex&#39;)</div>2019-02-13</li><br/>
-</ul>
+欢迎你在评论区与我分享你的答案，也欢迎点击“请朋友读”，把这篇文章分享给你的朋友或者同事，一起来动手练习一下。

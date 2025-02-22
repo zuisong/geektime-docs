@@ -16,8 +16,319 @@
 要达到这个目标，我们就需要统计一天中每小时的销售数量和销售金额。
 
 这里涉及3组数据，分别是销售单头表（demo.transactionhead)、销售单明细表 (demo.transactiondetails)和商品信息表（demo.goodsmaster）（为了便于你理解，表的结构和表里的记录都是经过简化的）。
-<div><strong>精选留言（16）</strong></div><ul>
-<li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLZKoB7sooIiaCHqcdNGI97WI3ZJLJph4mibIiat1qRvrBmkicZTEYvyT5iax1vlLFFgk2xgUibmnWvkicWA/132" width="30px"><span>朱晓峰</span> 👍（1） 💬（3）<div>你好，我是朱晓峰，下面我就来公布一下上节课思考题的答案：
+
+销售单头表包含了销售单的整体信息，包括流水单号、交易时间、收款机编号、会员编号和收银员编号等。
+
+![](https://static001.geekbang.org/resource/image/92/ca/925490737131d75b38fe6af861c645ca.jpeg?wh=1880%2A1071)
+
+销售单明细表中保存的是交易明细数据，包括商品编号、销售数量、价格、销售金额等。
+
+![](https://static001.geekbang.org/resource/image/fd/0b/fdfbf05544e36251b2784259fb3ca00b.jpeg?wh=1784%2A1049)
+
+商品信息表主要包括商品编号、条码、商品名称、规格、单位和售价。
+
+![](https://static001.geekbang.org/resource/image/44/01/44f29d06fc689edd79e3fe81a39e2d01.jpeg?wh=1509%2A697)
+
+需要注意的是，销售单明细表通过流水编号与销售单头表关联，其中流水编号是外键。通过流水编号，销售单明细表引用销售单头表里的交易时间、会员编号等信息，同时，通过商品编号与商品信息表关联，引用商品信息表里的商品名称等信息。
+
+首先，我们来分析一下“统计一天中每小时的销售数量和销售金额”的这个需求。
+
+要统计一天中每小时的销售情况，实际上就是要把销售数据按照小时进行分组统计。那么，解决问题的关键，就是把交易时间的小时部分提取出来。这就要用到MySQL的日期时间处理函数EXTRACT（）和HOUR（）了。
+
+为了获取小时的值，我们要用到EXTRACT()函数。**EXTRACT（type FROM date）表示从日期时间数据“date”中抽取“type”指定的部分**。
+
+有了这个函数，我们就可以获取到交易时间的小时部分，从而完成一天中每小时的销售数量和销售金额的查询：
+
+```
+mysql> SELECT
+    -> EXTRACT(HOUR FROM b.transdate) AS 时段,
+    -> SUM(a.quantity) AS 数量,
+    -> SUM(a.salesvalue) AS 金额
+    -> FROM
+    -> demo.transactiondetails a
+    -> JOIN
+    -> demo.transactionhead b ON (a.transactionid = b.transactionid)
+    -> GROUP BY EXTRACT(HOUR FROM b.transdate)
+    -> ORDER BY EXTRACT(HOUR FROM b.transdate);
++------+--------+--------+
+| 时段 | 数量   | 金额   |
++------+--------+--------+
+|    9 | 16.000 | 500.00 |
+|   10 | 11.000 | 139.00 |
+|   11 | 10.000 |  30.00 |
+|   12 | 40.000 | 200.00 |
+|   13 |  5.000 | 445.00 |
+|   15 |  6.000 |  30.00 |
+|   17 |  1.000 |   3.00 |
+|   18 |  2.000 | 178.00 |
+|   19 |  2.000 |   6.00 |
++------+--------+--------+
+9 rows in set (0.00 sec)
+```
+
+查询的过程是这样的：
+
+1. 从交易时间中抽取小时信息：EXTRACT(HOUR FROM b.transdate)；
+2. 按交易的小时信息分组；
+3. 按分组统计销售数量和销售金额的和；
+4. 按交易的小时信息排序。
+
+这里我是用“HOUR”提取时间类型DATETIME中的小时信息，同样道理，你可以用“YEAR”获取年度信息，用“MONTH”获取月份信息，用“DAY”获取日的信息。如果你需要获取其他时间部分的信息，可以参考下[时间单位](https://dev.mysql.com/doc/refman/8.0/en/expressions.html#temporal-intervals)。
+
+这个查询，我们也可以通过使用日期时间函数HOUR()来达到同样的效果。**HOUR（time）表示从日期时间“time”中，获取小时部分信息**。
+
+需要注意的是，EXTRACT()函数中的“HOUR”表示要获取时间的类型，而HOUR()是一个函数，HOUR(time)可以单独使用，表示返回time的小时部分信息。
+
+我们可以通过在代码中，把EXTRACT函数改成HOUR函数，来实现相同的功能，如下所示：
+
+```
+mysql> SELECT
+-> HOUR(b.transdate) AS 时段, -- 改为使用HOUR函数
+-> SUM(a.quantity) AS 数量,
+-> SUM(a.salesvalue) AS 金额
+-> FROM
+-> demo.transactiondetails a
+-> JOIN
+-> demo.transactionhead b ON (a.transactionid = b.transactionid)
+-> GROUP BY HOUR(b.transdate) -- 改写为HOUR函数
+-> ORDER BY HOUR(b.transdate);-- 改写为HOUR函数
++------+--------+--------+
+| 时段 | 数量   | 金额   |
++------+--------+--------+
+|    9 | 16.000 | 500.00 |
+|   10 | 11.000 | 139.00 |
+|   11 | 10.000 |  30.00 |
+|   12 | 40.000 | 200.00 |
+|   13 |  5.000 | 445.00 |
+|   15 |  6.000 |  30.00 |
+|   17 |  1.000 |   3.00 |
+|   18 |  2.000 | 178.00 |
+|   19 |  2.000 |   6.00 |
++------+--------+--------+
+9 rows in set (0.00 sec)
+```
+
+除了获取小时信息，我们往往还会遇到要统计年度信息、月度信息等情况，MySQL也提供了支持的函数。
+
+- YEAR（date）：获取date中的年。
+- MONTH（date）：获取date中的月。
+- DAY（date）：获取date中的日。
+- HOUR（date）：获取date中的小时。
+- MINUTE（date）：获取date中的分。
+- SECOND（date）：获取date中的秒。
+
+这些函数的使用方法和提取小时信息的方法一样，我就不多说了，你只要知道这些函数的含义就可以了，下面我再讲一讲计算日期时间的函数。
+
+## 计算日期时间的函数
+
+我先来介绍2个常用的MySQL的日期时间计算函数。
+
+- DATE\_ADD（date, INTERVAL 表达式 type）：表示计算从时间点“date”开始，向前或者向后一段时间间隔的时间。“表达式”的值为时间间隔数，正数表示向后，负数表示向前，“type”表示时间间隔的单位（比如年、月、日等）。
+- LAST\_DAY（date）：表示获取日期时间“date”所在月份的最后一天的日期。
+
+这两个函数怎么用呢？接下来，我还是借助咱们项目的实际需求，来给你讲解下。假设今天是2020年12月10日，超市经营者提出，他们需要计算这个月单品销售金额的统计，以及与去年同期相比的增长率。
+
+这里的关键点是需要获取2019年12月的销售数据。因此，计算2019年12月的起始和截止时间点，就是查询的关键。这个时候，就要用到计算日期时间函数了。
+
+下面我重点讲解一下如何通过2个计算日期时间函数，来计算2019年12月的起始时间和截止时间。
+
+我们先来尝试获取2019年12月份的起始时间。
+
+第一步，用DATE\_ADD函数，获取到2020年12月10日上一年的日期：2019年12月10日。
+
+```
+mysql> SELECT DATE_ADD('2020-12-10', INTERVAL - 1 YEAR);
++-------------------------------------------+
+| DATE_ADD('2020-12-10', INTERVAL - 1 YEAR) |
++-------------------------------------------+
+| 2019-12-10                                |
++-------------------------------------------+
+1 row in set (0.00 sec)
+```
+
+第二步，获取2019年12月10日这个时间节点开始上个月的日期，这样做的目的是方便获取月份的起始时间：
+
+```
+mysql>  SELECT DATE_ADD(DATE_ADD('2020-12-10', INTERVAL - 1 YEAR),INTERVAL - 1 MONTH);
++------------------------------------------------------------------------+
+| DATE_ADD(DATE_ADD('2020-12-10', INTERVAL - 1 YEAR),INTERVAL - 1 MONTH) |
++------------------------------------------------------------------------+
+| 2019-11-10                                                             |
++------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+```
+
+第三步，获取2019年11月10日这个时间点月份的最后一天，继续接近我们的目标：2019年12月01日。
+
+```
+mysql>  SELECT LAST_DAY(DATE_ADD(DATE_ADD('2020-12-10', INTERVAL - 1 YEAR),INTERVAL - 1 MONTH));
++----------------------------------------------------------------------------------+
+| LAST_DAY(DATE_ADD(DATE_ADD('2020-12-10', INTERVAL - 1 YEAR),INTERVAL - 1 MONTH)) |
++----------------------------------------------------------------------------------+
+| 2019-11-30                                                                       |
++----------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+```
+
+到这里，我们获得了2019年11月30日这个日期。你是不是觉得我们已经达到目的了呢？要是这样的话，你就错了。因为2019年11月30日可能会有销售的。如果用这个日期作为统计销售额的起始日期，你就多算了这一天的销售。怎么办呢？我们还要进行下一步。
+
+第四步，计算2019年11月30日后一天的日期：
+
+```
+mysql> SELECT DATE_ADD(LAST_DAY(DATE_ADD(DATE_ADD('2020-12-10', INTERVAL - 1 YEAR),INTERVAL - 1 MONTH)),INTERVAL 1 DAY);
++-----------------------------------------------------------------------------------------------------------+
+| DATE_ADD(LAST_DAY(DATE_ADD(DATE_ADD('2020-12-10', INTERVAL - 1 YEAR),INTERVAL - 1 MONTH)),INTERVAL 1 DAY) |
++-----------------------------------------------------------------------------------------------------------+
+| 2019-12-01                                                                                                |
++-----------------------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+```
+
+你看，我们终于获得了正确的起始日期：2019年12月01日。
+
+同样，我们可以用下面的方法，获得截止日期：
+
+```
+mysql> SELECT DATE_ADD(LAST_DAY(DATE_ADD('2020-12-10', INTERVAL - 1 YEAR)),INTERVAL 1 DAY);
++------------------------------------------------------------------------------+
+| DATE_ADD(LAST_DAY(DATE_ADD('2020-12-10', INTERVAL - 1 YEAR)),INTERVAL 1 DAY) |
++------------------------------------------------------------------------------+
+| 2020-01-01                                                                   |
++------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+```
+
+简单小结下：我们可以用DATE\_ADD()来计算从某个时间点开始，过去或者未来一个时间间隔的时间；通过LAST\_DAY()函数，获得某个时间节点当月的最后一天的日期。借助它们，我们就可以获取从某个时间节点出发的指定月份的起始日期和截止日期。
+
+除了DATE\_ADD()，ADDDATE()、DATE\_SUB()和SUBDATE()也能达到同样的效果。
+
+- ADDDATE()：跟DATE\_ADD()用法一致；
+- DATE\_SUB()，SUBDATE()：与DATE\_ADD()用法类似，方向相反，执行日期的减操作。
+
+## 其他日期时间函数
+
+学习了刚刚的时间函数，我们已经可以应对大部分有关时间的场景了。但是这还不够，有的时候，我们还需要其他的日期时间信息，比如：
+
+- 今天是几月几号，星期几；
+- 两个时间点之间隔了几天；
+- 把时间按照一定的格式显示出来；
+- ……
+
+这时就要用到其他日期时间函数了，主要包括CURDATE()、DAYOFWEEK()、DATE\_FORMAT和DATEDIFF()。
+
+我来借助一个例子，具体解释下这些函数怎么用。
+
+超市经营者为了吸引顾客，经常要进行一些促销活动。具体来讲就是以周为单位，按照周中不同的日期进行促销，比如周一如何打折、周二如何打折、周末如何打折等。那么如何计算当天的价格呢？我们来看下单品促销信息（demo.discountrule）。
+
+![](https://static001.geekbang.org/resource/image/cd/cf/cdc62927a60978e2128616fab3697fcf.jpeg?wh=1440%2A784)
+
+这个表中的信息表示单品打折的时间和折扣率：
+
+- 编号是1的商品，周一、周三和周五打折，折扣率分别是9折、75折和88折；
+- 编号是2的商品，周二、周四和周六打折，折扣率分别是5折、65折和8折。
+- 周日，所有商品打5折。
+
+如果我们想要查到具体的价格，我们首先要知道当前的日期，以及今天是星期几。这就要用到2个MySQL的时间函数：CURDATE（）和DAYOFWEEK（）。
+
+- CURDATE（）：获取当前的日期。日期格式为“YYYY-MM-DD”，也就是年月日的格式。
+- DAYOFWEEK（date）：获取日期“date”是周几。1表示周日，2表示周一，以此类推，直到7表示周六。
+
+假设今天是2021年02月06日，通过下面的代码，我们就可以查到今天商品的全部折后价格了：
+
+```
+mysql> SELECT
+    -> CURDATE() AS 日期,
+    -> CASE DAYOFWEEK(CURDATE()) - 1 WHEN 0 THEN 7 ELSE DAYOFWEEK(CURDATE()) - 1 END AS 周几,
+    -> a.goodsname AS 商品名称,
+    -> a.salesprice AS 价格,
+    -> IFNULL(b.discountrate,1) AS 折扣率,
+    -> a.salesprice * IFNULL(b.discountrate, 1) AS 折后价格
+    -> FROM
+    -> demo.goodsmaster a
+    -> LEFT JOIN
+    -> demo.discountrule b ON (a.itemnumber = b.itemnumber
+    -> AND CASE DAYOFWEEK(CURDATE()) - 1 WHEN 0 THEN 7 ELSE DAYOFWEEK(CURDATE()) - 1 END = b.weekday);
++------------+------+----------+-------+--------+----------+
+| 日期       | 周几 | 商品名称 | 价格  | 折扣率 | 折后价格 |
++------------+------+----------+-------+--------+----------+
+| 2021-02-06 |    6 | 书       | 89.00 |   1.00 |  89.0000 |
+| 2021-02-06 |    6 | 笔       |  5.00 |   0.80 |   4.0000 |
+| 2021-02-06 |    6 | 橡皮     |  3.00 |   1.00 |   3.0000 |
++------------+------+----------+-------+--------+----------+
+3 rows in set (0.00 sec)
+```
+
+这个查询，我们用到了CURDATE（）函数来获取当前日期，也用到了DAYOFWEEK（）函数来获取当前是周几的信息。由于DAYOFWEEK()函数，以周日为1开始计，周一是2……，周六是7，而数据表中是从周一为1开始计算，为了对齐，我用到了条件判断函数CASE，我来解释下这个函数。
+
+MySQL中CASE函数的语法如下：
+
+```
+CASE 表达式 WHEN 值1 THEN 表达式1 [ WHEN 值2 THEN 表达式2] ELSE 表达式m END
+```
+
+在我们这个查询中，“表达式”有7种可能的值。通过CASE函数，我们可以根据DAYOFWEEK()函数返回的值对每个返回值进行处理，从而跟促销信息表中的字段weekday对应。
+
+除了获取特定的日期，咱们还经常需要把日期按照一定的格式显示出来，这就要用到日期时间格式化的函数**DATE\_FORMAT()，它表示将日期时间“date”按照指定格式显示**。
+
+举个小例子，张三希望用24小时制来查看时间，那么他就可以通过使用DATE\_FORMAT()函数，指定格式“%T”来实现：
+
+```
+mysql> SELECT DATE_FORMAT("2020-12-01 13:25:50","%T");
++-----------------------------------------+
+| DATE_FORMAT("2020-12-01 13:25:50","%T") |
++-----------------------------------------+
+| 13:25:50                                |
++-----------------------------------------+
+1 row in set (0.00 sec)
+```
+
+李四习惯按照上下午的方式来查看时间，同样，他可以使用DATE\_FORMAT()函数，通过指定格式“%r”来实现：
+
+```
+mysql> SELECT DATE_FORMAT("2020-12-01 13:25:50","%r");
++-----------------------------------------+
+| DATE_FORMAT("2020-12-01 13:25:50","%r") |
++-----------------------------------------+
+| 01:25:50 PM                             |
++-----------------------------------------+
+1 row in set (0.00 sec
+```
+
+格式的详细内容非常丰富，我就不一一介绍了，我给你分享一个[链接](https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-format)，你可以随时查看一下。
+
+另外一个重要的时间函数是DATEDIFF（date1,date2），表示日期“date1”与日期“date2”之间差几天。假如你要计算某段时间的每天交易金额的平均值，只需要把起始日期和截止日期传给这个函数，就可以得到中间隔了几天。再用总计金额除以这个天数，就可以算出来了：
+
+```
+mysql> SELECT DATEDIFF("2021-02-01","2020-12-01");
++-------------------------------------+
+| DATEDIFF("2021-02-01","2020-12-01") |
++-------------------------------------+
+|                                  62 |
++-------------------------------------+
+1 row in set (0.00 sec)
+```
+
+## 总结
+
+今天，我们学习了MySQL的时间处理函数，包括获取日期时间类型数据中部分信息的函数、计算日期时间的函数和获取特定日期的函数，我用图片来帮你汇总了下。
+
+![](https://static001.geekbang.org/resource/image/82/5d/820cf66dcccf8a6484a508b1f18d715d.png?wh=1768x1090)
+
+最后，我还想多说一句，MySQL中获取的时间，其实就是MySQL服务器计算机的系统时间。如果你的系统有一定规模，需要在多台计算机上运行，就要注意时间校准的问题。比如我们的信息系统受门店经营环境和操作人员的素质所限，有时会遇到误操作、停电等故障而导致的计算机系统时间失准问题。这对整个信息系统的可靠性影响非常大。
+
+针对这个问题，有2种解决办法。
+
+第一种方法是，可以利用Windows系统自带的网络同步的方式，来校准系统时间。
+
+另一种办法就是，门店统一从总部MySQL服务器获取时间。由于总部的服务器的配置和运维状况一般要好于门店，所以系统时间出现误差的可能性也较小。如果采用云服务器，系统时间的可靠性会更高。
+
+## 思考题
+
+假如用户想查一下今天是星期几（不能用数值，要用英文显示），你可以写一个简单的查询语句吗？
+
+欢迎在留言区写下你的思考和答案，我们一起交流讨论。如果你觉得今天的内容对你有所帮助，欢迎你把它分享给你的朋友或同事，我们下节课见。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>朱晓峰</span> 👍（1） 💬（3）<div>你好，我是朱晓峰，下面我就来公布一下上节课思考题的答案：
 
 上节课，我们学习了聚合函数。下面是思考题的答案：
 
@@ -25,12 +336,12 @@ SELECT
     goodsname, COUNT(*) 
 FROM
     demo.goodsmaster
-GROUP BY goodsname;</div>2021-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/af/7f/584e1327.jpg" width="30px"><span>岁月静好</span> 👍（4） 💬（2）<div>select date_format(&#39;2021-03-31&#39;,&#39;%W %M %Y&#39;);
+GROUP BY goodsname;</div>2021-04-21</li><br/><li><span>岁月静好</span> 👍（4） 💬（2）<div>select date_format(&#39;2021-03-31&#39;,&#39;%W %M %Y&#39;);
 +--------------------------------------+
 | date_format(&#39;2021-03-31&#39;,&#39;%W %M %Y&#39;) |
 +--------------------------------------+
 | Wednesday March 2021                 |
-+--------------------------------------+</div>2021-03-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/53/7e/b6829040.jpg" width="30px"><span>SevenMonths</span> 👍（1） 💬（1）<div>&#47;&#47;时间里获取 年 月 日 时 分 秒
++--------------------------------------+</div>2021-03-31</li><br/><li><span>SevenMonths</span> 👍（1） 💬（1）<div>&#47;&#47;时间里获取 年 月 日 时 分 秒
 EXTRACT(SECOND FROM Now())  SECOND(Now())
 EXTRACT(MINUTE FROM Now())  MINUTE(Now())
 EXTRACT(HOUR FROM Now())  HOUR(Now())
@@ -63,7 +374,7 @@ DATEDIFF(&quot;2021-02-01&quot;,&quot;2020-12-01&quot;) &#47;&#47; 62
 DAYOFWEEK(Now()):1 表示周日，以此类推，直到 7 表示周六。
 
 &#47;&#47;如果等于 0 表示为周日，其他为正常周几
-CASE DAYOFWEEK(CURDATE()) - 1 WHEN 0 THEN 7 ELSE DAYOFWEEK(CURDATE())</div>2021-09-01</li><br/><li><img src="" width="30px"><span>Geek_58516f</span> 👍（1） 💬（1）<div>老师您好，我需要获得每天从凌晨12点到晚上12点，24个小时，每个小时整点的时间（比如1点，2点...），怎么做呢</div>2021-08-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/56/bd/13d32273.jpg" width="30px"><span>西云关二爷</span> 👍（1） 💬（3）<div>老师，您是否能提供下测试的表结构和测试数据。谢谢，每次手动建表做测试数据比较花费时间。</div>2021-03-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/e5/ce/1297d273.jpg" width="30px"><span>安全着陆_</span> 👍（0） 💬（1）<div>select case DAYOFWEEK(CURDATE())-1 when 0 then &#39;周日&#39; 
+CASE DAYOFWEEK(CURDATE()) - 1 WHEN 0 THEN 7 ELSE DAYOFWEEK(CURDATE())</div>2021-09-01</li><br/><li><span>Geek_58516f</span> 👍（1） 💬（1）<div>老师您好，我需要获得每天从凌晨12点到晚上12点，24个小时，每个小时整点的时间（比如1点，2点...），怎么做呢</div>2021-08-04</li><br/><li><span>西云关二爷</span> 👍（1） 💬（3）<div>老师，您是否能提供下测试的表结构和测试数据。谢谢，每次手动建表做测试数据比较花费时间。</div>2021-03-29</li><br/><li><span>安全着陆_</span> 👍（0） 💬（1）<div>select case DAYOFWEEK(CURDATE())-1 when 0 then &#39;周日&#39; 
  when 1 then &#39;周一&#39; 
  when 2 then &#39;周二&#39;
  when 3 then &#39;周三&#39;
@@ -72,9 +383,9 @@ CASE DAYOFWEEK(CURDATE()) - 1 WHEN 0 THEN 7 ELSE DAYOFWEEK(CURDATE())</div>2021-
  when 6 then &#39;周六&#39;
 else DAYOFWEEK(CURDATE())-1 
 end
-;</div>2022-03-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/f6/c4/e14686d4.jpg" width="30px"><span>shk1230</span> 👍（0） 💬（1）<div>select date_format(curdate(),&#39;%W&#39;);</div>2022-03-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/c8/92/408a23d4.jpg" width="30px"><span>zhuyuping</span> 👍（0） 💬（1）<div>发现一个小错误：总结板块，图片中的表格的第10行，DDDATE 应该是 ADDDATE，少了一个A。</div>2022-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/5f/3f/92828807.jpg" width="30px"><span>伍华龙</span> 👍（0） 💬（1）<div>老师，您好。最后的汇总表格貌似有2次笔误，麻烦确认一下：
+;</div>2022-03-15</li><br/><li><span>shk1230</span> 👍（0） 💬（1）<div>select date_format(curdate(),&#39;%W&#39;);</div>2022-03-12</li><br/><li><span>zhuyuping</span> 👍（0） 💬（1）<div>发现一个小错误：总结板块，图片中的表格的第10行，DDDATE 应该是 ADDDATE，少了一个A。</div>2022-03-09</li><br/><li><span>伍华龙</span> 👍（0） 💬（1）<div>老师，您好。最后的汇总表格貌似有2次笔误，麻烦确认一下：
 1. 「日期时间计算函数」的第2个函数&quot;ADDDATE&quot;漏了开头的A，写成&quot;DDDATE&quot;了。
-2. 「其他时间函数」的第2个函数&quot;WEEKOFDAY&quot;我查看mysql手册没找到，应该是&quot;DAYOFWEEK&quot;。另外我也发现有个类似的函数&quot;WEEKDAY&quot;，跟&quot;DAYOFWEEK&quot;类似，只是星期几与数字之间的映射不一样。</div>2022-03-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/bd/6d/7010f98e.jpg" width="30px"><span>SharpBB</span> 👍（0） 💬（1）<div>虽然时间函数很有用 但是在处理复杂逻辑的时候 还是建议在业务层面进行逻辑运算</div>2022-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/bd/6d/7010f98e.jpg" width="30px"><span>SharpBB</span> 👍（0） 💬（1）<div>1.从日期中获取时间
+2. 「其他时间函数」的第2个函数&quot;WEEKOFDAY&quot;我查看mysql手册没找到，应该是&quot;DAYOFWEEK&quot;。另外我也发现有个类似的函数&quot;WEEKDAY&quot;，跟&quot;DAYOFWEEK&quot;类似，只是星期几与数字之间的映射不一样。</div>2022-03-08</li><br/><li><span>SharpBB</span> 👍（0） 💬（1）<div>虽然时间函数很有用 但是在处理复杂逻辑的时候 还是建议在业务层面进行逻辑运算</div>2022-02-10</li><br/><li><span>SharpBB</span> 👍（0） 💬（1）<div>1.从日期中获取时间
 	获取用户的创建小时
 		SELECT EXTRACT(HOUR FROM create_time) time , FROM user;
 	使用函数
@@ -102,8 +413,6 @@ end
 			返回相差几天
 3.分布式系统时间差异解决办法
 	1.设置Windows 系统自带的网络同步
-	2.统一从总部MySQL服务器获取时间</div>2022-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2a/e0/0b/6f667b2c.jpg" width="30px"><span>枫林血舞</span> 👍（0） 💬（1）<div>交作业：
-select date_format(sysdate(), &#39;%W %M %Y&#39;);</div>2022-01-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/25/ed/a0/cc89c128.jpg" width="30px"><span>大聖</span> 👍（0） 💬（1）<div>思考题：select dayname(curdate());</div>2021-06-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/fb/85/f3fd1724.jpg" width="30px"><span>PHP菜鸟</span> 👍（0） 💬（1）<div>我们公司的要求是不允许在Sql中用各种的聚合函数,这可咋办......</div>2021-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3c/52/5951ffb4.jpg" width="30px"><span>Sinvi</span> 👍（0） 💬（1）<div>select DATE_FORMAT(curdate(), &#39;%W&#39;);</div>2021-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/9d/a4/e481ae48.jpg" width="30px"><span>lesserror</span> 👍（14） 💬（1）<div>老师这一讲保持了之前一贯的细致入微。常用的时间日期处理方法和函数大部分都讲到了。包括CASE这种开发中较少看到的用法。
-
-很多人把时间日期的相关计算放到编程语言层面去处理，虽然MySQL也能实现同样功能，但是会让SQL语句复杂度上升，维护成本上升。放到编程语言上去处理，相对来说更容易维护。</div>2021-03-27</li><br/>
+	2.统一从总部MySQL服务器获取时间</div>2022-02-10</li><br/><li><span>枫林血舞</span> 👍（0） 💬（1）<div>交作业：
+select date_format(sysdate(), &#39;%W %M %Y&#39;);</div>2022-01-17</li><br/><li><span>大聖</span> 👍（0） 💬（1）<div>思考题：select dayname(curdate());</div>2021-06-21</li><br/><li><span>PHP菜鸟</span> 👍（0） 💬（1）<div>我们公司的要求是不允许在Sql中用各种的聚合函数,这可咋办......</div>2021-04-22</li><br/><li><span>Sinvi</span> 👍（0） 💬（1）<div>select DATE_FORMAT(curdate(), &#39;%W&#39;);</div>2021-04-09</li><br/>
 </ul>

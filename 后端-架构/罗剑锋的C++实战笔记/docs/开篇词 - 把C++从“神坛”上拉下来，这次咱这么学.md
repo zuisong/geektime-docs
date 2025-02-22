@@ -13,9 +13,91 @@
 随着标准版本的演进，C++里包含的东西也越来越多。最早的C++98只有60来个关键字，到C++11变成了70多个，C++20则膨胀到了近百个。对比一下同级别的Java、Go等语言，C++真称得上是“巨无霸”。而且这还仅仅是核心语言，外面还有更庞大的标准库在等着你。
 
 不断膨胀的核心语言加上庞大的标准库，让学习、使用C++的门槛无形中提高了很多，不仅C++“新手”学起来很难，就连C++“老手”也会觉得，用好它并不是一件容易的事情。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/13/e2/aa/9ddc6469.jpg" width="30px"><span>小林coding</span> 👍（134） 💬（8）<div>知道的越多，不知道的也越多。一年精通C++，3年熟悉C++，6年了解C++，10年用过C++</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/59/1e/5f77ce78.jpg" width="30px"><span>吃草🐴~</span> 👍（21） 💬（3）<div>大学里学过 C++，然而只是皮毛，所以一直只知道难，但是不知道难在哪里。目前已是三年半开发经验的 Java 程序猿~个人觉得 Cpp 更贴近底层，并且也想了解这门语言的一些设计思想。于是乎，果断入手开始研究~🤔🤔</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/f1/31/393f8e70.jpg" width="30px"><span>张瀚元Chester</span> 👍（18） 💬（1）<div>马上去声网Agora做C++云平台开发了，但基本没咋看过C++，有点慌，老师能给点学习侧重点的建议嘛</div>2020-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/74/d4/f165ab7f.jpg" width="30px"><span>默</span> 👍（9） 💬（1）<div>我的C+编程能力还是小白，通过您的课程学习，之后我还需要做些什么才能更快的提高呢。</div>2020-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/bd/40/e823c33b.jpg" width="30px"><span>或许 没有</span> 👍（7） 💬（1）<div>研究生才开始学习C++，发现C++在很多地方都在更新，但是发现多得让人头晕了，之前版本成立的可能在新版本中被否定。头大</div>2020-05-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/94/82/d0a417ba.jpg" width="30px"><span>蓝配鸡</span> 👍（6） 💬（1）<div>看到是罗老师， 先买了一定不亏😂</div>2020-05-06</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/CS7ExJZgQlPt74dicFu4QHuvVGqib5AANHFVm71Z8hdCvTSooPyEIXI4qzNQdFkymd38GG1evdt05gFpVwHFwU4g/132" width="30px"><span>rainnnnn</span> 👍（5） 💬（1）<div>买这个课的理由：1、我想学好C++，2、这个课的老师是罗剑锋。</div>2020-05-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/f6/5b/8e321b62.jpg" width="30px"><span>Carlos</span> 👍（5） 💬（1）<div>哈哈，我刚在朋友圈宣布自己学会了c++, 这套课程就来了，完美衔接！</div>2020-05-06</li><br/><li><img src="" width="30px"><span>hao123</span> 👍（4） 💬（1）<div>罗老师，我这有个系统项目想用C++和python做服务端开发，用QT做客户端跨平台开发，您觉得怎样？给点建议，谢谢</div>2020-05-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/JGPabHDickBjMJwVoJ7ZRGiaT21BibxvCJ9DR9Gvn3G1iazHQPTJQtkWwfFssYfGJsPahEB7sOnXScibkrsr4gx6LeA/132" width="30px"><span>微风漂过</span> 👍（4） 💬（1）<div>STL和C++多线程应该如何学习？
-另外，跨平台的C++开发应该如何学习？</div>2020-05-07</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJ7mAt63VrbLZPHpeZxSc4IlBYswQSnaAB5wGePaGFDehgiaNfIxI1SJ5yIHIlmVk8hsw0RaoaSCPA/132" width="30px"><span>Stephen</span> 👍（4） 💬（1）<div>老师真是很亲切，我看留言都回复了呢。加油</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/81/df/066ffab3.jpg" width="30px"><span>落曦</span> 👍（3） 💬（1）<div>老师您好，请问一下您GitHub提交的文件中cpp源码和cmakelists还有Makefile后面两个文件是附带的吗，要实操吗cpp文件可以根据代码直接编译g++ a.cpp -std=c++14 -o a.out，您给出的后面两个文件怎么实操 还是自动生成的？ 谢谢老师解答</div>2020-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/63/9f/304ab00d.jpg" width="30px"><span>徐有志</span> 👍（3） 💬（5）<div>Stay Hungary, Stay Foolish.</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/93/b2/27620044.jpg" width="30px"><span>寻回光明</span> 👍（2） 💬（1）<div>大二时学的cpp，但是面向对象这块感觉还是没有提升，希望提升cpp水平。</div>2020-05-22</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaEK5icO2A4K7HYTYfQoagTz7VbtgxfS2ibBqLnKVWwQZgsePibZWFvFJEhPT8BtpQSaFx9IEodyp6c0dw/132" width="30px"><span>Geek_jg3r26</span> 👍（2） 💬（1）<div>罗老师，我只有大一的学c++ 的经验，看过前五章c++ primer plus，可能也就学到简单的认识类 结构体 指针，这些基本知识，能跟的上这门课程吗？ </div>2020-05-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/55/24/c6100ac6.jpg" width="30px"><span>C家族铁粉</span> 👍（2） 💬（3）<div>看到罗老师说课程中会有一个完整可用的服务端的例子，能否稍微具体点介绍下这个例子呢？感觉设计模式和并发编程只用一两篇文章似乎不太够啊，要是罗老师以后能结合自己的感悟，出专栏从零开始讲讲这两个大主题就更好了，并且采用C&#47;C++语言来教学。</div>2020-05-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a5/9d/a2f555ba.jpg" width="30px"><span>涤生</span> 👍（2） 💬（1）<div>学好一门系统底层语言应该不亏</div>2020-05-07</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJqNmfD7YKwpS5zhiaR56tG4vGqI0OnRqQ5DBBuyESrw0FQCuT56RJrufccDwOZTgkz2znwkypq1eg/132" width="30px"><span>二宝他爹</span> 👍（2） 💬（1）<div>当年是看着罗老师的boost程序库开发指南的书才入了C++&#47;boost库的大门哇，看了目录果断加入课程学习</div>2020-05-06</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJKj3GbvevFibxwJibTqm16NaE8MXibwDUlnt5tt73KF9WS2uypha2m1Myxic6Q47Zaj2DZOwia3AgicO7Q/132" width="30px"><span>饭</span> 👍（2） 💬（1）<div>我做c#开发的，会点C。不知道直接学习这门课程难度大不。</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/4a/34/1faac99b.jpg" width="30px"><span>夕林语</span> 👍（1） 💬（1）<div>从Java过来的，Java底层涉及很多的C++内容，为了搞懂那就再学下C++吧</div>2022-10-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/54/55/613ddc42.jpg" width="30px"><span>Edison</span> 👍（1） 💬（1）<div>老师，有个问题，想咨询下您，为什么现在主流的服务器都是在Linux平台下开发，而不是windows，Linux相对Windows有哪些优势？</div>2021-10-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/9c/46/a2c1a99f.jpg" width="30px"><span>yelin</span> 👍（1） 💬（1）<div>加油</div>2020-05-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/51/45/4ef9dfa1.jpg" width="30px"><span>Lincoln</span> 👍（1） 💬（1）<div>马上就要去鹅厂实习了c++后台 结果我c++还不会 慌了慌了</div>2020-05-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/f6/04/def49489.jpg" width="30px"><span>姜海天</span> 👍（1） 💬（1）<div>保持一颗敬畏之心，摆正态度，“简单”地调用C++，适当地向C++妥协，能够让以后的自己看懂代码，让别人看懂代码，这样，能够最大限度发挥计算机的作用，更好造福人类。
 
-不应该为了耍酷而使用炫技，看似酷炫，实则害人害己，“结硬寨，打呆仗”，稳中求胜才是王道。</div>2020-05-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/79/29/fc00aab0.jpg" width="30px"><span>longbin</span> 👍（1） 💬（1）<div>正在学习，有录音真实太亲民了，路上也能听录音学习提高编程能力啦</div>2020-05-09</li><br/><li><img src="" width="30px"><span>BulkBulky</span> 👍（1） 💬（1）<div>我工作中主要语言是python， 想了解下C++。想请老师介绍下懂得C++对平时使用python有何帮助？</div>2020-05-08</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKTgr8vpssIic2KrZwdbTrbwEibo0iaCos0rnGicC5OqKQln5ozZGKy8Liaz96rf7uIwQSQkH3PHv45GCg/132" width="30px"><span>pcdiy</span> 👍（1） 💬（1）<div>以前学过C，但是一头雾水，不明白是什么，感觉很难懂，但还是选择学，不管懂与不懂</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e4/ad/abc7540f.jpg" width="30px"><span>石头</span> 👍（1） 💬（1）<div>算是零基础学习C++，之前一直是C开发。</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ea/8b/613c162e.jpg" width="30px"><span>nomoshen</span> 👍（1） 💬（2）<div>作者，rust你怎么看？</div>2020-05-06</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/nicib8gqImzrCGJYyJW3QEmgr4TmZibgHJmtWyTAFONicUEqFUC7avpMB2gakbvI8qM0fhZib0OVT65SRmVrDxpDfibA/132" width="30px"><span>Geek_104bda</span> 👍（0） 💬（1）<div>老师，我是新手，我想学习C++，是不是只需要把您这个实战笔记看完就可以了吗，我本科学的什么虚函数构造函数多态等这些语法要不要学啊</div>2022-02-25</li><br/>
+*Effective C++* 里有一句话，我觉得很有意思：
+
+> C++是一个威力十足的编程语言，如果C带给你足够绞死自己的绳索，C++就是间五金店，挤满了许多准备为你绑绳结的人。
+
+这句话形象地说出了C++的难点：**它太接近底层，C语言本身已经有很多“坑”了，而C++又增加了更多的“坑”，一旦用不好，就很容易“作茧自缚”**。
+
+其实，这些年来，C++标准委员会也意识到了这个难学难用的问题，也做了很多工作，尽量让C++对初学者友好，朝着易学易用的方向去努力。但C++毕竟背着“兼容C语言”这个巨大的历史包袱（说得重一点就是“原罪”），无法做出彻底的改革，在可以预见的将来，语言里的那些“坑”还将长期存在。
+
+针对这个问题，我的建议是，**先从C++11标准开始学起**。这个版本的C++虽然还是很复杂，但却添加了很多方便易用的新特性，更接近“现代编程语言”，可以少遇到一些传统编程方式的“坑”。
+
+市面上有不少教授现代C++的书，也都是专家、大师之作，权威性毋庸置疑。但C++实在是太庞大了，相应的书都很厚，慢慢去“啃”、去“消化”实在是吃力。
+
+而且，这些毕竟是纸面上的知识，离实际的开发还有一定的距离，你难免会有这样的感慨：
+
+“**道理我都懂，可用起来还是会犯怵，要是身边能有个人来指点一下该多好。**”
+
+不知道你在刚毕业的时候，公司有没有为你安排过一个“入职导师”的角色，他会制定培养计划，带你熟悉环境，指导你的工作，让你尽快成长为一名合格的职场新人。
+
+C++书籍就好像是学校里的老师，只能教你基本的知识。而学习C++最缺乏的就是一个“入职导师”，他能帮你跨越从课堂到现实的“鸿沟”，告诉你实际工作时会遇到哪些问题，又该怎么解决。
+
+很可惜，大多数人，也包括我，当初都没有遇到这样的好导师，学C++的时候一切都要靠自己摸索。虽然说“实践出真知”，最终有所成就，但也浪费了不少大好年华。
+
+所以，接到极客时间的邀请之后，我决定写这样一个能够担当“入职导师”“引路人”角色的课程，从庞大的C++里裁剪出一个精致的子集，挑选出最适合你自己的C++特性。我还会把踩过的坑、走过的弯路、收获的果实，都毫无保留地分享给你。
+
+## 课程特点
+
+既然要当“入职导师”，那我的目标就是一切从实际出发，只讲实实在在、脚踏实地的C++知识，而不会讲那些“高深”的理论和“玄乎”的技巧，更不会去教你那些“屠龙之术”。
+
+另外，因为C++的资料已经有很多了，我也不想变成标准规范的“复读机”，机械地重复那些接口定义。所以，在这个课程里，我通常只会简单提一下功能要点，不会详细解释调用方式，**重点是谈使用时的注意事项和经验教训**，具体怎么用你完全可以去查资料。
+
+讲C++必然要写代码，不过课程示例里的代码都很短，也不复杂，对C++水平的要求很低，不需要你有太多的经验（1～5年都可以），保证让你一眼就能看明白。虽然代码可以说是“玩具”，但里面蕴含的知识却绝不是“玩具”，这就需要你看懂之后去细心领会了。
+
+总之，我想尽量降低这门课的学习门槛，把C++从“神坛”上拉下来，让它平易近人一些，希望能够让你看到C++也有亲切的一面。
+
+在这里请允许我适当引用并修改《设计模式》一书里的部分文字，来描述一下这门课的特点：
+
+> ……并不要求使用独特的语言特性，也不采用那些足以使你的朋友或者老板大吃一惊的神奇的编程技巧。
+
+> ……有经验的C++程序员的确能够做出良好的设计，写出优秀的代码，而新手则面对众多选择无从下手，需要花费较长时间领会良好的C++代码是怎么回事。有经验的C++程序员显然知道一些新手所不知道的东西，这又是什么呢？
+
+> ……课程里不会提出任何前所未见的新算法或者新程序设计技术，既没有给出一种严格的系统设计方法，也没有提出一套新的设计理论——它只是将现有的一些经验加以文档化。
+
+> ……一旦你理解了C++，并且有了一种“Aha！”（而不是“Huh？”）的应用经验和体验后，你将用一种非同寻常的方式思考C++编程。
+
+## 课程设计
+
+按照这个思路，我把我最有切身感受、最有实际意义的经验，全部浓缩在了这个课程里。学会了这些“武艺”，你一定能够用C++开发出优雅、高效的程序。
+
+整个课程分为五个模块，**注重语言和库的“开发落地”，基本不讲语法细节和内部实现原理，而是用实例促使你更多地应用“现代C++”自然、直观的思维方式**。
+
+C++与C是一脉相通的，很多时候，C++不过是C的高级解法。所以，即使你的主力工作语言是C，也可以过来看看，了解一下新思路、新工具。
+
+我先给你大概介绍一下这些模块吧。
+
+在“**概论**”模块，我会从程序的**生命周期**和**编程范式**这两个独特的角度来审视它，帮你看清楚C++复杂的本质，透彻理解C++程序的运行机制和面向对象编程思想。
+
+在“**语言特性**”模块，我精选出了C++中的**自动类型推导**、**智能指针**、**Lambda表达式**等几个重要特性，帮你掌握惯用法，消灭代码里的隐患，用这些特性写出清晰、易读、安全的代码。
+
+标准库是C++里占比非常大的一部分，重要性不亚于语言本身。所以在“**标准库**”模块，我会介绍其中最核心的四个部分：**字符串、容器、算法和并发**，让你用好这个最基本的库，学会泛型编程，提高程序的运行效率。
+
+不过，标准库也不可能涵盖所有的开发领域，所以在“**技能进阶**”模块里，我会介绍C++标准之外的一些第三方工具，带你一起去实现序列化、网络通信和性能分析等功能，解决实际开发中遇到的常见问题。
+
+之后是“**总结**”模块，我会结合C++讲讲设计模式，并给出一个完整可用的C++服务端程序例子（这里会与《透视HTTP协议》这门课有个小小的联动）。这样“理论结合实际”，把前面的所有知识点都串联起来，让你看看在项目中C++是具体怎么思考、设计、落地的。你实际动手研究一下代码，再试着改改，就能够把C++的这些特性融会贯通了。
+
+除此之外，我还特别设计了一个“**轻松话题**”单元，和你聊些C++之外的东西，以避免因为课程安排得太紧凑，没有“喘息”的机会，让你学起来很累。这些话题涵盖的范围比较广，包括经典的学习资料、提高工作效率的工具等，让你在掌握核心硬技能的同时向外拓展知识面，“会工作，更要会生活”。
+
+![](https://static001.geekbang.org/resource/image/1f/98/1f9de23ff1146623a643428cf9cba098.jpg?wh=750%2A2766)
+
+## 学前勉言
+
+在开课之前，我还想和你分享几句编程格言。这三条格言已经陪伴了我很久，一直指导着我的编程实践。
+
+> 任何人都能写出机器能看懂的代码，但只有优秀的程序员才能写出人能看懂的代码。
+
+> 有两种写程序的方式：一种是把代码写得非常复杂，以至于“看不出明显的错误”；另一种是把代码写得非常简单，以至于“明显看不出错误”。
+
+> “把正确的代码改快速”，要比“把快速的代码改正确”，容易得太多。
+
+C++庞大、复杂是无法改变的事实，所以我们要把这三条格言铭记在心，对它保持一颗“敬畏”的心，在学习语言特性的同时，千万不要滥用特性，谦虚谨慎，戒骄戒躁。
+
+我很喜欢15年前乔布斯在斯坦福大学演讲中的一句话，觉得非常适合C++。所以，最后我想把它送给你，我们共勉，希望在接下来的这段时间里，我们一起：
+
+Stay Hungry, Stay Foolish.
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>小林coding</span> 👍（134） 💬（8）<div>知道的越多，不知道的也越多。一年精通C++，3年熟悉C++，6年了解C++，10年用过C++</div>2020-05-06</li><br/><li><span>吃草🐴~</span> 👍（21） 💬（3）<div>大学里学过 C++，然而只是皮毛，所以一直只知道难，但是不知道难在哪里。目前已是三年半开发经验的 Java 程序猿~个人觉得 Cpp 更贴近底层，并且也想了解这门语言的一些设计思想。于是乎，果断入手开始研究~🤔🤔</div>2020-05-06</li><br/><li><span>张瀚元Chester</span> 👍（18） 💬（1）<div>马上去声网Agora做C++云平台开发了，但基本没咋看过C++，有点慌，老师能给点学习侧重点的建议嘛</div>2020-06-17</li><br/><li><span>默</span> 👍（9） 💬（1）<div>我的C+编程能力还是小白，通过您的课程学习，之后我还需要做些什么才能更快的提高呢。</div>2020-05-08</li><br/><li><span>或许 没有</span> 👍（7） 💬（1）<div>研究生才开始学习C++，发现C++在很多地方都在更新，但是发现多得让人头晕了，之前版本成立的可能在新版本中被否定。头大</div>2020-05-09</li><br/><li><span>蓝配鸡</span> 👍（6） 💬（1）<div>看到是罗老师， 先买了一定不亏😂</div>2020-05-06</li><br/><li><span>rainnnnn</span> 👍（5） 💬（1）<div>买这个课的理由：1、我想学好C++，2、这个课的老师是罗剑锋。</div>2020-05-09</li><br/><li><span>Carlos</span> 👍（5） 💬（1）<div>哈哈，我刚在朋友圈宣布自己学会了c++, 这套课程就来了，完美衔接！</div>2020-05-06</li><br/><li><span>hao123</span> 👍（4） 💬（1）<div>罗老师，我这有个系统项目想用C++和python做服务端开发，用QT做客户端跨平台开发，您觉得怎样？给点建议，谢谢</div>2020-05-17</li><br/><li><span>微风漂过</span> 👍（4） 💬（1）<div>STL和C++多线程应该如何学习？
+另外，跨平台的C++开发应该如何学习？</div>2020-05-07</li><br/><li><span>Stephen</span> 👍（4） 💬（1）<div>老师真是很亲切，我看留言都回复了呢。加油</div>2020-05-06</li><br/><li><span>落曦</span> 👍（3） 💬（1）<div>老师您好，请问一下您GitHub提交的文件中cpp源码和cmakelists还有Makefile后面两个文件是附带的吗，要实操吗cpp文件可以根据代码直接编译g++ a.cpp -std=c++14 -o a.out，您给出的后面两个文件怎么实操 还是自动生成的？ 谢谢老师解答</div>2020-05-26</li><br/><li><span>徐有志</span> 👍（3） 💬（5）<div>Stay Hungary, Stay Foolish.</div>2020-05-06</li><br/><li><span>寻回光明</span> 👍（2） 💬（1）<div>大二时学的cpp，但是面向对象这块感觉还是没有提升，希望提升cpp水平。</div>2020-05-22</li><br/><li><span>Geek_jg3r26</span> 👍（2） 💬（1）<div>罗老师，我只有大一的学c++ 的经验，看过前五章c++ primer plus，可能也就学到简单的认识类 结构体 指针，这些基本知识，能跟的上这门课程吗？ </div>2020-05-12</li><br/>
 </ul>

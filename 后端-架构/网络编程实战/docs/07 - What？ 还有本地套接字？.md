@@ -11,87 +11,400 @@
 现在最火的云计算技术是什么？无疑是Kubernetes和Docker。在Kubernetes和Docker的技术体系中，有很多优秀的设计，比如Kubernetes的CRI（Container Runtime Interface），其思想是将Kubernetes的主要逻辑和Container Runtime的实现解耦。
 
 我们可以通过netstat命令查看Linux系统内的本地套接字状况，下面这张图列出了路径为/var/run/dockershim.socket的stream类型的本地套接字，可以清楚地看到开启这个套接字的进程为kubelet。kubelet是Kubernetes的一个组件，这个组件负责将控制器和调度器的命令转化为单机上的容器实例。为了实现和容器运行时的解耦，kubelet设计了基于本地套接字的客户端-服务器GRPC调用。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/18/c1/39/11904266.jpg" width="30px"><span>Steiner</span> 👍（0） 💬（1）<div>将本地套接字的文件unlink后没有任何操作，难道在bind本地套接字到文件的过程中会自动创建文件吗</div>2020-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/49/96/7523cdb6.jpg" width="30px"><span>spark</span> 👍（0） 💬（1）<div>stream_server:
-clilen = sizeof(cliaddr); 
-if ((connfd = accept(listenfd, (struct sockaddr *) &amp;cliaddr, &amp;clilen)) &lt; 0) { 
-if (errno == EINTR) error(1, errno, &quot;accept failed&quot;); &#47;* back to for() *&#47; 
-else error(1, errno, &quot;accept failed&quot;); }
-这段程序有问题吧? 不明白怎么back to for()?
-谢谢</div>2020-08-30</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/wwM75BhyU43UYOJ6fZCZgY6pfNPGHHRlooPLQEtDGUNic4aLRHWmBRTpIiblBAFheUVm9Sw8HWAChcFsnVM2sd5Q/132" width="30px"><span>Geek_d6f50f</span> 👍（0） 💬（1）<div>老师，为什么UDP本地套接字，在服务器端，接收数据和发送数据共用一块缓冲区，先接收，再把接收缓冲区的数据sendto到客户端，这时候发送错误，但是如果接收和发送各自的缓冲区，就不会出错，这是为什么呢？</div>2020-06-26</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/5kv7IqibneNnMLqtWZQR5f1et8lJmoxiaU43Ttzz3zqW7QzBqMkib8GCtImKsms7PPbWmTB51xRnZQAnRPfA1wVaw/132" width="30px"><span>Geek_63bb29</span> 👍（0） 💬（1）<div>老师。看了第八部分Docker那里，好像有些明白了。TCP是监听端口，这里的话，服务器是监听本地文件，是这样吧【之前提了一条问题】</div>2020-06-20</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/5kv7IqibneNnMLqtWZQR5f1et8lJmoxiaU43Ttzz3zqW7QzBqMkib8GCtImKsms7PPbWmTB51xRnZQAnRPfA1wVaw/132" width="30px"><span>Geek_63bb29</span> 👍（0） 💬（1）<div>老师，对于本地套接字，我的理解是：通过本地套接字的客户端和服务端，对各进程管理的内存进行信息交换，但是没能理解 &#47;var&#47;lib&#47;unixstream.sock这个文件的作用，因为我用TCP、UDP交换信息的思路，觉着信息流没有经过 这个文件呀，还请指点一下，谢谢老师。</div>2020-06-20</li><br/><li><img src="" width="30px"><span>Ray</span> 👍（0） 💬（1）<div>你可以看到 16～22 行将本地数据报套接字 bind 到本地一个路径上，然而 UDP 客户端程序是不需要这么做的。本地数据报套接字这么做的原因是，它需要指定一个本地路径，以便在服务器端回包时，可以正确地找到地址；
-----------------------------
-关于上文中的内容，想请教一下老师，为什么TCP的本地客户端不需要bind到一个地址？</div>2020-06-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/88/76/c69b7fe5.jpg" width="30px"><span>youngitachi</span> 👍（0） 💬（1）<div>不知道为啥write函数使用的nbytes，我这里使用sizeof获取的话多交互几次数据显示就会有问题。
-改成strlen函数有就好了</div>2020-05-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/11/78/4f0cd172.jpg" width="30px"><span>妥协</span> 👍（0） 💬（2）<div>本机通过 127.0.0.1地址通信时，走网络协议栈的全部流程吗？</div>2020-05-21</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJKj3GbvevFibxwJibTqm16NaE8MXibwDUlnt5tt73KF9WS2uypha2m1Myxic6Q47Zaj2DZOwia3AgicO7Q/132" width="30px"><span>饭</span> 👍（0） 💬（1）<div>window下，没有本地套接字枚举，是不是会自动根据IP判断本地地址的话，就走本地套接字</div>2020-05-07</li><br/><li><img src="" width="30px"><span>ray</span> 👍（0） 💬（3）<div>老师您好，
-请问什么时机应该使用sock_stream，sock_data呢？
-会有这个问题是因为，本地传输没有可靠性问题需要解决，两者速度都很快。既然如此，本地传输又会什么要分sock_stream，sock_data呢？
 
-谢谢老师的解答^^</div>2020-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/03/e9/6358059c.jpg" width="30px"><span>GalaxyCreater</span> 👍（0） 💬（2）<div>使用本地套接字和直接读写本地文件有什么不同；记得管道也会创建文件的，他们有什么不一样的</div>2020-03-31</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLTPmSgD6QSgicqsbzibiau9xWSYgdsvYlnVWBg91ibHQBYg39MT4O3AV5CHlJlVUvw9Ks9TZEmRvicfTw/132" width="30px"><span>InfoQ_0ef441e6756e</span> 👍（0） 💬（2）<div>老师。udp客户端bind 还是没理解，server坚挺的哪个文件，回复的时候发给那个文件不就行了么？</div>2020-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/73/51/aaedc2a6.jpg" width="30px"><span>treasure</span> 👍（0） 💬（1）<div>我看代码为什么客户端和服务端都bind这个函数，客户端不加bind可以吗？</div>2020-02-19</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/NTSD503ibERiba4wcsoiaezDrjLMOVVlAlliagHc6ic3icWFfuzaFWaHwuULQDo22mPiabicImFTB7ial82OuBD96bl4RTQ/132" width="30px"><span>Geek_d4f974</span> 👍（0） 💬（1）<div>运行server后，在netstat -lx中可以查看到，但是在&#47;tmp文件夹中没有生成unixstream.sock文件</div>2019-10-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e7/c4/28b58d33.jpg" width="30px"><span>曹绍坚</span> 👍（0） 💬（1）<div>&quot;另外还要明确一点，这个本地文件，必须是一个“文件”，不能是一个&quot;目录&quot;；&quot;
-这么说本地套接字是不是不适合实现多并发的服务器？</div>2019-09-24</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83er4HlmmWfWicNmo3x3HKaOwz3ibcicDFlV5xILbILKGFCXbnaLf2fZRARfBdVBC5NhIPmXxaxA0T9Jhg/132" width="30px"><span>Geek_Wison</span> 👍（0） 💬（2）<div>老师您好，这篇文章的第一段代码的第33～36行的if else是不是写得不太对？</div>2019-09-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ec/1c/d323b066.jpg" width="30px"><span>knull</span> 👍（0） 💬（2）<div>老师，能不能说说两种unix套接字的使用场景？tcp和udp有明显的特征差异。但是，unix的好像差别不是特别明显。我想象中，本地的话，丢包可能基本没有吧？仅仅是为了与tcp、udp对应，还是有特别的意义？</div>2019-08-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/3f/7d/6fb0d4e9.jpg" width="30px"><span>fee</span> 👍（0） 💬（1）<div>计算地址长度 len = offset（struct sockaddr_un， sun_family） + strlen（.sun_family）公司代码</div>2019-08-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/df/1e/cea897e8.jpg" width="30px"><span>传说中的成大大</span> 👍（0） 💬（1）<div> #include&quot;..&#47;my_head.h&quot; 
- #define LISTENQ 10 
- #define BUFFSIZE 1024 
- int 
- main( int argc, char* argv[] ) { 
-     if ( argc != 2 ) { 
-         error( 1, 0, &quot;useage unixstreamserver &lt;local path&gt;&quot; ); 
-     } 
- 15     socklen_t clilen; 
- 16     struct sockaddr_un cliaddr; 
- 17     struct sockaddr_un serveraddr; 
- 18     int sockfd = socket( AF_LOCAL, SOCK_DGRAM, 0 ); 
- 19     if ( sockfd &lt; 0 ) { 
- 20         error( 1, errno, &quot;socket create failed&quot; ); 
- 21     } 
- 22  
- 23     char* local_path = argv[1]; 
- 24     unlink( local_path ); 
- 25     bzero( &amp;serveraddr, sizeof( serveraddr ) ); 
- 26     serveraddr.sun_family = AF_LOCAL;   strcpy( serveraddr.sun_path,local_path ); 
- 27     if ( bind( sockfd, ( struct sockaddr*  ) &amp;serveraddr, sizeof( serveraddr ) ) &lt; 0 ) { 
- 28         error( 1, errno, &quot;bind failed&quot; );
- 29     } 
- 30 &#47;*
- 31     if ( listen( listenfd, LISTENQ ) &lt; 0 ) {
- 32         error( 1, errno, &quot;listen failed&quot; );
- 33     }
- 34 *&#47;
- 35 
- 36     clilen = sizeof( cliaddr );
- 42     char buf[BUFFSIZE];
- 43     while( 1 ) {
- 44         bzero( buf, sizeof( buf ) );
- 45         if ( recvfrom( sockfd, buf, BUFFSIZE, 0, ( struct sockaddr*  ) &amp;cliaddr, &amp;clilen ) == 0 ) {
- 46             printf( &quot;client quit&quot; );
- 47             break;
- 48         }
- 49         printf( &quot;Recevie: %s&quot;, buf );
- 50         char send_line[MAXLINE];
- 51         sprintf( send_line, &quot;Hi, %s&quot;, buf );
- 52         int nbytes = sizeof( send_line );
- 53         if ( sendto( sockfd, send_line, nbytes, 0,  ( struct sockaddr* ) &amp;cliaddr, clilen ) != nbytes ) {
- 54             error( 1, errno, &quot;write error&quot; );
- 55         }
- 56     }
- 57 
- 58     exit( 0 );
- 59 } 
-我这个代码本地数据报套接字 服务器端接收到数据过后发送时就报错如下
-ubuntu@VM-0-17-ubuntu:~&#47;network&#47;local_socket$ .&#47;dgrams .&#47;dgram.sock 
-Recevie: 1
-.&#47;dgrams: write error: Transport endpoint is not connected 就不知道怎么解决了                       </div>2019-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/8a/98/2be9d17b.jpg" width="30px"><span>破晓^_^</span> 👍（0） 💬（1）<div>那些拼命要老师贴代码带git上的有点懒啊，这本来就是一门注重实践的课程，编程不实践你能有收获？不妨自己敲一下收获更深呢？各位兄弟。</div>2019-08-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/3e/23/a379f47d.jpg" width="30px"><span>Time Machine</span> 👍（0） 💬（0）<div>请问下代码去哪儿获取啊？ &quot;lib&#47;common.h&quot; 是个啥包啊</div>2022-11-15</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/88nXicqmkJWm3IXVfPfGQSk8SKIBVKjuC4qhzaCkf5Ud88uvKgS4Vf5AzCJ1uaFO0gpPnxdh4CowfhpxV1kSbXw/132" width="30px"><span>lixin</span> 👍（0） 💬（0）<div>可不可以多个客户端连接一个服务端。那一个客户端退出会引起服务端的退出么</div>2022-08-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/f3/129d6dfe.jpg" width="30px"><span>李二木</span> 👍（0） 💬（0）<div>本地套接字一般也叫做 UNIX 域套接字，本地套接字是一种特殊类型的套接字，和 TCP&#47;UDP 套接字不同。TCP&#47;UDP 即使在本地地址通信，也要走系统网络协议栈，而本地套接字，严格意义上说提供了一种单主机跨进程间调用的手段，减少了协议栈实现的复杂度，效率比 TCP&#47;UDP 套接字都要高许多（可以理解为读本地文件）</div>2022-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/6c/a8/1922a0f5.jpg" width="30px"><span>郑祖煌</span> 👍（0） 💬（0）<div>1. 连接不上，因为客户端还没有赋予权限。 
-2. 因为服务器做了判断 当read()==0的时候 也就是客户端退出的时候，服务器也退出了。
-    原因就是服务器在代码逻辑层做了一个退出的判断。
-3.客户端在连接时会报错，错误提示是“Protocol wrong type for socket (91)</div>2020-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/13/ab/d73e25de.jpg" width="30px"><span>Geek_wannaBgeek</span> 👍（0） 💬（0）<div>打卡打卡</div>2020-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（0） 💬（0）<div>本地套接字是一种特殊类型的套接字，和 TCP&#47;UDP 套接字不同。TCP&#47;UDP 即使在本地地址通信，也要走系统网络协议栈，而本地套接字，严格意义上说提供了一种单主机跨进程间调用的手段，减少了协议栈实现的复杂度，效率比 TCP&#47;UDP 套接字都要高许多。类似的 IPC 机制还有 UNIX 管道、共享内存和 RPC 调用等。
-这里的描述，“减少了协议栈实现的复杂度”，没理解本地套接字，具体还走不走网络的协议栈？如果走应该仍然属于网络通信的范畴，如果不走，他具体怎么实现的，和共享内存有什么本质区别？
-这里确实刷新了认知，之前认为进程间通信，必须要走网络协议的，哪怕是单机上的两个进程也是这样。其实只要他们能交流信息，走不走网络没什么必然联系，共享内存这个就容易理解和实现，不过还是需要约定双方交流的方式，否则信息能获取但不理解也不成。</div>2019-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/45/4f/3b24dccc.jpg" width="30px"><span>岸超</span> 👍（0） 💬（0）<div>1:普通用户应该是没有 &#47;var&#47;lib&#47;unixstream.sock 这个文件的读写权限的，root创建一般会是700的形式。可以手动chmod添加权限，使得普通用户也可以访问该本地套接字。
-2:这个问题在 流式套接字和数据报两种情况应该是不同的吧。流式套接字中应该是复用了socket close的语义，进程退出会关闭fd，而对端的read在tcp连接时，收到fin分节会返回0，这里在本地套接字上应该是模拟了对端close时的这种效果。但是数据报套接字是不存在这种情况下返回0的实现的，故而这段代码其实不会生效，实际效果展示中也没有退出
-3:问题三肯定会报错，虽不会三次握手，但内核肯定无法把这两种套接字在底层连接起来，但具体错误未知。</div>2019-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a3/fc/379387a4.jpg" width="30px"><span>ly</span> 👍（0） 💬（0）<div>问题一：
-个人感觉客户端没有权限也可以连接，这个sock文件是服务端创建的，客户端仅仅是向这个套接字发送、接受数据而已；类推到tcp的套接字，服务端只要监听一个端口，防火墙放开端口，默认情况下是对客户端无限制的（所以客户端都可以连接）。
-问题二：
-这个服务端随着客户端的退出而退出，应该是服务端的代码所致，代码中read方法正常情况下是会阻塞，客户端发完消息这个就会解除阻塞，但是客户端退出，这个read方法读不到数据，进入break语句，main方法结束。
-问题三：
-服务端以数据包接受，客户端用字节流发送（有点好玩）；由于本地套接字的字节流没有三次握手，我想客户端还是可以把数据发给服务端的，至于服务端的接收情况......实在编不下去了，请老师指教！</div>2019-08-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（0） 💬（0）<div>(ps: 老师讲的是真的好 对比分析都有)</div>2019-08-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（0） 💬（0）<div>1. 文件是服务端服务器上的 服务端本地监听的 服务端需要权限 客户端应该不需要吧 所以应该可以连接成功吧
+![](https://static001.geekbang.org/resource/image/c7/6b/c75a8467a84f30e523917f28f2f4266b.jpg?wh=2998%2A1346)  
+眼尖的同学可能发现列表里还有docker-containerd.sock等其他本地套接字，是的，Docker其实也是大量使用了本地套接字技术来构建的。
 
-2. 看代码是read返回值是0的时候退出的
+如果我们在/var/run目录下将会看到docker使用的本地套接字描述符:
 
-3. 一个是socket_stream 一个是datagram 两个格式不一样 应该会报错吧</div>2019-08-16</li><br/>
-</ul>
+![](https://static001.geekbang.org/resource/image/a0/4d/a0e6f8ca0f9c5727f554323a26a9c14d.jpg?wh=1843%2A394)
+
+## 本地套接字概述
+
+本地套接字一般也叫做UNIX域套接字，最新的规范已经改叫本地套接字。在前面的TCP/UDP例子中，我们经常使用127.0.0.1完成客户端进程和服务器端进程同时在本机上的通信，那么，这里的本地套接字又是什么呢？
+
+本地套接字是一种特殊类型的套接字，和TCP/UDP套接字不同。TCP/UDP即使在本地地址通信，也要走系统网络协议栈，而本地套接字，严格意义上说提供了一种单主机跨进程间调用的手段，减少了协议栈实现的复杂度，效率比TCP/UDP套接字都要高许多。类似的IPC机制还有UNIX管道、共享内存和RPC调用等。
+
+比如X Window实现，如果发现是本地连接，就会走本地套接字，工作效率非常高。
+
+现在你可以回忆一下，在前面介绍套接字地址时，我们讲到了本地地址，这个本地地址就是本地套接字专属的。
+
+![](https://static001.geekbang.org/resource/image/ed/58/ed49b0f1b658e82cb07a6e1e81f36b58.png?wh=3979%2A3770)
+
+## 本地字节流套接字
+
+我们先从字节流本地套接字开始。
+
+这是一个字节流类型的本地套接字服务器端例子。在这个例子中，服务器程序打开本地套接字后，接收客户端发送来的字节流，并往客户端回送了新的字节流。
+
+```
+#include  "lib/common.h"
+
+int main(int argc, char **argv) {
+    if (argc != 2) {
+        error(1, 0, "usage: unixstreamserver <local_path>");
+    }
+
+    int listenfd, connfd;
+    socklen_t clilen;
+    struct sockaddr_un cliaddr, servaddr;
+
+    listenfd = socket(AF_LOCAL, SOCK_STREAM, 0);
+    if (listenfd < 0) {
+        error(1, errno, "socket create failed");
+    }
+
+    char *local_path = argv[1];
+    unlink(local_path);
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sun_family = AF_LOCAL;
+    strcpy(servaddr.sun_path, local_path);
+
+    if (bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
+        error(1, errno, "bind failed");
+    }
+
+    if (listen(listenfd, LISTENQ) < 0) {
+        error(1, errno, "listen failed");
+    }
+
+    clilen = sizeof(cliaddr);
+    if ((connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen)) < 0) {
+        if (errno == EINTR)
+            error(1, errno, "accept failed");        /* back to for() */
+        else
+            error(1, errno, "accept failed");
+    }
+
+    char buf[BUFFER_SIZE];
+
+    while (1) {
+        bzero(buf, sizeof(buf));
+        if (read(connfd, buf, BUFFER_SIZE) == 0) {
+            printf("client quit");
+            break;
+        }
+        printf("Receive: %s", buf);
+
+        char send_line[MAXLINE];
+        sprintf(send_line, "Hi, %s", buf);
+
+        int nbytes = sizeof(send_line);
+
+        if (write(connfd, send_line, nbytes) != nbytes)
+            error(1, errno, "write error");
+    }
+
+    close(listenfd);
+    close(connfd);
+
+    exit(0);
+
+}
+```
+
+我对这个程序做一个详细的解释：
+
+- 第12～15行非常关键，**这里创建的套接字类型，注意是AF\_LOCAL，并且使用字节流格式**。你现在可以回忆一下，TCP的类型是AF\_INET和字节流类型；UDP的类型是AF\_INET和数据报类型。在前面的文章中，我们提到AF\_UNIX也是可以的，基本上可以认为和AF\_LOCAL是等价的。
+- 第17～21行创建了一个本地地址，这里的本地地址和IPv4、IPv6地址可以对应，数据类型为sockaddr\_un，这个数据类型中的sun\_family需要填写为AF\_LOCAL，最为关键的是需要对sun\_path设置一个本地文件路径。我们这里还做了一个unlink操作，以便把存在的文件删除掉，这样可以保持幂等性。
+- 第23～29行，分别执行bind和listen操作，这样就监听在一个本地文件路径标识的套接字上，这和普通的TCP服务端程序没什么区别。
+- 第41～56行，使用read和write函数从套接字中按照字节流的方式读取和发送数据。
+
+我在这里着重强调一下本地文件路径。关于本地文件路径，需要明确一点，它必须是“绝对路径”，这样的话，编写好的程序可以在任何目录里被启动和管理。如果是“相对路径”，为了保持同样的目的，这个程序的启动路径就必须固定，这样一来，对程序的管理反而是一个很大的负担。
+
+另外还要明确一点，这个本地文件，必须是一个“文件”，不能是一个“目录”。如果文件不存在，后面bind操作时会自动创建这个文件。
+
+还有一点需要牢记，在Linux下，任何文件操作都有权限的概念，应用程序启动时也有应用属主。如果当前启动程序的用户权限不能创建文件，你猜猜会发生什么呢？这里我先卖个关子，一会演示的时候你就会看到结果。
+
+下面我们再看一下客户端程序。
+
+```
+#include "lib/common.h"
+
+int main(int argc, char **argv) {
+    if (argc != 2) {
+        error(1, 0, "usage: unixstreamclient <local_path>");
+    }
+
+    int sockfd;
+    struct sockaddr_un servaddr;
+
+    sockfd = socket(AF_LOCAL, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        error(1, errno, "create socket failed");
+    }
+
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sun_family = AF_LOCAL;
+    strcpy(servaddr.sun_path, argv[1]);
+
+    if (connect(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
+        error(1, errno, "connect failed");
+    }
+
+    char send_line[MAXLINE];
+    bzero(send_line, MAXLINE);
+    char recv_line[MAXLINE];
+
+    while (fgets(send_line, MAXLINE, stdin) != NULL) {
+
+        int nbytes = sizeof(send_line);
+        if (write(sockfd, send_line, nbytes) != nbytes)
+            error(1, errno, "write error");
+
+        if (read(sockfd, recv_line, MAXLINE) == 0)
+            error(1, errno, "server terminated prematurely");
+
+        fputs(recv_line, stdout);
+    }
+
+    exit(0);
+}
+```
+
+下面我带大家理解一下这个客户端程序。
+
+- 11～14行创建了一个本地套接字，和前面服务器端程序一样，用的也是字节流类型SOCK\_STREAM。
+- 16～18行初始化目标服务器端的地址。我们知道在TCP编程中，使用的是服务器的IP地址和端口作为目标，在本地套接字中则使用文件路径作为目标标识，sun\_path这个字段标识的是目标文件路径，所以这里需要对sun\_path进行初始化。
+- 20行和TCP客户端一样，发起对目标套接字的connect调用，不过由于是本地套接字，并不会有三次握手。
+- 28～38行从标准输入中读取字符串，向服务器端发送，之后将服务器端传输过来的字符打印到标准输出上。
+
+总体上，我们可以看到，本地字节流套接字和TCP服务器端、客户端编程最大的差异就是套接字类型的不同。本地字节流套接字识别服务器不再通过IP地址和端口，而是通过本地文件。
+
+接下来，我们就运行这个程序来加深对此的理解。
+
+### 只启动客户端
+
+第一个场景中，我们只启动客户端程序：
+
+```
+$ ./unixstreamclient /tmp/unixstream.sock
+connect failed: No such file or directory (2)
+```
+
+我们看到，由于没有启动服务器端，没有一个本地套接字在/tmp/unixstream.sock这个文件上监听，客户端直接报错，提示我们没有文件存在。
+
+### 服务器端监听在无权限的文件路径上
+
+还记得我们在前面卖的关子吗？在Linux下，执行任何应用程序都有应用属主的概念。在这里，我们让服务器端程序的应用属主没有/var/lib/目录的权限，然后试着启动一下这个服务器程序 ：
+
+```
+$ ./unixstreamserver /var/lib/unixstream.sock
+bind failed: Permission denied (13)
+```
+
+这个结果告诉我们启动服务器端程序的用户，必须对本地监听路径有权限。这个结果和你期望的一致吗？
+
+试一下root用户启动该程序：
+
+```
+sudo ./unixstreamserver /var/lib/unixstream.sock
+(阻塞运行中)
+```
+
+我们看到，服务器端程序正常运行了。
+
+打开另外一个shell，我们看到/var/lib下创建了一个本地文件，大小为0，而且文件的最后结尾有一个（=）号。其实这就是bind的时候自动创建出来的文件。
+
+```
+$ ls -al /var/lib/unixstream.sock
+rwxr-xr-x 1 root root 0 Jul 15 12:41 /var/lib/unixstream.sock=
+```
+
+如果我们使用netstat命令查看UNIX域套接字，就会发现unixstreamserver这个进程，监听在/var/lib/unixstream.sock这个文件路径上。
+
+![](https://static001.geekbang.org/resource/image/58/b1/58d259d15b7012645d168a9c5d9f3fb1.jpg?wh=2369%2A334)  
+看看，很简单吧，我们写的程序和鼎鼎大名的Kubernetes运行在同一机器上，原理和行为完全一致。
+
+### 服务器-客户端应答
+
+现在，我们让服务器和客户端都正常启动，并且客户端依次发送字符：
+
+```
+$./unixstreamserver /tmp/unixstream.sock
+Receive: g1
+Receive: g2
+Receive: g3
+client quit
+```
+
+```
+$./unixstreamclient /tmp/unixstream.sock
+g1
+Hi, g1
+g2
+Hi, g2
+g3
+Hi, g3
+^C
+```
+
+我们可以看到，服务器端陆续收到客户端发送的字节，同时，客户端也收到了服务器端的应答；最后，当我们使用Ctrl+C，让客户端程序退出时，服务器端也正常退出。
+
+## 本地数据报套接字
+
+我们再来看下在本地套接字上使用数据报的服务器端例子：
+
+```
+#include  "lib/common.h"
+
+int main(int argc, char **argv) {
+    if (argc != 2) {
+        error(1, 0, "usage: unixdataserver <local_path>");
+    }
+
+    int socket_fd;
+    socket_fd = socket(AF_LOCAL, SOCK_DGRAM, 0);
+    if (socket_fd < 0) {
+        error(1, errno, "socket create failed");
+    }
+
+    struct sockaddr_un servaddr;
+    char *local_path = argv[1];
+    unlink(local_path);
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sun_family = AF_LOCAL;
+    strcpy(servaddr.sun_path, local_path);
+
+    if (bind(socket_fd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
+        error(1, errno, "bind failed");
+    }
+
+    char buf[BUFFER_SIZE];
+    struct sockaddr_un client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    while (1) {
+        bzero(buf, sizeof(buf));
+        if (recvfrom(socket_fd, buf, BUFFER_SIZE, 0, (struct sockadd *) &client_addr, &client_len) == 0) {
+            printf("client quit");
+            break;
+        }
+        printf("Receive: %s \n", buf);
+
+        char send_line[MAXLINE];
+        bzero(send_line, MAXLINE);
+        sprintf(send_line, "Hi, %s", buf);
+
+        size_t nbytes = strlen(send_line);
+        printf("now sending: %s \n", send_line);
+
+        if (sendto(socket_fd, send_line, nbytes, 0, (struct sockadd *) &client_addr, client_len) != nbytes)
+            error(1, errno, "sendto error");
+    }
+
+    close(socket_fd);
+
+    exit(0);
+}
+```
+
+本地数据报套接字和前面的字节流本地套接字有以下几点不同：
+
+- 第9行创建的本地套接字，**这里创建的套接字类型，注意是AF\_LOCAL**，协议类型为SOCK\_DGRAM。
+- 21～23行bind到本地地址之后，没有再调用listen和accept，回忆一下，这其实和UDP的性质一样。
+- 28～45行使用recvfrom和sendto来进行数据报的收发，不再是read和send，这其实也和UDP网络程序一致。
+
+然后我们再看一下客户端的例子：
+
+```
+#include "lib/common.h"
+
+int main(int argc, char **argv) {
+    if (argc != 2) {
+        error(1, 0, "usage: unixdataclient <local_path>");
+    }
+
+    int sockfd;
+    struct sockaddr_un client_addr, server_addr;
+
+    sockfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        error(1, errno, "create socket failed");
+    }
+
+    bzero(&client_addr, sizeof(client_addr));        /* bind an address for us */
+    client_addr.sun_family = AF_LOCAL;
+    strcpy(client_addr.sun_path, tmpnam(NULL));
+
+    if (bind(sockfd, (struct sockaddr *) &client_addr, sizeof(client_addr)) < 0) {
+        error(1, errno, "bind failed");
+    }
+
+    bzero(&server_addr, sizeof(server_addr));
+    server_addr.sun_family = AF_LOCAL;
+    strcpy(server_addr.sun_path, argv[1]);
+
+    char send_line[MAXLINE];
+    bzero(send_line, MAXLINE);
+    char recv_line[MAXLINE];
+
+    while (fgets(send_line, MAXLINE, stdin) != NULL) {
+        int i = strlen(send_line);
+        if (send_line[i - 1] == '\n') {
+            send_line[i - 1] = 0;
+        }
+        size_t nbytes = strlen(send_line);
+        printf("now sending %s \n", send_line);
+
+        if (sendto(sockfd, send_line, nbytes, 0, (struct sockaddr *) &server_addr, sizeof(server_addr)) != nbytes)
+            error(1, errno, "sendto error");
+
+        int n = recvfrom(sockfd, recv_line, MAXLINE, 0, NULL, NULL);
+        recv_line[n] = 0;
+
+        fputs(recv_line, stdout);
+        fputs("\n", stdout);
+    }
+
+    exit(0);
+}
+```
+
+这个程序和UDP网络编程的例子基本是一致的，我们可以把它当作是用本地文件替换了IP地址和端口的UDP程序，不过，这里还是有一个非常大的不同的。
+
+这个不同点就在16～22行。你可以看到16～22行将本地套接字bind到本地一个路径上，然而UDP客户端程序是不需要这么做的。本地数据报套接字这么做的原因是，它需要指定一个本地路径，以便在服务器端回包时，可以正确地找到地址；而在UDP客户端程序里，数据是可以通过UDP包的本地地址和端口来匹配的。
+
+下面这段代码就展示了服务器端和客户端通过数据报应答的场景：
+
+```
+ ./unixdataserver /tmp/unixdata.sock
+Receive: g1
+now sending: Hi, g1
+Receive: g2
+now sending: Hi, g2
+Receive: g3
+now sending: Hi, g3
+```
+
+```
+$ ./unixdataclient /tmp/unixdata.sock
+g1
+now sending g1
+Hi, g1
+g2
+now sending g2
+Hi, g2
+g3
+now sending g3
+Hi, g3
+^C
+```
+
+我们可以看到，服务器端陆续收到客户端发送的数据报，同时，客户端也收到了服务器端的应答。
+
+## 总结
+
+我在开头已经说过，本地套接字作为常用的进程间通信技术，被用于各种适用于在同一台主机上进程间通信的场景。关于本地套接字，我们需要牢记以下两点：
+
+- 本地套接字的编程接口和IPv4、IPv6套接字编程接口是一致的，可以支持字节流和数据报两种协议。
+- 本地套接字的实现效率大大高于IPv4和IPv6的字节流、数据报套接字实现。
+
+## 思考题
+
+讲完本地套接字之后，我给你留几道思考题。
+
+1. 在本地套接字字节流类型的客户端-服务器例子中，我们让服务器端以root账号启动，监听在/var/lib/unixstream.sock这个文件上。如果我们让客户端以普通用户权限启动，客户端可以连接上/var/lib/unixstream.sock吗？为什么呢？
+2. 我们看到客户端被杀死后，服务器端也正常退出了。看下退出后打印的日志，你不妨判断一下引起服务器端正常退出的逻辑是什么？
+3. 你有没有想过这样一个奇怪的场景：如果自己不小心写错了代码，本地套接字服务器端是SOCK\_DGRAM，客户端使用的是SOCK\_STREAM，路径和其他都是正确的，你觉得会发生什么呢？
+
+欢迎你在评论区写下你的思考，我会和你一起交流这些问题。如果这篇文章帮你弄懂了本地套接字，不妨把它分享给你的朋友或者同事，一起交流一下它吧！

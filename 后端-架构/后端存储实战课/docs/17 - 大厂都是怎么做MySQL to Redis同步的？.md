@@ -11,32 +11,181 @@
 我们上节课讲到了如何构建Redis集群，由于集群可以水平扩容，那只要集群足够大，理论上支持海量并发也不是问题。但是，因为并发请求的数量这个基数太大了，即使有很小比率的请求穿透缓存，打到数据库上请求的绝对数量仍然不小。加上大促期间的流量峰值，还是存在缓存穿透引发雪崩的风险。
 
 那这个问题怎么解决呢？其实方法你也想得到，不让请求穿透缓存不就行了？反正现在存储也便宜，只要你买得起足够多的服务器，Redis集群的容量就是无限的。不如把全量的数据都放在Redis集群里面，处理读请求的时候，干脆只读Redis，不去读数据库。这样就完全没有“缓存穿透”的风险了，实际上很多大厂它就是这么干的。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/16/e7/76/79c1f23a.jpg" width="30px"><span>李玥</span> 👍（27） 💬（0）<div>Hi，我是李玥。
+
+在Redis中缓存全量的数据，又引发了一个新的问题，那就是，如何来更新缓存中的数据呢？因为我们取消了缓存穿透的机制，这种情况下，从缓存读到数据可以直接返回，如果没读到数据，那就只能返回错误了！所以，当系统更新数据库的数据之后，必须及时去更新缓存。
+
+说到这儿，又绕回到那个老问题上了：怎么保证Redis中的数据和数据库中的数据同步更新？我们之前讲过用分布式事务来解决数据一致性的问题，但是这些方法都不太适合用来更新缓存，**因为分布式事务，对数据更新服务有很强的侵入性**。我们拿下单服务来说，如果为了更新缓存增加一个分布式事务，无论我们用哪种分布式事务，或多或少都会影响下单服务的性能。还有一个问题是，如果Redis本身出现故障，写入数据失败，还会导致下单失败，等于是降低了下单服务性能和可用性，这样肯定不行。
+
+**对于像订单服务这类核心的业务，一个可行的方法是，我们启动一个更新订单缓存的服务，接收订单变更的MQ消息，然后更新Redis中缓存的订单数据。**因为这类核心的业务数据，使用方非常多，本来就需要发消息，增加一个消费订阅基本没什么成本，订单服务本身也不需要做任何更改。
+
+![](https://static001.geekbang.org/resource/image/7c/8e/7cec502808318409dbc719c0b1cbbc8e.jpg?wh=1142%2A658)
+
+唯一需要担心的一个问题是，如果丢消息了怎么办？因为现在消息是缓存数据的唯一来源，一旦出现丢消息，缓存里缺失的那条数据永远不会被补上。所以，必须保证整个消息链条的可靠性，不过好在现在的MQ集群，比如像Kafka或者RocketMQ，它都有高可用和高可靠的保证机制，只要你正确配置好，是可以满足数据可靠性要求的。
+
+像订单服务这样，本来就有现成的数据变更消息可以订阅，这样更新缓存还是一个不错的选择，因为实现起来很简单，对系统的其他模块完全没有侵入。
+
+## 使用Binlog实时更新Redis缓存
+
+如果我们要缓存的数据，本来没有一份数据更新的MQ消息可以订阅怎么办？很多大厂都采用的，也是更通用的解决方案是这样的。
+
+数据更新服务只负责处理业务逻辑，更新MySQL，完全不用管如何去更新缓存。负责更新缓存的服务，把自己伪装成一个MySQL的从节点，从MySQL接收Binlog，解析Binlog之后，可以得到实时的数据变更信息，然后根据这个变更信息去更新Redis缓存。
+
+![](https://static001.geekbang.org/resource/image/91/12/918380c0e43de2f4ef7ad5e8e9d5d212.jpg?wh=1142%2A639)
+
+这种收Binlog更新缓存的方案，和刚刚我们讲到的，收MQ消息更新缓存的方案，其实它们的实现思路是一样的，都是异步订阅实时数据变更信息，去更新Redis。只不过，直接读取Binlog这种方式，它的通用性更强。不要求订单服务再发订单消息了，订单更新服务也不用费劲去解决“发消息失败怎么办？”这种数据一致性问题了。
+
+而且，在整个缓存更新链路上，减少了一个收发MQ的环节，从MySQL更新到Redis更新的时延更短，出现故障的可能性也更低，所以很多大厂更青睐于这种方案。
+
+这个方案唯一的缺点是，实现订单缓存更新服务有点儿复杂，毕竟不像收消息，拿到的直接就是订单数据，解析Binlog还是挺麻烦的。
+
+有很多开源的项目就提供了订阅和解析MySQL Binlog的功能，下面我们以比较常用的开源项目[Canal](https://github.com/alibaba/canal)为例，来演示一下如何实时接收Binlog更新Redis缓存。
+
+Canal模拟MySQL 主从复制的交互协议，把自己伪装成一个MySQL的从节点，向MySQL主节点发送dump请求，MySQL收到请求后，就会开始推送Binlog给Canal，Canal解析Binlog字节流之后，转换为便于读取的结构化数据，供下游程序订阅使用。下图是Canal的工作原理：
+
+![](https://static001.geekbang.org/resource/image/45/e4/452211795717190e55c5b0ff2ab208e4.jpg?wh=1142%2A546)
+
+在我们这个示例中，MySQL和Redis都运行在本地的默认端口上，MySQL的端口为3306，Redis的端口为6379。为了便于大家操作，我们还是以《[04 | 事务：账户余额总是对不上账，怎么办？](https://time.geekbang.org/column/article/206544)》这节课中的账户余额表account\_balance作为演示数据。
+
+首先，下载并解压Canal 最新的1.1.4版本到本地：
+
+```
+wget https://github.com/alibaba/canal/releases/download/canal-1.1.4/canal.deployer-1.1.4.tar.gz
+tar zvfx canal.deployer-1.1.4.tar.gz
+```
+
+然后来配置MySQL，我们需要在MySQL的配置文件中开启Binlog，并设置Binlog的格式为ROW格式。
+
+```
+[mysqld]
+log-bin=mysql-bin # 开启Binlog
+binlog-format=ROW # 设置Binlog格式为ROW
+server_id=1 # 配置一个ServerID
+```
+
+给Canal开一个专门的MySQL用户并授权，确保这个用户有复制Binlog的权限：
+
+```
+CREATE USER canal IDENTIFIED BY 'canal';  
+GRANT SELECT, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'canal'@'%';
+FLUSH PRIVILEGES;
+```
+
+重启一下MySQL，确保所有的配置生效。重启后检查一下当前的Binlog文件和位置：
+
+![](https://static001.geekbang.org/resource/image/01/8f/01293d0ccc372418f3e01c785e204b8f.png?wh=1436%2A310)
+
+记录下File和Position两列的值，然后我们来配置Canal。编辑Canal的实例配置文件canal/conf/example/instance.properties，以便让Canal连接到我们的MySQL上。
+
+```
+canal.instance.gtidon=false
+
+
+# position info
+canal.instance.master.address=127.0.0.1:3306
+canal.instance.master.journal.name=binlog.000009
+canal.instance.master.position=155
+canal.instance.master.timestamp=
+canal.instance.master.gtid=
+
+
+# username/password
+canal.instance.dbUsername=canal
+canal.instance.dbPassword=canal
+canal.instance.connectionCharset = UTF-8
+canal.instance.defaultDatabaseName=test
+# table regex
+canal.instance.filter.regex=.*\\..
+```
+
+这个配置文件需要配置MySQL的连接地址、库名、用户名和密码之外，还需要配置canal.instance.master.journal.name和canal.instance.master.position这两个属性，取值就是刚刚记录的File和Position两列。然后就可以启动Canal服务了：
+
+```
+canal/bin/startup.sh
+```
+
+启动之后看一下日志文件canal/logs/example/example.log，如果里面没有报错，就说明启动成功并连接到我们的MySQL上了。
+
+Canal服务启动后，会开启一个端口（11111）等待客户端连接，客户端连接上Canal服务之后，可以从Canal服务拉取数据，每拉取一批数据，正确写入Redis之后，给Canal服务返回处理成功的响应。如果发生客户端程序宕机或者处理失败等异常情况，Canal服务没收到处理成功的响应，下次客户端来拉取的还是同一批数据，这样就可以保证顺序并且不会丢数据。
+
+接下来我们来开发账户余额缓存的更新程序，以下的代码都是用Java语言编写的：
+
+```
+while (true) {
+    Message message = connector.getWithoutAck(batchSize); // 获取指定数量的数据
+    long batchId = message.getId();
+    try {
+        int size = message.getEntries().size();
+        if (batchId == -1 || size == 0) {
+            Thread.sleep(1000);
+        } else {
+            processEntries(message.getEntries(), jedis);
+        }
+
+
+        connector.ack(batchId); // 提交确认
+    } catch (Throwable t) {
+        connector.rollback(batchId); // 处理失败, 回滚数据
+    }
+}
+```
+
+这个程序逻辑也不复杂，程序启动并连接到Canal服务后，就不停地拉数据，如果没有数据就睡一会儿，有数据就调用processEntries方法处理更新缓存。每批数据更新成功后，就调用ack方法给Canal服务返回成功响应，如果失败抛异常就回滚。下面是processEntries方法的主要代码：
+
+```
+for (CanalEntry.RowData rowData : rowChage.getRowDatasList()) {
+    if (eventType == CanalEntry.EventType.DELETE) { // 删除
+        jedis.del(row2Key("user_id", rowData.getBeforeColumnsList()));
+    } else if (eventType == CanalEntry.EventType.INSERT) { // 插入
+        jedis.set(row2Key("user_id", rowData.getAfterColumnsList()), row2Value(rowData.getAfterColumnsList()));
+    } else { // 更新
+        jedis.set(row2Key("user_id", rowData.getAfterColumnsList()), row2Value(rowData.getAfterColumnsList()));
+    }
+}
+```
+
+这里面根据事件类型来分别处理，如果MySQL中的数据删除了，就删除Redis中对应的数据。如果是更新和插入操作，那就调用Redis的SET命令来写入数据。
+
+把这个账户缓存更新服务启动后，我们来验证一下，我们在账户余额表插入一条记录：
+
+```
+mysql> insert into account_balance values (888, 100, NOW(), 999);
+```
+
+然后来看一下Redis缓存：
+
+```
+127.0.0.1:6379> get 888
+"{\"log_id\":\"999\",\"balance\":\"100\",\"user_id\":\"888\",\"timestamp\":\"2020-03-08 16:18:10\"}"
+```
+
+可以看到数据已经自动同步到Redis中去了。我把这个示例的完整代码放在了[GitHub](https://github.com/liyue2008/canal-to-redis-example)上供你参考。
+
+## 小结
+
+在处理超大规模并发的场景时，由于并发请求的数量非常大，即使少量的缓存穿透，也有可能打死数据库引发雪崩效应。对于这种情况，我们可以缓存全量数据来彻底避免缓存穿透问题。
+
+对于缓存数据更新的方法，可以订阅数据更新的MQ消息来异步更新缓存，更通用的方法是，把缓存更新服务伪装成一个MySQL的从节点，订阅MySQL的Binlog，通过Binlog来更新Redis缓存。
+
+需要特别注意的是，无论是用MQ还是Canal来异步更新缓存，对整个更新服务的数据可靠性和实时性要求都比较高，数据丢失或者更新慢了，都会造成Redis中的数据与MySQL中数据不同步。在把这套方案应用到生产环境中去的时候，需要考虑一旦出现不同步问题时的降级或补偿方案。
+
+## 思考题
+
+课后请你思考一下，如果出现缓存不同步的情况，在你负责的业务场景下，该如何降级或者补偿？欢迎你在留言区与我讨论。
+
+感谢你的阅读，如果你觉得今天的内容对你有帮助，也欢迎把它分享给你的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>李玥</span> 👍（27） 💬（0）<div>Hi，我是李玥。
 
 这里回顾一下上节课的思考题：
 
 课后请你再去看一下 HDFS，它在解决分片、复制和高可用这几方面，哪些是“抄作业”，哪些又是自己独创的。
 
-HDFS集群的构成，和我们之前讲解的几个分布式存储集群是类似的。主要分为NameNode，也就是存放元数据和负责路由的节点，以及用于存放文件数据的DataNode。在HDFS中，大文件同样被划分为多个块，每个块会有多个副本来保证数据可靠性。但HDFS没有采用复制状态机的方式去同步数据，这块它实现了自己的复制算法，感兴趣的同学可以进一步去了解一下。</div>2020-04-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/38/fe/04f56d1e.jpg" width="30px"><span>learn more</span> 👍（23） 💬（5）<div>老师你好，这种方案是不是数据写走MySQL，数据读走redis？如果是这样的话，是不是高并发的写也会出现问题？问一下，为什么不把读写全部放到redis操作呢？这样读和写都得到改善，最后使用消息队列批量从redis获取数据同步MySQL，希望得到老师的解答，谢谢。</div>2020-05-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/20/08/bc06bc69.jpg" width="30px"><span>Dovelol</span> 👍（20） 💬（2）<div>老师好，用binlog方式同步mysql数据到redis，如果是已经在线运行很久的表数据，也适合转到这个方案吗？需要把之前的数据全部同步到redis中，重要的是该从binlog中的哪个位置开始呢。</div>2020-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4b/2f/186918b4.jpg" width="30px"><span>C J J</span> 👍（15） 💬（1）<div>全量数据缓存，缓存同步有个时间差，请问老师这该如何处理？</div>2020-04-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/df/bf/f90caa79.jpg" width="30px"><span>椿</span> 👍（14） 💬（1）<div>“还有一个问题是，如果 Redis 本身出现故障，写入数据失败，还会导致下单失败，等于是降低了下单服务性能和可用性，这样肯定不行。”
-看到这段话，想问老师一个问题，应该如何避免 Redis 本身的故障对系统造成的影响呢？</div>2020-04-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/1b/f4b786b9.jpg" width="30px"><span>飞翔</span> 👍（12） 💬（1）<div>老师 canal 是不是也的做的集群 防止它当机了 redis 不同步了</div>2020-04-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4b/2f/186918b4.jpg" width="30px"><span>C J J</span> 👍（8） 💬（2）<div>老师，我还有个疑问。用mq去更新缓存数据，如若上面所说Redis出现故障，这应如何处理？我想到的是重试机制，但超过次数应当如何处理？</div>2020-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c7/e6/11f21cb4.jpg" width="30px"><span>川杰</span> 👍（7） 💬（2）<div>老师好，想问一个redis很基础的问题。
+HDFS集群的构成，和我们之前讲解的几个分布式存储集群是类似的。主要分为NameNode，也就是存放元数据和负责路由的节点，以及用于存放文件数据的DataNode。在HDFS中，大文件同样被划分为多个块，每个块会有多个副本来保证数据可靠性。但HDFS没有采用复制状态机的方式去同步数据，这块它实现了自己的复制算法，感兴趣的同学可以进一步去了解一下。</div>2020-04-07</li><br/><li><span>learn more</span> 👍（23） 💬（5）<div>老师你好，这种方案是不是数据写走MySQL，数据读走redis？如果是这样的话，是不是高并发的写也会出现问题？问一下，为什么不把读写全部放到redis操作呢？这样读和写都得到改善，最后使用消息队列批量从redis获取数据同步MySQL，希望得到老师的解答，谢谢。</div>2020-05-23</li><br/><li><span>Dovelol</span> 👍（20） 💬（2）<div>老师好，用binlog方式同步mysql数据到redis，如果是已经在线运行很久的表数据，也适合转到这个方案吗？需要把之前的数据全部同步到redis中，重要的是该从binlog中的哪个位置开始呢。</div>2020-04-04</li><br/><li><span>C J J</span> 👍（15） 💬（1）<div>全量数据缓存，缓存同步有个时间差，请问老师这该如何处理？</div>2020-04-05</li><br/><li><span>椿</span> 👍（14） 💬（1）<div>“还有一个问题是，如果 Redis 本身出现故障，写入数据失败，还会导致下单失败，等于是降低了下单服务性能和可用性，这样肯定不行。”
+看到这段话，想问老师一个问题，应该如何避免 Redis 本身的故障对系统造成的影响呢？</div>2020-04-26</li><br/><li><span>飞翔</span> 👍（12） 💬（1）<div>老师 canal 是不是也的做的集群 防止它当机了 redis 不同步了</div>2020-04-07</li><br/><li><span>C J J</span> 👍（8） 💬（2）<div>老师，我还有个疑问。用mq去更新缓存数据，如若上面所说Redis出现故障，这应如何处理？我想到的是重试机制，但超过次数应当如何处理？</div>2020-04-06</li><br/><li><span>川杰</span> 👍（7） 💬（2）<div>老师好，想问一个redis很基础的问题。
 假设我们要对交易数据进行缓存。后端调用时，既有根据交易编号查找单个对象的方法，又有查询批量交易的方法。那我该怎么缓存交易数据呢？
 利用key-value的方式可以解决根据交易编号查找的情况。那批量查询怎么处理？用队列吗？如果用队列，那岂不是一个交易数据要缓存两遍？（一个是队列，一个是key-value）
-请回答下，谢谢</div>2020-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/98/af/3945cea4.jpg" width="30px"><span>一剑</span> 👍（6） 💬（1）<div>这里有个问题，就是我们一般是把计算结果缓存到redis，但是基于日志的同步方式是直接同步了原始表数据，这中间是不是少了一环？</div>2020-04-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/12/70/10faf04b.jpg" width="30px"><span>Lywane</span> 👍（4） 💬（1）<div>求问老师，&quot;负责更新缓存的服务，把自己伪装成一个 MySQL 的从节点，从 MySQL 接收 Binlog，解析 Binlog 之后，可以得到实时的数据变更信息，然后根据这个变更信息去更新 Redis 缓存。&quot;
+请回答下，谢谢</div>2020-04-04</li><br/><li><span>一剑</span> 👍（6） 💬（1）<div>这里有个问题，就是我们一般是把计算结果缓存到redis，但是基于日志的同步方式是直接同步了原始表数据，这中间是不是少了一环？</div>2020-04-05</li><br/><li><span>Lywane</span> 👍（4） 💬（1）<div>求问老师，&quot;负责更新缓存的服务，把自己伪装成一个 MySQL 的从节点，从 MySQL 接收 Binlog，解析 Binlog 之后，可以得到实时的数据变更信息，然后根据这个变更信息去更新 Redis 缓存。&quot;
 
-什么叫伪装呀？还是说负责更新的服务本身就是mysql从节点之一？</div>2020-05-01</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIm5rlbJ4HdXLbxmflvW0FW4rTyLcDzHLGDJUJic9W3f1KibWY7mAj9dxUIEVlxDyjwRXEX54KXEn5g/132" width="30px"><span>sea520</span> 👍（4） 💬（1）<div>如何只把mysql中的部分热数据更新到redis呢，而不是全部?
-如何只把redis中的部分冷数据更新到mysql呢？</div>2020-04-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/9b/08/27ac7ecd.jpg" width="30px"><span>水蒸蛋</span> 👍（3） 💬（4）<div>老师，请问下现在的数据量都是T级别的，那如果同步到redis这么大的量不是要T级别的内存，这个要多大的集群规模，而且不便宜啊，这个是不是还会加入ssd之类的？</div>2020-05-31</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIm5rlbJ4HdXLbxmflvW0FW4rTyLcDzHLGDJUJic9W3f1KibWY7mAj9dxUIEVlxDyjwRXEX54KXEn5g/132" width="30px"><span>sea520</span> 👍（3） 💬（3）<div>想问下redis数据同步mysql该怎么做么呢？</div>2020-04-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c6/00/683bb4f0.jpg" width="30px"><span>正在减肥的胖籽。</span> 👍（3） 💬（4）<div>数据同步到redis中，但是redis突然down丢失一些数据，或者redis也会设置缓存时间。那么还是会打到库中？老师你们这里的方案是?或者说你们的redis过期时间怎么平衡？</div>2020-04-07</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/iaZdMmzM0Vfass2ukHOqGgSBbtJMwb4NxDvLdN3R67iczzPVdtF0F0WS0abvls3edQpOVxaUJBmlr2YxHzUpveIQ/132" width="30px"><span>衹是一支歌</span> 👍（2） 💬（1）<div>数据更新到缓存中，结构不一样了，有的关联查询怎么做呢。</div>2020-06-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/06/7e/735968e2.jpg" width="30px"><span>西门吹牛</span> 👍（0） 💬（2）<div>老师好，我在工作中，用过canal，对一些库中表，进行监听， 然后发消息，这个canal，能监听多张库？如果监听多张库，canal的性能会不会下降，会不会出现读取binlog日志较慢，导致数据同步延迟？</div>2020-06-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/54/9a/76c0af70.jpg" width="30px"><span>每天晒白牙</span> 👍（64） 💬（13）<div>我们的系统也采用了 canal 监听 binlog 变更来异步更新 ES 和 redis 中的数据的方式
-
-不过我们的方案多了3个步骤
-1.canal 把消息发到 kafka 中，应用程序监听 topic
-2.应用程序收到消息后，根据 id 重新读 mysql
-3.增加定时任务来对比数据库和 ES ，redis 中的数据
-https:&#47;&#47;mp.weixin.qq.com&#47;s&#47;DPBgXftVE_cigSzzpA484w</div>2020-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fa/f7/91ac44c5.jpg" width="30px"><span>Mq</span> 👍（18） 💬（0）<div>1.可以增加一个对账功能，对数据库跟缓存的数据，数据最好有个版本号或时间，把不一致把数据库的数据刷进缓存
-2.提供刷用户缓存的服务，对投訴用户可以优先刷下</div>2020-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/27/b6/e53c17ee.jpg" width="30px"><span>芒果</span> 👍（10） 💬（0）<div>思考题我的想法是：
-1.如果缓存存在不同步的情况，那么客户端的数据就不是最新数据。如果用户不能接受数据不同步（比如：刚刚下的订单但是购物记录里面没有），作为用户一般都会进行手动刷新，服务端接收到用户手动刷新的请求时，直接去查数据库，然后通过老师之前讲的cache aside pattern的方式更新缓存。
-2.为了防止手动刷新的请求太多，减少对数据库的压力，可以考虑对这个接口做一个限流。通过监控这个接口，如果长时间访问压力都很大，那么很有可能是缓存同步出现了问题。这时候赶紧上线解决问题吧。
-其他的暂时也没想到什么了，期待听听老师的思路。</div>2020-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（6） 💬（4）<div>原来大厂是这样避免缓存穿透的！有钱任性</div>2020-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/17/ba/c56aa720.jpg" width="30px"><span>new life</span> 👍（2） 💬（1）<div>1、感觉使用 canal 通过binlog 的方式，防止了缓存穿透，起到了数据最终一致性的作用，但在缓存数据的时效性方面不能保证；
-2、通过binlog同步的数据库，应该是专门为缓存使用的吧，否则数据库里数据量很大，会占用Redis大量缓存；
-3、思考:如果发现数据不一致，应该触发更新缓存的操作，并且限制只有一个线程去更新；</div>2020-04-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/34/df/64e3d533.jpg" width="30px"><span>leslie</span> 👍（1） 💬（0）<div>这其中其实有个坑：redis与mysql之间的设置，多少合适？太小访问太频繁，太大更新不及时。
-电商中哪些业务的刷新频率的设置这个确实。。。</div>2020-04-04</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83erbY9UsqHZhhVoI69yXNibBBg0TRdUVsKLMg2UZ1R3NJxXdMicqceI5yhdKZ5Ad6CJYO0XpFHlJzIYQ/132" width="30px"><span>饭团</span> 👍（1） 💬（0）<div>学到了，哈哈！之前一直看有解析binlog日志的做法！</div>2020-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/e2/50/f890b462.jpg" width="30px"><span>光进</span> 👍（0） 💬（0）<div>redis的稳定性是否可以支撑全量的数据库放在redis?</div>2024-06-15</li><br/><li><img src="" width="30px"><span>Geek_25243b</span> 👍（0） 💬（0）<div>老师我有个问题问您一下，系统最开始Redis怎么做全量缓存呢</div>2023-11-05</li><br/><li><img src="" width="30px"><span>Geek_d93dd0</span> 👍（0） 💬（0）<div>flink cdc 从采集Binlog 到写Redis 一体化，省去了不必要的中间件 比如 canal 或者 flume + kafka</div>2023-03-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/d8/90/1cc506ad.jpg" width="30px"><span>Zyj-Sxy</span> 👍（0） 💬（0）<div>个人理解：使用canal就能充分利用mysql自身的事务保证数据的最终一致性，从而让应用更多的去关注业务本身，这就是一个取舍的问题诸如数据延迟、硬件成本、高可用等等因该是由业务需求及其他的方案和组成部分去完善的并不是任何一个单独的组件可以全部解决的。</div>2023-01-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>在 Redis 中缓存全量的数据，又引发了一个新的问题，那就是，如何来更新缓存中的数据呢？--记下来</div>2022-12-12</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/wBjvGCCZmO0Bic0DrnG466y6hwPkibGevAV6E6FPfQEricvw5toL7a2HSgjhI83cCiadrUibIyVibkgbbMOHVxo7HA8Q/132" width="30px"><span>距离30米</span> 👍（0） 💬（0）<div>采用canal的话，我认为是业务要接受数据有些许的延迟的，是最终一致性的方式</div>2022-10-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/df/cf/6e0dbfe5.jpg" width="30px"><span>Geek.N</span> 👍（0） 💬（1）<div>请问老师如果有大量更新请求打在mysql数据库上这种情况该如何解决？</div>2022-05-28</li><br/>
+什么叫伪装呀？还是说负责更新的服务本身就是mysql从节点之一？</div>2020-05-01</li><br/><li><span>sea520</span> 👍（4） 💬（1）<div>如何只把mysql中的部分热数据更新到redis呢，而不是全部?
+如何只把redis中的部分冷数据更新到mysql呢？</div>2020-04-28</li><br/><li><span>水蒸蛋</span> 👍（3） 💬（4）<div>老师，请问下现在的数据量都是T级别的，那如果同步到redis这么大的量不是要T级别的内存，这个要多大的集群规模，而且不便宜啊，这个是不是还会加入ssd之类的？</div>2020-05-31</li><br/><li><span>sea520</span> 👍（3） 💬（3）<div>想问下redis数据同步mysql该怎么做么呢？</div>2020-04-26</li><br/><li><span>正在减肥的胖籽。</span> 👍（3） 💬（4）<div>数据同步到redis中，但是redis突然down丢失一些数据，或者redis也会设置缓存时间。那么还是会打到库中？老师你们这里的方案是?或者说你们的redis过期时间怎么平衡？</div>2020-04-07</li><br/><li><span>衹是一支歌</span> 👍（2） 💬（1）<div>数据更新到缓存中，结构不一样了，有的关联查询怎么做呢。</div>2020-06-10</li><br/>
 </ul>

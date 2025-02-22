@@ -7,9 +7,163 @@
 ## 并发程序幕后的故事
 
 这些年，我们的CPU、内存、I/O设备都在不断迭代，不断朝着更快的方向努力。但是，在这个快速发展的过程中，有一个**核心矛盾一直存在，就是这三者的速度差异**。CPU和内存的速度差异可以形象地描述为：CPU是天上一天，内存是地上一年（假设CPU执行一条普通指令需要一天，那么CPU读写内存得等待一年的时间）。内存和I/O设备的速度差异就更大了，内存是天上一天，I/O设备是地上十年。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/fb/7b/2d4b38fb.jpg" width="30px"><span>Jialin</span> 👍（624） 💬（33）<div>对于双重锁的问题，我觉得任大鹏分析的蛮有道理，线程A进入第二个判空条件，进行初始化时，发生了时间片切换，即使没有释放锁，线程B刚要进入第一个判空条件时，发现条件不成立，直接返回instance引用，不用去获取锁。如果对instance进行volatile语义声明，就可以禁止指令重排序，避免该情况发生。
-对于有些同学对CPU缓存和内存的疑问，CPU缓存不存在于内存中的，它是一块比内存更小、读写速度更快的芯片，至于什么时候把数据从缓存写到内存，没有固定的时间，同样地，对于有volatile语义声明的变量，线程A执行完后会强制将值刷新到内存中，线程B进行相关操作时会强制重新把内存中的内容写入到自己的缓存，这就涉及到了volatile的写入屏障问题，当然也就是所谓happen-before问题。</div>2019-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/5b/79/d55044ac.jpg" width="30px"><span>coder</span> 👍（378） 💬（10）<div>long类型64位，所以在32位的机器上，对long类型的数据操作通常需要多条指令组合出来，无法保证原子性，所以并发的时候会出问题🌝🌝🌝</div>2019-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f7/0a/067537fc.jpg" width="30px"><span>别皱眉</span> 👍（182） 💬（18）<div>周末了
+
+程序里大部分语句都要访问内存，有些还要访问I/O，根据木桶理论（一只水桶能装多少水取决于它最短的那块木板），程序整体的性能取决于最慢的操作——读写I/O设备，也就是说单方面提高CPU性能是无效的。
+
+为了合理利用CPU的高性能，平衡这三者的速度差异，计算机体系结构、操作系统、编译程序都做出了贡献，主要体现为：
+
+1. CPU增加了缓存，以均衡与内存的速度差异；
+2. 操作系统增加了进程、线程，以分时复用CPU，进而均衡CPU与I/O设备的速度差异；
+3. 编译程序优化指令执行次序，使得缓存能够得到更加合理地利用。
+
+现在我们几乎所有的程序都默默地享受着这些成果，但是天下没有免费的午餐，并发程序很多诡异问题的根源也在这里。
+
+## 源头之一：缓存导致的可见性问题
+
+在单核时代，所有的线程都是在一颗CPU上执行，CPU缓存与内存的数据一致性容易解决。因为所有线程都是操作同一个CPU的缓存，一个线程对缓存的写，对另外一个线程来说一定是可见的。例如在下面的图中，线程A和线程B都是操作同一个CPU里面的缓存，所以线程A更新了变量V的值，那么线程B之后再访问变量V，得到的一定是V的最新值（线程A写过的值）。
+
+![](https://static001.geekbang.org/resource/image/a0/da/a07e8182819e2b260ce85b2167d446da.png?wh=1142%2A640)
+
+CPU缓存与内存的关系图
+
+一个线程对共享变量的修改，另外一个线程能够立刻看到，我们称为**可见性**。
+
+多核时代，每颗CPU都有自己的缓存，这时CPU缓存与内存的数据一致性就没那么容易解决了，当多个线程在不同的CPU上执行时，这些线程操作的是不同的CPU缓存。比如下图中，线程A操作的是CPU-1上的缓存，而线程B操作的是CPU-2上的缓存，很明显，这个时候线程A对变量V的操作对于线程B而言就不具备可见性了。这个就属于硬件程序员给软件程序员挖的“坑”。
+
+![](https://static001.geekbang.org/resource/image/e2/ea/e2aa76928b2bc135e08e7590ca36e0ea.png?wh=1142%2A640)
+
+多核CPU的缓存与内存关系图
+
+下面我们再用一段代码来验证一下多核场景下的可见性问题。下面的代码，每执行一次add10K()方法，都会循环10000次count+=1操作。在calc()方法中我们创建了两个线程，每个线程调用一次add10K()方法，我们来想一想执行calc()方法得到的结果应该是多少呢？
+
+```
+public class Test {
+  private long count = 0;
+  private void add10K() {
+    int idx = 0;
+    while(idx++ < 10000) {
+      count += 1;
+    }
+  }
+  public static long calc() {
+    final Test test = new Test();
+    // 创建两个线程，执行add()操作
+    Thread th1 = new Thread(()->{
+      test.add10K();
+    });
+    Thread th2 = new Thread(()->{
+      test.add10K();
+    });
+    // 启动两个线程
+    th1.start();
+    th2.start();
+    // 等待两个线程执行结束
+    th1.join();
+    th2.join();
+    return count;
+  }
+}
+```
+
+直觉告诉我们应该是20000，因为在单线程里调用两次add10K()方法，count的值就是20000，但实际上calc()的执行结果是个10000到20000之间的随机数。为什么呢？
+
+我们假设线程A和线程B同时开始执行，那么第一次都会将 count=0 读到各自的CPU缓存里，执行完 count+=1 之后，各自CPU缓存里的值都是1，同时写入内存后，我们会发现内存中是1，而不是我们期望的2。之后由于各自的CPU缓存里都有了count的值，两个线程都是基于CPU缓存里的 count 值来计算，所以导致最终count的值都是小于20000的。这就是缓存的可见性问题。
+
+循环10000次count+=1操作如果改为循环1亿次，你会发现效果更明显，最终count的值接近1亿，而不是2亿。如果循环10000次，count的值接近20000，原因是两个线程不是同时启动的，有一个时差。
+
+![](https://static001.geekbang.org/resource/image/ec/79/ec6743e74ccf9a3c6d6c819a41e52279.png?wh=1142%2A640)
+
+变量count在CPU缓存和内存的分布图
+
+## 源头之二：线程切换带来的原子性问题
+
+由于IO太慢，早期的操作系统就发明了多进程，即便在单核的CPU上我们也可以一边听着歌，一边写Bug，这个就是多进程的功劳。
+
+操作系统允许某个进程执行一小段时间，例如50毫秒，过了50毫秒操作系统就会重新选择一个进程来执行（我们称为“任务切换”），这个50毫秒称为“**时间片**”。
+
+![](https://static001.geekbang.org/resource/image/25/fb/254b129b145d80e9bb74123d6e620efb.png?wh=1142%2A640)
+
+线程切换示意图
+
+在一个时间片内，如果一个进程进行一个IO操作，例如读个文件，这个时候该进程可以把自己标记为“休眠状态”并出让CPU的使用权，待文件读进内存，操作系统会把这个休眠的进程唤醒，唤醒后的进程就有机会重新获得CPU的使用权了。
+
+这里的进程在等待IO时之所以会释放CPU使用权，是为了让CPU在这段等待时间里可以做别的事情，这样一来CPU的使用率就上来了；此外，如果这时有另外一个进程也读文件，读文件的操作就会排队，磁盘驱动在完成一个进程的读操作后，发现有排队的任务，就会立即启动下一个读操作，这样IO的使用率也上来了。
+
+是不是很简单的逻辑？但是，虽然看似简单，支持多进程分时复用在操作系统的发展史上却具有里程碑意义，Unix就是因为解决了这个问题而名噪天下的。
+
+早期的操作系统基于进程来调度CPU，不同进程间是不共享内存空间的，所以进程要做任务切换就要切换内存映射地址，而一个进程创建的所有线程，都是共享一个内存空间的，所以线程做任务切换成本就很低了。现代的操作系统都基于更轻量的线程来调度，现在我们提到的“任务切换”都是指“线程切换”。
+
+Java并发程序都是基于多线程的，自然也会涉及到任务切换，也许你想不到，任务切换竟然也是并发编程里诡异Bug的源头之一。任务切换的时机大多数是在时间片结束的时候，我们现在基本都使用高级语言编程，高级语言里一条语句往往需要多条CPU指令完成，例如上面代码中的`count += 1`，至少需要三条CPU指令。
+
+- 指令1：首先，需要把变量count从内存加载到CPU的寄存器；
+- 指令2：之后，在寄存器中执行+1操作；
+- 指令3：最后，将结果写入内存（缓存机制导致可能写入的是CPU缓存而不是内存）。
+
+操作系统做任务切换，可以发生在任何一条**CPU指令**执行完，是的，是CPU指令，而不是高级语言里的一条语句。对于上面的三条指令来说，我们假设count=0，如果线程A在指令1执行完后做线程切换，线程A和线程B按照下图的序列执行，那么我们会发现两个线程都执行了count+=1的操作，但是得到的结果不是我们期望的2，而是1。
+
+![](https://static001.geekbang.org/resource/image/33/63/33777c468872cb9a99b3cdc1ff597063.png?wh=1142%2A640)
+
+非原子操作的执行路径示意图
+
+我们潜意识里面觉得count+=1这个操作是一个不可分割的整体，就像一个原子一样，线程的切换可以发生在count+=1之前，也可以发生在count+=1之后，但就是不会发生在中间。**我们把一个或者多个操作在CPU执行的过程中不被中断的特性称为原子性**。CPU能保证的原子操作是CPU指令级别的，而不是高级语言的操作符，这是违背我们直觉的地方。因此，很多时候我们需要在高级语言层面保证操作的原子性。
+
+## 源头之三：编译优化带来的有序性问题
+
+那并发编程里还有没有其他有违直觉容易导致诡异Bug的技术呢？有的，就是有序性。顾名思义，有序性指的是程序按照代码的先后顺序执行。编译器为了优化性能，有时候会改变程序中语句的先后顺序，例如程序中：“a=6；b=7；”编译器优化后可能变成“b=7；a=6；”，在这个例子中，编译器调整了语句的顺序，但是不影响程序的最终结果。不过有时候编译器及解释器的优化可能导致意想不到的Bug。
+
+在Java领域一个经典的案例就是利用双重检查创建单例对象，例如下面的代码：在获取实例getInstance()的方法中，我们首先判断instance是否为空，如果为空，则锁定Singleton.class并再次检查instance是否为空，如果还为空则创建Singleton的一个实例。
+
+```
+public class Singleton {
+  static Singleton instance;
+  static Singleton getInstance(){
+    if (instance == null) {
+      synchronized(Singleton.class) {
+        if (instance == null)
+          instance = new Singleton();
+        }
+    }
+    return instance;
+  }
+}
+```
+
+假设有两个线程A、B同时调用getInstance()方法，他们会同时发现 `instance == null` ，于是同时对Singleton.class加锁，此时JVM保证只有一个线程能够加锁成功（假设是线程A），另外一个线程则会处于等待状态（假设是线程B）；线程A会创建一个Singleton实例，之后释放锁，锁释放后，线程B被唤醒，线程B再次尝试加锁，此时是可以加锁成功的，加锁成功后，线程B检查 `instance == null` 时会发现，已经创建过Singleton实例了，所以线程B不会再创建一个Singleton实例。
+
+这看上去一切都很完美，无懈可击，但实际上这个getInstance()方法并不完美。问题出在哪里呢？出在new操作上，我们以为的new操作应该是：
+
+1. 分配一块内存M；
+2. 在内存M上初始化Singleton对象；
+3. 然后M的地址赋值给instance变量。
+
+但是实际上优化后的执行路径却是这样的：
+
+1. 分配一块内存M；
+2. 将M的地址赋值给instance变量；
+3. 最后在内存M上初始化Singleton对象。
+
+优化后会导致什么问题呢？我们假设线程A先执行getInstance()方法，当执行完指令2时恰好发生了线程切换，切换到了线程B上；如果此时线程B也执行getInstance()方法，那么线程B在执行第一个判断时会发现 `instance != null` ，所以直接返回instance，而此时的instance是没有初始化过的，如果我们这个时候访问 instance 的成员变量就可能触发空指针异常。
+
+![](https://static001.geekbang.org/resource/image/64/d8/64c955c65010aae3902ec918412827d8.png?wh=1142%2A640)
+
+双重检查创建单例的异常执行路径
+
+## 总结
+
+要写好并发程序，首先要知道并发程序的问题在哪里，只有确定了“靶子”，才有可能把问题解决，毕竟所有的解决方案都是针对问题的。并发程序经常出现的诡异问题看上去非常无厘头，但是深究的话，无外乎就是直觉欺骗了我们，**只要我们能够深刻理解可见性、原子性、有序性在并发场景下的原理，很多并发Bug都是可以理解、可以诊断的**。
+
+在介绍可见性、原子性、有序性的时候，特意提到**缓存**导致的可见性问题，**线程切换**带来的原子性问题，**编译优化**带来的有序性问题，其实缓存、线程、编译优化的目的和我们写并发程序的目的是相同的，都是提高程序性能。但是技术在解决一个问题的同时，必然会带来另外一个问题，所以**在采用一项技术的同时，一定要清楚它带来的问题是什么，以及如何规避**。
+
+我们这个专栏在讲解每项技术的时候，都会尽量将每项技术解决的问题以及产生的问题讲清楚，也希望你能够在这方面多思考、多总结。
+
+## 课后思考
+
+常听人说，在32位的机器上对long型变量进行加减操作存在并发隐患，到底是不是这样呢？现在相信你一定能分析出来。
+
+欢迎在留言区与我分享你的想法，也欢迎你在留言区记录你的思考过程。感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>Jialin</span> 👍（624） 💬（33）<div>对于双重锁的问题，我觉得任大鹏分析的蛮有道理，线程A进入第二个判空条件，进行初始化时，发生了时间片切换，即使没有释放锁，线程B刚要进入第一个判空条件时，发现条件不成立，直接返回instance引用，不用去获取锁。如果对instance进行volatile语义声明，就可以禁止指令重排序，避免该情况发生。
+对于有些同学对CPU缓存和内存的疑问，CPU缓存不存在于内存中的，它是一块比内存更小、读写速度更快的芯片，至于什么时候把数据从缓存写到内存，没有固定的时间，同样地，对于有volatile语义声明的变量，线程A执行完后会强制将值刷新到内存中，线程B进行相关操作时会强制重新把内存中的内容写入到自己的缓存，这就涉及到了volatile的写入屏障问题，当然也就是所谓happen-before问题。</div>2019-02-28</li><br/><li><span>coder</span> 👍（378） 💬（10）<div>long类型64位，所以在32位的机器上，对long类型的数据操作通常需要多条指令组合出来，无法保证原子性，所以并发的时候会出问题🌝🌝🌝</div>2019-02-28</li><br/><li><span>别皱眉</span> 👍（182） 💬（18）<div>周末了
 对留言问题总结一下
  
 ------可见性问题------
@@ -45,7 +199,7 @@ io操作不占用cpu，读文件，是设备驱动干的事，cpu只管发命令
 ------寄存器切换------ 
 寄存器是共用的，A线程切换到B线程的时候，寄存器会把操作A的相关内容会保存到内存里，切换回来的时候，会从内存把内容加载到寄存器。可以理解为每个线程有自己的寄存器
  
-请老师帮忙看看，有没问题。希望我的总结能帮到更多人😄😄</div>2019-03-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4f/f9/1f0a9665.jpg" width="30px"><span>任大鹏</span> 👍（163） 💬（7）<div>对于阿根一世同学的那个疑问，我个人认为CPU时间片切换后，线程B刚好执行到第一次判断instance==null，此时不为空，不用进入synchronized里，就将还未初始化的instance返回了</div>2019-02-28</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJGuKuqRI35yaUbfl0emNshRnHlIzMmspVI8WBv6mqZWRtianpncBBZJy6DFibQWfFfyKAmrwInm8hA/132" width="30px"><span>Geek_dcwrgy</span> 👍（111） 💬（50）<div>针对阿根一世的问题，问题其实出现在new Singleton()这里。
+请老师帮忙看看，有没问题。希望我的总结能帮到更多人😄😄</div>2019-03-16</li><br/><li><span>任大鹏</span> 👍（163） 💬（7）<div>对于阿根一世同学的那个疑问，我个人认为CPU时间片切换后，线程B刚好执行到第一次判断instance==null，此时不为空，不用进入synchronized里，就将还未初始化的instance返回了</div>2019-02-28</li><br/><li><span>Geek_dcwrgy</span> 👍（111） 💬（50）<div>针对阿根一世的问题，问题其实出现在new Singleton()这里。
 这一行分对于CPU来讲，有3个指令：
 1.分配内存空间
 2.初始化对象
@@ -73,7 +227,7 @@ public class MySingleton {
 	public static MySingleton getInstance() { 
 		return MySingletonHandler.instance;
 	}
-}</div>2019-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/03/10/15f82d62.jpg" width="30px"><span>阿根一世</span> 👍（108） 💬（10）<div>对于双重锁检查那个例子，我有一个疑问，A如果没有完成实例的初始化，锁应该不会释放的，B是拿不到锁的，怎么还会出问题呢？</div>2019-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/31/f4/467cf5d7.jpg" width="30px"><span>MARK</span> 👍（85） 💬（5）<div>刚看过《java并发实战》，又是看了个开始就看不下去了😂😂，希望订阅专栏可以跟老师和其他童鞋一起坚持学习并发编程😄😄
+}</div>2019-02-28</li><br/><li><span>阿根一世</span> 👍（108） 💬（10）<div>对于双重锁检查那个例子，我有一个疑问，A如果没有完成实例的初始化，锁应该不会释放的，B是拿不到锁的，怎么还会出问题呢？</div>2019-02-28</li><br/><li><span>MARK</span> 👍（85） 💬（5）<div>刚看过《java并发实战》，又是看了个开始就看不下去了😂😂，希望订阅专栏可以跟老师和其他童鞋一起坚持学习并发编程😄😄
 
 思考题：在32位的机器上对long型变量进行加减操作存在并发隐患的说法是正确的。
 原因就是文章里的bug源头之二：线程切换带来的原子性问题。
@@ -92,12 +246,12 @@ Writes to and reads of references are always atomic, regardless of whether they 
 
 Some implementations may find it convenient to divide a single write action on a 64-bit long or double value into two write actions on adjacent 32-bit values. For efficiency&#39;s sake, this behavior is implementation-specific; an implementation of the Java Virtual Machine is free to perform writes to long and double values atomically or in two parts.
 
-Implementations of the Java Virtual Machine are encouraged to avoid splitting 64-bit values where possible. Programmers are encouraged to declare shared 64-bit values as volatile or synchronize their programs correctly to avoid possible complications.</div>2019-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/52/97/8f960ce9.jpg" width="30px"><span>xx鼠</span> 👍（47） 💬（6）<div>Singleton instance改为volatile或者final就完美了，这里面其实涉及Java的happen-before原则。</div>2019-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/0e/e8/5d2c3e08.jpg" width="30px"><span>何方妖孽</span> 👍（33） 💬（9）<div>synchronized修饰的代码块里，会出现线程切换么？我理解的synchronized作用就是同步执行，不会线程切换，请作者给我解答下。</div>2019-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/48/1b/7de6e72e.jpg" width="30px"><span>牧童纪年</span> 👍（33） 💬（7）<div>王老师，你文章中讲的 优化指令的执行次序 使得缓存能够更加合理的利用是什么意思？</div>2019-02-28</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eo7ticAviaxUk04QAiadIo1O5G7ib03V0AEibWdVW6Zxwzy7xMaVgKjAVE4NXZuLqsbY8CFNiaoFwyRx3Aw/132" width="30px"><span>Geek_1dn4jq</span> 👍（25） 💬（7）<div>老师,运行文中的测试代码,有时会出现9000多的结果,不知道是什么原因?</div>2019-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e2/f8/6e5da436.jpg" width="30px"><span>Gavin</span> 👍（24） 💬（3）<div>NIO和并发有什么关系呢？</div>2019-02-28</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaELZPnUAiajaR5C25EDLWeJURggyiaOP5GGPe2qlwpQcm5e3ybib8OsP4tvddFDLVRSNNGL5I3SFPJHsA/132" width="30px"><span>null</span> 👍（19） 💬（4）<div>看完文章来刷评论，看到阿根一世的童鞋问题，确实是这样，锁🔒都还没有释放，线程B根本获取不到对象，所以线程A创建的对象是完整的，线程B后续获取的对象也是初始化完成的对象。
+Implementations of the Java Virtual Machine are encouraged to avoid splitting 64-bit values where possible. Programmers are encouraged to declare shared 64-bit values as volatile or synchronize their programs correctly to avoid possible complications.</div>2019-02-28</li><br/><li><span>xx鼠</span> 👍（47） 💬（6）<div>Singleton instance改为volatile或者final就完美了，这里面其实涉及Java的happen-before原则。</div>2019-02-28</li><br/><li><span>何方妖孽</span> 👍（33） 💬（9）<div>synchronized修饰的代码块里，会出现线程切换么？我理解的synchronized作用就是同步执行，不会线程切换，请作者给我解答下。</div>2019-03-01</li><br/><li><span>牧童纪年</span> 👍（33） 💬（7）<div>王老师，你文章中讲的 优化指令的执行次序 使得缓存能够更加合理的利用是什么意思？</div>2019-02-28</li><br/><li><span>Geek_1dn4jq</span> 👍（25） 💬（7）<div>老师,运行文中的测试代码,有时会出现9000多的结果,不知道是什么原因?</div>2019-02-28</li><br/><li><span>Gavin</span> 👍（24） 💬（3）<div>NIO和并发有什么关系呢？</div>2019-02-28</li><br/><li><span>null</span> 👍（19） 💬（4）<div>看完文章来刷评论，看到阿根一世的童鞋问题，确实是这样，锁🔒都还没有释放，线程B根本获取不到对象，所以线程A创建的对象是完整的，线程B后续获取的对象也是初始化完成的对象。
 然后回去再看了一遍那一小段，当我看到线程B竞争锁资源失败后被阻塞，我就更肯定，应该是文章描述有误。
 当再往下看文章，发现后面有说：“一切都很完美，无懈可击”。soga，这是描述我们自己觉得正常的场景。
 接着文章下面分析异常的原因，但是没提到线程B在哪停下来，因此我们的思维还是停留在前面那一段，线程A和线程B都过了第一个判空语句，来了竞争锁 syncronized 这，所以有阿根一世同样的疑问。建议老师调整一下，在分析异常原因时，说明一下在哪个语句时发生了线程切换，这样童鞋们也更好理解。
 
-😂这理解有偏差，属于可见性问题，是我们大脑缓存了之前的描述，导致了异常的理解😂</div>2019-03-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/36/d2/c7357723.jpg" width="30px"><span>发条橙子 。</span> 👍（18） 💬（2）<div>老师 ，我有几个问题希望老师指点 ，也是涉及到操作系统的：
+😂这理解有偏差，属于可见性问题，是我们大脑缓存了之前的描述，导致了异常的理解😂</div>2019-03-31</li><br/><li><span>发条橙子 。</span> 👍（18） 💬（2）<div>老师 ，我有几个问题希望老师指点 ，也是涉及到操作系统的：
 
 1.  操作系统是以进程为单位共享资源 ，以线程单位进行调用 。 多个线程共享一个进程的资源 。 一个java应用占一个进程（jvm的内存模型的资源也在这个进程中） ，一个进程占一个cpu ， 所以老师所说的多核cpu缓存，每个cpu有自己的缓存 ，AB两个线程在不同的cpu上操作不太理解 ， 一个应用的AB两个线程是不是应该处在同个cpu上面 ？？？
 
@@ -106,23 +260,5 @@ Implementations of the Java Virtual Machine are encouraged to avoid splitting 64
 3. 我感觉老师第二点原子性中也有包含可见性问题，由于时间片到了， 当把资源读到自己的工作线程中时，由于不可见性，以为自己是最新的导致值不准确，这个也对应了第一个问题 ， 两个线程是否在同个进程内共享资源
 
 问题有点多 ， 可能自己的理解有偏差 ，希望老师指正
-</div>2019-02-28</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqHMAwG4atmGJ6H1cs1o3yUE2UhEian6cmbp9BWC1V2S7zAQdQHWYtaZbjahKHsMSkje5GrGjo9Iug/132" width="30px"><span>我会得到</span> 👍（17） 💬（1）<div>零点一过刚好看到更新，果断一口气读完，带劲！可见性，原子性，有序性，操作系统作为基础，内存模型，机器指令，编译原理，一个都不能少，开始有点意思了👍</div>2019-02-28</li><br/><li><img src="" width="30px"><span>suynan</span> 👍（14） 💬（5）<div>
-并发编程的场景中的三个bug源头：可见性、原子性、有序性
-1.可见性：多核系统每个cpu自带高速缓存，彼此间不交换信息（列子：两个线程对同一份实列变量count累加，结果可能不等于累加之和，因为线程将内存值载入各自的缓存中，之后的累加操作基于缓存值进行，并不是累加一次往内存回写一次）
-2.原子性：cpu分时操作导致线程的切换，（列子：AB两个线程同时进行count+=1，由于+=操作是3步指令①从内存加载②+1操作③回写到主内，线程A对其进行了①②操作后，切换到B线程，B线程进行了①②③，这时内存值是1，然后再切到A执行③操作，这时的值也还是1，PS:这貌似也存在可见性的问题）
- 3.有序性：指令的重排序（列子：单列模式的双重检测，new指令也是3步操作，①分内存②初始化③赋值给引用变量，可能会发生①③②的重排序，这时候如果又有操作系统的分时操作的加持，导致A操作①③后挂起，时间片被分配给了B线程，而B线程甚至都不需要进行锁的获取，因为此时instance已经不等于null了，但是此时的instance可能未初始化）</div>2019-03-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e4/76/a97242c0.jpg" width="30px"><span>黄朋飞</span> 👍（11） 💬（1）<div>老师你好，请问文章中的缓存和内存什么区别，缓存不是在内存中存放着吗？</div>2019-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a2/f3/aa504fa6.jpg" width="30px"><span>波波</span> 👍（10） 💬（1）<div>为老师点赞，讲了并发产生的前世今生，通俗易懂又不失深度。</div>2019-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f2/86/d689f77e.jpg" width="30px"><span>Hank_Yan</span> 👍（9） 💬（2）<div>〔如果此时线程 B 也执行 getInstance() 方法，那么线程 B 会发现instance != null，所以直接返回 instance〕
-
-这里加一句，线程B刚好执行到“第一个判断”，会发现  instance!=null ， 这样比较好，不然还是会有很多人误解是在执行第二个判断，然后问为什么锁没有释放，也能进行第二个判断。</div>2019-03-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4c/12/f0c145d4.jpg" width="30px"><span>Rayjun</span> 👍（9） 💬（4）<div>第一个测试代码是不是有点问题，在静态方法中怎么能访问非静态变量呢？</div>2019-03-03</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eo19qicyia7fD28fhVXB2dH2icFxIialY8ibmU30HicUJrLr8rOedVewgx1uhMKj0Gwl7FK44UKMNZOOicQQ/132" width="30px"><span>diexue798</span> 👍（9） 💬（3）<div>好好学习，不是很了解spring线程安全，springmvc线程安全这里,如果有成员变量，就算是数据共享了，就不安全了么，那么注入的servie怎么又是安全的，还有加不加锁的集合如果是局部变量是不是也都安全，那什么时候用线程安全的加了锁的集合呢？</div>2019-02-28</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJZhuQk0ibMqdsASdJib2aUKNjTiaVm1ib3EfjyyiaKBJAyzYFls9KTEQ3w60cpy5CPLRNHsX8uooDoB8g/132" width="30px"><span>rock</span> 👍（6） 💬（1）<div>对于文中提到的双重检查的问题.我理解这本质上是指令重排序引起的“安全构造问题”。（参见java并发编程实战3.5 安全发布一章）。
-如宝令老师文中所讲，一个new操作，实际上是多个CPU指令，不是原子操作而是复合操作。
-这个复合操作会被线程切换中断，导致此构造状态处于“未完成”状态。
-中断此刻，获得CPU执行权的其他线程会通过第一个判空条件，通过读取instance内存地址获取到此处于“未完成”状态的实例。
-
-指令重排序在这里起到了关键的“作恶”。即如老师文中所讲，把‘将新开辟的内存地址赋值于instance’指令排序到了‘实例化新开辟内存的各个域’指令前面。这就导致了不正确构造状态的产生。
-
-针对上述2点，1.构造过程中的，对构造对象的并发访问；2.不正确构造状态的产生；
-解决方法，杜绝其中任意一个即可。
-
-杜绝第1点，加锁在整个构造过程，即提高了加锁的范围，这会比文中的实现牺牲并发度，降低性能。
-杜绝第2点，使用volatile变量禁用指令重拍序。有效且不像第1种方法那样牺牲并发度。</div>2019-05-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/54/9a/76c0af70.jpg" width="30px"><span>每天晒白牙</span> 👍（6） 💬（1）<div>老师，您的第一个例子，说单核cpu不会有线程安全问题。这个不对吧，多线程安全问题，与单核或多核没啥关系吧，希望老师能回复这个留言，谢谢老师</div>2019-05-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/06/62/898449d3.jpg" width="30px"><span>... ...</span> 👍（6） 💬（3）<div>老师，上面的两个线程的例子应该不是可见性导致而是原子性导致的吧！如果是可见性导致的话，我在变量count上加个volatile应该可以解决问题啊！还发现个小问题，非静态变量应该不能直接用于静态方法中吧！</div>2019-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/47/36/cb57ac83.jpg" width="30px"><span>magicHu</span> 👍（5） 💬（4）<div>老师，缓存导致的可见性问题不是因为多核的原因吧，单核上也会有缓存导致可见性问题，求老师翻牌</div>2019-05-27</li><br/><li><img src="" width="30px"><span>linus</span> 👍（5） 💬（5）<div>关于文章开始说的单cpu的情况，如果也是非原子行操作，也会出现并发问题？
-</div>2019-03-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/46/c0/106d98e7.jpg" width="30px"><span>Sam_Deep_Thinking</span> 👍（5） 💬（1）<div>良心专栏呀。目前正准备组织小组成员学习该专栏，概念和背景都讲的非常清楚。老板让俺给一个技术规划，我列的其中一个，便是全组人员学习该专栏，并以小组分享的方式讲出来。</div>2019-03-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/dc/90/330d5620.jpg" width="30px"><span>pdai</span> 👍（5） 💬（2）<div>Count那个应该是1到20000之间吧，而不是10000到20000之间吧？</div>2019-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ff/8d/8601f035.jpg" width="30px"><span>淞淞同学</span> 👍（4） 💬（3）<div>循环 10000 次 count+=1 操作如果改为循环 1 亿次，你会发现效果更明显，最终 count 的值接近 1 亿，而不是 2 亿。如果循环 10000 次，count 的值接近 20000，原因是两个线程不是同时启动的，有一个时差。  意思是指的  都有时差，但是基数越小，重复执行有并发问题的次数越少和时间越少，越接近应该的数字。</div>2019-12-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/08/1c/ef15e661.jpg" width="30px"><span> 臣馟飞扬</span> 👍（4） 💬（2）<div>JAVA内存模型中说的每个线程都有自己的工作内存，然后将共享变量从主存读到自己的工作内存中进行操作，操作完后再回写到主存中。假如线程A在将共享变量读到自己的工作内存后，发生CPU切换，线程B读共享变量并操作，操作完回写主存后，线程A继续操作并回写结果，导致可见性问题。那线程的工作内存到底指什么呢？如果是指CPU缓存的话，指的是多个线程共享同一块CPU缓存还是每个线程隔离一块呢？</div>2019-03-09</li><br/>
+</div>2019-02-28</li><br/><li><span>我会得到</span> 👍（17） 💬（1）<div>零点一过刚好看到更新，果断一口气读完，带劲！可见性，原子性，有序性，操作系统作为基础，内存模型，机器指令，编译原理，一个都不能少，开始有点意思了👍</div>2019-02-28</li><br/>
 </ul>

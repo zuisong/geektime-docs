@@ -15,93 +15,304 @@
 第一个要说的库是libcurl，它来源于著名的[curl项目](https://curl.haxx.se/)，也是curl的底层核心。
 
 libcurl经过了多年的开发和实际项目的验证，非常稳定可靠，拥有上百万的用户，其中不乏Apple、Facebook、Google、Netflix等大公司。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/1e/72/52/8e81daf1.jpg" width="30px"><span>屈肖东</span> 👍（21） 💬（1）<div>老师什么时候可以推荐几个值得读的比较通用的开源代码，因为很多开源代码虽然很好，但是太过复杂庞大，很难阅读。或者写一篇针对如何更好的阅读源码的文章。毕竟读代码应该是学习写代码最好的方式</div>2020-06-15</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTICBNZjA9hW65x6g9b2iaicKUJW5gxFxtgPXH9Cqp6eyFfY1sD2hVY4dZrY5pmoK2r1KZEiaaIKocdZQ/132" width="30px"><span>赖阿甘</span> 👍（16） 💬（3）<div>说实在在看文章之前，我还不知道ZMQ这个网络通信库，哈哈。老师怎么没提到libevent、libev、asio、muduo等网络通信库，是否这些库的接口比较原始，不好用，还望解答</div>2020-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/46/3a/35d9cc02.jpg" width="30px"><span>Seven</span> 👍（8） 💬（1）<div>我也知道别人的东西好，但是老师也用，会不会这样的依赖，而让我们进步缓慢，怎么看这个问题。如何破？</div>2020-06-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5b/79/0f083d7d.jpg" width="30px"><span>编程国学</span> 👍（8） 💬（4）<div>军工行业，用户强调实时，一般采用udp，目前我们采用qt 自己的库，有没有好的建议</div>2020-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7f/a3/23540579.jpg" width="30px"><span>robonix</span> 👍（5） 💬（1）<div>疑惑同楼上～ ASIO 据说要加到c++ 20了，应该介绍呀？</div>2020-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/0a/83/f916f903.jpg" width="30px"><span>风</span> 👍（4） 💬（1）<div>请教罗老师，如何看待Go语言在网络编程上的发展势头～</div>2020-06-26</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJ7mAt63VrbLZPHpeZxSc4IlBYswQSnaAB5wGePaGFDehgiaNfIxI1SJ5yIHIlmVk8hsw0RaoaSCPA/132" width="30px"><span>Stephen</span> 👍（3） 💬（2）<div>确实感觉nanomsg更新的很慢,而且资料,影响力都不如zeromq.请教老师一个事情,如果想要学习这一块,是选择ZMQ还是nanomsg呢,我最近在看zmq作者写的一本书《ZeroMQ:云时代极速消息通信库》.但同事说,zmq已经过时了,应该学习nanomsg,给我搞的很无语,老师怎么看?</div>2021-03-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/63/1b/83ac7733.jpg" width="30px"><span>忧天小鸡</span> 👍（2） 💬（1）<div>有流媒体udp特别适合的库吗？刚接触c++，对编译什么的还不熟</div>2021-12-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/6c/87/1ec1ed1a.jpg" width="30px"><span>章北海</span> 👍（1） 💬（1）<div>老师好，最近项目中用到了Windows平台的libcurl，https通信的时候一般通过系统的证书验证服务器的证书，有两种编译方式:一种是支持win sspi的，这种情况编译的libcurl不用手动加载系统证书就可以发起https请求，但是不同的Windows系统上可能运行不了一样的程序;另一种是编译支持openssl的版本，但是Windows平台openssl有点特殊，要手动指定ca证书文件。我目前用的是后者，有个疑惑:curl根证书可以从官网手动下载，但是如何预防证书过期呢？证书过期了就访问不了https了吧，一般在项目中我们如何处理根证书的过期问题？谢谢！</div>2023-09-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8e/3f/1f529b26.jpg" width="30px"><span>henry</span> 👍（1） 💬（1）<div>请问下罗老师，ZMQ的pub&#47;sub, push&#47;pull模式和redis相比有哪些优势？
 
-如果多个进程之间要 pub，push 不同的业务类型数据，需要在一些进程中开多个端口，管理上有点麻烦，如果加一个Broker的中间层，又有点类似redis用法的意思</div>2020-07-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f3/ee/33ef689b.jpg" width="30px"><span>土土人</span> 👍（1） 💬（1）<div>ASIO使用起来极其别扭</div>2020-06-12</li><br/><li><img src="" width="30px"><span>TC128</span> 👍（1） 💬（1）<div>HP-Socket有人用吗？</div>2020-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/54/87/3b1f9de4.jpg" width="30px"><span>Confidant.</span> 👍（1） 💬（4）<div>老师，zmq的代码有一个lamda用&amp;捕获的错误，你的都可以编过吗？</div>2020-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/39/85/c6110f83.jpg" width="30px"><span>黄骏</span> 👍（1） 💬（1）<div>之前用过zmq，他的创始人也非常传奇</div>2020-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/b4/63/59bb487d.jpg" width="30px"><span>eletarior</span> 👍（1） 💬（1）<div>涨知识了，之前http通信一直使用的原生 libcurl，看起来现在可以转cpr了，不是不知道这个库的存在，只是没人推荐不敢换而已。另外ZMQ，这个库看起来可以解决手写TCP&#47;IP通信的问题，后面会试试。
-网络编程最大的坑其实是不懂网络协议，以及联调的问题，感觉不是库能解决的。但是库能解决底层封装，避免重复造轮子的痛苦。
-</div>2020-06-11</li><br/><li><img src="" width="30px"><span>飞飞</span> 👍（0） 💬（1）<div>能不能用ZMQ写服务？用其他库来写客户端？如果可以的话，ZMQ的几种模式要怎么配置？</div>2024-06-07</li><br/><li><img src="" width="30px"><span>Geek_e76697</span> 👍（0） 💬（1）<div>老师您好，编译cpr.cpp时报了下面的错误，这是什么原因呀，是cpr没装好嘛？
-&#47;usr&#47;local&#47;include&#47;cpr&#47;cprtypes.h:34:44: error: expected ‘)’ before ‘str’
-     explicit StringHolder(std::string_view str) : str_(str) {}
-                                            ^~~
-&#47;usr&#47;local&#47;include&#47;cpr&#47;cprtypes.h:123:26: error: expected ‘)’ before ‘url’
-     Url(std::string_view url) : StringHolder&lt;Url&gt;(url) {}
-                          ^~~
-In file included from &#47;usr&#47;local&#47;include&#47;cpr&#47;util.h:8:0,
-                 from &#47;usr&#47;local&#47;include&#47;cpr&#47;ssl_options.h:11,
-                 from &#47;usr&#47;local&#47;include&#47;cpr&#47;response.h:15,
-                 from &#47;usr&#47;local&#47;include&#47;cpr&#47;async_wrapper.h:8,
-                 from &#47;usr&#47;local&#47;include&#47;cpr&#47;async.h:4,
-                 from &#47;usr&#47;local&#47;include&#47;cpr&#47;api.h:10,
-                 from &#47;usr&#47;local&#47;include&#47;cpr&#47;cpr.h:4,
-                 from cpr.cpp:13:
-&#47;usr&#47;local&#47;include&#47;cpr&#47;callback.h:105:10: error: ‘optional’ in namespace ‘std’ does not name a template type
-     std::optional&lt;std::reference_wrapper&lt;ProgressCallback&gt;&gt; user_cb;
-</div>2023-03-09</li><br/><li><img src="" width="30px"><span>Geek_859342</span> 👍（0） 💬（1）<div>准备入门C++服务端的话，老师可以推荐一些可以快速上手的开源项目吗~想还是先从原生socket开始写
-之前一直都是用的其他语言写的后端，看到C++的socket封装感觉蛮头大的，但面试偏偏很容易问到…</div>2023-01-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/dc/e6/ea4b2c10.jpg" width="30px"><span>........</span> 👍（0） 💬（1）<div>想咨询一下，就是 zeromq 是 GPL-3.0 协议的，在项目中使用是否存在风险呢？</div>2022-12-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2d/5a/f1/67a3e8c6.jpg" width="30px"><span>旭日东升</span> 👍（0） 💬（1）<div>cocoyaxi
-看到过这个go风格的c++协程库，很方便的创建http server， 并且实现http client。
-老师这个库怎么样？</div>2022-04-23</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKiboeh23vhCNruZ7odUjROiac6N9fx0VWAE6zBNRxJIJFZspSUTQdgu9ajg4F0fAZgdk1vBsicnib3QQ/132" width="30px"><span>在水一方</span> 👍（0） 💬（2）<div>老师，ZMQ库有没有windows版的安装包？</div>2022-02-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/16/ea/c7caf466.jpg" width="30px"><span>ydq</span> 👍（0） 💬（1）<div>老师。make_sock接口的定义在哪里呢？
-ydqun@ydqhost zmq % cat 02.cpp                                                                                                  [1]
-&#47;*************************************************************************
-        &gt; File Name: 02.cpp
-        &gt; Author:
-        &gt; Mail:
-        &gt; Created Time: Thu 04 Nov 2021 02:30:06 PM CST
- ************************************************************************&#47;
-#include &lt;iostream&gt;
-#include &lt;zmq.hpp&gt;
+它最早只支持HTTP协议，但现在已经扩展到支持所有的应用层协议，比如HTTPS、FTP、LDAP、SMTP等，功能强大。
 
-using namespace std;
+libcurl使用纯C语言开发，兼容性、可移植性非常好，基于C接口可以很容易写出各种语言的封装，所以Python、PHP等语言都有libcurl相关的库。
 
-int main() {
-    const auto addr = &quot;ipc:&#47;&#47;&#47;dev&#47;shm&#47;zmq.sock&quot;s;  &#47;&#47;通信地址
+因为C++兼容C，所以我们也可以在C++程序里直接调用libcurl来收发数据。
 
-    auto recviver = [=]()
-    {
-        auto sock = make_sock(ZMQ_PULL);
+在使用libcurl之前，你需要用apt-get或者yum等工具安装开发库：
 
-        sock.bind(addr);
-        assert(sock.connected());
+```
+apt-get install libcurl4-openssl-dev
+```
 
-        zmq::message_t msg;
-        sock.recv(&amp;msg);
+虽然libcurl支持很多协议，但最常用的还是HTTP。所以接下来，我也主要介绍libcurl的HTTP使用方法，这样对其他的协议你也可以做到“触类旁通”。
 
-        string s = {msg.data&lt;char&gt;(), msg.size()};
-        cout &lt;&lt; s &lt;&lt; endl;
-    };
+libcurl的接口可以粗略地分成两大类：easy系列和multi系列。其中，easy系列是同步调用，比较简单；multi系列是异步的多线程调用，比较复杂。通常情况下，我们用easy系列就足够了。
 
-    auto sender = [=]()
-    {
-        auto sock = make_sock(ZMQ_PUSH);
+使用libcurl收发HTTP数据的基本步骤有4个：
 
-        sock.connect(addr);
-        assert(sock.connected());
+1. 使用curl\_easy\_init()创建一个句柄，类型是CURL\*。但我们完全没有必要关心句柄的类型，直接用auto推导就行。
+2. 使用curl\_easy\_setopt()设置请求的各种参数，比如请求方法、URL、header/body数据、超时、回调函数等。这是最关键的操作。
+3. 使用curl\_easy\_perform()发送数据，返回的数据会由回调函数处理。
+4. 使用curl\_easy\_cleanup()清理句柄相关的资源，结束会话。
 
-        string s = &quot;hello zmq&quot;;
-        sock.send(s.data(), s.size());
-    };
+下面我用个简短的例子来示范一下这4步：
 
-    sender();
+```
+#include <curl/curl.h>               // 包含头文件
 
-    recviver();
+auto curl = curl_easy_init();        // 创建CURL句柄
+assert(curl);
 
-    return 0;
+curl_easy_setopt(curl, CURLOPT_URL, "http://nginx.org"); // 设置请求URI
+
+auto res = curl_easy_perform(curl);   // 发送数据
+if (res != CURLE_OK) {                // 检查是否执行成功
+    cout << curl_easy_strerror(res) << endl;
 }
 
+curl_easy_cleanup(curl);             // 清理句柄相关的资源
+```
 
+这段代码非常简单，重点是调用curl\_easy\_setopt()设置了URL，请求Nginx官网的首页，其他的都使用默认值即可。
 
-ydqun@ydqhost zmq % g++ 02.cpp   -lzmq                                                                                          [0]
-02.cpp: In lambda function:
-02.cpp:17:21: error: ‘make_sock’ was not declared in this scope
-   17 |         auto sock = make_sock(ZMQ_PULL);
-      |                     ^~~~~~~~~
-02.cpp: In lambda function:
-02.cpp:31:21: error: ‘make_sock’ was not declared in this scope
-   31 |         auto sock = make_sock(ZMQ_PUSH);
-</div>2021-11-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/6e/28/1e307312.jpg" width="30px"><span>鲍勃</span> 👍（0） 💬（1）<div>感谢老师的指点，我参考官方文档已经找到和解决丢消息的问题了。这里想请教下老师另外一个关于ZMQ问题：有个关于ZMQ Security的库CurveZMQ，不知道老师是否了解过呢？</div>2021-04-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/6e/28/1e307312.jpg" width="30px"><span>鲍勃</span> 👍（0） 💬（5）<div>使用czmq 4.1的时候遇到了比较棘手的问题：请问如何才能保证pub-sub（整个消息流框架是dealer-router-pub-sub）的消息不丢失呢，好像比较新的库都不支持可持续化的durapub&#47;sub了。</div>2021-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3c/51/c324a7de.jpg" width="30px"><span>凌云</span> 👍（0） 💬（1）<div>罗老师，请教一下，支持多语言的库，比如zmq，源码是分别使用不同语言都实现了一遍这个库么？</div>2021-03-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/4b/22/10df9727.jpg" width="30px"><span>Why not.</span> 👍（0） 💬（3）<div>老师 您好 想问一下 cpr可以发送put方式请求吗</div>2021-03-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/ed/6c/6fb35017.jpg" width="30px"><span>群书</span> 👍（0） 💬（1）<div>最近用asio做服务器，压力测试好久结果宕机在asio的内存分配中， asio默认开启了小内存分配优化 这个问题一直无法解决，堆栈信息是为一个函数对象分配内存时宕机了，调用的接口是async_write_some回调函数是传入的闭包</div>2020-12-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/ed/6c/6fb35017.jpg" width="30px"><span>群书</span> 👍（0） 💬（1）<div>老师好 我最近遇到一个asio宕机的问题 在调用async_write_some的时候宕机在asio内存分配代码里，asio默认开启了一个小内存分配优化的特性，这个问题不是必现，服务器压力测试很久才可能出现一次</div>2020-12-30</li><br/><li><img src="" width="30px"><span>JY</span> 👍（0） 💬（1）<div>实践得真知。老师每篇文章点出来的东西，都是好东西啊，哈哈，太好用了。</div>2020-11-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/80/f4/564209ea.jpg" width="30px"><span>纳兰容若</span> 👍（0） 💬（1）<div>老师您好
-我自己下载安装cpr，在编译项目中的cpr.cpp，使用注释中的
-g++ cpr.cpp -std=c++14 -lcpr -lpthread -lcurl -o a.out
-发现：&#47;usr&#47;bin&#47;ld: cannot find -lcurl
-我把-lcurl选项去掉也能编译运行成功，请问老师-lcurl是必须的么，这里面-lcurl起到了什么作用
-</div>2020-10-30</li><br/>
+由于没有设置你自己的回调函数，所以libcurl会使用内部的默认回调，把得到的HTTP响应数据输出到标准流，也就是直接打印到屏幕上。
+
+这个处理结果显然不是我们所期待的，所以如果想要自己处理返回的HTTP报文，就得写一个回调函数，在里面实现业务逻辑。
+
+因为libcurl是C语言实现的，所以回调函数必须是函数指针。不过，C++11允许你写lambda表达式，这利用了一个特别规定：**无捕获的lambda表达式可以显式转换成一个函数指针**。注意一定要是“无捕获”，也就是说lambda引出符“\[]”必须是空的，不能捕获任何外部变量。
+
+所以，只要多做一个简单的转型动作，你就可以用lambda表达式直接写libcurl的回调，还是熟悉的函数式编程风格：
+
+```
+// 回调函数的原型
+size_t write_callback(char* , size_t , size_t , void* );
+ 
+curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,        // 设置回调函数
+  (decltype(&write_callback))      // decltype获取函数指针类型，显式转换
+  [](char *ptr, size_t size, size_t nmemb, void *userdata)// lambda
+  {
+      cout << "size = " << size * nmemb << endl;   // 简单的处理
+      return size * nmemb;                // 返回接收的字节数
+  }
+);
+```
+
+libcurl的用法大概就是这个样子了，开头的准备和结尾的清理工作都很简单，关键的就是curl\_easy\_setopt()这一步的参数设置。我们必须通过查文档知道该用哪些标志宏，写一些单调重复的代码。
+
+你可能想到了，可以自己用C++包装出一个类，就能够少敲点键盘。但不要着急，因为我们有一个更好的选择，就是cpr。
+
+## cpr：更现代、更易用的通信库
+
+cpr是对libcurl的一个C++11封装，使用了很多现代C++的高级特性，对外的接口模仿了Python的requests库，非常简单易用。
+
+你可以从[GitHub](https://github.com/whoshuu/cpr)上获取cpr的源码，再用cmake编译安装：
+
+```
+git clone git@github.com:whoshuu/cpr.git
+cmake . -DUSE_SYSTEM_CURL=ON -DBUILD_CPR_TESTS=OFF
+make && make install
+```
+
+和libcurl相比，cpr用起来真的是太轻松了，不需要考虑什么初始化、设置参数、清理等杂事，一句话就能发送HTTP请求：
+
+```
+#include <cpr/cpr.h>                            // 包含头文件
+
+auto res = cpr::Get(                           // GET请求    
+           cpr::Url{"http://openresty.org"}   // 传递URL
+);
+```
+
+你也不用写回调函数，HTTP响应就是函数的返回值，用成员变量url、header、status\_code、text就能够得到报文的各个组成部分：
+
+```
+cout << res.elapsed << endl;            // 请求耗费的时间
+
+cout << res.url << endl;               // 请求的URL
+cout << res.status_code << endl;       // 响应的状态码
+cout << res.text.length() << endl;     // 响应的body数据
+
+for(auto& x : res.header) {            // 响应的头字段
+    cout << x.first << "=>"            // 类似map的结构
+         << x.second << endl;
+}
+```
+
+在cpr里，HTTP协议的概念都被实现为相应的函数或者类，内部再转化为libcurl操作，主要的有：
+
+- GET/HEAD/POST等请求方法，使用同名的Get/Head/Post函数；
+- URL使用Url类，它其实是string的别名；
+- URL参数使用Parameters类，KV结构，近似map；
+- 请求头字段使用Header类，它其实是map的别名，使用定制的函数实现了大小写无关比较；
+- Cookie使用Cookies类，也是KV结构，近似map；
+- 请求体使用Body类；
+- 超时设置使用Timeout类。
+
+这些函数和类的用法都非常自然、符合思维习惯，而且因为可以使用C++11的花括号“{}”初始化语法，如果你以前用过Python reqeusts库的话一定会感到很亲切：
+
+```
+const auto url = "http://openresty.org"s;  // 访问的URL
+
+auto res1 = cpr::Head(                    // 发送HEAD请求
+            cpr::Url{url}                 // 传递URL
+);
+
+auto res2 = cpr::Get(                     // 发送GET请求
+            cpr::Url{url},               // 传递URL
+            cpr::Parameters{             // 传递URL参数
+                {"a", "1"}, {"b", "2"}}
+);
+
+auto res3 = cpr::Post(                  // 发送POST请求
+            cpr::Url{url},             // 传递URL
+            cpr::Header{                // 定制请求头字段
+              {"x", "xxx"},{"expect",""}},
+            cpr::Body{"post data"},    // 传递body数据
+            cpr::Timeout{200ms}       // 超时时间
+);
+```
+
+cpr也支持异步处理，但它内部没有使用libcurl的multi接口，而是使用了标准库里的future和async（参见[第14讲](https://time.geekbang.org/column/article/245259)），和libcurl的实现相比，既简单又好理解。
+
+异步接口与同步接口的调用方式基本一样，只是名字多了个“Async”的后缀，返回的是一个future对象。你可以调用wait()或者get()来获取响应结果：
+
+```
+auto f = cpr::GetAsync(                    // 异步发送GET请求
+            cpr::Url{"http://openresty.org"}
+);
+
+auto res = f.get();                       // 等待响应结果
+cout << res.elapsed << endl;              // 请求耗费的时间
+```
+
+看了上面这些介绍，你是不是有些心动了。说实话，我原来在C++里也是一直用libcurl，也写过自己的包装类，直到发现了cpr这个“大杀器”，就立即“弃暗投明”了。
+
+相信有了cpr，你今后在C++里写HTTP应用就不再是痛苦，而是一种享受了。
+
+## ZMQ：高效、快速、多功能的通信库
+
+libcurl和cpr处理的都是HTTP协议，虽然用起来很方便，但协议自身也有一些限制，比如必须要一来一回，必须点对点直连，在超大数据量通信的时候就不是太合适。
+
+还有一点，libcurl和cpr只能充当HTTP的客户端，如果你想写服务器端程序，这两个工具就完全派不上用场。
+
+所以，我们就需要一个更底层、更灵活的网络通信工具，它应该能够弥补libcurl和cpr的不足，不仅快速高效，还能同时支持客户端和服务器端编程。
+
+这就是我要说的第三个库：[ZMQ](https://zeromq.org/)。
+
+其实，ZMQ不仅是一个单纯的网络通信库，更像是一个高级的异步并发框架。
+
+从名字上就可以看出来，Zero Message Queue——零延迟的消息队列，意味着它除了可以收发数据外，还可以用作消息中间件，解耦多个应用服务之间的强依赖关系，搭建高效、有弹性的分布式系统，从而超越原生的Socket。
+
+作为消息队列，ZMQ的另一大特点是零配置零维护零成本，不需要搭建额外的代理服务器，只要安装了开发库就能够直接使用，相当于把消息队列功能直接嵌入到你的应用程序里：
+
+```
+apt-get install libzmq3-dev
+```
+
+ZMQ是用C++开发的，但出于兼容的考虑，对外提供的是纯C接口。不过它也有很多C++封装，这里我选择的是自带的[cppzmq](https://github.com/zeromq/cppzmq)，虽然比较简单，但也基本够用了。
+
+由于ZMQ把自身定位于更高层次的“异步消息队列”，所以它的用法就不像Socket、HTTP那么简单直白，而是定义了5种不同的工作模式，来适应实际中常见的网络通信场景。
+
+我来大概说一下这5种模式：
+
+- 原生模式（RAW），没有消息队列功能，相当于底层Socket的简单封装；
+- 结对模式（PAIR），两个端点一对一通信；
+- 请求响应模式（REQ-REP），也是两个端点一对一通信，但请求必须有响应；
+- 发布订阅模式（PUB-SUB），一对多通信，一个端点发布消息，多个端点接收处理；
+- 管道模式（PUSH-PULL），或者叫流水线，可以一对多，也可以多对一。
+
+前四种模式类似HTTP协议、Client-Server架构，很简单，就不多说了。我拿我在工作中比较常用的管道模式来给你示范一下ZMQ的用法，它非常适合进程间无阻塞传送海量数据，也有点map-reduce的意思。
+
+![](https://static001.geekbang.org/resource/image/8b/2d/8b868214b032aebfcee1e0e97a8a1e2d.png?wh=360%2A480)
+
+在ZMQ里有两个基本的类。
+
+- 第一个是context\_t，它是ZMQ的运行环境。使用ZMQ的任何功能前，必须要先创建它。
+- 第二个是socket\_t，表示ZMQ的套接字，需要指定刚才说的那5种工作模式。注意它与原生Socket没有任何关系，只是借用了名字来方便理解。
+
+下面的代码声明了一个全局的ZMQ环境变量，并定义了一个lambda表达式，生产ZMQ套接字：
+
+```
+const auto thread_num = 1;              // 并发线程数
+
+zmq::context_t context(thread_num);     // ZMQ环境变量
+
+auto make_sock = [&](auto mode)        // 定义一个lambda表达式
+{
+    return zmq::socket_t(context, mode); // 创建ZMQ套接字
+};
+
+```
+
+和原生Socket一样，ZMQ套接字也必须关联到一个确定的地址才能收发数据，但它不仅支持TCP/IP，还支持进程内和进程间通信，这在本机交换数据时会更高效：
+
+- TCP通信地址的形式是“tcp://…”，指定IP地址和端口号；
+- 进程内通信地址的形式是“inproc://…”，指定一个本地可访问的路径；
+- 进程间通信地址的形式是“ipc://…”，也是一个本地可访问的路径。
+
+用bind()/connect()这两个函数把ZMQ套接字连接起来之后，就可以用send()/recv()来收发数据了，看一下示例代码吧：
+
+```
+const auto addr = "ipc:///dev/shm/zmq.sock"s;  // 通信地址
+
+auto receiver = [=]()                     // lambda表达式接收数据
+{
+    auto sock = make_sock(ZMQ_PULL);      // 创建ZMQ套接字，拉数据
+
+    sock.bind(addr);                     // 绑定套接字
+    assert(sock.connected());
+
+    zmq::message_t msg;
+    sock.recv(&msg);                      // 接收消息
+
+    string s = {msg.data<char>(), msg.size()};
+    cout << s << endl;
+};
+
+auto sender = [=]()                     // lambda表达式发送数据
+{
+    auto sock = make_sock(ZMQ_PUSH);     // 创建ZMQ套接字，推数据
+
+    sock.connect(addr);                  // 连接到对端
+    assert(sock.connected());
+
+    string s = "hello zmq";
+    sock.send(s.data(), s.size());       // 发送消息
+};
+```
+
+这段代码实现了两个最基本的客户端和服务器，看起来好像没什么特别的。但你应该注意到，使用ZMQ完全不需要考虑底层的TCP/IP通信细节，它会保证消息异步、安全、完整地到达服务器，让你关注网络通信之上更有价值的业务逻辑。
+
+ZMQ的用法就是这么简单，但想要进一步发掘它的潜力，处理大流量的数据还是要去看[它的文档](http://wiki.zeromq.org/)，选择合适的工作模式，再仔细调节各种参数。
+
+接下来，我再给你分享两个实际工作中会比较有用的细节吧。
+
+一个是**ZMQ环境的线程数**。它的默认值是1，太小了，适当增大一些就可以提高ZMQ的并发处理能力。我一般用的是4~6，具体设置为多少最好还是通过性能测试来验证下。
+
+另一个是**收发消息时的本地缓存数量**，ZMQ的术语叫High Water Mark。如果收发的数据过多，数量超过HWM，ZMQ要么阻塞，要么丢弃消息。
+
+HWM需要调用套接字的成员函数setsockopt()来设置，注意收发使用的是两个不同的标志：
+
+```
+sock.setsockopt(ZMQ_RCVHWM, 1000);     // 接收消息最多缓存1000条
+sock.setsockopt(ZMQ_SNDHWM, 100);      // 发送消息最多缓存100条
+```
+
+我们把HWM设置成多大都可以，比如我就曾经在一个高并发系统里用过100万以上的值，不用担心，ZMQ会把一切都处理得很好。
+
+关于ZMQ就暂时说到这里，它还有很多强大的功能，你可以阅读[官网](http://zguide.zeromq.org/page:all)上的教程和指南，里面非常详细地讨论了ZMQ的各种模式和要点。
+
+## 小结
+
+好了，我来给今天的内容做一个小结：
+
+1. libcurl是一个功能完善、稳定可靠的应用层通信库，最常用的就是HTTP协议；
+2. cpr是对libcurl的C++封装，接口简单易用；
+3. libcurl和cpr都只能作为客户端来使用，不能编写服务器端应用；
+4. ZMQ是一个高级的网络通信库，支持多种通信模式，可以把消息队列功能直接嵌入应用程序，搭建出高效、灵活、免管理的分布式系统。
+
+最后，再说说即将到来的C++20，原本预计会加入期待已久的networking库，但现在已经被推迟到了下一个版本（C++23）。
+
+networking库基于已有多年实践的boost.asio，采用前摄器模式（Proactor）统一封装了操作系统的各种异步机制（epoll、kqueue、IOCP），而且支持协程。有了它，我们的网络通信工作就会更加轻松。
+
+## 课下作业
+
+最后是课下作业时间，给你留两个思考题：
+
+1. 你在网络编程的时候都遇到过哪些“坑”，今天说的这几个库能否解决你的问题？
+2. 你觉得ZMQ能够在多大程度上代替原生Socket？
+
+欢迎你在留言区写下你的思考和答案，如果觉得今天的内容对你有所帮助，也欢迎分享给你的朋友。我们下节课见。
+
+![](https://static001.geekbang.org/resource/image/3e/dd/3e07516e87c61172f9b2ddc317c74add.jpg?wh=2000%2A2536)
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>屈肖东</span> 👍（21） 💬（1）<div>老师什么时候可以推荐几个值得读的比较通用的开源代码，因为很多开源代码虽然很好，但是太过复杂庞大，很难阅读。或者写一篇针对如何更好的阅读源码的文章。毕竟读代码应该是学习写代码最好的方式</div>2020-06-15</li><br/><li><span>赖阿甘</span> 👍（16） 💬（3）<div>说实在在看文章之前，我还不知道ZMQ这个网络通信库，哈哈。老师怎么没提到libevent、libev、asio、muduo等网络通信库，是否这些库的接口比较原始，不好用，还望解答</div>2020-06-11</li><br/><li><span>Seven</span> 👍（8） 💬（1）<div>我也知道别人的东西好，但是老师也用，会不会这样的依赖，而让我们进步缓慢，怎么看这个问题。如何破？</div>2020-06-23</li><br/><li><span>编程国学</span> 👍（8） 💬（4）<div>军工行业，用户强调实时，一般采用udp，目前我们采用qt 自己的库，有没有好的建议</div>2020-06-11</li><br/><li><span>robonix</span> 👍（5） 💬（1）<div>疑惑同楼上～ ASIO 据说要加到c++ 20了，应该介绍呀？</div>2020-06-11</li><br/><li><span>风</span> 👍（4） 💬（1）<div>请教罗老师，如何看待Go语言在网络编程上的发展势头～</div>2020-06-26</li><br/><li><span>Stephen</span> 👍（3） 💬（2）<div>确实感觉nanomsg更新的很慢,而且资料,影响力都不如zeromq.请教老师一个事情,如果想要学习这一块,是选择ZMQ还是nanomsg呢,我最近在看zmq作者写的一本书《ZeroMQ:云时代极速消息通信库》.但同事说,zmq已经过时了,应该学习nanomsg,给我搞的很无语,老师怎么看?</div>2021-03-28</li><br/><li><span>忧天小鸡</span> 👍（2） 💬（1）<div>有流媒体udp特别适合的库吗？刚接触c++，对编译什么的还不熟</div>2021-12-16</li><br/><li><span>章北海</span> 👍（1） 💬（1）<div>老师好，最近项目中用到了Windows平台的libcurl，https通信的时候一般通过系统的证书验证服务器的证书，有两种编译方式:一种是支持win sspi的，这种情况编译的libcurl不用手动加载系统证书就可以发起https请求，但是不同的Windows系统上可能运行不了一样的程序;另一种是编译支持openssl的版本，但是Windows平台openssl有点特殊，要手动指定ca证书文件。我目前用的是后者，有个疑惑:curl根证书可以从官网手动下载，但是如何预防证书过期呢？证书过期了就访问不了https了吧，一般在项目中我们如何处理根证书的过期问题？谢谢！</div>2023-09-08</li><br/><li><span>henry</span> 👍（1） 💬（1）<div>请问下罗老师，ZMQ的pub&#47;sub, push&#47;pull模式和redis相比有哪些优势？
+
+如果多个进程之间要 pub，push 不同的业务类型数据，需要在一些进程中开多个端口，管理上有点麻烦，如果加一个Broker的中间层，又有点类似redis用法的意思</div>2020-07-30</li><br/><li><span>土土人</span> 👍（1） 💬（1）<div>ASIO使用起来极其别扭</div>2020-06-12</li><br/><li><span>TC128</span> 👍（1） 💬（1）<div>HP-Socket有人用吗？</div>2020-06-11</li><br/><li><span>Confidant.</span> 👍（1） 💬（4）<div>老师，zmq的代码有一个lamda用&amp;捕获的错误，你的都可以编过吗？</div>2020-06-11</li><br/><li><span>黄骏</span> 👍（1） 💬（1）<div>之前用过zmq，他的创始人也非常传奇</div>2020-06-11</li><br/><li><span>eletarior</span> 👍（1） 💬（1）<div>涨知识了，之前http通信一直使用的原生 libcurl，看起来现在可以转cpr了，不是不知道这个库的存在，只是没人推荐不敢换而已。另外ZMQ，这个库看起来可以解决手写TCP&#47;IP通信的问题，后面会试试。
+网络编程最大的坑其实是不懂网络协议，以及联调的问题，感觉不是库能解决的。但是库能解决底层封装，避免重复造轮子的痛苦。
+</div>2020-06-11</li><br/>
 </ul>

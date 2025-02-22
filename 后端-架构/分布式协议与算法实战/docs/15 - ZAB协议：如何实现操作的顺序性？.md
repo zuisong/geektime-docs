@@ -14,14 +14,151 @@ Created /geekbang/time
 当然不行。因为兰伯特的Multi-Paxos，虽然能保证达成共识后的值不再改变，但它不关心达成共识的值是什么，也无法保证各值（也就是操作）的顺序性。而这就是Zookeeper没有采用Multi-Paxos的原因，又是ZAB协议着力解决的，也是你理解ZAB协议的关键。
 
 那么为了帮你更好地理解这个协议，接下来，我将分别以如何实现操作的顺序性、领导者选举、故障恢复、处理读写请求为例，具体讲解一下。希望你能在全面理解ZAB协议的同时，加深对Paxos算法的理解。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/fb/7b/2d4b38fb.jpg" width="30px"><span>Jialin</span> 👍（34） 💬（5）<div>如果 ZAB 采用的是 UDP 协议，无法保证消息接收的顺序性，主要是因为 TCP 协议本身支持按序确认，而 UCP 只能支持尽最大可能交付</div>2020-04-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/83/39/f9623363.jpg" width="30px"><span>竹马彦四郎的好朋友影法師</span> 👍（10） 💬（1）<div>本质上讲，zab和raft都是通过强领导者模型实现就多值达成共识的</div>2020-05-06</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaEKB0h2nibEbQKcZ6eHkgkmtwMunlibSibT3YAJ8IbDa834HnTAYiajMd8YCdpyDrfhWibCicfpmDCjJzwlA/132" width="30px"><span>z</span> 👍（8） 💬（5）<div>&quot;首先，需要你注意的是，在 ZAB 中，写操作必须在主节点（比如节点 A）上执行。如果客户端访问的节点是备份节点（比如节点 B），它会将写请求转发给主节点&quot;
- 关于这一点写请求会转发到主节点， 如果客户端把X，Y发往了两个不同的备份节点，这时候主节点拿到X，Y的顺序是不是没办法保证？ 那最终执行的顺序还是没法保证呀</div>2020-06-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/83/39/f9623363.jpg" width="30px"><span>竹马彦四郎的好朋友影法師</span> 👍（6） 💬（2）<div>怎么感觉zab和raft如果刨去leader选举之外就一模一样了，希望老师解惑，谢谢！</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5e/32/1ccb2b7c.jpg" width="30px"><span>海连天</span> 👍（4） 💬（1）<div>感觉过程像极了两阶段提交</div>2020-05-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ae/8b/43ce01ca.jpg" width="30px"><span>ezekiel</span> 👍（3） 💬（1）<div>老师您好
+
+今天这节课，我会从ZAB协议的最核心设计目标（如何实现操作的顺序性）出发，带你了解它的基础原理。
+
+老规矩，在开始今天的内容之前，我们先来看一道思考题：
+
+假如节点A、B、C组成的一个分布式集群，我们要设计一个算法，来保证指令（比如X、Y）执行的顺序性，比如，指令X在指令Y之前执行，那么我们该如何设计这个算法呢？
+
+![](https://static001.geekbang.org/resource/image/55/c9/55dc6f6bf822db027858b8b4fdb89cc9.jpg?wh=1142%2A847 "图1")
+
+带着这个问题，我们进入今天的内容。
+
+## 为什么Multi-Paxos无法保证操作顺序性？
+
+刚刚我提到“Multi-Paxos无法保证操作的顺序性”。为了让你真正理解这个问题，我举个具体的例子演示一下（为了演示方便，我们假设当前所有节点上的被选定指令，最大序号都为100，那么新提议的指令对应的序号就会是101）。
+
+首先节点A是领导者，提案编号为1，提议了指令X、Y，对应的序号分别为101和102，但是因为网络故障，指令只成功复制到了节点A。
+
+![](https://static001.geekbang.org/resource/image/3e/f3/3ed203904d35eaf0bd5162262c1b4ef3.jpg?wh=1142%2A409 "图2")
+
+假设这时节点A故障了，新当选的领导者为节点B。节点B当选领导者后，需要先作为学习者了解目前已被选定的指令。节点B学习之后，发现当前被选定指令的最大序号为100（因为节点A故障了，它被选定指令的最大序号102，无法被节点B发现），那么它可以从序号101开始提议新的指令。这时它接收到客户端请求，并提议了指令Z，指令Z被成功复制到节点B、C。
+
+![](https://static001.geekbang.org/resource/image/77/12/77f94aa5dec044ffc1a61547cb10f112.jpg?wh=1142%2A365 "图3")
+
+假设这时节点B故障了，节点A恢复了，选举出领导者C后，节点B故障也恢复了。节点C当选领导者后，需要先作为学习者了解目前已被选定的指令，这时它执行Basic Paxos的准备阶段，就会发现之前选定的值（比如Z、Y），然后发送接受请求，最终在序号101、102处达成共识的指令是Z、Y。就像下图的样子。
+
+![](https://static001.geekbang.org/resource/image/e6/c4/e6c27d879025ef6943a5985da1351bc4.jpg?wh=1142%2A402 "图4")
+
+在这里，你可以看到，原本预期的指令是X、Y，最后变成了Z、Y。讲到这儿，你应该可以知道，为什么用Multi-Paxos不能达到我们想要的结果了吧？
+
+这个过程，其实很明显的验证了“Multi-Paxos虽然能保证达成共识后的值不再改变，但它不关心达成共识的值是什么。”
+
+那么咱们接着回到开篇的问题，假设在ZooKeeper中直接使用了兰伯特的Multi-Paxos，这时创建节点"/geekbang"和"/geekbang/time"，那么就可能出现，系统先创建了节点"/geekbang/time"，这样肯定就出错了：
+
+```
+[zk: 192.168.0.10:2181(CONNECTED) 0] create /geekbang/time 456
+Node does not exist: /geekbang/time
+```
+
+因为创建节点"/geekbang/time"时，找不到节点"/geekbang"，所以就会创建失败。
+
+在这里我多说几句，除了Multi-Paxos，兰伯特还有很多关于分布式的理论，这些理论都很经典（比如拜占庭将军问题），但也因为太早了，与实际场景结合的不多，所以后续的众多算法是在这个基础之上做了大量的改进（比如，PBFT、Raft等）。关于这一点，我在13讲也强调过，你需要注意一下。
+
+另外我再延伸一下，其实在[ZAB论](https://www.semanticscholar.org/paper/Zab:-High-performance-broadcast-for-primary-backup-Junqueira-Reed/b02c6b00bd5dbdbd951fddb00b906c82fa80f0b3)文中，关于Paxos问题（Figure 1 ​​​​）的分析是有争议的。因为ZooKeeper当时应该考虑的是Multi-Paxos，而不是有多个提议者的Basic Paxos。而在Multi-Paxos中，领导者作为唯一提议者，是不存在同时多个提议者的情况。也就是说，Paxos（更确切的说是Multi-Paxos）无法保证操作的顺序性的问题是存在的，但原因不是ZAB论文中演示的原因，本质上是因为Multi-Paxos实现的是一系列值的共识，不关心最终达成共识的值是什么，不关心各值的顺序，就像我们在上面演示的过程那样。
+
+那既然Multi-Paxos不行，ZooKeeper怎么实现操作的顺序性的呢?答案是它实现了ZAB协议。
+
+你可能会说了：Raft可以实现操作的顺序性啊，为什么ZooKeeper不用Raft呢？这个问题其实比较简单，因为Raft出来的比较晚，直到2013年才正式提出，在2007年开发ZooKeeper的时候，还没有Raft呢。
+
+## ZAB是如何实现操作的顺序性的？
+
+如果用一句话解释ZAB协议到底是什么，我觉得它是：能保证操作顺序性的，基于主备模式的原子广播协议。
+
+接下来，我还是以X、Y指令为例具体演示一下，帮助你更好理解为什么ZAB能实现操作的顺序性（为了演示方便，我们假设节点A为主节点，节点B、C为备份节点）。
+
+首先，需要你注意的是，在ZAB中，写操作必须在主节点（比如节点A）上执行。如果客户端访问的节点是备份节点（比如节点B），它会将写请求转发给主节点。如图所示：
+
+![](https://static001.geekbang.org/resource/image/77/6f/770c39b4ea339799bc3ca4a0b0d8266f.jpg?wh=1142%2A478 "图5")
+
+接着，当主节点接收到写请求后，它会基于写请求中的指令（也就是X，Y），来创建一个提案（Proposal），并使用一个唯一的ID来标识这个提案。这里我说的唯一的ID就是指事务标识符（Transaction ID，也就是zxid），就像下图的样子。
+
+![](https://static001.geekbang.org/resource/image/d0/9b/d0063fa9275ce0a114ace27db326d19b.jpg?wh=1142%2A387 "图6")
+
+从图中你可以看到，X、Y对应的事务标识符分别为&lt;1, 1&gt;和&lt;1, 2&gt;，这两个标识符是什么含义呢？
+
+你可以这么理解，事务标识符是64位的long型变量，有任期编号epoch和计数器counter两部分组成（为了形象和方便理解，我把epoch翻译成任期编号），格式为&lt;epoch, counter&gt;，高32位为任期编号，低32位为计数器：
+
+- 任期编号，就是创建提案时领导者的任期编号，需要你注意的是，当新领导者当选时，任期编号递增，计数器被设置为零。比如，前领导者的任期编号为1，那么新领导者对应的任期编号将为2。
+- 计数器，就是具体标识提案的整数，需要你注意的是，每次领导者创建新的提案时，计数器将递增。比如，前一个提案对应的计数器值为1，那么新的提案对应的计数器值将为2。
+
+为什么要设计的这么复杂呢？因为事务标识符必须按照顺序、唯一标识一个提案，也就是说，事务标识符必须是唯一的、递增的。
+
+在创建完提案之后，主节点会基于TCP协议，并按照顺序将提案广播到其他节点。这样就能保证先发送的消息，会先被收到，保证了消息接收的顺序性。
+
+![](https://static001.geekbang.org/resource/image/e5/96/e525af146900c892e0c002affa77d496.jpg?wh=1142%2A403 "图7")
+
+你看这张图，X一定在Y之前到达节点B、C。
+
+然后，当主节点接收到指定提案的“大多数”的确认响应后，该提案将处于提交状态（Committed），主节点会通知备份节点提交该提案。
+
+![](https://static001.geekbang.org/resource/image/1d/19/1d3950b6d91845789cce1f0569969419.jpg?wh=1142%2A423 "图8")
+
+在这里，需要你注意的是，主节点提交提案是有顺序性的。主节点根据事务标识符大小，按照顺序提交提案，如果前一个提案未提交，此时主节点是不会提交后一个提案的。也就是说，指令X一定会在指令Y之前提交。
+
+最后，主节点返回执行成功的响应给节点B，节点B再转发给客户端。**你看，这样我们就实现了操作的顺序性，保证了指令X一定在指令Y之前执行。**
+
+最后我想补充的是，当写操作执行完后，接下来你可能需要执行读操作了。你需要注意，为了提升读并发能力，Zookeeper提供的是最终一致性，也就是读操作可以在任何节点上执行，客户端会读到旧数据：
+
+![](https://static001.geekbang.org/resource/image/d4/1c/d405381e5fad12730149baa4fae63e1c.jpg?wh=1142%2A536 "图9")
+
+如果客户端必须要读到最新数据，怎么办呢？Zookeeper提供了一个解决办法，那就是sync命令。你可以在执行读操作前，先执行sync命令，这样客户端就能读到最新数据了：
+
+```
+[zk: 192.168.0.10:2181(CONNECTED) 2] sync /geekbang/time
+[zk: 192.168.0.10:2181(CONNECTED) 3] Sync returned 0
+[zk: 192.168.0.10:2181(CONNECTED) 3] get /geekbang/time
+456
+cZxid = 0x100000005
+ctime = Mon Apr 20 21:19:28 HKT 2020
+mZxid = 0x100000005
+mtime = Mon Apr 20 21:19:28 HKT 2020
+pZxid = 0x100000005
+cversion = 0
+dataVersion = 0
+aclVersion = 0
+ephemeralOwner = 0x0
+dataLength = 3
+numChildren = 0
+[zk: 192.168.0.10:2181(CONNECTED) 4]
+```
+
+## 内容小结
+
+本节课我主要带你了解了为什么Multi-Paxos无法实现操作的顺序性，以及ZAB协议如何保证操作的顺序性。我希望你明确这样几个重点。
+
+1.兰伯特的Multi-Paxos只考虑了如何实现共识，也就是如何就一系列值达成共识，未考虑如何实现各值（也就是操作）的顺序性。
+
+2.ZAB是通过“一切以领导者为准”的强领导者模型和严格按照顺序处理、提交提案，来实现操作的顺序性的。
+
+那么说到ZAB，很多同学可能有这样的疑问：为什么ZAB作者宣称[ZAB不是Paxos算法，](https://cwiki.apache.org/confluence/display/ZOOKEEPER/Zab+vs.+Paxos)但又有很多资料提到ZAB是Multi-Paxos算法呢？到底该怎么理解呢？
+
+我的看法是，你可以把它理解为Multi-Paxos算法。因为技术是发展的，概念的内涵也在变化。Raft算法（主备、强领导者模型）与ZAB协议非常类似，它是作为共识算法和Multi-Paxos算法提出的。当它被广泛接受和认可后，共识算法的内涵也就丰富和发展了，不仅能实现一系列值的共识，还能保证值的顺序性。同样，Multi-Paxos算法不仅指代多次执行Basic Paxos的算法，还指代主备、强领导者模型的共识算法。
+
+当然了，在学习技术过程中，我们不可避免的会遇到有歧义、有争议的信息，就像在11讲留言区中，有同学提到“从网上搜了搜相关资料，发现大部分资料将谣言传播等同于Gossip协议，也有把反熵等同于Gossip协议的，感到很迷惑”。
+
+这就需要我们不仅要在平时工作和学习中，认真、全面的学习理论，掌握概念的内涵，还要能“包容”和“发展”着理解技术。
+
+最后，在本节课我们了解了ZAB协议的最核心设计目标（如何实现操作的顺序性），那么既然“所有数据都是以主节点的数据为准的”，主节点（也就是领导者）那么重要，那当它崩溃了，该怎么处理呢？下节课，我会重点带你了解这部分内容。
+
+## 课堂思考
+
+既然我提到在ZAB协议中，主节点是基于TCP协议来广播消息的，并保证了消息接收的顺序性。那么你不妨想想，如果ZAB采用的是UDP协议，能保证消息接收的顺序性吗？为什么呢？欢迎在留言区分享你的看法，与我一同讨论。
+
+最后，感谢你的阅读，如果这节课让你有所收获，也欢迎你将它分享给更多的朋友。
+
+* * *
+
+编辑角：目前课程已经结束了，为了交付更好的内容，《分布式协议与算法实战》于2020年4.26日启动迭代计划，15讲为迭代版本，后面也会对ZAB协议进行更细致化的讨论，敬请期待！
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>Jialin</span> 👍（34） 💬（5）<div>如果 ZAB 采用的是 UDP 协议，无法保证消息接收的顺序性，主要是因为 TCP 协议本身支持按序确认，而 UCP 只能支持尽最大可能交付</div>2020-04-27</li><br/><li><span>竹马彦四郎的好朋友影法師</span> 👍（10） 💬（1）<div>本质上讲，zab和raft都是通过强领导者模型实现就多值达成共识的</div>2020-05-06</li><br/><li><span>z</span> 👍（8） 💬（5）<div>&quot;首先，需要你注意的是，在 ZAB 中，写操作必须在主节点（比如节点 A）上执行。如果客户端访问的节点是备份节点（比如节点 B），它会将写请求转发给主节点&quot;
+ 关于这一点写请求会转发到主节点， 如果客户端把X，Y发往了两个不同的备份节点，这时候主节点拿到X，Y的顺序是不是没办法保证？ 那最终执行的顺序还是没法保证呀</div>2020-06-22</li><br/><li><span>竹马彦四郎的好朋友影法師</span> 👍（6） 💬（2）<div>怎么感觉zab和raft如果刨去leader选举之外就一模一样了，希望老师解惑，谢谢！</div>2020-05-06</li><br/><li><span>海连天</span> 👍（4） 💬（1）<div>感觉过程像极了两阶段提交</div>2020-05-03</li><br/><li><span>ezekiel</span> 👍（3） 💬（1）<div>老师您好
 我有两个疑问
 图 2、3、4中尚无提案准备，是Mutli-paxos中的步骤吗？我理解领导者直接进入第二阶段赋值，是否正确？
-图2中接受者已经赋值，后来领导者C执行Basic Paxos中准备阶段，将其修改。不是一旦赋值后就不能修改了吗？</div>2020-10-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/47/00/3202bdf0.jpg" width="30px"><span>piboye</span> 👍（2） 💬（1）<div>multipaxos假设就是不相关的吧，相关的数据，应该用paxos来决议log，这样就一致了。fast paxos也可以一次rpc一个提交，不过效率应该不如raft流模式。 zab比raft和paxos没有优势了吧？</div>2020-09-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/2UXuSevhia94o9Eky4OfMuSictaldxcqpjGuvRCOcvjIIoVBAENLEZbv2lgwmwC8icK1ZrUcneNtiaeFBV8MT3uzNg/132" width="30px"><span>Gavin</span> 👍（2） 💬（1）<div>在创建完提案之后，主节点会基于 TCP 协议，并按照顺序将提案广播到其他节点。这样就能保证先发送的消息，会先被收到，保证了消息接收的顺序性。
+图2中接受者已经赋值，后来领导者C执行Basic Paxos中准备阶段，将其修改。不是一旦赋值后就不能修改了吗？</div>2020-10-31</li><br/><li><span>piboye</span> 👍（2） 💬（1）<div>multipaxos假设就是不相关的吧，相关的数据，应该用paxos来决议log，这样就一致了。fast paxos也可以一次rpc一个提交，不过效率应该不如raft流模式。 zab比raft和paxos没有优势了吧？</div>2020-09-17</li><br/><li><span>Gavin</span> 👍（2） 💬（1）<div>在创建完提案之后，主节点会基于 TCP 协议，并按照顺序将提案广播到其他节点。这样就能保证先发送的消息，会先被收到，保证了消息接收的顺序性。
 
-请问下，tcp协议有可能先发的消息后收到吧？</div>2020-08-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ea/8b/613c162e.jpg" width="30px"><span>nomoshen</span> 👍（2） 💬（2）<div>第一个阶段提议ok之后，第二个committed阶段主节点挂了，那么在选举的时候这写未提交的提议咋处理？主节点反馈给客户端是否要直到comitted绝大多数才算OK</div>2020-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4d/49/28e73b9c.jpg" width="30px"><span>明翼</span> 👍（0） 💬（2）<div>我看很多朋友回复是通过tcp来控制顺序，我不认为这样，tcp发送如果中间过程路由发生了变化，仍然会导致后发的消息先到；udp当然更不行了。。后来我看一篇文章说leader为每个flow生成一个先进先出的队列，如果flow去主动取数据的话这个顺序是可以保障的</div>2020-09-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/47/00/3202bdf0.jpg" width="30px"><span>piboye</span> 👍（0） 💬（1）<div>这里还是有误解？paxos是为了决议一个不变值，不变的值可以是log item吧？paxos有问题的地方是可能把原先没有成功的值也决议进去了，但如果这个值是个幂等也没关系吧，客户端看到的失败，不代表服务端就一定没写成功，所以只要是一致的日志，跟raft也一样了吧？</div>2020-09-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/47/00/3202bdf0.jpg" width="30px"><span>piboye</span> 👍（0） 💬（1）<div>multi-paxos中没有形成多数派的值y，为什么要被c选定呢？c应该忽略不是多数派的y吧。还有x和y的顺序性，完全可以在客户端解决啊，等x成功后再提新y啊。</div>2020-05-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/13/35/45391914.jpg" width="30px"><span>冷笑的花猫</span> 👍（0） 💬（2）<div>请教老师一个问题。zk用啥标准剔除follower？比如因网络抖动，zk一段时间内发送给follower的事务信息都是失败。</div>2020-04-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/48/c6/3c8d9a0c.jpg" width="30px"><span>爱德华</span> 👍（11） 💬（1）<div>老韩，课讲的很好，我有不懂的地方，想请教下。
+请问下，tcp协议有可能先发的消息后收到吧？</div>2020-08-07</li><br/><li><span>nomoshen</span> 👍（2） 💬（2）<div>第一个阶段提议ok之后，第二个committed阶段主节点挂了，那么在选举的时候这写未提交的提议咋处理？主节点反馈给客户端是否要直到comitted绝大多数才算OK</div>2020-06-04</li><br/><li><span>明翼</span> 👍（0） 💬（2）<div>我看很多朋友回复是通过tcp来控制顺序，我不认为这样，tcp发送如果中间过程路由发生了变化，仍然会导致后发的消息先到；udp当然更不行了。。后来我看一篇文章说leader为每个flow生成一个先进先出的队列，如果flow去主动取数据的话这个顺序是可以保障的</div>2020-09-25</li><br/><li><span>piboye</span> 👍（0） 💬（1）<div>这里还是有误解？paxos是为了决议一个不变值，不变的值可以是log item吧？paxos有问题的地方是可能把原先没有成功的值也决议进去了，但如果这个值是个幂等也没关系吧，客户端看到的失败，不代表服务端就一定没写成功，所以只要是一致的日志，跟raft也一样了吧？</div>2020-09-17</li><br/><li><span>piboye</span> 👍（0） 💬（1）<div>multi-paxos中没有形成多数派的值y，为什么要被c选定呢？c应该忽略不是多数派的y吧。还有x和y的顺序性，完全可以在客户端解决啊，等x成功后再提新y啊。</div>2020-05-02</li><br/><li><span>冷笑的花猫</span> 👍（0） 💬（2）<div>请教老师一个问题。zk用啥标准剔除follower？比如因网络抖动，zk一段时间内发送给follower的事务信息都是失败。</div>2020-04-29</li><br/><li><span>爱德华</span> 👍（11） 💬（1）<div>老韩，课讲的很好，我有不懂的地方，想请教下。
 
 zab是如何保证proposal提交的顺序型的？单纯的用zxid保证提交到FIFO队列依次广播是实现不了proposal提交的顺序性的。
 
@@ -31,37 +168,8 @@ zxid只能保证提交到队列顺序性，以及消息广播的顺序性。但�
 比如真正去提交的时候（第二阶段），先判断在此zxid之前proposal有没有提交，有的话等上一个提交了再提交。
 或者另一个想法，当发现当前的需要提交的zxid之前的还有proposal没有提交，则拒绝提交，进去崩溃恢复模式。但是这样的话，leader很容易失去过半的follower。
 
-不知道zab是怎么做的呢？</div>2020-08-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epRK5v3IkvSfjicKNKlRLE2nTQUowhMvQkwWWWUSESat8EBbcPvMk4aAjZHGcsE5DCibES9WicHcC9Qw/132" width="30px"><span>充值一万</span> 👍（10） 💬（2）<div>这一节看得我一脸懵逼。。按照文中描述，Multi-Paxos 无法保证操作顺序性的原因是各节点可能先后宕机，然后最终恢复时，最终达成一致的提案可能不是预期的（X, Y 变成 Z, Y）。而ZAB 协议能保证顺序，是因为提案提交有序，TCP保证可靠通讯。
+不知道zab是怎么做的呢？</div>2020-08-17</li><br/><li><span>充值一万</span> 👍（10） 💬（2）<div>这一节看得我一脸懵逼。。按照文中描述，Multi-Paxos 无法保证操作顺序性的原因是各节点可能先后宕机，然后最终恢复时，最终达成一致的提案可能不是预期的（X, Y 变成 Z, Y）。而ZAB 协议能保证顺序，是因为提案提交有序，TCP保证可靠通讯。
 ？？？？？？？？？？？？？？？？？？？？？？？？
 Multi-Paxos领导节点也可以顺序提案啊，也可以用TCP；
-ZAB 协议的节点也可能各种宕机啊？！</div>2021-04-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ad/da/31a2eb50.jpg" width="30px"><span>andrewguo</span> 👍（5） 💬（1）<div>使用tcp协议来保证顺序的原因是
-1. tcp协议栈能保证包的先后顺序
-2. 虽然提案本身有递增的逻辑时钟，但zab里zxid要求不是严格连续，允许空洞。如果传输协议不能保证顺序，从节点获取提案N时无法判断是否还有比N小的提案未收到，从而无法执行。</div>2020-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/12/c7/a7a5df8b.jpg" width="30px"><span>达子不一般</span> 👍（4） 💬（2）<div>对文中举出的Multi Basic Paxos的实例的几个疑问：
-
-- 针对不同的key(X)、key(Z)，为何要使用相同的编号101？不同的key之间使用共识判断，有意义吗？
-
-- 因为网络故障，指令只成功复制到了节点A
-
-指令只成功复制到了节点A，那么返回给客户端是成功还是失败？如果是失败，那么被占据多数101的Z覆盖似乎也没啥问题
-
-- A恢复后，102对应的Y涉及的节点不占有多数，为啥学习者C会学到102呢</div>2021-10-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/11/2e/ebb53d59.jpg" width="30px"><span>熙成</span> 👍（2） 💬（0）<div>为什么 Multi-Paxos 无法保证操作顺序性？
-讲述疑惑：
-提案编号既然是1，那序号101、102是表示什么？是提案内容吗？不应该看提案编号递增+1吗，为什么又搞出来个序号？</div>2021-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/d9/ff/b23018a6.jpg" width="30px"><span>Heaven</span> 👍（2） 💬（0）<div>1.首先消息的前后性不能保证,因为TCP本质上是在接收和发送的两端都维护了一个栈的机制,模拟出了一条数据流,从而做到了顺序的传输,而UDP是无序的,可以在网上到处开车,可能导致消息前后错乱
-2.但是消息的前后性我感觉可以从别的地方保证,可以从几点来分析下,对于失败重传,这个可以由发收双方进行手段性质的保证
-而且在主节点不故障的情况下,是可以知道发送的消息,那么X不会的时候,Y也不会先提交
-而且对于跟随者,只收到了Y的提交,估计也要等X的提交消息才能生效吧,不然即使是两个消息有依赖性,但是两个消息也不一定在一个TCP里面提交啊
-最后,即使故障了,任期编号自然会更新,不会出现编号错乱的问题</div>2020-08-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ae/8b/43ce01ca.jpg" width="30px"><span>ezekiel</span> 👍（1） 💬（0）<div>老师您好！
-
-你可以看到，原本预期的指令是 X、Y，最后变成了 Z、Y。讲到这儿，你应该可以知道，为什么用 Multi-Paxos 不能达到我们想要的结果了吧？
-========================================
-x、y并没有复制到大多数节点，在客户端角度来说应该是失败的。从服务端角度来说，C当选后为什么会接受A节点的y值呢？没有达成共识呀</div>2021-10-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/67/df/8b85d0d9.jpg" width="30px"><span>--</span> 👍（1） 💬（0）<div>能否使用UDP得看zxid是不是连续递增的，本质上来说每个节点提案的偏序关系是一样的就能保证顺序。但是主节点故障之后，新主需要能够判断当前要提交的提案是不是第一个未提交的提案，即提案是否存在空洞。如果zxid是连续的，通过对比最后一个已提交的提案的zxid就能判断出是否有空洞，如果不是连续的，那么就无法判断了。</div>2021-05-10</li><br/><li><img src="" width="30px"><span>zyz</span> 👍（1） 💬（0）<div>老师！“Zookeeper 提供的是最终一致性，也就是读操作可以在任何节点上执行，客户端会读到旧数据”，这句话是不是这样理解，根据zk的单一视图保证客户端不会连接到数据版本比自己之前看到的旧的服务器上。
-如果这个客户端，指的是当前刚刚发起操作修改数据的客户端，断开连上还没有更新到最新事务的非领导者节点，非领导者节点会拒绝当前连接，因为客户端zxid事务Id，大于当前节点事务Id lastProcessedZxid，因此客户端需要连接其他节点。
-如果这个客户端，指的是新客户端，不是刚才操作的客户端，连接上非领导者节点，看的的数据可能不是最新的。</div>2021-02-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/cd/db/7467ad23.jpg" width="30px"><span>Bachue Zhou</span> 👍（1） 💬（0）<div>采用 udp 协议也可以保证消息的顺序性啊，只需要在上层再加一个保证消息顺序性的协议即可，比如 quic</div>2021-01-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/65/b7/058276dc.jpg" width="30px"><span>i_chase</span> 👍（0） 💬（0）<div>这里Multi paxos顺序性讲的是真的看不明白。。感觉保证顺序性的唯一办法就是让每个zxid提案顺序执行？</div>2022-11-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/03/c5/600fd645.jpg" width="30px"><span>tianbingJ</span> 👍（0） 💬（0）<div>不应该强调TCP协议啊，完全没有必要；像Raft那样有index也行啊，比如&lt;1,1&gt; &lt;1,2&gt;这样的序列，&lt;1,2&gt;先到也没关系，&lt;1,1&gt;不到不commit、不apply状态机就是了。
-即使节点之间有连接也不一定是就一个TCP连接...
-
-感觉不是一个层面的事情</div>2022-03-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/63/6e/6b971571.jpg" width="30px"><span>Z宇锤锤</span> 👍（0） 💬（0）<div>不可以。因为UDP不可以保证数据顺序。</div>2022-01-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/83/22/c3dae274.jpg" width="30px"><span>阿kai(aeo</span> 👍（0） 💬（0）<div>&quot;当主节点接收到指定提案的“大多数”的确认响应后，该提案将处于提交状态（Committed），主节点会通知备份节点提交该提案。&quot;
-我有一个疑问，备份节点各自Commit提案以后 还会告诉主节点吗？
-</div>2022-01-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/22/f4/9fd6f8f0.jpg" width="30px"><span>核桃</span> 👍（0） 💬（0）<div>其实结合工程实现来看,不管是基于Raft还是Paxos的实现,其实已经非常类似了,也就是在读写级别,是否从节点可写等方面有一些取舍罢了,但是本质思想是相同的.</div>2022-01-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/12/c7/a7a5df8b.jpg" width="30px"><span>达子不一般</span> 👍（0） 💬（0）<div>如果 ZAB 采用的是 UDP 协议，能保证消息接收的顺序性吗？
-
-UDP不能保证消息接收的顺序性，但一定要保证消息接收的顺序性吗？是否只要保证leader上commit的顺序性即可</div>2021-10-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/a4/0c/be3ac2ca.jpg" width="30px"><span>乘修</span> 👍（0） 💬（0）<div>如果说x没有被选定，那么y也没有被选定啊，不可能出现后续z代替x，将结果从[x,y]变成[z,y]吧？</div>2021-08-30</li><br/>
+ZAB 协议的节点也可能各种宕机啊？！</div>2021-04-28</li><br/>
 </ul>

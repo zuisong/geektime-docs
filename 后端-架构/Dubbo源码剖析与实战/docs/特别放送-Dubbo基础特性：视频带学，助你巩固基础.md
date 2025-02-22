@@ -35,6 +35,52 @@
 ## 服务提供方异步化实践
 
 1. 通过AsyncContext#startAsync实现提供方
+
+<!--THE END-->
+
+2. 通过返回CompletableFuture实现提供方
+
+## 服务消费方异步化实践
+
+1. 通过getFuture方式从provider拿到结果
+
+<!--THE END-->
+
+2. 通过setCallback方式从provider拿到结果
+
+<!--THE END-->
+
+3. 通过getCompletableFuture方式从provider拿到结果
+
+## 常用配置参数
+
+1. 启动时服务依赖检查参数check=false
+
+<!--THE END-->
+
+2. 读写请求重试次数设置参数retries=2
+
+<!--THE END-->
+
+3. 调用失败时的容错设置cluster=failover
+
+<!--THE END-->
+
+4. 负载均衡策略设置loadbalance=random
+
+<!--THE END-->
+
+5. 线程模型设置dispatcher=all
+
+<!--THE END-->
+
+6. 服务提供方超时中断流程设置all2
+
+<!--THE END-->
+
+7. 导出线程堆栈设置dump.directory=path
+
+下一讲我们回归正文，应用框架中的高级特性，解决实际问题。下一讲见。
 <div><strong>精选留言（8）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/1d/80/93/dde3d5f0.jpg" width="30px"><span>熊悟空的凶</span> 👍（4） 💬（1）<div>我是工作了5年多的，科班出身，本讲视频我全部学习了，并且都敲了一遍，来回看了好几遍，课程觉得非常实用，老师基本都是手把手教，值得一学，只要自己虚心学习。</div>2022-12-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/7b/03/03583011.jpg" width="30px"><span>天天有吃的</span> 👍（1） 💬（1）<div>后续的课程都是视频的方式吗</div>2022-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/36/41/62/cf9e3aaa.jpg" width="30px"><span>cheems</span> 👍（0） 💬（1）<div>老师视频课程的代码，有git地址吗</div>2023-03-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/16/e0/7abad3cc.jpg" width="30px"><span>星期八</span> 👍（0） 💬（1）<div> RpcContext.getContext().getFuture().get() 这种调用方式怎么知道  就提调用的是哪个方法呢？</div>2023-02-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/99/c3/e4f408d4.jpg" width="30px"><span>陌兮</span> 👍（0） 💬（1）<div>nice!</div>2023-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（1）<div>学习了一下 Dubbo 基础知识，感谢老师</div>2023-01-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/44/bc/833c7968.jpg" width="30px"><span>大吖大鳄鱼</span> 👍（0） 💬（1）<div>老师代码有没有git地址</div>2022-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/be/8e/850ce072.jpg" width="30px"><span>jizhi7</span> 👍（1） 💬（0）<div>dubbo 的基础视频在哪有发布么？</div>2023-08-20</li><br/>
+<li><span>熊悟空的凶</span> 👍（4） 💬（1）<div>我是工作了5年多的，科班出身，本讲视频我全部学习了，并且都敲了一遍，来回看了好几遍，课程觉得非常实用，老师基本都是手把手教，值得一学，只要自己虚心学习。</div>2022-12-21</li><br/><li><span>天天有吃的</span> 👍（1） 💬（1）<div>后续的课程都是视频的方式吗</div>2022-12-19</li><br/><li><span>cheems</span> 👍（0） 💬（1）<div>老师视频课程的代码，有git地址吗</div>2023-03-14</li><br/><li><span>星期八</span> 👍（0） 💬（1）<div> RpcContext.getContext().getFuture().get() 这种调用方式怎么知道  就提调用的是哪个方法呢？</div>2023-02-20</li><br/><li><span>陌兮</span> 👍（0） 💬（1）<div>nice!</div>2023-02-10</li><br/><li><span>aoe</span> 👍（0） 💬（1）<div>学习了一下 Dubbo 基础知识，感谢老师</div>2023-01-04</li><br/><li><span>大吖大鳄鱼</span> 👍（0） 💬（1）<div>老师代码有没有git地址</div>2022-12-20</li><br/><li><span>jizhi7</span> 👍（1） 💬（0）<div>dubbo 的基础视频在哪有发布么？</div>2023-08-20</li><br/>
 </ul>

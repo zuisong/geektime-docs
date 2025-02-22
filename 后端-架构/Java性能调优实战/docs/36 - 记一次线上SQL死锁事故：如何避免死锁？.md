@@ -35,33 +35,113 @@ mysql> show variables like 'autocommit';
 mysql> set autocommit = 0;
 Query OK, 0 rows affected (0.00 sec)
 ```
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eotSSnZic41tGkbflx0ogIg3ia6g2muFY1hCgosL2t3icZm7I8Ax1hcv1jNgr6vrZ53dpBuGhaoc6DKg/132" width="30px"><span>张学磊</span> 👍（68） 💬（1）<div>MySQL默认开启了死锁检测机制，当检测到死锁后会选择一个最小(锁定资源最少得事务)的事务进行回滚</div>2019-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/9c/32/77e30b6e.jpg" width="30px"><span>ok</span> 👍（13） 💬（6）<div>老师，请问事例中insert order_record的事务AB中，请解答下疑惑，我描述如下
+
+订单在做幂等性校验时，先是通过订单号检查订单是否存在，如果不存在则新增订单记录。知道具体的逻辑之后，我们再来模拟创建产生死锁的运行SQL语句。首先，我们模拟新建两个订单，并按照以下顺序执行幂等性校验SQL语句（垂直方向代表执行的时间顺序）：
+
+![](https://static001.geekbang.org/resource/image/49/a0/49198c13e2dfdff0a9492a1b58cd93a0.jpg?wh=1360%2A1072)
+
+此时，我们会发现两个事务已经进入死锁状态。我们可以在information\_schema数据库中查询到具体的死锁情况，如下图所示：
+
+![](https://static001.geekbang.org/resource/image/7d/47/7d6e8c42d082ac5b75882e3d171a8047.jpg?wh=2348%2A558)
+
+看到这，你可能会想，为什么SELECT要加for update排他锁，而不是使用共享锁呢？试想下，如果是两个订单号一样的请求同时进来，就有可能出现幻读。也就是说，一开始事务A中的查询没有该订单号，后来事务B新增了一个该订单号的记录，此时事务A再新增一条该订单号记录，就会创建重复的订单记录。面对这种情况，我们可以使用锁间隙算法来防止幻读。
+
+## 死锁是如何产生的？
+
+上面我们说到了锁间隙，在[第33讲](https://time.geekbang.org/column/article/114194)中，我已经讲过了并发事务中的锁机制以及行锁的具体实现算法，不妨回顾一下。
+
+行锁的具体实现算法有三种：record lock、gap lock以及next-key lock。record lock是专门对索引项加锁；gap lock是对索引项之间的间隙加锁；next-key lock则是前面两种的组合，对索引项以其之间的间隙加锁。
+
+只在可重复读或以上隔离级别下的特定操作才会取得gap lock或next-key lock，在Select、Update和Delete时，除了基于唯一索引的查询之外，其它索引查询时都会获取gap lock或next-key lock，即锁住其扫描的范围。主键索引也属于唯一索引，所以主键索引是不会使用gap lock或next-key lock。
+
+在MySQL中，gap lock默认是开启的，即innodb\_locks\_unsafe\_for\_binlog参数值是disable的，且MySQL中默认的是RR事务隔离级别。
+
+当我们执行以下查询SQL时，由于order\_no列为非唯一索引，此时又是RR事务隔离级别，所以SELECT的加锁类型为gap lock，这里的gap范围是(4,+∞）。
+
+> SELECT id FROM `demo`.`order_record` where `order_no` = 4 for update;
+
+执行查询SQL语句获取的gap lock并不会导致阻塞，而当我们执行以下插入SQL时，会在插入间隙上再次获取插入意向锁。插入意向锁其实也是一种gap锁，它与gap lock是冲突的，所以当其它事务持有该间隙的gap lock时，需要等待其它事务释放gap lock之后，才能获取到插入意向锁。
+
+以上事务A和事务B都持有间隙(4,+∞）的gap锁，而接下来的插入操作为了获取到插入意向锁，都在等待对方事务的gap锁释放，于是就造成了循环等待，导致死锁。
+
+> INSERT INTO `demo`.`order_record`(`order_no`, `status`, `create_date`) VALUES (5, 1, ‘2019-07-13 10:57:03’);
+
+我们可以通过以下锁的兼容矩阵图，来查看锁的兼容性：
+
+![](https://static001.geekbang.org/resource/image/58/e3/58b1567a4ff86460ececfd420eda80e3.jpg?wh=1358%2A404)
+
+## 避免死锁的措施
+
+知道了死锁问题源自哪儿，就可以找到合适的方法来避免它了。
+
+避免死锁最直观的方法就是在两个事务相互等待时，当一个事务的等待时间超过设置的某一阈值，就对这个事务进行回滚，另一个事务就可以继续执行了。这种方法简单有效，在InnoDB中，参数innodb\_lock\_wait\_timeout是用来设置超时时间的。
+
+另外，我们还可以将order\_no列设置为唯一索引列。虽然不能防止幻读，但我们可以利用它的唯一性来保证订单记录不重复创建，这种方式唯一的缺点就是当遇到重复创建订单时会抛出异常。
+
+我们还可以使用其它的方式来代替数据库实现幂等性校验。例如，使用Redis以及ZooKeeper来实现，运行效率比数据库更佳。
+
+## 其它常见的SQL死锁问题
+
+这里再补充一些常见的SQL死锁问题，以便你遇到时也能知道其原因，从而顺利解决。
+
+我们知道死锁的四个必要条件：互斥、占有且等待、不可强占用、循环等待。只要系统发生死锁，这些条件必然成立。所以在一些经常需要使用互斥共用一些资源，且有可能循环等待的业务场景中，要特别注意死锁问题。
+
+接下来，我们再来了解一个出现死锁的场景。
+
+我们讲过，InnoDB存储引擎的主键索引为聚簇索引，其它索引为辅助索引。如果我们之前使用辅助索引来更新数据库，就需要修改为使用聚簇索引来更新数据库。如果两个更新事务使用了不同的辅助索引，或一个使用了辅助索引，一个使用了聚簇索引，就都有可能导致锁资源的循环等待。由于本身两个事务是互斥，也就构成了以上死锁的四个必要条件了。
+
+我们还是以上面的这个订单记录表来重现下聚簇索引和辅助索引更新时，循环等待锁资源导致的死锁问题：
+
+![](https://static001.geekbang.org/resource/image/b6/e7/b685033798d1027dac3f2f6cb1c2c6e7.jpg?wh=1358%2A250)
+
+出现死锁的步骤：
+
+![](https://static001.geekbang.org/resource/image/e0/b4/e018d73c4a00de2bc3dc6932e0fa75b4.jpg?wh=1362%2A422)
+
+综上可知，在更新操作时，我们应该尽量使用主键来更新表字段，这样可以有效避免一些不必要的死锁发生。
+
+## 总结
+
+数据库发生死锁的概率并不是很大，一旦遇到了，就一定要彻查具体原因，尽快找出解决方案，老实说，过程不简单。我们只有先对MySQL的InnoDB存储引擎有足够的了解，才能剖析出造成死锁的具体原因。
+
+例如，以上我例举的两种发生死锁的场景，一个考验的是我们对锁算法的了解，另外一个考验则是我们对聚簇索引和辅助索引的熟悉程度。
+
+解决死锁的最佳方式当然就是预防死锁的发生了，我们平时编程中，可以通过以下一些常规手段来预防死锁的发生：
+
+1.在编程中尽量按照固定的顺序来处理数据库记录，假设有两个更新操作，分别更新两条相同的记录，但更新顺序不一样，有可能导致死锁；
+
+2.在允许幻读和不可重复读的情况下，尽量使用RC事务隔离级别，可以避免gap lock导致的死锁问题；
+
+3.更新表时，尽量使用主键更新；
+
+4.避免长事务，尽量将长事务拆解，可以降低与其它事务发生冲突的概率；
+
+5.设置锁等待超时参数，我们可以通过innodb\_lock\_wait\_timeout设置合理的等待超时阈值，特别是在一些高并发的业务中，我们可以尽量将该值设置得小一些，避免大量事务等待，占用系统资源，造成严重的性能开销。
+
+## 思考题
+
+除了设置 innodb\_lock\_wait\_timeout 参数来避免已经产生死锁的SQL长时间等待，你还知道其它方法来解决类似问题吗？
+
+期待在留言区看到你的见解。也欢迎你点击“请朋友读”，把今天的内容分享给身边的朋友，邀请他一起讨论。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>张学磊</span> 👍（68） 💬（1）<div>MySQL默认开启了死锁检测机制，当检测到死锁后会选择一个最小(锁定资源最少得事务)的事务进行回滚</div>2019-08-13</li><br/><li><span>ok</span> 👍（13） 💬（6）<div>老师，请问事例中insert order_record的事务AB中，请解答下疑惑，我描述如下
 1、事务A执行select 4 for update获取（4,+∞）间隙锁
 2、图中B事务再执行select 5 for update获取（5,+∞）的间隙锁 
 3、事务A执行insert 4 发现事务A自己持有（4,+∞）间隙锁，所以不用等待呀！
 4、事务B执行insert 5 发现事务A没有commit，持有（4,+∞）间隙锁，所以等待事务A释放锁
 5、事务A提交，事务B insert 5获取到锁，commit
 
-请指出问题…</div>2019-08-16</li><br/><li><img src="" width="30px"><span>ty_young</span> 👍（11） 💬（4）<div>老师您好，请问插入意向锁是一种表锁么</div>2020-04-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/d0/42/6fd01fb9.jpg" width="30px"><span>我已经设置了昵称</span> 👍（7） 💬（3）<div>老师。我们一般不会在查询的时候加上for update，我们的组长让我们事务中不要放查询语句，只能放插入或者更新，就是提前查好，组装好，然后开始执行事务。我觉得这其实会出现重复插入（并发量一高就会出现）。请问老师事务中真的不能做查询操作吗，还有查询的时候怎么防止同时两个事务查不到相对应的数据而造成重复插入</div>2019-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/46/d1/a1ddf49f.jpg" width="30px"><span>阿杜</span> 👍（4） 💬（3）<div>老师，有两个人闻到这个问题，感觉回答的我也不是很明白：
+请指出问题…</div>2019-08-16</li><br/><li><span>ty_young</span> 👍（11） 💬（4）<div>老师您好，请问插入意向锁是一种表锁么</div>2020-04-12</li><br/><li><span>我已经设置了昵称</span> 👍（7） 💬（3）<div>老师。我们一般不会在查询的时候加上for update，我们的组长让我们事务中不要放查询语句，只能放插入或者更新，就是提前查好，组装好，然后开始执行事务。我觉得这其实会出现重复插入（并发量一高就会出现）。请问老师事务中真的不能做查询操作吗，还有查询的时候怎么防止同时两个事务查不到相对应的数据而造成重复插入</div>2019-08-13</li><br/><li><span>阿杜</span> 👍（4） 💬（3）<div>老师，有两个人闻到这个问题，感觉回答的我也不是很明白：
 1:老师你最后放的那张图，为啥主健索引还需要获取非主键索引的锁啊，主键索引不是已经持有这一整行数据了么？
 2.老师，您最后的那个例子，更新status时要获取index_order_status非聚簇索引，这句话能稍微解释一下吗？谢谢了
-麻烦老师详细解答下。</div>2020-01-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/17/48/3ab39c86.jpg" width="30px"><span>insist</span> 👍（3） 💬（3）<div>事务 A 和事务 B 都持有间隙 (4,+∞）的 gap 锁，而接下来的插入操作为了获取到插入意向锁，都在等待对方事务的 gap 锁释放，于是就造成了循环等待，导致死锁
+麻烦老师详细解答下。</div>2020-01-10</li><br/><li><span>insist</span> 👍（3） 💬（3）<div>事务 A 和事务 B 都持有间隙 (4,+∞）的 gap 锁，而接下来的插入操作为了获取到插入意向锁，都在等待对方事务的 gap 锁释放，于是就造成了循环等待，导致死锁
 ------------------
-老师，请问一下，1、为什么A、B可以同时持有gap锁呢？2、为什么获取意向锁之前需要等待对方的gap锁呢？ 比较迷茫</div>2019-12-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0d/9d/58d09086.jpg" width="30px"><span>达达队长</span> 👍（1） 💬（1）<div>老师这一句不懂：事务 A 和事务 B 都持有间隙 (4,+∞）的 gap 锁？
-应该是：A是(4,+∞）B是(5,+∞）吧</div>2020-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/49/ef/02401473.jpg" width="30px"><span>月迷津渡</span> 👍（1） 💬（1）<div>一个表它的主键是UUID生成的，如果说为了避免幻读而加了一个Next-key lock，那它会怎么锁的，感觉后插入的位置待定。。。还是全表锁？</div>2019-10-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/89/a1/00d7330d.jpg" width="30px"><span>郭奉孝</span> 👍（0） 💬（1）<div>老师，为什么订单表校验重复订单不在主表而要用这么一张冗余表</div>2020-03-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/51/2f/7b04140c.jpg" width="30px"><span>孫やさん</span> 👍（0） 💬（4）<div>老师，您最后的那个例子，更新status时要获取index_order_status非聚簇索引，这句话能稍微解释一下吗？谢谢了</div>2019-12-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/cc/fe/702cf7bf.jpg" width="30px"><span>～</span> 👍（0） 💬（1）<div>老师， 我实践了一下， 发现select col from t where t.col = &#39;xx&#39; for update会导致覆盖索引失效,而使用使用共享锁就不会失效， 这是什么原理呢</div>2019-10-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/f8/3a/e0c14cb3.jpg" width="30px"><span>lizhibo</span> 👍（0） 💬（4）<div>老师 ，最后那个 根据主键ID 和 订单编号更新状态的例子 我这边怎么都是 锁等待 而没有出现死锁的情况， 事物级别RR </div>2019-10-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/10/bb/f1061601.jpg" width="30px"><span>Demon.Lee</span> 👍（0） 💬（1）<div>感悟：
+老师，请问一下，1、为什么A、B可以同时持有gap锁呢？2、为什么获取意向锁之前需要等待对方的gap锁呢？ 比较迷茫</div>2019-12-26</li><br/><li><span>达达队长</span> 👍（1） 💬（1）<div>老师这一句不懂：事务 A 和事务 B 都持有间隙 (4,+∞）的 gap 锁？
+应该是：A是(4,+∞）B是(5,+∞）吧</div>2020-04-14</li><br/><li><span>月迷津渡</span> 👍（1） 💬（1）<div>一个表它的主键是UUID生成的，如果说为了避免幻读而加了一个Next-key lock，那它会怎么锁的，感觉后插入的位置待定。。。还是全表锁？</div>2019-10-21</li><br/><li><span>郭奉孝</span> 👍（0） 💬（1）<div>老师，为什么订单表校验重复订单不在主表而要用这么一张冗余表</div>2020-03-30</li><br/><li><span>孫やさん</span> 👍（0） 💬（4）<div>老师，您最后的那个例子，更新status时要获取index_order_status非聚簇索引，这句话能稍微解释一下吗？谢谢了</div>2019-12-25</li><br/><li><span>～</span> 👍（0） 💬（1）<div>老师， 我实践了一下， 发现select col from t where t.col = &#39;xx&#39; for update会导致覆盖索引失效,而使用使用共享锁就不会失效， 这是什么原理呢</div>2019-10-13</li><br/><li><span>lizhibo</span> 👍（0） 💬（4）<div>老师 ，最后那个 根据主键ID 和 订单编号更新状态的例子 我这边怎么都是 锁等待 而没有出现死锁的情况， 事物级别RR </div>2019-10-04</li><br/><li><span>Demon.Lee</span> 👍（0） 💬（1）<div>感悟：
 1、默认将mysql隔离级别调成RC
 2、使用主键更新
 
-疑问：RR级别下，如果使用唯一索引更新，是record lock么？ </div>2019-09-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（0） 💬（1）<div>课后思考及问题
+疑问：RR级别下，如果使用唯一索引更新，是record lock么？ </div>2019-09-17</li><br/><li><span>钱</span> 👍（0） 💬（1）<div>课后思考及问题
 1：有个疑问，文中说“插入意向锁其实也是一种 gap 锁，它与 gap lock 是冲突的，所以当其它事务持有该间隙的 gap lock 时，需要等待其它事务释放 gap lock 之后，才能获取到插入意向锁。”
-在锁的兼容矩阵图中，先获取到Next-key lock再请求获取Insert Intention lock时是冲突的，反过来就是兼容的?</div>2019-09-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/23/f8/24fcccea.jpg" width="30px"><span>💢 星星💢</span> 👍（0） 💬（3）<div>老师你最后放的那张图，为啥主健索引还需要获取非主键索引的锁啊，主键索引不是已经持有这一整行数据了么？</div>2019-09-10</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/a5U0nqaicLy5ZJkESxBd5lMicNQcTTDK8vURyyWiabHxic7vS1VVk7HWTZg6ltyWJ3n9jb3Gq554ibfjsf7bv1v1Sdw/132" width="30px"><span>Geek_hp60mz</span> 👍（0） 💬（1）<div>老师，RC隔离级别下的select、update、delete基于聚簇索引和辅助索引分别获取什么lock？</div>2019-08-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/10/a6/4d2c933e.jpg" width="30px"><span>K</span> 👍（0） 💬（1）<div>老师您好，麻烦问一下：“如果使用辅助索引来更新数据库，就需要使用聚簇索引来更新数据库...”这句话是什么意思啊？</div>2019-08-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/5e/86/40877404.jpg" width="30px"><span>星星滴蓝天</span> 👍（0） 💬（1）<div>我们有一个很悲催的经历，更新的时候没有使用主键更新，之前还好好的，后来（服务迁移、降低配置......处理流程变长）很悲剧的死锁了。</div>2019-08-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/44/d7/915da418.jpg" width="30px"><span>阿琨</span> 👍（0） 💬（1）<div>老师，使用ON DUPLICATE KEY UPDATE这个是不是也可以解决这种呢</div>2019-08-16</li><br/><li><img src="" width="30px"><span>奇奇</span> 👍（0） 💬（1）<div>mysql本身自带死锁检测
-超时时间在业务上是很难接受的</div>2019-08-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/49/7d/7b9fd831.jpg" width="30px"><span>Fever</span> 👍（0） 💬（1）<div>兼容矩阵图里的Gap锁和横向的Insert Intention不兼容吧。。</div>2019-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/15/69/187b9968.jpg" width="30px"><span>南山</span> 👍（0） 💬（1）<div>for update基本不被允许使用，除非经过review以及测试不会有死锁风险
-对于锁机制，要很好的了解索引数据结构才能明白锁导致的奇怪现象是怎么出现的
-</div>2019-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/e5/67/16322a5d.jpg" width="30px"><span>cky.宇</span> 👍（4） 💬（0）<div>感觉还可以把隔离级别改成RC。RR下锁比较严格，举两个例子：一个就是间隙锁的原因，就像老师的例子一样，如果一个事务在表t1 insert后没有commit，其他事务就不能对表t1进行insert，这样就可能会出现用户A的insert锁住了用户B的insert的情况，其实用户A和B是业务不相关的。而RC下没有间隙锁，不会有这种情况。 第二个就是RR加锁的范围更大，RR下会锁住所有扫描过的行，只有commit后才会全部释放，例如：select no from orders where status = 1 and create_at &gt; xx for update; 其中只有status有索引，那么mysql就要先扫描status索引再回表找满足create_at的行。如果是RR下，会锁住所有status=1的行，直到commit后释放。如果是RC下，当找到满足条件(status, craeted_at)的行后，会释放掉不满住条件但是status=1的行，不需要等到commit。这些细节都会造成RC和RR的性能差距很大。而一些需要重复读的需求可以通过代码来保证。  </div>2019-11-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaEIvUlicgrWtibbDzwhLw5cQrDSy2JuE1mVvmXq11KQIwpLicgDuWfpp9asE0VCN6HhibPDWn7wBc2lfmA/132" width="30px"><span>a、</span> 👍（4） 💬（0）<div>1.设置Transaction的超时时间
-2.设置Transaction的级别为串行化级别</div>2019-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/6c/70/934857f4.jpg" width="30px"><span>李飞</span> 👍（0） 💬（0）<div>对于文中的:
-
-只在可重复读或以上隔离级别下的特定操作才会取得 gap lock 或 next-key lock，在 Select、Update 和 Delete 时，除了基于唯一索引的查询之外，其它索引查询时都会获取 gap lock 或 next-key lock，即锁住其扫描的范围。主键索引也属于唯一索引，所以主键索引是不会使用 gap lock 或 next-key lock。
-
-不是很理解, 希望老师解答, 在 RR 隔离级别下, 如果有 SQL:  select * from table where num = 100 for update; , num 为唯一索引, 并且 num=100 查询不到数据, 按照我的想法是应该存在间隙锁的. </div>2023-08-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d0/91/89123507.jpg" width="30px"><span>Johar</span> 👍（0） 💬（0）<div>老师，这个问题是不是也可以把orderNo设置为唯一索引？</div>2023-03-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（0） 💬（0）<div>gap lock 的范围不是根据数据库中已有的记录来确定的吗？</div>2021-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/ce/5e/b103d538.jpg" width="30px"><span>大明猩</span> 👍（0） 💬（0）<div>这种事务A,事务B同时执行时利用的多线程吗，还是单纯用的SQL语句</div>2021-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/ce/5e/b103d538.jpg" width="30px"><span>大明猩</span> 👍（0） 💬（1）<div>这种事务A，事务B的先后顺序是怎么模拟的不会搞啊</div>2021-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/26/3a/5c1f4d91.jpg" width="30px"><span>胖佳</span> 👍（0） 💬（0）<div>老师，能介绍一下mysql集群使用的ndbcluster引擎与innoDB在加锁方面的区别吗？</div>2021-09-07</li><br/>
+在锁的兼容矩阵图中，先获取到Next-key lock再请求获取Insert Intention lock时是冲突的，反过来就是兼容的?</div>2019-09-15</li><br/><li><span>💢 星星💢</span> 👍（0） 💬（3）<div>老师你最后放的那张图，为啥主健索引还需要获取非主键索引的锁啊，主键索引不是已经持有这一整行数据了么？</div>2019-09-10</li><br/>
 </ul>

@@ -53,13 +53,149 @@ public class SynchronizedStack<T> {
    }
 }
 ```
-<div><strong>精选留言（22）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/16/6d/8f/81e282e2.jpg" width="30px"><span>802.11</span> 👍（15） 💬（2）<div>工厂模式和池化思想有什么区别呢</div>2019-06-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（5） 💬（1）<div>同步栈有看到，但是不知道它是做池化用的 😂😂😂
+
+这个代码逻辑比较清晰，主要是SynchronizedStack内部维护了一个对象数组，并且用数组来实现栈的接口：push和pop方法，这两个方法分别用来归还对象和获取对象。你可能好奇为什么Tomcat使用一个看起来比较简单的SynchronizedStack来做对象容器，为什么不使用高级一点的并发容器比如ConcurrentLinkedQueue呢？
+
+这是因为SynchronizedStack用数组而不是链表来维护对象，可以减少结点维护的内存开销，并且它本身只支持扩容不支持缩容，也就是说数组对象在使用过程中不会被重新赋值，也就不会被GC。这样设计的目的是用最低的内存和GC的代价来实现无界容器，同时Tomcat的最大同时请求数是有限制的，因此不需要担心对象的数量会无限膨胀。
+
+## Jetty的ByteBufferPool
+
+我们再来看Jetty中的对象池ByteBufferPool，它本质是一个ByteBuffer对象池。当Jetty在进行网络数据读写时，不需要每次都在JVM堆上分配一块新的Buffer，只需在ByteBuffer对象池里拿到一块预先分配好的Buffer，这样就避免了频繁的分配内存和释放内存。这种设计你同样可以在高性能通信中间件比如Mina和Netty中看到。ByteBufferPool是一个接口：
+
+```
+public interface ByteBufferPool
+{
+    public ByteBuffer acquire(int size, boolean direct);
+
+    public void release(ByteBuffer buffer);
+}
+```
+
+接口中的两个方法：acquire和release分别用来分配和释放内存，并且你可以通过acquire方法的direct参数来指定buffer是从JVM堆上分配还是从本地内存分配。ArrayByteBufferPool是ByteBufferPool的实现类，我们先来看看它的成员变量和构造函数：
+
+```
+public class ArrayByteBufferPool implements ByteBufferPool
+{
+    private final int _min;//最小size的Buffer长度
+    private final int _maxQueue;//Queue最大长度
+    
+    //用不同的Bucket(桶)来持有不同size的ByteBuffer对象,同一个桶中的ByteBuffer size是一样的
+    private final ByteBufferPool.Bucket[] _direct;
+    private final ByteBufferPool.Bucket[] _indirect;
+    
+    //ByteBuffer的size增量
+    private final int _inc;
+    
+    public ArrayByteBufferPool(int minSize, int increment, int maxSize, int maxQueue)
+    {
+        //检查参数值并设置默认值
+        if (minSize<=0)//ByteBuffer的最小长度
+            minSize=0;
+        if (increment<=0)
+            increment=1024;//默认以1024递增
+        if (maxSize<=0)
+            maxSize=64*1024;//ByteBuffer的最大长度默认是64K
+        
+        //ByteBuffer的最小长度必须小于增量
+        if (minSize>=increment) 
+            throw new IllegalArgumentException("minSize >= increment");
+            
+        //最大长度必须是增量的整数倍
+        if ((maxSize%increment)!=0 || increment>=maxSize)
+            throw new IllegalArgumentException("increment must be a divisor of maxSize");
+         
+        _min=minSize;
+        _inc=increment;
+        
+        //创建maxSize/increment个桶,包含直接内存的与heap的
+        _direct=new ByteBufferPool.Bucket[maxSize/increment];
+        _indirect=new ByteBufferPool.Bucket[maxSize/increment];
+        _maxQueue=maxQueue;
+        int size=0;
+        for (int i=0;i<_direct.length;i++)
+        {
+          size+=_inc;
+          _direct[i]=new ByteBufferPool.Bucket(this,size,_maxQueue);
+          _indirect[i]=new ByteBufferPool.Bucket(this,size,_maxQueue);
+        }
+    }
+}
+```
+
+从上面的代码我们看到，ByteBufferPool是用不同的桶（Bucket）来管理不同长度的ByteBuffer，因为我们可能需要分配一块1024字节的Buffer，也可能需要一块64K字节的Buffer。而桶的内部用一个ConcurrentLinkedDeque来放置ByteBuffer对象的引用。
+
+```
+private final Deque<ByteBuffer> _queue = new ConcurrentLinkedDeque<>();
+```
+
+你可以通过下面的图再来理解一下：
+
+![](https://static001.geekbang.org/resource/image/85/79/852834815eda15e82888ec18a81b5879.png?wh=718%2A213)
+
+而Buffer的分配和释放过程，就是找到相应的桶，并对桶中的Deque做出队和入队的操作，而不是直接向JVM堆申请和释放内存。
+
+```
+//分配Buffer
+public ByteBuffer acquire(int size, boolean direct)
+{
+    //找到对应的桶，没有的话创建一个桶
+    ByteBufferPool.Bucket bucket = bucketFor(size,direct);
+    if (bucket==null)
+        return newByteBuffer(size,direct);
+    //这里其实调用了Deque的poll方法
+    return bucket.acquire(direct);
+        
+}
+
+//释放Buffer
+public void release(ByteBuffer buffer)
+{
+    if (buffer!=null)
+    {
+      //找到对应的桶
+      ByteBufferPool.Bucket bucket = bucketFor(buffer.capacity(),buffer.isDirect());
+      
+      //这里调用了Deque的offerFirst方法
+  if (bucket!=null)
+      bucket.release(buffer);
+    }
+}
+```
+
+## 对象池的思考
+
+对象池作为全局资源，高并发环境中多个线程可能同时需要获取对象池中的对象，因此多个线程在争抢对象时会因为锁竞争而阻塞， 因此使用对象池有线程同步的开销，而不使用对象池则有创建和销毁对象的开销。对于对象池本身的设计来说，需要尽量做到无锁化，比如Jetty就使用了ConcurrentLinkedDeque。如果你的内存足够大，可以考虑用**线程本地（ThreadLocal）对象池**，这样每个线程都有自己的对象池，线程之间互不干扰。
+
+为了防止对象池的无限膨胀，必须要对池的大小做限制。对象池太小发挥不了作用，对象池太大的话可能有空闲对象，这些空闲对象会一直占用内存，造成内存浪费。这里你需要根据实际情况做一个平衡，因此对象池本身除了应该有自动扩容的功能，还需要考虑自动缩容。
+
+所有的池化技术，包括缓存，都会面临内存泄露的问题，原因是对象池或者缓存的本质是一个Java集合类，比如List和Stack，这个集合类持有缓存对象的引用，只要集合类不被GC，缓存对象也不会被GC。维持大量的对象也比较占用内存空间，所以必要时我们需要主动清理这些对象。以Java的线程池ThreadPoolExecutor为例，它提供了allowCoreThreadTimeOut和setKeepAliveTime两种方法，可以在超时后销毁线程，我们在实际项目中也可以参考这个策略。
+
+另外在使用对象池时，我这里还有一些小贴士供你参考：
+
+- 对象在用完后，需要调用对象池的方法将对象归还给对象池。
+- 对象池中的对象在再次使用时需要重置，否则会产生脏对象，脏对象可能持有上次使用的引用，导致内存泄漏等问题，并且如果脏对象下一次使用时没有被清理，程序在运行过程中会发生意想不到的问题。
+- 对象一旦归还给对象池，使用者就不能对它做任何操作了。
+- 向对象池请求对象时有可能出现的阻塞、异常或者返回null值，这些都需要我们做一些额外的处理，来确保程序的正常运行。
+
+## 本期精华
+
+Tomcat和Jetty都用到了对象池技术，这是因为处理一次HTTP请求的时间比较短，但是这个过程中又需要创建大量复杂对象。
+
+对象池技术可以减少频繁创建和销毁对象带来的成本，实现对象的缓存和复用。如果你的系统需要频繁的创建和销毁对象，并且对象的创建代价比较大，这种情况下，一般来说你会观察到GC的压力比较大，占用CPU率比较高，这个时候你就可以考虑使用对象池了。
+
+还有一种情况是你需要对资源的使用做限制，比如数据库连接，不能无限制地创建数据库连接，因此就有了数据库连接池，你也可以考虑把一些关键的资源池化，对它们进行统一管理，防止滥用。
+
+## 课后思考
+
+请你想想在实际工作中，有哪些场景可以用“池化”技术来优化。
+
+不知道今天的内容你消化得如何？如果还有疑问，请大胆的在留言区提问，也欢迎你把你的课后思考和心得记录下来，与我和其他同学一起讨论。如果你觉得今天有所收获，欢迎你把它分享给你的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>802.11</span> 👍（15） 💬（2）<div>工厂模式和池化思想有什么区别呢</div>2019-06-27</li><br/><li><span>yang</span> 👍（5） 💬（1）<div>同步栈有看到，但是不知道它是做池化用的 😂😂😂
 
 线程池 里面维护了线程数组和任务队列
 连接池 
-jvm的常量池 ？</div>2019-08-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（5） 💬（4）<div>老师好学到了。通过threadlocal来减少锁竞争上下文切换的开销。
+jvm的常量池 ？</div>2019-08-15</li><br/><li><span>-W.LI-</span> 👍（5） 💬（4）<div>老师好学到了。通过threadlocal来减少锁竞争上下文切换的开销。
 可是我看见好多帖子说threadlocal容易内存泄露啥的肯比较多需要慎用。五年码龄从没用过😂。
-请教一个问题threadLocal中的对象如果用完不清。下次别的请求Tomcat线程池中拿到同个线程，能取到之前请求存入的数据么?</div>2019-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/87/be/7466bf26.jpg" width="30px"><span>清风</span> 👍（4） 💬（3）<div>也看了些书上的讲解，看完后还是没有像老师这样能总结出一个清晰的逻辑结构，这样的情况需要怎么办呢</div>2019-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b3/c5/7fc124e2.jpg" width="30px"><span>Liam</span> 👍（4） 💬（1）<div>tomcat和jetty的对象池没有空闲超时&#47;超量回收的机制吗？</div>2019-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/65/10/a543759a.jpg" width="30px"><span>kyon</span> 👍（3） 💬（1）<div>您好，请问 ArrayByteBufferPool 中，direct 和 indirect 都是 new 出来的，区别是什么？另外在 new ByteBufferPool.Bucket(this,size,_maxQueue) 中，参数 _maxQueue 的作用是什么？</div>2019-06-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/e9/0b/1171ac71.jpg" width="30px"><span>WL</span> 👍（2） 💬（3）<div>请问老师Tomcat为什么用栈做对象池，那要去栈底的对象不是很麻烦很不灵活吗？为啥不用map的方式呢？</div>2019-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/a6/6e/0ffa1ff6.jpg" width="30px"><span>XxxxxxxMr</span> 👍（0） 💬（1）<div>老师 我有一个疑问  池化。对象池 、线程池 、数据库连接池等等 他们都是如出一辙吗？还是大同小异</div>2019-09-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/47/d1/15f1a8ce.jpg" width="30px"><span>TJ</span> 👍（0） 💬（1）<div>为什么tomcat不使用java本身的stack class? 它也是基于数组的。自己再加一个同步就可以了</div>2019-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fc/b5/ac717737.jpg" width="30px"><span>肖臧</span> 👍（6） 💬（0）<div>Java的Integer类的IntegerCache就是利用了池化技术，还有String.intern()也算池化技术</div>2020-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/cf/14/384258ba.jpg" width="30px"><span>Wiggle Wiggle</span> 👍（4） 💬（0）<div>“并且它本身只支持扩容不支持缩容，也就是说数组对象在使用过程中不会被重新赋值，也就不会被 GC”。这句话是不是写错了？我觉得是不是想说【数组元素】在使用过程中不会被重新赋值？因为扩容的话，创建了新的数组；缩容的话反而不用创建新的数组</div>2019-08-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/07/d2/0d7ee298.jpg" width="30px"><span>惘 闻</span> 👍（1） 💬（0）<div>老师对象池可以认为是享元模式吗?对象结构和一些重复参数是元</div>2021-01-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/5d/d4/e5ea1c25.jpg" width="30px"><span>sun留白</span> 👍（1） 💬（2）<div>理解tomcat的数组是每个位置的对象set好后，不会被替换掉，当需要新的不存在的额对象时，再建立。那么，数组长度如何控制呢？达到长度限制时，长时间未用的对象被新的对象替换掉吗？请问老师，我这样理解对吗？</div>2020-01-06</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/6LaITPQ4Lk5fZn8ib1tfsPW8vI9icTuSwAddiajVfibPDiaDvMU2br6ZT7K0LWCKibSQuicT7sIEVmY4K7ibXY0T7UQEiag/132" width="30px"><span>尔东橙</span> 👍（0） 💬（0）<div>Spring的单例池也算一种对象池吧？</div>2022-09-09</li><br/><li><img src="" width="30px"><span>Geek_00271d</span> 👍（0） 💬（0）<div>在工作中会用到okhttpclient，看了里面源码，里面用到了连接池</div>2022-01-19</li><br/><li><img src="" width="30px"><span>Geek_383ffd</span> 👍（0） 💬（1）<div>如果你的内存足够大，可以考虑用线程本地（ThreadLocal）对象池，这样每个线程都有自己的对象池，线程之间互不干扰。
-老师您好，不太理解这里为什么每个线程都弄对象池</div>2020-11-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/83/c8/5ce842f6.jpg" width="30px"><span>maybe</span> 👍（0） 💬（0）<div>当需要频繁创建和销毁对象且对象的创建比较麻烦和消耗资源的时候，可以使用池化技术通过空间换取时间的策略。池化技术重用对象，减少对象创建和销毁的开销，也可以用于限制资源的创建，比如数据库连接。不过需要注意内存泄漏、对象及时重置防止脏读的问题</div>2020-08-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fc/b5/ac717737.jpg" width="30px"><span>肖臧</span> 👍（0） 💬（0）<div>SynchronizedStack的全局变量index应该会初始化成-1吧，要不然stack数组的第一个位置就浪费了，而且代码里有一些index = -1的逻辑判断。</div>2020-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/5d/d4/e5ea1c25.jpg" width="30px"><span>sun留白</span> 👍（0） 💬（0）<div>Bucket[i]中的是size相同的Buffer队列。Bucket的内部用一个 ConcurrentLinkedDeque 来放置 ByteBuffer 对象的引用。这么理解对吗？老师。</div>2020-01-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/78/0f/f4e012a1.jpg" width="30px"><span>掐你小77</span> 👍（0） 💬（0）<div>老师，你说的：“对象一旦归还给对象池，使用者就不能对它做任何操作了”，是一种默认的编码规范么？一种口头约束：即使用者不应该再持有这个对象引用对对象做一些操作，避免造成一些线程安全问题。可以这样理解么？</div>2019-10-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/05/7f/a7df049a.jpg" width="30px"><span>Standly</span> 👍（0） 💬（0）<div>赞，如果能有jetty和netty对象池实现的对比就更好了</div>2019-06-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（0） 💬（0）<div>我之前听人说事务里面的数据库链接就是通过threadLocal来共享的(事务结束后会从threadlocal删除当前链接么?)。那这个数据库的连接如果和Tomcat的线程数一对一绑定上能提高效率么?</div>2019-06-25</li><br/>
+请教一个问题threadLocal中的对象如果用完不清。下次别的请求Tomcat线程池中拿到同个线程，能取到之前请求存入的数据么?</div>2019-06-25</li><br/><li><span>清风</span> 👍（4） 💬（3）<div>也看了些书上的讲解，看完后还是没有像老师这样能总结出一个清晰的逻辑结构，这样的情况需要怎么办呢</div>2019-07-01</li><br/><li><span>Liam</span> 👍（4） 💬（1）<div>tomcat和jetty的对象池没有空闲超时&#47;超量回收的机制吗？</div>2019-06-25</li><br/><li><span>kyon</span> 👍（3） 💬（1）<div>您好，请问 ArrayByteBufferPool 中，direct 和 indirect 都是 new 出来的，区别是什么？另外在 new ByteBufferPool.Bucket(this,size,_maxQueue) 中，参数 _maxQueue 的作用是什么？</div>2019-06-26</li><br/><li><span>WL</span> 👍（2） 💬（3）<div>请问老师Tomcat为什么用栈做对象池，那要去栈底的对象不是很麻烦很不灵活吗？为啥不用map的方式呢？</div>2019-06-25</li><br/><li><span>XxxxxxxMr</span> 👍（0） 💬（1）<div>老师 我有一个疑问  池化。对象池 、线程池 、数据库连接池等等 他们都是如出一辙吗？还是大同小异</div>2019-09-16</li><br/><li><span>TJ</span> 👍（0） 💬（1）<div>为什么tomcat不使用java本身的stack class? 它也是基于数组的。自己再加一个同步就可以了</div>2019-06-25</li><br/><li><span>肖臧</span> 👍（6） 💬（0）<div>Java的Integer类的IntegerCache就是利用了池化技术，还有String.intern()也算池化技术</div>2020-06-05</li><br/><li><span>Wiggle Wiggle</span> 👍（4） 💬（0）<div>“并且它本身只支持扩容不支持缩容，也就是说数组对象在使用过程中不会被重新赋值，也就不会被 GC”。这句话是不是写错了？我觉得是不是想说【数组元素】在使用过程中不会被重新赋值？因为扩容的话，创建了新的数组；缩容的话反而不用创建新的数组</div>2019-08-26</li><br/><li><span>惘 闻</span> 👍（1） 💬（0）<div>老师对象池可以认为是享元模式吗?对象结构和一些重复参数是元</div>2021-01-26</li><br/><li><span>sun留白</span> 👍（1） 💬（2）<div>理解tomcat的数组是每个位置的对象set好后，不会被替换掉，当需要新的不存在的额对象时，再建立。那么，数组长度如何控制呢？达到长度限制时，长时间未用的对象被新的对象替换掉吗？请问老师，我这样理解对吗？</div>2020-01-06</li><br/><li><span>尔东橙</span> 👍（0） 💬（0）<div>Spring的单例池也算一种对象池吧？</div>2022-09-09</li><br/><li><span>Geek_00271d</span> 👍（0） 💬（0）<div>在工作中会用到okhttpclient，看了里面源码，里面用到了连接池</div>2022-01-19</li><br/>
 </ul>

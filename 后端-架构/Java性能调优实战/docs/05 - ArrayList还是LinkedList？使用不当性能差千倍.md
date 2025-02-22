@@ -15,12 +15,410 @@
 ![](https://static001.geekbang.org/resource/image/54/09/54f564eb63a2c74723a82540668fc009.jpg?wh=1000x1001)
 
 我们可以看到ArrayList、Vector、LinkedList集合类继承了AbstractList抽象类，而AbstractList实现了List接口，同时也继承了AbstractCollection抽象类。ArrayList、Vector、LinkedList又根据自我定位，分别实现了各自的功能。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/91/50/6aceefec.jpg" width="30px"><span>Rain</span> 👍（76） 💬（1）<div>老师，为什么第二种就会抛出`ConcurrentModificationException`异常呢，我觉得第一种迭代器会抛这个异常啊</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a4/9c/b32ed9e9.jpg" width="30px"><span>陆离</span> 👍（100） 💬（2）<div>对于arraylist和linkedlist的性能以前一直都是人云亦云，大家都说是这样那就这样吧，我也从来没有自己去验证过，没想过因操作位置的不同差异还挺大。
+
+ArrayList和Vector使用了数组实现，这两者的实现原理差不多，LinkedList使用了双向链表实现。基础铺垫就到这里，接下来，我们就详细地分析下ArrayList和LinkedList的源码实现。
+
+## ArrayList是如何实现的？
+
+ArrayList很常用，先来几道测试题，自检下你对ArrayList的了解程度。
+
+**问题1：**我们在查看ArrayList的实现类源码时，你会发现对象数组elementData使用了transient修饰，我们知道transient关键字修饰该属性，则表示该属性不会被序列化，然而我们并没有看到文档中说明ArrayList不能被序列化，这是为什么？
+
+**问题2：**我们在使用ArrayList进行新增、删除时，经常被提醒“使用ArrayList做新增删除操作会影响效率”。那是不是ArrayList在大量新增元素的场景下效率就一定会变慢呢？
+
+**问题3：**如果让你使用for循环以及迭代循环遍历一个ArrayList，你会使用哪种方式呢？原因是什么？
+
+如果你对这几道测试都没有一个全面的了解，那就跟我一起从数据结构、实现原理以及源码角度重新认识下ArrayList吧。
+
+### 1.ArrayList实现类
+
+ArrayList实现了List接口，继承了AbstractList抽象类，底层是数组实现的，并且实现了自增扩容数组大小。
+
+ArrayList还实现了Cloneable接口和Serializable接口，所以他可以实现克隆和序列化。
+
+ArrayList还实现了RandomAccess接口。你可能对这个接口比较陌生，不知道具体的用处。通过代码我们可以发现，这个接口其实是一个空接口，什么也没有实现，那ArrayList为什么要去实现它呢？
+
+其实RandomAccess接口是一个标志接口，他标志着“只要实现该接口的List类，都能实现快速随机访问”。
+
+```
+public class ArrayList<E> extends AbstractList<E>
+        implements List<E>, RandomAccess, Cloneable, java.io.Serializable
+```
+
+### 2.ArrayList属性
+
+ArrayList属性主要由数组长度size、对象数组elementData、初始化容量default\_capacity等组成， 其中初始化容量默认大小为10。
+
+```
+  //默认初始化容量
+    private static final int DEFAULT_CAPACITY = 10;
+    //对象数组
+    transient Object[] elementData; 
+    //数组长度
+    private int size;
+```
+
+从ArrayList属性来看，它没有被任何的多线程关键字修饰，但elementData被关键字transient修饰了。这就是我在上面提到的第一道测试题：transient关键字修饰该字段则表示该属性不会被序列化，但ArrayList其实是实现了序列化接口，这到底是怎么回事呢？
+
+这还得从“ArrayList是基于数组实现“开始说起，由于ArrayList的数组是基于动态扩增的，所以并不是所有被分配的内存空间都存储了数据。
+
+如果采用外部序列化法实现数组的序列化，会序列化整个数组。ArrayList为了避免这些没有存储数据的内存空间被序列化，内部提供了两个私有方法writeObject以及readObject来自我完成序列化与反序列化，从而在序列化与反序列化数组时节省了空间和时间。
+
+因此使用transient修饰数组，是防止对象数组被其他外部方法序列化。
+
+### 3.ArrayList构造函数
+
+ArrayList类实现了三个构造函数，第一个是创建ArrayList对象时，传入一个初始化值；第二个是默认创建一个空数组对象；第三个是传入一个集合类型进行初始化。
+
+当ArrayList新增元素时，如果所存储的元素已经超过其已有大小，它会计算元素大小后再进行动态扩容，数组的扩容会导致整个数组进行一次内存复制。因此，我们在初始化ArrayList时，可以通过第一个构造函数合理指定数组初始大小，这样有助于减少数组的扩容次数，从而提高系统性能。
+
+```
+ public ArrayList(int initialCapacity) {
+        //初始化容量不为零时，将根据初始化值创建数组大小
+        if (initialCapacity > 0) {
+            this.elementData = new Object[initialCapacity];
+        } else if (initialCapacity == 0) {//初始化容量为零时，使用默认的空数组
+            this.elementData = EMPTY_ELEMENTDATA;
+        } else {
+            throw new IllegalArgumentException("Illegal Capacity: "+
+                                               initialCapacity);
+        }
+    }
+
+    public ArrayList() {
+        //初始化默认为空数组
+        this.elementData = DEFAULTCAPACITY_EMPTY_ELEMENTDATA;
+    }
+```
+
+### 4.ArrayList新增元素
+
+ArrayList新增元素的方法有两种，一种是直接将元素加到数组的末尾，另外一种是添加元素到任意位置。
+
+```
+ public boolean add(E e) {
+        ensureCapacityInternal(size + 1);  // Increments modCount!!
+        elementData[size++] = e;
+        return true;
+    }
+
+    public void add(int index, E element) {
+        rangeCheckForAdd(index);
+
+        ensureCapacityInternal(size + 1);  // Increments modCount!!
+        System.arraycopy(elementData, index, elementData, index + 1,
+                         size - index);
+        elementData[index] = element;
+        size++;
+    }
+```
+
+两个方法的相同之处是在添加元素之前，都会先确认容量大小，如果容量够大，就不用进行扩容；如果容量不够大，就会按照原来数组的1.5倍大小进行扩容，在扩容之后需要将数组复制到新分配的内存地址。
+
+```
+  private void ensureExplicitCapacity(int minCapacity) {
+        modCount++;
+
+        // overflow-conscious code
+        if (minCapacity - elementData.length > 0)
+            grow(minCapacity);
+    }
+    private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
+
+    private void grow(int minCapacity) {
+        // overflow-conscious code
+        int oldCapacity = elementData.length;
+        int newCapacity = oldCapacity + (oldCapacity >> 1);
+        if (newCapacity - minCapacity < 0)
+            newCapacity = minCapacity;
+        if (newCapacity - MAX_ARRAY_SIZE > 0)
+            newCapacity = hugeCapacity(minCapacity);
+        // minCapacity is usually close to size, so this is a win:
+        elementData = Arrays.copyOf(elementData, newCapacity);
+    }
+```
+
+当然，两个方法也有不同之处，添加元素到任意位置，会导致在该位置后的所有元素都需要重新排列，而将元素添加到数组的末尾，在没有发生扩容的前提下，是不会有元素复制排序过程的。
+
+这里你就可以找到第二道测试题的答案了。如果我们在初始化时就比较清楚存储数据的大小，就可以在ArrayList初始化时指定数组容量大小，并且在添加元素时，只在数组末尾添加元素，那么ArrayList在大量新增元素的场景下，性能并不会变差，反而比其他List集合的性能要好。
+
+### 5.ArrayList删除元素
+
+ArrayList的删除方法和添加任意位置元素的方法是有些相同的。ArrayList在每一次有效的删除元素操作之后，都要进行数组的重组，并且删除的元素位置越靠前，数组重组的开销就越大。
+
+```
+ public E remove(int index) {
+        rangeCheck(index);
+
+        modCount++;
+        E oldValue = elementData(index);
+
+        int numMoved = size - index - 1;
+        if (numMoved > 0)
+            System.arraycopy(elementData, index+1, elementData, index,
+                             numMoved);
+        elementData[--size] = null; // clear to let GC do its work
+
+        return oldValue;
+    }
+```
+
+### 6.ArrayList遍历元素
+
+由于ArrayList是基于数组实现的，所以在获取元素的时候是非常快捷的。
+
+```
+  public E get(int index) {
+        rangeCheck(index);
+
+        return elementData(index);
+    }
+
+    E elementData(int index) {
+        return (E) elementData[index];
+    }
+```
+
+## LinkedList是如何实现的？
+
+虽然LinkedList与ArrayList都是List类型的集合，但LinkedList的实现原理却和ArrayList大相径庭，使用场景也不太一样。
+
+LinkedList是基于双向链表数据结构实现的，LinkedList定义了一个Node结构，Node结构中包含了3个部分：元素内容item、前指针prev以及后指针next，代码如下。
+
+```
+ private static class Node<E> {
+        E item;
+        Node<E> next;
+        Node<E> prev;
+
+        Node(Node<E> prev, E element, Node<E> next) {
+            this.item = element;
+            this.next = next;
+            this.prev = prev;
+        }
+    }
+```
+
+总结一下，LinkedList就是由Node结构对象连接而成的一个双向链表。在JDK1.7之前，LinkedList中只包含了一个Entry结构的header属性，并在初始化的时候默认创建一个空的Entry，用来做header，前后指针指向自己，形成一个循环双向链表。
+
+在JDK1.7之后，LinkedList做了很大的改动，对链表进行了优化。链表的Entry结构换成了Node，内部组成基本没有改变，但LinkedList里面的header属性去掉了，新增了一个Node结构的first属性和一个Node结构的last属性。这样做有以下几点好处：
+
+- first/last属性能更清晰地表达链表的链头和链尾概念；
+- first/last方式可以在初始化LinkedList的时候节省new一个Entry；
+- first/last方式最重要的性能优化是链头和链尾的插入删除操作更加快捷了。
+
+这里同ArrayList的讲解一样，我将从数据结构、实现原理以及源码分析等几个角度带你深入了解LinkedList。
+
+### 1.LinkedList实现类
+
+LinkedList类实现了List接口、Deque接口，同时继承了AbstractSequentialList抽象类，LinkedList既实现了List类型又有Queue类型的特点；LinkedList也实现了Cloneable和Serializable接口，同ArrayList一样，可以实现克隆和序列化。
+
+由于LinkedList存储数据的内存地址是不连续的，而是通过指针来定位不连续地址，因此，LinkedList不支持随机快速访问，LinkedList也就不能实现RandomAccess接口。
+
+```
+public class LinkedList<E>
+    extends AbstractSequentialList<E>
+    implements List<E>, Deque<E>, Cloneable, java.io.Serializable
+```
+
+### 2.LinkedList属性
+
+我们前面讲到了LinkedList的两个重要属性first/last属性，其实还有一个size属性。我们可以看到这三个属性都被transient修饰了，原因很简单，我们在序列化的时候不会只对头尾进行序列化，所以LinkedList也是自行实现readObject和writeObject进行序列化与反序列化。
+
+```
+  transient int size = 0;
+    transient Node<E> first;
+    transient Node<E> last;
+```
+
+### 3.LinkedList新增元素
+
+LinkedList添加元素的实现很简洁，但添加的方式却有很多种。默认的add (Ee)方法是将添加的元素加到队尾，首先是将last元素置换到临时变量中，生成一个新的Node节点对象，然后将last引用指向新节点对象，之前的last对象的前指针指向新节点对象。
+
+```
+ public boolean add(E e) {
+        linkLast(e);
+        return true;
+    }
+
+    void linkLast(E e) {
+        final Node<E> l = last;
+        final Node<E> newNode = new Node<>(l, e, null);
+        last = newNode;
+        if (l == null)
+            first = newNode;
+        else
+            l.next = newNode;
+        size++;
+        modCount++;
+    }
+```
+
+LinkedList也有添加元素到任意位置的方法，如果我们是将元素添加到任意两个元素的中间位置，添加元素操作只会改变前后元素的前后指针，指针将会指向添加的新元素，所以相比ArrayList的添加操作来说，LinkedList的性能优势明显。
+
+```
+ public void add(int index, E element) {
+        checkPositionIndex(index);
+
+        if (index == size)
+            linkLast(element);
+        else
+            linkBefore(element, node(index));
+    }
+
+    void linkBefore(E e, Node<E> succ) {
+        // assert succ != null;
+        final Node<E> pred = succ.prev;
+        final Node<E> newNode = new Node<>(pred, e, succ);
+        succ.prev = newNode;
+        if (pred == null)
+            first = newNode;
+        else
+            pred.next = newNode;
+        size++;
+        modCount++;
+    }
+```
+
+### 4.LinkedList删除元素
+
+在LinkedList删除元素的操作中，我们首先要通过循环找到要删除的元素，如果要删除的位置处于List的前半段，就从前往后找；若其位置处于后半段，就从后往前找。
+
+这样做的话，无论要删除较为靠前或较为靠后的元素都是非常高效的，但如果List拥有大量元素，移除的元素又在List的中间段，那效率相对来说会很低。
+
+### 5.LinkedList遍历元素
+
+LinkedList的获取元素操作实现跟LinkedList的删除元素操作基本类似，通过分前后半段来循环查找到对应的元素。但是通过这种方式来查询元素是非常低效的，特别是在for循环遍历的情况下，每一次循环都会去遍历半个List。
+
+所以在LinkedList循环遍历时，我们可以使用iterator方式迭代循环，直接拿到我们的元素，而不需要通过循环查找List。
+
+## 总结
+
+前面我们已经从源码的实现角度深入了解了ArrayList和LinkedList的实现原理以及各自的特点。如果你能充分理解这些内容，很多实际应用中的相关性能问题也就迎刃而解了。
+
+就像如果现在还有人跟你说，“ArrayList和LinkedList在新增、删除元素时，LinkedList的效率要高于ArrayList，而在遍历的时候，ArrayList的效率要高于LinkedList”，你还会表示赞同吗？
+
+现在我们不妨通过几组测试来验证一下。这里因为篇幅限制，所以我就直接给出测试结果了，对应的测试代码你可以访问[Github](https://github.com/nickliuchao/collection)查看和下载。
+
+**1.ArrayList和LinkedList新增元素操作测试**
+
+- 从集合头部位置新增元素
+- 从集合中间位置新增元素
+- 从集合尾部位置新增元素
+
+测试结果(花费时间)：
+
+- ArrayList&gt;LinkedList
+- ArrayList&lt;LinkedList
+- ArrayList&lt;LinkedList
+
+通过这组测试，我们可以知道LinkedList添加元素的效率未必要高于ArrayList。
+
+由于ArrayList是数组实现的，而数组是一块连续的内存空间，在添加元素到数组头部的时候，需要对头部以后的数据进行复制重排，所以效率很低；而LinkedList是基于链表实现，在添加元素的时候，首先会通过循环查找到添加元素的位置，如果要添加的位置处于List的前半段，就从前往后找；若其位置处于后半段，就从后往前找。因此LinkedList添加元素到头部是非常高效的。
+
+同上可知，ArrayList在添加元素到数组中间时，同样有部分数据需要复制重排，效率也不是很高；LinkedList将元素添加到中间位置，是添加元素最低效率的，因为靠近中间位置，在添加元素之前的循环查找是遍历元素最多的操作。
+
+而在添加元素到尾部的操作中，我们发现，在没有扩容的情况下，ArrayList的效率要高于LinkedList。这是因为ArrayList在添加元素到尾部的时候，不需要复制重排数据，效率非常高。而LinkedList虽然也不用循环查找元素，但LinkedList中多了new对象以及变换指针指向对象的过程，所以效率要低于ArrayList。
+
+说明一下，这里我是基于ArrayList初始化容量足够，排除动态扩容数组容量的情况下进行的测试，如果有动态扩容的情况，ArrayList的效率也会降低。
+
+**2.ArrayList和LinkedList删除元素操作测试**
+
+- 从集合头部位置删除元素
+- 从集合中间位置删除元素
+- 从集合尾部位置删除元素
+
+测试结果(花费时间)：
+
+- ArrayList&gt;LinkedList
+- ArrayList&lt;LinkedList
+- ArrayList&lt;LinkedList
+
+ArrayList和LinkedList删除元素操作测试的结果和添加元素操作测试的结果很接近，这是一样的原理，我在这里就不重复讲解了。
+
+**3.ArrayList和LinkedList遍历元素操作测试**
+
+- for(;;)循环
+- 迭代器迭代循环
+
+测试结果(花费时间)：
+
+- ArrayList&lt;LinkedList
+- ArrayList≈LinkedList
+
+我们可以看到，LinkedList的for循环性能是最差的，而ArrayList的for循环性能是最好的。
+
+这是因为LinkedList基于链表实现的，在使用for循环的时候，每一次for循环都会去遍历半个List，所以严重影响了遍历的效率；ArrayList则是基于数组实现的，并且实现了RandomAccess接口标志，意味着ArrayList可以实现快速随机访问，所以for循环效率非常高。
+
+LinkedList的迭代循环遍历和ArrayList的迭代循环遍历性能相当，也不会太差，所以在遍历LinkedList时，我们要切忌使用for循环遍历。
+
+## 思考题
+
+我们通过一个使用for循环遍历删除操作ArrayList数组的例子，思考下ArrayList数组的删除操作应该注意的一些问题。
+
+```
+public static void main(String[] args)
+    {
+        ArrayList<String> list = new ArrayList<String>();
+        list.add("a");
+        list.add("a");
+        list.add("b");
+        list.add("b");
+        list.add("c");
+        list.add("c");
+        remove(list);//删除指定的“b”元素
+
+        for(int i=0; i<list.size(); i++)("c")()()(s : list) 
+        {
+            System.out.println("element : " + s)list.get(i)
+        }
+    }
+```
+
+从上面的代码来看，我定义了一个ArrayList数组，里面添加了一些元素，然后我通过remove删除指定的元素。请问以下两种写法，哪种是正确的？
+
+写法1：
+
+```
+public static void remove(ArrayList<String> list) 
+    {
+        Iterator<String> it = list.iterator();
+        
+        while (it.hasNext()) {
+            String str = it.next();
+            
+            if (str.equals("b")) {
+                it.remove();
+            }
+        }
+
+    }
+```
+
+写法2：
+
+```
+public static void remove(ArrayList<String> list) 
+    {
+        for (String s : list)
+        {
+            if (s.equals("b")) 
+            {
+                list.remove(s);
+            }
+        }
+    }
+```
+
+期待在留言区看到你的答案。也欢迎你点击“请朋友读”，把今天的内容分享给身边的朋友，邀请他一起学习。
+
+![unpreview](https://static001.geekbang.org/resource/image/bb/67/bbe343640d6b708832c4133ec53ed967.jpg)
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>Rain</span> 👍（76） 💬（1）<div>老师，为什么第二种就会抛出`ConcurrentModificationException`异常呢，我觉得第一种迭代器会抛这个异常啊</div>2019-05-30</li><br/><li><span>陆离</span> 👍（100） 💬（2）<div>对于arraylist和linkedlist的性能以前一直都是人云亦云，大家都说是这样那就这样吧，我也从来没有自己去验证过，没想过因操作位置的不同差异还挺大。
 当然这里面有一个前提，那就是arraylist的初始大小要足够大。
 思考题是第一个是正确的，第二个虽然用的是foreach语法糖，遍历的时候用的也是迭代器遍历，但是在remove操作时使用的是原始数组list的remove，而不是迭代器的remove。
-这样就会造成modCound != exceptedModeCount，进而抛出异常。</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e9/52/aa3be800.jpg" width="30px"><span>Loubobooo</span> 👍（36） 💬（2）<div>这一道我会。如果有看过阿里java规约就知道，在集合中进行remove操作时，不要在 foreach 循环里进行元素的 remove&#47;add 操作。remove 元素请使用 Iterator方式，如果并发操作，需要对 Iterator 对象加锁。
-&lt;!-- 规约第七条 --&gt;</div>2019-06-01</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/WtHCCMoLJ2DvzqQwPYZyj2RlN7eibTLMHDMTSO4xIKjfKR1Eh9L98AMkkZY7FmegWyGLahRQJ5ibPzeeFtfpeSow/132" width="30px"><span>脱缰的野马__</span> 👍（30） 💬（1）<div>老师您好，在我的认知里面，之所以数组遍历比链表要快，应该还有一个底层的原因，就是源于数组的实现是在内存当中是一块连续的内存空间，而链表所有元素可能分布在内存的不同位置，对于数组这种数据结构来说对CPU读是非常友好的，不管是CPU从内存读数据读到高速缓存还是线程从磁盘读数据到内存时，都不只是读取需要的那部分数据，而是读取相关联的某一块地址数据，这样的话对于在遍历数组的时候，在一定程度上提高了CPU高速缓存的命中率，减少了CPU访问内存的次数从而提高了效率，这是我结合计算机相关原理的角度考虑的一点。</div>2020-03-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a6/10/3ff2e1a5.jpg" width="30px"><span>皮皮</span> 👍（18） 💬（1）<div>第一种写法正确，第二种会报错，原因是上述两种写法都有用到list内部迭代器Iterator，而在迭代器内部有一个属性是exceptedmodcount，每次调用next和remove方法时会检查该值和list内部的modcount是否一致，不一致会报异常。问题中的第二种写法remove（e），会在每次调用时modcount++，虽然迭代器的remove方法也会调用list的这个remove（e）方法，但每次调用后还有一个exceptedmodcount=modcount操作，所以后续调用next时判断就不会报异常了。</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/92/e4/abb7bfe3.jpg" width="30px"><span>TerryGoForIt</span> 👍（16） 💬（2）<div>老师您好，我比较好奇的是为什么 ArrayList 不像 HashMap 一样在扩容时需要一个负载因子呢？</div>2019-05-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/db/b2/29b4f22b.jpg" width="30px"><span>JasonZ</span> 👍（12） 💬（8）<div>linkedlist使用iterator比普通for循环效率高，是由于遍历次数少，这是为什么？有什么文档可以参考么？</div>2019-06-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4d/bb/abb7bfe3.jpg" width="30px"><span>csyangchsh</span> 👍（10） 💬（1）<div>测试代码不严谨，建议使用JMH。</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/f6/df/a576bfce.jpg" width="30px"><span>建国</span> 👍（6） 💬（4）<div>老师，您好，linkList查找元素通过分前后半段，每次查找都要遍历半个list，怎么就知道元素是出于前半段还是后半段的呢？</div>2019-06-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（5） 💬（1）<div>modCount属于ArrayList
+这样就会造成modCound != exceptedModeCount，进而抛出异常。</div>2019-05-30</li><br/><li><span>Loubobooo</span> 👍（36） 💬（2）<div>这一道我会。如果有看过阿里java规约就知道，在集合中进行remove操作时，不要在 foreach 循环里进行元素的 remove&#47;add 操作。remove 元素请使用 Iterator方式，如果并发操作，需要对 Iterator 对象加锁。
+&lt;!-- 规约第七条 --&gt;</div>2019-06-01</li><br/><li><span>脱缰的野马__</span> 👍（30） 💬（1）<div>老师您好，在我的认知里面，之所以数组遍历比链表要快，应该还有一个底层的原因，就是源于数组的实现是在内存当中是一块连续的内存空间，而链表所有元素可能分布在内存的不同位置，对于数组这种数据结构来说对CPU读是非常友好的，不管是CPU从内存读数据读到高速缓存还是线程从磁盘读数据到内存时，都不只是读取需要的那部分数据，而是读取相关联的某一块地址数据，这样的话对于在遍历数组的时候，在一定程度上提高了CPU高速缓存的命中率，减少了CPU访问内存的次数从而提高了效率，这是我结合计算机相关原理的角度考虑的一点。</div>2020-03-15</li><br/><li><span>皮皮</span> 👍（18） 💬（1）<div>第一种写法正确，第二种会报错，原因是上述两种写法都有用到list内部迭代器Iterator，而在迭代器内部有一个属性是exceptedmodcount，每次调用next和remove方法时会检查该值和list内部的modcount是否一致，不一致会报异常。问题中的第二种写法remove（e），会在每次调用时modcount++，虽然迭代器的remove方法也会调用list的这个remove（e）方法，但每次调用后还有一个exceptedmodcount=modcount操作，所以后续调用next时判断就不会报异常了。</div>2019-05-30</li><br/><li><span>TerryGoForIt</span> 👍（16） 💬（2）<div>老师您好，我比较好奇的是为什么 ArrayList 不像 HashMap 一样在扩容时需要一个负载因子呢？</div>2019-05-31</li><br/><li><span>JasonZ</span> 👍（12） 💬（8）<div>linkedlist使用iterator比普通for循环效率高，是由于遍历次数少，这是为什么？有什么文档可以参考么？</div>2019-06-09</li><br/><li><span>csyangchsh</span> 👍（10） 💬（1）<div>测试代码不严谨，建议使用JMH。</div>2019-05-30</li><br/><li><span>建国</span> 👍（6） 💬（4）<div>老师，您好，linkList查找元素通过分前后半段，每次查找都要遍历半个list，怎么就知道元素是出于前半段还是后半段的呢？</div>2019-06-10</li><br/><li><span>yang</span> 👍（5） 💬（1）<div>modCount属于ArrayList
 expectedModCount属于Iterator
 
 增强for循环  本质是iterator遍历
@@ -31,7 +429,7 @@ iterator循环  iterator遍历
 而iterator遍历 的时候 用iterator. remove(); modCount 会被同步到expectedModCount中去，ArrayList的modCount == Iterator的exceptedModCount，所以不会抛出异常。
 
 
-老师对其他同学的评论以及我的理解就是这样。</div>2019-12-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/07/cf/b0d6fe74.jpg" width="30px"><span>L.</span> 👍（5） 💬（2）<div>老师，随机访问到底是什么意思？怎么个随机法？谢谢～</div>2019-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/10/90/807689c3.jpg" width="30px"><span>Geek_9ius3m</span> 👍（3） 💬（1）<div>老师，什么场景会用到linkedlist呢？我好像只见过Arraylist的代码呢</div>2020-03-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/30/8a/b5ca7286.jpg" width="30px"><span>业余草</span> 👍（3） 💬（1）<div>请问：List&lt;A&gt; list = new ArrayList&lt;&gt;();
+老师对其他同学的评论以及我的理解就是这样。</div>2019-12-24</li><br/><li><span>L.</span> 👍（5） 💬（2）<div>老师，随机访问到底是什么意思？怎么个随机法？谢谢～</div>2019-08-06</li><br/><li><span>Geek_9ius3m</span> 👍（3） 💬（1）<div>老师，什么场景会用到linkedlist呢？我好像只见过Arraylist的代码呢</div>2020-03-31</li><br/><li><span>业余草</span> 👍（3） 💬（1）<div>请问：List&lt;A&gt; list = new ArrayList&lt;&gt;();
 for(int i=0;i++;i&lt;1000){
  A a = new A();
  list.add(a);
@@ -43,58 +441,5 @@ for(int i=0;i++;i&lt;1000){
  a = new A();
  list.add(a);
 }
-效率上有差别吗？不说new ArrayList&lt;&gt;(); 初始化问题。单纯说创建对象这一块。谢谢！</div>2019-05-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/03/c9/9a9d82ab.jpg" width="30px"><span>Aaron_涛</span> 👍（2） 💬（2）<div>arrayList，for循环访问快是因为内存连续，可以整个缓存行读取进cpu缓存中，遍历下个的时候无需去内存中获取。并不是实现什么随机获取接口</div>2019-07-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/U5tJTyH25kJA3eAtK0jKTmiaDGkFx4O1yOVjKnbnEQukTjDJCqhlKvLFaIZ6UVp3HcJK3GllMCRfDPU7wodslLQ/132" width="30px"><span>gavin</span> 👍（2） 💬（1）<div>老师好，怎么确定操作集合是从头部、中间、还是尾部操作的呢？</div>2019-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ae/d6/fbb8236d.jpg" width="30px"><span>DebugDog</span> 👍（2） 💬（1）<div>写法一正确。
-虽然都是调用了remove方法，但是两个remove方法是不同的。
-写法二是有可能会报ConcurrentModificationException异常。
-所以在ArrayList遍历删除元素时使用iterator方式或者普通的for循环。</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/f0/07/92445721.jpg" width="30px"><span>李德强</span> 👍（1） 💬（5）<div>自己掉坑里了!
-ArrayList&lt;String&gt; list = new ArrayList&lt;String&gt;();
-
-        list.add(&quot;a&quot;);
-        list.add(&quot;b&quot;);
-        list.add(&quot;c&quot;);
-        list.add(&quot;d&quot;);
-        list.add(&quot;e&quot;);
-
-        for (String item :  list) {
-            if (item.equals(&quot;d&quot;)) {
-                list.remove(item);
-            }
-        }
-
-这种移除唯一且倒数第二个的不会报错。
-原因时判断hasNext时就返回了false，没有机会去校验modCount了。</div>2019-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/ff/0a/12faa44e.jpg" width="30px"><span>晓杰</span> 👍（1） 💬（1）<div>写法2不正确，使用for循环遍历元素的过程中，如果删除元素，由于modCount != expectedModCount，会抛出ConcurrentModificationException异常</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/54/9a/76c0af70.jpg" width="30px"><span>每天晒白牙</span> 👍（1） 💬（1）<div>需要用迭代器方式删除
-for循环遍历删除会抛并发修改异常</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a0/cb/aab3b3e7.jpg" width="30px"><span>张三丰</span> 👍（0） 💬（1）<div>看了老师如下的回答不是很明白，为什么数组过长新增数据的性能就下降了呢？因为数组越长hash碰撞的几率越小，那么性能越高才对。
-
-老师您好，我比较好奇的是为什么 ArrayList 不像 HashMap 一样在扩容时需要一个负载因子呢？
-
-作者回复: HashMap有负载因子是既要考虑数组太短，因哈希冲突导致链表过长而导致查询性能下降，也考虑了数组过长，新增数据时性能下降。这个负载因子是综合了数组和链表两者的长度，不能太大也不能太小。而ArrayList不需要这种考虑。</div>2019-10-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（0） 💬（1）<div>课后思考及问题
-请问老师你仔细研究过ArrayList和LinkedList之后，你觉得他们在性能上是否做到了极致？是否还存在优化的空间？</div>2019-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/71/05/db554eba.jpg" width="30px"><span>👽</span> 👍（0） 💬（1）<div>先说思考题   写法1正确，在ForEach遍历，或者fori遍历时，是禁止在内部删除数据的，会报错。
-
-还有就是添加元素和删除元素的问题。这个测试不严谨。没有写明测试环境和测试代码。也没有测试数据。
-个人测试的结果是，全都是ArrayList更快。个人表示，也出乎我的意料。最起码在我个人的理解里，链表插入数据明显会更快。 因为不需要考虑数据扩容的问题。</div>2019-09-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/29/06/0b327738.jpg" width="30px"><span>Gankki</span> 👍（0） 💬（1）<div>老师，您好。LinkedList 中 Node 是私有的静态内部类，除了防止内存泄露吗？还有其他的设计考虑吗？</div>2019-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/60/81/cfc17578.jpg" width="30px"><span>我戒酒了</span> 👍（0） 💬（1）<div>ArrayListTest 的这个测试方法笔误写错了吧	
-public static void addFromMidTest(int DataNum) {
-		ArrayList&lt;String&gt; list = new ArrayList&lt;String&gt;(DataNum);
-		int i = 0;
-		
-		long timeStart = System.currentTimeMillis();
-		while (i &lt; DataNum) {
-			int temp = list.size();
-			list.add(temp&#47;2+&quot;aaavvv&quot;); &#47;&#47;正确写法list.add(temp&#47;2, +&quot;aaavvv&quot;);
-			i++;
-		}
-		long timeEnd = System.currentTimeMillis();
-
-		System.out.println(&quot;ArrayList从集合中间位置新增元素花费的时间&quot; + (timeEnd - timeStart));
-	}</div>2019-07-02</li><br/><li><img src="" width="30px"><span>吃胖了再减肥再吃再健身之谜之不瘦</span> 👍（0） 💬（1）<div>老师，我用的测试代码试了好多次，在“从集合尾部位置新增元素”这个场景下，我测试的结果是“ArrayList&gt;LinkedList”，你代码里面的1000000，一百万次遍历时，会有少量的情况出现“ArrayList&lt;LinkedList”，所以我讲遍历次数增加到10000000，一千万次遍历，测试结果如下
-第一次：
-ArrayList从集合尾部位置新增元素花费的时间4690
-LinkedList从集合尾部位置新增元素花费的时间2942
-第二次：
-ArrayList从集合尾部位置新增元素花费的时间4655
-LinkedList从集合尾部位置新增元素花费的时间2798
-第三次：
-ArrayList从集合尾部位置新增元素花费的时间5126
-LinkedList从集合尾部位置新增元素花费的时间2960
-
-从这个场景看来，大数据量遍历的情况下，LinkedList新增数据比较快，不知道我这个验证的结果是否正确，期待老师指教，谢谢！</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/ac/15/935acedb.jpg" width="30px"><span>iusugar</span> 👍（0） 💬（1）<div>老师，可以在代码块多加一些注释吗？有些变量和方法不是很明白。原谅我比较菜...</div>2019-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/05/7f/a7df049a.jpg" width="30px"><span>Standly</span> 👍（0） 💬（1）<div>第二种remove后加个return就不报错了吧</div>2019-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f8/ba/d28174a9.jpg" width="30px"><span>Geek_zbvt62</span> 👍（0） 💬（1）<div>实际场景使用中linked list的效率应该还要更低吧？因为要考虑到内存结构紧凑的问题。array list在删除时候移动元素，很大可能是在一个cache line上操作，会很快，但linked list就未必了：写测试代码，linked list的元素总是连贯的。但实际使用场景一定是不连贯的。</div>2019-06-01</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLbBZ9iaHfebHH4kOzFvxvs8Hx5iaUruAZvE8Dj4nia0mk4uxLc2rRUZD0ic9uKdxLibib0dGSaibL6NGRUg/132" width="30px"><span>清风拂面</span> 👍（0） 💬（1）<div>文稿关于从头部和尾部插入新元素所用时间那一块反了</div>2019-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/27/1d/1cb36854.jpg" width="30px"><span>小辉辉</span> 👍（0） 💬（1）<div>第一种是对的，第二种情况说的就是我之前干过的事情，而且当时出现有时报错，有时不报错。自己踩过的坑，记忆深刻😂😂😂</div>2019-05-30</li><br/>
+效率上有差别吗？不说new ArrayList&lt;&gt;(); 初始化问题。单纯说创建对象这一块。谢谢！</div>2019-05-31</li><br/><li><span>Aaron_涛</span> 👍（2） 💬（2）<div>arrayList，for循环访问快是因为内存连续，可以整个缓存行读取进cpu缓存中，遍历下个的时候无需去内存中获取。并不是实现什么随机获取接口</div>2019-07-17</li><br/><li><span>gavin</span> 👍（2） 💬（1）<div>老师好，怎么确定操作集合是从头部、中间、还是尾部操作的呢？</div>2019-06-11</li><br/>
 </ul>

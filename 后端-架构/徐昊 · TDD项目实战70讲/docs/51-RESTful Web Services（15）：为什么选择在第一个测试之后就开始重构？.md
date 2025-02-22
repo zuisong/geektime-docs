@@ -56,11 +56,11 @@ class DefaultResourceRouter implements ResourceRouter {
 
 欢迎把你的想法分享在留言区，也欢迎把你的项目代码分享出来。相信经过你的思考与实操，学习效果会更好！
 <div><strong>精选留言（4）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/20/a8/66/e2781d4a.jpg" width="30px"><span>忘川</span> 👍（1） 💬（0）<div>- 可读性
+<li><span>忘川</span> 👍（1） 💬（0）<div>- 可读性
 	- 让测试代码的可读性更好 更方便自己理解 当初的思路 而不需要每次都从头到尾思考上下文 才能理解代码在做什么
 - 复用性
 	- 让后续的测试代码 能够更快的复用之前的代码 同时也能更好的管控 后续的扩展点 方便后续的调整 都有统一的出入口
 - 结构性
 	- 通过对替身代码的整理 让自己理解 自己是基于什么样的结构 和什么样的约定的前提下 进行的测试开发
-</div>2023-01-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/0d/fe/4e5ba578.jpg" width="30px"><span>Jason</span> 👍（0） 💬（0）<div>降序排列不应该值大的在前面吗？</div>2022-08-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/0d/fe/4e5ba578.jpg" width="30px"><span>Jason</span> 👍（0） 💬（0）<div>因为测试的setup部分都是相同的，如果不重构测试代码就有很多重复，且难以理解。</div>2022-08-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（0）<div>原来 inline 的目的是让代码更紧凑</div>2022-07-12</li><br/>
+</div>2023-01-08</li><br/><li><span>Jason</span> 👍（0） 💬（0）<div>降序排列不应该值大的在前面吗？</div>2022-08-08</li><br/><li><span>Jason</span> 👍（0） 💬（0）<div>因为测试的setup部分都是相同的，如果不重构测试代码就有很多重复，且难以理解。</div>2022-08-08</li><br/><li><span>aoe</span> 👍（0） 💬（0）<div>原来 inline 的目的是让代码更紧凑</div>2022-07-12</li><br/>
 </ul>

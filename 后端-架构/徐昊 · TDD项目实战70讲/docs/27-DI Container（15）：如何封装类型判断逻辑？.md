@@ -263,8 +263,29 @@ public class ContextConfig {
 - 自定义Scope标注
   
   - 可向容器注册自定义Scope标注的回调
+
+## 视频演示
+
+让我们进入今天的部分：
+
+## 思考题
+
+在进入下节课之前，希望你能认真思考如下两个问题，并选择最有感触的一道进行回答。
+
+1. 如果我们选择行为封装会怎样？
+2. 课程更新快三个月了，你在写代码上有什么进步或变化吗？
+
+**编辑来信**：
+
+> 第二期“TDD·代码评点”活动启动啦！为了帮助你更平滑地过渡到第三个实战项目，徐老师发起了代码评点活动。  
+> 　  
+> 你可以填写[学习问卷](https://jinshuju.net/f/fnh84B)提交项目代码，而后，徐老师会一一查看，并进行评点与答疑。关于评点的详细内容，我们也将制成加餐展示在专栏里，供其他同学学习与参考。  
+> 　  
+> 请注意，此次收集时间截至5月27日晚上12点。此外，我也会从中选出1-2位同学，送出《重构与模式》一书。请抓紧上车，入股不亏哦！
+
+欢迎把你的想法分享在留言区，也欢迎把你的项目代码的链接分享出来。相信经过你的思考与实操，学习效果会更好！
 <div><strong>精选留言（9）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（6） 💬（0）<div>1.  经常使用 inLine、extra修改代码
+<li><span>aoe</span> 👍（6） 💬（0）<div>1.  经常使用 inLine、extra修改代码
 2. 感觉 Idea 的重构快捷键功能比 Copilot 插件更强大，写代码更开心了
 3. 在工作中使用 TDD 整体开发效率提高了很多（再也不用在一堆日志中找 Bug 了）
 4. 当需求变更或者有更好的想法时可以放心的重构代码，实现了《代码整洁之道》中提到的“最好的重构时机就是：即时重构”
@@ -275,10 +296,10 @@ public class ContextConfig {
 待读：《重构与模式》、《重构：改善既有代码的设计》、《Google软件测试之道》、《分析模式》、《领域驱动设计精粹》、《实现领域驱动设计》
 
 我收集的书单 https:&#47;&#47;wyyl1.com&#47;post&#47;3&#47;1
-</div>2022-05-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fe/fa/2a046821.jpg" width="30px"><span>人间四月天</span> 👍（3） 💬（0）<div>我都是看了2遍，然后再敲一遍，感受一下TDD威力，其实，还能学学重构，很多时候，不敢对烂代码下手。
+</div>2022-05-20</li><br/><li><span>人间四月天</span> 👍（3） 💬（0）<div>我都是看了2遍，然后再敲一遍，感受一下TDD威力，其实，还能学学重构，很多时候，不敢对烂代码下手。
 重构除掉坏味道，重构到设计，重构到模式。
-</div>2022-05-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/2d/93/0f1cbf44.jpg" width="30px"><span>枫中的刀剑</span> 👍（1） 💬（0）<div>这节老师最后提到的一个细节就是对于API的优化，应该要让API的使用尽可能的友好。这点好像在平时中很少注意，但往往就在这些细微之处才是专业的体现。</div>2022-05-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e9/22/7606c6ba.jpg" width="30px"><span>张铁林</span> 👍（1） 💬（0）<div>以前看的很多tdd都是kata一类的，就是逻辑比较短，还体会不到太多的TDD的好处，以及它的威力。通过老师这个项目的学习，学到了很多。本节代码已经跟着敲完了，有需要参考https:&#47;&#47;github.com&#47;vfbiby&#47;tdd-di-container&#47;tree&#47;master</div>2022-05-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/34/cf/0a316b48.jpg" width="30px"><span>蝴蝶</span> 👍（0） 💬（0）<div>这操作好Sao啊.jpg</div>2022-09-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ac/87/8ed5880a.jpg" width="30px"><span>大碗</span> 👍（0） 💬（0）<div>assertArrayEquals dependencies 为啥抽成一个方法呢，重复修改好多次了</div>2022-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/65/21/101a7075.jpg" width="30px"><span>davix</span> 👍（0） 💬（0）<div>這個項目從頭TDD，有全面的測試覆蓋，否則敢這麼多重構（再設計）嗎</div>2022-08-20</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJUCiacuh59wMbq1icuB8U1T7Vpic8FjKFdanvdt9bzClBmYqFUXmtKmh2Zibn9Dic6A8pjdoBiaia1LCrnA/132" width="30px"><span>tdd学徒</span> 👍（0） 💬（0）<div>照着写的时候，错把Ref构造函数里面的
+</div>2022-05-11</li><br/><li><span>枫中的刀剑</span> 👍（1） 💬（0）<div>这节老师最后提到的一个细节就是对于API的优化，应该要让API的使用尽可能的友好。这点好像在平时中很少注意，但往往就在这些细微之处才是专业的体现。</div>2022-05-28</li><br/><li><span>张铁林</span> 👍（1） 💬（0）<div>以前看的很多tdd都是kata一类的，就是逻辑比较短，还体会不到太多的TDD的好处，以及它的威力。通过老师这个项目的学习，学到了很多。本节代码已经跟着敲完了，有需要参考https:&#47;&#47;github.com&#47;vfbiby&#47;tdd-di-container&#47;tree&#47;master</div>2022-05-11</li><br/><li><span>蝴蝶</span> 👍（0） 💬（0）<div>这操作好Sao啊.jpg</div>2022-09-01</li><br/><li><span>大碗</span> 👍（0） 💬（0）<div>assertArrayEquals dependencies 为啥抽成一个方法呢，重复修改好多次了</div>2022-08-22</li><br/><li><span>davix</span> 👍（0） 💬（0）<div>這個項目從頭TDD，有全面的測試覆蓋，否則敢這麼多重構（再設計）嗎</div>2022-08-20</li><br/><li><span>tdd学徒</span> 👍（0） 💬（0）<div>照着写的时候，错把Ref构造函数里面的
 this.container = container.getRawType(); 写成了 this.container = container；
-一运行出错了，顿时有点慌，但是因为有测试，立马回退，然后加一行，跑一下测试，很快就发现问题了</div>2022-05-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/02/94/abb7bfe3.jpg" width="30px"><span>Geek_wip5z8</span> 👍（0） 💬（0）<div>1. 学会了很多重构的小技巧，IDE的快捷键，理解了为啥重构和测试是紧密相连的。
+一运行出错了，顿时有点慌，但是因为有测试，立马回退，然后加一行，跑一下测试，很快就发现问题了</div>2022-05-20</li><br/><li><span>Geek_wip5z8</span> 👍（0） 💬（0）<div>1. 学会了很多重构的小技巧，IDE的快捷键，理解了为啥重构和测试是紧密相连的。
 2. 读了很多关于测试的书，里面讲到测试的抗重构性，行为验证不如状态验证，抗重构性高，学到27讲算是体会到了。</div>2022-05-11</li><br/>
 </ul>

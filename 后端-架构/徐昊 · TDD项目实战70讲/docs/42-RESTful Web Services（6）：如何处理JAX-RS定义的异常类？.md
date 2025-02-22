@@ -31,8 +31,69 @@
   - 为Link提供HeaderDelegate
   - 为NewCookie提供HeaderDelegate
   - 为Date提供HeaderDelegate
+
+代码为：
+
+```
+package geektime.tdd.rest;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.ws.rs.core.GenericEntity;
+import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.ext.MessageBodyWriter;
+import jakarta.ws.rs.ext.Providers;
+import jakarta.ws.rs.ext.RuntimeDelegate;
+import java.io.IOException;
+
+public class ResourceServlet extends HttpServlet {
+
+    private Runtime runtime;
+    
+    public ResourceServlet(Runtime runtime) {
+        this.runtime = runtime;
+    }
+    
+    @Override
+    protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        ResourceRouter router = runtime.getResourceRouter();
+        Providers providers = runtime.getProviders();
+        
+        OutboundResponse response = router.dispatch(req, runtime.createResourceContext(req, resp));
+        
+        resp.setStatus(response.getStatus());
+        
+        MultivaluedMap<String, Object> headers = response.getHeaders();
+        for (String name : headers.keySet())
+            for (Object value : headers.get(name)) {
+                RuntimeDelegate.HeaderDelegate headerDelegate = RuntimeDelegate.getInstance().createHeaderDelegate(value.getClass());
+                resp.addHeader(name, headerDelegate.toString(value));
+            }
+            
+        GenericEntity entity = response.getGenericEntity();
+        MessageBodyWriter writer = providers.getMessageBodyWriter(entity.getRawType(), entity.getType(), response.getAnnotations(), response.getMediaType());
+        writer.writeTo(entity.getEntity(), entity.getRawType(), entity.getType(), response.getAnnotations(), response.getMediaType(),
+                response.getHeaders(), resp.getOutputStream());
+    }
+}
+```
+
+## 视频演示
+
+下面让我们继续：
+
+## 思考题
+
+在进入下节课之前，希望你能认真思考如下两个问题。
+
+1. 目前的Sad Path任务是否足够？还有哪些Sad Path的情况？
+2. 在这节课的学习中，你最大的收获是什么？
+
+欢迎把你的想法分享在留言区，也欢迎把你的项目代码分享出来。相信经过你的思考与实操，学习效果会更好！
 <div><strong>精选留言（2）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/e9/22/7606c6ba.jpg" width="30px"><span>张铁林</span> 👍（1） 💬（1）<div>https:&#47;&#47;github.com&#47;vfbiby&#47;tdd-restful&#47;blob&#47;main&#47;doc&#47;Geektime%20TDD%2042.md
+<li><span>张铁林</span> 👍（1） 💬（1）<div>https:&#47;&#47;github.com&#47;vfbiby&#47;tdd-restful&#47;blob&#47;main&#47;doc&#47;Geektime%20TDD%2042.md
 这是操作步骤，我是先看视频纪录，再自己跟着步骤做，相当于检查了一遍。
-这章做了3次提交，</div>2022-06-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（1） 💬（1）<div>代码 https:&#47;&#47;github.com&#47;wyyl1&#47;geektime-tdd-framework&#47;tree&#47;6</div>2022-06-20</li><br/>
+这章做了3次提交，</div>2022-06-21</li><br/><li><span>aoe</span> 👍（1） 💬（1）<div>代码 https:&#47;&#47;github.com&#47;wyyl1&#47;geektime-tdd-framework&#47;tree&#47;6</div>2022-06-20</li><br/>
 </ul>

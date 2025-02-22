@@ -20,8 +20,443 @@ RPC调用具体流程如下：
 4. Server端接收到消息后，将消息传递给Server Stub。
 5. Server Stub将消息解包（也叫 Unmarshalling）得到参数。
 6. Server Stub调用服务端的子程序（函数），处理完后，将最终结果按照相反的步骤返回给 Client。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/52/40/e57a736e.jpg" width="30px"><span>pedro</span> 👍（70） 💬（1）<div>假定希望用RPC作为内部API的通讯，同时也想对外提供RESTful API，又不想写两套，可以使用gRPC Gateway 插件，在生成RPC的同时也生成RESTful web  server。</div>2021-06-24</li><br/><li><img src="" width="30px"><span>Geek_e7af5e</span> 👍（43） 💬（4）<div>这里提供一些更新说明（刚踩过的坑）
+
+这里需要注意，Stub负责调用参数和返回值的流化（serialization）、参数的打包和解包，以及网络层的通信。Client端一般叫Stub，Server端一般叫Skeleton。
+
+目前，业界有很多优秀的RPC协议，例如腾讯的Tars、阿里的Dubbo、微博的Motan、Facebook的Thrift、RPCX，等等。但使用最多的还是[gRPC](https://github.com/grpc/grpc-go)，这也是本专栏所采用的RPC框架，所以接下来我会重点介绍gRPC框架。
+
+## gRPC介绍
+
+gRPC是由Google开发的高性能、开源、跨多种编程语言的通用RPC框架，基于HTTP 2.0协议开发，默认采用Protocol Buffers数据序列化协议。gRPC具有如下特性：
+
+- 支持多种语言，例如 Go、Java、C、C++、C#、Node.js、PHP、Python、Ruby等。
+- 基于IDL（Interface Definition Language）文件定义服务，通过proto3工具生成指定语言的数据结构、服务端接口以及客户端Stub。通过这种方式，也可以将服务端和客户端解耦，使客户端和服务端可以并行开发。
+- 通信协议基于标准的HTTP/2设计，支持双向流、消息头压缩、单TCP的多路复用、服务端推送等特性。
+- 支持Protobuf和JSON序列化数据格式。Protobuf是一种语言无关的高性能序列化框架，可以减少网络传输流量，提高通信效率。
+
+这里要注意的是，gRPC的全称不是golang Remote Procedure Call，而是google Remote Procedure Call。
+
+gRPC的调用如下图所示：
+
+![](https://static001.geekbang.org/resource/image/01/09/01ac424c7c1d64f678e1218827bc0109.png?wh=2079x1025)
+
+在gRPC中，客户端可以直接调用部署在不同机器上的gRPC服务所提供的方法，调用远端的gRPC方法就像调用本地的方法一样，非常简单方便，通过gRPC调用**，我们可以非常容易地构建出一个分布式应用。**
+
+像很多其他的RPC服务一样，gRPC也是通过IDL语言，预先定义好接口（接口的名字、传入参数和返回参数等）。在服务端，gRPC服务实现我们所定义的接口。在客户端，gRPC存根提供了跟服务端相同的方法。
+
+gRPC支持多种语言，比如我们可以用Go语言实现gRPC服务，并通过Java语言客户端调用gRPC服务所提供的方法。通过多语言支持，我们编写的gRPC服务能满足客户端多语言的需求。
+
+gRPC API接口通常使用的数据传输格式是Protocol Buffers。接下来，我们就一起了解下Protocol Buffers。
+
+## Protocol Buffers介绍
+
+Protocol Buffers（ProtocolBuffer/ protobuf）是Google开发的一套对数据结构进行序列化的方法，可用作（数据）通信协议、数据存储格式等，也是一种更加灵活、高效的数据格式，与XML、JSON类似。它的传输性能非常好，所以常被用在一些对数据传输性能要求比较高的系统中，作为数据传输格式。Protocol Buffers的主要特性有下面这几个。
+
+- 更快的数据传输速度：protobuf在传输时，会将数据序列化为二进制数据，和XML、JSON的文本传输格式相比，这可以节省大量的IO操作，从而提高数据传输速度。
+- 跨平台多语言：protobuf自带的编译工具 protoc 可以基于protobuf定义文件，编译出不同语言的客户端或者服务端，供程序直接调用，因此可以满足多语言需求的场景。
+- 具有非常好的扩展性和兼容性，可以更新已有的数据结构，而不破坏和影响原有的程序。
+- 基于IDL文件定义服务，通过proto3工具生成指定语言的数据结构、服务端和客户端接口。
+
+在gRPC的框架中，Protocol Buffers主要有三个作用。
+
+**第一，可以用来定义数据结构。**举个例子，下面的代码定义了一个SecretInfo数据结构：
+
+```
+// SecretInfo contains secret details.
+message SecretInfo {
+    string name = 1;
+    string secret_id  = 2;
+    string username   = 3;
+    string secret_key = 4;
+    int64 expires = 5;
+    string description = 6;
+    string created_at = 7;
+    string updated_at = 8;
+}
+```
+
+**第二，可以用来定义服务接口。**下面的代码定义了一个Cache服务，服务包含了ListSecrets和ListPolicies 两个API接口。
+
+```
+// Cache implements a cache rpc service.
+service Cache{
+  rpc ListSecrets(ListSecretsRequest) returns (ListSecretsResponse) {}
+  rpc ListPolicies(ListPoliciesRequest) returns (ListPoliciesResponse) {}
+}
+```
+
+**第三，可以通过protobuf序列化和反序列化，提升传输效率。**
+
+## gRPC示例
+
+我们已经对gRPC这一通用RPC框架有了一定的了解，但是你可能还不清楚怎么使用gRPC编写API接口。接下来，我就通过gRPC官方的一个示例来快速给大家展示下。运行本示例需要在Linux服务器上安装Go编译器、Protocol buffer编译器（protoc，v3）和 protoc 的Go语言插件，在 [**02讲**](https://time.geekbang.org/column/article/378076) 中我们已经安装过，这里不再讲具体的安装方法。
+
+这个示例分为下面几个步骤：
+
+1. 定义gRPC服务。
+2. 生成客户端和服务器代码。
+3. 实现gRPC服务。
+4. 实现gRPC客户端。
+
+示例代码存放在[gopractise-demo/apistyle/greeter](https://github.com/marmotedu/gopractise-demo/tree/main/apistyle/greeter)目录下。代码结构如下：
+
+```
+$ tree
+├── client
+│   └── main.go
+├── helloworld
+│   ├── helloworld.pb.go
+│   └── helloworld.proto
+└── server
+    └── main.go
+```
+
+client目录存放Client端的代码，helloworld目录用来存放服务的IDL定义，server目录用来存放Server端的代码。
+
+下面我具体介绍下这个示例的四个步骤。
+
+1. 定义gRPC服务。
+
+首先，需要定义我们的服务。进入helloworld目录，新建文件helloworld.proto：
+
+```
+$ cd helloworld
+$ vi helloworld.proto
+```
+
+内容如下：
+
+```
+syntax = "proto3";
+
+option go_package = "github.com/marmotedu/gopractise-demo/apistyle/greeter/helloworld";
+
+package helloworld;
+
+// The greeting service definition.
+service Greeter {
+  // Sends a greeting
+  rpc SayHello (HelloRequest) returns (HelloReply) {}
+}
+
+// The request message containing the user's name.
+message HelloRequest {
+  string name = 1;
+}
+
+// The response message containing the greetings
+message HelloReply {
+  string message = 1;
+}
+```
+
+在helloworld.proto定义文件中，option关键字用来对.proto文件进行一些设置，其中go\_package是必需的设置，而且go\_package的值必须是包导入的路径。package关键字指定生成的.pb.go文件所在的包名。我们通过service关键字定义服务，然后再指定该服务拥有的RPC方法，并定义方法的请求和返回的结构体类型：
+
+```
+service Greeter {
+  // Sends a greeting
+  rpc SayHello (HelloRequest) returns (HelloReply) {}
+}
+```
+
+gRPC支持定义4种类型的服务方法，分别是简单模式、服务端数据流模式、客户端数据流模式和双向数据流模式。
+
+- 简单模式（Simple RPC）：是最简单的gRPC模式。客户端发起一次请求，服务端响应一个数据。定义格式为rpc SayHello (HelloRequest) returns (HelloReply) {}。
+- 服务端数据流模式（Server-side streaming RPC）：客户端发送一个请求，服务器返回数据流响应，客户端从流中读取数据直到为空。定义格式为rpc SayHello (HelloRequest) returns (stream HelloReply) {}。
+- 客户端数据流模式（Client-side streaming RPC）：客户端将消息以流的方式发送给服务器，服务器全部处理完成之后返回一次响应。定义格式为rpc SayHello (stream HelloRequest) returns (HelloReply) {}。
+- 双向数据流模式（Bidirectional streaming RPC）：客户端和服务端都可以向对方发送数据流，这个时候双方的数据可以同时互相发送，也就是可以实现实时交互RPC框架原理。定义格式为rpc SayHello (stream HelloRequest) returns (stream HelloReply) {}。
+
+本示例使用了简单模式。.proto文件也包含了Protocol Buffers 消息的定义，包括请求消息和返回消息。例如请求消息：
+
+```
+// The request message containing the user's name.
+message HelloRequest {
+  string name = 1;
+}
+```
+
+2. 生成客户端和服务器代码。
+
+接下来，我们需要根据.proto服务定义生成gRPC客户端和服务器接口。我们可以使用protoc编译工具，并指定使用其Go语言插件来生成：
+
+```
+$ protoc -I. --go_out=plugins=grpc:$GOPATH/src helloworld.proto
+$ ls
+helloworld.pb.go  helloworld.proto
+```
+
+你可以看到，新增了一个helloworld.pb.go文件。
+
+3. 实现gRPC服务。
+
+接着，我们就可以实现gRPC服务了。进入server目录，新建main.go文件：
+
+```
+$ cd ../server
+$ vi main.go
+```
+
+main.go内容如下：
+
+```
+// Package main implements a server for Greeter service.
+package main
+
+import (
+	"context"
+	"log"
+	"net"
+
+	pb "github.com/marmotedu/gopractise-demo/apistyle/greeter/helloworld"
+	"google.golang.org/grpc"
+)
+
+const (
+	port = ":50051"
+)
+
+// server is used to implement helloworld.GreeterServer.
+type server struct {
+	pb.UnimplementedGreeterServer
+}
+
+// SayHello implements helloworld.GreeterServer
+func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
+	log.Printf("Received: %v", in.GetName())
+	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
+}
+
+func main() {
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	pb.RegisterGreeterServer(s, &server{})
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}
+```
+
+上面的代码实现了我们上一步根据服务定义生成的Go接口。
+
+我们先定义了一个Go结构体server，并为server结构体添加`SayHello(context.Context, pb.HelloRequest) (pb.HelloReply, error)`方法，也就是说server是GreeterServer接口（位于helloworld.pb.go文件中）的一个实现。
+
+在我们实现了gRPC服务所定义的方法之后，就可以通过 `net.Listen(...)` 指定监听客户端请求的端口；接着，通过 `grpc.NewServer()` 创建一个gRPC Server实例，并通过 `pb.RegisterGreeterServer(s, &server{})` 将该服务注册到gRPC框架中；最后，通过 `s.Serve(lis)` 启动gRPC服务。
+
+创建完main.go文件后，在当前目录下执行 `go run main.go` ，启动gRPC服务。
+
+4. 实现gRPC客户端。
+
+打开一个新的Linux终端，进入client目录，新建main.go文件：
+
+```
+$ cd ../client
+$ vi main.go
+```
+
+main.go内容如下：
+
+```
+// Package main implements a client for Greeter service.
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+	"time"
+
+	pb "github.com/marmotedu/gopractise-demo/apistyle/greeter/helloworld"
+	"google.golang.org/grpc"
+)
+
+const (
+	address     = "localhost:50051"
+	defaultName = "world"
+)
+
+func main() {
+	// Set up a connection to the server.
+	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	c := pb.NewGreeterClient(conn)
+
+	// Contact the server and print out its response.
+	name := defaultName
+	if len(os.Args) > 1 {
+		name = os.Args[1]
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	r, err := c.SayHello(ctx, &pb.HelloRequest{Name: name})
+	if err != nil {
+		log.Fatalf("could not greet: %v", err)
+	}
+	log.Printf("Greeting: %s", r.Message)
+}
+```
+
+在上面的代码中，我们通过如下代码创建了一个gRPC连接，用来跟服务端进行通信：
+
+```
+// Set up a connection to the server.
+conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+if err != nil {
+    log.Fatalf("did not connect: %v", err)
+}
+defer conn.Close()
+```
+
+在创建连接时，我们可以指定不同的选项，用来控制创建连接的方式，例如grpc.WithInsecure()、grpc.WithBlock()等。gRPC支持很多选项，更多的选项可以参考grpc仓库下[dialoptions.go](https://github.com/grpc/grpc-go/blob/v1.37.0/dialoptions.go)文件中以With开头的函数。
+
+连接建立起来之后，我们需要创建一个客户端stub，用来执行RPC请求`c := pb.NewGreeterClient(conn)`。创建完成之后，我们就可以像调用本地函数一样，调用远程的方法了。例如，下面一段代码通过 `c.SayHello` 这种本地式调用方式调用了远端的SayHello接口：
+
+```
+r, err := c.SayHello(ctx, &pb.HelloRequest{Name: name})
+if err != nil {
+    log.Fatalf("could not greet: %v", err)
+}
+log.Printf("Greeting: %s", r.Message)
+```
+
+从上面的调用格式中，我们可以看到RPC调用具有下面两个特点。
+
+- 调用方便：RPC屏蔽了底层的网络通信细节，使得调用RPC就像调用本地方法一样方便，调用方式跟大家所熟知的调用类的方法一致：`ClassName.ClassFuc(params)`。
+- 不需要打包和解包：RPC调用的入参和返回的结果都是Go的结构体，不需要对传入参数进行打包操作，也不需要对返回参数进行解包操作，简化了调用步骤。
+
+最后，创建完main.go文件后，在当前目录下，执行go run main.go发起RPC调用：
+
+```
+$ go run main.go
+2020/10/17 07:55:00 Greeting: Hello world
+```
+
+至此，我们用四个步骤，创建并调用了一个gRPC服务。接下来我再给大家讲解一个在具体场景中的注意事项。
+
+在做服务开发时，我们经常会遇到一种场景：定义一个接口，接口会通过判断是否传入某个参数，决定接口行为。例如，我们想提供一个GetUser接口，期望GetUser接口在传入username参数时，根据username查询用户的信息，如果没有传入username，则默认根据userId查询用户信息。
+
+这时候，我们需要判断客户端有没有传入username参数。我们不能根据username是否为空值来判断，因为我们不能区分客户端传的是空值，还是没有传username参数。这是由Go语言的语法特性决定的：如果客户端没有传入username参数，Go会默认赋值为所在类型的零值，而字符串类型的零值就是空字符串。
+
+那我们怎么判断客户端有没有传入username参数呢？最好的方法是通过指针来判断，如果是nil指针就说明没有传入，非nil指针就说明传入，具体实现步骤如下：
+
+1. 编写protobuf定义文件。
+
+新建user.proto文件，内容如下:
+
+```
+syntax = "proto3";
+
+package proto;
+option go_package = "github.com/marmotedu/gopractise-demo/protobuf/user";
+
+//go:generate protoc -I. --experimental_allow_proto3_optional --go_out=plugins=grpc:.
+
+service User {
+  rpc GetUser(GetUserRequest) returns (GetUserResponse) {}
+}
+
+message GetUserRequest {
+  string class = 1;
+  optional string username = 2;
+  optional string user_id = 3;
+}
+
+message GetUserResponse {
+  string class = 1;
+  string user_id = 2;
+  string username = 3;
+  string address = 4;
+  string sex = 5;
+  string phone = 6;
+}
+```
+
+你需要注意，这里我们在需要设置为可选字段的前面添加了**optional**标识。
+
+2. 使用protoc工具编译protobuf文件。
+
+在执行protoc命令时，需要传入`--experimental_allow_proto3_optional`参数以打开**optional**选项，编译命令如下：
+
+```
+$ protoc --experimental_allow_proto3_optional --go_out=plugins=grpc:. user.proto
+```
+
+上述编译命令会生成user.pb.go文件，其中的GetUserRequest结构体定义如下：
+
+```
+type GetUserRequest struct {
+    state         protoimpl.MessageState
+    sizeCache     protoimpl.SizeCache
+    unknownFields protoimpl.UnknownFields
+
+    Class    string  `protobuf:"bytes,1,opt,name=class,proto3" json:"class,omitempty"`
+    Username *string `protobuf:"bytes,2,opt,name=username,proto3,oneof" json:"username,omitempty"`
+    UserId   *string `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3,oneof" json:"user_id,omitempty"`
+}
+```
+
+通过 `optional` + `--experimental_allow_proto3_optional` 组合，我们可以将一个字段编译为指针类型。
+
+3. 编写gRPC接口实现。
+
+新建一个user.go文件，内容如下：
+
+```
+package user
+
+import (
+    "context"
+
+    pb "github.com/marmotedu/api/proto/apiserver/v1"
+
+    "github.com/marmotedu/iam/internal/apiserver/store"
+)
+
+type User struct {
+}
+
+func (c *User) GetUser(ctx context.Context, r *pb.GetUserRequest) (*pb.GetUserResponse, error) {
+    if r.Username != nil {
+        return store.Client().Users().GetUserByName(r.Class, r.Username)
+    }
+
+    return store.Client().Users().GetUserByID(r.Class, r.UserId)
+}
+```
+
+总之，在GetUser方法中，我们可以通过判断r.Username是否为nil，来判断客户端是否传入了Username参数。
+
+## RESTful VS gRPC
+
+到这里，今天我们已经介绍完了gRPC API。回想一下我们昨天学习的RESTful API，你可能想问：这两种API风格分别有什么优缺点，适用于什么场景呢？我把这个问题的答案放在了下面这张表中，你可以对照着它，根据自己的需求在实际应用时进行选择。
+
+![](https://static001.geekbang.org/resource/image/e6/ab/e6ae61fc4b0fc821f94d257239f332ab.png?wh=1483x1026)
+
+当然，更多的时候，RESTful API 和gRPC API是一种合作的关系，对内业务使用gRPC API，对外业务使用RESTful API，如下图所示：
+
+![](https://static001.geekbang.org/resource/image/47/18/471ac923d2eaeca8fe13cb74731c1318.png?wh=1606x1144)
+
+## 总结
+
+在Go项目开发中，我们可以选择使用 RESTful API 风格和 RPC API 风格，这两种服务都用得很多。其中，RESTful API风格因为规范、易理解、易用，所以**适合用在需要对外提供API接口的场景中**。而RPC API因为性能比较高、调用方便，**更适合用在内部业务中**。
+
+RESTful API使用的是HTTP协议，而RPC API使用的是RPC协议。目前，有很多RPC协议可供你选择，而我推荐你使用gRPC，因为它很轻量，同时性能很高、很稳定，是一个优秀的RPC框架。所以目前业界用的最多的还是gRPC协议，腾讯、阿里等大厂内部很多核心的线上服务用的就是gRPC。
+
+除了使用gRPC协议，在进行Go项目开发前，你也可以了解业界一些其他的优秀Go RPC框架，比如腾讯的tars-go、阿里的dubbo-go、Facebook的thrift、rpcx等，你可以在项目开发之前一并调研，根据实际情况进行选择。
+
+## 课后练习
+
+1. 使用gRPC包，快速实现一个RPC API服务，并实现PrintHello接口，该接口会返回“Hello World”字符串。
+2. 请你思考这个场景：你有一个gRPC服务，但是却希望该服务同时也能提供RESTful API接口，这该如何实现？
+
+期待在留言区看到你的思考和答案，也欢迎和我一起探讨关于RPC API相关的问题，我们下一讲见！
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>pedro</span> 👍（70） 💬（1）<div>假定希望用RPC作为内部API的通讯，同时也想对外提供RESTful API，又不想写两套，可以使用gRPC Gateway 插件，在生成RPC的同时也生成RESTful web  server。</div>2021-06-24</li><br/><li><span>Geek_e7af5e</span> 👍（43） 💬（4）<div>这里提供一些更新说明（刚踩过的坑）
 github.com&#47;golang&#47;protobuf&#47;protoc-gen-go和google.golang.org&#47;protobuf&#47;cmd&#47;protoc-gen-go是不同的。区别在于前者是旧版本（操作类似于作者大大的），后者是google接管后的新版本，他们之间的API是不同的，也就是说用于生成的命令，以及生成的文件都是不一样的。因为目前的gRPC-go源码中的example用的是后者的生成方式，所以这里提供后者说明：
 1. 首先需要安装两个库：
 go install google.golang.org&#47;protobuf&#47;cmd&#47;protoc-gen-go
@@ -33,17 +468,17 @@ protoc -I. --go-grpc_out=$GOPATH&#47;src helloworld.proto
 helloworld.pb.go      helloworld_grpc.pb.go
 这两个文件分别生成message和service的代码，合起来就是老版本的代码
 
-这是排查了两小时的坑，希望大家注意！</div>2022-01-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/15/9b/9ce9f374.jpg" width="30px"><span>柠柠</span> 👍（16） 💬（1）<div>RPC 与 RESTful 共通逻辑抽象出来 Service 层，RPC server 和 RESTful server 初始化or 启动时时都需要指定 service，真正提供服务的是 Service 层</div>2021-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/68/d4/c9b5d3f9.jpg" width="30px"><span>💎A</span> 👍（10） 💬（1）<div>https:&#47;&#47;www.bookstack.cn&#47;read&#47;API-design-guide&#47;API-design-guide-04-%E6%A0%87%E5%87%86%E6%96%B9%E6%B3%95.md  我又来做贡献了</div>2021-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/3e/89/77829168.jpg" width="30px"><span>fliyu</span> 👍（6） 💬（1）<div>想方便调用grpc，可以使用grpcurl和grpcui，基于反射的方式使用</div>2022-01-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/9a/52/93416b65.jpg" width="30px"><span>不明真相的群众</span> 👍（6） 💬（1）<div>你有一个 gRPC 服务，但是却希望该服务同时也能提供 RESTful API 接口，这该如何实现？
+这是排查了两小时的坑，希望大家注意！</div>2022-01-21</li><br/><li><span>柠柠</span> 👍（16） 💬（1）<div>RPC 与 RESTful 共通逻辑抽象出来 Service 层，RPC server 和 RESTful server 初始化or 启动时时都需要指定 service，真正提供服务的是 Service 层</div>2021-06-25</li><br/><li><span>💎A</span> 👍（10） 💬（1）<div>https:&#47;&#47;www.bookstack.cn&#47;read&#47;API-design-guide&#47;API-design-guide-04-%E6%A0%87%E5%87%86%E6%96%B9%E6%B3%95.md  我又来做贡献了</div>2021-06-25</li><br/><li><span>fliyu</span> 👍（6） 💬（1）<div>想方便调用grpc，可以使用grpcurl和grpcui，基于反射的方式使用</div>2022-01-10</li><br/><li><span>不明真相的群众</span> 👍（6） 💬（1）<div>你有一个 gRPC 服务，但是却希望该服务同时也能提供 RESTful API 接口，这该如何实现？
 ---------------------------
-在封装一层？</div>2021-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ed/0a/18201290.jpg" width="30px"><span>Juniper</span> 👍（4） 💬（2）<div>查了下文档，optional是protoco 3.12版本加入的，如果参数设置成optional，执行时必须要带--experimental_allow_proto3_optional。但是我是3.15.8版本，执行时没有加上--experimental_allow_proto3_optional也没有报错</div>2021-10-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d7/f1/ce10759d.jpg" width="30px"><span>wei 丶</span> 👍（4） 💬（2）<div>老师有个疑问
+在封装一层？</div>2021-06-24</li><br/><li><span>Juniper</span> 👍（4） 💬（2）<div>查了下文档，optional是protoco 3.12版本加入的，如果参数设置成optional，执行时必须要带--experimental_allow_proto3_optional。但是我是3.15.8版本，执行时没有加上--experimental_allow_proto3_optional也没有报错</div>2021-10-02</li><br/><li><span>wei 丶</span> 👍（4） 💬（2）<div>老师有个疑问
 protoc --go_out=. *.proto
 protoc --go_out=plugins=grpc:. *.proto
-这俩有啥啥区别  😵</div>2021-08-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/3a/59/d0f326e7.jpg" width="30px"><span>张名哲</span> 👍（4） 💬（1）<div>老师，文章中有四种模式，平时用的最多的是哪一种模式？</div>2021-07-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a9/93/2a26fe6e.jpg" width="30px"><span>learner2021</span> 👍（3） 💬（4）<div>哪里设置错误了？
+这俩有啥啥区别  😵</div>2021-08-12</li><br/><li><span>张名哲</span> 👍（4） 💬（1）<div>老师，文章中有四种模式，平时用的最多的是哪一种模式？</div>2021-07-13</li><br/><li><span>learner2021</span> 👍（3） 💬（4）<div>哪里设置错误了？
 [going@dev server]$ pwd
 &#47;home&#47;going&#47;workspace&#47;golang&#47;src&#47;github.com&#47;marmotedu&#47;gopractise-demo&#47;apistyle&#47;greeter&#47;server
 [going@dev server]$ go run main.go
 main.go:8:2: no required module provides package github.com&#47;marmotedu&#47;gopractise-demo&#47;apistyle&#47;greeter&#47;helloworld: go.mod file not found in current directory or any parent directory; see &#39;go help modules&#39;
-main.go:9:2: no required module provides package google.golang.org&#47;grpc: go.mod file not found in current directory or any parent directory; see &#39;go help modules&#39;</div>2021-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/97/39/1f5c6350.jpg" width="30px"><span>朱元彬🗿</span> 👍（2） 💬（1）<div>生产环境中，使用服务提供者的接口，如果遇到接口更新的情况，要怎么跟服务提供者沟通更新协议呢？</div>2022-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2a/14/e2/f6f1627c.jpg" width="30px"><span>顺势而为</span> 👍（2） 💬（1）<div>建议作者的命令行，多点pwd，方便我们定位</div>2022-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/34/84/27ecfcab.jpg" width="30px"><span>江湖夜雨十年灯</span> 👍（2） 💬（2）<div>老师，我的proto文件是这样写的，go_package用的是我本地项目的目录：
+main.go:9:2: no required module provides package google.golang.org&#47;grpc: go.mod file not found in current directory or any parent directory; see &#39;go help modules&#39;</div>2021-06-24</li><br/><li><span>朱元彬🗿</span> 👍（2） 💬（1）<div>生产环境中，使用服务提供者的接口，如果遇到接口更新的情况，要怎么跟服务提供者沟通更新协议呢？</div>2022-08-22</li><br/><li><span>顺势而为</span> 👍（2） 💬（1）<div>建议作者的命令行，多点pwd，方便我们定位</div>2022-07-28</li><br/><li><span>江湖夜雨十年灯</span> 👍（2） 💬（2）<div>老师，我的proto文件是这样写的，go_package用的是我本地项目的目录：
 option go_package = &quot;whw_scripts_stroage&#47;a_grpc_tests&#47;helloworld&quot;;
 在helloworld目录中执行下面命令：
 sudo protoc -I. --go_out=. .&#47;helloworld.proto 
@@ -52,21 +487,5 @@ sudo protoc -I. --go_out=. .&#47;helloworld.proto
 
 
 
-</div>2021-10-22</li><br/><li><img src="" width="30px"><span>andox</span> 👍（2） 💬（1）<div>grpc有推荐的服务治理方案吗</div>2021-10-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2a/14/e2/f6f1627c.jpg" width="30px"><span>顺势而为</span> 👍（1） 💬（2）<div>对protoc为什么生成.pb.go的函数，不是很理解。</div>2022-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/96/3a/e06f8367.jpg" width="30px"><span>HiNeNi</span> 👍（1） 💬（1）<div>请问老师怎么看待tars？什么情况下用tars会比用grpc好一点？</div>2022-06-23</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/rSzzqGwHcvhwPejiaPsCY9XBX7ib7zTxJ6cUDORdhGIakX8dTPVsz6ibud5ec1FeWQGTseF2TPRECCjky5JMlHvDg/132" width="30px"><span>Struggle~honor</span> 👍（1） 💬（1）<div>老师，看代码是使用了grpc中的invoke函数，指定URL，请问这个是怎样用的呢</div>2022-01-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b5/e6/c67f12bd.jpg" width="30px"><span>左耳朵东</span> 👍（1） 💬（1）<div>为什么我执行这个命令的时候 protoc --go_out=plugins=grpc:. helloworld.proto 报错：
---go_out: protoc-gen-go: plugins are not supported; use &#39;protoc --go-grpc_out=...&#39; to generate gRPC</div>2021-12-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/9d/64/272dc1b7.jpg" width="30px"><span>圆滚滚</span> 👍（1） 💬（2）<div>protoc-gen-go: program not found or is not executable
-Please specify a program using absolute path or make sure the program is available in your PATH system variable
---go_out: protoc-gen-go: Plugin failed with status code </div>2021-12-12</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/rSzzqGwHcvhwPejiaPsCY9XBX7ib7zTxJ6cUDORdhGIakX8dTPVsz6ibud5ec1FeWQGTseF2TPRECCjky5JMlHvDg/132" width="30px"><span>Struggle~honor</span> 👍（1） 💬（1）<div>老师，请问grpc数据结构中的 1 2 3 4 这些定义分别代表什么意思呢</div>2021-12-08</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJkOj8VUxLjDKp6jRWJrABnnsg7U1sMSkM8FO6ULPwrqNpicZvTQ7kwctmu38iaJYHybXrmbusd8trg/132" width="30px"><span>yss</span> 👍（1） 💬（2）<div>不知道老师有没有跨语言，跨处理器平台做 gRPC 开发的经验。
-
-开发机是 windows + x86 
-目标机是 Linux + arm
-
-希望实现 golang 与 QT 的 gRPC 通讯。并想在开发机直接构建完成后到目标机执行。这个思路对于 c++ 程序是不是不可行，编译还是必须在对应的平台？</div>2021-10-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/60/a1/45ffdca3.jpg" width="30px"><span>静心</span> 👍（1） 💬（1）<div>以前用过Thrift，当时选用它的原因是与gRPC相比支持的编程语言比较多。不知道现在两者哪个更强一些？</div>2021-10-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/37/92/961ba560.jpg" width="30px"><span>授人以🐟，不如授人以渔</span> 👍（1） 💬（2）<div>孔老师，请问：「在描述 Protocol Buffer 时，谈到的第一个特征相对于 JSON&#47;XML “节省了大量的 IO 操作”，这一点不理解！」我的理解是这样的：JSON&#47;XML，或者是 Protobuf 都是需要转化为二进制数据，但后者数据量小。正因为数据量小，减少了底层网络数据传输的 IO。我可以这样理解吗？</div>2021-10-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/7a/d2/4ba67c0c.jpg" width="30px"><span>Sch0ng</span> 👍（1） 💬（2）<div>一文搞懂rpc，这个周末写一下demo。周日晚上再来打卡。</div>2021-08-07</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eoeNMibYsgHBsbhIwf9YR4Shy6psfqiblneVHA5CYrBRoqJwkw1ZUbVAPRGAfFfWjia7MZlDZzddeE2w/132" width="30px"><span>wfatec</span> 👍（1） 💬（2）<div>我这里遇到个问题，我在&#47;workspace&#47;greeter&#47;helloworld&#47;下新建了一个helloworld.proto文件，并cd到当前目录执行：
-protoc --go_out=plugins=grpc:$GOPATH&#47;src helloworld.proto
-之后，helloworld.pb.go 并不会在当前目录生成，查看:$GOPATH&#47;src之后，发现多了个 home 文件夹，最终发现，helloworld.pb.go 生成的位置是$GOPATH&#47;src&#47;home&#47;username&#47;workspace&#47;greeter&#47;helloworld&#47;helloworld.pb.go下，请问这个是为什么呢？</div>2021-08-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a7/b2/274a4192.jpg" width="30px"><span>漂泊的小飘</span> 👍（1） 💬（1）<div>老师，有两个问题请教下：
-1，能否讲下四种模式的应用场景？
-2，一般生成的文件需要放进git里面吗</div>2021-07-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/4c/fc/0e887697.jpg" width="30px"><span>kkgo</span> 👍（1） 💬（1）<div>老师有对比过grpc和rpcx之间的性能，稳定性方面不? 看官方说明rpcx性能是grpc的2倍</div>2021-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/e2/c7/3e1d396e.jpg" width="30px"><span>oneWalker</span> 👍（0） 💬（1）<div>为何我用protoc自动生成的文件和作者的完全不一样：
-自动生成的代码如链接：【腾讯文档】13  API 风格（下）RPC API介绍-protobuf自动生成文件
-https:&#47;&#47;docs.qq.com&#47;doc&#47;DS3Nmc1dqRmFkSVZT
-</div>2021-07-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/c1/84/c4ddaddd.jpg" width="30px"><span>Star°时光℡</span> 👍（0） 💬（3）<div>protoc -I. --go_out=plugins=grpc:$GOPATH&#47;src helloworld.proto
-执行命令后无任何输出，也没有产生helloworld.pb.go文件</div>2021-06-24</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJl2cs8X08aK8GiaUYcH0V2L7QJ14Y1YCfjT42Ta3CwnJEczVvwsAOA1InCNg5PqUuCCTEda287PYg/132" width="30px"><span>Bradford</span> 👍（3） 💬（0）<div>postman现在也支持grpc啦</div>2022-04-20</li><br/>
+</div>2021-10-22</li><br/><li><span>andox</span> 👍（2） 💬（1）<div>grpc有推荐的服务治理方案吗</div>2021-10-14</li><br/><li><span>顺势而为</span> 👍（1） 💬（2）<div>对protoc为什么生成.pb.go的函数，不是很理解。</div>2022-07-29</li><br/>
 </ul>

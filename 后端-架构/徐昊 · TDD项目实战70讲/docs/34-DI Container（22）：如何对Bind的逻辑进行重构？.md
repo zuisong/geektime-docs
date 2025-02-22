@@ -378,7 +378,28 @@ class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
 - 自定义Scope标注
   
   - 可向容器注册自定义Scope标注的回调
+
+## 视频演示
+
+让我们进入今天的部分：
+
+## 思考题
+
+在进入下节课的项目回顾与总结之前，希望你能认真思考如下两个问题，并选择最有感触的一道进行回答。
+
+1. 要如何调整代码结构，以及增补什么样的特性，使得库对于使用者更友好？
+2. 反思是学习真正发生的时候，一味地摄入内容和信息，并不一定真的能达到想要的效果。很欢迎把你反思的内容分享在留言区，我们共同交流，一起进步！
+
+**编辑来信**：
+
+> 第二期“TDD·代码评点”活动正式启动啦！为了帮助你更平滑地过渡到第三个实战项目，徐老师发起了代码评点活动。  
+> 　  
+> 你可以填写[学习问卷](https://jinshuju.net/f/fnh84B)提交项目代码，而后，徐老师会一一查看，并进行评点与答疑。关于评点的详细内容，我们也将制成加餐展示在专栏里，供其他同学学习与参考。  
+> 　  
+> 请注意，此次收集时间截至5月27日12点。此外，我也会从中选出1-2位同学，送出《重构与模式》一书。请抓紧上车，入股不亏哦！
+
+欢迎把你的想法分享在留言区，也欢迎把你的项目代码的链接分享出来。相信经过你的思考与实操，学习效果会更好！
 <div><strong>精选留言（2）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/e9/22/7606c6ba.jpg" width="30px"><span>张铁林</span> 👍（2） 💬（1）<div>https:&#47;&#47;github.com&#47;vfbiby&#47;tdd-di-container&#47;tree&#47;master
-已码完</div>2022-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（1）<div>21 ~ 34 笔记 https:&#47;&#47;wyyl1.com&#47;post&#47;19&#47;09&#47;</div>2022-05-30</li><br/>
+<li><span>张铁林</span> 👍（2） 💬（1）<div>https:&#47;&#47;github.com&#47;vfbiby&#47;tdd-di-container&#47;tree&#47;master
+已码完</div>2022-06-04</li><br/><li><span>aoe</span> 👍（0） 💬（1）<div>21 ~ 34 笔记 https:&#47;&#47;wyyl1.com&#47;post&#47;19&#47;09&#47;</div>2022-05-30</li><br/>
 </ul>

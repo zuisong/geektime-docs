@@ -17,23 +17,120 @@ Spark是当今最流行的分布式大规模数据处理引擎，被广泛应用
 至少理解了这些，你才好说自己是真正掌握了这个工具，否则只能说是浅尝辄止，半生不熟。
 
 学习Spark同样是如此。
-<div><strong>精选留言（28）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/13/1f/a7/d379ca4f.jpg" width="30px"><span>jon</span> 👍（44） 💬（1）<div>mr编程模型单一，维护成本高，多个job执行时每个都要数据落盘。而spark拥有更高的抽象级别rdd，一次读取数据后便可在内存中进行多步迭代计算，对rdd的计算是多线程并发的所有很高效。
-但是spark依然会存在数据倾斜的情况，在shuffle时有可能导致一个成为数据热点的情况</div>2019-05-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLdWHFCr66TzHS2CpCkiaRaDIk3tU5sKPry16Q7ic0mZZdy8LOCYc38wOmyv5RZico7icBVeaPX8X2jcw/132" width="30px"><span>JohnT3e</span> 👍（21） 💬（1）<div>1. spark本质上还是批处理，只是通过微批处理来实现近实时处理。如果需要实时处理，可以使用apache flink；
+
+我们首先要问自己，既然已经有了看似很成熟的Hadoop和MapReduce，为什么我们还需要Spark？它能帮我们解决什么实际问题？相比于MapReduce，它的优势又是什么？
+
+## MapReduce的缺陷
+
+MapReduce通过简单的Map和Reduce的抽象提供了一个编程模型，可以在一个由上百台机器组成的集群上并发处理大量的数据集，而把计算细节隐藏起来。各种各样的复杂数据处理都可以分解为Map或Reduce的基本元素。
+
+这样，复杂的数据处理可以分解为由多个Job（包含一个Mapper和一个Reducer）组成的有向无环图（DAG），然后每个Mapper和Reducer放到Hadoop集群上执行，就可以得出结果。
+
+我们在第一讲中讲到过MapReduce被硅谷一线公司淘汰的两大主要原因：高昂的维护成本、时间性能“达不到”用户的期待。不过除此之外，MapReduce还存在诸多局限。
+
+第一，MapReduce模型的抽象层次低，大量的底层逻辑都需要开发者手工完成。
+
+打个比方，写MapReduce的应用就好比用汇编语言去编写一个复杂的游戏。如果你是开发者，你会习惯用汇编语言，还是使用各种高级语言如Java、C++的现有框架呢？
+
+第二，只提供Map和Reduce两个操作。
+
+很多现实的数据处理场景并不适合用这个模型来描述。实现复杂的操作很有技巧性，也会让整个工程变得庞大以及难以维护。
+
+举个例子，两个数据集的Join是很基本而且常用的功能，但是在MapReduce的世界中，需要对这两个数据集做一次Map和Reduce才能得到结果。这样框架对于开发者非常不友好。正如第一讲中提到的，维护一个多任务协调的状态机成本很高，而且可扩展性非常差。
+
+第三，在Hadoop中，每一个Job的计算结果都会存储在HDFS文件存储系统中，所以每一步计算都要进行硬盘的读取和写入，大大增加了系统的延迟。
+
+由于这一原因，MapReduce对于迭代算法的处理性能很差，而且很耗资源。因为迭代的每一步都要对HDFS进行读写，所以每一步都需要差不多的等待时间。
+
+第四，只支持批数据处理，欠缺对流数据处理的支持。
+
+因此，在Hadoop推出后，有很多人想办法对Hadoop进行优化，其中发展到现在最成熟的就是Spark。
+
+接下来，就让我们看一下Spark是如何对上述问题进行优化的。
+
+## Spark的优势
+
+Spark最基本的数据抽象叫作弹性分布式数据集（Resilient Distributed Dataset, RDD），它代表一个可以被分区（partition）的只读数据集，它内部可以有很多分区，每个分区又有大量的数据记录（record）。
+
+RDD是Spark最基本的数据结构。Spark定义了很多对RDD的操作。对RDD的任何操作都可以像函数式编程中操作内存中的集合一样直观、简便，使得实现数据处理的代码非常简短高效。这些我们会在这一模块中的后续文章中仔细阐述。
+
+Spark提供了很多对RDD的操作，如Map、Filter、flatMap、groupByKey和Union等等，极大地提升了对各种复杂场景的支持。开发者既不用再绞尽脑汁挖掘MapReduce模型的潜力，也不用维护复杂的MapReduce状态机。
+
+相对于Hadoop的MapReduce会将中间数据存放到硬盘中，Spark会把中间数据缓存在内存中，从而减少了很多由于硬盘读写而导致的延迟，大大加快了处理速度。
+
+Databricks团队曾经做过一个实验，他们用Spark排序一个100TB的静态数据集仅仅用时23分钟。而之前用Hadoop做到的最快记录也用了高达72分钟。此外，Spark还只用了Hadoop所用的计算资源的1/10，耗时只有Hadoop的1/3。
+
+这个例子充分体现出Spark数据处理的最大优势——速度。
+
+在某些需要交互式查询内存数据的场景中，Spark的性能优势更加明显。
+
+根据Databricks团队的结果显示，Spark的处理速度是Hadoop的100倍。即使是对硬盘上的数据进行处理，Spark的性能也达到了Hadoop的10倍。
+
+由于Spark可以把迭代过程中每一步的计算结果都缓存在内存中，所以非常适用于各类迭代算法。
+
+Spark第一次启动时需要把数据载入到内存，之后的迭代可以直接在内存里利用中间结果做不落地的运算。所以，后期的迭代速度快到可以忽略不计。在当今机器学习和人工智能大热的环境下，Spark无疑是更好的数据处理引擎。
+
+下图是在Spark和Hadoop上运行逻辑回归算法的运行时间对比。
+
+![](https://static001.geekbang.org/resource/image/54/3d/54e4df946206a4a2168a25af8814843d.png?wh=5083%2A3500)
+
+可以看出，Hadoop做每一次迭代运算的时间基本相同，而Spark除了第一次载入数据到内存以外，别的迭代时间基本可以忽略。
+
+在任务（task）级别上，Spark的并行机制是多线程模型，而MapReduce是多进程模型。
+
+多进程模型便于细粒度控制每个任务占用的资源，但会消耗较多的启动时间。
+
+而Spark同一节点上的任务以多线程的方式运行在一个JVM进程中，可以带来更快的启动速度、更高的CPU利用率，以及更好的内存共享。
+
+从前文中你可以看出，Spark作为新的分布式数据处理引擎，对MapReduce进行了很多改进，使得性能大大提升，并且更加适用于新时代的数据处理场景。
+
+但是，Spark并不是一个完全替代Hadoop的全新工具。
+
+因为Hadoop还包含了很多组件：
+
+- 数据存储层：分布式文件存储系统HDFS，分布式数据库存储的HBase；
+- 数据处理层：进行数据处理的MapReduce，负责集群和资源管理的YARN；
+- 数据访问层：Hive、Pig、Mahout……
+
+从狭义上来看，Spark只是MapReduce的替代方案，大部分应用场景中，它还要依赖于HDFS和HBase来存储数据，依赖于YARN来管理集群和资源。
+
+当然，Spark并不是一定要依附于Hadoop才能生存，它还可以运行在Apache Mesos、Kubernetes、standalone等其他云平台上。
+
+![](https://static001.geekbang.org/resource/image/bc/0c/bc01239280bb853ca1d00c0fb3a8150c.jpg?wh=3604%2A2329)
+
+此外，作为通用的数据处理平台，Spark有五个主要的扩展库，分别是支持结构化数据的Spark SQL、处理实时数据的Spark Streaming、用于机器学习的MLlib、用于图计算的GraphX、用于统计分析的SparkR。
+
+这些扩展库与Spark核心API高度整合在一起，使得Spark平台可以广泛地应用在不同数据处理场景中。
+
+## 小结
+
+通过今天的学习，我们了解了Spark相较于MapReduce的主要优势，那就是快、易于开发及维护，和更高的适用性。我们还初步掌握了Spark系统的架构。
+
+MapReduce作为分布式数据处理的开山鼻祖，虽然有很多缺陷，但是它的设计思想不仅没有过时，而且还影响了新的数据处理系统的设计，如Spark、Storm、Presto、Impala等。
+
+Spark并没有全新的理论基础，它是一点点地在工程和学术的结合基础上做出来的。可以说，它站在了Hadoop和MapReduce两个巨人的肩膀上。在这一模块中，我们会对Spark的架构、核心概念、API以及各个扩展库进行深入的讨论，并且结合常见的应用例子进行实战演练，从而帮助你彻底掌握这一当今最流行的数据处理平台。
+
+## 思考题
+
+你认为有哪些MapReduce的缺点是在Spark框架中依然存在的？用什么思路可以解决？
+
+欢迎你把答案写在留言区，与我和其他同学一起讨论。
+
+如果你觉得有所收获，也欢迎把文章分享给你的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>jon</span> 👍（44） 💬（1）<div>mr编程模型单一，维护成本高，多个job执行时每个都要数据落盘。而spark拥有更高的抽象级别rdd，一次读取数据后便可在内存中进行多步迭代计算，对rdd的计算是多线程并发的所有很高效。
+但是spark依然会存在数据倾斜的情况，在shuffle时有可能导致一个成为数据热点的情况</div>2019-05-13</li><br/><li><span>JohnT3e</span> 👍（21） 💬（1）<div>1. spark本质上还是批处理，只是通过微批处理来实现近实时处理。如果需要实时处理，可以使用apache flink；
 2. 小文件处理依然有性能问题；
-3. 仍需要手动调优，比如如何让数据合理分区，来避免或者减轻数据倾斜</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/37/d0/26975fba.jpg" width="30px"><span>西南偏北</span> 👍（14） 💬（1）<div>Spark和MR的两个区别：
+3. 仍需要手动调优，比如如何让数据合理分区，来避免或者减轻数据倾斜</div>2019-05-13</li><br/><li><span>西南偏北</span> 👍（14） 💬（1）<div>Spark和MR的两个区别：
 1. MapReduce编程模型中，每一对map和reduce都会生成一个job，而且每一次都是写磁盘，这就造成老师所说的启动时间变长，而且维护起来比较复杂；而Spark是链式计算，像map、flatmap、filter等transformation算子是不会触发计算的，只有在遇到像count、collect、saveAsTable等Action算子时，才会真正触发一次计算，对应会生成一个job。
-2. MapReduce每次的MR结果都是保存到磁盘，所以时间开销大；而Spark在执行应用程序是，中间的处理过程、数据(RDD)的缓存和shuffle操作等都是在内存允许的情况下，放在内存中的，所以耗时短。</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/67/8a/babd74dc.jpg" width="30px"><span>锦</span> 👍（10） 💬（1）<div>Spark是在MapReduce的基础上一点点通过工程和学术相结合做出来的，那么是不是意味着背后的理论模型都是分治思想？
+2. MapReduce每次的MR结果都是保存到磁盘，所以时间开销大；而Spark在执行应用程序是，中间的处理过程、数据(RDD)的缓存和shuffle操作等都是在内存允许的情况下，放在内存中的，所以耗时短。</div>2019-05-13</li><br/><li><span>锦</span> 👍（10） 💬（1）<div>Spark是在MapReduce的基础上一点点通过工程和学术相结合做出来的，那么是不是意味着背后的理论模型都是分治思想？
 相对于MapReduce多进程模型来说，Spark基于多线程模型，启动速度更快，Cpu利用率更好和内存共享更好。
 MapReduce只提供Map和Reduce操作，而Spark中最基本的弹性分布式数据结构RDD，提供丰富的Api，对机器学习，人工智能更友好，更适用于现代数据处理场景。
 MapReduce计算后的中间数据需要落盘，而Spark的中间数据缓存在内存中用于后续迭代，速度更快。
-疑问:Spark相对于Storm在流计算中有哪些优势呢？</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/1b/4a/f9df2d06.jpg" width="30px"><span>蒙开强</span> 👍（9） 💬（2）<div>老师，你好，我看你专栏里说到，MapReduce 是多进程模型。我有点疑惑，MapReduce的map阶段和reduce阶段都有并行task进行运行，它们的task不是线程级别么。</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3d/5d/ac666969.jpg" width="30px"><span>miwucc</span> 👍（5） 💬（1）<div>感觉mapreduce遗留的问题还有
+疑问:Spark相对于Storm在流计算中有哪些优势呢？</div>2019-05-13</li><br/><li><span>蒙开强</span> 👍（9） 💬（2）<div>老师，你好，我看你专栏里说到，MapReduce 是多进程模型。我有点疑惑，MapReduce的map阶段和reduce阶段都有并行task进行运行，它们的task不是线程级别么。</div>2019-05-13</li><br/><li><span>miwucc</span> 👍（5） 💬（1）<div>感觉mapreduce遗留的问题还有
 1.数据分片分不好，导致数据过于集中在某机器导致整体处理速度慢或者无法处理问题。spark还是全靠使用者的分片函数还是自己有方法可以动态调度？
-2.对于实际复杂业务中的多job前后依赖，与业务紧密耦合的异常捕捉，处理机制是否有更好的解决方法？</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/ee/16/742956ac.jpg" width="30px"><span>涵</span> 👍（4） 💬（1）<div>老师讲到Hadoop的四个缺陷，前三个都讲到了Spark的解决方案，比如抽象层次更合理，易于使用，可用的方法更多，不限于map和reduce，还有将迭代的计算结果放入内存，提升迭代计算的效率，降低能耗。但是没有提到第四个只能批量处理数据的问题。这是不是Spark的局限?</div>2019-05-15</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/9chAb6SjxFiapSeicsAsGqzziaNlhX9d5aEt8Z0gUNsZJ9dICaDHqAypGvjv4Bx3PryHnj7OFnOXFOp7Ik21CVXEA/132" width="30px"><span>挖矿的小戈</span> 👍（4） 💬（1）<div>1. MR、Spark都有shuffle，shuffle难免出现数据倾斜
-2.流计算上的不足：MR就不说了，SparkStreaming只能算微批处理，尽管Spark的StructStreaming已经在这方面做了改进，但是思想貌似无法改变，spark就是以批处理的思想来处理流数据，这方面感觉没法跟flink比，不过交互式查询、ML以及生态上会比flink强</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f6/dc/710a2cc7.jpg" width="30px"><span>竹鹏</span> 👍（2） 💬（1）<div>spark和flink，这两个都是分布式数据处理框架，项目中应该怎么选？</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/2b/49/e94b2a35.jpg" width="30px"><span>CoderLean</span> 👍（1） 💬（2）<div>Sparksql是不是用来替代hive的一个工具</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e7/87/9ad59b98.jpg" width="30px"><span>程序设计的艺术</span> 👍（0） 💬（1）<div>您好，我有两个问题，最近在某场景选型处理方案时，对于spark处理方式下：
+2.对于实际复杂业务中的多job前后依赖，与业务紧密耦合的异常捕捉，处理机制是否有更好的解决方法？</div>2019-05-13</li><br/><li><span>涵</span> 👍（4） 💬（1）<div>老师讲到Hadoop的四个缺陷，前三个都讲到了Spark的解决方案，比如抽象层次更合理，易于使用，可用的方法更多，不限于map和reduce，还有将迭代的计算结果放入内存，提升迭代计算的效率，降低能耗。但是没有提到第四个只能批量处理数据的问题。这是不是Spark的局限?</div>2019-05-15</li><br/><li><span>挖矿的小戈</span> 👍（4） 💬（1）<div>1. MR、Spark都有shuffle，shuffle难免出现数据倾斜
+2.流计算上的不足：MR就不说了，SparkStreaming只能算微批处理，尽管Spark的StructStreaming已经在这方面做了改进，但是思想貌似无法改变，spark就是以批处理的思想来处理流数据，这方面感觉没法跟flink比，不过交互式查询、ML以及生态上会比flink强</div>2019-05-13</li><br/><li><span>竹鹏</span> 👍（2） 💬（1）<div>spark和flink，这两个都是分布式数据处理框架，项目中应该怎么选？</div>2019-05-13</li><br/><li><span>CoderLean</span> 👍（1） 💬（2）<div>Sparksql是不是用来替代hive的一个工具</div>2019-05-13</li><br/><li><span>程序设计的艺术</span> 👍（0） 💬（1）<div>您好，我有两个问题，最近在某场景选型处理方案时，对于spark处理方式下：
 1.如果是非集群下使用spark，是不是与jvm多线程处理任务的效率差不多？
-2.对于库存数据与订单明细的匹配和库存校验，是否适合使用spark来处理？对于库存数据来讲，是热点数据，是看成两个数据集做union还是一个订单数据集？谢谢</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/1a/f9/180f347a.jpg" width="30px"><span>朱同学</span> 👍（30） 💬（0）<div>似乎数据倾斜是所有分布式计算引擎的通病</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ed/3e/c1725237.jpg" width="30px"><span>楚翔style</span> 👍（5） 💬（2）<div>sparkcontext不能在集群全局共享，比如我submit了100个spark任务，每个任务都要初始化自己的sc，还要销毁，每一次的创建销毁都很耗时。 这块有什么策略可以优化下吗？ 谢谢</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/f3/dc/80b0cd23.jpg" width="30px"><span>珅剑</span> 👍（3） 💬（0）<div>Spark在Shuffle阶段依然有可能产生大量的小文件，大量的随机读写造成磁盘IO性能下降，</div>2019-06-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9b/94/4977913a.jpg" width="30px"><span>reven404</span> 👍（2） 💬（0）<div>如果说spark是把数据加载到内存中计算，那是怎么把100TB的数据加载到内存里面的？集群规模是？</div>2020-09-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/g1icQRbcv1QvJ5U8Cqk0ZqMH5PcMTXcZ8TpS5utE4SUzHcnJA3FYGelHykpzTfDh55ehE8JO9Zg9VGSJW7Wxibxw/132" width="30px"><span>杨家荣</span> 👍（2） 💬（0）<div>总用scala 写spring cloud项目，属于杀鸡用牛刀吗？</div>2019-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/4b/b3/51bb33f2.jpg" width="30px"><span>北冥有鱼</span> 👍（1） 💬（0）<div>如HDFS小文件问题，数据倾斜问题，OOM内存溢出问题，还有配置文件项过多。因为spark大量使用内存，更容易OOM。同时，实际开发中发现，spark不适合高并发，容易出现内存泄露。 对于流式这一块，状态管理也不太好，而Flink从搭建架构开始，就把状态管理考虑进去了…</div>2020-05-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/bf/22/26530e66.jpg" width="30px"><span>趁早</span> 👍（1） 💬（1）<div>k8s,mesos都知识编排工具吧，那具体数据存哪里呢</div>2019-07-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ae/97/ba512167.jpg" width="30px"><span>darren</span> 👍（1） 💬（0）<div>可以为每个进程设定使用资源，对每个线程就不好控制</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a0/8e/6e4c7509.jpg" width="30px"><span>一</span> 👍（1） 💬（1）<div>老师好，“多进程模型便于细粒度控制每个任务占用的资源”这一句不太理解，进程不是粗粒度的概念吗？为什么以进程为单位的并发反而便于细粒度的控制每个任务占用的资源呢？</div>2019-05-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/20/bd/5656b5d7.jpg" width="30px"><span>走刀口 💰</span> 👍（0） 💬（0）<div>老师，为啥用mr进行join操作会有问题，你文章里说需要对2个数据集做map和reduce，难道spark不是吗？</div>2021-03-27</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIhkl44PZasVPBEDobjeyMhhNb50BwFbHic5aVsJz4zynN9PcqaEE3WwMND7Wrw9yzjYicUlqzdzFZA/132" width="30px"><span>王大龙</span> 👍（0） 💬（0）<div>spark通过缓存内存提高数据处理效率，但是如果很多文件需要同时处理的话，应该影响其性能吧；
-另外想请教下老师，如果同时通过spark运行数据，在内存足够的情况下，是并行处理吗？</div>2020-04-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f5/b9/888fe350.jpg" width="30px"><span>不记年</span> 👍（0） 💬（0）<div>当小文件过多时MR，Spark运算效率都下降的很厉害。我觉得解决方案可能在计算框架之外，通过数据质量管理系统来解决</div>2020-03-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/fa/96/4a7b7505.jpg" width="30px"><span>Eden2020</span> 👍（0） 💬（0）<div>其实spark和mr就是差不多的，很多mr的优化的结果就是spark，spark限定了编程方式，其实数据处理还有很多要考虑的，比如存储均衡，最小化访问，索引，视图实时维护等等</div>2020-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6e/fd/6d0109c0.jpg" width="30px"><span>走小調的凡世林</span> 👍（0） 💬（0）<div>请教下老师，我们有个需求：根据各种自定义规则（比如分辨率、大小等）计算海量资源的分数（资源可以是图片、视频、音频）。总分100，图片分辨率太小或视频太大都要扣分，最后算出一个资源总分，这种需求可以用spark实现吗？主要考虑算分过程可能比较耗时，且资源数量较多。如果可以的话如何实现呢？老师是否可以提供下思路，感谢！</div>2019-11-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/1e/96/c735ad6b.jpg" width="30px"><span>滩涂曳尾</span> 👍（0） 💬（0）<div>怎么感觉spark相比hadoop只是做了一些工程上的优化，多线程vs多进程(类比apache vs. nginx)，内存缓存磁盘数据，... 学了后面的再看</div>2019-06-30</li><br/><li><img src="" width="30px"><span>13311195819</span> 👍（0） 💬（0）<div>老师好，您文章中提到“MapReduce 状态机“，这个词该怎么理解呢？是不是类似于flink中state的概念？
-
-</div>2019-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/53/c1/34bb9b24.jpg" width="30px"><span>大鹏</span> 👍（0） 💬（0）<div>两者共存的数据热点问题，依然需要手工介入，一个方法是减少无用的信息，第二个就是单独处理且分而治之</div>2019-05-13</li><br/>
+2.对于库存数据与订单明细的匹配和库存校验，是否适合使用spark来处理？对于库存数据来讲，是热点数据，是看成两个数据集做union还是一个订单数据集？谢谢</div>2019-05-13</li><br/><li><span>朱同学</span> 👍（30） 💬（0）<div>似乎数据倾斜是所有分布式计算引擎的通病</div>2019-05-13</li><br/><li><span>楚翔style</span> 👍（5） 💬（2）<div>sparkcontext不能在集群全局共享，比如我submit了100个spark任务，每个任务都要初始化自己的sc，还要销毁，每一次的创建销毁都很耗时。 这块有什么策略可以优化下吗？ 谢谢</div>2019-05-13</li><br/><li><span>珅剑</span> 👍（3） 💬（0）<div>Spark在Shuffle阶段依然有可能产生大量的小文件，大量的随机读写造成磁盘IO性能下降，</div>2019-06-09</li><br/><li><span>reven404</span> 👍（2） 💬（0）<div>如果说spark是把数据加载到内存中计算，那是怎么把100TB的数据加载到内存里面的？集群规模是？</div>2020-09-09</li><br/>
 </ul>

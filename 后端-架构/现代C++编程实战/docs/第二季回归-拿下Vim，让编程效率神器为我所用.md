@@ -15,6 +15,19 @@
 对于很多 Vim 的命令，我们是需要形成“肌肉记忆”的；我们不需要死记硬背，但需要多看、多练，熟能生巧，在学习过程中自然而然就掌握了使用 Vim 的技巧。
 
 在这个课程中，我会基于目前最新的 Vim 8.2 来讲解 Vim 的功能。学完后，你将获得：
+
+- 即学即用的 Vim 高频命令
+- 定制自己专属的 Vim 环境
+- 利用 Vim 脚本和插件实现常用功能
+- Vim 高阶用法和技巧
+
+如果你正在使用Vim，期待和你在课程里探讨更多Vim的可能性。如果你还没有用过Vim，希望这门课能为你打开一个全新的效率世界。
+
+现在，课程已经上线了。我为你申请了老用户福利，一张 15 元专属优惠券，可与限时优惠叠加使用，到手仅需 ¥64，建议尽早使用。
+
+点击下方图片即可进入新课程试读，期待与你在Vim课程里继续切磋！
+
+[![](https://static001.geekbang.org/resource/image/b9/d6/b90c9c03f317ec3f7e07fe82defbc9d6.jpg?wh=1342%2A638)](https://time.geekbang.org/column/intro/324?utm_term=zeusE5AJR&utm_source=app&utm_medium=geektime&utm_campaign=diyiji&utm_content=0720)
 <div><strong>精选留言（2）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/22/e1/7a/b206cded.jpg" width="30px"><span>人在江湖龙在江湖</span> 👍（1） 💬（0）<div>vim相对emacs还是好用一些，只要是在命令行下，没有任何偷懒办法，必须要把那些快捷键用熟，所以选择一个最流行的吧</div>2020-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/99/90/ca2a8632.jpg" width="30px"><span>村长</span> 👍（1） 💬（0）<div>抱歉 我是emacs党</div>2020-07-21</li><br/>
+<li><span>人在江湖龙在江湖</span> 👍（1） 💬（0）<div>vim相对emacs还是好用一些，只要是在命令行下，没有任何偷懒办法，必须要把那些快捷键用熟，所以选择一个最流行的吧</div>2020-11-12</li><br/><li><span>村长</span> 👍（1） 💬（0）<div>抱歉 我是emacs党</div>2020-07-21</li><br/>
 </ul>

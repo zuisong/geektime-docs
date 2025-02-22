@@ -22,9 +22,94 @@
 **K值如何选择**
 
 你能看出整个KNN的分类过程，K值的选择还是很重要的。那么问题来了，K值选择多少是适合的呢？
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/14/aa/d1/076482f3.jpg" width="30px"><span>白夜</span> 👍（18） 💬（4）<div>曼哈顿距离写错了吧？ 应该d=|X1-X2|+|Y1-Y2|吧</div>2019-02-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/79/9a/4f907ad6.jpg" width="30px"><span>Python</span> 👍（28） 💬（1）<div>老师，能不能推荐一下kaggle上谁的项目能让我们学习。</div>2019-02-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/79/9a/4f907ad6.jpg" width="30px"><span>Python</span> 👍（9） 💬（1）<div>k越少就会越拟合，越多则越不拟合。最后就是为了寻找k的数值</div>2019-02-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/b8/21/c03839f1.jpg" width="30px"><span>FORWARD―MOUNT</span> 👍（8） 💬（3）<div>KNN回归，既然已经知道某部电影的位置了，也就知道接吻次数和打斗次数。还用相邻的电影做回归求接吻次数和打斗次数？
-这个表示没懂。</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7d/05/4bad0c7c.jpg" width="30px"><span>Geek_hve78z</span> 👍（5） 💬（1）<div>KNN 的算法原理和工作流程是怎么样的？KNN 中的 K 值又是如何选择的？
+
+如果 K 值比较小，就相当于未分类物体与它的邻居非常接近才行。这样产生的一个问题就是，如果邻居点是个噪声点，那么未分类物体的分类也会产生误差，这样KNN分类就会产生过拟合。
+
+如果K值比较大，相当于距离过远的点也会对未知物体的分类产生影响，虽然这种情况的好处是鲁棒性强，但是不足也很明显，会产生欠拟合情况，也就是没有把未分类物体真正分类出来。
+
+所以K值应该是个实践出来的结果，并不是我们事先而定的。在工程上，我们一般采用交叉验证的方式选取 K 值。
+
+交叉验证的思路就是，把样本集中的大部分样本作为训练集，剩余的小部分样本用于预测，来验证分类模型的准确性。所以在KNN算法中，我们一般会把K值选取在较小的范围内，同时在验证集上准确率最高的那一个最终确定作为K值。
+
+**距离如何计算**
+
+在KNN算法中，还有一个重要的计算就是关于距离的度量。两个样本点之间的距离代表了这两个样本之间的相似度。距离越大，差异性越大；距离越小，相似度越大。
+
+关于距离的计算方式有下面五种方式：
+
+1. 欧氏距离；
+2. 曼哈顿距离；
+3. 闵可夫斯基距离；
+4. 切比雪夫距离；
+5. 余弦距离。
+
+其中前三种距离是KNN中最常用的距离，我给你分别讲解下。
+
+**欧氏距离**是我们最常用的距离公式，也叫做欧几里得距离。在二维空间中，两点的欧式距离就是：
+
+![](https://static001.geekbang.org/resource/image/f8/80/f8d4fe58ec9580a4ffad5cee263b1b80.png?wh=748%2A162)  
+同理，我们也可以求得两点在n维空间中的距离：
+
+![](https://static001.geekbang.org/resource/image/40/6a/40efe7cb4a2571e55438b55f8d37366a.png?wh=1262%2A190)  
+**曼哈顿距离**在几何空间中用的比较多。以下图为例，绿色的直线代表两点之间的欧式距离，而红色和黄色的线为两点的曼哈顿距离。所以曼哈顿距离等于两个点在坐标系上绝对轴距总和。用公式表示就是：
+
+![](https://static001.geekbang.org/resource/image/bd/aa/bda520e8ee34ea19df8dbad3da85faaa.png?wh=582%2A112)
+
+![](https://static001.geekbang.org/resource/image/dd/43/dd19ca4f0be3f60b526e9ea0b7d13543.jpg?wh=1467%2A1500)  
+**闵可夫斯基距离**不是一个距离，而是一组距离的定义。对于n维空间中的两个点 x(x1,x2,…,xn) 和 y(y1,y2,…,yn) ， x 和 y 两点之间的闵可夫斯基距离为：
+
+![](https://static001.geekbang.org/resource/image/4d/c5/4d614c3d6722c02e4ea03cb1e6653dc5.png?wh=516%2A238)  
+其中p代表空间的维数，当p=1时，就是曼哈顿距离；当p=2时，就是欧氏距离；当p→∞时，就是切比雪夫距离。
+
+**那么切比雪夫距离**怎么计算呢？二个点之间的切比雪夫距离就是这两个点坐标数值差的绝对值的最大值，用数学表示就是：max(|x1-y1|,|x2-y2|)。
+
+**余弦距离**实际上计算的是两个向量的夹角，是在方向上计算两者之间的差异，对绝对数值不敏感。在兴趣相关性比较上，角度关系比距离的绝对值更重要，因此余弦距离可以用于衡量用户对内容兴趣的区分度。比如我们用搜索引擎搜索某个关键词，它还会给你推荐其他的相关搜索，这些推荐的关键词就是采用余弦距离计算得出的。
+
+## KD树
+
+其实从上文你也能看出来，KNN的计算过程是大量计算样本点之间的距离。为了减少计算距离次数，提升KNN的搜索效率，人们提出了KD树（K-Dimensional的缩写）。KD树是对数据点在K维空间中划分的一种数据结构。在KD树的构造中，每个节点都是k维数值点的二叉树。既然是二叉树，就可以采用二叉树的增删改查操作，这样就大大提升了搜索效率。
+
+在这里，我们不需要对KD树的数学原理了解太多，你只需要知道它是一个二叉树的数据结构，方便存储K维空间的数据就可以了。而且在sklearn中，我们直接可以调用KD树，很方便。
+
+## 用KNN做回归
+
+KNN不仅可以做分类，还可以做回归。首先讲下什么是回归。在开头电影这个案例中，如果想要对未知电影进行类型划分，这是一个分类问题。首先看一下要分类的未知电影，离它最近的K部电影大多数属于哪个分类，这部电影就属于哪个分类。
+
+如果是一部新电影，已知它是爱情片，想要知道它的打斗次数、接吻次数可能是多少，这就是一个回归问题。
+
+那么KNN如何做回归呢？
+
+对于一个新电影X，我们要预测它的某个属性值，比如打斗次数，具体特征属性和数值如下所示。此时，我们会先计算待测点（新电影X）到已知点的距离，选择距离最近的K个点。假设K=3，此时最近的3个点（电影）分别是《战狼》，《红海行动》和《碟中谍6》，那么它的打斗次数就是这3个点的该属性值的平均值，即(100+95+105)/3=100次。
+
+![](https://static001.geekbang.org/resource/image/35/16/35dc8cc7d781c94b0fbaa0b53c01f716.png?wh=890%2A396)
+
+## 总结
+
+今天我给你讲了KNN的原理，以及KNN中的几个关键因素。比如针对K值的选择，我们一般采用交叉验证的方式得出。针对样本点之间的距离的定义，常用的有5种表达方式，你也可以自己来定义两个样本之间的距离公式。不同的定义，适用的场景不同。比如在搜索关键词推荐中，余弦距离是更为常用的。
+
+另外你也可以用KNN进行回归，通过K个邻居对新的点的属性进行值的预测。
+
+KNN的理论简单直接，针对KNN中的搜索也有相应的KD树这个数据结构。KNN的理论成熟，可以应用到线性和非线性的分类问题中，也可以用于回归分析。
+
+不过KNN需要计算测试点与样本点之间的距离，当数据量大的时候，计算量是非常庞大的，需要大量的存储空间和计算时间。另外如果样本分类不均衡，比如有些分类的样本非常少，那么该类别的分类准确率就会低很多。
+
+当然在实际工作中，我们需要考虑到各种可能存在的情况，比如针对某类样本少的情况，可以增加该类别的权重。
+
+同样KNN也可以用于推荐算法，虽然现在很多推荐系统的算法会使用TD-IDF、协同过滤、Apriori算法，不过针对数据量不大的情况下，采用KNN作为推荐算法也是可行的。
+
+![](https://static001.geekbang.org/resource/image/d6/0f/d67073bef9247e1ca7a58ae7869f390f.png?wh=1172%2A1017)  
+最后我给你留几道思考题吧，KNN的算法原理和工作流程是怎么样的？KNN中的K值又是如何选择的？
+
+## 上一篇文章思考题的代码
+
+我在上篇文章里留了一道思考题，你可以在[GitHub](http://github.com/cystanford/breast_cancer_data)上看到我写的关于这道题的代码（完整代码和文章案例代码差别不大），供你借鉴。
+
+![](https://static001.geekbang.org/resource/image/fa/44/fa09558150152cdb250e715ae9047544.png?wh=618%2A286)
+
+欢迎你在评论区与我分享你的答案，也欢迎点击“请朋友读”，把这篇文章分享给你的朋友或者同事。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>白夜</span> 👍（18） 💬（4）<div>曼哈顿距离写错了吧？ 应该d=|X1-X2|+|Y1-Y2|吧</div>2019-02-14</li><br/><li><span>Python</span> 👍（28） 💬（1）<div>老师，能不能推荐一下kaggle上谁的项目能让我们学习。</div>2019-02-06</li><br/><li><span>Python</span> 👍（9） 💬（1）<div>k越少就会越拟合，越多则越不拟合。最后就是为了寻找k的数值</div>2019-02-06</li><br/><li><span>FORWARD―MOUNT</span> 👍（8） 💬（3）<div>KNN回归，既然已经知道某部电影的位置了，也就知道接吻次数和打斗次数。还用相邻的电影做回归求接吻次数和打斗次数？
+这个表示没懂。</div>2019-02-15</li><br/><li><span>Geek_hve78z</span> 👍（5） 💬（1）<div>KNN 的算法原理和工作流程是怎么样的？KNN 中的 K 值又是如何选择的？
 1、kNN算法的核心思想是如果一个样本在特征空间中的k个最相邻的样本中的大多数属于某一个类别，则该样本也属于这个类别，并具有这个类别上样本的特性。
 2、整个计算过程分为三步：
 1）计算待分类物体与其他物体之间的距离；
@@ -32,52 +117,28 @@
 3）对于 K 个最近的邻居，它们属于哪个分类最多，待分类物体就属于哪一类。
 3、我们一般采用交叉验证的方式选取 K 值。
 交叉验证的思路就是，把样本集中的大部分样本作为训练集，剩余的小部分样本用于预测，来验证分类模型的准确性，准确率最高的那一个最终确定作为 K 值。
-</div>2019-02-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c3/da/44b9273b.jpg" width="30px"><span>文晟</span> 👍（5） 💬（2）<div>老师，那几个距离公式怎么跟别处的不一样，记得课本上是x1-x2而不是x1-y1这种形式</div>2019-02-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a4/5a/e708e423.jpg" width="30px"><span>third</span> 👍（2） 💬（1）<div>跟谁像，就是谁
+</div>2019-02-22</li><br/><li><span>文晟</span> 👍（5） 💬（2）<div>老师，那几个距离公式怎么跟别处的不一样，记得课本上是x1-x2而不是x1-y1这种形式</div>2019-02-06</li><br/><li><span>third</span> 👍（2） 💬（1）<div>跟谁像，就是谁
 
 计算距离
 通过交叉验证的方法，找到较小K，准确还较高的
 计算K个近邻，
-跟谁多</div>2019-02-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/79/9a/4f907ad6.jpg" width="30px"><span>Python</span> 👍（2） 💬（1）<div>老师，在实际工作中，我们直接调库和调参就行了吗？</div>2019-02-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/e2/47/1914418a.jpg" width="30px"><span>贺中堃</span> 👍（1） 💬（1）<div>1.找K个最近邻。KNN分类算法的核心就是找最近的K个点，选定度量距离的方法之后，以待分类样本点为中心，分别测量它到其他点的距离，找出其中的距离最近的“TOP K”，这就是K个最近邻。
+跟谁多</div>2019-02-18</li><br/><li><span>Python</span> 👍（2） 💬（1）<div>老师，在实际工作中，我们直接调库和调参就行了吗？</div>2019-02-06</li><br/><li><span>贺中堃</span> 👍（1） 💬（1）<div>1.找K个最近邻。KNN分类算法的核心就是找最近的K个点，选定度量距离的方法之后，以待分类样本点为中心，分别测量它到其他点的距离，找出其中的距离最近的“TOP K”，这就是K个最近邻。
 2.统计最近邻的类别占比。确定了最近邻之后，统计出每种类别在最近邻中的占比。
 3.选取占比最多的类别作为待分类样本的类别。
 
-k值一般取一个比较小的数值，通常采用交叉验证法来选取最优的k值。</div>2020-07-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/7d/2a/4c7e2e2f.jpg" width="30px"><span>§mc²ompleXWr</span> 👍（1） 💬（1）<div>KNN回归：如果某个特征属性未知，我怎么算距离？</div>2020-06-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/5d/27/74e152d3.jpg" width="30px"><span>滨滨</span> 👍（1） 💬（1）<div>kd树的简单解释https:&#47;&#47;blog.csdn.net&#47;App_12062011&#47;article&#47;details&#47;51986805</div>2019-03-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/5d/27/74e152d3.jpg" width="30px"><span>滨滨</span> 👍（1） 💬（1）<div>1. KNN的算法原理
+k值一般取一个比较小的数值，通常采用交叉验证法来选取最优的k值。</div>2020-07-13</li><br/><li><span>§mc²ompleXWr</span> 👍（1） 💬（1）<div>KNN回归：如果某个特征属性未知，我怎么算距离？</div>2020-06-18</li><br/><li><span>滨滨</span> 👍（1） 💬（1）<div>kd树的简单解释https:&#47;&#47;blog.csdn.net&#47;App_12062011&#47;article&#47;details&#47;51986805</div>2019-03-30</li><br/><li><span>滨滨</span> 👍（1） 💬（1）<div>1. KNN的算法原理
 离哪个邻居越近，属性与那个邻居越相似，和那个邻居的类别越一致。
 2. KNN的工作流程
 首先，根据场景，选取距离的计算方式
 然后，统计与所需分类对象距离最近的K个邻居
 最后，K个邻居中，所占数量最多的类别，即预测其为该分类对象的类别
 3. K值的选取
-交叉验证的方式，即设置多个测试集，用这些测试集测试多个K值，那个测试集所预测准确率越高的，即选取其相应的K值。</div>2019-03-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/f8/1e/0d5f8336.jpg" width="30px"><span>fancy</span> 👍（1） 💬（1）<div>1. KNN的算法原理
+交叉验证的方式，即设置多个测试集，用这些测试集测试多个K值，那个测试集所预测准确率越高的，即选取其相应的K值。</div>2019-03-30</li><br/><li><span>fancy</span> 👍（1） 💬（1）<div>1. KNN的算法原理
 离哪个邻居越近，属性与那个邻居越相似，和那个邻居的类别越一致。
 2. KNN的工作流程
 首先，根据场景，选取距离的计算方式
 然后，统计与所需分类对象距离最近的K个邻居
 最后，K个邻居中，所占数量最多的类别，即预测其为该分类对象的类别
 3. K值的选取
-交叉验证的方式，即设置多个测试集，用这些测试集测试多个K值，那个测试集所预测准确率越高的，即选取其相应的K值。</div>2019-03-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e6/3b/2d14b5e1.jpg" width="30px"><span>顾仲贤</span> 👍（1） 💬（1）<div>老师，您在KNN做回归时举例说已知分类求属性。问题是，在没有属性只知道分类的情况下，怎么求出k个近邻呢？</div>2019-02-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/b5/98/ffaf2aca.jpg" width="30px"><span>Ronnyz</span> 👍（0） 💬（1）<div>老师，KNN中的K值选取还是得不断的尝试是吗，只是最终确定K值的选取是以K折交叉验证得出的准确度的高低来确定</div>2019-11-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/4d/62/0fe9cbb3.jpg" width="30px"><span>William～Zhang</span> 👍（0） 💬（1）<div>老师，请问选取k个最近的领居，看分类最多的那一类，待分类物体就属于哪一类，那请问如果，刚好k个最近领居各一半，分属于不同类，怎么办</div>2019-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f4/52/10c4d863.jpg" width="30px"><span>FeiFei</span> 👍（0） 💬（1）<div>1，计算待分类物和其他物体之间的距离；
-2，统计距离最近的K的物体；
-3，K个邻居最多的分类=待分类物的分类。
-
-分割线
-
-1，太小会过于拟合
-2，太大会欠拟合</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d3/02/ff2e1881.jpg" width="30px"><span>闫伟</span> 👍（0） 💬（1）<div>老师，微信群是多少呀，想进群一起学习，麻烦老师加 下，vx：yw903167000</div>2019-05-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a3/87/c415e370.jpg" width="30px"><span>滢</span> 👍（0） 💬（1）<div>KNN工作原理：计算分类物体与其它物体的距离，选取k值，获得k个邻居的属性，哪种属性最多，该类就归属于这种属性。
-K值选择：交叉验证选择</div>2019-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/46/3d/55653953.jpg" width="30px"><span>AI悦创</span> 👍（1） 💬（0）<div>很不错，讲了等于没讲，所以K怎么找？具体教学都没有，怎么实战？</div>2022-11-14</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJAl7V1ibk8gX62W5I4SER2zbQAj3gy5icJlavGhnAmxENCia7QFm8lE3YBc5HOHvlyNVFz7rQKFQ7dA/132" width="30px"><span>timeng27</span> 👍（1） 💬（0）<div>k值的选取是否可以参考样本中的分类比例和个数？比如样本中最少的一个分类是10个，那么k肯定不能取10。回不会有类似的方法取k值？</div>2020-04-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/da/2c/783413de.jpg" width="30px"><span>彭涛</span> 👍（0） 💬（0）<div>同样 KNN 也可以用于推荐算法，虽然现在很多推荐系统的算法会使用 TD-IDF、协同过滤、Apriori 算法，不过针对数据量不大的情况下，采用 KNN 作为推荐算法也是可行的。
-请问：总结中的 TD-IDF 是否应该为：TF-IDF ？</div>2021-06-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/17/01/1c5309a3.jpg" width="30px"><span>McKee Chen</span> 👍（0） 💬（0）<div>KNN算法原理:
-1.根据业务场景，选择合适的距离计算公式，计算待分类点与其他样本点之间的距离
-2.统计与待分类点距离最近的K个邻居
-3.观察K个邻居的分类占比，分类占比最高的即为待分类点所属的类别
-
-K值的选择:
-交叉验证法: 选取样本集中的大部分样本为训练集，剩下的样本为测试集，不断训练模型，得到不同的模型准确率，直至得到最高的准确率，此时的K值为最优值
-
-KD树: 待学习</div>2020-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/bf/e3/2aa8ec84.jpg" width="30px"><span>鱼非子</span> 👍（0） 💬（0）<div>KNN算法原理：物以类聚
-工作流程：计算一个样本与其它样本的距离，选择最近的k个样本，k个样本中哪种类别最多，这个样本就属于哪种类别
-k值选择：利用交叉验证的方法
-</div>2020-03-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/36/cc/499625d3.jpg" width="30px"><span>学技术攒钱开宠物店</span> 👍（0） 💬（0）<div>回归已经知道值了呀，为什么还计算距离平均</div>2020-03-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/93/8b/35fa42aa.jpg" width="30px"><span>大鱼</span> 👍（0） 💬（0）<div>如果回归的话，怎么找到那k个相邻的点呢？除了类别，是不是还需要其他的特征来辅助，比如我是爱情电影，除了这个分类，还得有我是几级的爱情电影？</div>2019-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/db/21/26ff0240.jpg" width="30px"><span>上善若水</span> 👍（0） 💬（0）<div>请问TD-IDF是什么，为啥我搜的是tf-idf,是不同的命名吗？
-
-</div>2019-02-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/6d/88/d6e6ddcf.jpg" width="30px"><span>开心</span> 👍（0） 💬（0）<div>预估值就是历史的平均值，这样理解对吗？上一讲的乳腺癌的发病率是不是这样算的</div>2019-02-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/be/76/55e5e326.jpg" width="30px"><span>Chen</span> 👍（0） 💬（0）<div>1、K值太小的时候，模型变得复杂，容易发生过拟合，这点怎么理解呢？难道不是K太小，看的邻居太少，学习能力不足，会欠拟合吗，这儿没有理解。
-2、当数据量非常大的时候，KNN会面临庞大的存储空间和计算时间问题，我们可以用kd树解决。
-当样本类别非常地不均衡的时候，KNN会面临分类准确率很低的问题，我们该怎么解决呢？</div>2019-02-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ab/5d/430ed3b6.jpg" width="30px"><span>从未在此</span> 👍（0） 💬（0）<div>欧式距离应该是同坐标轴数字相减吧？跨坐标轴不好计算</div>2019-02-12</li><br/>
+交叉验证的方式，即设置多个测试集，用这些测试集测试多个K值，那个测试集所预测准确率越高的，即选取其相应的K值。</div>2019-03-02</li><br/><li><span>顾仲贤</span> 👍（1） 💬（1）<div>老师，您在KNN做回归时举例说已知分类求属性。问题是，在没有属性只知道分类的情况下，怎么求出k个近邻呢？</div>2019-02-06</li><br/><li><span>Ronnyz</span> 👍（0） 💬（1）<div>老师，KNN中的K值选取还是得不断的尝试是吗，只是最终确定K值的选取是以K折交叉验证得出的准确度的高低来确定</div>2019-11-14</li><br/>
 </ul>

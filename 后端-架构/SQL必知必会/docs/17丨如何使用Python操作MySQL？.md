@@ -9,8 +9,201 @@
 ## Python DB API规范
 
 Python可以支持非常多的数据库管理系统，比如MySQL、Oracle、SQL Server和PostgreSQL等。为了实现对这些DBMS的统一访问，Python需要遵守一个规范，这就是DB API规范。我在下图中列出了DB API规范的作用，这个规范给我们提供了数据库对象连接、对象交互和异常处理的方式，为各种DBMS提供了统一的访问接口。这样做的好处就是如果项目需要切换数据库，Python层的代码移植会比较简单。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/33/07/8f351609.jpg" width="30px"><span>JustDoDT</span> 👍（42） 💬（3）<div>import json
+
+![](https://static001.geekbang.org/resource/image/5d/7f/5d8113fc1637d1fe951e985b22e0287f.png?wh=1729%2A839)  
+我们在使用Python对DBMS进行操作的时候，需要经过下面的几个步骤：
+
+1. 引入API模块；
+2. 与数据库建立连接；
+3. 执行SQL语句；
+4. 关闭数据库连接。
+
+## 如何使用mysql-connector
+
+使用Python对数据库进行访问需要基于DB API规范，这里有不少库供我们选择，比如MySQLdb、mysqlclient、PyMySQL、peewee和SQLAIchemy等。今天我讲解的是mysql-connector，它是MySQL 官方提供的驱动器，用来给后端语言，比如Python提供连接。
+
+下面我们看下如何用Python使用mysql-connector，以完成数据库的连接和使用。
+
+首先安装mysql-connector。在使用前，你需要先使用下面这句命令进行安装：
+
+```
+pip install mysql-connector
+```
+
+在安装之后，你可以创建数据库连接，然后查看下数据库的版本号，来验证下数据库是否连接成功。代码如下：
+
+```
+# -*- coding: UTF-8 -*-
+import mysql.connector
+# 打开数据库连接
+db = mysql.connector.connect(
+       host="localhost",
+       user="root",
+       passwd="XXX", # 写上你的数据库密码
+       database='wucai', 
+       auth_plugin='mysql_native_password'
+)
+# 获取操作游标 
+cursor = db.cursor()
+# 执行SQL语句
+cursor.execute("SELECT VERSION()")
+# 获取一条数据
+data = cursor.fetchone()
+print("MySQL版本: %s " % data)
+# 关闭游标&数据库连接
+cursor.close()
+db.close()
+```
+
+运行结果：
+
+```
+MySQL版本: 8.0.13 
+```
+
+上面这段代码中有两个重要的对象你需要了解下，分别是Connection和Cursor。
+
+Connection就是对数据库的当前连接进行管理，我们可以通过它来进行以下操作：
+
+1. 通过指定host、user、passwd和port等参数来创建数据库连接，这些参数分别对应着数据库IP地址、用户名、密码和端口号；
+2. 使用db.close()关闭数据库连接；
+3. 使用db.cursor()创建游标，操作数据库中的数据；
+4. 使用db.begin()开启事务；
+5. 使用db.commit()和db.rollback()，对事务进行提交以及回滚。
+
+当我们通过`cursor = db.cursor()`创建游标后，就可以通过面向过程的编程方式对数据库中的数据进行操作：
+
+1. 使用`cursor.execute(query_sql)`，执行数据库查询；
+2. 使用`cursor.fetchone()`，读取数据集中的一条数据；
+3. 使用`cursor.fetchall()`，取出数据集中的所有行，返回一个元组tuples类型；
+4. 使用`cursor.fetchmany(n)`，取出数据集中的多条数据，同样返回一个元组tuples；
+5. 使用`cursor.rowcount`，返回查询结果集中的行数。如果没有查询到数据或者还没有查询，则结果为-1，否则会返回查询得到的数据行数；
+6. 使用`cursor.close()`，关闭游标。
+
+## 对数据表进行增删改查
+
+了解了Connection和Cursor的使用方式之后，我们来看下如何来对heros数据表进行CRUD的操作，即增加、读取、更新和删除。
+
+首先是增加数据。
+
+假设我们想在player表中增加一名新球员，姓名为“约翰·科林斯”，球队ID为1003（即亚特兰大老鹰），身高为2.08m。代码如下：
+
+```
+# 插入新球员
+sql = "INSERT INTO player (team_id, player_name, height) VALUES (%s, %s, %s)"
+val = (1003, "约翰-科林斯", 2.08)
+cursor.execute(sql, val)
+db.commit()
+print(cursor.rowcount, "记录插入成功。")
+```
+
+我们使用cursor.execute来执行相应的SQL语句，val为SQL语句中的参数，SQL执行后使用db.commit()进行提交。需要说明的是，我们在使用SQL语句的时候，可以向SQL语句传递参数，这时SQL语句里要统一用（%s）进行占位，否则就会报错。不论插入的数值为整数类型，还是浮点类型，都需要统一用（%s）进行占位。
+
+另外在用游标进行SQL操作之后，还需要使用db.commit()进行提交，否则数据不会被插入。
+
+然后是读取数据。我们来看下数据是否被插入成功，这里我们查询下身高大于等于2.08m的球员都有哪些，代码如下：
+
+```
+# 查询身高大于等于2.08的球员
+sql = 'SELECT player_id, player_name, height FROM player WHERE height>=2.08'
+cursor.execute(sql)
+data = cursor.fetchall()
+for each_player in data:
+  print(each_player)
+```
+
+运行结果：
+
+```
+(10003, '安德烈-德拉蒙德', 2.11)
+(10004, '索恩-马克', 2.16)
+(10009, '扎扎-帕楚里亚', 2.11)
+(10010, '乔恩-洛伊尔', 2.08)
+(10011, '布雷克-格里芬', 2.08)
+(10015, '亨利-埃伦森', 2.11)
+(10023, '多曼塔斯-萨博尼斯', 2.11)
+(10024, '迈尔斯-特纳', 2.11)
+(10032, 'TJ-利夫', 2.08)
+(10033, '凯尔-奥奎因', 2.08)
+(10037, '伊凯·阿尼博古', 2.08)
+(10038, '约翰-科林斯', 2.08)
+```
+
+你能看到球员约翰·科林斯被正确插入。
+
+那么如何修改数据呢？
+
+假如我想修改刚才插入的球员约翰·科林斯的身高，将身高修改成2.09，代码如下：
+
+```
+# 修改球员约翰-科林斯
+sql = 'UPDATE player SET height = %s WHERE player_name = %s'
+val = (2.09, "约翰-科林斯")
+cursor.execute(sql, val)
+db.commit()
+print(cursor.rowcount, "记录被修改。")
+```
+
+最后我们看下如何删除约翰·科林斯这个球员的数据，代码如下：
+
+```
+sql = 'DELETE FROM player WHERE player_name = %s'
+val = ("约翰-科林斯",)
+cursor.execute(sql, val)
+db.commit()
+print(cursor.rowcount, "记录删除成功。")
+```
+
+最后都执行完了，我们来关闭游标和数据库的连接，使用以下代码即可：
+
+```
+cursor.close()
+db.close()
+```
+
+针对上面的操作过程，你可以模拟下数据的CRUD操作，但有几点你需要注意。
+
+1.打开数据库连接以后，如果不再使用，则需要关闭数据库连接，以免造成资源浪费。  
+2.在对数据进行增加、删除和修改的时候，可能会出现异常，这时就需要用`try...except`捕获异常信息。比如针对插入球员约翰·科林斯这个操作，你可以写成下面这样：
+
+```
+import traceback
+try:
+  sql = "INSERT INTO player (team_id, player_name, height) VALUES (%s, %s, %s)"
+  val = (1003, "约翰-科林斯", 2.08)
+  cursor.execute(sql, val)
+  db.commit()
+  print(cursor.rowcount, "记录插入成功。")
+except Exception as e:
+  # 打印异常信息
+  traceback.print_exc()
+  # 回滚  
+  db.rollback()
+finally:
+  # 关闭数据库连接
+  db.close()
+```
+
+运行结果告诉我们记录插入成功。
+
+3.如果你在使用mysql-connector连接的时候，系统报的错误为`authentication plugin caching_sha2`，这时你需要下载最新的版本更新来解决，点击[这里](https://dev.mysql.com/downloads/connector/python/)进行更新。
+
+## 总结
+
+我今天讲解了如何使用Python来操作MySQL，这里我们使用的是官方提供的mysql-connector，当然除了它之外，还有很多库可以进行选择。
+
+在使用基于DB API规范的协议时，重点需要掌握Connection和Cursor这两个对象，Connection就是对数据库的连接进行管理，而Cursor是对数据库的游标进行管理，通过它们，我们可以执行具体的SQL语句，以及处理复杂的数据。
+
+用Python操作MySQL，还有很多种姿势，mysql-connector只是其中一种，实际上还有另外一种方式，就是采用ORM框架。ORM的英文是Object Relational Mapping，也就是采用对象关系映射的模式，使用这种模式可以将数据库中各种数据表之间的关系映射到程序中的对象。这种模式可以屏蔽底层的数据库的细节，不需要我们与复杂的SQL语句打交道，直接采用操作对象的形式操作就可以。
+
+不过如果应用数据实体少，其实没有必要使用ORM框架，针对少量对象的管理，自己实现起来也很简单，比如本篇文章中我讲到的采用官方提供的mysql-connector驱动的方式来实现CRUD。引入一个框架的学习成本很高，代码膨胀也很厉害，所以如果是相对简单的操作，完全可以自己动手来实现。
+
+![](https://static001.geekbang.org/resource/image/96/d2/96cf0463992b9843ba02bb7f65cb4ed2.jpg?wh=3341%2A1512)  
+使用Python对数据库进行操作，关键在于实战，所以这里我出一个练习题。请你使用Python对heros表中最大生命值大于6000的英雄进行查询，并且输出相应的属性值。
+
+欢迎在评论区写下你的答案，我会与你一起交流。也欢迎把这篇文章分享给你的朋友或者同事，与它们一起交流一下。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>JustDoDT</span> 👍（42） 💬（3）<div>import json
 import traceback
 import mysql.connector
 
@@ -42,7 +235,7 @@ except Exception as e:
 finally:
     cursor.close()
     db.close()
-# 建议吧数据库链接信息写到配置文件里，防止密码泄露。</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/0d/45/b88a1794.jpg" width="30px"><span>一叶知秋</span> 👍（9） 💬（1）<div>sqlalchemy用习惯了。。。献丑来一段Python代码吧
+# 建议吧数据库链接信息写到配置文件里，防止密码泄露。</div>2019-07-19</li><br/><li><span>一叶知秋</span> 👍（9） 💬（1）<div>sqlalchemy用习惯了。。。献丑来一段Python代码吧
 ```Python
 # -*- coding:utf-8 -*-
 from sqlalchemy import and_
@@ -100,7 +293,7 @@ id:10056, name:达摩, hp_max:7140.0, mp_max:1694.0
 id:10057, name:孙悟空, hp_max:6585.0, mp_max:1760.0
 id:10058, name:刘备, hp_max:6900.0, mp_max:1742.0
 .....执行结果有点多字数限制了
-Process finished with exit code 0</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0c/0f/93d1c8eb.jpg" width="30px"><span>mickey</span> 👍（6） 💬（1）<div># -*- coding: UTF-8 -*-
+Process finished with exit code 0</div>2019-07-19</li><br/><li><span>mickey</span> 👍（6） 💬（1）<div># -*- coding: UTF-8 -*-
 import mysql.connector
 import traceback
 
@@ -179,15 +372,15 @@ finally:
 (&#39;不知火舞&#39;, 6014.0)
 (&#39;孙尚香&#39;, 6014.0)
 
-Process finished with exit code 0</div>2019-07-19</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/3hZfficKPGCq2kjFBu9SgaMjibJTEl7iaW1ta6pZNyiaWP8XEsNpunlnsiaOtBpWTXfT5BvRP3qNByml6p9rtBvqewg/132" width="30px"><span>夜路破晓</span> 👍（5） 💬（2）<div>auth_plugin=&#39;mysql_native_password&#39;
-哪位亲给解释下这个参数</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4a/c7/ec18673b.jpg" width="30px"><span>大斌</span> 👍（4） 💬（3）<div>核心代码：
+Process finished with exit code 0</div>2019-07-19</li><br/><li><span>夜路破晓</span> 👍（5） 💬（2）<div>auth_plugin=&#39;mysql_native_password&#39;
+哪位亲给解释下这个参数</div>2019-07-19</li><br/><li><span>大斌</span> 👍（4） 💬（3）<div>核心代码：
 cursor = db.cursor()
 
 sql = &quot;select name,hp_max from heros where hp_max &gt; %s&quot;
 val = (6000,)
 cursor.execute(sql,val)
 data = cursor.fetchall()
-注意：val里面的元素后面必须要加英文逗号，不加或者中文逗号都会报错</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5f/f0/a73607b3.jpg" width="30px"><span>victor666</span> 👍（2） 💬（1）<div>Python直接写SQL比Java方便多了</div>2020-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/5b/08/b0b0db05.jpg" width="30px"><span>丁丁历险记</span> 👍（2） 💬（3）<div>当一些听着很虚的理论用于实战时，其威力是巨大的，例如信息的正交性。</div>2019-11-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/3b/fc/04a75cd0.jpg" width="30px"><span>taoist</span> 👍（1） 💬（1）<div>import pymysql
+注意：val里面的元素后面必须要加英文逗号，不加或者中文逗号都会报错</div>2019-07-23</li><br/><li><span>victor666</span> 👍（2） 💬（1）<div>Python直接写SQL比Java方便多了</div>2020-03-22</li><br/><li><span>丁丁历险记</span> 👍（2） 💬（3）<div>当一些听着很虚的理论用于实战时，其威力是巨大的，例如信息的正交性。</div>2019-11-15</li><br/><li><span>taoist</span> 👍（1） 💬（1）<div>import pymysql
 import pymysql.cursors
 
 
@@ -213,7 +406,7 @@ try:
 finally:
     db_con.close()
 
-</div>2019-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/a7/f0/e3212f18.jpg" width="30px"><span>胡</span> 👍（0） 💬（1）<div>__author__ = &#39;Administrator&#39;
+</div>2019-12-19</li><br/><li><span>胡</span> 👍（0） 💬（1）<div>__author__ = &#39;Administrator&#39;
 
 # -*- coding: UTF-8 -*-
 import traceback
@@ -247,8 +440,8 @@ db.commit()
 print(cursor.rowcount, &quot; 记录插入成功。&quot;)
 
 cursor.close()
-db.close()</div>2019-08-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/a7/f0/e3212f18.jpg" width="30px"><span>胡</span> 👍（0） 💬（1）<div>老师在插入数据的时候，漏掉了 player_id ?</div>2019-08-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/8c/2a/49e0547d.jpg" width="30px"><span>发条</span> 👍（0） 💬（1）<div>使用8.0以上版本mysql的同学，在连接数据库的时候可能会受到quth_plugin不支持mysql_native_password的报错，
-可以用ALTER USER &#39;root&#39;@&#39;localhost&#39; IDENTIFIED WITH mysql_native_password BY &#39;root&#39;;语句把auth_plugin改掉</div>2019-07-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/48/f3/65c7e3ef.jpg" width="30px"><span>cricket1981</span> 👍（0） 💬（1）<div># -*- coding: UTF-8 -*-
+db.close()</div>2019-08-21</li><br/><li><span>胡</span> 👍（0） 💬（1）<div>老师在插入数据的时候，漏掉了 player_id ?</div>2019-08-21</li><br/><li><span>发条</span> 👍（0） 💬（1）<div>使用8.0以上版本mysql的同学，在连接数据库的时候可能会受到quth_plugin不支持mysql_native_password的报错，
+可以用ALTER USER &#39;root&#39;@&#39;localhost&#39; IDENTIFIED WITH mysql_native_password BY &#39;root&#39;;语句把auth_plugin改掉</div>2019-07-26</li><br/><li><span>cricket1981</span> 👍（0） 💬（1）<div># -*- coding: UTF-8 -*-
 
 import mysql.connector
 # 打开数据库连接
@@ -267,169 +460,9 @@ data = cursor.fetchall()
 for each_hero in data:
   print(each_hero)
 cursor.close()
-db.close()</div>2019-07-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/48/f3/65c7e3ef.jpg" width="30px"><span>cricket1981</span> 👍（0） 💬（1）<div>python print语句出来的中文是乱码要怎么处理？python程序第一行加过 # -*- coding: UTF-8 -*-
-(10003, u&#39;\u5b89\u5fb7\u70c8-\u5fb7\u62c9\u8499\u5fb7&#39;, 2.11)</div>2019-07-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/1e/02/2864e0f2.jpg" width="30px"><span>华夏</span> 👍（0） 💬（1）<div>pip install mysql-connector之后连接数据库会报错，更新到最新版还是一样报错，pip install mysql-connector-python之后可以正常运行。大家如果有遇到这个问题的可以参考@林彦-广州-数据分析师 这个办法。</div>2019-07-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7a/d9/4feb4006.jpg" width="30px"><span>lmingzhi</span> 👍（0） 💬（1）<div>老师，你好，我一般使用SQLAlchemy连接数据库:
+db.close()</div>2019-07-22</li><br/><li><span>cricket1981</span> 👍（0） 💬（1）<div>python print语句出来的中文是乱码要怎么处理？python程序第一行加过 # -*- coding: UTF-8 -*-
+(10003, u&#39;\u5b89\u5fb7\u70c8-\u5fb7\u62c9\u8499\u5fb7&#39;, 2.11)</div>2019-07-22</li><br/><li><span>华夏</span> 👍（0） 💬（1）<div>pip install mysql-connector之后连接数据库会报错，更新到最新版还是一样报错，pip install mysql-connector-python之后可以正常运行。大家如果有遇到这个问题的可以参考@林彦-广州-数据分析师 这个办法。</div>2019-07-20</li><br/><li><span>lmingzhi</span> 👍（0） 💬（1）<div>老师，你好，我一般使用SQLAlchemy连接数据库:
 from sqlalchemy import create_engine
 db = create_engine(&#39;mysql:&#47;&#47;root@localhost&#47;test_database&#39;)
-一般如你在文中提到的话如果使用结束后，不想再浪费资源，需要执行什么操作？</div>2019-07-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/18/ee/a1ed60d1.jpg" width="30px"><span>ABC</span> 👍（0） 💬（1）<div>执行结果:
-
-
-(&#39;夏侯&#39;, 7350.0)
-(&#39;钟无艳&#39;, 7000.0)
-(&#39;张飞&#39;, 8341.0)
-(&#39;牛魔&#39;, 8476.0)
-(&#39;吕布&#39;, 7344.0)
-(&#39;亚瑟&#39;, 8050.0)
-(&#39;芈月&#39;, 6164.0)
-(&#39;程咬金&#39;, 8611.0)
-(&#39;廉颇&#39;, 9328.0)
-(&#39;东皇太一&#39;, 7669.0)
-(&#39;庄周&#39;, 8149.0)
-(&#39;太乙真人&#39;, 6835.0)
-(&#39;白起&#39;, 8638.0)
-(&#39;雅典娜&#39;, 6264.0)
-(&#39;刘邦&#39;, 8073.0)
-(&#39;刘禅&#39;, 8581.0)
-(&#39;墨子&#39;, 7176.0)
-(&#39;项羽&#39;, 8057.0)
-(&#39;关羽&#39;, 7107.0)
-(&#39;孙尚香&#39;, 6014.0)
-(&#39;露娜&#39;, 6612.0)
-(&#39;不知火舞&#39;, 6014.0)
-(&#39;孙膑&#39;, 6811.0)
-(&#39;高渐离&#39;, 6165.0)
-(&#39;扁鹊&#39;, 6703.0)
-(&#39;钟馗&#39;, 6280.0)
-(&#39;鬼谷子&#39;, 7107.0)
-(&#39;赵云&#39;, 6732.0)
-(&#39;橘石京&#39;, 7000.0)
-(&#39;杨戬&#39;, 7420.0)
-(&#39;达摩&#39;, 7140.0)
-(&#39;孙悟空&#39;, 6585.0)
-(&#39;刘备&#39;, 6900.0)
-(&#39;曹操&#39;, 7473.0)
-(&#39;典韦&#39;, 7516.0)
-(&#39;宫本武藏&#39;, 6210.0)
-(&#39;老夫子&#39;, 7155.0)
-(&#39;哪吒&#39;, 7268.0)
-(&#39;娜可露露&#39;, 6205.0)
-(&#39;兰陵王&#39;, 6232.0)
-(&#39;铠&#39;, 6700.0)</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/18/ee/a1ed60d1.jpg" width="30px"><span>ABC</span> 👍（0） 💬（1）<div>练习答案:
-
-
-# -*- coding: UTF-8 -*-
-import mysql.connector
-
-db = mysql.connector.connect(
-       host=&quot;localhost&quot;,
-       user=&quot;root&quot;,
-       passwd=&quot;123456&quot;, 
-       database=&#39;geektime-sql&#39;, 
-       auth_plugin=&#39;mysql_native_password&#39;
-)
-
-cursor = db.cursor()
-try:
-  sql = &#39;SELECT  name,hp_max from heros where hp_max&gt;6000;&#39;
-  cursor.execute(sql)
-  data = cursor.fetchall()
-  for each_player in data:
-    print(each_player)
-finally:
-  cursor.close()
-  db.close()</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/90/3d/7f5c1b37.jpg" width="30px"><span>谷径</span> 👍（0） 💬（1）<div>auth_plugin=&#39;mysql_native_password&#39; 这句报错，是什么意思呢？</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/1e/02/2864e0f2.jpg" width="30px"><span>华夏</span> 👍（0） 💬（1）<div>(&#39;夏侯惇&#39;, 7350.0, 1746.0, 321.0, 397.0)
-(&#39;钟无艳&#39;, 7000.0, 1760.0, 318.0, 409.0)
-(&#39;张飞&#39;, 8341.0, 100.0, 301.0, 504.0)
-(&#39;牛魔&#39;, 8476.0, 1926.0, 273.0, 394.0)
-(&#39;吕布&#39;, 7344.0, 0.0, 343.0, 390.0)
-(&#39;亚瑟&#39;, 8050.0, 0.0, 346.0, 400.0)
-(&#39;芈月&#39;, 6164.0, 100.0, 289.0, 361.0)
-(&#39;程咬金&#39;, 8611.0, 0.0, 316.0, 504.0)
-(&#39;廉颇&#39;, 9328.0, 1708.0, 286.0, 514.0)
-(&#39;东皇太一&#39;, 7669.0, 1926.0, 286.0, 360.0)
-(&#39;庄周&#39;, 8149.0, 1694.0, 297.0, 497.0)
-(&#39;太乙真人&#39;, 6835.0, 1680.0, 284.0, 396.0)
-(&#39;白起&#39;, 8638.0, 1666.0, 288.0, 430.0)
-(&#39;雅典娜&#39;, 6264.0, 1732.0, 327.0, 418.0)
-(&#39;刘邦&#39;, 8073.0, 1940.0, 302.0, 504.0)
-(&#39;刘禅&#39;, 8581.0, 1694.0, 295.0, 459.0)
-(&#39;墨子&#39;, 7176.0, 1722.0, 328.0, 475.0)
-(&#39;项羽&#39;, 8057.0, 1694.0, 306.0, 494.0)
-(&#39;关羽&#39;, 7107.0, 10.0, 343.0, 386.0)
-(&#39;孙尚香&#39;, 6014.0, 1756.0, 411.0, 346.0)
-(&#39;露娜&#39;, 6612.0, 1836.0, 335.0, 375.0)
-(&#39;不知火舞&#39;, 6014.0, 200.0, 293.0, 336.0)
-(&#39;孙膑&#39;, 6811.0, 1926.0, 328.0, 413.0)
-(&#39;高渐离&#39;, 6165.0, 1988.0, 290.0, 343.0)
-(&#39;扁鹊&#39;, 6703.0, 2016.0, 309.0, 374.0)
-(&#39;钟馗&#39;, 6280.0, 1988.0, 278.0, 390.0)
-(&#39;鬼谷子&#39;, 7107.0, 1808.0, 297.0, 394.0)
-(&#39;赵云&#39;, 6732.0, 1760.0, 380.0, 394.0)
-(&#39;橘石京&#39;, 7000.0, 0.0, 347.0, 392.0)
-(&#39;杨戬&#39;, 7420.0, 1694.0, 325.0, 428.0)
-(&#39;达摩&#39;, 7140.0, 1694.0, 355.0, 415.0)
-(&#39;孙悟空&#39;, 6585.0, 1760.0, 349.0, 385.0)
-(&#39;刘备&#39;, 6900.0, 1742.0, 363.0, 381.0)
-(&#39;曹操&#39;, 7473.0, 0.0, 361.0, 371.0)
-(&#39;典韦&#39;, 7516.0, 1774.0, 345.0, 402.0)
-(&#39;宫本武藏&#39;, 6210.0, 0.0, 330.0, 391.0)
-(&#39;老夫子&#39;, 7155.0, 5.0, 329.0, 409.0)
-(&#39;哪吒&#39;, 7268.0, 1808.0, 320.0, 408.0)
-(&#39;娜可露露&#39;, 6205.0, 1808.0, 385.0, 359.0)
-(&#39;兰陵王&#39;, 6232.0, 1822.0, 388.0, 342.0)
-(&#39;铠&#39;, 6700.0, 1784.0, 328.0, 388.0)
-41  查询成功。</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4d/fd/0aa0e39f.jpg" width="30px"><span>许童童</span> 👍（0） 💬（2）<div>老师你好，我觉得这一节讲得有点太浅了。</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/fc/90/c9df0459.jpg" width="30px"><span>ack</span> 👍（0） 💬（1）<div># -*- coding: UTF-8 -*-
-import mysql.connector
-
-# 打开数据库连接
-db = mysql.connector.connect(
-    host=&quot;localhost&quot;,
-    user=&quot;user&quot;,
-    passwd=&quot;12345&quot;,
-    database=&#39;test&#39;,
-    auth_plugin=&#39;mysql_native_password&#39;
-)
-# 获取操作游标
-cursor = db.cursor()
-# 执行 SQL 语句
-cursor.execute(&quot;SELECT * FROM heros WHERE hp_max&gt;6000&quot;)
-attr = cursor.description
-attrNum = len(attr)
-for i in range(attrNum):
-    print attr[i][0],
-print  &quot;\n&quot;
-# 获取数据
-data = cursor.fetchall()
-for row in data:
-    for col in row:
-        print col,
-    print &quot;\n&quot;
-# 关闭游标 &amp; 数据库连接
-cursor.close()
-db.close()</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/62/a5/43aa0c27.jpg" width="30px"><span>TKbook</span> 👍（4） 💬（4）<div>sql = &#39;DELETE FROM player WHERE name = %s&#39;
-val = (&quot; 约翰 - 科林斯 &quot;)
-cursor.execute(sql)
-db.commit()
-print(cursor.rowcount, &quot; 记录删除成功。&quot;)
-这里写错了哇，这样写才不会报错：
-sql = &#39;DELETE FROM player WHERE player_name = %s&#39;
-val = (&quot; 约翰 - 科林斯 &quot;, )
-cursor.execute(sql, val)
-db.commit()
-print(cursor.rowcount, &quot; 记录删除成功。&quot;)
-
-</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c1/a7/5e66d331.jpg" width="30px"><span>林彦</span> 👍（2） 💬（0）<div>try...except...那部分代码没有关闭游标的语句。关闭数据库连接的语句执行时一般都会先隐式关闭并释放当前的游标吗？</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（2） 💬（0）<div>看目录，我以为到 SQL刷题了。。。</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/74/9e/31872e2c.jpg" width="30px"><span>bahao</span> 👍（1） 💬（0）<div>看来要补习python了 执行sql太方便了</div>2020-10-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4a/c7/ec18673b.jpg" width="30px"><span>大斌</span> 👍（1） 💬（0）<div>python连接mysql时报错【mysql.connector.errors.NotSupportedError: Authentication plugin &#39;caching_sha2_password&#39; is not support】。
-原因是：mysql8.0.11使用了Use Strong Password Encryption for Authentication即强密码加密。
-通常的处理方法是：重装mysql【装更低版本的或者将Use Strong Password Encryption for Authentication改为Use Legacy Authentication Method(在Authentication Method中改)】
-还有一种更好的方案，那就是使用【pymysql】库来连接，代码如下：
-    db_host = &quot;localhost&quot;
-    db_username = &quot;root&quot;
-    db_password = &quot;123456&quot;
-    db_name = &quot;database_name&quot;
-    conn = pymysql.connect(
-        host=db_host,
-        user=db_username,
-        passwd=db_password,
-        database=db_name,
-    )</div>2019-07-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0c/0f/93d1c8eb.jpg" width="30px"><span>mickey</span> 👍（1） 💬（0）<div>sql = &#39;DELETE FROM player WHERE player_name = &quot; 约翰-科林斯 &quot;&#39;</div>2019-07-19</li><br/><li><img src="" width="30px"><span>极客酱</span> 👍（1） 💬（0）<div>删除约翰·科林斯这个球员的数据代码里面，excute那个函数缺少了val的参数吧？</div>2019-07-19</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLIuRQaZX70dsBg6khub2VPM1eQAP9IWRWxgOFed3ia4kXyNJInFRicWJ0ibf2YmLsOvJa1sGygGpmJg/132" width="30px"><span>胖子</span> 👍（0） 💬（0）<div>与上一遍提到的游标有何不同？</div>2024-08-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（0） 💬（0）<div>比JAVA简单多了，后面善后，可以试试</div>2024-08-21</li><br/>
+一般如你在文中提到的话如果使用结束后，不想再浪费资源，需要执行什么操作？</div>2019-07-20</li><br/>
 </ul>

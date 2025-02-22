@@ -11,55 +11,116 @@ LevelDB是基于LSM树优化而来的存储系统。都做了哪些优化呢？�
 首先，对内存中索引的高效检索，我们可以用很多检索技术，如红黑树、跳表等，这些数据结构会比B+树更高效。因此，LevelDB对于LSM树的第一个改进，就是使用跳表代替B+树来实现内存中的C0树。
 
 好，解决了第一个问题。那接下来的问题就是，内存数据要如何高效存储到磁盘。在第7讲中我们说过，我们是将内存中的C0树和磁盘上的C1树归并来存储的。但如果内存中的数据一边被写入修改，一边被写入磁盘，我们在归并的时候就会遇到数据的一致性管理问题。一般来说，这种情况是需要进行“加锁”处理的，但“加锁”处理又会大幅度降低检索效率。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（27） 💬（2）<div>当 MemTable 的存储数据达到上限时，我们直接将它切换为只读的 Immutable MemTable，然后重新生成一个新的 MemTable
-------------------
-这样的一个机制，内存中会出现多个Immutable MemTable 吗？ 上一个Immutable MemTable 没有及时写入到磁盘</div>2020-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（21） 💬（2）<div>LevelDB 分层的逻辑没有理解
-当 Level0 层 有四个 SSTable 的时候，这时候把这个四个进行归并，然后放到 Level1 层，这时候 Level0 层清空，这个有个问题是 当进行归并后 后生成几个 SSTable ,这里是有什么规则吗？
 
-接下来，然后 Level0 层在满了之后，是Level0 层的每个 SSTable 分别与 Level1 所有的 SSTable 进行多路归并吗？
+为此，LevelDB做了读写分离的设计。它将内存中的数据分为两块，一块叫作**MemTable**，它是可读可写的。另一块叫作**Immutable MemTable**，它是只读的。这两块数据的数据结构完全一样，都是跳表。那它们是怎么应用的呢？
 
-再然后 Level1 层满了之后，是按照顺序取 Level1 层的一个 SSTable 与 Level2所有的 SSTable 进行多路归并吗？
+具体来说就是，当MemTable的存储数据达到上限时，我们直接将它切换为只读的Immutable MemTable，然后重新生成一个新的MemTable，来支持新数据的写入和查询。这时，将内存索引存储到磁盘的问题，就变成了将Immutable MemTable写入磁盘的问题。而且，由于Immutable MemTable是只读的，因此，它不需要加锁就可以高效地写入磁盘中。
 
-这样会有大量的 磁盘 IO,老师说利用判断重合度进行解决的？ 这个重合度是怎么计算计算判断的呢？
+好了，数据的一致性管理问题解决了，我们接着看C0树和C1树的归并。在原始LSM树的设计中，内存索引写入磁盘时是直接和磁盘中的C1树进行归并的。但如果工程中也这么实现的话，会有两个很严重的问题：
 
-==============================
-老师的文中的这句话没有看明白：
-在多路归并生成第 n 层的 SSTable 文件时，LevelDB 会判断生成的 SSTable 和第 n+1 层的重合覆盖度，如果重合覆盖度超过了 10 个文件，就结束这个 SSTable 的生成，继续生成下一个 SSTable 文件
-</div>2020-05-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/00/4e/be2b206b.jpg" width="30px"><span>吴小智</span> 👍（19） 💬（3）<div>之前看过基于 lsm 的存储系统的代码，能很好理解这篇文章。不过，还是不太理解基于 B+ 树与基于 lsm 的存储系统，两者的优缺点和使用场景有何不同，老师有时间可以解答一下。</div>2020-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4f/3f/6f62f982.jpg" width="30px"><span>wangkx</span> 👍（9） 💬（1）<div>1. 既然要查找的数据在某一层查到了，按照LevelDB的分层管理的设计，即使下一层数据也存在，数据也是一样的，没有必要再去查找下一层的数据了。
+1. 合并代价很高，因为C1树很大，而C0树很小，这会导致它们在合并时产生大量的磁盘IO；
+2. 合并频率会很频繁，由于C0树很小，很容易被写满，因此系统会频繁进行C0树和C1树的合并，这样频繁合并会带来的大量磁盘IO，这更是系统无法承受的。
 
-2. “在多路归并生成第 n 层的 SSTable 文件时，LevelDB 会判断生成的 SSTable 和第 n+1 层的重合覆盖度，如果重合覆盖度超过了 10 个文件，就结束这个 SSTable 的生成，继续生成下一个 SSTable 文件。”———如果通过控制sstable文件数量来限制每层容量的话，有可能每个sstable会比较小，很快就达到数量限制，可能分层作用就不明显了。</div>2020-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f7/5b/d2e7c2c4.jpg" width="30px"><span>时隐时现</span> 👍（7） 💬（2）<div>老师好，有2个问题：
-1、内存中的C0树，采用跳表替换掉B+树，检索效率会有提升吗？我一直觉得两者是差不多的吧，什么场景下跳表会比B+树性能高很多？
-2、滚动合并应该是后台操作，在合并的过程中，相应的sstable应该是被写锁锁定的吧？此时如果有应用执行读，会不会被阻塞？如果不阻塞，如何保证读写一致性？</div>2020-05-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/af/6e/30fb83f1.jpg" width="30px"><span>xaviers</span> 👍（7） 💬（1）<div>老师，不好意思哈，再追问一下😬那为啥用change buffer + WAL优化后的MySQL的写性能还是不如LSM类的存储系统啊？原因是啥啊</div>2020-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（6） 💬（2）<div>在评论下回复老师看不到啊，那就在评论问一下
+那针对这两个问题，LevelDB采用了延迟合并的设计来优化。具体来说就是，先将Immutable MemTable顺序快速写入磁盘，直接变成一个个**SSTable**（Sorted String Table）文件，之后再对这些SSTable文件进行合并。这样就避免了C0树和C1树昂贵的合并代价。至于SSTable文件是什么，以及多个SSTable文件怎么合并，我们一会儿再详细分析。
 
-第一问还有点疑问:level0层的每个sstable可能会有范围重叠，需要把重叠的部分提取到合并列表，这个这个合并列表是什么？还有就是提取之后呢，还是要遍及level0层的每个sstable与level1层的sstable进行归并吗？
+好了，现在你已经知道了，内存数据高效存储到磁盘上的具体方案了。那在这种方案下，数据又是如何检索的呢？在检索一个数据的时候，我们会先在MemTable中查找，如果查找不到再去Immutable MemTable中查找。如果Immutable MemTable也查询不到，我们才会到磁盘中去查找。
 
-还有个问题就是:当某层的sstable向下层转移的时候，碰巧下层的空间也满了，这时候的处理方案是向下层递归吗？一直往下找，然后在向上处理</div>2020-05-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/8f/cf/890f82d6.jpg" width="30px"><span>那时刻</span> 👍（4） 💬（1）<div>有两个问题，请教下老师。
-1。在多路归并生成第 n 层的 SSTable 文件时，如何控制当前层最大容量呢？如果超过当前层的容量是停止计算还是把多余的量挪到下一层？
-2。数据索引区里meta index block，当存在多个过滤器时，对过滤器进行索引。这是涉及到filter block过滤么？</div>2020-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/cd/db/7467ad23.jpg" width="30px"><span>Bachue Zhou</span> 👍（3） 💬（2）<div>这个数据库在海量数据的情况下真的很快吗，我总感觉一般般的样子啊。
-1. 层次没有上限 单层文件总容量却有上限，因此极端情况下需要搜索的文件依然很多，虽然每个文件有布隆过滤器预搜索，所以单个文件检索性能还不错，但需要一层层打开文件解析文件然后开始搜索，文件数量如果很多，则性能不佳
-2. 如果是范围检索，则注定所有层次都必须被查询，性能不佳
-3. 每个文件尺寸有上限，而且很小，意味着文件数量很多，文件打开数就会很多，当达到通常的 65536 的上限时（如果每个文件 2m 大小，那么也就存了 128g，实际上由于进程自身也有文件打开数开销，实际上能提供给 leveldb 的文件打开数配额会远远小于这个值），就只能被迫使用 lru 来关闭一些不常用的小文件了，如果频繁打开解析关闭小文件时，性能不佳
-4. 多路归并多个文件的数据，意味着磁盘在多个文件中来回寻道，哪怕只有最多十个文件，性能也不佳
-5. 无法理解为何只选一个文件参与和下一层的归并，选一个文件和选两个文件的区别在哪里？
-</div>2021-01-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/47/00/3202bdf0.jpg" width="30px"><span>piboye</span> 👍（3） 💬（1）<div>如果把sstable换成B+树，也有bloomfilter，是不是可以不用限制文件为2m的大小？</div>2020-09-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/47/00/3202bdf0.jpg" width="30px"><span>piboye</span> 👍（3） 💬（2）<div>为什么要限制sstable为2m，感觉很小啊，如果是个很大的数据集，文件不是会很多？</div>2020-09-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/1b/f4b786b9.jpg" width="30px"><span>飞翔</span> 👍（2） 💬（2）<div>老师 level db 的应用场景是什么呀</div>2020-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/3d/ad/819a731a.jpg" width="30px"><span>Geek_863b69</span> 👍（2） 💬（1）<div>老师，请教下，levelDB中，data block存的是sstable的数据，如果sstable跟上一层数据合并了，那么查找的时候如果直接从缓存找，数据不就不一致了？还是说合并的时候会顺带删除缓存？</div>2020-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/af/6e/30fb83f1.jpg" width="30px"><span>xaviers</span> 👍（2） 💬（4）<div>老师晚上好，请教个问题哈。
+![](https://static001.geekbang.org/resource/image/22/1a/22cbb79dd84126a66b12e1b50c58991a.jpeg?wh=1920%2A1080 "增加Immutable MemTable设计的示意图")
 
-MySQL在写数据的时候，是先写到change buffer内存中的，不会立刻写磁盘的，达到一定量再将change buffer落盘。这个和Memtable的设计理念类似，按理说，速度也不会太慢吧？</div>2020-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/8f/cf/890f82d6.jpg" width="30px"><span>那时刻</span> 👍（2） 💬（1）<div>讨论问题1：在某一层找到了key，不需要再去下一层查找的原因是，这一层是最新的数据。即使下一层有的话，是旧数据。这引申出另外一个问题，数据删除的时候是怎么处理的呢？是另外一个删除列表来保存删除的key吗？
-问题2：如老师提示的这样，SSTable 的生成过程会受到约束，SSTable在归并的过程中，可能由于数据倾斜，导致某个分区里的数据量比较大，所以没有办法保证每个SSTable的大小。</div>2020-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/df/e5/65e37812.jpg" width="30px"><span>快跑</span> 👍（1） 💬（2）<div>“LevelDB 会判断生成的 SSTable 和第 n+1 层的重合覆盖度”，
-判断第N层的SSTable跟N+1层的覆盖重合度，这块逻辑是怎么实现的，需要将第N层的数据加载到内存每条记录都判断，还是有额外的索引记录着第N层的数据范围？</div>2021-04-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/3a/82/1ff83a38.jpg" width="30px"><span>牛牛</span> 👍（1） 💬（2）<div>老师、我想请教下、levelDB是怎么处理`脏缓存`(eg. 有用户突然访问了别人很久不访问的数据(假设还比较大)、导致本来应该在缓存中的数据被驱逐, Data Block的优化效果就会打折扣)的 ?
+因为磁盘中原有的C1树被多个较小的SSTable文件代替了。那现在我们要解决的问题就变成了，如何快速提高磁盘中多个SSTable文件的检索效率。
 
-------
-我是想到了Mysql 处理Buffer Poll的机制(分为Old 和 Young区)、类似的思想在jvm的gc管理中也有用到
+## SSTable的分层管理设计
 
-</div>2020-05-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（1） 💬（1）<div>课后思考：
-1: 因为 LevelDB 天然的具有缓存的特性，最经常使用的最新的数据离用户最近，所有在上层找到数据就不会在向下找了
-2: 如果规定生成文件的个数，那么有可能当前层和下一层的存储大小相近了，起不到分层的作用了</div>2020-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1d/13/31ea1b0b.jpg" width="30px"><span>峰</span> 👍（1） 💬（1）<div>问题1： 因为只是get(key), 所以上层的sstabe的数据是最新的，所以没必要再往下面查，但如果有hbase这样的scan(startkey,endkey) 那还是得全局的多路归并（当然可以通过文件元数据迅速排除掉一些hfile）
-问题2：SSTable 的生成过程会受到约束，无法保证每一个 SSTable 文件的大小。哈哈哈，我在抄答案，我其实有疑问，就算限定文件数量，那么在层次合并的时候，假设我是先合成一个整个sstable再切，面临的对这一整个sstable怎么切成文件的问题，那就顺序的2m一个算会不会文件数量超标，决定是否要滚动下一层，不过我这样想法过于理想显然假设那块就不成立，应该是多路归并式的动态生成，否则对内存压力太大，但是如果按整个层的文件大小分，就不用考虑文件量的问题，只要key连续性大点，文件大小不超过2m就生成就好了。</div>2020-05-08</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKJrOl63enWXCRxN0SoucliclBme0qrRb19ATrWIOIvibKIz8UAuVgicBMibIVUznerHnjotI4dm6ibODA/132" width="30px"><span>Helios</span> 👍（0） 💬（1）<div>请教老师一个问题:
-将内存可读写的table切换为 Immutable MemTable的时候会不会有阻塞操作，类似于gc中的stw，如果发生频繁是不是对性能也有影响。</div>2021-09-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/df/e5/65e37812.jpg" width="30px"><span>快跑</span> 👍（0） 💬（1）<div>请教老师，levelDB中实现LSM的C0树是用跳表，这个是通过源码看的么？如果我想了解下其他使用LSM实现的系统，比如doris，druid之类，我怎么判断其他开源系统的C0树是用的什么结构实现？老师可以给个思路嘛</div>2021-03-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/be/af/93e14e9d.jpg" width="30px"><span>扁舟</span> 👍（0） 💬（1）<div>哈哈，这么多优质评论与老师一个一个问题的细心回答。看评论时，都会思考，我为什么没有进行这样的联想与对比，看来还是思考能力不强，以后看到知识点多想几个为什么。这样的文章真是看到就是赚到</div>2020-06-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/af/6e/30fb83f1.jpg" width="30px"><span>xaviers</span> 👍（0） 💬（1）<div>老师辛苦了，经常都是凌晨更新，终于等到这篇文章了😁</div>2020-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/29/1be3dd40.jpg" width="30px"><span>ykkk88</span> 👍（0） 💬（2）<div>老师，如果是memtable有删除key的情况下，skiplist是不是设置墓碑标志，刷level 0的时候 sstable也还是有这个删除标记，只有在最下层的sstable合并时候再真的物理删除key啊，感觉不这么做，可能get时候会读出来已经被删除的key</div>2020-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/55/a9/5282a560.jpg" width="30px"><span>yic</span> 👍（0） 💬（0）<div>&quot;而从 Level 1 开始，每一层的 SSTable 都做过了处理，这能保证覆盖范围不重合的。因此，对于同一层中的 SSTable，我们可以使用二分查找算法快速定位唯一的一个 SSTable 文件&quot;  -- 老师，关于这个点我有疑问还请帮忙解答：
-这句话描述的是一个终态吧？ 我理解一条比较大的数据A（预期应该放在L6层）写入了Level0层后，要到达L6层是需要一定的时间的。
+我们知道，SSTable文件是由Immutable MemTable将数据顺序导入生成的。尽管SSTable中的数据是有序的，但是每个SSTable覆盖的数据范围都是没有规律的，所以SSTable之间的数据很可能有重叠。
 
-如果我上面的理解没有错误，那么当数据A到达了L3层时，用户过来查询，会是怎样的处理过程呢？</div>2023-09-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2023-04-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/29/7a/3c0fbf9c.jpg" width="30px"><span>berkin</span> 👍（0） 💬（0）<div>老师，这里有一段话不太理解，
-“在多路归并生成第 n 层的 SSTable 文件时，LevelDB 会判断生成的 SSTable 和第 n+1 层的重合覆盖度，如果重合覆盖度超过了 10 个文件，就结束这个 SSTable 的生成，继续生成下一个 SSTable 文件。”
-意思是说 第 n 层 新生成的 SSTable 与 n+1 层覆盖度超过 10 个文件 就会结束第 n层的 SSTable，意思是第 n 层的 SSTable 在生成的时候一直会和第 n+1 层的文件 key range 进行比较，如果覆盖超过 n+1 层
-就会开启另外一个 SSTable 写入n -1 层归并过来的数据吗？</div>2022-03-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/99/79/74d4f24f.jpg" width="30px"><span>anker</span> 👍（0） 💬（0）<div>想问一下Compaction过程中需要加锁吗？</div>2021-08-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/de/5d/3a75c20b.jpg" width="30px"><span>Geek_bd6gy9</span> 👍（0） 💬（1）<div>老师，请教一下，“使用LSM树，对于大量的随机读，它无法在内存中命中，因此会去读磁盘，并且是一层一层地多次读磁盘，会带来很严重的读放大效应”，这里的读放大效应如何理解呢？</div>2021-07-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/bf/22/26530e66.jpg" width="30px"><span>趁早</span> 👍（0） 💬（0）<div>你好，不理解为啥写入的时候sst会出现重叠？批量写入一般都是有序的吧，为啥会范围会重叠呢，那重叠之后多个sstable 在归并的时候是怎么判断哪个sst里面的数据是最新的需要被留下的</div>2021-07-09</li><br/>
-</ul>
+比如说，第一个SSTable中的数据从1到1000，第二个SSTable中的数据从500到1500。那么当我们要查询600这个数据时，我们并不清楚应该在第一个SSTable中查找，还是在第二个SSTable中查找。最差的情况是，我们需要查询每一个SSTable，这会带来非常巨大的磁盘访问开销。
+
+![](https://static001.geekbang.org/resource/image/5f/02/5f197f2664d0358e03989ef7ae2e7e02.jpeg?wh=1920%2A1080 "范围重叠时，查询多个SSTable的示意图")
+
+因此，对于SSTable文件，我们需要将它整理一下，将SSTable文件中存的数据进行重新划分，让每个SSTable的覆盖范围不重叠。这样我们就能将SSTable按照覆盖范围来排序了。并且，由于每个SSTable覆盖范围不重叠，当我们需要查找数据的时候，我们只需要通过二分查找的方式，找到对应的一个SSTable文件，就可以在这个SSTable中完成查询了。  
+![](https://static001.geekbang.org/resource/image/4d/a7/4de515f8b4f7f90cc99112fe5b2b2da7.jpeg?wh=1920%2A1080 "范围不重叠时，只需查询一个SSTable的示意图")
+
+但是要让所有SSTable文件的覆盖范围不重叠，不是一个很简单的事情。为什么这么说呢？我们看一下这个处理过程。系统在最开始时，只会生成一个SSTable文件，这时候我们不需要进行任何处理，当系统生成第二个SSTable的时候，为了保证覆盖范围不重合，我们需要将这两个SSTable用多路归并的方式处理，生成新的SSTable文件。
+
+那为了方便查询，我们要保证每个SSTable文件不要太大。因此，LevelDB还控制了每个SSTable文件的容量上限（不超过2M）。这样一来，两个SSTable合并就会生成1个到2个新的SSTable。
+
+这时，新的SSTable文件之间的覆盖范围就不重合了。当系统再新增一个SSTable时，我们还用之前的处理方式，来计算这个新的SSTable的覆盖范围，然后和已经排好序的SSTable比较，找出覆盖范围有重合的所有SSTable进行多路归并。这种多个SSTable进行多路归并，生成新的多个SSTable的过程，也叫作Compaction。
+
+![](https://static001.geekbang.org/resource/image/32/0a/32e551a4f13d5630b7a0e43bef556b0a.jpeg?wh=1920%2A1080 "SSTable保持有序的多路归并过程")
+
+随着SSTable文件的增多，多路归并的对象也会增多。那么，最差的情况会是什么呢？最差的情况是所有的SSTable都要进行多路归并。这几乎是一个不可能被接受的时间消耗，系统的读写性能都会受到很严重的影响。
+
+那我们该怎么降低多路归并涉及的SSTable个数呢？在[第9讲](https://time.geekbang.org/column/article/222807)中，我们提到过，对于少量索引数据和大规模索引数据的合并，我们可以采用滚动合并法来避免大量数据的无效复制。因此，LevelDB也采用了这个方法，将SSTable进行分层管理，然后逐层滚动合并。这就是LevelDB的分层思想，也是LevelDB的命名原因。接下来，我们就一起来看看LevelDB具体是怎么设计的。
+
+首先，**从Immutable MemTable转成的SSTable会被放在Level 0 层。**Level 0 层最多可以放4个SSTable文件。当Level 0层满了以后，我们就要将它们进行多路归并，生成新的有序的多个SSTable文件，这一层有序的SSTable文件就是Level 1 层。
+
+接下来，如果Level 0 层又存入了新的4个SSTable文件，那么就需要和Level 1层中相关的SSTable进行多路归并了。但前面我们也分析过，如果Level 1中的SSTable数量很多，那么在大规模的文件合并时，磁盘IO代价会非常大。因此，LevelDB的解决方案就是，**给Level 1中的SSTable文件的总容量设定一个上限**（默认设置为10M），这样多路归并时就有了一个代价上限。
+
+当Level 1层的SSTable文件总容量达到了上限之后，我们就需要选择一个SSTable的文件，将它并入下一层（为保证一层中每个SSTable文件都有机会并入下一层，我们选择SSTable文件的逻辑是轮流选择。也就是说第一次我们选择了文件A，下一次就选择文件A后的一个文件）。**下一层会将容量上限翻10倍**，这样就能容纳更多的SSTable了。依此类推，如果下一层也存满了，我们就在该层中选择一个SSTable，继续并入下一层。这就是LevelDB的分层设计了。
+
+![](https://static001.geekbang.org/resource/image/ca/5a/ca6dad0aaa0eb1303b5c1bb17241915a.jpeg?wh=1920%2A1080 "LevelDB的层次结构示意图")
+
+尽管LevelDB通过限制每层的文件总容量大小，能保证做多路归并时，会有一个开销上限。但是层数越大，容量上限就越大，那发生在下层的多路归并依然会造成大量的磁盘IO开销。这该怎么办呢？
+
+对于这个问题，LevelDB是通过加入一个限制条件解决的。在多路归并生成第n层的SSTable文件时，LevelDB会判断生成的SSTable和第n+1层的重合覆盖度，如果重合覆盖度超过了10个文件，就结束这个SSTable的生成，继续生成下一个SSTable文件。
+
+通过这个限制，**LevelDB就保证了第n层的任何一个SSTable要和第n+1层做多路归并时，最多不会有超过10个SSTable参与**，从而保证了归并性能。
+
+## 如何查找对应的SSTable文件
+
+在理解了这样的架构之后，我们再来看看当我们想在磁盘中查找一个元素时，具体是怎么操作的。
+
+首先，我们会在Level 0 层中进行查找。由于Level 0层的SSTable没有做过多路归并处理，它们的覆盖范围是有重合的。因此，我们需要检查Level 0层中所有符合条件的SSTable，在其中查找对应的元素。如果Level 0没有查到，那么就下沉一层继续查找。
+
+而从Level 1开始，每一层的SSTable都做过了处理，这能保证覆盖范围不重合的。因此，对于同一层中的SSTable，我们可以使用二分查找算法快速定位唯一的一个SSTable文件。如果查到了，就返回对应的SSTable文件；如果没有查到，就继续沉入下一层，直到查到了或查询结束。
+
+![](https://static001.geekbang.org/resource/image/57/8b/57cd22fa67cba386d83686a31434e08b.jpeg?wh=1920%2A1080 "LevelDB分层检索过程示意图")
+
+可以看到，通过这样的一种架构设计，我们就将SSTable进行了有序的管理，使得查询操作可以快速被限定在有限的SSTable中，从而达到了加速检索的目的。
+
+## SSTable文件中的检索加速
+
+那在定位到了对应的SSTable文件后，接下来我们该怎么查询指定的元素呢？这个时候，前面我们学过的一些检索技术，现在就可以派上用场了。
+
+首先，LevelDB使用索引与数据分离的设计思想，将SSTable分为数据存储区和数据索引区两大部分。
+
+![](https://static001.geekbang.org/resource/image/53/40/53d347e57ffee9a7ea14dde2b5f4a340.jpeg?wh=1920%2A1080 "SSTable文件格式")
+
+我们在读取SSTable文件时，不需要将整个SSTable文件全部读入内存，只需要先将数据索引区中的相关数据读入内存就可以了。这样就能大幅减少磁盘IO次数。
+
+然后，我们需要快速确定这个SSTable是否包含查询的元素。对于这种是否存在的状态查询，我们可以使用前面讲过的BloomFilter技术进行高效检索。也就是说，我们可以从数据索引区中读出BloomFilter的数据。这样，我们就可以使用O(1)的时间代价在BloomFilter中查询。如果查询结果是不存在，我们就跳过这个SSTable文件。而如果BloomFilter中查询的结果是存在，我们就继续进行精确查找。
+
+在进行精确查找时，我们将数据索引区中的Index Block读出，Index Block中的每条记录都记录了每个Data Block的最小分隔key、起始位置，还有block的大小。由于所有的记录都是根据Key排好序的，因此，我们可以使用二分查找算法，在Index Block中找到我们想查询的Key。
+
+那最后一步，就是将这个Key对应的Data block从SSTable文件中读出来，这样我们就完成了数据的查找和读取。
+
+## 利用缓存加速检索SSTable文件的过程
+
+在加速检索SSTable文件的过程中，你会发现，每次对SSTable进行二分查找时，我们都需要将Index Block和相应的Data Block分别从磁盘读入内存，这样就会造成两次磁盘I/O操作。我们知道磁盘I/O操作在性能上，和内存相比是非常慢的，这也会影响数据的检索速度。那这个环节我们该如何优化呢？常见的一种解决方案就是使用缓存。LevelDB具体是怎么做的呢？
+
+针对这两次读磁盘操作，LevelDB分别设计了table cache和block cache两个缓存。其中，block cache是配置可选的，它是将最近使用的Data Block加载在内存中。而table cache则是将最近使用的SSTable的Index Block加载在内存中。这两个缓存都使用LRU机制进行替换管理。
+
+那么，当我们想读取一个SSTable的Index Block时，首先要去table cache中查找。如果查到了，就可以避免一次磁盘操作，从而提高检索效率。同理，如果接下来要读取对应的Data Block数据，那么我们也先去block cache中查找。如果未命中，我们才会去真正读磁盘。
+
+这样一来，我们就可以省去非常耗时的I/O操作，从而加速相关的检索操作了。
+
+## 重点回顾
+
+好了，今天我们学习了LevelDB提升检索效率的优化方案。下面，我带你总结回顾一下今天的重点内容。
+
+首先，在内存中检索数据的环节，LevelDB使用跳表代替B+树，提高了内存检索效率。
+
+其次，在将数据从内存写入磁盘的环节，LevelDB先是使用了**读写分离**的设计，增加了一个只读的Immutable MemTable结构，避免了给内存索引加锁。然后，LevelDB又采用了**延迟合并**设计来优化归并。具体来说就是，它先快速将C0树落盘生成SSTable文件，再使用其他异步进程对这些SSTable文件合并处理。
+
+而在管理多个SSTable文件的环节，LevelDB使用**分层和滚动合并**的设计来组织多个SSTable文件，避免了C0树和C1树的合并带来的大量数据被复制的问题。
+
+最后，在磁盘中检索数据的环节，因为SSTable文件是有序的，所以我们通过**多层二分查找**的方式，就能快速定位到需要查询的SSTable文件。接着，在SSTable文件内查找元素时，LevelDB先是使用**索引与数据分离**的设计，减少磁盘IO，又使用**BloomFilter和二分查找**来完成检索加速。加速检索的过程中，LevelDB又使用**缓存技术**，将会被反复读取的数据缓存在内存中，从而避免了磁盘开销。
+
+总的来说，一个高性能的系统会综合使用多种检索技术。而LevelDB的实现，就可以看作是我们之前学过的各种检索技术的落地实践。因此，这一节的内容，我建议你多看几遍，这对我们之后的学习也会有非常大的帮助。
+
+## 课堂讨论
+
+1. 当我们查询一个key时，为什么在某一层的SSTable中查到了以后，就可以直接返回，不用再去下一层查找了呢？如果下一层也有SSTable存储了这个key呢？
+2. 为什么从Level 1层开始，我们是限制SSTable的总容量大小，而不是像在Level 0层一样限制SSTable的数量？ （提示：SSTable的生成过程会受到约束，无法保证每一个SSTable文件的大小）
+
+欢迎在留言区畅所欲言，说出你的思考过程和最终答案。如果有收获，也欢迎把这一讲分享给你的朋友。

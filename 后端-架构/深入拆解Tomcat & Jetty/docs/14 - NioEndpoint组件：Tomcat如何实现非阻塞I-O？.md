@@ -7,17 +7,175 @@ UNIX系统下的I/O模型有5种：同步阻塞I/O、同步非阻塞I/O、I/O多
 ## Java I/O模型
 
 对于一个网络I/O通信过程，比如网络数据读取，会涉及两个对象，一个是调用这个I/O操作的用户线程，另外一个就是操作系统内核。一个进程的地址空间分为用户空间和内核空间，用户线程不能直接访问内核空间。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/54/d7/7ab8f58a.jpg" width="30px"><span>🐛</span> 👍（79） 💬（1）<div>老师，操作系统级的连接指的是什么啊？</div>2019-06-11</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/IgjIXs9jjpODTPaOLrms0XOhJ8pxMcaZgtgBrPG6deqsKXv1sPIqkg0faL6X0rtFicJn5Wf7QXTickjYWpmF0V8A/132" width="30px"><span>Geek_28b75e</span> 👍（42） 💬（1）<div>问一个基础问题，线程的同步，和本节所讲的同步，意义上的不同</div>2019-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7b/57/a9b04544.jpg" width="30px"><span>QQ怪</span> 👍（38） 💬（1）<div>老师，信号驱动式 I&#47;O与其他io模型的有啥不一样？</div>2019-06-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/ce/ce/53392e44.jpg" width="30px"><span>BingoJ</span> 👍（27） 💬（2）<div>老师，那我们常说Java中自身的NIO到底是同步非阻塞，还是IO多路复用呢？</div>2019-06-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9c/35/9dc79371.jpg" width="30px"><span>你好旅行者</span> 👍（26） 💬（5）<div>对于【同步与异步指的是应用程序在与内核通信时，数据从内核空间到应用空间的拷贝内核主动发起还是应用程序触发。】我有一个问题，以同步非阻塞为例，当网卡接收到数据，要将数据送到用户进程时，此时是由用户进程主动向操作系统请求拷贝网卡的数据吗？老师能不能详细介绍一下这个过程？</div>2019-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/20/08/bc06bc69.jpg" width="30px"><span>Dovelol</span> 👍（22） 💬（2）<div>老师，请教下，”当客户端发起一个http请求时，首先由Acceptor线程run方法中的socket = endpoint.serverSocketAccept();接收连接，然后传递给名称为Poller的线程去侦测I&#47;O事件，Poller线程会一直select，选出内核将数据从网卡拷贝到内核空间的 channel（也就是内核已经准备好数据）然后交给名称为Catalina-exec的线程去处理，这个过程也包括内核将数据从内核空间拷贝到用户空间这么一个过程，所以对于exec线程是阻塞的，此时用户空间（也就是exec线程）就接收到了数据，可以解析然后做业务处理了。
+
+当用户线程发起I/O操作后，网络数据读取操作会经历两个步骤：
+
+- **用户线程等待内核将数据从网卡拷贝到内核空间。**
+- **内核将数据从内核空间拷贝到用户空间。**
+
+各种I/O模型的区别就是：它们实现这两个步骤的方式是不一样的。
+
+**同步阻塞I/O**：用户线程发起read调用后就阻塞了，让出CPU。内核等待网卡数据到来，把数据从网卡拷贝到内核空间，接着把数据拷贝到用户空间，再把用户线程叫醒。
+
+![](https://static001.geekbang.org/resource/image/99/de/9925741240414d45a3480e976a9eb5de.jpg?wh=590%2A658)
+
+**同步非阻塞I/O**：用户线程不断的发起read调用，数据没到内核空间时，每次都返回失败，直到数据到了内核空间，这一次read调用后，在等待数据从内核空间拷贝到用户空间这段时间里，线程还是阻塞的，等数据到了用户空间再把线程叫醒。
+
+![](https://static001.geekbang.org/resource/image/f6/b9/f609702b40d7fa873f049e472d1819b9.jpg?wh=578%2A664)
+
+**I/O多路复用**：用户线程的读取操作分成两步了，线程先发起select调用，目的是问内核数据准备好了吗？等内核把数据准备好了，用户线程再发起read调用。在等待数据从内核空间拷贝到用户空间这段时间里，线程还是阻塞的。那为什么叫I/O多路复用呢？因为一次select调用可以向内核查多个数据通道（Channel）的状态，所以叫多路复用。
+
+![](https://static001.geekbang.org/resource/image/cd/99/cd2f30b47a690c0fe3b0332203dd3e99.jpg?wh=572%2A656)
+
+**异步I/O**：用户线程发起read调用的同时注册一个回调函数，read立即返回，等内核将数据准备好后，再调用指定的回调函数完成处理。在这个过程中，用户线程一直没有阻塞。
+
+![](https://static001.geekbang.org/resource/image/aa/c3/aacd28f7f9719ceeb2f649db1a6c06c3.jpg?wh=570%2A660)
+
+## NioEndpoint组件
+
+Tomcat的NioEndpoint组件实现了I/O多路复用模型，接下来我会介绍NioEndpoint的实现原理，下一期我会介绍Tomcat如何实现异步I/O模型。
+
+**总体工作流程**
+
+我们知道，对于Java的多路复用器的使用，无非是两步：
+
+1. 创建一个Selector，在它身上注册各种感兴趣的事件，然后调用select方法，等待感兴趣的事情发生。
+2. 感兴趣的事情发生了，比如可以读了，这时便创建一个新的线程从Channel中读数据。
+
+Tomcat的NioEndpoint组件虽然实现比较复杂，但基本原理就是上面两步。我们先来看看它有哪些组件，它一共包含LimitLatch、Acceptor、Poller、SocketProcessor和Executor共5个组件，它们的工作过程如下图所示。
+
+![](https://static001.geekbang.org/resource/image/c4/65/c4bbda75005dd5e8519c2bc439359465.jpg?wh=1658%2A1156)
+
+LimitLatch是连接控制器，它负责控制最大连接数，NIO模式下默认是10000，达到这个阈值后，连接请求被拒绝。
+
+Acceptor跑在一个单独的线程里，它在一个死循环里调用accept方法来接收新连接，一旦有新的连接请求到来，accept方法返回一个Channel对象，接着把Channel对象交给Poller去处理。
+
+Poller的本质是一个Selector，也跑在单独线程里。Poller在内部维护一个Channel数组，它在一个死循环里不断检测Channel的数据就绪状态，一旦有Channel可读，就生成一个SocketProcessor任务对象扔给Executor去处理。
+
+Executor就是线程池，负责运行SocketProcessor任务类，SocketProcessor的run方法会调用Http11Processor来读取和解析请求数据。我们知道，Http11Processor是应用层协议的封装，它会调用容器获得响应，再把响应通过Channel写出。
+
+接下来我详细介绍一下各组件的设计特点。
+
+**LimitLatch**
+
+LimitLatch用来控制连接个数，当连接数到达最大时阻塞线程，直到后续组件处理完一个连接后将连接数减1。请你注意到达最大连接数后操作系统底层还是会接收客户端连接，但用户层已经不再接收。LimitLatch的核心代码如下：
+
+```
+public class LimitLatch {
+    private class Sync extends AbstractQueuedSynchronizer {
+     
+        @Override
+        protected int tryAcquireShared() {
+            long newCount = count.incrementAndGet();
+            if (newCount > limit) {
+                count.decrementAndGet();
+                return -1;
+            } else {
+                return 1;
+            }
+        }
+
+        @Override
+        protected boolean tryReleaseShared(int arg) {
+            count.decrementAndGet();
+            return true;
+        }
+    }
+
+    private final Sync sync;
+    private final AtomicLong count;
+    private volatile long limit;
+    
+    //线程调用这个方法来获得接收新连接的许可，线程可能被阻塞
+    public void countUpOrAwait() throws InterruptedException {
+      sync.acquireSharedInterruptibly(1);
+    }
+
+    //调用这个方法来释放一个连接许可，那么前面阻塞的线程可能被唤醒
+    public long countDown() {
+      sync.releaseShared(0);
+      long result = getCount();
+      return result;
+   }
+}
+```
+
+从上面的代码我们看到，LimitLatch内步定义了内部类Sync，而Sync扩展了AQS，AQS是Java并发包中的一个核心类，它在内部维护一个状态和一个线程队列，可以用来**控制线程什么时候挂起，什么时候唤醒**。我们可以扩展它来实现自己的同步器，实际上Java并发包里的锁和条件变量等等都是通过AQS来实现的，而这里的LimitLatch也不例外。
+
+理解上面的代码时有两个要点：
+
+1. 用户线程通过调用LimitLatch的countUpOrAwait方法来拿到锁，如果暂时无法获取，这个线程会被阻塞到AQS的队列中。那AQS怎么知道是阻塞还是不阻塞用户线程呢？其实这是由AQS的使用者来决定的，也就是内部类Sync来决定的，因为Sync类重写了AQS的**tryAcquireShared()方法**。它的实现逻辑是如果当前连接数count小于limit，线程能获取锁，返回1，否则返回-1。
+2. 如何用户线程被阻塞到了AQS的队列，那什么时候唤醒呢？同样是由Sync内部类决定，Sync重写了AQS的**tryReleaseShared()方法**，其实就是当一个连接请求处理完了，这时又可以接收一个新连接了，这样前面阻塞的线程将会被唤醒。
+
+其实你会发现AQS就是一个骨架抽象类，它帮我们搭了个架子，用来控制线程的阻塞和唤醒。具体什么时候阻塞、什么时候唤醒由你来决定。我们还注意到，当前线程数被定义成原子变量AtomicLong，而limit变量用volatile关键字来修饰，这些并发编程的实际运用。
+
+**Acceptor**
+
+Acceptor实现了Runnable接口，因此可以跑在单独线程里。一个端口号只能对应一个ServerSocketChannel，因此这个ServerSocketChannel是在多个Acceptor线程之间共享的，它是Endpoint的属性，由Endpoint完成初始化和端口绑定。初始化过程如下：
+
+```
+serverSock = ServerSocketChannel.open();
+serverSock.socket().bind(addr,getAcceptCount());
+serverSock.configureBlocking(true);
+```
+
+从上面的初始化代码我们可以看到两个关键信息：
+
+1. bind方法的第二个参数表示操作系统的等待队列长度，我在上面提到，当应用层面的连接数到达最大值时，操作系统可以继续接收连接，那么操作系统能继续接收的最大连接数就是这个队列长度，可以通过acceptCount参数配置，默认是100。
+2. ServerSocketChannel被设置成阻塞模式，也就是说它是以阻塞的方式接收连接的。
+
+ServerSocketChannel通过accept()接受新的连接，accept()方法返回获得SocketChannel对象，然后将SocketChannel对象封装在一个PollerEvent对象中，并将PollerEvent对象压入Poller的Queue里，这是个典型的“生产者-消费者”模式，Acceptor与Poller线程之间通过Queue通信。
+
+**Poller**
+
+Poller本质是一个Selector，它内部维护一个Queue，这个Queue定义如下：
+
+```
+private final SynchronizedQueue<PollerEvent> events = new SynchronizedQueue<>();
+```
+
+SynchronizedQueue的方法比如offer、poll、size和clear方法，都使用了synchronized关键字进行修饰，用来保证同一时刻只有一个Acceptor线程对Queue进行读写。同时有多个Poller线程在运行，每个Poller线程都有自己的Queue。每个Poller线程可能同时被多个Acceptor线程调用来注册PollerEvent。同样Poller的个数可以通过pollers参数配置。
+
+Poller不断的通过内部的Selector对象向内核查询Channel的状态，一旦可读就生成任务类SocketProcessor交给Executor去处理。Poller的另一个重要任务是循环遍历检查自己所管理的SocketChannel是否已经超时，如果有超时就关闭这个SocketChannel。
+
+**SocketProcessor**
+
+我们知道，Poller会创建SocketProcessor任务类交给线程池处理，而SocketProcessor实现了Runnable接口，用来定义Executor中线程所执行的任务，主要就是调用Http11Processor组件来处理请求。Http11Processor读取Channel的数据来生成ServletRequest对象，这里请你注意：
+
+Http11Processor并不是直接读取Channel的。这是因为Tomcat支持同步非阻塞I/O模型和异步I/O模型，在Java API中，相应的Channel类也是不一样的，比如有AsynchronousSocketChannel和SocketChannel，为了对Http11Processor屏蔽这些差异，Tomcat设计了一个包装类叫作SocketWrapper，Http11Processor只调用SocketWrapper的方法去读写数据。
+
+**Executor**
+
+Executor是Tomcat定制版的线程池，它负责创建真正干活的工作线程，干什么活呢？就是执行SocketProcessor的run方法，也就是解析请求并通过容器来处理请求，最终会调用到我们的Servlet。后面我会用专门的篇幅介绍Tomcat怎么扩展和使用Java原生的线程池。
+
+## 高并发思路
+
+在弄清楚NioEndpoint的实现原理后，我们来考虑一个重要的问题，怎么把这个过程做到高并发呢？
+
+高并发就是能快速地处理大量的请求，需要合理设计线程模型让CPU忙起来，尽量不要让线程阻塞，因为一阻塞，CPU就闲下来了。另外就是有多少任务，就用相应规模的线程数去处理。我们注意到NioEndpoint要完成三件事情：接收连接、检测I/O事件以及处理请求，那么最核心的就是把这三件事情分开，用不同规模的线程数去处理，比如用专门的线程组去跑Acceptor，并且Acceptor的个数可以配置；用专门的线程组去跑Poller，Poller的个数也可以配置；最后具体任务的执行也由专门的线程池来处理，也可以配置线程池的大小。
+
+## 本期精华
+
+I/O模型是为了解决内存和外部设备速度差异的问题。我们平时说的**阻塞或非阻塞**是指应用程序在**发起I/O操作时，是立即返回还是等待**。而**同步和异步**，是指应用程序在与内核通信时，**数据从内核空间到应用空间的拷贝，是由内核主动发起还是由应用程序来触发。**
+
+在Tomcat中，Endpoint组件的主要工作就是处理I/O，而NioEndpoint利用Java NIO API实现了多路复用I/O模型。其中关键的一点是，读写数据的线程自己不会阻塞在I/O等待上，而是把这个工作交给Selector。同时Tomcat在这个过程中运用到了很多Java并发编程技术，比如AQS、原子类、并发容器，线程池等，都值得我们去细细品味。
+
+## 课后思考
+
+Tomcat的NioEndpoint组件的名字中有NIO，NIO是非阻塞的意思，似乎说的是同步非阻塞I/O模型，但是NioEndpoint又是调用Java的的Selector来实现的，我们知道Selector指的是I/O多路复用器，也就是我们说的I/O多路复用模型，这不是矛盾了吗？
+
+不知道今天的内容你消化得如何？如果还有疑问，请大胆的在留言区提问，也欢迎你把你的课后思考和心得记录下来，与我和其他同学一起讨论。如果你觉得今天有所收获，欢迎你把它分享给你的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>🐛</span> 👍（79） 💬（1）<div>老师，操作系统级的连接指的是什么啊？</div>2019-06-11</li><br/><li><span>Geek_28b75e</span> 👍（42） 💬（1）<div>问一个基础问题，线程的同步，和本节所讲的同步，意义上的不同</div>2019-06-11</li><br/><li><span>QQ怪</span> 👍（38） 💬（1）<div>老师，信号驱动式 I&#47;O与其他io模型的有啥不一样？</div>2019-06-13</li><br/><li><span>BingoJ</span> 👍（27） 💬（2）<div>老师，那我们常说Java中自身的NIO到底是同步非阻塞，还是IO多路复用呢？</div>2019-06-21</li><br/><li><span>你好旅行者</span> 👍（26） 💬（5）<div>对于【同步与异步指的是应用程序在与内核通信时，数据从内核空间到应用空间的拷贝内核主动发起还是应用程序触发。】我有一个问题，以同步非阻塞为例，当网卡接收到数据，要将数据送到用户进程时，此时是由用户进程主动向操作系统请求拷贝网卡的数据吗？老师能不能详细介绍一下这个过程？</div>2019-06-17</li><br/><li><span>Dovelol</span> 👍（22） 💬（2）<div>老师，请教下，”当客户端发起一个http请求时，首先由Acceptor线程run方法中的socket = endpoint.serverSocketAccept();接收连接，然后传递给名称为Poller的线程去侦测I&#47;O事件，Poller线程会一直select，选出内核将数据从网卡拷贝到内核空间的 channel（也就是内核已经准备好数据）然后交给名称为Catalina-exec的线程去处理，这个过程也包括内核将数据从内核空间拷贝到用户空间这么一个过程，所以对于exec线程是阻塞的，此时用户空间（也就是exec线程）就接收到了数据，可以解析然后做业务处理了。
 1.想问下老师我对这个流程的理解对吗，如果不对，哪个地方有问题呢？
 2.老师讲的2个步骤是融合在这里面的吗？
-3.老师说的“当用户线程发起 I&#47;O 操作后，xxx”，这里面应该是哪一步去发起的I&#47;O操作呢？</div>2019-06-12</li><br/><li><img src="" width="30px"><span>zyz</span> 👍（18） 💬（1）<div>老师！Tomcat为什么不用Semaphore而是自己实现LimitLatch来限流呢？出于什么考虑？性能？不想强依赖Semaphore？</div>2019-06-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/5b/83a35681.jpg" width="30px"><span>Monday</span> 👍（17） 💬（1）<div>阻塞与同异步的区别
+3.老师说的“当用户线程发起 I&#47;O 操作后，xxx”，这里面应该是哪一步去发起的I&#47;O操作呢？</div>2019-06-12</li><br/><li><span>zyz</span> 👍（18） 💬（1）<div>老师！Tomcat为什么不用Semaphore而是自己实现LimitLatch来限流呢？出于什么考虑？性能？不想强依赖Semaphore？</div>2019-06-20</li><br/><li><span>Monday</span> 👍（17） 💬（1）<div>阻塞与同异步的区别
 本节的总结有如下的2句话，1）阻塞与非阻塞指的是应用程序发起i&#47;o操作后是等待还是立即返回。2）同步与异步指的是应用程序在与内核通信时，数据从内核空间到应用空间的拷贝内核主动发起还是应用程序触发。
 1，阻塞对应的是等待，非阻塞对应的是立即返回。这句应该好理解。
 2，同步对应的是哪个？
 3，我的理解是js中ajax请求的有个属性，async为true异步false同步。这个对应了网络IO。好理解
 4，我的理解阻塞非阻塞是java的jcu包下ArrayBlockingQueue队列中的offer和put方法的区别。其中前者是非阻塞的，队列满了就直接返回入队失败；后者是阻塞的，如果队列满了就阻塞入队的线程，直到队列有空闲并插入成功后返回true。这里面会牵涉到内核吗？
-5，反正学完本节发现不知道的更多了，原来自己一直没分清楚过同&#47;异步和是否阻塞。。。疼疼疼</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8c/f7/a4de6f64.jpg" width="30px"><span>大卫</span> 👍（13） 💬（2）<div>李老师您好，
+5，反正学完本节发现不知道的更多了，原来自己一直没分清楚过同&#47;异步和是否阻塞。。。疼疼疼</div>2019-06-12</li><br/><li><span>大卫</span> 👍（13） 💬（2）<div>李老师您好，
 我来结合实际问题提3个问题吧。
 结合这篇文章请教下线上的遇到的故障，接口响应慢最终导致无法正常响应。
 
@@ -49,42 +207,14 @@ server.tomcat.max-connections=1000
 问题2：有1000多个WAITING状态的，目前分析是因为使用了HttpClient连接池，httpclient版本是4.5.5，其中可能没有合理设置超时参数导致，需要增加connectionRequestTimeout，减少retry重试次数，包括defaultMaxPerRoute参数的合理设置。这里的HttpClient线程池的大小和路由池大小怎么设置更合理呢？（可能跟tomcat没有太直接关系，如果老师有这方面经验不吝赐教）
 问题3：上面提到部署方式是docker，其中一台docker压测接口比如qps是100，该接口就是调用了第三方接口聚合下返回结果，但是再在同一台物理机上部署一个docker，nginx负载到这两台docker上，qps还是100，并没有什么提升，这个应该从哪方面分析下原因呢？
 
-问题有点多哦，麻烦老师了~</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/1b/f4b786b9.jpg" width="30px"><span>飞翔</span> 👍（12） 💬（1）<div>，当你的程序通过 CPU 向外部设备发出一个读指令时，数据从...
+问题有点多哦，麻烦老师了~</div>2019-06-12</li><br/><li><span>飞翔</span> 👍（12） 💬（1）<div>，当你的程序通过 CPU 向外部设备发出一个读指令时，数据从...
 
 
-李老师想问一个问题， cpu发出读指令， 那么是什么东西负责读数据从硬盘到内存这个过程呢？ 不是cpu嘛？</div>2019-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e7/b2/334bc992.jpg" width="30px"><span>AlfredLover</span> 👍（11） 💬（2）<div>有个疑问：内核数据从内核空间拷贝到用户空间？
+李老师想问一个问题， cpu发出读指令， 那么是什么东西负责读数据从硬盘到内存这个过程呢？ 不是cpu嘛？</div>2019-06-11</li><br/><li><span>AlfredLover</span> 👍（11） 💬（2）<div>有个疑问：内核数据从内核空间拷贝到用户空间？
 这个过程是从内核内存拷贝到用户内存吗？
 假如是这样会不会有点浪费？
-毕竟实际上只有一块内存，能否直接把内存地址指向用户空间可以读取？</div>2019-10-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ad/27/5556ae50.jpg" width="30px"><span>Demter</span> 👍（11） 💬（2）<div>对比同步阻塞和非阻塞，感觉就是多了个read方法循环调用，既然等数据到达用户空间后都会主动把线程唤醒，为什么还需要非阻塞方式中不断的read调用呢？不是多此一举吗？调不调用不是都一样的嘛</div>2019-08-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/85/91/9edff63f.jpg" width="30px"><span>星火燎原</span> 👍（8） 💬（1）<div>阻塞 用户线程会一直在那里等待数据，
+毕竟实际上只有一块内存，能否直接把内存地址指向用户空间可以读取？</div>2019-10-20</li><br/><li><span>Demter</span> 👍（11） 💬（2）<div>对比同步阻塞和非阻塞，感觉就是多了个read方法循环调用，既然等数据到达用户空间后都会主动把线程唤醒，为什么还需要非阻塞方式中不断的read调用呢？不是多此一举吗？调不调用不是都一样的嘛</div>2019-08-14</li><br/><li><span>星火燎原</span> 👍（8） 💬（1）<div>阻塞 用户线程会一直在那里等待数据，
 非阻塞 用户线程不会等待，而是在轮询数据有没有到。
 老师我这样理解有问题吗？
-</div>2019-06-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/5d/35/b1eb964a.jpg" width="30px"><span>🐟🐙🐬🐆🦌🦍🐑🦃</span> 👍（8） 💬（1）<div>老师，我想问下NioEndpoint类中为什么把serverSock 的阻塞模式设置为true. 代码上是serceSock.configBlocking（true）.一般我们在选择NIo的时候都是设置为false的</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f7/03/8670ff5b.jpg" width="30px"><span>兔子临死前</span> 👍（6） 💬（1）<div>多路复用是指异步阻塞么？异步就是不需要用户线程主动去问，而是内核完成数据操作的时候返回的；而阻塞是发起read调用后要等待内核返回数据，不知道这样理解对不对。。</div>2019-06-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/a0/da/4f50f1b2.jpg" width="30px"><span>Knight²º¹⁸</span> 👍（5） 💬（1）<div>老师 ， linux IO模型和Java的IO模型关系是啥？</div>2019-08-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/ea/05/c0d8014d.jpg" width="30px"><span>一道阳光</span> 👍（5） 💬（6）<div>ServerSocketChannel 被设置成阻塞模式，也就是说它是以阻塞的方式接收连接的。
-老师:为什么是阻塞的方式？阻塞和非阻塞的区别是什么？这个和多个acceptor有关系吗？阻塞是为了避免共同消费同一个channel吗?</div>2019-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/05/7f/a7df049a.jpg" width="30px"><span>Standly</span> 👍（5） 💬（2）<div>serverSock = ServerSocketChannel.open();
-serverSock.socket().bind(addr,getAcceptCount());
-serverSock.configureBlocking(true);
-请假下，这里为什么设置成true了？设置成true和false的区别是什么？
-</div>2019-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/ea/05/c0d8014d.jpg" width="30px"><span>一道阳光</span> 👍（5） 💬（1）<div>同时有多个 Poller 线程在运行，每个 Poller 线程都有自己的 Queue。每个 Poller 线程可能同时被多个 Acceptor 线程调用来注册 PollerEvent。
-老师:按照这个意思，有可能一个channel被多个seletor监听，这样的话，重复监听的channel,造成资源浪费。</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/e9/0b/1171ac71.jpg" width="30px"><span>WL</span> 👍（5） 💬（1）<div>老师有三个问题请教一下
-1. tomcat的线程模型是但进程多线程, 还是多进程多线程, 怎样从源码中看到Tomcat是不是多进程的?
-2. 对于同步阻塞式的IO模型, 当这个线程阻塞的时候是这个线程让出CPU还是Tomcat进程让出CPU, 如果是线程让出CPU的话, 那tomcat的其他线程是不是还可以用CPU处理它那部分的业务逻辑, 那为什么说非阻塞式IO模型的效率高呢? 
-3. 在LimitLatch这个类中Sync类的tryAcquireShared方法中有两行代码是这样的
-long newCount = count.incrementAndGet();
-if (!released &amp;&amp; newCount &gt; limit)
-想请教一下老师为啥单独创建一个newCount变量而不是if (!released &amp;&amp; (count.incrementAndGet()) &gt; limit) 是为可读性更强吗, 还是有啥别的原因?</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fa/c9/c75664e9.jpg" width="30px"><span>二两豆腐</span> 👍（5） 💬（1）<div>老师，在“准备数据”阶段，这个阶段数据到底在准备的是什么，“数据就绪”，指的是一种什么样的状态，什么样的数据才算是就绪了啊。</div>2019-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（4） 💬（1）<div>老师，那我们常说Java中自身的NIO到底是同步非阻塞，还是IO多路复用呢？
-
-作者回复: NIO API可以不用Selector，就是同步非阻塞。使用了Selector就是IO多路复用
-
-老师， 同步非阻塞，不是IO多路复用 不是用Selector实现的吗？</div>2019-08-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/6LaITPQ4Lk5fZn8ib1tfsPW8vI9icTuSwAddiajVfibPDiaDvMU2br6ZT7K0LWCKibSQuicT7sIEVmY4K7ibXY0T7UQEiag/132" width="30px"><span>尔东橙</span> 👍（4） 💬（2）<div>老师，操作系统层面的io模型如何和java中的io模型对应</div>2019-07-20</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eoRiaKX0ulEibbbwM4xhjyMeza0Pyp7KO1mqvfJceiaM6ZNtGpXJibI6P2qHGwBP9GKwOt9LgHicHflBXw/132" width="30px"><span>Geek_ebda96</span> 👍（4） 💬（1）<div>老师，你好，请问几个问题
-1.limitltach是用来限制应用接收连接的数量，acceptor用来限制系统层面的连接数量，这个限制的先后顺序有关系吗？
-2.sreverscoketchannel设置为阻塞模式是指同时只能处理一个客户端连接请求。即同时只能有一个acceptor调用axcept()方法。把客户端的scoketchannel放入poller的队列里面吗？
-3.内核空间的接收连接是不是对每个连接都产生一个channel，这个channel就是acceptor里接收方法得到的scoketchanmel，后面的poller在用selector的select方法监听内核是否准备就绪才知道监听内核哪个通道？</div>2019-06-18</li><br/><li><img src="" width="30px"><span>giantbroom</span> 👍（4） 💬（1）<div>从语义上说，Tomcat实现的LimitLatch，跟Semaphore是类似的吧，抛开效率不说，是不是可以简单粗暴的替换为Semaphore，也是工作的吧？</div>2019-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/02/96/7505099c.jpg" width="30px"><span>李同学爱学习</span> 👍（3） 💬（3）<div>老师问个问题：countUpOrAwait()获取连接许可的时候，如果超过了限制连接数后会将当前线程添加到aqs等待队列中，这样的话并发请求的连接数上来这个队列会不会被塞爆了（而且是一个线程请求连接许可）？countUpOrAwait的请求是不是线程池控制的？</div>2019-06-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0b/34/f41d73a4.jpg" width="30px"><span>王盛武</span> 👍（3） 💬（3）<div>请问poller线程数是sever xml那个参数配置？ 暂时想到的是acceptorThreadCount对应acceptor线程数和acceptCount是待连接队列，那poller线程数对应哪个参数？</div>2019-06-15</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/IgjIXs9jjpODTPaOLrms0XOhJ8pxMcaZgtgBrPG6deqsKXv1sPIqkg0faL6X0rtFicJn5Wf7QXTickjYWpmF0V8A/132" width="30px"><span>Geek_28b75e</span> 👍（3） 💬（1）<div>老师，springboot应用程序之所以启动之后没有立即结束，本质原因就在于tomcat启动后，socket的accept（）方法阻塞监听吧？再加上此方法在死循环内部，用户线程不死</div>2019-06-14</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/IgjIXs9jjpODTPaOLrms0XOhJ8pxMcaZgtgBrPG6deqsKXv1sPIqkg0faL6X0rtFicJn5Wf7QXTickjYWpmF0V8A/132" width="30px"><span>Geek_28b75e</span> 👍（3） 💬（2）<div>老师，对于一个客户端来说就发起一次请求（附带了请求参数），1.那么对于客户端和服务端首先需要完成三次握手，才能处理具体请求吗？
-2.三次握手和sellctor有交互吗？还是说处理具体请求时才和sellector有联系？
-
-希望老师能用一个具体的请求讲解一下</div>2019-06-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/67/8a/babd74dc.jpg" width="30px"><span>锦</span> 👍（3） 💬（2）<div>NioEndpoint是同步非阻塞模型，只不过使用io多路复用技术实现的。优点是能有效减少线程的使用。那么问题来了，selector是使用哪种技术实现的呢？select,poll,epoll,iocp?
-LimitLatch使用AQS实现最大连接数限制，问题是AQS如何使线程阻塞在线程队列的呢？
-为什么要设计poller呢？连接建立后把新建的读写Socket扔到线程池不行么？这种可能比较适合异步io模型吧？
-Socket与线程是稳定的多对一的关系么？
-
-
-</div>2019-06-12</li><br/>
+</div>2019-06-13</li><br/><li><span>🐟🐙🐬🐆🦌🦍🐑🦃</span> 👍（8） 💬（1）<div>老师，我想问下NioEndpoint类中为什么把serverSock 的阻塞模式设置为true. 代码上是serceSock.configBlocking（true）.一般我们在选择NIo的时候都是设置为false的</div>2019-06-12</li><br/><li><span>兔子临死前</span> 👍（6） 💬（1）<div>多路复用是指异步阻塞么？异步就是不需要用户线程主动去问，而是内核完成数据操作的时候返回的；而阻塞是发起read调用后要等待内核返回数据，不知道这样理解对不对。。</div>2019-06-16</li><br/>
 </ul>

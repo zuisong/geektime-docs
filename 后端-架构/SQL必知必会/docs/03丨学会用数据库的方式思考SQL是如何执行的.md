@@ -23,61 +23,149 @@
    如果没有找到SQL语句和执行计划，Oracle就需要创建解析树进行解析，生成执行计划，进入“优化器”这个步骤，这就是硬解析。
 5. 优化器：优化器中就是要进行硬解析，也就是决定怎么做，比如创建解析树，生成执行计划。
 6. 执行器：当有了解析树和执行计划之后，就知道了SQL该怎么被执行，这样就可以在执行器中执行语句了。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/f7/b1/982ea185.jpg" width="30px"><span>美妙的代码</span> 👍（14） 💬（2）<div>老师，那两张，oracle，mysql 的大图。是哪儿的。有没有高清的啊。很多小字看不清楚。能否给个高清的链接。</div>2019-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ef/86/12f95d66.jpg" width="30px"><span>FATMAN89</span> 👍（10） 💬（1）<div>老师讲的挺好的，想请问老师，课程所用到的数据库在哪里可以获得呢，多谢</div>2019-06-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a0/3f/06b690ba.jpg" width="30px"><span>刘桢</span> 👍（50） 💬（13）<div>今年考研必上北京邮电大学！</div>2019-06-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/fUDCLLob6DFS8kZcMUfxOc4qQHeQfW4rIMK5Ty2u2AqLemcdhVRw7byx85HrVicSvy5AiabE0YGMj5gVt8ibgrusA/132" width="30px"><span>NO.9</span> 👍（15） 💬（1）<div>C,共享池。
-讲的好系统啊，有种想学个花拳绣腿，结果教我九阳神功的感觉。</div>2019-06-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fd/dc/245fee32.jpg" width="30px"><span>张驰皓</span> 👍（13） 💬（1）<div>感觉 MySQL 部分的第二张图（流程图）有点问题，“缓存查询”后“找到”分支的箭头应该不用再指向”缓存查询“吧？</div>2019-12-01</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLbchZfeEnshPuUwEsQkn1XbWxjs3rRUpSRUxjW4q7rOcrPvXld0IxEZ1jlpEJdklFeEVERJoOfibg/132" width="30px"><span>qf年间</span> 👍（8） 💬（1）<div>文中多次提到执行计划，这是一个什么东西呢，可否具体讲解一下，或者举例说明</div>2019-09-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0b/4e/fd946cb2.jpg" width="30px"><span>allean</span> 👍（7） 💬（1）<div>共享池</div>2019-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/34/df/64e3d533.jpg" width="30px"><span>leslie</span> 👍（6） 💬（1）<div>再次听一遍不一样的东西还是会发现不一样的收货:这大概就是数据库用的多了有时代码层确实没啥 ，可是切换中的优化过程还是会疏漏某些分析细节。
-explain已经用到了极致，忘了优化的极限其实是多种方式的相辅相成；profile早期用过，反而这几年用的很少很少；explain更加管用-在多种数据库中，反而忘了有时需要一些简单的手段辅以。</div>2019-06-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqjbwXwF3YUcSw7A8v6f0sAYzQMloOWg62aciaGfzZWibRw2jjTja1Vwh5CLVGZdseM6gSBnC1hRzEQ/132" width="30px"><span>firstblood</span> 👍（1） 💬（1）<div>MyISAM 和InnoDB的比较参考https:&#47;&#47;www.jianshu.com&#47;p&#47;a957b18ba40d 这个文章</div>2019-09-25</li><br/><li><img src="" width="30px"><span>Geek_d3a509</span> 👍（0） 💬（1）<div>Oracle中绑定变量：SQL语句中相同的操作对不同的变量值用一个变量来代替，使得Oracle中要做硬解析变成软解析，以减少Oracle在解析上花费的时间
+
+共享池是Oracle中的术语，包括了库缓存，数据字典缓冲区等。我们上面已经讲到了库缓存区，它主要缓存SQL语句和执行计划。而数据字典缓冲区存储的是Oracle中的对象定义，比如表、视图、索引等对象。当对SQL语句进行解析的时候，如果需要相关的数据，会从数据字典缓冲区中提取。
+
+库缓存这一个步骤，决定了SQL语句是否需要进行硬解析。为了提升SQL的执行效率，我们应该尽量避免硬解析，因为在SQL的执行过程中，创建解析树，生成执行计划是很消耗资源的。
+
+你可能会问，如何避免硬解析，尽量使用软解析呢？在Oracle中，绑定变量是它的一大特色。绑定变量就是在SQL语句中使用变量，通过不同的变量取值来改变SQL的执行结果。这样做的好处是能提升软解析的可能性，不足之处在于可能会导致生成的执行计划不够优化，因此是否需要绑定变量还需要视情况而定。
+
+举个例子，我们可以使用下面的查询语句：
+
+```
+SQL> select * from player where player_id = 10001;
+```
+
+你也可以使用绑定变量，如：
+
+```
+SQL> select * from player where player_id = :player_id;
+```
+
+这两个查询语句的效率在Oracle中是完全不同的。如果你在查询player\_id = 10001之后，还会查询10002、10003之类的数据，那么每一次查询都会创建一个新的查询解析。而第二种方式使用了绑定变量，那么在第一次查询之后，在共享池中就会存在这类查询的执行计划，也就是软解析。
+
+因此我们可以通过使用绑定变量来减少硬解析，减少Oracle的解析工作量。但是这种方式也有缺点，使用动态SQL的方式，因为参数不同，会导致SQL的执行效率不同，同时SQL优化也会比较困难。
+
+## MySQL中的SQL是如何执行的
+
+Oracle中采用了共享池来判断SQL语句是否存在缓存和执行计划，通过这一步骤我们可以知道应该采用硬解析还是软解析。那么在MySQL中，SQL是如何被执行的呢？
+
+首先MySQL是典型的C/S架构，即Client/Server架构，服务器端程序使用的mysqld。整体的MySQL流程如下图所示：
+
+![](https://static001.geekbang.org/resource/image/c4/9e/c4b24ef2377e0d233af69925b0d7139e.png?wh=900%2A480)  
+你能看到MySQL由三层组成：
+
+1. 连接层：客户端和服务器端建立连接，客户端发送SQL至服务器端；
+2. SQL层：对SQL语句进行查询处理；
+3. 存储引擎层：与数据库文件打交道，负责数据的存储和读取。
+
+其中SQL层与数据库文件的存储方式无关，我们来看下SQL层的结构：
+
+![](https://static001.geekbang.org/resource/image/30/79/30819813cc9d53714c08527e282ede79.jpg?wh=466%2A598)
+
+1. 查询缓存：Server如果在查询缓存中发现了这条SQL语句，就会直接将结果返回给客户端；如果没有，就进入到解析器阶段。需要说明的是，因为查询缓存往往效率不高，所以在MySQL8.0之后就抛弃了这个功能。
+2. 解析器：在解析器中对SQL语句进行语法分析、语义分析。
+3. 优化器：在优化器中会确定SQL语句的执行路径，比如是根据全表检索，还是根据索引来检索等。
+4. 执行器：在执行之前需要判断该用户是否具备权限，如果具备权限就执行SQL查询并返回结果。在MySQL8.0以下的版本，如果设置了查询缓存，这时会将查询结果进行缓存。
+
+你能看到SQL语句在MySQL中的流程是：SQL语句→缓存查询→解析器→优化器→执行器。在一部分中，MySQL和Oracle执行SQL的原理是一样的。
+
+与Oracle不同的是，MySQL的存储引擎采用了插件的形式，每个存储引擎都面向一种特定的数据库应用环境。同时开源的MySQL还允许开发人员设置自己的存储引擎，下面是一些常见的存储引擎：
+
+1. InnoDB存储引擎：它是MySQL 5.5版本之后默认的存储引擎，最大的特点是支持事务、行级锁定、外键约束等。
+2. MyISAM存储引擎：在MySQL 5.5版本之前是默认的存储引擎，不支持事务，也不支持外键，最大的特点是速度快，占用资源少。
+3. Memory存储引擎：使用系统内存作为存储介质，以便得到更快的响应速度。不过如果mysqld进程崩溃，则会导致所有的数据丢失，因此我们只有当数据是临时的情况下才使用Memory存储引擎。
+4. NDB存储引擎：也叫做NDB Cluster存储引擎，主要用于MySQL Cluster分布式集群环境，类似于Oracle的RAC集群。
+5. Archive存储引擎：它有很好的压缩机制，用于文件归档，在请求写入时会进行压缩，所以也经常用来做仓库。
+
+需要注意的是，数据库的设计在于表的设计，而在MySQL中每个表的设计都可以采用不同的存储引擎，我们可以根据实际的数据处理需要来选择存储引擎，这也是MySQL的强大之处。
+
+## 数据库管理系统也是一种软件
+
+我们刚才了解了SQL语句在Oracle和MySQL中的执行流程，实际上完整的Oracle和MySQL结构图要复杂得多：
+
+![](https://static001.geekbang.org/resource/image/d9/74/d99e951b69a692c7f075dd21116d3574.png?wh=1680%2A1296)  
+![](https://static001.geekbang.org/resource/image/9b/7f/9b515e012856099b05d9dc3a5eaabe7f.png?wh=1875%2A1219)  
+如果你只是简单地把MySQL和Oracle看成数据库管理系统软件，从外部看难免会觉得“晦涩难懂”，毕竟组织结构太多了。我们在学习的时候，还需要具备抽象的能力，抓取最核心的部分：SQL的执行原理。因为不同的DBMS的SQL的执行原理是相通的，只是在不同的软件中，各有各的实现路径。
+
+既然一条SQL语句会经历不同的模块，那我们就来看下，在不同的模块中，SQL执行所使用的资源（时间）是怎样的。下面我来教你如何在MySQL中对一条SQL语句的执行时间进行分析。
+
+首先我们需要看下profiling是否开启，开启它可以让MySQL收集在SQL执行时所使用的资源情况，命令如下：
+
+```
+mysql> select @@profiling;
+```
+
+![](https://static001.geekbang.org/resource/image/bc/c1/bcbfdd58b908dc8820fb57d00ff4dcc1.png?wh=861%2A386)  
+profiling=0代表关闭，我们需要把profiling打开，即设置为1：
+
+```
+mysql> set profiling=1;
+```
+
+然后我们执行一个SQL查询（你可以执行任何一个SQL查询）：
+
+```
+mysql> select * from wucai.heros;
+```
+
+查看当前会话所产生的所有profiles：
+
+![](https://static001.geekbang.org/resource/image/d9/bf/d9445abcde0f3b38488afe21aca8e9bf.png?wh=1352%2A425)  
+你会发现我们刚才执行了两次查询，Query ID分别为1和2。如果我们想要获取上一次查询的执行时间，可以使用：
+
+```
+mysql> show profile;
+```
+
+![](https://static001.geekbang.org/resource/image/09/7d/09ef901a55ffcd32ed263d82e3cf1f7d.png?wh=1729%2A1520)  
+当然你也可以查询指定的Query ID，比如：
+
+```
+mysql> show profile for query 2;
+```
+
+查询SQL的执行时间结果和上面是一样的。
+
+在8.0版本之后，MySQL不再支持缓存的查询，原因我在上文已经说过。一旦数据表有更新，缓存都将清空，因此只有数据表是静态的时候，或者数据表很少发生变化时，使用缓存查询才有价值，否则如果数据表经常更新，反而增加了SQL的查询时间。
+
+你可以使用select version()来查看MySQL的版本情况。
+
+![](https://static001.geekbang.org/resource/image/08/1a/0815cf2a78889b947cb498622377c21a.png?wh=644%2A383)
+
+## 总结
+
+我们在使用SQL的时候，往往只见树木，不见森林，不会注意到它在各种数据库软件中是如何执行的，今天我们从全貌的角度来理解这个问题。你能看到不同的RDBMS之间有相同的地方，也有不同的地方。
+
+相同的地方在于Oracle和MySQL都是通过解析器→优化器→执行器这样的流程来执行SQL的。
+
+但Oracle和MySQL在进行SQL的查询上面有软件实现层面的差异。Oracle提出了共享池的概念，通过共享池来判断是进行软解析，还是硬解析。而在MySQL中，8.0以后的版本不再支持查询缓存，而是直接执行解析器→优化器→执行器的流程，这一点从MySQL中的show profile里也能看到。同时MySQL的一大特色就是提供了各种存储引擎以供选择，不同的存储引擎有各自的使用场景，我们可以针对每张表选择适合的存储引擎。
+
+![](https://static001.geekbang.org/resource/image/02/f1/02719a80d54a174dec8672d1f87295f1.jpg?wh=3341%2A1671)  
+今天的内容到这里就结束了，你能说一下Oracle中的绑定变量是什么，使用它有什么优缺点吗？MySQL的存储引擎是一大特色，其中MyISAM和InnoDB都是常用的存储引擎，这两个存储引擎的特性和使用场景分别是什么？
+
+最后留一道选择题吧，解析后的SQL语句在Oracle的哪个区域中进行缓存？
+
+A. 数据缓冲区  
+B. 日志缓冲区  
+C. 共享池  
+D. 大池
+
+欢迎你在评论区写下你的思考，我会在评论区与你一起交流，如果这篇文章帮你理顺了Oracle和MySQL执行SQL的过程，欢迎你把它分享给你的朋友或者同事。
+
+※注：本篇文章出现的图片请点击[这里](http://github.com/cystanford/SQL-XMind)下载高清大图。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>美妙的代码</span> 👍（14） 💬（2）<div>老师，那两张，oracle，mysql 的大图。是哪儿的。有没有高清的啊。很多小字看不清楚。能否给个高清的链接。</div>2019-06-19</li><br/><li><span>FATMAN89</span> 👍（10） 💬（1）<div>老师讲的挺好的，想请问老师，课程所用到的数据库在哪里可以获得呢，多谢</div>2019-06-18</li><br/><li><span>刘桢</span> 👍（50） 💬（13）<div>今年考研必上北京邮电大学！</div>2019-06-18</li><br/><li><span>NO.9</span> 👍（15） 💬（1）<div>C,共享池。
+讲的好系统啊，有种想学个花拳绣腿，结果教我九阳神功的感觉。</div>2019-06-30</li><br/><li><span>张驰皓</span> 👍（13） 💬（1）<div>感觉 MySQL 部分的第二张图（流程图）有点问题，“缓存查询”后“找到”分支的箭头应该不用再指向”缓存查询“吧？</div>2019-12-01</li><br/><li><span>qf年间</span> 👍（8） 💬（1）<div>文中多次提到执行计划，这是一个什么东西呢，可否具体讲解一下，或者举例说明</div>2019-09-10</li><br/><li><span>allean</span> 👍（7） 💬（1）<div>共享池</div>2019-06-17</li><br/><li><span>leslie</span> 👍（6） 💬（1）<div>再次听一遍不一样的东西还是会发现不一样的收货:这大概就是数据库用的多了有时代码层确实没啥 ，可是切换中的优化过程还是会疏漏某些分析细节。
+explain已经用到了极致，忘了优化的极限其实是多种方式的相辅相成；profile早期用过，反而这几年用的很少很少；explain更加管用-在多种数据库中，反而忘了有时需要一些简单的手段辅以。</div>2019-06-17</li><br/><li><span>firstblood</span> 👍（1） 💬（1）<div>MyISAM 和InnoDB的比较参考https:&#47;&#47;www.jianshu.com&#47;p&#47;a957b18ba40d 这个文章</div>2019-09-25</li><br/><li><span>Geek_d3a509</span> 👍（0） 💬（1）<div>Oracle中绑定变量：SQL语句中相同的操作对不同的变量值用一个变量来代替，使得Oracle中要做硬解析变成软解析，以减少Oracle在解析上花费的时间
 优点：减少了很多不必要的硬解析，将由软解析代替，大大降低数据库花费在SQL解析上的资源开销（时间与空间的浪费）。
 缺点：绑定了变量之后优化比较困难，使用绑定之后可能对执行计划有一定的影响，导致执行计划的出错。比如很多重复的语句使用一个变量代替，那么可能就第一条解析正确，余下的就不能正确执行。
 InnoDB的特性与使用场景（mysql5.5及以后版本默认存储引擎）：事务型存储引擎，支持ACID特性；支持行级锁。适用大多数OLTP应用
 MyISAM的特性与使用场景：不支持事务，表级锁。适用（1）非事务性应用  （2）只读型应用    （3）空间型应用
 
-选择题选C</div>2019-12-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/47/e6/67b0b711.jpg" width="30px"><span>大海</span> 👍（0） 💬（1）<div>对于代码部分提个建议，复制出来的内容最好时可以直接使用的。
+选择题选C</div>2019-12-04</li><br/><li><span>大海</span> 👍（0） 💬（1）<div>对于代码部分提个建议，复制出来的内容最好时可以直接使用的。
 mysql&gt; show profile for query 2;
-现在复制出来的是这样，需要自己把前面的部分去掉，才能用。</div>2019-10-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/61/37/a4c4c0ab.jpg" width="30px"><span>止戈</span> 👍（0） 💬（1）<div>老师请问什么时候会讲到具体使用方法？</div>2019-09-23</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTK009KMmXKFVeR6ja1dDB69lZEbUiabA8r8QnChtcIEWsqsO42opsXQ7A9pnezCz38lqbuKxrczCMA/132" width="30px"><span>Geek_c76f38</span> 👍（0） 💬（1）<div>SQL&gt; select * from player where player_id = 10001;
-代码在手机上看用显示不完整，难道每条都要复制出来才能看？有没有什么办法解决一下</div>2019-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0f/71/9273e8a4.jpg" width="30px"><span>时间是最真的答案</span> 👍（0） 💬（1）<div>C. 共享池
-文中提到过</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/d3/dc/d216d40c.jpg" width="30px"><span>鱼🐟</span> 👍（0） 💬（1）<div>你们的服务器是不是挂了，经常不能访问</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1a/66/2d9db9ed.jpg" width="30px"><span>苦行僧</span> 👍（0） 💬（1）<div>使用事务用innodb，非事务使用my</div>2019-06-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/83/5d/1f7de6dd.jpg" width="30px"><span>取舍</span> 👍（0） 💬（1）<div>明白了老师</div>2019-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/83/af/1cb42cd3.jpg" width="30px"><span>马以</span> 👍（0） 💬（2）<div>迫切想要得到表结构脚本
-</div>2019-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/20/27/a6932fbe.jpg" width="30px"><span>虢國技醬</span> 👍（0） 💬（1）<div>💪</div>2019-06-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3a/63/a94f339e.jpg" width="30px"><span>Devo</span> 👍（0） 💬（1）<div>mysql的执行计划如何绑定呢？老师能详细讲下mysql 的mvcc原理吗，让小白也能看懂，谢谢！</div>2019-06-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/6e/d7/9af5dd29.jpg" width="30px"><span>痛…</span> 👍（0） 💬（1）<div>存储在共享池</div>2019-06-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/03/3f/09308258.jpg" width="30px"><span>雨先生的晴天</span> 👍（0） 💬（1）<div>1. 绑定变量：就是在 SQL 语句中使用变量，通过不同的变量取值来改变的执行结果。
-优点：减少硬解析。
-缺点:  难以优化，参数不同导致执行效率不同。
-
-MyISSAM 速度快，占用资源少，但是不知道事务，外键。
-InnoDB 存储引擎：它是 MySQL 5.5.8 版本之后搜索引擎。支持事务，行级锁定，外键。
-
-选择题： C， 共享池。</div>2019-06-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/6b/8f/eba34b86.jpg" width="30px"><span>星光</span> 👍（0） 💬（1）<div>答案是C共享池。
-顺便咨询下老师，您在开篇词里说“为专栏建了一个王者荣耀数据库和 NBA 球员数据库”。那么请问我们可以远程连接它进行操作吗？</div>2019-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/15/b4/adefadc6.jpg" width="30px"><span>jeric</span> 👍（0） 💬（1）<div>共享池</div>2019-06-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIsJ4ZpKgUPQ8euPymt3Yl8KZX78R6mnB0WKspVoWPAbDsoqTs8AWjG9AlO4ibhnK5ITVtJ5M6RpVg/132" width="30px"><span>敏儿</span> 👍（0） 💬（1）<div>C共享池</div>2019-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/46/b9/17ab13f1.jpg" width="30px"><span>都是弟弟</span> 👍（0） 💬（1）<div>学习了</div>2019-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/95/bf/4a30ba94.jpg" width="30px"><span>暖冬°</span> 👍（0） 💬（1）<div>老师，你好第一次得知mysql还能选择存储引擎！
-课堂上的学习没有这么的深入，这个课程很有意思
-但是怎么去手动选择存储引擎呢？
-答案选共享池</div>2019-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d8/4f/65abc6f0.jpg" width="30px"><span>KaitoShy</span> 👍（100） 💬（0）<div>1. 绑定变量概念：sql语句中使用变量，通过不同的变量值来改变sql的执行结果
-优点：减少硬解析，减少Oracle的工作量
-缺点：参数不同导致执行效率不同，优化比较难做。
-2.MyISAM的使用场景为读写分离的读库， 而InnoDB为写库
-3. C共享池，看图中有个Shared SQL Area。</div>2019-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/90/4e/efaea936.jpg" width="30px"><span>墨禾</span> 👍（76） 💬（4）<div>【回答3个问题】
-1、oracle中的绑定变量指的是 sql语句在执行时，通过改变不同的变量值来改变sql的执行结果；
-优点：避免硬解析，提高SQL语句执行的效率；
-缺点：如果使用绑定变量，那么优化器就会忽略直方图的信息，在生成执行计划的时候可能不够优化。
-
-2、MyISAN：
-不支持事务、外键，速度快、资源占有少；
-InnoDB：支持实物、外键、聚集索引，5.6版本以后的mysql支持全文索引；
-
-使用场景：
-需要支持事物的场景考虑InnoDB；
-以读为主的数据表用MyISAM；
-MyISAM奔溃后的系统的恢复较困难，没有要求的话可以用；
-不知道选什么数据库合适的话，用InnoDB不会差【5.5版本以后的mysql默认的引擎是InnoDB】
-
-3、oracle在共享池中进行缓存。
-
-【学习总结】
-1、get一个学习方法
-培养抽象事物的能力，掌握学习要点，如sql知识，重点掌握sql执行的原理，因为在不同的数据库中，sql执行的原理大同小异，只是在执行的顺序上有所不同。
-2、get一个oracle sql优化的技巧
-通过绑定变量，优化sql结果
-3、get一个oracle、mysql共同的执行sql的原理
-SQL语句-》缓存查询-》解析器-》优化器-》执行器
-【PS:老师后面能不能推荐一些实战项目练习，来巩固知识点呢？】</div>2019-06-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83ep8ibEQqN1SlfsuVzTATiatUt007dhCNpvKDicrcsYQP0MgWtIk92304jrQ5tV4ibfoToYwRLfNeicTuQA/132" width="30px"><span>虫子的一天</span> 👍（28） 💬（0）<div>老师好，我原来用SQLSERVER比较多，经常会碰到参数化的SQL查询中，因为SQLSERVER已经缓存了查询计划，导致某些特定参数查询效率很低的事情(刚才文中也有提及Oracle也有类似问题)。
-我刚听讲似乎MySQL是没这个机制的，是否MySQL就不会碰到类似问题?
-另外如果不让SQLserver使用缓存的查询计划，每次都重新生成，又导致CPU高，MYSQL又是如何避免类似问题的
-感谢</div>2019-06-17</li><br/>
+现在复制出来的是这样，需要自己把前面的部分去掉，才能用。</div>2019-10-02</li><br/><li><span>止戈</span> 👍（0） 💬（1）<div>老师请问什么时候会讲到具体使用方法？</div>2019-09-23</li><br/><li><span>Geek_c76f38</span> 👍（0） 💬（1）<div>SQL&gt; select * from player where player_id = 10001;
+代码在手机上看用显示不完整，难道每条都要复制出来才能看？有没有什么办法解决一下</div>2019-06-25</li><br/><li><span>时间是最真的答案</span> 👍（0） 💬（1）<div>C. 共享池
+文中提到过</div>2019-06-24</li><br/><li><span>鱼🐟</span> 👍（0） 💬（1）<div>你们的服务器是不是挂了，经常不能访问</div>2019-06-24</li><br/>
 </ul>

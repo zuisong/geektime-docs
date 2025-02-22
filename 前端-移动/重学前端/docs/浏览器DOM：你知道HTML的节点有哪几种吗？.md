@@ -22,8 +22,272 @@ DOM API大致会包含4个部分。
 事件相关API和事件模型，我们会用单独的课程讲解，所以我们本篇文章重点会为你介绍节点和遍历相关API。
 
 DOM API 数量很多，我希望给你提供一个理解DOM API设计的思路，避免单靠机械的方式去死记硬背。
-<div><strong>精选留言（25）</strong></div><ul>
-<li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLIOSzr2bibaFfoI1RjYyHDoebCZI7KnhTkOnYChQRKVVkmNHTL4chd7BKTGppArERd8x02aZGwDpQ/132" width="30px"><span>kgdmhny</span> 👍（0） 💬（2）<div>老师,请问一下,&quot;对 DOM 而言，Attribute 和 Property 是完全不同的含义，只有特性场景下，两者才会互相关联（这里在后面我会详细讲解，今天的文章里我就不展开了）&quot;后面有讲解这块吗？</div>2019-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/f7/d9/3014889f.jpg" width="30px"><span>周序猿</span> 👍（41） 💬（1）<div>&#47;&#47; 深度优先
+
+### 节点
+
+DOM的树形结构所有的节点有统一的接口Node，我们按照继承关系，给你介绍一下节点的类型。
+
+![](https://static001.geekbang.org/resource/image/6e/f6/6e278e450d8cc7122da3616fd18b9cf6.png?wh=955%2A634)
+
+在这些节点中，除了Document和DocumentFrangment，都有与之对应的HTML写法，我们可以看一下。
+
+```
+Element: <tagname>...</tagname>
+Text: text
+Comment: <!-- comments -->
+DocumentType: <!Doctype html>
+ProcessingInstruction: <?a 1?>
+```
+
+我们在编写HTML代码并且运行后，就会在内存中得到这样一棵DOM树，HTML的写法会被转化成对应的文档模型，而我们则可以通过JavaScript等语言去访问这个文档模型。
+
+这里我们每天都需要用到，要重点掌握的是：Document、Element、Text节点。
+
+DocumentFragment也非常有用，它常常被用来高性能地批量添加节点。因为Comment、DocumentType和ProcessingInstruction很少需要运行时去修改和操作，所以有所了解即可。
+
+### Node
+
+Node是DOM树继承关系的根节点，它定义了DOM节点在DOM树上的操作，首先，Node提供了一组属性，来表示它在DOM树中的关系，它们是：
+
+- parentNode
+- childNodes
+- firstChild
+- lastChild
+- nextSibling
+- previousSibling
+
+从命名上，我们可以很清晰地看出，这一组属性提供了前、后、父、子关系，有了这几个属性，我们可以很方便地根据相对位置获取元素。当然，Node中也提供了操作DOM树的API，主要有下面几种。
+
+- appendChild
+- insertBefore
+- removeChild
+- replaceChild
+
+这个命名跟上面一样，我们基本可以知道API的作用。这几个API的设计可以说是饱受诟病。其中最主要的批评是它不对称——只有before，没有after，而jQuery等框架都对其做了补充。
+
+实际上，appendChild和insertBefore的这个设计，是一个“最小原则”的设计，这两个API是满足插入任意位置的必要API，而insertAfter，则可以由这两个API实现出来。
+
+我个人其实不太喜欢这个设计，对我而言，insertAt(pos) 更符合审美一些。当然，不论喜不喜欢，这个标准已经确定，我们还是必须要掌握它。
+
+这里从设计的角度还想要谈一点，那就是，所有这几个修改型的API，全都是在父元素上操作的，比如我们要想实现“删除一个元素的上一个元素”，必须要先用parentNode获取其父元素。
+
+这样的设计是符合面向对象的基本原则的。还记得我们在JavaScript对象部分讲的对象基本特征吗？“拥有哪些子元素”是父元素的一种状态，所以修改状态，应该是父元素的行为。这个设计我认为是DOM API中好的部分。
+
+到此为止，Node提供的API已经可以很方便（大概吧）地对树进行增、删、遍历等操作了。
+
+除此之外，Node还提供了一些高级API，我们来认识一下它们。
+
+- compareDocumentPosition 是一个用于比较两个节点中关系的函数。
+- contains 检查一个节点是否包含另一个节点的函数。
+- isEqualNode 检查两个节点是否完全相同。
+- isSameNode 检查两个节点是否是同一个节点，实际上在JavaScript中可以用“===”。
+- cloneNode 复制一个节点，如果传入参数true，则会连同子元素做深拷贝。
+
+DOM标准规定了节点必须从文档的create方法创建出来，不能够使用原生的JavaScript的new运算。于是document对象有这些方法。
+
+- createElement
+- createTextNode
+- createCDATASection
+- createComment
+- createProcessingInstruction
+- createDocumentFragment
+- createDocumentType
+
+上面的这些方法都是用于创建对应的节点类型。你可以自己尝试一下。
+
+## Element 与 Attribute
+
+Node提供了树形结构上节点相关的操作。而大部分时候，我们比较关注的是元素。Element表示元素，它是Node的子类。
+
+元素对应了HTML中的标签，它既有子节点，又有属性。所以Element子类中，有一系列操作属性的方法。
+
+我们需要注意，对DOM而言，Attribute和Property是完全不同的含义，只有特性场景下，两者才会互相关联（这里在后面我会详细讲解，今天的文章里我就不展开了）。
+
+首先，我们可以把元素的Attribute当作字符串来看待，这样就有以下的API：
+
+- getAttribute
+- setAttribute
+- removeAttribute
+- hasAttribute
+
+如果你追求极致的性能，还可以把Attribute当作节点：
+
+- getAttributeNode
+- setAttributeNode
+
+此外，如果你喜欢property一样的访问attribute，还可以使用 attributes 对象，比如 document.body.attributes.class = “a” 等效于 document.body.setAttribute(“class”, “a”)。
+
+### 查找元素
+
+document节点提供了查找元素的能力。比如有下面的几种。
+
+- querySelector
+- querySelectorAll
+- getElementById
+- getElementsByName
+- getElementsByTagName
+- getElementsByClassName
+
+我们需要注意，getElementById、getElementsByName、getElementsByTagName、getElementsByClassName，这几个API的性能高于querySelector。
+
+而 getElementsByName、getElementsByTagName、getElementsByClassName 获取的集合并非数组，而是一个能够动态更新的集合。
+
+我们看一个例子：
+
+```
+var collection = document.getElementsByClassName('winter');
+console.log(collection.length);
+var winter = document.createElement('div');
+winter.setAttribute('class', 'winter')
+document.documentElement.appendChild(winter)
+console.log(collection.length);
+```
+
+在这段代码中，我们先获取了页面的className为winter的元素集合，不出意外的话，应该是空。
+
+我们通过console.log可以看到集合的大小为0。之后我们添加了一个class为winter的div，这时候我们再看集合，可以发现，集合中出现了新添加的元素。
+
+这说明浏览器内部是有高速的索引机制，来动态更新这样的集合的。所以，尽管querySelector系列的API非常强大，我们还是应该尽量使用getElement系列的API。
+
+## 遍历
+
+前面已经提到过，通过Node的相关属性，我们可以用JavaScript遍历整个树。实际上，DOM API中还提供了NodeIterator 和 TreeWalker 来遍历树。
+
+比起直接用属性来遍历，NodeIterator 和 TreeWalker 提供了过滤功能，还可以把属性节点也包含在遍历之内。
+
+NodeIterator的基本用法示例如下：
+
+```
+var iterator = document.createNodeIterator(document.body, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT, null, false);
+var node;
+while(node = iterator.nextNode())
+{
+    console.log(node);
+}
+```
+
+这个API的设计非常老派，这么讲的原因主要有两点，一是循环并没有类似“hasNext”这样的方法，而是直接以nextNode返回null来标志结束，二是第二个参数是掩码，这两个设计都是传统C语言里比较常见的用法。
+
+放到今天看，这个迭代器无法匹配JavaScript的迭代器语法，而且JavaScript位运算并不高效，掩码的设计就徒增复杂性了。
+
+这里请你注意一下这个例子中的处理方法，通常掩码型参数，我们都是用按位或运算来叠加。而针对这种返回null表示结束的迭代器，我使用了在while循环条件中赋值，来保证循环次数和调用next次数严格一致（但这样写可能违反了某些编码规范）。
+
+我们再来看一下TreeWalker的用法。
+
+```
+var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, null, false)
+var node;
+while(node = walker.nextNode())
+{
+    if(node.tagName === "p")
+        node.nextSibling();
+    console.log(node);
+}
+```
+
+比起NodeIterator，TreeWalker多了在DOM树上自由移动当前节点的能力，一般来说，这种API用于“跳过”某些节点，或者重复遍历某些节点。
+
+总的来说，我个人不太喜欢TreeWalker和NodeIterator这两个API，建议需要遍历DOM的时候，直接使用递归和Node的属性。
+
+## Range
+
+Range API 是一个比较专业的领域，如果不做富文本编辑类的业务，不需要太深入。这里我们就仅介绍概念和给出基本用法的示例，你只要掌握即可。
+
+Range API 表示一个HTML上的范围，这个范围是以文字为最小单位的，所以Range不一定包含完整的节点，它可能是Text节点中的一段，也可以是头尾两个Text的一部分加上中间的元素。
+
+我们通过 Range API 可以比节点 API 更精确地操作 DOM 树，凡是 节点 API 能做到的，Range API都可以做到，而且可以做到更高性能，但是 Range API 使用起来比较麻烦，所以在实际项目中，并不常用，只有做底层框架和富文本编辑对它有强需求。
+
+创建Range一般是通过设置它的起止来实现，我们可以看一个例子：
+
+```
+var range = new Range(),
+    firstText = p.childNodes[1],
+    secondText = em.firstChild
+range.setStart(firstText, 9) // do not forget the leading space
+range.setEnd(secondText, 4)
+```
+
+此外，通过 Range 也可以从用户选中区域创建，这样的Range用于处理用户选中区域:
+
+```
+var range = document.getSelection().getRangeAt(0);
+```
+
+更改 Range 选中区段内容的方式主要是取出和插入，分别由extractContents和insertNode来实现。
+
+```
+var fragment = range.extractContents()
+range.insertNode(document.createTextNode("aaaa"))
+```
+
+最后我们看一个完整的例子。
+
+```
+var range = new Range(),
+    firstText = p.childNodes[1],
+    secondText = em.firstChild
+range.setStart(firstText, 9) // do not forget the leading space
+range.setEnd(secondText, 4)
+
+var fragment = range.extractContents()
+range.insertNode(document.createTextNode("aaaa"))
+```
+
+这个例子展示了如何使用range来取出元素和在特定位置添加新元素。
+
+## 总结
+
+在今天的文章中，我们一起了解了DOM API的内容。DOM API大致会包含4个部分。
+
+- 节点：DOM树形结构中的节点相关API。
+- 事件：触发和监听事件相关API。
+- Range：操作文字范围相关API。
+- 遍历：遍历DOM需要的API。
+
+DOM API中还提供了NodeIterator 和 TreeWalker 来遍历树。比起直接用属性来遍历，NodeIterator 和 TreeWalker 提供了过滤功能，还可以把属性节点也包含在遍历之内。
+
+除此之外，我们还谈到了Range的一些基础知识点，这里你掌握即可。
+
+最后，我给你留了一个题目，请你用DOM API来实现遍历整个DOM树，把所有的元素的tagName打印出来。
+
+* * *
+
+### 补充阅读：命名空间
+
+我们本课介绍的所有API，特意忽略了命名空间。
+
+在HTML场景中，需要考虑命名空间的场景不多。最主要的场景是SVG。创建元素和属性相关的API都有带命名空间的版本：
+
+- document
+  
+  - createElementNS
+  - createAttributeNS
+- Element
+  
+  - getAttributeNS
+  - setAttributeNS
+  - getAttributeNodeNS
+  - setAttributeNodeNS
+  - removeAttributeNS
+  - hasAttributeNS
+  - attributes.setNamedItemNS
+  - attributes.getNamedItemNS
+  - attributes.removeNamedItemNS
+
+若要创建Document或者Doctype，也必须要考虑命名空间问题。DOM要求从document.implementation来创建。
+
+- document.implementation.createDocument
+- document.implementation.createDocumentType
+
+除此之外，还提供了一个快捷方式，你也可以动手尝试一下。
+
+- document.implementation.createHTMLDocument
+
+# 猜你喜欢
+
+[![unpreview](https://static001.geekbang.org/resource/image/1a/08/1a49758821bdbdf6f0a8a1dc5bf39f08.jpg?wh=1032%2A330)](https://time.geekbang.org/course/intro/163?utm_term=zeusMTA7L&utm_source=app&utm_medium=chongxueqianduan&utm_campaign=163-presell)
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>kgdmhny</span> 👍（0） 💬（2）<div>老师,请问一下,&quot;对 DOM 而言，Attribute 和 Property 是完全不同的含义，只有特性场景下，两者才会互相关联（这里在后面我会详细讲解，今天的文章里我就不展开了）&quot;后面有讲解这块吗？</div>2019-06-05</li><br/><li><span>周序猿</span> 👍（41） 💬（1）<div>&#47;&#47; 深度优先
 function deepLogTagNames(parentNode){
   console.log(parentNode.tagName)
   const childNodes = parentNode.childNodes
@@ -49,7 +313,7 @@ function breadLogTagNames(root){
     }) 
   }
 }
-breadLogTagNames(document.body)</div>2019-03-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/35/d0/f2ac6d91.jpg" width="30px"><span>阿成</span> 👍（14） 💬（2）<div>第一段代码中的 DocumentFragment 应该改为 DocumentType...
+breadLogTagNames(document.body)</div>2019-03-10</li><br/><li><span>阿成</span> 👍（14） 💬（2）<div>第一段代码中的 DocumentFragment 应该改为 DocumentType...
 
 &#47;**
  * @param {Element} el
@@ -71,9 +335,9 @@ walk(document.documentElement, el =&gt; {
 })
 for (let n of set)
   console.log(n)
-</div>2019-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/51/67/9cb713ec.jpg" width="30px"><span>天亮了</span> 👍（11） 💬（3）<div>这样可以把tagName全打印出来...
+</div>2019-03-09</li><br/><li><span>天亮了</span> 👍（11） 💬（3）<div>这样可以把tagName全打印出来...
 document.getElementsByTagName(&#39;*&#39;);
-</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a4/45/3cb5cdc6.jpg" width="30px"><span>拾迹</span> 👍（3） 💬（0）<div>document.querySelectorAll(&#39;*&#39;)，这样有点过分了</div>2019-06-17</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIEOWhj2oCFJeErulEW3QKiamVkTf3o0HZ5gUgl6Gq6d9UmJWDMselGrgnDvd3kVbKqaXw72C05JfQ/132" width="30px"><span>kino</span> 👍（3） 💬（1）<div>insertBefore(newNode,null)和appendChild的区别是啥</div>2019-03-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/f8/ff/ae800f6b.jpg" width="30px"><span>我叫张小咩²⁰¹⁹</span> 👍（3） 💬（0）<div>var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, null, false)
+</div>2019-05-06</li><br/><li><span>拾迹</span> 👍（3） 💬（0）<div>document.querySelectorAll(&#39;*&#39;)，这样有点过分了</div>2019-06-17</li><br/><li><span>kino</span> 👍（3） 💬（1）<div>insertBefore(newNode,null)和appendChild的区别是啥</div>2019-03-12</li><br/><li><span>我叫张小咩²⁰¹⁹</span> 👍（3） 💬（0）<div>var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, null, false)
 var node
 while(node = walker.nextNode())
     console.log(node.tagName)
@@ -94,7 +358,7 @@ getAllTagName(document)
 console.log(result)
 
 
-</div>2019-03-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/6b/c9/f90dd3c3.jpg" width="30px"><span>小二子大人</span> 👍（1） 💬（0）<div>const root = document.getElementsByTagName(&#39;html&#39;)[0];
+</div>2019-03-10</li><br/><li><span>小二子大人</span> 👍（1） 💬（0）<div>const root = document.getElementsByTagName(&#39;html&#39;)[0];
     &#47;&#47; 深度优先遍历
     function deepLogTagName(root) {
         console.log(root.tagName);
@@ -125,7 +389,7 @@ console.log(result)
             }
         }
     }
-    breadLogTagName(root)</div>2019-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6d/38/c951cb2e.jpg" width="30px"><span>笨鸟</span> 👍（1） 💬（0）<div>function loop(node){
+    breadLogTagName(root)</div>2019-05-08</li><br/><li><span>笨鸟</span> 👍（1） 💬（0）<div>function loop(node){
 	if(!node){
 		return
 	}
@@ -137,7 +401,7 @@ console.log(result)
 		})
 	}
 }
-loop(document)</div>2019-03-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/47/5d/9afdf648.jpg" width="30px"><span>Link</span> 👍（1） 💬（0）<div>第一段代码中的 DocumentFragment 应该改为 DocumentType</div>2019-03-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/da/3e/e0d073ca.jpg" width="30px"><span>「前端天地」公众号</span> 👍（0） 💬（0）<div>document好像没有createDocumentType方法</div>2021-09-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c5/dd/5a482cab.jpg" width="30px"><span>杜森垚</span> 👍（0） 💬（0）<div>document.body.attributes.class = &quot;a&quot; 少了.value 应该为 document.body.attributes.class.value = &quot;a&quot;</div>2020-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/89/15/381ce65f.jpg" width="30px"><span>不曾相识</span> 👍（0） 💬（0）<div>
+loop(document)</div>2019-03-26</li><br/><li><span>Link</span> 👍（1） 💬（0）<div>第一段代码中的 DocumentFragment 应该改为 DocumentType</div>2019-03-11</li><br/><li><span>「前端天地」公众号</span> 👍（0） 💬（0）<div>document好像没有createDocumentType方法</div>2021-09-30</li><br/><li><span>杜森垚</span> 👍（0） 💬（0）<div>document.body.attributes.class = &quot;a&quot; 少了.value 应该为 document.body.attributes.class.value = &quot;a&quot;</div>2020-11-22</li><br/><li><span>不曾相识</span> 👍（0） 💬（0）<div>
     &lt;main&gt;
         &lt;!-- &lt;header&gt;
             &lt;h1&gt;遍历所有dom打印tagName&lt;&#47;h1&gt;
@@ -208,89 +472,9 @@ loop(document)</div>2019-03-26</li><br/><li><img src="https://static001.geekbang
         &#47;&#47; 现在在li当中加入p元素，看结果有没有加入打印  看了，大佬们的答案随便填入的p，我也不懂啥事广度优先，深度优先
         console.log(getChildrenNodes(html));
     &lt;&#47;script&gt;
-</div>2020-10-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/bc/e8/43109d54.jpg" width="30px"><span>Peter</span> 👍（0） 💬（0）<div>var allTags = {};
+</div>2020-10-10</li><br/><li><span>Peter</span> 👍（0） 💬（0）<div>var allTags = {};
 [].forEach.call(document.body.getElementsByTagName(&#39;*&#39;), (e) =&gt; { 
   allTags[e.tagName] = (allTags[e.tagName] || 0) + 1 
 })
-console.log(allTags)</div>2020-06-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/f7/2f/10cbed82.jpg" width="30px"><span>pcxpccccx_</span> 👍（0） 💬（0）<div>讲的真好很全面</div>2020-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/06/1a/a8a9094d.jpg" width="30px"><span>学海无涯莫非</span> 👍（0） 💬（1）<div>引用：如果你追求极致的性能，还可以把 Attribute 当作节点：getAttributeNode，setAttributeNode。
-</div>2019-10-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/d1/81/89ba9d81.jpg" width="30px"><span>大力</span> 👍（0） 💬（0）<div>let set = new Set();
-Array.from(document.getElementsByTagName(&#39;*&#39;)).map(node =&gt; set.add(node.tagName.toLowerCase()));
-let list = Array.from(set).sort();
-console.log(list);</div>2019-10-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/af/9a/23603936.jpg" width="30px"><span>胡琦</span> 👍（0） 💬（0）<div>膜拜前排各位大佬，学习了！</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/b6/a9/bdf6f6cd.jpg" width="30px"><span>Sticker</span> 👍（0） 💬（0）<div>void function loop(parent){
-    const children = parent.childNodes;
-    children.forEach(item =&gt; {
-        if(item.nodeType === 1){
-            console.log(item.nodeName)
-            if(item.childNodes.length &gt; 0){
-                loop(item)
-            }
-        }
-    })
-}(document);</div>2019-04-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/1b/05/95fe1773.jpg" width="30px"><span>Ramda</span> 👍（0） 💬（0）<div>        const $body = document.body
-    
-        function deep (parentNode) {
-            const children = parentNode.childNodes
-            children.forEach(item =&gt; {
-                if(item.nodeType === 1 ) {
-                    console.log(item.nodeName)
-                    if (item.childNodes.length &gt; 0) {
-                        deep(item)
-                    }
-                }
-            })
-        }           
-        deep($body)</div>2019-04-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/6a/72/36c82f74.jpg" width="30px"><span>踏凌霄</span> 👍（0） 💬（0）<div>void function queryAndPrintSon(params) {
-      var child = params.children
-      for (let index = 0; index &lt; child.length; index++) {
-        const element = child[index];
-        console.log(element.tagName)
-        queryAndPrintSon(element)
-      }
-    }(document.getRootNode())</div>2019-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/60/de/5c67895a.jpg" width="30px"><span>周飞</span> 👍（0） 💬（0）<div> let tagNameArr = [];
-    function travaldom(root){       
-      if(root.tagName &amp;&amp; root.tagName !==&#39;text&#39;) tagNameArr.push(root.tagName)
-       root.childNodes.forEach(node=&gt;{
-          travaldom(node);
-       });
-    }
-    travaldom(document);
-    console.log(tagNameArr)</div>2019-03-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/26/24/8d76ec60.jpg" width="30px"><span>逐梦无惧</span> 👍（0） 💬（0）<div>老师请问这些html的结构化内容有在哪本书进行介绍吗</div>2019-03-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/61/f5/3a36af36.jpg" width="30px"><span>瓶盖</span> 👍（0） 💬（0）<div>&lt;!DOCTYPE html&gt;
-&lt;html lang=&quot;en&quot;&gt;
-&lt;head&gt;
-  &lt;meta charset=&quot;UTF-8&quot;&gt;
-  &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
-  &lt;meta http-equiv=&quot;X-UA-Compatible&quot; content=&quot;ie=edge&quot;&gt;
-  &lt;title&gt;遍历输出tagName&lt;&#47;title&gt;
-&lt;&#47;head&gt;
-&lt;body&gt;
-  &lt;section&gt;
-    &lt;header&gt;This is a header&lt;&#47;header&gt;
-    &lt;div&gt;
-      &lt;h4&gt;This is a content title&lt;&#47;h4&gt;
-      &lt;p&gt;This is the &lt;em&gt;first&lt;&#47;em&gt; paragraph.&lt;&#47;p&gt;
-      &lt;p&gt;This is the &lt;strong&gt;second&lt;&#47;strong&gt; paragraph.&lt;&#47;p&gt;
-    &lt;&#47;div&gt;
-    &lt;footer&gt;This is a footer of this page.&lt;&#47;footer&gt;
-  &lt;&#47;section&gt;
-  &lt;script&gt;
-    const secElement = document.getElementById(&#39;sec&#39;);
-    function getChildTagNames() {
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, null, false)
-      let node;
-      while(node = walker.nextNode()) {
-        if(node.tagName)
-        console.log(node.tagName);
-      }
-    }
-    getChildTagNames(secElement);
-  &lt;&#47;script&gt;
-&lt;&#47;body&gt;
-&lt;&#47;html&gt;</div>2019-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/e5/aa/57926594.jpg" width="30px"><span>Ppei</span> 👍（0） 💬（0）<div>老师：
-比如 document.body.attribute.class = “a” 等效于 document.setAttribute(“class”, “a”)。
-应该是 document.body.attributes吧？
-疑惑：
-var divDom = document.createElement(&#39;div&#39;)
-divDom.attributes.id = &#39;app&#39;
-divDom.setAttribute(&#39;class&#39;, &#39;app&#39;)
-为什么在divDom上看不到id属性？append到页面中后，同样用getElementById也选择不到这个DOM，用class就可以。</div>2019-03-11</li><br/>
+console.log(allTags)</div>2020-06-30</li><br/><li><span>pcxpccccx_</span> 👍（0） 💬（0）<div>讲的真好很全面</div>2020-03-22</li><br/>
 </ul>

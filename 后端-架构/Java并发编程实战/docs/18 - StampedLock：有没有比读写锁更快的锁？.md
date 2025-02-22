@@ -30,63 +30,185 @@ try {
 ```
 
 StampedLock的性能之所以比ReadWriteLock还要好，其关键是StampedLock支持乐观读的方式。ReadWriteLock支持多个线程同时读，但是当多个线程同时读的时候，所有的写操作会被阻塞；而StampedLock提供的乐观读，是允许一个线程获取写锁的，也就是说不是所有的写操作都被阻塞。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/4e/3a/86196508.jpg" width="30px"><span>linqw</span> 👍（107） 💬（5）<div>课后思考题：在锁升级成功的时候，最后没有释放最新的写锁，可以在if块的break上加个stamp=ws进行释放</div>2019-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1c/82/74ab79df.jpg" width="30px"><span>等我先变个身</span> 👍（49） 💬（9）<div>乐观锁的想法是“没事，肯定没被改过”，于是就开心地获取到数据，不放心吗？那就再验证一下，看看真的没被改过吧？这下可以放心使用数据了。
-我的问题是，验证完之后、使用数据之前，数据被其他线程改了怎么办？我看不出validate的意义。这个和数据库更新好像还不一样，数据库是在写的时候发现已经被其他人写了。这里validate之后也难免数据在进行业务计算之前已经被改掉了啊？</div>2019-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/08/d1/3c7747ef.jpg" width="30px"><span>Grubby🐑</span> 👍（42） 💬（1）<div>老师，调用interrupt引起cpu飙高的原因是什么</div>2019-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/8a/f3/7c89d00e.jpg" width="30px"><span>Presley</span> 👍（29） 💬（1）<div>老师，StampedLock 读模板，先通过乐观读或者悲观读锁获取变量，然后利用这些变量处理业务逻辑，会不会存在线程安全的情况呢? 比如，读出来的变量没问题，但是进行业务逻辑处理的时候，这时，读出的变量有可能发生变化了吧(比如被写锁改写了)？所以，当使用乐观读锁时，是不是等业务都处理完了（比如先利用变量把距离计算完），再判断变量是否被改写，如果没改写，直接return;如果已经改写，则使用悲观读锁做同样的事情。不过如果业务比较耗时，可能持有悲观锁的时间会比较长，不知道理解对不对</div>2019-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/08/d1/3c7747ef.jpg" width="30px"><span>Grubby🐑</span> 👍（21） 💬（2）<div>bug是tryConvertToWriteLock返回的write stamp没有重新赋值给stamp</div>2019-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/36/d2/c7357723.jpg" width="30px"><span>发条橙子 。</span> 👍（14） 💬（2）<div>老师 ， 我看事例里面成员变量都给了一个 final 关键字 。 请问这里给变量加 final的用意是什么 ，仅仅是为了防止下面方法中代码给他赋新的对象么 。 我在平常写代码中很少有给变量加 final 的习惯， 希望老师能指点一下 😄</div>2019-04-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c7/dc/9408c8c2.jpg" width="30px"><span>ban</span> 👍（9） 💬（1）<div>老师，你好，
+
+注意这里，我们用的是“乐观读”这个词，而不是“乐观读锁”，是要提醒你，**乐观读这个操作是无锁的**，所以相比较ReadWriteLock的读锁，乐观读的性能更好一些。
+
+文中下面这段代码是出自Java SDK官方示例，并略做了修改。在distanceFromOrigin()这个方法中，首先通过调用tryOptimisticRead()获取了一个stamp，这里的tryOptimisticRead()就是我们前面提到的乐观读。之后将共享变量x和y读入方法的局部变量中，不过需要注意的是，由于tryOptimisticRead()是无锁的，所以共享变量x和y读入方法局部变量时，x和y有可能被其他线程修改了。因此最后读完之后，还需要再次验证一下是否存在写操作，这个验证操作是通过调用validate(stamp)来实现的。
+
+```
+class Point {
+  private int x, y;
+  final StampedLock sl = 
+    new StampedLock();
+  //计算到原点的距离  
+  int distanceFromOrigin() {
+    // 乐观读
+    long stamp = 
+      sl.tryOptimisticRead();
+    // 读入局部变量，
+    // 读的过程数据可能被修改
+    int curX = x, curY = y;
+    //判断执行读操作期间，
+    //是否存在写操作，如果存在，
+    //则sl.validate返回false
+    if (!sl.validate(stamp)){
+      // 升级为悲观读锁
+      stamp = sl.readLock();
+      try {
+        curX = x;
+        curY = y;
+      } finally {
+        //释放悲观读锁
+        sl.unlockRead(stamp);
+      }
+    }
+    return Math.sqrt(
+      curX * curX + curY * curY);
+  }
+}
+```
+
+在上面这个代码示例中，如果执行乐观读操作的期间，存在写操作，会把乐观读升级为悲观读锁。这个做法挺合理的，否则你就需要在一个循环里反复执行乐观读，直到执行乐观读操作的期间没有写操作（只有这样才能保证x和y的正确性和一致性），而循环读会浪费大量的CPU。升级为悲观读锁，代码简练且不易出错，建议你在具体实践时也采用这样的方法。
+
+## 进一步理解乐观读
+
+如果你曾经用过数据库的乐观锁，可能会发现StampedLock的乐观读和数据库的乐观锁有异曲同工之妙。的确是这样的，就拿我个人来说，我是先接触的数据库里的乐观锁，然后才接触的StampedLock，我就觉得我前期数据库里乐观锁的学习对于后面理解StampedLock的乐观读有很大帮助，所以这里有必要再介绍一下数据库里的乐观锁。
+
+还记得我第一次使用数据库乐观锁的场景是这样的：在ERP的生产模块里，会有多个人通过ERP系统提供的UI同时修改同一条生产订单，那如何保证生产订单数据是并发安全的呢？我采用的方案就是乐观锁。
+
+乐观锁的实现很简单，在生产订单的表 product\_doc 里增加了一个数值型版本号字段 version，每次更新product\_doc这个表的时候，都将 version 字段加1。生产订单的UI在展示的时候，需要查询数据库，此时将这个 version 字段和其他业务字段一起返回给生产订单UI。假设用户查询的生产订单的id=777，那么SQL语句类似下面这样：
+
+```
+select id，... ，version
+from product_doc
+where id=777
+```
+
+用户在生产订单UI执行保存操作的时候，后台利用下面的SQL语句更新生产订单，此处我们假设该条生产订单的 version=9。
+
+```
+update product_doc 
+set version=version+1，...
+where id=777 and version=9
+```
+
+如果这条SQL语句执行成功并且返回的条数等于1，那么说明从生产订单UI执行查询操作到执行保存操作期间，没有其他人修改过这条数据。因为如果这期间其他人修改过这条数据，那么版本号字段一定会大于9。
+
+你会发现数据库里的乐观锁，查询的时候需要把 version 字段查出来，更新的时候要利用 version 字段做验证。这个 version 字段就类似于StampedLock里面的stamp。这样对比着看，相信你会更容易理解StampedLock里乐观读的用法。
+
+## StampedLock使用注意事项
+
+对于读多写少的场景StampedLock性能很好，简单的应用场景基本上可以替代ReadWriteLock，但是**StampedLock的功能仅仅是ReadWriteLock的子集**，在使用的时候，还是有几个地方需要注意一下。
+
+StampedLock在命名上并没有增加Reentrant，想必你已经猜测到StampedLock应该是不可重入的。事实上，的确是这样的，**StampedLock不支持重入**。这个是在使用中必须要特别注意的。
+
+另外，StampedLock的悲观读锁、写锁都不支持条件变量，这个也需要你注意。
+
+还有一点需要特别注意，那就是：如果线程阻塞在StampedLock的readLock()或者writeLock()上时，此时调用该阻塞线程的interrupt()方法，会导致CPU飙升。例如下面的代码中，线程T1获取写锁之后将自己阻塞，线程T2尝试获取悲观读锁，也会阻塞；如果此时调用线程T2的interrupt()方法来中断线程T2的话，你会发现线程T2所在CPU会飙升到100%。
+
+```
+final StampedLock lock
+  = new StampedLock();
+Thread T1 = new Thread(()->{
+  // 获取写锁
+  lock.writeLock();
+  // 永远阻塞在此处，不释放写锁
+  LockSupport.park();
+});
+T1.start();
+// 保证T1获取写锁
+Thread.sleep(100);
+Thread T2 = new Thread(()->
+  //阻塞在悲观读锁
+  lock.readLock()
+);
+T2.start();
+// 保证T2阻塞在读锁
+Thread.sleep(100);
+//中断线程T2
+//会导致线程T2所在CPU飙升
+T2.interrupt();
+T2.join();
+```
+
+所以，**使用StampedLock一定不要调用中断操作，如果需要支持中断功能，一定使用可中断的悲观读锁readLockInterruptibly()和写锁writeLockInterruptibly()**。这个规则一定要记清楚。
+
+## 总结
+
+StampedLock的使用看上去有点复杂，但是如果你能理解乐观锁背后的原理，使用起来还是比较流畅的。建议你认真揣摩Java的官方示例，这个示例基本上就是一个最佳实践。我们把Java官方示例精简后，形成下面的代码模板，建议你在实际工作中尽量按照这个模板来使用StampedLock。
+
+StampedLock读模板：
+
+```
+final StampedLock sl = 
+  new StampedLock();
+
+// 乐观读
+long stamp = 
+  sl.tryOptimisticRead();
+// 读入方法局部变量
+......
+// 校验stamp
+if (!sl.validate(stamp)){
+  // 升级为悲观读锁
+  stamp = sl.readLock();
+  try {
+    // 读入方法局部变量
+    .....
+  } finally {
+    //释放悲观读锁
+    sl.unlockRead(stamp);
+  }
+}
+//使用方法局部变量执行业务操作
+......
+```
+
+StampedLock写模板：
+
+```
+long stamp = sl.writeLock();
+try {
+  // 写共享变量
+  ......
+} finally {
+  sl.unlockWrite(stamp);
+}
+```
+
+## 课后思考
+
+StampedLock支持锁的降级（通过tryConvertToReadLock()方法实现）和升级（通过tryConvertToWriteLock()方法实现），但是建议你要慎重使用。下面的代码也源自Java的官方示例，我仅仅做了一点修改，隐藏了一个Bug，你来看看Bug出在哪里吧。
+
+```
+private double x, y;
+final StampedLock sl = new StampedLock();
+// 存在问题的方法
+void moveIfAtOrigin(double newX, double newY){
+ long stamp = sl.readLock();
+ try {
+  while(x == 0.0 && y == 0.0){
+    long ws = sl.tryConvertToWriteLock(stamp);
+    if (ws != 0L) {
+      x = newX;
+      y = newY;
+      break;
+    } else {
+      sl.unlockRead(stamp);
+      stamp = sl.writeLock();
+    }
+  }
+ } finally {
+  sl.unlock(stamp);
+}
+```
+
+欢迎在留言区与我分享你的想法，也欢迎你在留言区记录你的思考过程。感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>linqw</span> 👍（107） 💬（5）<div>课后思考题：在锁升级成功的时候，最后没有释放最新的写锁，可以在if块的break上加个stamp=ws进行释放</div>2019-04-09</li><br/><li><span>等我先变个身</span> 👍（49） 💬（9）<div>乐观锁的想法是“没事，肯定没被改过”，于是就开心地获取到数据，不放心吗？那就再验证一下，看看真的没被改过吧？这下可以放心使用数据了。
+我的问题是，验证完之后、使用数据之前，数据被其他线程改了怎么办？我看不出validate的意义。这个和数据库更新好像还不一样，数据库是在写的时候发现已经被其他人写了。这里validate之后也难免数据在进行业务计算之前已经被改掉了啊？</div>2019-04-09</li><br/><li><span>Grubby🐑</span> 👍（42） 💬（1）<div>老师，调用interrupt引起cpu飙高的原因是什么</div>2019-04-09</li><br/><li><span>Presley</span> 👍（29） 💬（1）<div>老师，StampedLock 读模板，先通过乐观读或者悲观读锁获取变量，然后利用这些变量处理业务逻辑，会不会存在线程安全的情况呢? 比如，读出来的变量没问题，但是进行业务逻辑处理的时候，这时，读出的变量有可能发生变化了吧(比如被写锁改写了)？所以，当使用乐观读锁时，是不是等业务都处理完了（比如先利用变量把距离计算完），再判断变量是否被改写，如果没改写，直接return;如果已经改写，则使用悲观读锁做同样的事情。不过如果业务比较耗时，可能持有悲观锁的时间会比较长，不知道理解对不对</div>2019-04-09</li><br/><li><span>Grubby🐑</span> 👍（21） 💬（2）<div>bug是tryConvertToWriteLock返回的write stamp没有重新赋值给stamp</div>2019-04-09</li><br/><li><span>发条橙子 。</span> 👍（14） 💬（2）<div>老师 ， 我看事例里面成员变量都给了一个 final 关键字 。 请问这里给变量加 final的用意是什么 ，仅仅是为了防止下面方法中代码给他赋新的对象么 。 我在平常写代码中很少有给变量加 final 的习惯， 希望老师能指点一下 😄</div>2019-04-15</li><br/><li><span>ban</span> 👍（9） 💬（1）<div>老师，你好，
 如果我在前面long stamp = sl.readLock();升级锁后long ws = sl.tryConvertToWriteLock(stamp);
-这个 stamp和ws是什么关系来的，是sl.unlockRead(是关stamp还是ws)。两者有什么区别呢</div>2019-04-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8c/4e/b81969fa.jpg" width="30px"><span>南北少卿</span> 👍（7） 💬（1）<div>jdk源码StampedLock中的示例，if (ws != 0L) 时使用了stamp=ws</div>2019-05-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8d/a6/22c37c91.jpg" width="30px"><span>楊_宵夜</span> 👍（5） 💬（1）<div>王老师, 您好, 文章中的StampedLock模板, 只适用于单机应用吧? 如果是集群部署, 那还是得用数据库乐观锁, 是吗??</div>2019-06-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8c/4e/b81969fa.jpg" width="30px"><span>南北少卿</span> 👍（4） 💬（1）<div>这个获取锁返回的stamp,可以理解成上锁后的钥匙吗?</div>2020-06-19</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eoVRER40LhyAmwlCqszX6s02Ix04Yztia9UIFrcm3JV9gHmbswvffqCW0KentRGVrPJuibyzJlpcW5g/132" width="30px"><span>ttang</span> 👍（4） 💬（3）<div>老师，ReadWriteLock锁和StampedLock锁都是可以同时读的，区别是StampedLock乐观读不加锁。那StampedLock比ReadWriteLock性能高的原因就是节省了加读锁的性能损耗吗？另外StampedLock用乐观读的时候是允许一个线程获取写锁的，是不是可以理解为StampedLock对写的性能更高，会不会因为写锁获取概率增大大，导致不能获取读锁。导致StampedLock读性能反而没有ReadWriteLock高？</div>2019-04-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0c/c2/bad34a50.jpg" width="30px"><span>张洋</span> 👍（3） 💬（1）<div>王老师还有一个问题，最近做一些关于秒杀的业务，是不是可以用到乐观读的性质。
+这个 stamp和ws是什么关系来的，是sl.unlockRead(是关stamp还是ws)。两者有什么区别呢</div>2019-04-13</li><br/><li><span>南北少卿</span> 👍（7） 💬（1）<div>jdk源码StampedLock中的示例，if (ws != 0L) 时使用了stamp=ws</div>2019-05-12</li><br/><li><span>楊_宵夜</span> 👍（5） 💬（1）<div>王老师, 您好, 文章中的StampedLock模板, 只适用于单机应用吧? 如果是集群部署, 那还是得用数据库乐观锁, 是吗??</div>2019-06-14</li><br/><li><span>南北少卿</span> 👍（4） 💬（1）<div>这个获取锁返回的stamp,可以理解成上锁后的钥匙吗?</div>2020-06-19</li><br/><li><span>ttang</span> 👍（4） 💬（3）<div>老师，ReadWriteLock锁和StampedLock锁都是可以同时读的，区别是StampedLock乐观读不加锁。那StampedLock比ReadWriteLock性能高的原因就是节省了加读锁的性能损耗吗？另外StampedLock用乐观读的时候是允许一个线程获取写锁的，是不是可以理解为StampedLock对写的性能更高，会不会因为写锁获取概率增大大，导致不能获取读锁。导致StampedLock读性能反而没有ReadWriteLock高？</div>2019-04-10</li><br/><li><span>张洋</span> 👍（3） 💬（1）<div>王老师还有一个问题，最近做一些关于秒杀的业务，是不是可以用到乐观读的性质。
 将库存量放在redis里边，然后所有的节点操作的时候通过缓存读出来，在代码逻辑里边对库存加一个
-乐观读的操作。然后库存量等于0 的时候再去和数据库进行交互。  这样做会存在并发安全问题吗。</div>2019-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/33/1f/35b68f47.jpg" width="30px"><span>on the way</span> 👍（3） 💬（1）<div>有点没看明白示例interrupt那个代码里的 Thread.sleep（100）…</div>2019-04-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/c8/980776fc.jpg" width="30px"><span>走马</span> 👍（2） 💬（1）<div>您好，老师，我一直有个疑惑， 类似ERP的系统，它的程序代码本身没做并发处理，但是卖的时候会和客户说不同并发价格不一样，它是怎么做到的 ？ 是由一个独立的软件来处理并发吗？</div>2019-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/4e/3a/86196508.jpg" width="30px"><span>linqw</span> 👍（1） 💬（1）<div>从头重新看一篇，也自己大致写了下对StampedLock的源码分析https:&#47;&#47;juejin.im&#47;editor&#47;posts&#47;5d00a6c8e51d45105d63a4ed，老师有空帮忙看下哦</div>2019-06-15</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKZSibeTatZ2ImL5Xu3QqdTWQs5nyQAxDlsm3m0KicP3TN6icJqYricvhjOFfTB2B3oLInU45CC9LtqMA/132" width="30px"><span>狂风骤雨</span> 👍（1） 💬（1）<div>老师，你上章讲的ReadWriteLock，说的是当有一个线程在执行写操作时所有的读线程都被阻塞，本章你又提了一下ReadWriteLock，说的是当有多个线程进行读操作时，所有的写操作都被阻塞，这样是</div>2019-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1c/82/74ab79df.jpg" width="30px"><span>等我先变个身</span> 👍（1） 💬（1）<div>validate也无法保证一致性是吗？如果是那么应该怎么用validate？</div>2019-04-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4a/96/99466a06.jpg" width="30px"><span>Laughing</span> 👍（0） 💬（1）<div>课后题的代码就是官方的实例，这里在成功升锁之后没有把得到的写锁ws赋值给`stamp`变量，这样最后解锁时会报IllegalMonitorStateException的异常。</div>2021-03-29</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eoEcoSRAWRtibKK8RHPc7XibzcyGEfDsUFOXRJWtfd2u549Qa4KpicFNpeq16IqK2KSp9rkF2hrMXDLg/132" width="30px"><span>小小米</span> 👍（0） 💬（1）<div>return Math.sqrt( curX * curX + curY * curY);
-在执行这句的时候，因为已经释放了悲观读锁，变量又被其他线程改了怎么办？是不是应该把这句也放在try块里？请老师解答。</div>2020-06-03</li><br/><li><img src="" width="30px"><span>Geek_qomxrt</span> 👍（0） 💬（1）<div>老师好，对于数据库的乐观读锁的例子，虽然很巧妙，但有点疑问，除非应用场景是version不对就不允许update，如果应用场景只是互斥并发的update，我觉得应该利用数据库自身特性就足够，例如postgresql中update语句会锁表（http:&#47;&#47;www.postgres.cn&#47;docs&#47;10&#47;explicit-locking.html#LOCKING-TABLES），不太需要您说的这个方法就可以实现并发的update。</div>2019-10-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/30/8a/b5ca7286.jpg" width="30px"><span>业余草</span> 👍（0） 💬（1）<div>挺好的专栏，但是大多数人写业务逻辑用不到这些技术！</div>2019-09-25</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/6LaITPQ4Lk5fZn8ib1tfsPW8vI9icTuSwAddiajVfibPDiaDvMU2br6ZT7K0LWCKibSQuicT7sIEVmY4K7ibXY0T7UQEiag/132" width="30px"><span>尔东橙</span> 👍（0） 💬（1）<div>老师，乐观读升级为悲观读锁是，如果写操作还在进行怎么办？</div>2019-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/89/f4/b3dacf1a.jpg" width="30px"><span>VERITAS</span> 👍（0） 💬（1）<div>老师你好，请问官方示例URL是多少，没有找到</div>2019-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/9f/41/82306dfe.jpg" width="30px"><span>包子</span> 👍（0） 💬（1）<div>老师，一直有个问题想不明白，就是对一个变量的读和写是否会存在线程安全问题。
-文章中举例是同时对x和y进行读写操作，那xy的读写不能保证原子性，所以需要用到锁。
-如果是对一个变量x的读和写，我们对x加volatile，保证其多线程的可见性是不是就可以了？</div>2019-04-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/8b/ec/dc03f5ad.jpg" width="30px"><span>张天屹</span> 👍（0） 💬（1）<div>说到数据库乐观锁，有个问题想请教老师，比如spring使用事务的时候，底层就已经使用了读写相关的锁来保证并发了，在我们的程序中还需要显式的使用乐观锁机制来保证并发安全吗</div>2019-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7d/da/780f149e.jpg" width="30px"><span>echo＿陈</span> 👍（8） 💬（0）<div>以前看过java并发编程实战，讲jdk并发类库……不过那个书籍是jdk1.7版本……所以是头一次接触StempLock……涨知识了</div>2019-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0e/1f/d0472177.jpg" width="30px"><span>厉害了我的国</span> 👍（4） 💬（1）<div>分布式场景下，java的锁还有用武之地吗？感觉就是玩具啊。。</div>2020-03-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f8/bb/8b2ba45d.jpg" width="30px"><span>冯传博</span> 👍（4） 💬（1）<div>解释一下 cpu 飙升的原因呗</div>2019-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/30/c1/2dde6700.jpg" width="30px"><span>密码123456</span> 👍（4） 💬（0）<div>悲观锁和乐观锁。悲观锁，就是普通的锁。乐观锁，就是无锁，仅增加一个版本号，在取完数据验证一下版本号。如果不一致那么就进行悲观锁获取锁。能够这么理解吗？</div>2019-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/97/4a/0da51831.jpg" width="30px"><span>夕阳武士</span> 👍（2） 💬（0）<div>int getAnd() {
-        long stamp = stampedLock.tryOptimisticRead();
-        System.out.println(Thread.currentThread().getName() + &quot;,乐观读：x: &quot; + x + &quot;,y: &quot; + y);
-        if (!stampedLock.validate(stamp)) {
-            stamp = stampedLock.readLock();
-            try {
-                System.out.println(Thread.currentThread().getName() + &quot;,悲观读锁：x: &quot; + x + &quot;,y: &quot; + y);
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                stampedLock.unlock(stamp);
-            }
-        }
-        return x + y;
-    }
-
-    void set(int x, int y) {
-        long stamp = stampedLock.writeLock();
-        try {
-            this.x = x;
-            this.y = y;
-            System.out.println(&quot;写锁开始赋值。。。。。&quot;);
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            stampedLock.unlock(stamp);
-        }
-    }
-
-运行结果：
-Thread-9927,乐观读：x: 0,y: 0
-Thread-9920,乐观读：x: 0,y: 0
-Thread-9923,乐观读：x: 0,y: 0
-Thread-9902,乐观读：x: 0,y: 0
-写锁开始赋值。。。。。
-Thread-9996,乐观读：x: 22,y: 33
-Thread-9993,乐观读：x: 22,y: 33
-Thread-9994,乐观读：x: 22,y: 33
-Thread-9990,乐观读：x: 22,y: 33
-Thread-9997,乐观读：x: 0,y: 0
-Thread-9899,乐观读：x: 0,y: 0
-Thread-9987,乐观读：x: 22,y: 33
-Thread-9997,悲观读锁：x: 22,y: 33
-Thread-9986,乐观读：x: 22,y: 33
-Thread-9992,乐观读：x: 22,y: 33
-Thread-9891,乐观读：x: 22,y: 33
-Thread-9899,悲观读锁：x: 22,y: 33
-Thread-9983,乐观读：x: 22,y: 33
-
-写个demo验证一下，从Thread-9997这个线程的改变，可以看出升级锁的过程。</div>2021-04-27</li><br/>
+乐观读的操作。然后库存量等于0 的时候再去和数据库进行交互。  这样做会存在并发安全问题吗。</div>2019-04-14</li><br/><li><span>on the way</span> 👍（3） 💬（1）<div>有点没看明白示例interrupt那个代码里的 Thread.sleep（100）…</div>2019-04-11</li><br/><li><span>走马</span> 👍（2） 💬（1）<div>您好，老师，我一直有个疑惑， 类似ERP的系统，它的程序代码本身没做并发处理，但是卖的时候会和客户说不同并发价格不一样，它是怎么做到的 ？ 是由一个独立的软件来处理并发吗？</div>2019-12-20</li><br/><li><span>linqw</span> 👍（1） 💬（1）<div>从头重新看一篇，也自己大致写了下对StampedLock的源码分析https:&#47;&#47;juejin.im&#47;editor&#47;posts&#47;5d00a6c8e51d45105d63a4ed，老师有空帮忙看下哦</div>2019-06-15</li><br/>
 </ul>

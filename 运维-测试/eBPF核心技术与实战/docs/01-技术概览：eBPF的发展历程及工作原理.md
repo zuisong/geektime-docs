@@ -11,20 +11,86 @@ eBPF 广泛的应用场景和强大的功能，跟它的发展历程、基本原
 在开篇词中，我曾经提到，eBPF 是从 BPF (Berkeley Packet Filter) 技术扩展而来的。而说起 BPF，它的历史就更悠长了。
 
 早在 1992 年的 USENIX 会议上，Steven McCanne 和 Van Jacobson 发布的论文“[The BSD Packet Filter: A New Architecture for User-level Packet Capture](https://www.tcpdump.org/papers/bpf-usenix93.pdf)” 就为 BSD 操作系统带来了革命性的包过滤机制 BSD Packet Filter（简称为 BPF），这比当时最先进的数据包过滤技术还快 20 倍。为什么性能这么好呢？这主要得益于 BPF 的两大设计：
-<div><strong>精选留言（23）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/71/c3/09e22c1d.jpg" width="30px"><span>大卫李</span> 👍（24） 💬（3）<div>非常高兴看到eBPF技术能在极客时间开学习专栏了，算是中文圈的一个里程碑！本人也在一直学习bpf技术（也简单写了发展史：https:&#47;&#47;davidlovezoe.club&#47;bpf ），希望跟倪老师及大家共勉。</div>2022-01-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/f2/79/b2012f53.jpg" width="30px"><span>余生</span> 👍（10） 💬（1）<div>极客上特别喜欢的几位大咖老师，倪朋飞、陶辉、刘超、彭东！</div>2022-01-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/f2/f5/b82f410d.jpg" width="30px"><span>Unknown element</span> 👍（8） 💬（1）<div>老师我看您在评论区说ebpf程序是在加载到内核之前验证，那文中的执行顺序是不是不太准确？应该是 编译 验证 加载 内核执行？</div>2022-02-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/9f/fc/0232f005.jpg" width="30px"><span>我要收购腾讯</span> 👍（7） 💬（1）<div>用过 bcc profile + crd 的方式给公司内部的k8s控制台开发过一键生成火焰图的功能, （全套的可观测性部署不太适合开发测试用集群）</div>2022-01-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/24/59/e9867100.jpg" width="30px"><span>Unknown</span> 👍（7） 💬（2）<div>bcc tools 工具都很好用，比如Diffie-Hellman密钥交换算法使得就算有key都无法解密，不过如果通过bcc tools中的sslsniff能直接查看了，对调试来说挺方便的</div>2022-01-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/e6/ee/8fdbd5db.jpg" width="30px"><span>Damoncui</span> 👍（6） 💬（1）<div>好激动！目前正在看翻译版的《bpf之巅》，配合食用简直快乐到不行～英文版吃起来太痛苦……
+
+- 第一，内核态引入一个新的虚拟机，所有指令都在内核虚拟机中运行。
+- 第二，用户态使用 BPF 字节码来定义过滤表达式，然后传递给内核，由内核虚拟机解释执行。
+
+这就使得包过滤可以直接在内核中执行，避免了向用户态复制每个数据包，从而极大提升了包过滤的性能，进而被各大操作系统广泛接受。BPF 最初的名字 BSD Packet Filter ，也被作者的工作单位名所替代，变成了 Berkeley Packet Filter（很巧的是，还是简称 BPF）。
+
+在 BPF 诞生五年后，Linux 2.1.75 首次引入了 BPF 技术，随后 BPF 开始了不温不火的发展历程。其中，Linux 3.0 中增加的 BPF 即时编译器可以算是一个最重大的更新了。它替换掉了原本性能更差的解释器，进一步优化了 BPF 指令运行的效率。但直到此时，BPF 的应用还是仅限于网络包过滤这个传统的领域中。
+
+时间到了 2014 年。为了研究新的软件定义网络方案，Alexei Starovoitov 为 BPF 带来了第一次革命性的更新，将 BPF 扩展为一个通用的虚拟机，也就是 eBPF。eBPF 不仅扩展了寄存器的数量，引入了全新的 BPF 映射存储，还在 4.x 内核中将原本单一的数据包过滤事件逐步扩展到了内核态函数、用户态函数、跟踪点、性能事件（perf\_events）以及安全控制等。
+
+**eBPF 的诞生是 BPF 技术的一个转折点，使得 BPF 不再仅限于网络栈，而是成为内核的一个顶级子系统。**
+
+在内核发展的同时，eBPF 繁荣的生态也进一步促进了 eBPF 的蓬勃发展。这其中，最典型的就是 iovisor 带来的 BCC、bpftrace 等工具，成为 eBPF 在跟踪和排错领域的最佳实践。由于 eBPF 无需修改内核源码和重新编译内核就可以扩展内核的功能，Cilium、Katran、Falco 等一系列基于 eBPF 优化网络和安全的开源项目也逐步诞生。并且，越来越多的开源和商业解决方案开始借助 eBPF，优化其网络、安全以及观测的性能。比如，最流行的网络解决方案之一 Calico，就在最近的版本中引入了 [eBPF 数据面网络](https://www.tigera.io/blog/introducing-the-calico-ebpf-dataplane/)，大大提升了网络的性能。
+
+为了帮你更好地理解 eBPF 的发展历程，我把 eBPF 诞生以来的发展过程整理成了一张图片：
+
+![](https://static001.geekbang.org/resource/image/b4/ff/b44562381748de369b50403219c0d1ff.jpg?wh=2284x7454 "eBPF 发展历程")
+
+直到今天，eBPF 依然是内核社区最活跃的子模块之一，还处在一个快速发展的过程中。可以说，**eBPF 开启的创新才刚刚开始**，在未来我们会看到更多的创新案例。正是为了确保每个 eBPF 学习者不掉队，我们把这门课设计成了动态发布的形式，带你随时跟踪这些最新的发展和案例。
+
+了解了 eBPF 的诞生过程后，还有一点需要你留意：在内核社区的开发讨论中，通常还是使用 BPF 这个缩略词，而在很多应用的文档中可能会倾向使用 eBPF。其实它们的含义是一样的，都是指扩展版的 BPF。
+
+## eBPF 是怎么工作的?
+
+eBPF 程序并不像常规的线程那样，启动后就一直运行在那里，它需要事件触发后才会执行。这些事件包括系统调用、内核跟踪点、内核函数和用户态函数的调用退出、网络事件，等等。借助于强大的内核态插桩（kprobe）和用户态插桩（uprobe），eBPF 程序几乎可以在内核和应用的任意位置进行插桩。
+
+看到这个令人惊叹的能力，你一定有疑问：这会不会像内核模块一样，一个异常的 eBPF 程序就会损坏整个内核的稳定性呢？其实，**确保安全和稳定一直都是 eBPF 的首要任务**，不安全的 eBPF 程序根本就不会提交到内核虚拟机中执行。
+
+Linux 内核是如何实现 eBPF 程序的安全和稳定的呢？其实很简单，我带你看个 eBPF 程序的执行过程，你就明白了。
+
+如下图（图片来自[brendangregg.com](https://www.brendangregg.com/ebpf.html)）所示，通常我们借助 [LLVM](https://llvm.org/) 把编写的 eBPF 程序转换为 BPF 字节码，然后再通过 bpf 系统调用提交给内核执行。内核在接受 BPF 字节码之前，会首先通过验证器对字节码进行校验，只有校验通过的 BPF 字节码才会提交到即时编译器执行。
+
+![图片](https://static001.geekbang.org/resource/image/a7/6a/a7165eea1fd9fc24090a3a1e8987986a.png?wh=1500x550 "eBPF 程序执行过程")
+
+如果 BPF 字节码中包含了不安全的操作，验证器会直接拒绝 BPF 程序的执行。比如，下面就是一些典型的验证过程：
+
+- 只有特权进程才可以执行 bpf 系统调用；
+- BPF 程序不能包含无限循环；
+- BPF 程序不能导致内核崩溃；
+- BPF 程序必须在有限时间内完成。
+
+BPF 程序可以利用 BPF 映射（map）进行存储，而用户程序通常也需要通过 BPF 映射同运行在内核中的 BPF 程序进行交互。如下图（图片来自[ebpf.io](https://ebpf.io/what-is-ebpf)）所示，在性能观测中，BPF 程序收集内核运行状态存储在映射中，用户程序再从映射中读出这些状态。
+
+![图片](https://static001.geekbang.org/resource/image/53/dd/53af7f7db99c3ca57f981f00303949dd.png?wh=1401x733 "BPF 映射")
+
+可以看到，eBPF 程序的运行需要历经编译、加载、验证和内核态执行等过程，而用户态程序则需要借助 BPF 映射来获取内核态 eBPF 程序的运行状态。
+
+## eBPF 是万能的吗?
+
+看到这里，你是不是因为 eBPF 在扩展内核功能上的强大能力而兴奋不已？我猜你已经迫不及待想要体验一下了。不过，在你体验之前，我还要提醒你一点：eBPF 并不是万能的，它也有很多的局限性。下面是一些最常见的 eBPF 限制：
+
+- eBPF 程序必须被验证器校验通过后才能执行，且不能包含无法到达的指令；
+- eBPF 程序不能随意调用内核函数，只能调用在 API 中定义的辅助函数；
+- eBPF 程序栈空间最多只有 512 字节，想要更大的存储，就必须要借助映射存储；
+- 在内核 5.2 之前，eBPF 字节码最多只支持 4096 条指令，而 5.2 内核把这个限制提高到了 100 万条；
+- 由于内核的快速变化，在不同版本内核中运行时，需要访问内核数据结构的 eBPF 程序很可能需要调整源码，并重新编译。
+
+此外，虽然 Linux 内核很早就已经支持了 eBPF，但很多新特性都是在 4.x 版本中逐步增加的，具体你可以看下[这个链接](https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md#main-features)。所以，想要稳定运行 eBPF 程序，**内核版本至少需要 4.9 或者更新**。而在开发和学习 eBPF 时，**为了体验最新的 eBPF 特性，我推荐使用更新的 5.x 内核**。在这门课后面的内容中，我还会给你详细讲解开发环境的搭建步骤，以及推荐的 Linux 发行版。
+
+## 小结
+
+今天，我带你一起探索了 eBPF 技术的发展历程，并梳理了 eBPF 的工作原理。
+
+eBPF 是从 BPF 技术扩展而来的。BPF 出现后，一直都是网络数据包过滤的核心，但直到 eBPF 诞生前，BPF 都仅用于包过滤这个场景中。eBPF 的诞生是 BPF 技术的一个转折点，使它的应用范围逐步从包过滤扩展到内核函数、用户函数、跟踪点、性能事件、安全控制等全新的领域中。而这也进一步催生了Cilium、Katran、Falco 等一大批基于 eBPF 构建的网络和安全解决方案，形成了繁荣的 eBPF 生态。
+
+eBPF 程序以内核事件触发的方式运行，并且其运行过程包括编译、加载、验证和内核态执行等。为了保护内核的安全和稳定，如果编译后 BPF 字节码中包含了不安全的操作，验证阶段会直接拒绝 BPF 程序的执行。
+
+不过，需要提醒你的是：为了确保安全和稳定，eBPF 程序也有很多的限制，这是你在后续的学习过程中需要特别留心的。
+
+## 思考题
+
+在这一讲的最后，想和你交流的问题是：在之前的学习和工作中，你有没有使用过 eBPF 呢？如果使用过，你又用 eBPF 解决过哪些实际的问题呢？期待你在留言区分享，并和我交流讨论。
+
+今天的内容到这里就结束了，欢迎把它分享给你的同事和朋友，我们下一讲见。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>大卫李</span> 👍（24） 💬（3）<div>非常高兴看到eBPF技术能在极客时间开学习专栏了，算是中文圈的一个里程碑！本人也在一直学习bpf技术（也简单写了发展史：https:&#47;&#47;davidlovezoe.club&#47;bpf ），希望跟倪老师及大家共勉。</div>2022-01-17</li><br/><li><span>余生</span> 👍（10） 💬（1）<div>极客上特别喜欢的几位大咖老师，倪朋飞、陶辉、刘超、彭东！</div>2022-01-18</li><br/><li><span>Unknown element</span> 👍（8） 💬（1）<div>老师我看您在评论区说ebpf程序是在加载到内核之前验证，那文中的执行顺序是不是不太准确？应该是 编译 验证 加载 内核执行？</div>2022-02-09</li><br/><li><span>我要收购腾讯</span> 👍（7） 💬（1）<div>用过 bcc profile + crd 的方式给公司内部的k8s控制台开发过一键生成火焰图的功能, （全套的可观测性部署不太适合开发测试用集群）</div>2022-01-21</li><br/><li><span>Unknown</span> 👍（7） 💬（2）<div>bcc tools 工具都很好用，比如Diffie-Hellman密钥交换算法使得就算有key都无法解密，不过如果通过bcc tools中的sslsniff能直接查看了，对调试来说挺方便的</div>2022-01-17</li><br/><li><span>Damoncui</span> 👍（6） 💬（1）<div>好激动！目前正在看翻译版的《bpf之巅》，配合食用简直快乐到不行～英文版吃起来太痛苦……
 
 选对课程、教程基本节约了一半时间！
 
 希望和各类牛人一起加油进步！
 
-ebpf一定会越来越火🔥～</div>2022-01-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/d0/51/f1c9ae2d.jpg" width="30px"><span>Sports</span> 👍（2） 💬（1）<div>刚来到极客时间买的早期课程就有倪老师的Linux优化实战，看过多遍，大神必出精品！</div>2022-01-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/60/36/1848c2b7.jpg" width="30px"><span>dovefi</span> 👍（1） 💬（1）<div>使用过bcc-tools 中的filetop cachetop等工具分析过缓存占用的问题，第一次接触到ebpf工具，同事的大佬也有使用systemtap解决过很多问题</div>2022-01-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/d0/d0/a6c6069d.jpg" width="30px"><span>坚</span> 👍（1） 💬（2）<div>倪老师好，我是做嵌入式开发，需要自己配置内核，在搭建bpf的使用环境的时候可以也提一下需要开启内核哪些配置吗？</div>2022-01-18</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqKmVMIqxRO00L8J1iatIzeMHwzYb0s762j9B2dicy4P8tciat26cNDgoyMREjtluZEBXGvwz9nUSO2g/132" width="30px"><span>Geek_07f1e3</span> 👍（0） 💬（1）<div>曾利用bcc解决过容器DNS请求监控的问题场景，但是正如倪老师文末所提及的eBPF与内核版本之间的限制关系，导致方案最后没被通过，但也算是一次不错的实践体验。</div>2023-01-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/23/13/bd/3e86e791.jpg" width="30px"><span>十七</span> 👍（0） 💬（1）<div>嵌入式系统ebpf是否适合使用?</div>2022-03-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/d0/d0/a6c6069d.jpg" width="30px"><span>坚</span> 👍（0） 💬（1）<div>老师，我想问一下eBPF和perf有关系吗？还是说这是两个东西</div>2022-02-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/2e/0d/72a65e1c.jpg" width="30px"><span>helloworld</span> 👍（0） 💬（1）<div>非常高兴看到这样的课程。我这里工作实践中用个疑问，我们一般遇到的操作系统低版本的比较多，比如centos内核3.1x的，怎么能做到在低版本适配呢？</div>2022-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/53/db/858337e3.jpg" width="30px"><span>Ethan Liu</span> 👍（0） 💬（2）<div>eBPF程序执行需要进行验证，不影响性能吗？</div>2022-01-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/82/de/7f6cae1f.jpg" width="30px"><span>娟</span> 👍（0） 💬（2）<div>bpf很早就有一些了解，觉得那些语法挺好玩，跟着大牛一起进步，系统化了解了解ebpf。希望结束的时候能很有收获。</div>2022-01-20</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/UWDBUEsDLIKpeIujPLsrRG9l0cFhWlXB9CcaOpNKrOdhDAia6PialmJZ4MQgYtBpDdu58leIDDlsOxaZsRvknZZA/132" width="30px"><span>Geek_cc0645</span> 👍（0） 💬（0）<div>原来的版本是 3.10，centos7, 请问下自己编译 5.4.286版本的内核，sudo modprobe bpf
-modprobe: FATAL: Module bpf not found. 报错是因为什么，
-使用的配置参数
-CONFIG_BPF=y
-CONFIG_BPF_SYSCALL=y
-CONFIG_BPF_EVENTS=y
-CONFIG_BPF_JIT=y
-CONFIG_HAVE_EBPF_JIT=y</div>2024-12-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/ce/06/273dcc0d.jpg" width="30px"><span>愚人</span> 👍（0） 💬（0）<div>“但直到 eBPF 诞生前，BPF 都仅用于包过滤这个场景中”这里似乎不对哦，今天看到 Linux 的 seccomp 使用了 bpf 来更灵活地控制进程能使用哪些系统调用，这个机制在 2012 年的 3.5 版本内核引入，但从文章看起来 ebpf 的出现时间应该在 2014 年🤔</div>2024-10-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/31/21/41/d8f2fe6d.jpg" width="30px"><span>阴晦</span> 👍（0） 💬（0）<div>最近打算脱离云做传统软件的时候，突然想起来ebpf可以在一些注入网关之类的需要做代理转发的地方使用。
-不过目前还没有是深入学习，还不知道想法现实与否</div>2024-08-27</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKf9jqppL0WenjNzGAykMcWZuec94gvGYlb5LwhROXD8Ym0SkhnN3H1oObsqmoIoU95zqz8FGNIOA/132" width="30px"><span>屠步空杯</span> 👍（0） 💬（0）<div>倪老师，您提到的内核社区，具体位置在哪，能发一下吗？谢谢</div>2024-01-20</li><br/><li><img src="" width="30px"><span>Geek_5674cf</span> 👍（0） 💬（0）<div>老师，在androids系统中，通过ebpf是否可以实现转发指定app中指定接口的明文数据</div>2023-07-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/92/7c/12c571b6.jpg" width="30px"><span>Slience-0°C</span> 👍（0） 💬（0）<div>老师，eBPF可以做控制操作的功能？</div>2022-09-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5f/43/3799a0f3.jpg" width="30px"><span>magina</span> 👍（0） 💬（0）<div>看完没懂“内核态引入一个新的虚拟机，所有指令都在内核虚拟机中运行”，怎么体现在文中的图上？</div>2022-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/17/18/e4382a8e.jpg" width="30px"><span>有识之士</span> 👍（0） 💬（0）<div>开发 eBPF 程序，如何进行调试？类似 go、java 这种高级语言可以方便 debug 一样的？ </div>2022-07-22</li><br/>
+ebpf一定会越来越火🔥～</div>2022-01-18</li><br/><li><span>Sports</span> 👍（2） 💬（1）<div>刚来到极客时间买的早期课程就有倪老师的Linux优化实战，看过多遍，大神必出精品！</div>2022-01-19</li><br/><li><span>dovefi</span> 👍（1） 💬（1）<div>使用过bcc-tools 中的filetop cachetop等工具分析过缓存占用的问题，第一次接触到ebpf工具，同事的大佬也有使用systemtap解决过很多问题</div>2022-01-28</li><br/><li><span>坚</span> 👍（1） 💬（2）<div>倪老师好，我是做嵌入式开发，需要自己配置内核，在搭建bpf的使用环境的时候可以也提一下需要开启内核哪些配置吗？</div>2022-01-18</li><br/><li><span>Geek_07f1e3</span> 👍（0） 💬（1）<div>曾利用bcc解决过容器DNS请求监控的问题场景，但是正如倪老师文末所提及的eBPF与内核版本之间的限制关系，导致方案最后没被通过，但也算是一次不错的实践体验。</div>2023-01-28</li><br/><li><span>十七</span> 👍（0） 💬（1）<div>嵌入式系统ebpf是否适合使用?</div>2022-03-04</li><br/><li><span>坚</span> 👍（0） 💬（1）<div>老师，我想问一下eBPF和perf有关系吗？还是说这是两个东西</div>2022-02-17</li><br/><li><span>helloworld</span> 👍（0） 💬（1）<div>非常高兴看到这样的课程。我这里工作实践中用个疑问，我们一般遇到的操作系统低版本的比较多，比如centos内核3.1x的，怎么能做到在低版本适配呢？</div>2022-02-15</li><br/><li><span>Ethan Liu</span> 👍（0） 💬（2）<div>eBPF程序执行需要进行验证，不影响性能吗？</div>2022-01-20</li><br/><li><span>娟</span> 👍（0） 💬（2）<div>bpf很早就有一些了解，觉得那些语法挺好玩，跟着大牛一起进步，系统化了解了解ebpf。希望结束的时候能很有收获。</div>2022-01-20</li><br/>
 </ul>

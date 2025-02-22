@@ -13,27 +13,142 @@
 大部分原因是我越来越喜爱 Rust 这门语言，想让更多的人也能爱上它，于是之前在公众号和 B 站上，也做了不少输出。但这样的输出，左一块右一块的，没有一个完整的体系，所以有这样一个机会，来构建出我个人总结的Rust学习体系，也许对大家的学习会有很大的帮助。
 
 另外一部分原因也是出于我的私心。自从 2016 年《途客圈创业记》出版后，我就没有正式出版过东西，很多口头答应甚至签下合同的选题，也都因为各种原因被我终止或者搁置了。我特别想知道，自己究竟是否还能拿起笔写下严肃的可以流传更广、持续更久的文字。
-<div><strong>精选留言（29）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/7a/c3/abb7bfe3.jpg" width="30px"><span>JK.Ryan</span> 👍（3） 💬（1）<div>期待有新的教程～可以讲讲一些软件架构方面的</div>2022-01-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/26/27/eba94899.jpg" width="30px"><span>罗杰</span> 👍（14） 💬（1）<div>这门课是我从头追到尾的，刚开始的时候，我还在追个电视剧，追完电视剧发现专栏更新了。然后看了文章之后感觉这可比剧精彩多了，然后我把电视剧给放弃了。每节课都能看出老师的用心，每节课都有新的收获。虽然说老师通过教授我们受益最大的还是老师，但是我还是要说一声谢谢，感谢老师这么用心的专栏，希望老师能在未来的时间里面给我们带来更多不一样的课程。</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/ce/ed/3dbe915b.jpg" width="30px"><span>乌龙猹</span> 👍（8） 💬（1）<div>谢谢老师，感谢老师这段时间的辛苦付出。期待后续「 Elixir 编程第一课」</div>2021-12-22</li><br/><li><img src="" width="30px"><span>springXu</span> 👍（2） 💬（2）<div>期待老师的加餐篇</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a9/84/c87b51ce.jpg" width="30px"><span>xiaobang</span> 👍（2） 💬（1）<div>学习这门课收获很大，这门课除了很好的接受rust的特性，还展示了真实世界中rust项目的开发方式。这是一般的rust书籍里面没有的</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0f/1f/e894ae27.jpg" width="30px"><span>Colt</span> 👍（1） 💬（1）<div>意犹未尽,这门课不单单学rust,还能学习大佬的解题思路,有技术的大佬不少,但能把知识输出得那么淋漓尽致真不多,期待陈老师的下一课</div>2021-12-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/20/ea/3d/fe1ab9eb.jpg" width="30px"><span>Marshal SHI</span> 👍（1） 💬（1）<div>fantastic journey</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4c/12/f0c145d4.jpg" width="30px"><span>Rayjun</span> 👍（1） 💬（1）<div>太棒了，期待老师后续的课程</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/46/3f/7825378a.jpg" width="30px"><span>无名氏</span> 👍（0） 💬（1）<div>感谢老师。文案和语音都是精品。</div>2021-12-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/32/8d/91cd624b.jpg" width="30px"><span>幻境之桥</span> 👍（0） 💬（1）<div>虽然还有很多没有完全看懂由于时间关系，但还是想看更多😁</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/05/ca/eefef69b.jpg" width="30px"><span>刘永臣</span> 👍（0） 💬（1）<div>没赶上开头赶上了结尾，赞一个！！！</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a4/00/30199ec9.jpg" width="30px"><span>蓉城小隐</span> 👍（0） 💬（1）<div>前几个月认真跟着学习，虽然Rust没实际用到工作中，但受益匪浅；这门课帮助我加深了对kotlin&#47;java&#47;c++等语言的理解；老师的思路更是常常令我豁然开朗。后面因为工作太忙没跟上，一定会补上，并且我觉得这么课是需要多学几遍的，每一遍都会有收获。
-最后，感谢陈老师持续几个月辛苦的付出。</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/d3/ef/b3b88181.jpg" width="30px"><span>overheat</span> 👍（0） 💬（1）<div>结束了？期待加餐！</div>2021-12-22</li><br/><li><img src="" width="30px"><span>安迪</span> 👍（0） 💬（1）<div>非常享受老师授课的过程。
-课程知识远超 Rust 语言本身，受益匪浅！！！</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/52/40/e57a736e.jpg" width="30px"><span>pedro</span> 👍（0） 💬（1）<div>完结撒花，下次再见</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2a/1b/11/7d96bff5.jpg" width="30px"><span>yyxxccc</span> 👍（0） 💬（1）<div>不止于rust。陈老师的每篇文章多次看都有不同的收获</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/53/c4/dea5d7f3.jpg" width="30px"><span>chapin</span> 👍（4） 💬（0）<div>首先，感谢陈天老师对专栏的付出。在短时间内输出这么优质的文章，想必费了不少时间和精力。
 
-其次，通过这个专栏，收获不止于Rust，正所谓：“授人以鱼不如授人以渔”。同时，也感受到陈天老师丰富的项目经验和对技术的挚爱。
+可是——**介绍一门语言的文字可以有持久的生命力么？**
 
-最后，期待老师会有下一个专栏。</div>2022-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/da/a4/17a2d602.jpg" width="30px"><span>棒棒彬👻</span> 👍（1） 💬（0）<div>值得反复学习体会，感谢陈天老师，期待更多更进阶的内容分享</div>2022-07-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/37/fb/2ad43917.jpg" width="30px"><span>王旭</span> 👍（0） 💬（0）<div>忘记某些技术细节是比较正常的吧。你可能记住某些技术细节，但是你不能记住每一个细节。长久不复习就会遗忘，这是符合客观规律的啊。而且最初掌握程度不一样（并不是每个技术都需要牢牢掌握，可能有个印象就是ok的）</div>2022-12-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/e5/ab/56f348e5.jpg" width="30px"><span>ELSE</span> 👍（0） 💬（0）<div>看到OSPFv2真是感触颇深，这也是十年前做的事情了，应该说基本设计和部分协议细节还能讲清楚，但随着业务方向、编程语言、工作内容的转变，后来学到的业务知识、编程语言知识都变得越来越“快消品”化，很多功底也不够扎实，现在想来，跟学习方法和心态都有很大关系。</div>2022-07-13</li><br/><li><img src="" width="30px"><span>HelloWorld</span> 👍（0） 💬（0）<div>https:&#47;&#47;www.bilibili.com&#47;video&#47;BV11T4y1m7MF&#47;?vd_source=1b9978cb3a8a617140f288ca2f7659bf</div>2022-06-29</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/fjCKPNKZOc9BibycmicyCN2aC9p6KUpEOfoK8hvSiaFxtc9fIZU0xhMz4xjnriaQy160uLDGT5lDJPoGlXjU7cyJAQ/132" width="30px"><span>seeker</span> 👍（0） 💬（0）<div>时间很琐碎，先浏览一遍，再细度。</div>2022-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2e/13/fe/15aa64c3.jpg" width="30px"><span>zephyr</span> 👍（0） 💬（0）<div>感谢老师，如果方便的话，老师可以对我当前的项目给一点重要的指点嘛.
-我这边有个项目，想在不同的操作系统（包括AIX Solaris HP-UNIX Linux windows Macos) 上去做一系列类似脚本动作，来统一我们之前不同的zsh ksh bash batch script 不同语法和逻辑，礼貌讨教，老师可以不回复.</div>2022-06-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/82/e8/3c0c767a.jpg" width="30px"><span>LJT</span> 👍（0） 💬（0）<div>在《rust程序设计》一书中，作者提到Servo 利用 Rust 的安全并发最大限度地挖掘机器潜力，在某些任务上实现了 C 或 C++ 不可能实现的并行处理。老师能具体讲讲是那些任务么？</div>2022-06-02</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/OEZQyDeZd2oCPZiak19FKQOZI4I21WjLlwUgJzVFxyXsVKbIlpEEEYZcHbA4lYVzFbd3CtmDfZuUictW3ujvKnUQ/132" width="30px"><span>随风wli</span> 👍（0） 💬（0）<div>老师的这门课内容真的特别丰富，干货满满。从中可以看出老师的工程能力也特别强。“我特别想知道，自己究竟是否还能拿起笔写下严肃的可以流传更广、持续更久的文字”，真的很认同这句话，现在极客时间上部分专栏内容确实有点浅尝辄止了，给老师点赞</div>2022-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/89/ad/4efd929a.jpg" width="30px"><span>老荀</span> 👍（0） 💬（2）<div>求助老师，
+你一定有这个疑问。
 
-想学习标准库的实现，第一个感兴趣的就是和数据结构相关的
+撰写介绍一门编程语言的文字，却想让它拥有持久的生命力，这听上去似乎是痴人说梦。现代编程语言的进化速度相比二十年前，可谓是一日千里。就拿 Rust 来说，稳定的六周一个版本，三年一个版次，别说是拥有若干年的生命力了，就算是专栏连载的几个月，都会过去两三个版本，也就意味着有不少新鲜的东西被加入到语言中。
 
-但是跨出第一步就懵逼了。
+不过好在 Rust 极其注重向后兼容，也就意味着我现在介绍的代码，只要是 Rust 语言或者标准库中稳定的内容，若干年后（应该）还是可以有效的。Rust 这种不停迭代却一直保持向后兼容的做法，让它相对于其它语言在教学上有一些优势，所以，撰写介绍 Rust 的文字，生命力会更加持久一些。
 
-下面是节选的标准库 HashMap 的源码，他里面使用到的 base::HashMap 的实现在哪儿可以找到 无论什么 IDE 都没法再点进去了
+当然这还远远不够。让介绍一门编程语言的文字更持久的方式就是，**从本原出发，帮助大家理解语言表层概念背后的思想或者机理，**这也是这个专栏最核心的设计思路。
 
-#[cfg_attr(not(test), rustc_diagnostic_item = &quot;HashMap&quot;)]
-#[stable(feature = &quot;rust1&quot;, since = &quot;1.0.0&quot;)]
-#[rustc_insignificant_dtor]
-pub struct HashMap&lt;K, V, S = RandomState&gt; {
-    base: base::HashMap&lt;K, V, S&gt;,
+通用型计算机诞生后差不多七十年了，当时的冯诺依曼结构依然有效；从 C 语言诞生到现在也有快五十年了，编程语言处理内存的方式还是堆和栈，常用的算法和数据结构也还是那些。虽然编程语言在不断进化，但解决问题的主要手段还都是差不多的。
+
+比如说，引用计数，你如果在之前学习的任何一门语言中弄明白了它的思路，那么理解 Rust 下的 Rc/Arc 也不在话下。所以，只要我们把基础知识夯实，很多看似难懂的问题，只不过是在同样本质上套了让人迷惑的外衣而已。
+
+那么如何拨开迷雾抵达事物的本原呢？我的方法有两个：**一曰问，二曰切**。对，就是中医“望闻问切”后两个字。
+
+**问就是刨根追底，根据已有的认知，发出直击要害的疑问，这样才能为后续的探索（切）叩开大门**。比如你知道引用计数通行的实现方法，也知道 Rust 的单一所有权机制把堆内存的生命周期和栈内存绑定在一起，栈在值在，栈亡值亡。
+
+那么你稍微思考一下就会产生疑问：Rc/Arc 又是怎么打破单一所有权机制，做到让堆上的内存跳脱了栈上内存的限制呢？问了这个问题，你就有机会往下“切”。
+
+**“切”是什么呢，就是深入查看源代码，顺着脉络找出问题的答案**。初学者往往不看标准库的源码，实际上，看源代码是最能帮助你成长的。无论是学习一门语言，还是学习 Linux 内核或者别的什么，源码都是第一手资料。别人的分析讲得再好，也是嚼过的饭，受限于他的理解能力和表达能力，这口嚼过的饭还真不一定比你自己亲自上嘴更好下咽。
+
+比如想知道上面Rc/Arc的问题，自然要看 Rc::new 的源码实现：
+
+```rust
+pub fn new(value: T) -> Rc<T> {
+    // There is an implicit weak pointer owned by all the strong
+    // pointers, which ensures that the weak destructor never frees
+    // the allocation while the strong destructor is running, even
+    // if the weak pointer is stored inside the strong one.
+    Self::from_inner(
+        Box::leak(box RcBox { strong: Cell::new(1), weak: Cell::new(1), value }).into(),
+    )
 }
-求老师指导。。解释下。。这些没法找到源码的实现怎么找到</div>2022-05-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/8a/31/be63602a.jpg" width="30px"><span>青争</span> 👍（0） 💬（0）<div>感谢陈天老师的讲解，很赞</div>2022-03-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/9e/15/e499fc69.jpg" width="30px"><span>Andylinge</span> 👍（0） 💬（0）<div>刚看到这里，发现才145人看完课程，虽然第一遍很多有些看不懂，我决定多看几遍。</div>2022-02-21</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJwhuiaWy0E1xoq2o6Qdfast5ibtmib0zvvUOpbibrjBNeegwoR2O9HxSvwTIRYTR49Q1eEqNlkQWLqaA/132" width="30px"><span>随便取一个</span> 👍（0） 💬（0）<div>先过一遍，后边不断反复…特别是将kvserver，很多开源crate进行归类，实操和阅读源码</div>2022-01-26</li><br/>
-</ul>
+```
+
+不看不知道，一看吓一跳。可疑的 Box::leak 出现在我们眼前。这个 Box::leak 又是干什么的呢？顺着这个线索追溯下去，我们发现了一个宝贵的金矿（你可以回顾生命周期的那一讲）。
+
+### 思
+
+在追溯本原的基础上，我们还要学会分析问题和解决问题的正确方法。我觉得编程语言的学习不应该只局限于学习语法本身，更应该在这个过程中，不断提升自己学习知识和处理问题的能力。
+
+如果你还记得 HashMap 那一讲，我们先是宏观介绍解决哈希冲突的主要思路，它是构建哈希表的核心算法；然后使用 transmute 来了解 Rust HashMap 的组织结构，通过 gdb 查看内存布局，再结合代码去找到 HashMap 构建和扩容的具体思路。
+
+这样**一层层剥茧抽丝，边学习，边探索，边总结**，最终我们得到了对 Rust 哈希表非常扎实的掌握。这种掌握程度，哪怕你十年都不碰 Rust，十年后有人问你 Rust 的哈希表怎么工作的，你也能回答个八九不离十。
+
+我希望你能够掌握这种学习的方式，这是终生受益的方式。2006 年，我在 Juniper 工作时，用类似的方式，把 ScreenOS 系统的数据平面的处理流程总结出来了，到现在很多细节我记忆犹新。
+
+很多时候面试一些同学，详细询问他们三五年前设计和实现过的一些项目时，他们会答不上来，经常给出“这个项目太久了，我记不太清楚”这样的答复，让我觉得好奇怪。对我而言，只要是做过的项目、阅读过的代码，不管多久，都能回忆起很多细节，就好像它们是自己的一部分一样。
+
+尽管快有 20 年没有碰，我还记得第一份工作中 OSPFv2 和 IGMPv3 协议的部分细节，知道 netlink 如何工作，也对 Linux VMM 管理的流程有一个基本印象。现在想来，可能就是我掌握了正确的学习方法而已。
+
+所以，在这门介绍语言的课程中，我还夹带了很多方法论相关的私货，它们大多散落在文章的各个角落，除了刚刚谈到的分析问题/解决问题的方法外，还有阅读代码的方法、架构设计的方法、撰写和迭代接口的方法、撰写测试的方法、代码重构的方法等等。希望这些私货能够让你产生共鸣，结合你自己在职业生涯中总结出来的方法，更好地服务于你的学习和工作。
+
+### 读
+
+在撰写这个专栏的过程中，我参考了不少书籍。比如《Programming Rust》、《Designing Data-intensive Applications》以及《Fundamentals of Software Architecture》。可惜 Jon Gjengset 的《Rust for Rustaceans》姗姗来迟，否则这个专栏的水准可以更上一个台阶。
+
+我们做软件开发的，似乎到了一定年纪就不怎么阅读，这样不好。毕加索说：“good artists copy; great artists steal.”当你从一个人身上学习时，你在模仿；当你从一大群人身上学习时，你自己就慢慢融会贯通，成为大师。
+
+所以，不要指望学了这门Rust 第一课，就大功告成，**这门课仅仅是一个把你接引至 Rust 世界的敲门砖，接下来你还要进一步从各个方面学习和夯实更多的知识**。
+
+就像我回答一个读者的问题所说的：很多时候，我们缺乏的不是对 Rust 知识的理解，更多是对软件开发更广阔知识的理解。所以，不要拘泥于 Rust 本身，对你自己感兴趣的，以及你未来会涉猎的场景广泛阅读、深度思考。
+
+### 行
+
+伴随着学习，阅读，思考，我们还要广泛地实践。不要一有问题就求助，想想看，自己能不能构造足够简单的代码来帮助解决问题。
+
+比如有人问：HTTP/2 是怎么工作的？这样的问题，你除了可以看 RFC，阅读别人总结的经验，还可以动动手，几行代码就可以获得很多信息。比如：
+
+```rust
+use tracing::info;
+use tracing_subscriber::EnvFilter;
+
+fn main() {
+    tracing_subscriber::fmt::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
+
+    let url = "<https://www.rust-lang.org/>";
+
+    let _body = reqwest::blocking::get(url).unwrap().text().unwrap();
+    info!("Fetching url: {}", url);
+}
+```
+
+这段代码相信你肯定能写得出来，但你是否尝试过 `RUST_LOG=debug` 甚至 `RUST_LOG=trace` 来看看输出的日志呢？又有没有尝试着顺着日志的脉络，去分析涉及的库呢？
+
+下面是这几行代码 `RUST_LOG=debug` 的输出，可以让你看到 HTTP/2 基本的运作方式，我建议你试试 `RUST_LOG=trace`（内容太多就不贴了），如果你能搞清楚输出的信息，那么 Rust 下用 hyper 处理 HTTP/2 的主流程你就比较明白了。
+
+```rust
+❯ RUST_LOG=debug cargo run --quiet
+2021-12-12T21:28:00.612897Z DEBUG reqwest::connect: starting new connection: <https://www.rust-lang.org/>    
+2021-12-12T21:28:00.613124Z DEBUG hyper::client::connect::dns: resolving host="www.rust-lang.org"
+2021-12-12T21:28:00.629392Z DEBUG hyper::client::connect::http: connecting to 13.224.7.43:443
+2021-12-12T21:28:00.641156Z DEBUG hyper::client::connect::http: connected to 13.224.7.43:443
+2021-12-12T21:28:00.641346Z DEBUG rustls::client::hs: No cached session for DnsName(DnsName(DnsName("www.rust-lang.org")))    
+2021-12-12T21:28:00.641683Z DEBUG rustls::client::hs: Not resuming any session    
+2021-12-12T21:28:00.656251Z DEBUG rustls::client::hs: Using ciphersuite Tls13(Tls13CipherSuite { suite: TLS13_AES_128_GCM_SHA256, bulk: Aes128Gcm })    
+2021-12-12T21:28:00.656754Z DEBUG rustls::client::tls13: Not resuming    
+2021-12-12T21:28:00.657046Z DEBUG rustls::client::tls13: TLS1.3 encrypted extensions: [ServerNameAck, Protocols([PayloadU8([104, 50])])]    
+2021-12-12T21:28:00.657151Z DEBUG rustls::client::hs: ALPN protocol is Some(b"h2")    
+2021-12-12T21:28:00.658435Z DEBUG h2::client: binding client connection
+2021-12-12T21:28:00.658526Z DEBUG h2::client: client connection bound
+2021-12-12T21:28:00.658602Z DEBUG h2::codec::framed_write: send frame=Settings { flags: (0x0), enable_push: 0, initial_window_size: 2097152, max_frame_size: 16384 }
+2021-12-12T21:28:00.659062Z DEBUG Connection{peer=Client}: h2::codec::framed_write: send frame=WindowUpdate { stream_id: StreamId(0), size_increment: 5177345 }
+2021-12-12T21:28:00.659327Z DEBUG hyper::client::pool: pooling idle connection for ("https", www.rust-lang.org)
+2021-12-12T21:28:00.659674Z DEBUG Connection{peer=Client}: h2::codec::framed_write: send frame=Headers { stream_id: StreamId(1), flags: (0x5: END_HEADERS | END_STREAM) }
+2021-12-12T21:28:00.672087Z DEBUG Connection{peer=Client}: h2::codec::framed_read: received frame=Settings { flags: (0x0), max_concurrent_streams: 128, initial_window_size: 65536, max_frame_size: 16777215 }
+2021-12-12T21:28:00.672173Z DEBUG Connection{peer=Client}: h2::codec::framed_write: send frame=Settings { flags: (0x1: ACK) }
+2021-12-12T21:28:00.672244Z DEBUG Connection{peer=Client}: h2::codec::framed_read: received frame=WindowUpdate { stream_id: StreamId(0), size_increment: 2147418112 }
+2021-12-12T21:28:00.672308Z DEBUG Connection{peer=Client}: h2::codec::framed_read: received frame=Settings { flags: (0x1: ACK) }
+2021-12-12T21:28:00.672351Z DEBUG Connection{peer=Client}: h2::proto::settings: received settings ACK; applying Settings { flags: (0x0), enable_push: 0, initial_window_size: 2097152, max_frame_size: 16384 }
+2021-12-12T21:28:00.956751Z DEBUG Connection{peer=Client}: h2::codec::framed_read: received frame=Headers { stream_id: StreamId(1), flags: (0x4: END_HEADERS) }
+2021-12-12T21:28:00.956921Z DEBUG Connection{peer=Client}: h2::codec::framed_read: received frame=Data { stream_id: StreamId(1) }
+2021-12-12T21:28:00.957015Z DEBUG Connection{peer=Client}: h2::codec::framed_read: received frame=Data { stream_id: StreamId(1) }
+2021-12-12T21:28:00.957079Z DEBUG Connection{peer=Client}: h2::codec::framed_read: received frame=Data { stream_id: StreamId(1) }
+2021-12-12T21:28:00.957316Z DEBUG reqwest::async_impl::client: response '200 OK' for <https://www.rust-lang.org/>    
+2021-12-12T21:28:01.018665Z DEBUG Connection{peer=Client}: h2::codec::framed_read: received frame=Data { stream_id: StreamId(1) }
+2021-12-12T21:28:01.018885Z DEBUG Connection{peer=Client}: h2::codec::framed_read: received frame=Data { stream_id: StreamId(1), flags: (0x1: END_STREAM) }
+2021-12-12T21:28:01.020158Z  INFO http2: Fetching url: <https://www.rust-lang.org/>
+```
+
+所以，很多时候，知识就在我们身边，我们写一写代码就能获取。
+
+在这个过程中，你自己思考之后撰写的探索性的代码、你分析输出过程中付出的思考和深度的阅读，以及最后在梳理过程中进行的总结，都会让知识牢牢变成你自己的。
+
+最后我们聊一聊写代码这个事。
+
+学习任何语言，最重要的步骤都是用学到的知识，解决实际的问题。Rust 能不能胜任你需要完成的各种任务？大概率能。但你能不能用 Rust 来完成这些任务？不一定。每个十指俱全的人都能学习弹钢琴，但不是每个学弹钢琴的人都能达到十级的水平。这其中现实和理想间巨大的鸿沟就是“刻意练习”。
+
+想要成为 Rust 专家，想让 Rust 成为你职业生涯中的一项重要技能，刻意练习必不可少，需要不断地撰写代码。的确，Rust 的所有权和生命周期学习和使用起来让人难于理解，所有权、生命周期，跟类型系统（包括泛型、trait），以及异步开发结合起来，更是障碍重重，但通过不断学习和不断练习，你一定会发现，它们不过是你的一段伟大旅程中越过的一个小山丘而已。
+
+最后的最后，估计很多同学都是在艰难斗争、默默学习，在专栏要结束的今天，欢迎你在留言区留言，我非常希望能听到你的声音，听听你学习这个专栏的感受和收获，见到你的身影。[点这里](https://jinshuju.net/f/FGbsD3)还可以提出你对课程的反馈与建议。
+
+感谢你选择我的 Rust 第一课。感谢你陪我们一路走到这里。接下来，就看你的了。
+
+> “Go where you must go, and hope!”— Gandalf

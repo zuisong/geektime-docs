@@ -9,23 +9,180 @@
 ## Chrome开发者工具
 
 Chrome开发者工具有很多重要的面板，比如与性能相关的有网络面板、Performance面板、内存面板等，与调试页面相关的有Elements面板、Sources面板、Console面板等。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/19/31/bc/c4f31fa5.jpg" width="30px"><span>杨越</span> 👍（28） 💬（1）<div>老师除了这个专栏还有其他专栏的计划吗？这个课干货很多，纯理论和纯代码是不给力的，老师你这种模式结合代码和理论很给力啊啊啊！</div>2019-09-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/22/d6/9378f4d5.jpg" width="30px"><span>隔夜果酱</span> 👍（4） 💬（1）<div>没有使用cdn缓存静态资源,js&#47;css&#47;html等也没有进行压缩,一些ajax请求感觉可以合并.request.js可以换为wepack来打包.使用nginx之类的.</div>2019-09-21</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/XA9Dx0Gv5dTDjZbdRDd8m5BQWOdsXhJcib2oosKqBpkztD4G63PIna2moqndQ0Zu0WVga4wFP7arLaR2RshczwA/132" width="30px"><span>Geek_320111</span> 👍（2） 💬（1）<div>老师，今天讲的功能在工作中用得很多，performance还会详讲吗？这个不太会用。</div>2019-09-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/cd/f6/3224464a.jpg" width="30px"><span>前端队长</span> 👍（2） 💬（1）<div>12306官网的css没有压缩，TTFB耗时很多。。</div>2019-09-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/5a/c5/221ab4d9.jpg" width="30px"><span>wubinsheng</span> 👍（117） 💬（2）<div>强烈请求老师追加Performance面板的介绍。。。。</div>2019-10-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/f5/b8/9f165f4b.jpg" width="30px"><span>mfist</span> 👍（53） 💬（0）<div>12306首页网站分析：
+
+你可以在浏览器窗口的右上方选择Chrome菜单，然后选择“更多工具–&gt;开发者工具”来打开Chrome开发者工具。打开的页面如下图所示：
+
+![](https://static001.geekbang.org/resource/image/68/8d/68edf7b09e33b5481b49dc76967b838d.png?wh=1142%2A178)
+
+Chrome开发者工具
+
+从图中可以看出，它一共包含了10个功能面板，包括了Elements、Console、Sources、NetWork、Performance、Memory、Application、Security、Audits和Layers。
+
+关于这10个面板的大致功能，我做了一个表格，感兴趣的话，你可以详细看下：
+
+![](https://static001.geekbang.org/resource/image/c5/82/c5eb9603e79547ae3d815254e24d4782.png?wh=1142%2A605)
+
+简单来说，Chrome开发者工具为我们提供了通过界面访问或者编辑DOM和CSSOM的能力，还提供了强大的调试功能和查看性能指标的能力。
+
+OK，接下来我们就要重点看下其中重要的Network面板，即网络面板。
+
+## 网络面板
+
+网络面板由控制器、过滤器、抓图信息、时间线、详细列表和下载信息概要这6个区域构成（如下图所示）。
+
+![](https://static001.geekbang.org/resource/image/46/57/46fba54f54b9bd43918308f9f1ae1357.png?wh=1142%2A603)
+
+网络面板概要图
+
+### 1. 控制器
+
+其中，控制器有4个比较重要的功能，我们按照下文中的这张图来简单介绍下。
+
+![](https://static001.geekbang.org/resource/image/f0/42/f02477088c0499247e0ed37f46ad2a42.png?wh=1142%2A583)
+
+控制器概要图
+
+- 红色圆点的按钮，表示“开始/暂停抓包”，这个功能很常见，很容易理解。
+- “全局搜索”按钮，这个功能就非常重要了，可以在所有下载资源中搜索相关内容，还可以快速定位到某几个你想要的文件上。
+- Disable cache，即“禁止从Cache中加载资源”的功能，它在调试Web应用的时候非常有用，因为开启了Cache会影响到网络性能测试的结果。
+- Online按钮，是“模拟2G/3G”功能，它可以限制带宽，模拟弱网情况下页面的展现情况，然后你就可以根据实际展示情况来动态调整策略，以便让Web应用更加适用于这些弱网。
+
+### 2. 过滤器
+
+网络面板中的过滤器，主要就是起过滤功能。因为有时候一个页面有太多内容在详细列表区域中展示了，而你可能只想查看JavaScript文件或者CSS文件，这时候就可以通过过滤器模块来筛选你想要的文件类型。
+
+### 3. 抓图信息
+
+抓图信息区域，可以用来分析用户等待页面加载时间内所看到的内容，分析用户实际的体验情况。比如，如果页面加载1秒多之后屏幕截图还是白屏状态，这时候就需要分析是网络还是代码的问题了。（勾选面板上的“Capture screenshots”即可启用屏幕截图。）
+
+### 4. 时间线
+
+时间线，主要用来展示HTTP、HTTPS、WebSocket加载的状态和时间的一个关系，用于直观感受页面的加载过程。如果是多条竖线堆叠在一起，那说明这些资源被同时被加载。至于具体到每个文件的加载信息，还需要用到下面要讲的详细列表。
+
+### 5. 详细列表
+
+这个区域是最重要的，它详细记录了每个资源从发起请求到完成请求这中间所有过程的状态，以及最终请求完成的数据信息。通过该列表，你就能很容易地去诊断一些网络问题。
+
+详细列表是我们本篇文章介绍的重点，不过内容比较多，所以放到最后去专门介绍了。
+
+### 6. 下载信息概要
+
+下载信息概要中，你要重点关注下DOMContentLoaded和Load两个事件，以及这两个事件的完成时间。
+
+- DOMContentLoaded，这个事件发生后，说明页面已经构建好DOM了，这意味着构建DOM所需要的HTML文件、JavaScript文件、CSS文件都已经下载完成了。
+- Load，说明浏览器已经加载了所有的资源（图像、样式表等）。
+
+通过下载信息概要面板，你可以查看触发这两个事件所花费的时间。
+
+## 网络面板中的详细列表
+
+下面我们就来重点介绍网络面板中的详细列表，这里面包含了大量有用的信息。
+
+### 1. 列表的属性
+
+列表的属性比较多，比如Name、Status、Type、Initiator等等，这个不难理解。当然，你还可以通过点击右键的下拉菜单来添加其他属性，这里我就不再赘述了，你可以自己上手实操一下。
+
+另外，你也可以按照列表的属性来给列表排序，默认情况下，列表是按请求发起的时间来排序的，最早发起请求的资源在顶部。当然也可以按照返回状态码、请求类型、请求时长、内容大小等基础属性排序，只需点击相应属性即可。
+
+![](https://static001.geekbang.org/resource/image/7b/81/7b296e168a4900d3b5cb8e57cc3f6181.png?wh=1142%2A542)
+
+根据属性排序
+
+### 2. 详细信息
+
+如果你选中详细列表中的一项，右边就会出现该项的详细信息，如下所示：
+
+![](https://static001.geekbang.org/resource/image/f7/e6/f76ee3b6b2e6e9629efdd01e6ded57e6.png?wh=1142%2A806)
+
+详细请求信息
+
+你可以在此查看请求列表中任意一项的请求行和请求头信息，还可以查看响应行、响应头和响应体。然后你可以根据这些查看的信息来判断你的业务逻辑是否正确，或者有时候也可以用来逆向推导别人网站的业务逻辑。
+
+### 3. 单个资源的时间线
+
+了解了每个资源的详细请求信息之后，我们再来分析单个资源请求时间线，这就涉及具体的HTTP请求流程了。
+
+![](https://static001.geekbang.org/resource/image/1f/e0/1f4f8c194b02975f6d2848b7b73175e0.png?wh=1142%2A332)
+
+浏览器中HTTP请求流程
+
+我们再回顾下在[《03 | HTTP请求流程：为什么很多站点第二次打开速度会很快？》](https://time.geekbang.org/column/article/116588)这篇文章，我们介绍过发起一个HTTP请求之后，浏览器首先查找缓存，如果缓存没有命中，那么继续发起DNS请求获取IP地址，然后利用IP地址和服务器端建立TCP连接，再发送HTTP请求，等待服务器响应；不过，如果服务器响应头中包含了重定向的信息，那么整个流程就需要重新再走一遍。这就是在浏览器中一个HTTP请求的基础流程。
+
+那详细列表中是如何表示出这个流程的呢？这就要重点看下时间线面板了：
+
+![](https://static001.geekbang.org/resource/image/ba/af/ba91f06503bda4b4dc4a54901bd7a8af.png?wh=1068%2A822)
+
+单个文件的时间线
+
+那面板中这各项到底是什么含义呢？
+
+**第一个是Queuing**，也就是排队的意思，当浏览器发起一个请求的时候，会有很多原因导致该请求不能被立即执行，而是需要排队等待。导致请求处于排队状态的原因有很多。
+
+- 首先，页面中的资源是有优先级的，比如CSS、HTML、JavaScript等都是页面中的核心文件，所以优先级最高；而图片、视频、音频这类资源就不是核心资源，优先级就比较低。通常当后者遇到前者时，就需要“让路”，进入待排队状态。
+- 其次，我们前面也提到过，浏览器会为每个域名最多维护6个TCP连接，如果发起一个HTTP请求时，这6个TCP连接都处于忙碌状态，那么这个请求就会处于排队状态。
+- 最后，网络进程在为数据分配磁盘空间时，新的HTTP请求也需要短暂地等待磁盘分配结束。
+
+等待排队完成之后，就要进入发起连接的状态了。不过在发起连接之前，还有一些原因可能导致连接过程被推迟，这个推迟就表现在面板中的**Stalled**上，它表示停滞的意思。
+
+这里需要额外说明的是，如果你使用了代理服务器，还会增加一个**Proxy Negotiation**阶段，也就是代理协商阶段，它表示代理服务器连接协商所用的时间，不过在上图中没有体现出来，因为这里我们没有使用代理服务器。
+
+接下来，就到了**Initial connection/SSL阶段**了，也就是和服务器建立连接的阶段，这包括了建立TCP连接所花费的时间；不过如果你使用了HTTPS协议，那么还需要一个额外的SSL握手时间，这个过程主要是用来协商一些加密信息的。（关于SSL协商的详细过程，我们会在Web安全模块中介绍。）
+
+和服务器建立好连接之后，网络进程会准备请求数据，并将其发送给网络，这就是**Request sent阶段**。通常这个阶段非常快，因为只需要把浏览器缓冲区的数据发送出去就结束了，并不需要判断服务器是否接收到了，所以这个时间通常不到1毫秒。
+
+数据发送出去了，接下来就是等待接收服务器第一个字节的数据，这个阶段称为Waiting (TTFB)，通常也称为“**第一字节时间**”。 TTFB是反映服务端响应速度的重要指标，对服务器来说，TTFB 时间越短，就说明服务器响应越快。
+
+接收到第一个字节之后，进入陆续接收完整数据的阶段，也就是**Content Download阶段**，这意味着从第一字节时间到接收到全部响应数据所用的时间。
+
+## 优化时间线上耗时项
+
+了解了时间线面板上的各项含义之后，我们就可以根据这个请求的时间线来实现相关的优化操作了。
+
+### 1. 排队（Queuing）时间过久
+
+排队时间过久，大概率是由浏览器为每个域名最多维护6个连接导致的。那么基于这个原因，你就可以让1个站点下面的资源放在多个域名下面，比如放到3个域名下面，这样就可以同时支持18个连接了，这种方案称为**域名分片**技术。除了域名分片技术外，我个人还建议你**把站点升级到HTTP2**，因为HTTP2已经没有每个域名最多维护6个TCP连接的限制了。
+
+### 2. 第一字节时间（TTFB）时间过久
+
+这可能的原因有如下：
+
+- **服务器生成页面数据的时间过久**。对于动态网页来说，服务器收到用户打开一个页面的请求时，首先要从数据库中读取该页面需要的数据，然后把这些数据传入到模板中，模板渲染后，再返回给用户。服务器在处理这个数据的过程中，可能某个环节会出问题。
+- **网络的原因**。比如使用了低带宽的服务器，或者本来用的是电信的服务器，可联通的网络用户要来访问你的服务器，这样也会拖慢网速。
+- **发送请求头时带上了多余的用户信息**。比如一些不必要的Cookie信息，服务器接收到这些Cookie信息之后可能需要对每一项都做处理，这样就加大了服务器的处理时长。
+
+对于这三种问题，你要有针对性地出一些解决方案。面对第一种服务器的问题，你可以想办法去提高服务器的处理速度，比如通过增加各种缓存的技术；针对第二种网络问题，你可以使用CDN来缓存一些静态文件；至于第三种，你在发送请求时就去尽可能地减少一些不必要的Cookie数据信息。
+
+### 3. Content Download时间过久
+
+如果单个请求的Content Download花费了大量时间，有可能是字节数太多的原因导致的。这时候你就需要减少文件大小，比如压缩、去掉源码中不必要的注释等方法。
+
+## 总结
+
+好了，今天就介绍到这里了，下面我来总结下今天的内容。
+
+首先我们简单介绍了Chrome开发者工具10个基础的面板信息；然后重点剖析了网络面板，再结合之前介绍的网络请求流程来重点分析了网络面板中时间线的各个指标的含义；最后我们还简要分析了时间线中各项指标出现异常的可能原因，并给出了一些优化方案。
+
+其实通过今天的分析，我们可以得出这样一个结论：如果你要去做一些实践性的项目优化，理解其背后的理论至关重要。因为理论就是一条“线”，它会把各种实践的内容“串”在一起，然后你可以围绕着这条“线”来排查问题。
+
+## 思考时间
+
+今天我们介绍了网络面板，还有一个非常重要的Performance面板我们没有介绍，不过你可以去网上查找一些相关的资料。
+
+所以今天留给你的是一道实际操作的题目，你可以结合网络面板和Performance面板来分析一个Web应用的性能瓶颈（比如[https://www.12306.cn](https://www.12306.cn/index/) ）。
+
+欢迎在留言区与我分享你的想法，也欢迎你在留言区记录你的思考过程。感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>杨越</span> 👍（28） 💬（1）<div>老师除了这个专栏还有其他专栏的计划吗？这个课干货很多，纯理论和纯代码是不给力的，老师你这种模式结合代码和理论很给力啊啊啊！</div>2019-09-21</li><br/><li><span>隔夜果酱</span> 👍（4） 💬（1）<div>没有使用cdn缓存静态资源,js&#47;css&#47;html等也没有进行压缩,一些ajax请求感觉可以合并.request.js可以换为wepack来打包.使用nginx之类的.</div>2019-09-21</li><br/><li><span>Geek_320111</span> 👍（2） 💬（1）<div>老师，今天讲的功能在工作中用得很多，performance还会详讲吗？这个不太会用。</div>2019-09-29</li><br/><li><span>前端队长</span> 👍（2） 💬（1）<div>12306官网的css没有压缩，TTFB耗时很多。。</div>2019-09-21</li><br/><li><span>wubinsheng</span> 👍（117） 💬（2）<div>强烈请求老师追加Performance面板的介绍。。。。</div>2019-10-09</li><br/><li><span>mfist</span> 👍（53） 💬（0）<div>12306首页网站分析：
 1. 传输方面：可以启用gzip压缩提高传输效率
 2. js模块化方面：使用requirejs的前端模块化方案，可以使用webpack进行打包压缩，使用esModule方案，有利于浏览器优化
 3. 缓存方面：全部使用的协商缓存，每次静态资源请求都会走到服务器进行验证，无疑增加服务器压力，可以考虑部分使用浏览器强缓存没设置过期时间
-另外：感觉12306主要压力不在首页，在于大量的班次查询服务（如查询北京到上海的火车会直接生成新的页面进行响应），还有车位区间的算法的优化</div>2019-09-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4a/b1/e2b9e94f.jpg" width="30px"><span>六个周</span> 👍（11） 💬（2）<div>这个专栏内的干货  我感觉能用半年时间去消化吸收。</div>2019-12-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/9d/5d/3fdead91.jpg" width="30px"><span>レイン小雨</span> 👍（7） 💬（2）<div>一直不太会用Audits这个面板。。。。。</div>2019-09-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（5） 💬（3）<div>对于网络面板的每一个请求的 Timing 中
+另外：感觉12306主要压力不在首页，在于大量的班次查询服务（如查询北京到上海的火车会直接生成新的页面进行响应），还有车位区间的算法的优化</div>2019-09-23</li><br/><li><span>六个周</span> 👍（11） 💬（2）<div>这个专栏内的干货  我感觉能用半年时间去消化吸收。</div>2019-12-01</li><br/><li><span>レイン小雨</span> 👍（7） 💬（2）<div>一直不太会用Audits这个面板。。。。。</div>2019-09-21</li><br/><li><span>奕</span> 👍（5） 💬（3）<div>对于网络面板的每一个请求的 Timing 中
 最上面出现了
 Queued at 40.0 min
 Started at 40.0 min
-这个是代表什么意思呢？</div>2019-10-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/44/0e/ce14b7d3.jpg" width="30px"><span>-_-|||</span> 👍（3） 💬（0）<div>‘还有一些原因可能导致连接过程被推迟，这个推迟就表现在面板中的 Stalled 上，它表示停滞的意思’，还到底是哪些原因呢？比如说呢</div>2019-12-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/7b/f0/ccc11dec.jpg" width="30px"><span>Cris</span> 👍（2） 💬（1）<div>优先级低的会给优先级高的让路，浏览器是怎么实现让路的？求老师指教</div>2019-10-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/01/16/97878049.jpg" width="30px"><span>落叶无凌萝</span> 👍（1） 💬（0）<div>“在发起连接之前，还有一些原因可能导致连接过程被推迟，这个推迟就表现在面板中的 Stalled 上”，这里的，可能会导致连接过程推迟的原因有哪些呢？</div>2020-05-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/85/b0/496ae224.jpg" width="30px"><span>Boogie 捷</span> 👍（1） 💬（2）<div>自己学着用performance看了下，主线程一共花了13s才fire on load event，期间大概10s 线程都是idle的。看了下idle期间的network，两个png下载了大概3s，jquery.min.js 也下载了大概1.5s。感觉应该用cdn 加速 asset loading 的时间. 希望老师还是可以结合一下例子讲一下performace tool。</div>2019-10-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/c9/56/2caa9d38.jpg" width="30px"><span>70K</span> 👍（1） 💬（0）<div>12306官网首页问题：
+这个是代表什么意思呢？</div>2019-10-13</li><br/><li><span>-_-|||</span> 👍（3） 💬（0）<div>‘还有一些原因可能导致连接过程被推迟，这个推迟就表现在面板中的 Stalled 上，它表示停滞的意思’，还到底是哪些原因呢？比如说呢</div>2019-12-09</li><br/><li><span>Cris</span> 👍（2） 💬（1）<div>优先级低的会给优先级高的让路，浏览器是怎么实现让路的？求老师指教</div>2019-10-14</li><br/><li><span>落叶无凌萝</span> 👍（1） 💬（0）<div>“在发起连接之前，还有一些原因可能导致连接过程被推迟，这个推迟就表现在面板中的 Stalled 上”，这里的，可能会导致连接过程推迟的原因有哪些呢？</div>2020-05-31</li><br/><li><span>Boogie 捷</span> 👍（1） 💬（2）<div>自己学着用performance看了下，主线程一共花了13s才fire on load event，期间大概10s 线程都是idle的。看了下idle期间的network，两个png下载了大概3s，jquery.min.js 也下载了大概1.5s。感觉应该用cdn 加速 asset loading 的时间. 希望老师还是可以结合一下例子讲一下performace tool。</div>2019-10-02</li><br/><li><span>70K</span> 👍（1） 💬（0）<div>12306官网首页问题：
 1. 静态资源没有必要携带cookie信息，可以使用第一个独立域名来加载静态资源；
-2.首页右下角有一个板块是“信用信息”，该板块在未点击的时候数据就已经请求，并且一次性返回了3000条数据，导致在点击该模块时，页面会有可感知的卡顿。可以在浏览到此模块时再发起数据请求，并且返回几十条数据即可。</div>2019-09-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/04/bb/5e5c37c1.jpg" width="30px"><span>Angus</span> 👍（1） 💬（1）<div>关于DOMContentLoaded和load事件的区别，一直都有些疑问，老师这里能不能解释的清楚一些，我认为这两个事件对后续Performance性能分析时会有所帮助。以下是我理解的
+2.首页右下角有一个板块是“信用信息”，该板块在未点击的时候数据就已经请求，并且一次性返回了3000条数据，导致在点击该模块时，页面会有可感知的卡顿。可以在浏览到此模块时再发起数据请求，并且返回几十条数据即可。</div>2019-09-23</li><br/><li><span>Angus</span> 👍（1） 💬（1）<div>关于DOMContentLoaded和load事件的区别，一直都有些疑问，老师这里能不能解释的清楚一些，我认为这两个事件对后续Performance性能分析时会有所帮助。以下是我理解的
 DOMContentLoaded：HTML文档加载完毕，内外链同步JS代码执行完毕之后触发
-load：DOM结构中的JS&#47;CSS&#47;图片以及异步加载的JS&#47;CSS&#47;图片加载完成之后出发，video&#47;audio&#47;flash不会影响load事件的触发</div>2019-09-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b8/dd/d729557f.jpg" width="30px"><span>Will</span> 👍（1） 💬（3）<div>老师可以解释一下这句话的意思吗?
-网络进程在为数据分配磁盘空间时，新的HTTP请求也需要短暂的等待磁盘分配结束。</div>2019-09-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2024-05-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/67/87/2c0c1c93.jpg" width="30px"><span>飞天</span> 👍（0） 💬（0）<div>老师，文中说：DOMContentLoaded，这个事件发生后，说明页面已经构建好 DOM 了，这意味着构建 DOM 所需要的 HTML 文件、JavaScript 文件、CSS 文件都已经下载完成了。
-构建好DOM 是说已经解析完成了，三类文件吗？</div>2023-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a6/c1/d4e6147e.jpg" width="30px"><span>一箭中的</span> 👍（0） 💬（0）<div>Stalled时间长有哪些影响因素？</div>2022-09-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/7f/09/1e95ccbf.jpg" width="30px"><span>爱拼才会赢</span> 👍（0） 💬（0）<div>谢谢作者，学到很多</div>2022-06-06</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJ7qJDGibf9lykyV56jzWbpxXkSg1ThxQ27Uo2VQas1o5WQ5W2cshjlLGaWtbolY8teAhpCyIAkCibA/132" width="30px"><span>507</span> 👍（0） 💬（1）<div>老师你好，很好奇一个问题，DOM解析时候是按照HTML从上到下解析的，如果遇到js脚本则暂停解析，等待js下载完成解析后在继续解析，那为什么同时还可以有6个链接呢？比如我一个HTML文件从上到下引入3个js文件，包含a.js, b.js, c.js,实际上我观察了一下，这3个文件会同时下载，在依次执行？</div>2020-11-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/2d/16/b525a71d.jpg" width="30px"><span>zgy</span> 👍（0） 💬（1）<div>为啥有的请求Timing中显示 DNS look up、SSL、initial connection 等信息，有的不显示，同样的请求地址，不同的参数，两个请求TTFB时间相差比较大。</div>2020-08-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/22/70/ab911260.jpg" width="30px"><span>太白北路</span> 👍（0） 💬（0）<div>1. 每个请求都带了相同的cookie，考虑是否有可以去掉的情况；
-2. 部分文件没有压缩；
-3. 请求中有大量小图片和图标其实可以合并，部分图标可以使用字体图标替换，部分图片效果其实用dom+css可以画出来，没必要用图片；
-4. 请求大多在TTFB阶段产生阻塞，考虑增强服务器性能</div>2020-08-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/noTIfbBmzicH6oZaBqycVzKTLN5ibWWrDleVgnaQYCHJAAhUhNmgSCdFzrr1VRABwUQ7hROU7BgGVwHiaaHeHAiaVQ/132" width="30px"><span>Geek_28d96d</span> 👍（0） 💬（0）<div>没有在Devtools里面看见 Layers 面板 和Memory面板？</div>2020-04-28</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/xCAJCvA3iaMXgjibb0mh99qN9y2Kibc5y31DOaAM0RaEryHM50qJ8GOqXvPAtjILIArIysRQhEWPq9Bt1NgibZpBoA/132" width="30px"><span>汤显文</span> 👍（0） 💬（0）<div>为什么我的抓图信息部分就显示fetching frames。。。</div>2020-04-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4f/65/2133fdfb.jpg" width="30px"><span>前端黑板报</span> 👍（0） 💬（1）<div>TTFB是不是包括：发送过去的时间 + 服务器返回第一个字节的时间，是一个来回的时间？</div>2020-04-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/b4/94/2796de72.jpg" width="30px"><span>追风筝的人</span> 👍（0） 💬（0）<div>3. 单个资源的时间线  这一部分的图里 发出请求之后 应该是  回复响应头，不是请求头</div>2020-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/b8/79/a4dbe9ee.jpg" width="30px"><span>blueBean</span> 👍（0） 💬（0）<div>空闲时间块非常多，但下载的时候又很密集，应该是需要CDN吧</div>2020-03-09</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIkvkUicJ7SfC3lXJUQMaTFgYYdv9tgAibMCe99gzicrl1gAOqRZcKXTeNQMp41PeyTmfd0bTx4xCNzQ/132" width="30px"><span>Geek_a2584e</span> 👍（0） 💬（0）<div>日常黑12306哈哈哈</div>2020-01-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/2c/70/02b627a6.jpg" width="30px"><span>coder</span> 👍（0） 💬（0）<div>过滤器那四个选项不显示的，点一下和过滤器同一排右侧的小齿轮</div>2019-12-23</li><br/>
+load：DOM结构中的JS&#47;CSS&#47;图片以及异步加载的JS&#47;CSS&#47;图片加载完成之后出发，video&#47;audio&#47;flash不会影响load事件的触发</div>2019-09-23</li><br/>
 </ul>

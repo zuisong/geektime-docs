@@ -5,32 +5,109 @@
 一个技术不错，可以玩转各种架构、框架、中间件的资深IT从业者，居然对Code Review有如此的偏见，这到底是哪里出了问题呢？我觉得问题主要还是出自认知上。
 
 所以，今天，我并不打算讲关于如何做Code Review的方法论，我更希望充当一个Code Review布道师的角色，讲一讲为什么要进行Code Review，Code Review的价值在哪里，让你重视、认可Code Review。因为我觉得，只要从认知上接受了Code Review，对于高智商的IT人群来说，搞清楚如何做Code Review并不是件难事。而且，Google也开源了它自己的Code Review最佳实践，网上很容易搜到，你完全可以对照着来做。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="" width="30px"><span>小黑</span> 👍（9） 💬（2）<div>能分享下review的checklist么</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/cf/96/251c0cee.jpg" width="30px"><span>xindoo</span> 👍（166） 💬（1）<div>https:&#47;&#47;github.com&#47;xindoo&#47;eng-practices-cn  我们翻译的谷歌工程实践中文版，老师说的谷歌开源的code review就在这，欢迎查阅。</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/15/79/efde2a69.jpg" width="30px"><span>马球先生</span> 👍（46） 💬（5）<div>所在公司非常重视code review
+
+话不多说，让我们正式开始今天的内容吧！
+
+## 我为什么如此强调Code Review？
+
+Code Review中文叫代码审查。据我了解，在国内绝大部分的互联网企业里面，很少有将Code Review执行得很好的，这其中包括BAT这些大厂。特别是在一些需求变动大、项目工期紧的业务开发部门，就更不可能有Code Review流程了。代码写完之后随手就提交上去，然后丢给测试狠命测，发现bug再修改。
+
+相反，一些外企非常重视Code Review，特别是FLAG这些大厂，Code Review落地执行得非常好。在Google工作的几年里，我也切实体会到了Code Review的好处。这里我就结合我自身的真实感受讲一讲Code Review的价值，试着“说服”一下你。
+
+### 1.Code Review践行“三人行必有我师”
+
+有时候你可能会觉得，团队中的资深员工或者技术leader的技术比较牛，写的代码很好，他们的代码就不需要Review了，我们重点Review资历浅的员工的代码就可以了。实际上，这种认识是不对的。
+
+我们都知道，Google工程师的平均研发水平都很高，但即便如此，我们发现，不管谁提交的代码，包括Jeff Dean的，只要需要Review，都会收到很多comments（修改意见）。中国有句老话，“三人行必有我师”，我觉得用在这里非常合适。即便自己觉得写得已经很好的代码，只要经过不停地推敲，都有持续改进的空间。
+
+所以，永远不要觉得自己很厉害，写的代码就不需要别人Review了；永远不要觉得自己水平很一般，就没有资格给别人Review了；更不要觉得技术大牛让你Review代码只是缺少你的一个“approve”，随便看看就可以。
+
+### 2.Code Review能摒弃“个人英雄主义”
+
+在一个成熟的公司里，所有的架构设计、实现，都应该是一个团队的产出。尽管这个过程可能会由某个人来主导，但应该是整个团队共同智慧的结晶。
+
+如果一个人默默地写代码提交，不经过团队的Review，这样的代码蕴含的是一个人的智慧。代码的质量完全依赖于这个人的技术水平。这就会导致代码质量参差不齐。如果经过团队多人Review、打磨，代码蕴含的是整个团队的智慧，可以保证代码按照团队中的最高水准输出。
+
+### 3.Code Review能有效提高代码可读性
+
+前面我们反复强调，在大部分情况下，代码的可读性比任何其他方面（比如扩展性等）都重要。可读性好，代表后期维护成本低，线上bug容易排查，新人容易熟悉代码，老人离职时代码容易接手。而且，可读性好，也说明代码足够简单，出错可能性小、bug少。
+
+不过，自己看自己写的代码，总是会觉得很易读，但换另外一个人来读你的代码，他可能就不这么认为了。毕竟自己写的代码，其中涉及的业务、技术自己很熟悉，别人不一定会熟悉。既然自己对可读性的判断很容易出现错觉，那Code Review就是一种考察代码可读性的很好手段。如果代码审查者很费劲才能看懂你写的代码，那就说明代码的可读性有待提高了。
+
+还有，不知道你有没有这样的感受，写代码的时候，时间一长，改动的文件一多，就感觉晕乎乎的，脑子不清醒，逻辑不清晰？有句话讲，“旁观者清，当局者迷”，说的就是这个意思。Code Review能有效地解决“当局者迷”的问题。在正式开始Code Review之前，当我们将代码提交到Review Board（Code Review的工具界面）之后，所有的代码改动都放到了一块，看起来一目了然、清晰可见。这个时候，还没有等其他同事Review，我们自己就能发现很多问题。
+
+### 4.Code Review是技术传帮带的有效途径
+
+良好的团队需要技术和业务的“传帮带”，那如何来做“传帮带”呢？当然，业务上面，我们可能通过文档或口口相传的方式，那技术呢？如何培养初级工程师的技术能力呢？Code Review就是一种很好的途径。每次Code Review都是一次真实案例的讲解。通过Code Review，在实践中将技术传递给初级工程师，比让他们自己学习、自己摸索来得更高效！
+
+### 5.Code Review保证代码不止一个人熟悉
+
+如果一段代码只有一个人熟悉，如果这个同事休假了或离职了，代码交接起来就比较费劲。有时候，我们单纯只看代码还看不大懂，又要跟PM、业务团队、或者其他技术团队，再重复来一轮沟通，搞的其他团队的人都很烦。而Code Review能保证任何代码同时都至少有两个同事熟悉，互为备份，有备无患，除非两个同事同时都离职……
+
+### 6.Code Review能打造良好的技术氛围
+
+提交代码Review的人，希望自己写的代码足够优秀，毕竟被同事Review出很多问题，是件很丢人的事情。而做Code review的人，也希望自己尽可能地提出有建设性意见，展示自己的能力。所以，Code Review还能增进技术交流，活跃技术氛围，培养大家的极客精神，以及对代码质量的追求。
+
+一个良好的技术氛围，能让团队有很强的自驱力。不用技术leader反复强调代码质量有多重要，团队中的成员就会自己主动去关注代码质量的问题。这比制定各种规章制度、天天督促执行要更加有效。实际上，我多说一句，好的技术氛围也能降低团队的离职率。
+
+### 7.Code Review是一种技术沟通方式
+
+Talk is cheap，show me the code。怎么“show”，通过Code Review工具来“show”，这样也方便别人反馈意见。特别是对于跨不同办公室、跨时区的沟通，Code Review是一种很好的沟通方式。我今天白天写的代码，明天来上班的时候，跨时区的同事已经帮我Review好了，我就可以改改提交，继续写新的代码了。这样的协作效率会很高。
+
+### 8.Code Review能提高团队的自律性
+
+在开发过程中，难免会有人不自律，存在侥幸心理：反正我写的代码也没人看，随便写写就提交了。Code Review相当于一次代码直播，曝光dirty code，有一定的威慑力。这样大家就不敢随便应付一下就提交代码了。
+
+## 如何在团队中落地执行Code Review？
+
+刚刚讲了这么多Code Review的好处，我觉得大部分你应该都能认可，但我猜你可能会说，Google之所以能很好地执行Code Review，一方面是因为有经验的传承，起步阶段已经过去了；另一方面是本身员工技术素质、水平就很高，那在一个技术水平没那么强的团队，在起步阶段或项目工期很紧的情况下，如何落地执行Code Review呢？
+
+接下来，我就很多人关于Code Review的一些疑惑，谈谈我自己的看法。
+
+**有人认为，Code Review流程太长，太浪费时间，特别是工期紧的时候，今天改的代码，明天就要上，如果要等同事Review，同事有可能没时间，这样就来不及。这个时候该怎么办呢？**
+
+我所经历的项目还没有一个因为工期紧，导致没有时间Code Review的。工期都是人排的，稍微排松点就行了啊。我觉得关键还是在于整个公司对Code Review的接受程度。而且，Code Review熟练之后，并不需要花费太长的时间。尽管开始做Code Review的时候，你可能因为不熟练，需要有一个checklist对照着来做。起步阶段可能会比较耗时。但当你熟练之后，Code Review就像键盘盲打一样，你已经忘记了哪个手指按的是哪个键了，扫一遍代码就能揪出绝大部分问题。
+
+**有人认为，业务一直在变，今天写的代码明天可能就要再改，代码可能不会长期维护，写得太好也没用。这种情况下是不是就不需要Code Review了呢？**
+
+这种现象在游戏开发、一些早期的创业公司或者项目验证阶段比较常见。项目讲求短平快，先验证产品，再优化技术。如果确实面对的还只是生存问题，代码质量确实不是首要的，特殊情况下，不做Code Review是支持的！
+
+有人说，团队成员技术水平不高，过往也没有Code Review的经验，不知道Review什么，也Review不出什么。自己代码都没写明白，不知道什么样的代码是好的，什么样的代码是差的，更不要说Review别人的代码了。在Code Review的时候，团队成员大眼瞪小眼，只能Review点语法，形式大于效果。这种情况该怎么办？
+
+这种情况也挺常见。不过没关系，团队的技术水平都是可以培养的。我们可以先让资深同事、技术好的同事或技术leader，来Review其他所有人的代码。Review的过程本身就是一种“传帮带”的过程。慢慢地，整个团队就知道该如何Review了。虽然这可能会有一个相当长的过程，但如果真的想在团队中执行Code Review，这不失为一种“曲线救国”的方法。
+
+**还有人说，刚开始Code Review的时候，大家都还挺认真，但时间长了，大家觉得这事跟KPI无关，而且我还要看别人的代码，理解别人写的代码的业务，多浪费时间啊。慢慢地，Code Review就变得流于形式了。有人提交了代码，随便抓个人Review。Review的人也不认真，随便扫一眼就点“approve”。这种情况该如何应对？**
+
+我的对策是这样的。首先，要明确的告诉Code Review的重要性，要严格执行，让大家不要懈怠，适当的时候可以“杀鸡儆猴”。其次，可以像Google一样，将Code Review间接地跟KPI、升职等联系在一块，高级工程师有义务做Code Review，就像有义务做技术面试一样。再次，想办法活跃团队的技术氛围，把Code Review作为一种展示自己技术的机会，带动起大家对Code Review的积极性，提高大家对Code Review的认同感。
+
+最后，我再多说几句。Google的Code Review是做得很好的，可以说是谷歌保持代码高质量最有效的手段之一了。Google的Code Review非常严格，多一个空行，多一个空格，注释有拼错的单词，变量命名得不够好，都会被指出来要求修改。之所以如此吹毛求疵，并非矫枉过正，而是要给大家传递一个信息：代码质量非常重要，一点都不能马虎。
+
+## 重点回顾
+
+好了，今天的内容到此就讲完了。我们一块来总结回顾一下，你需要重点掌握的内容。
+
+今天，我们主要讲了为什么要做Code Review，Code Review的价值在哪里。我的总结如下：Code Review践行“三人行必有我师”、能摒弃“个人英雄主义”、能有效提高代码可读性、是技术传帮带的有效途径、能保证代码不止一个人熟悉、能打造良好的技术氛围、是一种技术沟通方式、能提高团队的自律性。
+
+除此之外，我还对Code Review在落地执行过程中的一些问题，做了简单的答疑。我这里就不再重复罗列了。如果你在Code Review过程中遇到同样的问题，希望我的建议对你有所帮助。
+
+## 课堂讨论
+
+对是否应该做Code Review，你有什么看法呢？你所在的公司是否有严格的Code Review呢？在Code Review的过程中，你又遇到了哪些问题？
+
+欢迎留言和我分享你的想法。如果有收获，也欢迎你把这篇文章分享给你的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>小黑</span> 👍（9） 💬（2）<div>能分享下review的checklist么</div>2020-05-06</li><br/><li><span>xindoo</span> 👍（166） 💬（1）<div>https:&#47;&#47;github.com&#47;xindoo&#47;eng-practices-cn  我们翻译的谷歌工程实践中文版，老师说的谷歌开源的code review就在这，欢迎查阅。</div>2020-05-06</li><br/><li><span>马球先生</span> 👍（46） 💬（5）<div>所在公司非常重视code review
 需要至少得到两个人的approved
 分别是 业务组一个和架构组一个
 刚来公司时的第一次代码提交 有20多个comments
-现在也能给别人review了</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8e/c4/8d1150f3.jpg" width="30px"><span>Richie</span> 👍（21） 💬（0）<div>如何看待：
+现在也能给别人review了</div>2020-05-06</li><br/><li><span>Richie</span> 👍（21） 💬（0）<div>如何看待：
 一、Jeff Dean提交代码前都会编译以及运行他的代码，目的仅仅是为了检验编译器以及链接器是否有问题。
-二、编译器从来不会给Jeff Dean警告，相反，Jeff Dean会给编译器警告。</div>2020-05-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/bf/f9/f1074095.jpg" width="30px"><span>天华</span> 👍（13） 💬（1）<div>如果老师能把过去cr经验，需要注意的关键点整理出来就更好了</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5f/d5/2fec2911.jpg" width="30px"><span>yu</span> 👍（11） 💬（1）<div>先code review，还是先联调提测呢。
+二、编译器从来不会给Jeff Dean警告，相反，Jeff Dean会给编译器警告。</div>2020-05-11</li><br/><li><span>天华</span> 👍（13） 💬（1）<div>如果老师能把过去cr经验，需要注意的关键点整理出来就更好了</div>2020-05-06</li><br/><li><span>yu</span> 👍（11） 💬（1）<div>先code review，还是先联调提测呢。
 如果先code review，项目时间表是没安排这个时间的，review+改应该需要个1~2天。
 如果先联调提测，review出问题后也没法改了。
-之前我们code review，是后端写完代码，边跟前端联调边review，因为是一个新的业务项目，review完之后要改的比较多，前端一直反映联调不流畅。</div>2020-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/d9/ff/b23018a6.jpg" width="30px"><span>Heaven</span> 👍（6） 💬（1）<div>Code Review是个好东西,懂得人不少,可是能够执行起来的难上加难,大厂何尝不是,好处能列一大堆,可是咱不是领导,没有带头的能力,自己一个人搞Code Review起不了什么作用,只能各扫门前雪,自己对自己的些重构罢了</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0c/86/8e52afb8.jpg" width="30px"><span>花花大脸猫</span> 👍（5） 💬（0）<div>深有感触，自己再怎么强调code review的重要性，再怎么推动，上层不在意，马虎应对了事，每次一堆checklist需要修改，结果就是走走过场象征性的改几个，软件开发规范形同虚设，代码走查这个事跟公司文化有很大关系，至少说cto或者技术老大对这块有强烈认知才行，不然就是一个虎头蛇尾，吃力不讨好的工作！</div>2020-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/36/2c/8bd4be3a.jpg" width="30px"><span>小喵喵</span> 👍（5） 💬（3）<div>如果老师能讲解一些实战就更好了。多举例说明这段代码审查出什么问题以及如何修改。</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3b/47/f6c772a1.jpg" width="30px"><span>Jackey</span> 👍（5） 💬（0）<div>团队现在的code review基本流于形式了，想要改善感觉也没什么太好的办法，太多人自由惯了…只能做好自己了</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/f7/eb/e7127bb8.jpg" width="30px"><span>，</span> 👍（4） 💬（0）<div>目前所在的公司有code review的习惯,但是仅限于leader来review,而且并不严格,主要保证逻辑的正确和代码的可读性,我个人在来到公司之后看了代码整洁之道和effective java这两本书,感觉对写出整洁代码有一定的帮助</div>2020-05-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/70/9e/9337ca8e.jpg" width="30px"><span>jaryoung</span> 👍（3） 💬（0）<div>code review，个人觉得国内至少有一半的公司都没有，至少一半的一半是流于形式。check list：
+之前我们code review，是后端写完代码，边跟前端联调边review，因为是一个新的业务项目，review完之后要改的比较多，前端一直反映联调不流畅。</div>2020-05-14</li><br/><li><span>Heaven</span> 👍（6） 💬（1）<div>Code Review是个好东西,懂得人不少,可是能够执行起来的难上加难,大厂何尝不是,好处能列一大堆,可是咱不是领导,没有带头的能力,自己一个人搞Code Review起不了什么作用,只能各扫门前雪,自己对自己的些重构罢了</div>2020-05-06</li><br/><li><span>花花大脸猫</span> 👍（5） 💬（0）<div>深有感触，自己再怎么强调code review的重要性，再怎么推动，上层不在意，马虎应对了事，每次一堆checklist需要修改，结果就是走走过场象征性的改几个，软件开发规范形同虚设，代码走查这个事跟公司文化有很大关系，至少说cto或者技术老大对这块有强烈认知才行，不然就是一个虎头蛇尾，吃力不讨好的工作！</div>2020-07-09</li><br/><li><span>小喵喵</span> 👍（5） 💬（3）<div>如果老师能讲解一些实战就更好了。多举例说明这段代码审查出什么问题以及如何修改。</div>2020-05-06</li><br/><li><span>Jackey</span> 👍（5） 💬（0）<div>团队现在的code review基本流于形式了，想要改善感觉也没什么太好的办法，太多人自由惯了…只能做好自己了</div>2020-05-06</li><br/><li><span>，</span> 👍（4） 💬（0）<div>目前所在的公司有code review的习惯,但是仅限于leader来review,而且并不严格,主要保证逻辑的正确和代码的可读性,我个人在来到公司之后看了代码整洁之道和effective java这两本书,感觉对写出整洁代码有一定的帮助</div>2020-05-07</li><br/><li><span>jaryoung</span> 👍（3） 💬（0）<div>code review，个人觉得国内至少有一半的公司都没有，至少一半的一半是流于形式。check list：
 1. 编码规范（借助工具，例如国内的p3c，还有就是借助checkstyle等工具）
 2. 编码技巧（例如，提前终止错误），慢慢建立自己公司的知识库。
-最后，就是坚持坚持再坚持，教育教育再教育。</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/70/9f/741cd6a4.jpg" width="30px"><span>Henry</span> 👍（2） 💬（0）<div>谷歌 java编码风格手册
-https:&#47;&#47;google.github.io&#47;styleguide&#47;javaguide.html</div>2020-11-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8a/02/828938c9.jpg" width="30px"><span>Frank</span> 👍（2） 💬（0）<div>Code Review 除了能对一些代码提出修改建议之外，个人觉得自己能从别人写的代码学到一些好的设计，好的思想。所以自己在平时任务完成的情况下，也会看看别人写的代码，看看他是怎么实现的，如果自己来实现是否有更好的方式等。目前团队中有部分项目代码提交是需要 review 通过才能提交的，在这过程之中，code review 比较侧重的是代码规范，项目中一些特别注意的点，基本上不太可能去充分了解别人的完成的业务，主要是看他能不能讲清楚他写的代码的逻辑。</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/7a/ba/791d0f5e.jpg" width="30px"><span>一壶浊酒</span> 👍（2） 💬（0）<div>看了争哥这篇文章，想了下我们公司，发现就是没有code review的氛围，项目工期动不动就是今天要改完，明天领导就要看，代码也都是五花八门，有些临时写的代码后期也就得过且过，全都已经自由惯了。之前架构师还在推荐进行code review，但是还是很难执行。不过我个人认为，code review是有必要的，这样形成一个好的技术氛围，大家一起成长的感觉很是不错</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/fc/d7/b102034a.jpg" width="30px"><span>do it</span> 👍（2） 💬（0）<div>当前有的项目有CodeReview,不过基本都是检查下编码规范。</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/47/31/f35367c8.jpg" width="30px"><span>小晏子</span> 👍（2） 💬（0）<div>非常赞成code review，在我的平时工作中，code review非常严格，遇到的问题就是像文中提到的，一个特性开发好了之后要好长一段时间才能合入到主干分支，不过这个有个好处是上线bug确实很少，代码质量也比较高！</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/bc/c8/23cfef5b.jpg" width="30px"><span>DXJ</span> 👍（1） 💬（1）<div>认同老师的观点，code review是保障代码质量的有效手段，但这种手段应用到绝大多数国内互联网企业当中却时有些水土不服。我是业务开发，一周迭代一个版本的企业不在少数，测试联调剩下的开发时间可能不足两三天，所以在你埋头写码或者联调或者为测试构建测试场景队友提来cr的时刻不在少数，这个时候你想细心review的兴趣真的不大。况且国内竞争太过激烈，很多公司都是业务第一优先级，技术只能做妥协。我觉得提升个人水平很重要，优先保障不给队友留坑，在力所能及的做一些优化重构。全面严格的执行cr在头部互联网公司很稳定的业务先可能会落地，其他可能就比较理想化了</div>2020-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/23/a1/b08f3ee7.jpg" width="30px"><span>何妨</span> 👍（1） 💬（0）<div>破窗效应</div>2020-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a4/6f/672a27d4.jpg" width="30px"><span>will</span> 👍（1） 💬（0）<div>还是很有必要进行review的，这个也是个学习的过程，可以学习别人的设计思想。</div>2020-05-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/15/69/187b9968.jpg" width="30px"><span>南山</span> 👍（1） 💬（0）<div>公司在猛抓质量，cr也有足够的重视，自己的松懈也导致了质量的下降。
-亲身经历一个功能的推倒重来到现在的大单体，大部分原因都是自己对重构、质量不够重视，后续反思，矫正，践行！！！</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/86/56/509535da.jpg" width="30px"><span>守拙</span> 👍（1） 💬（0）<div>课堂讨论: 
-    
-    个人对于Code Review的看法是正面的, CR能有效维持(maintain)项目代码可维护性, 提升团队凝聚力, 老师说良好的CR能降低团队离职率是不无道理的. 
-
-    由于本人团队无CodeReview流程, 就只能自己给自己CodeReview了. 践行CR+持续重构可以让自己有收获, 同时也是对公司, 对自己的负责.
-</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3a/f8/c1a939e7.jpg" width="30px"><span>君哥聊技术</span> 👍（1） 💬（0）<div>我觉得Code Review还是非常有必要的，不光是一些工作时间不长的同事，即使工作10多年的同事，写出的代码都可能会有一些改进之处，code review也是大家交流技术的机会
-目前的公司没有严格的code review流程，这个很难快速形成，只能慢慢来先养成习惯，之后形成文化
-</div>2020-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/17/27/ec30d30a.jpg" width="30px"><span>Jxin</span> 👍（1） 💬（0）<div>1.应该。这既是保障项目质量持续优益的手段，也是加速新人融入团队的好方法（达成共同认知，理解团队的协作方式）。
-
-2.曾经组织过，但流于形式，不了了之。
-
-3.抓个资深甚至专家出来。在code review时也只做到编码规范的矫正加上一些性能问题的考量。并没有真正有建设性的建议。于是就给人价值不大，鸡蛋里挑骨头，闲着找事的错觉。设计原则，编码思想，随便抓个中级开发都能背出来。但真的用这些知识去审核别人的代码，专家都不一定玩得6。而领头羊都不清不楚，羊群又该如何走对呢？</div>2020-05-06</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epuTGFr2DKichlh7yU6ClmNjiadiaCCT1PqNXwoa8kgPK5mMIn7jbbsjmgGpjQZ9g2DMWYoRVC6Aa74A/132" width="30px"><span>Snow</span> 👍（0） 💬（0）<div>&quot;我们可以先让资深同事、技术好的同事或技术 leader，来 Review 其他所有人的代码。Review 的过程本身就是一种“传帮带”的过程。慢慢地，整个团队就知道该如何 Review 了。虽然这可能会有一个相当长的过程，但如果真的想在团队中执行 Code Review，这不失为一种“曲线救国”的方法。&quot;
-没有这样的人咋办😂</div>2024-01-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/25/5e/a4/d48b8298.jpg" width="30px"><span>Geek_sz</span> 👍（0） 💬（0）<div>感觉ai会比codereview先到吧</div>2023-12-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/b5/93/cf0fc8af.jpg" width="30px"><span>八年老萌新</span> 👍（0） 💬（0）<div>原来我们也有code review，只不过我们这的形式就是开会，技术leader+功能代码相关人员参与，在开发前必要的需求还要开设计评审和接口定义评审，大家都想展现自己的能力，被评审人怕出丑自然而然就会注重代码质量，可惜去年裁员leader被拿下了，公司技术氛围直接G</div>2023-05-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/50/2b/2344cdaa.jpg" width="30px"><span>第一装甲集群司令克莱斯特</span> 👍（0） 💬（0）<div>代码质量必须重视，技术债也能拖垮业务。</div>2022-11-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/99/c3/e4f408d4.jpg" width="30px"><span>陌兮</span> 👍（0） 💬（0）<div>以前呆的公司都有code review，现在这家也有，不过有点形式主义。当前重写系统，都已经开发快两个月了，一次code review都没有进行，其他人的代码连注释都没有，只能说领导对这个太不重视了！</div>2022-06-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/9f/62/960eecc3.jpg" width="30px"><span>夏天</span> 👍（0） 💬（0）<div>Code Review 有必要，现在所在公司 Code Review 要求的很低，就是不能出线上问题，不影响老的功能业务，至于代码规范，格式 代码质量很难有要求，因为至上而下就没有这种氛围.</div>2022-04-01</li><br/>
+最后，就是坚持坚持再坚持，教育教育再教育。</div>2020-05-06</li><br/><li><span>Henry</span> 👍（2） 💬（0）<div>谷歌 java编码风格手册
+https:&#47;&#47;google.github.io&#47;styleguide&#47;javaguide.html</div>2020-11-13</li><br/><li><span>Frank</span> 👍（2） 💬（0）<div>Code Review 除了能对一些代码提出修改建议之外，个人觉得自己能从别人写的代码学到一些好的设计，好的思想。所以自己在平时任务完成的情况下，也会看看别人写的代码，看看他是怎么实现的，如果自己来实现是否有更好的方式等。目前团队中有部分项目代码提交是需要 review 通过才能提交的，在这过程之中，code review 比较侧重的是代码规范，项目中一些特别注意的点，基本上不太可能去充分了解别人的完成的业务，主要是看他能不能讲清楚他写的代码的逻辑。</div>2020-05-06</li><br/><li><span>一壶浊酒</span> 👍（2） 💬（0）<div>看了争哥这篇文章，想了下我们公司，发现就是没有code review的氛围，项目工期动不动就是今天要改完，明天领导就要看，代码也都是五花八门，有些临时写的代码后期也就得过且过，全都已经自由惯了。之前架构师还在推荐进行code review，但是还是很难执行。不过我个人认为，code review是有必要的，这样形成一个好的技术氛围，大家一起成长的感觉很是不错</div>2020-05-06</li><br/>
 </ul>

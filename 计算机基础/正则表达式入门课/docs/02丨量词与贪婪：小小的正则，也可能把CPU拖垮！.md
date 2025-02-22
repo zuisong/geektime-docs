@@ -39,8 +39,176 @@
 ```
 
 但这一次的结果匹配到了三次空字符串。为什么会匹配到空字符串呢？因为星号（\*）代表0到多次，匹配0次就是空字符串。到这里，你可能会有疑问，如果这样，aaa 部分应该也有空字符串，为什么没匹配上呢？
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/1c/fa/4f/4252911a.jpg" width="30px"><span>Geek.S.</span> 👍（46） 💬（9）<div>以前只知道贪婪模式和懒惰模式，原来还有一个独占模式，贪婪和非贪婪都会发生回溯，结合文中给的案例链接，知道了 NFA 和 DFA (这个老师应该在后面讲匹配原理时会讲到)。难怪余晟老师说学会正则后务必要学会克制。
+
+这就引入了我们今天要讲的话题，贪婪与非贪婪模式。这两种模式都必须满足匹配次数的要求才能匹配上。贪婪模式，简单说就是尽可能进行最长匹配。非贪婪模式呢，则会尽可能进行最短匹配。正是这两种模式产生了不同的匹配结果。
+
+## 贪婪、非贪婪与独占模式
+
+### 贪婪匹配（Greedy）
+
+首先，我们来看一下贪婪匹配。在正则中，表示次数的量词默认是贪婪的，在贪婪模式下，会尝试尽可能最大长度去匹配。
+
+首先，我们来看一下在字符串 aaabb 中使用正则 a* 的匹配过程。
+
+![](https://static001.geekbang.org/resource/image/a7/ca/a7d62eee986938327d31e170cdd3caca.jpg?wh=1308%2A124)
+
+![](https://static001.geekbang.org/resource/image/63/97/63e5c750b66f6eb914c73befdba43f97.jpg?wh=1311%2A446)
+
+a* 在匹配开头的 a 时，会尝试尽量匹配更多的 a，直到第一个字母 b 不满足要求为止，匹配上三个a，后面每次匹配时都得到了空字符串。
+
+相信看到这里你也发现了，贪婪模式的特点就是尽可能进行最大长度匹配。所以要不要使用贪婪模式是根据需求场景来定的。如果我们想尽可能最短匹配呢？那就要用到非贪婪匹配模式了。
+
+### 非贪婪匹配（Lazy）
+
+那么如何将贪婪模式变成非贪婪模式呢？我们可以在量词后面加上英文的问号(?)，正则就变成了 a\*?。此时的匹配结果如下：  
+![](https://static001.geekbang.org/resource/image/10/bc/10e40baa1194b17dcc57a089524a37bc.png?wh=1036%2A548)
+
+```
+>>> import re
+>>> re.findall(r'a*', 'aaabb')  # 贪婪模式
+['aaa', '', '', '']
+>>> re.findall(r'a*?', 'aaabb') # 非贪婪模式
+['', 'a', '', 'a', '', 'a', '', '', '']
+```
+
+这一次我们可以看到，这次匹配到的结果都是单个的a，就连每个a左边的空字符串也匹配上了。
+
+到这里你可能就明白了，非贪婪模式会尽可能短地去匹配，我把这两者之间的区别写到了下面这张图中。
+
+![](https://static001.geekbang.org/resource/image/3f/d1/3f95a3648980c1eb3c550fb34b46fad1.png?wh=2092%2A618)
+
+为了让你加深理解，我们再来看一个示例，这一次让我们查找一下引号中的单词。
+
+从下面这个示例中，我们可以很容易看出两者对比上的差异。左右的文本是一样的，其中有两对双引号。不同之处在于，左边的示例中，不加问号时正则是贪婪匹配，匹配上了从第一个引号到最后一个引号之间的所有内容；而右边的图是非贪婪匹配，找到了符合要求的结果。
+
+![](https://static001.geekbang.org/resource/image/40/79/40c03d7a2cb990b35e4801589eca1379.png?wh=2112%2A790)
+
+### 独占模式（Possessive）
+
+不管是贪婪模式，还是非贪婪模式，都需要发生回溯才能完成相应的功能。但是在一些场景下，我们不需要回溯，匹配不上返回失败就好了，因此正则中还有另外一种模式，独占模式，它类似贪婪匹配，但匹配过程不会发生回溯，因此在一些场合下性能会更好。
+
+你可能会问，那什么是回溯呢？我们来看一些例子，例如下面的正则：
+
+> regex = “xy{1,3}z”
+
+> text = “xyyz”
+
+在匹配时，y{1,3}会尽可能长地去匹配，当匹配完 xyy 后，由于 y 要尽可能匹配最长，即三个，但字符串中后面是个 z 就会导致匹配不上，这时候正则就会**向前回溯**，吐出当前字符 z，接着用正则中的 z 去匹配。
+
+![](https://static001.geekbang.org/resource/image/7a/88/7a9636b588963e5af9619837fe5a6888.png?wh=1204%2A458)
+
+如果我们把这个正则改成非贪婪模式，如下：
+
+> regex = “xy{1,3}?z”
+
+> text = “xyyz”
+
+由于 y{1,3}? 代表匹配1到3个 y，尽可能少地匹配。匹配上一个 y 之后，也就是在匹配上 text 中的 xy 后，正则会使用 z 和 text 中的 xy 后面的 y 比较，发现正则 z 和 y 不匹配，这时正则就会**向前回溯**，重新查看 y 匹配两个的情况，匹配上正则中的 xyy，然后再用 z 去匹配 text 中的 z，匹配成功。
+
+![](https://static001.geekbang.org/resource/image/21/0c/2177c740a2d5dd805f3157d54636500c.png?wh=1002%2A378)
+
+了解了回溯，我们再看下独占模式。
+
+独占模式和贪婪模式很像，独占模式会尽可能多地去匹配，如果匹配失败就结束，不会进行回溯，这样的话就比较节省时间。具体的方法就是在量词后面加上加号（+）。
+
+> regex = “xy{1,3}+yz”
+
+> text = “xyyz”
+
+![](https://static001.geekbang.org/resource/image/96/cb/96635e198c2ff6cf7b8ea2a0d18f8ecb.png?wh=1000%2A366)
+
+需要注意的是 Python 和 Go 的标准库目前都不支持独占模式，会报错，如下所示：
+
+```
+>>> import re
+>>> re.findall(r'xy{1,3}+yz', 'xyyz')
+error: multiple repeat at position 7
+
+```
+
+报错显示，加号（+）被认为是重复次数的元字符了。如果要测试这个功能，我们可以安装 PyPI 上的 regex 模块。
+
+```
+注意：需要先安装 regex 模块，pip install regex
+
+>>> import regex
+>>> regex.findall(r'xy{1,3}z', 'xyyz')  # 贪婪模式
+['xyyz']
+>>> regex.findall(r'xy{1,3}+z', 'xyyz') # 独占模式
+['xyyz']
+>>> regex.findall(r'xy{1,2}+yz', 'xyyz') # 独占模式
+[]
+```
+
+你也可以使用 Java 或 Perl 等其它语言来测试独占模式，查阅相关文档，看一下你所用的语言对独占模式的支持程度。
+
+如果你用 a{1,3}+ab 去匹配 aaab 字符串，a{1,3}+ 会把前面三个 a 都用掉，并且不会回溯，这样字符串中内容只剩下 b 了，导致正则中加号后面的 a 匹配不到符合要求的内容，匹配失败。如果是贪婪模式 a{1,3} 或非贪婪模式 a{1,3}? 都可以匹配上。
+
+![](https://static001.geekbang.org/resource/image/1d/b7/1dbf7d9fed42390edb3bf9ef9e0da7b7.jpg?wh=1619%2A372)
+
+这里我简单总结一下，独占模式性能比较好，可以节约匹配的时间和CPU资源，但有些情况下并不能满足需求，要想使用这个模式还要看具体需求（比如我们接下来要讲的案例），另外还得看你当前使用的语言或库的支持程度。
+
+## 正则回溯引发的血案
+
+学习到了这里，你是不是觉得自己对贪婪模式、非贪婪模式，以及独占模式比较了解了呢？其实在使用过程中稍不留神，就容易出问题，在网上可以看到不少因为回溯引起的线上问题。
+
+这里我们挑选一个比较出名的，是阿里技术微信公众号上的发文。Lazada卖家中心店铺名检验规则比较复杂，名称中可以出现下面这些组合：
+
+1. 英文字母大小写；
+2. 数字；
+3. 越南文；
+4. 一些特殊字符，如“&amp;”，“-”，“\_”等。
+
+负责开发的小伙伴在开发过程中使用了正则来实现店铺名称校验，如下所示：
+
+```
+^([A-Za-z0-9._()&'\- ]|[aAàÀảẢãÃáÁạẠăĂằẰẳẲẵẴắẮặẶâÂầẦẩẨẫẪấẤậẬbBcCdDđĐeEèÈẻẺẽẼéÉẹẸêÊềỀểỂễỄếẾệỆfFgGhHiIìÌỉỈĩĨíÍịỊjJkKlLmMnNoOòÒỏỎõÕóÓọỌôÔồỒổỔỗỖốỐộỘơƠờỜởỞỡỠớỚợỢpPqQrRsStTuUùÙủỦũŨúÚụỤưƯừỪửỬữỮứỨựỰvVwWxXyYỳỲỷỶỹỸýÝỵỴzZ])+$
+
+```
+
+这个正则比较长，但很好理解，中括号里面代表多选一，我们简化一下，就成下面这样：
+
+```
+^([符合要求的组成1]|[符合要求的组成2])+$ 
+```
+
+脱字符（^）代表以这个正则开头，美元符号（$）代表以正则结尾，我们后面会专门进行讲解。这里可以先理解成整个店铺名称要能匹配上正则，即起到验证的作用。
+
+你需要留意的是，正则中有个加号（+），表示前面的内容出现一到多次，进行贪婪匹配，这样会导致大量回溯，占用大量CPU资源，引发线上问题，我们只需要将贪婪模式改成独占模式就可以解决这个问题。
+
+我之前说过，要根据具体情况来选择合适的模式，在这个例子中，匹配不上时证明店铺名不合法，不需要进行回溯，因此我们可以使用独占模式，但要注意并不是说所有的场合都可以用独占模式解决，我们要首先保证正则能满足功能需求。
+
+仔细再看一下 这个正则，你会发现 “组成1” 和 “组成2” 部分中，A-Za-z 英文字母在两个集合里面重复出现了，这会导致回溯后的重复判断。这里要强调一下，并不是说有回溯就会导致问题，你应该尽量减少回溯后的计算量，这些在后面的原理讲解中我们会进一步学习。
+
+另外，腾讯云技术社区​也有类似的技术文章，你如果感兴趣，可以点击这里[进行](https://zhuanlan.zhihu.com/p/38229530)查看。
+
+说到这里，你是不是想起了课程开篇里面提到的一句话：
+
+> 如果你有一个问题，你想到可以用正则来解决，那么你有两个问题了。
+
+> Some people, when confronted with a problem, think “I know, I’ll use regular expressions.” Now they have two problems.
+
+所以一个小小的正则，有些时候也可能会把CPU拖垮，这也提醒我们在写正则的时候，一定要思考下回溯问题，避免使用低效的正则，引发线上问题。
+
+## 最后总结
+
+最后我来给你总结一下：正则中量词默认是贪婪匹配，如果想要进行非贪婪匹配需要在量词后面加上问号。贪婪和非贪婪匹配都可能会进行回溯，独占模式也是进行贪婪匹配，但不进行回溯，因此在一些场景下，可以提高匹配的效率，具体能不能用独占模式需要看使用的编程语言的类库的支持情况，以及独占模式能不能满足需求。
+
+![](https://static001.geekbang.org/resource/image/1a/75/1ad3eb0d011ba4fc972b9e5191a9f275.png?wh=1394%2A948)
+
+## 课后思考
+
+最后，我们来做一个小练习吧。
+
+有一篇英文文章，里面有很多单词，单词和单词之间是用空格隔开的，在引号里面的一到多个单词表示特殊含义，即引号里面的多个单词要看成一个单词。现在你需要提取出文章中所有的单词。我们可以假设文章中除了引号没有其它的标点符号，有什么方法可以解决这个问题呢？如果用正则来解决，你能不能写出一个正则，提取出文章中所有的单词呢（不要求结果去重）？
+
+> we found “the little cat” is in the hat, we like “the little cat”
+
+> 其中 the little cat 需要看成一个单词
+
+好了，今天的课程就结束了，希望可以帮助到你，也希望你在下方的留言区和我参与讨论，并把文章分享给你的朋友或者同事，一起交流一下。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>Geek.S.</span> 👍（46） 💬（9）<div>以前只知道贪婪模式和懒惰模式，原来还有一个独占模式，贪婪和非贪婪都会发生回溯，结合文中给的案例链接，知道了 NFA 和 DFA (这个老师应该在后面讲匹配原理时会讲到)。难怪余晟老师说学会正则后务必要学会克制。
 
 如果只是判断文本是否符合规则，则可以使用独占模式; 如果需要获取匹配的结果，则根据需要使用贪婪或非贪婪。
 
@@ -60,19 +228,19 @@
 [&#39;we&#39;, &#39;found&#39;, &#39;&quot;the little cat&quot;&#39;, &#39;is&#39;, &#39;in&#39;, &#39;the&#39;, &#39;hat&#39;, &#39;we&#39;, &#39;like&#39;, &#39;&quot;the little cat&quot;&#39;]
 
 
-示例: https:&#47;&#47;regex101.com&#47;r&#47;l8hkqi&#47;1</div>2020-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（17） 💬（5）<div>老师，对于文中的这个语句
+示例: https:&#47;&#47;regex101.com&#47;r&#47;l8hkqi&#47;1</div>2020-06-15</li><br/><li><span>奕</span> 👍（17） 💬（5）<div>老师，对于文中的这个语句
 regex.findall(r&#39;xy{1,3}+z&#39;, &#39;xyyz&#39;)
 
-这里是独占模式，不进行回溯。这里在尽可能多的匹配第三个 y的时候匹配失败，不应该是直接匹配失败 返回空数组吗？ 怎么是返回 xyyz 呢？ 如果返回 xyyz 不就进行回溯了吗？</div>2020-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/fa/f9/8fdde936.jpg" width="30px"><span>BillionY</span> 👍（13） 💬（6）<div>\w+|“[^”]*”   
+这里是独占模式，不进行回溯。这里在尽可能多的匹配第三个 y的时候匹配失败，不应该是直接匹配失败 返回空数组吗？ 怎么是返回 xyyz 呢？ 如果返回 xyyz 不就进行回溯了吗？</div>2020-06-15</li><br/><li><span>BillionY</span> 👍（13） 💬（6）<div>\w+|“[^”]*”   
 \w+|“[\w\s]+?
 \w+|“.+?”
-还有第四种方法吗?</div>2020-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1a/66/2d9db9ed.jpg" width="30px"><span>苦行僧</span> 👍（7） 💬（3）<div>w+|“[^”]+”, w+ 看懂了, 但 后面的没看懂?</div>2020-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/f1/15/8fcf8038.jpg" width="30px"><span>William</span> 👍（5） 💬（1）<div>js版
+还有第四种方法吗?</div>2020-06-15</li><br/><li><span>苦行僧</span> 👍（7） 💬（3）<div>w+|“[^”]+”, w+ 看懂了, 但 后面的没看懂?</div>2020-08-13</li><br/><li><span>William</span> 👍（5） 💬（1）<div>js版
 ```javascript
 let str = `we found &quot;the little cat&quot; is in the hat, we like &quot;the little cat&quot;`
 let re = new RegExp(&#47;&quot;[^&quot;]+&quot;|\w+&#47;, &#39;g&#39;)
 let res = str.match(re)
 console.log(res)
-```</div>2020-06-23</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/ibZVAmmdAibBeVpUjzwId8ibgRzNk7fkuR5pgVicB5mFSjjmt2eNadlykVLKCyGA0GxGffbhqLsHnhDRgyzxcKUhjg/132" width="30px"><span>pyhhou</span> 👍（5） 💬（1）<div>思考题：
+```</div>2020-06-23</li><br/><li><span>pyhhou</span> 👍（5） 💬（1）<div>思考题：
 
 &quot;.+?&quot;|[^\s|,]+
 
@@ -82,8 +250,8 @@ console.log(res)
 2. 正则中的 y 入栈，匹配上 text 中的第二个字符 y
 3. 因为这里没有加问号，属于贪婪匹配，正则中的 y 继续入栈，匹配上 text 中的第三个字符 y
 4. 正则中的 y 继续入栈，但是这个时候 y 和 z 不匹配，执行回溯，就是当前正则的第三个 y 出栈
-5. 用范围量词后的字符 z 继续入栈匹配，匹配上 text 的最后一个字符，完成匹配</div>2020-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/07/21/b3394aa2.jpg" width="30px"><span>Robot</span> 👍（4） 💬（1）<div>建议老师统一下正则的运行环境。</div>2020-06-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/71/96/66ad1cd2.jpg" width="30px"><span>飞</span> 👍（3） 💬（2）<div>[a-z]+|“[^“]+”</div>2020-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/db/64/06d54a80.jpg" width="30px"><span>中年男子</span> 👍（3） 💬（1）<div>还有就是文章中的例子： xy{1,3}+yz 去匹配 xyyz，我的理解是用y{1,3}尽可能多的去匹配， 也就是 xyy之后，用第三个y 去匹配z，因为不回溯，到这里就失败了， 还没到正则中z前面那个y。
-还请解惑。</div>2020-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/a6/d4/8d50d502.jpg" width="30px"><span>简简单单</span> 👍（2） 💬（3）<div>老师我有个疑问求解答: 
+5. 用范围量词后的字符 z 继续入栈匹配，匹配上 text 的最后一个字符，完成匹配</div>2020-06-15</li><br/><li><span>Robot</span> 👍（4） 💬（1）<div>建议老师统一下正则的运行环境。</div>2020-06-16</li><br/><li><span>飞</span> 👍（3） 💬（2）<div>[a-z]+|“[^“]+”</div>2020-06-15</li><br/><li><span>中年男子</span> 👍（3） 💬（1）<div>还有就是文章中的例子： xy{1,3}+yz 去匹配 xyyz，我的理解是用y{1,3}尽可能多的去匹配， 也就是 xyy之后，用第三个y 去匹配z，因为不回溯，到这里就失败了， 还没到正则中z前面那个y。
+还请解惑。</div>2020-06-15</li><br/><li><span>简简单单</span> 👍（2） 💬（3）<div>老师我有个疑问求解答: 
 
 正则: \w+|“.+?”
 字符串 : we found “the little cat” is in the hat, we like “the little cat”
@@ -91,7 +259,7 @@ console.log(res)
 结果的确是把每个单词单独匹配到了, 并且 引号的也当成一个单词了,
 那么请问 为什么 \w+ 不会把 引号内的单词匹配到呢, 为什么不会出现 the 与 “the little cat” 共存呢
 正则匹配的过程是怎么样的 ?
-</div>2020-07-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c4/06/c08eca4c.jpg" width="30px"><span>Zion W.</span> 👍（2） 💬（1）<div>引号是全角还是半角？</div>2020-06-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/33/07/8f351609.jpg" width="30px"><span>JustDoDT</span> 👍（2） 💬（1）<div>我总结一些，正则这东西：
+</div>2020-07-21</li><br/><li><span>Zion W.</span> 👍（2） 💬（1）<div>引号是全角还是半角？</div>2020-06-27</li><br/><li><span>JustDoDT</span> 👍（2） 💬（1）<div>我总结一些，正则这东西：
 1、掌握基本规则
 2、多用，多试验
 我的运行环境：MacOS，python 3.6.2
@@ -103,38 +271,7 @@ re.findall(r&#39;&quot;(.*?)&quot;&#39;, text)
 text = &#39;we found “the little cat” is in the hat, we like “the little cat”&#39;
 re.findall(r&#39;“(.*?)”&#39;, text)
 输出：[&#39;the little cat&#39;, &#39;the little cat&#39;]
-so easy</div>2020-06-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/db/64/06d54a80.jpg" width="30px"><span>中年男子</span> 👍（2） 💬（2）<div>老师， 我有个问题， 既然是独占模式了， 那{1,3} 这种量词是不是就没什么意义？直接{3}不就行了</div>2020-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/25/83/28/ee3d71cc.jpg" width="30px"><span>蓝猫冬天变肥猫</span> 👍（1） 💬（1）<div>老师，
+so easy</div>2020-06-18</li><br/><li><span>中年男子</span> 👍（2） 💬（2）<div>老师， 我有个问题， 既然是独占模式了， 那{1,3} 这种量词是不是就没什么意义？直接{3}不就行了</div>2020-06-15</li><br/><li><span>蓝猫冬天变肥猫</span> 👍（1） 💬（1）<div>老师，
 [a-zA-Z]+|“.+? 匹配出来10个
-”但是为什么我用.+|“.+?”把整个句子都匹配上了呢？</div>2021-07-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/c9/23/76511858.jpg" width="30px"><span>洛奇</span> 👍（1） 💬（1）<div>本人仅看这篇文章后，还是不明白为什么“匹配越南店铺名”的例子会有回溯？从正则表达式xy*yz匹配xyz的例子可以大概明白什么是回溯，但是匹配店铺名的例子中，两个符合条件的组合是“或”的关系，而不是xy*yz里的y*和y的前后关系，而且正则头尾已经用^和$包裹了，为什么也会产生回溯呢？</div>2020-07-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/bd/ec/cc7abf0b.jpg" width="30px"><span>L</span> 👍（1） 💬（4）<div>老师我完全没有办法理解这个空白符。
-确实将 aaabb 拆成了 空白符+a+空白符+...
-可以理解 但是这样做的意义是什么？？？ 
-此外 我想问一下对于同一个正则表达式 不同的语言引擎的解释是可以不一样的吗？
-一样用这个进行举例。
-const regex1 = new RegExp(&#39;a*?&#39;,&#39;g&#39;)
-const str1 = &#39;aaabb&#39;
-console.log(str1.match(regex1))  &#47;&#47; [&#39;&#39;,&#39;&#39;,&#39;&#39;,&#39;&#39;,&#39;&#39;,&#39;&#39;,&#39;&#39;]
-
-预期的结果不是 a a a b b 吗？
-而对于这个结果我做了一个尝试性的解读。
-macth返回的不是字符串的子串，而是正则的结果
-因此 返回的结果应该为 &#39;&#39;  a aa a*
-因此即使是a匹配到了 返回的也是对应的正则的匹配形式 空字符 因为非贪婪模式下并不需要到a就可以返回了
-可是这样得话 为什么会多出来一个 空白符 呢？
-对于这个空白符 个人的理解是 当输出一个空字符的时候 a* 也是可以匹配成功的，因此需要对这种情况进行处理，那么是在什么时候进行处理的呢？在一开始的时候进行处理的，还是在结尾的时候进行处理的？
-老师在讲原理的时候会聊这块吗？
-我的问题主要有三点
-
-1、不同的语言对正则的理解是不是可能不一样
-2、为什么python要对字符串进行加上空字符的处理
-3、为什么JavaScript的match会返回这样的结果
-
-希望老师能给一个解答
-
-还有一个请求
-老师在在讲原理的时候，能不能提一下这块</div>2020-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/07/21/b3394aa2.jpg" width="30px"><span>Robot</span> 👍（1） 💬（1）<div>课后思考：
-
-&#47;&quot;[^&quot;]+&quot;|[a-z]+&#47;g</div>2020-06-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/10/30/c07d419c.jpg" width="30px"><span>卡尔</span> 👍（1） 💬（1）<div>^([a-zA-Z]+|&quot;[^&quot;]+&quot;)$</div>2020-06-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/fa/4f/4252911a.jpg" width="30px"><span>Geek.S.</span> 👍（1） 💬（1）<div>独占模式是贪婪的，很好奇有没有非贪婪的独占模式？老师可不可以分析一下这个问题？👻</div>2020-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/78/62/354b1873.jpg" width="30px"><span>clever_P</span> 👍（1） 💬（1）<div>[a-zA-Z]+|&quot;[a-zA-Z ]+&quot;</div>2020-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/90/19/b3403815.jpg" width="30px"><span>Juha</span> 👍（0） 💬（1）<div>老师，这里想请问一下，为什么 aaabb 中使用正则 a* 匹配的结果中，会有3个空字符串，看上去不应该是2个吗，分别是bb来匹配a未匹配到导致的</div>2024-06-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/20/c8/b16eb6ed.jpg" width="30px"><span>程同学</span> 👍（0） 💬（2）<div>老师好，这篇文章我看了很多遍，发现在贪婪模式下的“尽可能多地匹配”，与独占模式下的“尽可能多地匹配”是不一样的，是这样吗</div>2022-03-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/c9/23/76511858.jpg" width="30px"><span>洛奇</span> 👍（0） 💬（1）<div>老师，用&quot;[^&quot;]*?&quot;是否比&quot;.*?&quot;性能更好？因为我认为前者已经先用引号和相应字符比较过了，直觉告诉我前者可能性能更好。</div>2022-01-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/30/67/a1e9aaba.jpg" width="30px"><span>Roway</span> 👍（0） 💬（1）<div>xy{1,3}+yz    改成独占模式 xy{3}yz 不可以吗？</div>2021-12-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/b8/24/039f84a2.jpg" width="30px"><span>咱是吓大的</span> 👍（0） 💬（1）<div>贪婪模式是从多到少进行匹配，非贪婪模式是从少到多进行匹配，如果匹配不成功则回溯
-独占模式从多到少进行匹配，且只匹配一次
-老师我这么理解对吗？</div>2021-11-11</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/VoOP42bmOhmfaHfacAQc7EesLcmXu2OrEHsQJic1xYPT7elyIIQy6jDBVUtianXcA2ibFQhYj6OUwhYPDkKqQSIaA/132" width="30px"><span>Geek_8hym02</span> 👍（0） 💬（1）<div>作业练习搞了半天终于弄出来了，“(.+?)”|[a-z]{2,}+</div>2021-09-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/db/3a/a9113de0.jpg" width="30px"><span>向死而生</span> 👍（0） 💬（1）<div>a?是贪婪模式还是非贪婪模式</div>2021-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/db/3a/a9113de0.jpg" width="30px"><span>向死而生</span> 👍（0） 💬（1）<div>非贪婪匹配的最后一个例题没懂，”不是也能被.给匹配吗，为什么非贪婪模式下不匹配？</div>2021-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/d7/a9/f341b89c.jpg" width="30px"><span>azurepwq</span> 👍（0） 💬（1）<div>老师，我想了好久，文章来回看了好多遍也不知怎么解决，又不想跳出文章的学习去查资料，毕竟是作业。思考了半小时后，我被自己蠢哭了，我以为要匹配&quot;xxx&quot;里面的xxx, 原来只要匹配&quot;xxx&quot;就可以了。
-于是答案不是很明显是: \w+|&quot;[^&quot;]+&quot;。但问题来了，如果我想单独匹配&quot;xxx&quot;里面的xxx怎么办呢？</div>2020-11-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/44/a4/7a45d979.jpg" width="30px"><span>IT蜗壳-Tango</span> 👍（0） 💬（1）<div>打卡学习，每天学习一点点。加油＾０＾~</div>2020-11-11</li><br/>
+”但是为什么我用.+|“.+?”把整个句子都匹配上了呢？</div>2021-07-27</li><br/><li><span>洛奇</span> 👍（1） 💬（1）<div>本人仅看这篇文章后，还是不明白为什么“匹配越南店铺名”的例子会有回溯？从正则表达式xy*yz匹配xyz的例子可以大概明白什么是回溯，但是匹配店铺名的例子中，两个符合条件的组合是“或”的关系，而不是xy*yz里的y*和y的前后关系，而且正则头尾已经用^和$包裹了，为什么也会产生回溯呢？</div>2020-07-03</li><br/>
 </ul>

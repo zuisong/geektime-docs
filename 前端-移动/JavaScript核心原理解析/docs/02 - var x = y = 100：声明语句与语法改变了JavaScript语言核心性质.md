@@ -19,8 +19,221 @@ console.log(y); // 100
 它既没错、又好用，还很酷，你说我们为什么不用它呢？然而很不幸，这行代码可能是JavaScript中最复杂和最容易错用的表达式了。
 
 所以今天我要和你一起好好地盘盘它。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/c8/d3/3020ae46.jpg" width="30px"><span>fatme</span> 👍（100） 💬（1）<div>声明和语句的区别在于发生的时间点不同，声明发生在编译期，语句发生在运行期。声明发生在编译期，由编译器为所声明的变量在相应的变量表，增加一个名字。语句是要在运行时执行的程序代码。因此，如果声明不带初始化，那么可以完全由编译器完成，不会产生运行时执行的代码。</div>2019-11-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/6f/10/bfbf81dc.jpg" width="30px"><span>海绵薇薇</span> 👍（22） 💬（3）<div>hello，老师好啊，研读完文章和评论后还存在如下疑问：
+
+## 声明
+
+至今为止，除标签声明之外，JavaScript中一共只有六条声明用的语句。注意，所有真正被定义“声明”的语法结构都一定是“语句”，并且都用于声明一个或多个标识符。这里的标识符包括变量、常量等。
+
+严格意义上讲，JavaScript只有变量和常量两种标识符，六条声明语句中：
+
+- **let** *x* …
+
+声明变量x。不可在赋值之前读。
+
+- **const** *x* …
+
+声明常量x。不可写。
+
+- **var** *x* …
+
+声明变量x。在赋值之前可读取到undefined值。
+
+- **function** *x* …
+
+声明变量x。该变量指向一个函数。
+
+- **class** *x* …
+
+声明变量x。该变量指向一个类（该类的作用域内部是处理严格模式的）。
+
+- **import** …
+
+导入标识符并作为常量（可以有多种声明标识符的模式和方法）。
+
+除了这六个语句之外，还有两个语句有潜在的声明标识符的能力，不过它们并不是严格意义上的声明语句（声明只是它们的语法效果）。这两个语句是指：
+
+- **for** (***var***|***let***|***const*** *x* …) …
+
+for语句有多种语法来声明一个或多个标识符，用作循环变量。
+
+- **try** … **catch** (*x*) …
+
+catch子句可以声明一个或多个标识符，用作异常对象变量。
+
+总的来说，除上述的语法，用户是没有其它方式来在当前的代码上下文中“声明”出一个标识符来的。而我之所以在这里严格强调这一“汇总性的”结果，是因为下面的一个简单论断，所有的“声明”：
+
+> - 都意味着JavaScript将可以通过“静态”语法分析发现那些声明的标识符；
+> - 标识符对应的变量/常量“一定”会在用户代码执行前就已经被创建在作用域中。
+
+这个标题中的`var x`就是一个声明。在这个声明的后半部分，使用“=”这个符号引导了一个初始化语法——通常情况下可以将它理解为一个赋值运算。
+
+## 从读取值到赋值
+
+声明是在语法分析阶段就处理的，并且因此它会使得当前代码上下文在正式执行之前就拥有了被声明的标识符，例如`x`。
+
+这其实非常有趣，因为这表明JavaScript虽然被称为是“动态语言”，但确实是拥有静态语义的。而在JavaScript的早期，这个静态语义其实并没有处理得太好，一个典型的问题就是所谓的“变量提升”。也就是可以在变量声明之前访问该变量。例如：
+
+```
+console.log(x); // undefined
+var x = 100;
+console.log(x); // 100
+```
+
+这个“变量提升”还包括“变量被创建于声明它的语法块”之外的意思，但这并不是这里要讨论的内容，我会在今后再讲它。在今天的课程里，你只需要留意这个变量的读写过程就好了。那么，关于读取值，之前声明的变量与常量又有什么不同呢？
+
+如上面已经说过的，由于标识符是在用户代码执行之前就已经由静态分析得到，并且创建在环境中，因此let声明的变量和var声明的变量在这一点上没有不同：它们都是在读取一个“已经存在的”标识符名。例如：
+
+```
+var y = "outer";
+function f() {
+  console.log(y); // undefined
+  console.log(x); // throw a Exception
+  let x = 100;
+  var y = 100;
+  ...
+}
+```
+
+正是由于`var y`所声明的那个标识符在函数f()创建（它自己的闭包）时就已经存在，所以才阻止了`console.log(y)`访问全局环境中的`y`。类似的，`let x`所声明的那个`x`其实也已经存在f()函数的上下文环境中。访问它之所以会抛出异常（Exception），不是因为它不存在，而是因为这个标识符被拒绝访问了。
+
+在ECMAScript 6之后出现的`let/const`变量在“声明（和创建）一个标识符”这件事上，与`var`并没有什么不同，只是JavaScript拒绝访问还没有绑定值的`let/const`标识符而已。
+
+回到ECMAScript 6之前：JavaScript是允许访问还没有绑定值的`var`所声明的标识符的。这种标识符后来统一约定称为“变量声明（varDelcs）”，而“let/const”则称为“词法声明（lexicalDecls）”。JavaScript环境在创建一个“变量名（varName in varDecls）”后，会为它初始化绑定一个undefined值，而”词法名字（lexicalNames）”在创建之后就没有这项待遇，所以它们在缺省情况下就是“还没有绑定值”的标识符。
+
+> NOTE：6种声明语句中的函数是按varDecls的规则声明的；类的内部是处于严格模式中，它的名字是按let来处理的，而import导入的名字则是按const的规则来处理的。所以，所有的声明本质上只有三种处理模式：var变量声明、let变量声明和const常量声明。
+
+所以，标题中的`var x = ...`在语义上就是为变量x绑定一个初值。在具体的语言环境中，它将被实现为一个赋值操作。
+
+## 赋值
+
+如果是在一门其它的（例如编译型的）语言中，“为变量x绑定一个初值”就可能实现为“在创建环境时将变量x指向一个特定的初始值”。这通常是静态语言的处理方法，然而，如前面说过的，JavaScript是门动态的语言，所以它的“绑定初值”的行为是通过动态的执行过程来实现的，也就是赋值操作。
+
+那么请你仔细想想，一个赋值操作在语法上怎么表达呢？例如：
+
+```
+变量名 = 值
+```
+
+这样对吗？不对！在JavaScript中，这样讲是非常不正确的。正确的说法是：
+
+```
+lRef = rValue
+```
+
+也就是将右操作数（的值）赋给左操作数（的引用）。它的严格语法表达是：
+
+> *LeftHandSideExpression* &lt; **=** | ***AssignmentOperator*** &gt; *AssignmentExpression*
+
+也就是说，在JavaScript中，一个赋值表达式的左边和右边其实“都是”表达式！
+
+## 向一个不存在的变量赋值
+
+接下来我要给你介绍的是从JavaScript 1.0开始就遗留下来的一个巨坑，也就是所谓的“变量泄漏”问题。这在早期的JavaScript中的确是一个好用的特性：如果你向一个不存在的变量名赋值，那么JavaScript会在全局范围内创建它。
+
+也就是说，代码中不需要显式地声明一个变量了，变量可以随用随声明，也不用像后来的`let`语句一样，还要考虑在声明语句之前能不能访问的问题了。这非常简单，在少量的代码中也相当易用。
+
+但是，如果代码规模扩大，变成百千万行代码，那么“**一个全局变量是在哪里声明和创建的**”就变成一个非常要紧的问题。
+
+如果随时都可能泄露一个代码给全局，或者随时都可能因为忘记本地的声明而读写了全局变量，那对调试除错将是一场灾难。另外，晚一些出现的运行期优化技术也不能很好地处理这种情况。所以从ECMAScript5开始的严格模式就禁止了这种特性，试图避免用户将变量泄露到全局环境。
+
+然而现实中，即使在严格模式下这种漏露也未能避免。这称为“**间接执行**”，这将是另一个巨大的议题，并且是ECMAScript6之后开始的一种新的机制。但是现在这里发生的事情，也就是这个“向不存在的变量赋值”的问题，是从JavaScript 1.0时代就遗留下来的问题，也是ECMAScript为JavaScript填补的最大设计漏洞之一。
+
+那么，在具体技术细节上，这个变量声明是如何发生的呢？
+
+事实上，这是因为在早期设计中，JavaScript的全局环境是引擎使用一个称为“**全局对象**”东西管理起来的。
+
+这个全局对象几乎类似或完全等同于一个普通对象。只不过，JavaScript引擎将全局的一些缺省对象、运行期环境的原生对象等东西都初始化在这个全局对象的属性中，并使用这个对象创建了一个称为“**全局对象闭包**”的东西，从而得到了JavaScript的全局环境。
+
+早期的JavaScript的引擎实现非常简洁，许多基础的技术组件都是直接复用的，例如这里的所谓全局环境、全局闭包，或者全局对象的实现方法，就与“**with语句**”的效果完全相同——他们是相互复用的。
+
+当向一个不存在的变量赋值的时候，由于全局对象的属性表是可以动态添加的，因此JavaScript将变量名作为属性名添加给全局对象。而访问所谓全局变量时，就是访问这个全局对象的属性。因此，实际效果就变成了“可以动态地向全局环境中添加一个变量”。并且，显然地，我们在第一讲已经讲过这个结果——你可以删除掉这个动态添加的“变量”，因为本质上就是在删除全局对象的属性。
+
+那么现在（我是指在ECMAScript6之后）的JavaScript的全局环境有什么不同吗？
+
+为了兼容旧的JavaScript语言设计，现在的JavaScript环境仍然是通过将全局对象初始化为这样的一个全局闭包来实现的。但是为了得到一个“尽可能”与其它变量环境相似的声明效果（varDecls），ECMAScript规定在这个全局对象之外再维护一个变量名列表（varNames），所有在静态语法分析期或在eval()中使用`var`声明的变量名就被放在这个列表中。然后约定，这个变量名列表中的变量是“直接声明的变量”，不能使用`delete`删除。
+
+于是，我们得到了这样的一种结果：
+
+```
+> var a = 100;
+> x = 200;
+
+# `a`和`x`都是global的属性
+> Object.getOwnPropertyDescriptor(global, 'a');
+{ value: 100, writable: true, enumerable: true, configurable: false }
+> Object.getOwnPropertyDescriptor(global, 'x');
+{ value: 200, writable: true, enumerable: true, configurable: true }
+
+# `a`不能删除, `x`可以被删除
+> delete a
+false
+> delete x
+true
+
+# 检查
+> a
+100
+> x
+ReferenceError: x is not defin
+```
+
+所以，表面看起来“泄漏到全局的变量”与使用`var`声明的都是全局变量，并且都实现为global的属性，但事实上它们是不同的。并且当`var`声明发生在eval()中的时候，这一特性又还有所不同，例如：
+
+```
+# 使用eval声明
+> eval('var b = 300');
+
+# 它的性质是可删除的
+> Object.getOwnPropertyDescriptor(global, 'b').configurable;
+true
+
+# 检测与删除
+> b
+300
+> delete b
+true
+> b
+ReferenceError: b is not define
+```
+
+这种情况下使用`var`声明的变量名尽管也会添加到varNames列表，但它也可以从varNames中移除（这是唯一一种能从varNames中移除项的特例，而lexicalNames中的项是不可移除的）。
+
+## 发生了什么？
+
+所以，现在回到今天讨论的这行代码`var x = y = 100`，在这行代码中，等号的右边是一个表达式`y = 100`，它发生了一次“向不存在的变量赋值”，所以它隐式地声明了一个全局变量`y`，并赋值为100。
+
+而一个赋值表达式操作本身也是有“结果（Result）”的，它是右操作数的值。注意，这里是“值”而非“引用”，例如下面的测试中的`a`将是一个函数，而不是带着“this对象”信息的方法：
+
+```
+// 调用obj.f()时将检测this是不是原始的obj
+> obj = { f: function() { return this === obj } };
+
+// false，表明赋值表达式的“结果(result)”只是右侧操作数的值，即函数f
+> (a = obj.f)();
+false
+```
+
+到现在为止，我们讲述了整个语句的过程，也就是说，由于“y = 100”的结果是100，所以该值将作为初始值赋值“变量x”。并且，从语义上来说，这是变量“x”的初始绑定。
+
+之所以强调这一点，是因为相同的分析过程也可以用在const声明上，而const声明是只有一次绑定的，常量的初始绑定也是通过“执行赋值过程”来实现的。
+
+## 知识回顾
+
+- var等声明语句总是在变量作用域（变量表）或词法作用域中静态地声明一个或多个标识符。
+- 全局变量的管理方式决定了“向一个不存在的变量赋值”所导致的变量泄漏是不可避免的。
+- 动态添加的“var声明”是可以删除的，这是唯一能操作varNames列表的方式（不过它并不存在多少实用意义）。
+- 变量声明在引擎的处理上被分成两个部分：一部分是静态的、基于标识符的词法分析和管理，它总是在相应上下文的环境构建时作为名字创建的；另一部分是表达式执行过程，是对上述名字的赋值，这个过程也称为绑定。
+- 这一讲标题里的这行代码中，x和y是两个不同的东西，前者是声明的名字，后者是一个赋值过程可能创建的变量名。
+
+## 思考题
+
+根据今天讲解的内容，我希望你可以尝试回答以下问题：
+
+- 严格来说，声明不是语句。但是，是哪些特性决定了声明不是“严格意义上的”语句呢？
+
+在下一讲中我会来讲一讲JavaScript社区中的一个历史悬案，这桩悬案与今天讨论的这行代码的唯一区别在于：它不是声明语句，而是赋值表达式。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>fatme</span> 👍（100） 💬（1）<div>声明和语句的区别在于发生的时间点不同，声明发生在编译期，语句发生在运行期。声明发生在编译期，由编译器为所声明的变量在相应的变量表，增加一个名字。语句是要在运行时执行的程序代码。因此，如果声明不带初始化，那么可以完全由编译器完成，不会产生运行时执行的代码。</div>2019-11-14</li><br/><li><span>海绵薇薇</span> 👍（22） 💬（3）<div>hello，老师好啊，研读完文章和评论后还存在如下疑问：
 
 1.
 
@@ -59,10 +272,10 @@ function a() {
 在代码执行前连函数b都被创建了吗？
 
 3. 老师对一定了解闭包的本质，后面有机会说到吗？
-</div>2019-11-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/b9/5e/a8f6f7db.jpg" width="30px"><span>Ming</span> 👍（20） 💬（2）<div>〈以下是小生愚见〉
-概念纷繁，建议老师将讲解重心放到这门语言的现有特性，贯之历史脉络，是否（怎样）解决了某种设计缺陷。这样，知识纵深感更强，并可指导实际工作以避免踩坑。适当穿插示例代码和图文更佳。</div>2019-11-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/e5/aa/57926594.jpg" width="30px"><span>Ppei</span> 👍（18） 💬（2）<div>老师你好，词法声明会有提升吗？
+</div>2019-11-19</li><br/><li><span>Ming</span> 👍（20） 💬（2）<div>〈以下是小生愚见〉
+概念纷繁，建议老师将讲解重心放到这门语言的现有特性，贯之历史脉络，是否（怎样）解决了某种设计缺陷。这样，知识纵深感更强，并可指导实际工作以避免踩坑。适当穿插示例代码和图文更佳。</div>2019-11-13</li><br/><li><span>Ppei</span> 👍（18） 💬（2）<div>老师你好，词法声明会有提升吗？
 一些书里面会说不存在变量提升，但是文中说，是拒绝访问。
-我是不是该从编译期跟运行期去理解？</div>2020-05-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/76/c7/74d54fb5.jpg" width="30px"><span>Mr_Liu</span> 👍（13） 💬（1）<div>思考题: 小白的我，没有太明确的答案，暂时还不能明确自己理解究竟是否正确，希望听老师后续的课程能够明白
+我是不是该从编译期跟运行期去理解？</div>2020-05-02</li><br/><li><span>Mr_Liu</span> 👍（13） 💬（1）<div>思考题: 小白的我，没有太明确的答案，暂时还不能明确自己理解究竟是否正确，希望听老师后续的课程能够明白
 
 读完今天的这篇理解了昨天的提问，为什么var x = &#39;123&#39;   delete x  是false, 
 即使是
@@ -80,10 +293,10 @@ x = &#39;123&#39;
 delete x 返回true 
 是因为你可以删除掉这个动态添加的“变量”，因为本质上就是在删除全局对象的属性。同时也理解了上一讲的“只有在delete x等值于delete obj.x时 delete 才会有执行意义。例如with (obj) ...语句中的 delete x，以及全局属性 global.x。”这句
 但上一节关于“delete x”归根到底，是在删除一个表达式的、引用类型的结果（Result），而不是在删除 x 表达式，或者这个删除表达式的值（Value）。后一句理解了，但前一句是否可以理解为实际上是删除引用呢，希望老师解答一下
-立一个flag ，每个争取评论下面都有我的，不为别的，就为增加自己的思考</div>2019-11-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/89/5b/d8f78c1e.jpg" width="30px"><span>孜孜</span> 👍（10） 💬（2）<div>今天写IIFE,突然有点问题想问下老师，
+立一个flag ，每个争取评论下面都有我的，不为别的，就为增加自己的思考</div>2019-11-13</li><br/><li><span>孜孜</span> 👍（10） 💬（2）<div>今天写IIFE,突然有点问题想问下老师，
 1. 为什么(function f(){ return this}) 可以，(var test=1) 不可以。
 2. 两种IIFE的写法，(function f(){ return this})() 和 (function f(){ return this}()) 有何区别。
-3. 函数调用（）和表达式取值（）如何在ECMAScript找到说明？</div>2020-07-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f2/4f/59bd4141.jpg" width="30px"><span>Isaac</span> 👍（10） 💬（1）<div>「一个赋值表达式操作本身也是有“结果（Result）”，它是右操作数的值。注意，这里是“值”而非“引用”」
+3. 函数调用（）和表达式取值（）如何在ECMAScript找到说明？</div>2020-07-11</li><br/><li><span>Isaac</span> 👍（10） 💬（1）<div>「一个赋值表达式操作本身也是有“结果（Result）”，它是右操作数的值。注意，这里是“值”而非“引用”」
 老师，你好，这句话从“值类型”的角度可以理解，但是对于引用类型怎么理解？
 比如：var x = y = { name: &#39;jack ma&#39; }。
 
@@ -92,14 +305,14 @@ delete x 返回true
 
 在回到这句话：「它是右操作数的值」 ，用更通俗易懂话来讲，这里的“值”仅仅是一个运算结果，和类型无关。
 
-请问老师我这样理解正确吗？如果错误的话，该怎么解释 var x = y = { name: &#39;jack ma&#39; }？</div>2020-06-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d4/37/528a43e7.jpg" width="30px"><span>Elmer</span> 👍（10） 💬（1）<div>文中提到：ECMAScript 规定在这个全局对象之外再维护一个变量名列表（varNames）
+请问老师我这样理解正确吗？如果错误的话，该怎么解释 var x = y = { name: &#39;jack ma&#39; }？</div>2020-06-28</li><br/><li><span>Elmer</span> 👍（10） 💬（1）<div>文中提到：ECMAScript 规定在这个全局对象之外再维护一个变量名列表（varNames）
 那么window是怎么取到这些变量的值的，如window.a
 不是平级么。在global scope中, window var let const 的关系是什么。
-求讲解</div>2019-12-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/9e/bf/439c9afb.jpg" width="30px"><span>Zheng</span> 👍（9） 💬（1）<div>老师，我用node执行这段代码，结果是undefined，但是换成浏览器打印就可以打印出来a的配置信息，这是因为node环境和浏览器的差异还是什么，我试过好多次了，应该不是偶然:
+求讲解</div>2019-12-23</li><br/><li><span>Zheng</span> 👍（9） 💬（1）<div>老师，我用node执行这段代码，结果是undefined，但是换成浏览器打印就可以打印出来a的配置信息，这是因为node环境和浏览器的差异还是什么，我试过好多次了，应该不是偶然:
 
 var a = 100;
 x = 200;
-console.log(Object.getOwnPropertyDescriptor(global,&quot;a&quot;)); &#47;&#47;浏览器执行的时候global改为globalThis</div>2020-01-14</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/yicicolgdxU2vTP6ExtAf6NicvFicuAfM0tL7bOoPDMZa0bYVa8wkV10DgnpobHX9blmIicdL6zFS76Dq40Rm8xt21g/132" width="30px"><span>Geek_baa4ad</span> 👍（8） 💬（1）<div>var x = y = 100;
+console.log(Object.getOwnPropertyDescriptor(global,&quot;a&quot;)); &#47;&#47;浏览器执行的时候global改为globalThis</div>2020-01-14</li><br/><li><span>Geek_baa4ad</span> 👍（8） 💬（1）<div>var x = y = 100;
 Object.getOwnPropertyDescriptor(global, &#39;x&#39;);
 Object.getOwnPropertyDescriptor(global, &#39;y&#39;);
 {value: 100, writable: true, enumerable: true, configurable: false}configurable: falseenumerable: truevalue: 100writable: true__proto__: Object
@@ -108,7 +321,7 @@ Object.getOwnPropertyDescriptor(global, &#39;x&#39;);
 Object.getOwnPropertyDescriptor(global, &#39;y&#39;);
 {value: 100, writable: true, enumerable: true, configurable: false}
 
-得到结果一样吖，x y 是一个相同的东西吧 最新的v8 实现不一样啦？</div>2020-05-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/32/3a/ead5611e.jpg" width="30px"><span>陆昱嘉</span> 👍（8） 💬（1）<div>老师，一个赋值表达式的左边和右边其实“都是”表达式，那么var x=(var y=100);这样就报错，原因是什么？varNames里面的冲突？</div>2019-11-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/43/f1/3c69eb09.jpg" width="30px"><span>佳民</span> 👍（7） 💬（2）<div>思考题：var声明会声明提升，在语法解析（静态分析）阶段进行，不是在运行阶段执行，这样理解对吗？</div>2019-11-13</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/3lp20weUpmEjiaLAS6umkKRGB7WicIPGWQ7sjRsxbw0EAiapnslID17FfmrMFppSDw7vn0A8bu1icBBmPXGGweGhjQ/132" width="30px"><span>G</span> 👍（6） 💬（3）<div>老师您好，在回过头来重新读这个课程的时候，我产生了一些新的疑惑。
+得到结果一样吖，x y 是一个相同的东西吧 最新的v8 实现不一样啦？</div>2020-05-04</li><br/><li><span>陆昱嘉</span> 👍（8） 💬（1）<div>老师，一个赋值表达式的左边和右边其实“都是”表达式，那么var x=(var y=100);这样就报错，原因是什么？varNames里面的冲突？</div>2019-11-17</li><br/><li><span>佳民</span> 👍（7） 💬（2）<div>思考题：var声明会声明提升，在语法解析（静态分析）阶段进行，不是在运行阶段执行，这样理解对吗？</div>2019-11-13</li><br/><li><span>G</span> 👍（6） 💬（3）<div>老师您好，在回过头来重新读这个课程的时候，我产生了一些新的疑惑。
 在静态语法解析阶段，会在词法环境中添加所声明的标识符，那么像下面这样的代码：
 var arr = new Array;
 for (var i=0; i&lt;5; i++) arr.push(function f() {
@@ -133,57 +346,15 @@ let obj = {
 我描述的可能不太清楚，我大概是想知道，被当做实参传入的函数，是在什么时候被声明的，声明在了哪里。  
 
 
-</div>2020-10-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ba/bd/6f2f078c.jpg" width="30px"><span>Marvin</span> 👍（6） 💬（1）<div>相当于
+</div>2020-10-31</li><br/><li><span>Marvin</span> 👍（6） 💬（1）<div>相当于
 var&#47;let&#47;const x = (y =100)
 再拆就是
 y=100 &#47;&#47; 变量泄漏
 var x=y &#47;&#47; 模拟表达式返回值赋值
-</div>2019-11-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/94/82/d0a417ba.jpg" width="30px"><span>蓝配鸡</span> 👍（6） 💬（2）<div>醍醐灌顶，但是有一些疑问：
+</div>2019-11-14</li><br/><li><span>蓝配鸡</span> 👍（6） 💬（2）<div>醍醐灌顶，但是有一些疑问：
 文中说，
 &quot;如果是在一门其它的（例如编译型的）语言中，“为变量 x 绑定一个初值”就可能实现为“在创建环境时将变量 x 指向一个特定的初始值”。这通常是静态语言的处理方法，然而，如前面说过的，JavaScript 是门动态的语言，所以它的“绑定初值”的行为是通过动态的执行过程来实现的，也就是赋值操作。&quot;
 
 为什么动态语言就不可以给变量初始化， 一定要使用动态赋值呢？
-我对动态语言的理解是，变量的类型可以在运行时改变，静态语言变量的类型不可以改变。 但是这性质好像并不影响初始化？</div>2019-11-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/10/30/c07d419c.jpg" width="30px"><span>卡尔</span> 👍（5） 💬（2）<div>老师，你说let声明的变量不能在赋值之前使用。
-这里说的赋值是不是说赋值操作呢？
-let a;
-console.log(a)
-上面代码对a是没有赋值操作吧？</div>2020-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/78/51/4790e13e.jpg" width="30px"><span>Smallfly</span> 👍（5） 💬（1）<div>y = 100 有的地方叫赋值语句，有的地方叫赋值表达式。因为它的执行结构能在代码层面获得 x = (y = 10)，所以我更倾向于认为它是表达式。
-
-想请问下老师叫赋值语句是错误的么，还是有其它的原因？</div>2020-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/96/78/114b03c7.jpg" width="30px"><span>家家家家</span> 👍（5） 💬（2）<div>忘了在哪本书中还是哪篇文章中讲过，变量的生命周期：声明阶段、初始化阶段、赋值阶段。
-老师这里讲的静态分析阶段就是指的变量生命周期中的声明阶段对吗？
-对于var，它的声明阶段和初始化阶段是一起发生的，都在静态分析中；对于let，它的声明阶段和初始化阶段是分开的，只有声明阶段在静态分析中，是这样理解的嘛？</div>2019-12-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/2c/b0793828.jpg" width="30px"><span>ssala</span> 👍（5） 💬（1）<div>老师，像变量提升这种不符合直觉的设计，难道规范不能将其移除吗？不移除是为了兼容老代码吗？我想应该没有代码会依赖这个特性吧？</div>2019-11-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqW6sdNZ1OF8n5Wsfr7Vr8sBY4vOD8iaj31icqPgyk8NdALibhzKXwdIDmoMJfJznWf8b0NGjcGWKRNg/132" width="30px"><span>Geek__kkkkkkkk</span> 👍（5） 💬（2）<div>老师，您文章中讲到“ECMAScript 规定在这个全局对象之外再维护一个变量名列表（varNames），所有在静态语法分析期或在 eval() 中使用var声明的变量名就被放在这个列表中。然后约定，这个变量名列表中的变量是“直接声明的变量”，不能使用delete删除。”，这里面的意思我理解了 eval() 中使用var声明的变量名，不可用delete删除，但是下面的代码中eval()声明了b,configurable是true,可删除，是否矛盾了？还是我理解的不够全面？</div>2019-11-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/82/a4/a92c6eca.jpg" width="30px"><span>墨灵</span> 👍（4） 💬（1）<div>以前我把
-```
-console.log(x);
-var x = 100;
-```
-理解成
-```
-var x;
-console.log(x);
-x = 100;
-```
-看来以前的理解是有误的，是更为底层的东西在起作用。</div>2020-03-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/37/e1/0953c506.jpg" width="30px"><span>授人以摸鱼</span> 👍（4） 💬（2）<div>发现我好像对全局作用域的理解有一些偏差：
-var，或者没有声明直接赋值，这样的创建标识符（引用）是作为global对象的字段存在的，可以用Object.getOwnPropertyDescriptor从global上读到。
-全局作用域里用let，const创建的变量，虽然也是全局可见，但它并没有创建在global上，而是创建在了另一个地方。从作用域链的视角来看的话，这个作用域要比global低一级这样子。</div>2019-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/78/51/4790e13e.jpg" width="30px"><span>Smallfly</span> 👍（4） 💬（1）<div>老师文中说变量声明分为两步，静态分析和动态绑定，JS 是在进入每个作用域后，执行前进行词法分析的么？</div>2019-11-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/3fB603VY46iaYS2h2MibvV4H5iamibPMr6AT4Fiac5snKOiaMI180pb2DVCe5Bd2sNSJibZSwQg8Qo1PD7bVw1uVBx7YA/132" width="30px"><span>埋坑专家</span> 👍（3） 💬（1）<div>想请问一下老师：
-
-var 声明的变量，configurable为false，这个值是因为varNames不给删除，所以才这样设置的吗？
-
-但我从老师回答其他同学的答案里，得知varNames不限制删除，只是var 声明的变量，configurable为false，导致出现varNames里的变量不给删除这种现象。
-
-那么这两者是否有因果关系呢？
-
-谁是因，谁是果？
-
-或者是否有第三方的原因导致其一是这样，从而影响到另一方了呢？
-
-谢谢老师！</div>2020-07-01</li><br/><li><img src="" width="30px"><span>阳少宇</span> 👍（3） 💬（2）<div>老师你好,对于let声明一个变量说是有个编译期且不会初始化.
-那么 let a; console.log(a) 得到的结果是undefined, 那这个undefined是从哪里来的呢?</div>2020-05-11</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLTYpERVj4wtwAwqz4SUiaoQXDIyhYaKjABMvkJbVXaI3kcJterXovCTqZZSQ1TnueIWX7VGvC3koA/132" width="30px"><span>麦田里的守望者</span> 👍（3） 💬（1）<div>为了兼容旧的 JavaScript 语言设计，现在的 JavaScript 环境仍然是通过将全局对象初始化为这样的一个全局闭包来实现的。但是为了得到一个“尽可能”与其它变量环境相似的声明效果（varDecls），ECMAScript 规定在这个全局对象之外再维护一个变量名列表（varNames），所有在静态语法分析期或在 eval() 中使用var声明的变量名就被放在这个列表中。然后约定，这个变量名列表中的变量是“直接声明的变量”，不能使用delete删除。
-这段话的最后几句，是不是写错了</div>2019-12-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/a3/45/8e9c6a69.jpg" width="30px"><span>因为有你心存感激</span> 👍（3） 💬（1）<div>var x = y =100  中的y 是可以通过delete y 删除，老师又说 delete 只删除引用不删除值，在这里y是引用吗？还有对于 js 为什不能  变量名 = 值  这样赋值呢？</div>2019-11-27</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLZXUUB3zpdQOENbBmqgPgjPdXmAomUwLISaKfQ9eFkwv0rsCdaibHapVd7dmBnvplxKbBPaz0IRTQ/132" width="30px"><span>Geek_8cn3qp</span> 👍（3） 💬（1）<div>为什么eval里var的变量可以删除？还是没明白</div>2019-11-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/ee/00/3cca3642.jpg" width="30px"><span>Makus</span> 👍（3） 💬（1）<div>附「语句和声明」的链接：https:&#47;&#47;developer.mozilla.org&#47;zh-CN&#47;docs&#47;Web&#47;JavaScript&#47;Reference&#47;Statements
-严格意义上来说，除了本篇中出现的六种和链接中的五大类都不能算作语句吧。
-例如 ：标题中的 y = 100
-麻烦老师指正一下，不太懂</div>2019-11-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e6/a9/b459efb7.jpg" width="30px"><span>如故</span> 👍（2） 💬（1）<div>老师您好
-var a = 1;
-b = 2;
-a和b都是全局对象上的一个属性，但a存在于一个varNames列表中，并且是不可配置的。
-那么为啥要设置这样一个varNames列表呢？文中说：是为了得到一个“尽可能”与其它变量环境相似的声明效果（varDecls）。这句话不太理解</div>2021-02-24</li><br/>
+我对动态语言的理解是，变量的类型可以在运行时改变，静态语言变量的类型不可以改变。 但是这性质好像并不影响初始化？</div>2019-11-13</li><br/>
 </ul>

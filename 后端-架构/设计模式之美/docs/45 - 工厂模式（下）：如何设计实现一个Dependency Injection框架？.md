@@ -9,25 +9,325 @@
 实际上，DI容器底层最基本的设计思路就是基于工厂模式的。DI容器相当于一个大的工厂类，负责在程序启动的时候，根据配置（要创建哪些类对象，每个类对象的创建需要依赖哪些其他类对象）事先创建好对象。当应用程序需要使用某个类对象的时候，直接从容器中获取即可。正是因为它持有一堆对象，所以这个框架才被称为“容器”。
 
 DI容器相对于我们上节课讲的工厂模式的例子来说，它处理的是更大的对象创建工程。上节课讲的工厂模式中，一个工厂类只负责某个类对象或者某一组相关类对象（继承自同一抽象类或者接口的子类）的创建，而DI容器负责的是整个应用中所有类对象的创建。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/16/ef/5b/ff28088f.jpg" width="30px"><span>郑大钱</span> 👍（25） 💬（1）<div>“初级工程师在维护代码，高级工程师在设计代码，资深工程师在重构代码”
+
+除此之外，DI容器负责的事情要比单纯的工厂模式要多。比如，它还包括配置的解析、对象生命周期的管理。接下来，我们就详细讲讲，一个简单的DI容器应该包含哪些核心功能。
+
+## DI容器的核心功能有哪些？
+
+总结一下，一个简单的DI容器的核心功能一般有三个：配置解析、对象创建和对象生命周期管理。
+
+**首先，我们来看配置解析。**
+
+在上节课讲的工厂模式中，工厂类要创建哪个类对象是事先确定好的，并且是写死在工厂类代码中的。作为一个通用的框架来说，框架代码跟应用代码应该是高度解耦的，DI容器事先并不知道应用会创建哪些对象，不可能把某个应用要创建的对象写死在框架代码中。所以，我们需要通过一种形式，让应用告知DI容器要创建哪些对象。这种形式就是我们要讲的配置。
+
+我们将需要由DI容器来创建的类对象和创建类对象的必要信息（使用哪个构造函数以及对应的构造函数参数都是什么等等），放到配置文件中。容器读取配置文件，根据配置文件提供的信息来创建对象。
+
+下面是一个典型的Spring容器的配置文件。Spring容器读取这个配置文件，解析出要创建的两个对象：rateLimiter和redisCounter，并且得到两者的依赖关系：rateLimiter依赖redisCounter。
+
+```
+public class RateLimiter {
+  private RedisCounter redisCounter;
+  public RateLimiter(RedisCounter redisCounter) {
+    this.redisCounter = redisCounter;
+  }
+  public void test() {
+    System.out.println("Hello World!");
+  }
+  //...
+}
+
+public class RedisCounter {
+  private String ipAddress;
+  private int port;
+  public RedisCounter(String ipAddress, int port) {
+    this.ipAddress = ipAddress;
+    this.port = port;
+  }
+  //...
+}
+
+配置文件beans.xml：
+<beans>
+   <bean id="rateLimiter" class="com.xzg.RateLimiter">
+      <constructor-arg ref="redisCounter"/>
+   </bean>
+ 
+   <bean id="redisCounter" class="com.xzg.redisCounter">
+     <constructor-arg type="String" value="127.0.0.1">
+     <constructor-arg type="int" value=1234>
+   </bean>
+</beans>
+```
+
+**其次，我们再来看对象创建。**
+
+在DI容器中，如果我们给每个类都对应创建一个工厂类，那项目中类的个数会成倍增加，这会增加代码的维护成本。要解决这个问题并不难。我们只需要将所有类对象的创建都放到一个工厂类中完成就可以了，比如BeansFactory。
+
+你可能会说，如果要创建的类对象非常多，BeansFactory中的代码会不会线性膨胀（代码量跟创建对象的个数成正比）呢？实际上并不会。待会讲到DI容器的具体实现的时候，我们会讲“反射”这种机制，它能在程序运行的过程中，动态地加载类、创建对象，不需要事先在代码中写死要创建哪些对象。所以，不管是创建一个对象还是十个对象，BeansFactory工厂类代码都是一样的。
+
+**最后，我们来看对象的生命周期管理。**
+
+上一节课我们讲到，简单工厂模式有两种实现方式，一种是每次都返回新创建的对象，另一种是每次都返回同一个事先创建好的对象，也就是所谓的单例对象。在Spring框架中，我们可以通过配置scope属性，来区分这两种不同类型的对象。scope=prototype表示返回新创建的对象，scope=singleton表示返回单例对象。
+
+除此之外，我们还可以配置对象是否支持懒加载。如果lazy-init=true，对象在真正被使用到的时候（比如：BeansFactory.getBean(“userService”)）才被被创建；如果lazy-init=false，对象在应用启动的时候就事先创建好。
+
+不仅如此，我们还可以配置对象的init-method和destroy-method方法，比如init-method=loadProperties()，destroy-method=updateConfigFile()。DI容器在创建好对象之后，会主动调用init-method属性指定的方法来初始化对象。在对象被最终销毁之前，DI容器会主动调用destroy-method属性指定的方法来做一些清理工作，比如释放数据库连接池、关闭文件。
+
+## 如何实现一个简单的DI容器？
+
+实际上，用Java语言来实现一个简单的DI容器，核心逻辑只需要包括这样两个部分：配置文件解析、根据配置文件通过“反射”语法来创建对象。
+
+### 1.最小原型设计
+
+因为我们主要是讲解设计模式，所以，在今天的讲解中，我们只实现一个DI容器的最小原型。像Spring框架这样的DI容器，它支持的配置格式非常灵活和复杂。为了简化代码实现，重点讲解原理，在最小原型中，我们只支持下面配置文件中涉及的配置语法。
+
+```
+配置文件beans.xml
+<beans>
+   <bean id="rateLimiter" class="com.xzg.RateLimiter">
+      <constructor-arg ref="redisCounter"/>
+   </bean>
+ 
+   <bean id="redisCounter" class="com.xzg.redisCounter" scope="singleton" lazy-init="true">
+     <constructor-arg type="String" value="127.0.0.1">
+     <constructor-arg type="int" value=1234>
+   </bean>
+</bean
+```
+
+最小原型的使用方式跟Spring框架非常类似，示例代码如下所示：
+
+```
+public class Demo {
+  public static void main(String[] args) {
+    ApplicationContext applicationContext = new ClassPathXmlApplicationContext(
+            "beans.xml");
+    RateLimiter rateLimiter = (RateLimiter) applicationContext.getBean("rateLimiter");
+    rateLimiter.test();
+    //...
+  }
+}
+```
+
+### 2.提供执行入口
+
+前面我们讲到，面向对象设计的最后一步是：组装类并提供执行入口。在这里，执行入口就是一组暴露给外部使用的接口和类。
+
+通过刚刚的最小原型使用示例代码，我们可以看出，执行入口主要包含两部分：ApplicationContext和ClassPathXmlApplicationContext。其中，ApplicationContext是接口，ClassPathXmlApplicationContext是接口的实现类。两个类具体实现如下所示：
+
+```
+public interface ApplicationContext {
+  Object getBean(String beanId);
+}
+
+public class ClassPathXmlApplicationContext implements ApplicationContext {
+  private BeansFactory beansFactory;
+  private BeanConfigParser beanConfigParser;
+
+  public ClassPathXmlApplicationContext(String configLocation) {
+    this.beansFactory = new BeansFactory();
+    this.beanConfigParser = new XmlBeanConfigParser();
+    loadBeanDefinitions(configLocation);
+  }
+
+  private void loadBeanDefinitions(String configLocation) {
+    InputStream in = null;
+    try {
+      in = this.getClass().getResourceAsStream("/" + configLocation);
+      if (in == null) {
+        throw new RuntimeException("Can not find config file: " + configLocation);
+      }
+      List<BeanDefinition> beanDefinitions = beanConfigParser.parse(in);
+      beansFactory.addBeanDefinitions(beanDefinitions);
+    } finally {
+      if (in != null) {
+        try {
+          in.close();
+        } catch (IOException e) {
+          // TODO: log error
+        }
+      }
+    }
+  }
+
+  @Override
+  public Object getBean(String beanId) {
+    return beansFactory.getBean(beanId);
+  }
+}
+```
+
+从上面的代码中，我们可以看出，ClassPathXmlApplicationContext负责组装BeansFactory和BeanConfigParser两个类，串联执行流程：从classpath中加载XML格式的配置文件，通过BeanConfigParser解析为统一的BeanDefinition格式，然后，BeansFactory根据BeanDefinition来创建对象。
+
+### 3.配置文件解析
+
+配置文件解析主要包含BeanConfigParser接口和XmlBeanConfigParser实现类，负责将配置文件解析为BeanDefinition结构，以便BeansFactory根据这个结构来创建对象。
+
+配置文件的解析比较繁琐，不涉及我们专栏要讲的理论知识，不是我们讲解的重点，所以这里我只给出两个类的大致设计思路，并未给出具体的实现代码。如果感兴趣的话，你可以自行补充完整。具体的代码框架如下所示：
+
+```
+public interface BeanConfigParser {
+  List<BeanDefinition> parse(InputStream inputStream);
+  List<BeanDefinition> parse(String configContent);
+}
+
+public class XmlBeanConfigParser implements BeanConfigParser {
+
+  @Override
+  public List<BeanDefinition> parse(InputStream inputStream) {
+    String content = null;
+    // TODO:...
+    return parse(content);
+  }
+
+  @Override
+  public List<BeanDefinition> parse(String configContent) {
+    List<BeanDefinition> beanDefinitions = new ArrayList<>();
+    // TODO:...
+    return beanDefinitions;
+  }
+
+}
+
+public class BeanDefinition {
+  private String id;
+  private String className;
+  private List<ConstructorArg> constructorArgs = new ArrayList<>();
+  private Scope scope = Scope.SINGLETON;
+  private boolean lazyInit = false;
+  // 省略必要的getter/setter/constructors
+ 
+  public boolean isSingleton() {
+    return scope.equals(Scope.SINGLETON);
+  }
+
+
+  public static enum Scope {
+    SINGLETON,
+    PROTOTYPE
+  }
+  
+  public static class ConstructorArg {
+    private boolean isRef;
+    private Class type;
+    private Object arg;
+    // 省略必要的getter/setter/constructors
+  }
+}
+```
+
+### 4.核心工厂类设计
+
+最后，我们来看，BeansFactory是如何设计和实现的。这也是我们这个DI容器最核心的一个类了。它负责根据从配置文件解析得到的BeanDefinition来创建对象。
+
+如果对象的scope属性是singleton，那对象创建之后会缓存在singletonObjects这样一个map中，下次再请求此对象的时候，直接从map中取出返回，不需要重新创建。如果对象的scope属性是prototype，那每次请求对象，BeansFactory都会创建一个新的对象返回。
+
+实际上，BeansFactory创建对象用到的主要技术点就是Java中的反射语法：一种动态加载类和创建对象的机制。我们知道，JVM在启动的时候会根据代码自动地加载类、创建对象。至于都要加载哪些类、创建哪些对象，这些都是在代码中写死的，或者说提前写好的。但是，如果某个对象的创建并不是写死在代码中，而是放到配置文件中，我们需要在程序运行期间，动态地根据配置文件来加载类、创建对象，那这部分工作就没法让JVM帮我们自动完成了，我们需要利用Java提供的反射语法自己去编写代码。
+
+搞清楚了反射的原理，BeansFactory的代码就不难看懂了。具体代码实现如下所示：
+
+```
+public class BeansFactory {
+  private ConcurrentHashMap<String, Object> singletonObjects = new ConcurrentHashMap<>();
+  private ConcurrentHashMap<String, BeanDefinition> beanDefinitions = new ConcurrentHashMap<>();
+
+  public void addBeanDefinitions(List<BeanDefinition> beanDefinitionList) {
+    for (BeanDefinition beanDefinition : beanDefinitionList) {
+      this.beanDefinitions.putIfAbsent(beanDefinition.getId(), beanDefinition);
+    }
+
+    for (BeanDefinition beanDefinition : beanDefinitionList) {
+      if (beanDefinition.isLazyInit() == false && beanDefinition.isSingleton()) {
+        createBean(beanDefinition);
+      }
+    }
+  }
+
+  public Object getBean(String beanId) {
+    BeanDefinition beanDefinition = beanDefinitions.get(beanId);
+    if (beanDefinition == null) {
+      throw new NoSuchBeanDefinitionException("Bean is not defined: " + beanId);
+    }
+    return createBean(beanDefinition);
+  }
+
+  @VisibleForTesting
+  protected Object createBean(BeanDefinition beanDefinition) {
+    if (beanDefinition.isSingleton() && singletonObjects.contains(beanDefinition.getId())) {
+      return singletonObjects.get(beanDefinition.getId());
+    }
+
+    Object bean = null;
+    try {
+      Class beanClass = Class.forName(beanDefinition.getClassName());
+      List<BeanDefinition.ConstructorArg> args = beanDefinition.getConstructorArgs();
+      if (args.isEmpty()) {
+        bean = beanClass.newInstance();
+      } else {
+        Class[] argClasses = new Class[args.size()];
+        Object[] argObjects = new Object[args.size()];
+        for (int i = 0; i < args.size(); ++i) {
+          BeanDefinition.ConstructorArg arg = args.get(i);
+          if (!arg.getIsRef()) {
+            argClasses[i] = arg.getType();
+            argObjects[i] = arg.getArg();
+          } else {
+            BeanDefinition refBeanDefinition = beanDefinitions.get(arg.getArg());
+            if (refBeanDefinition == null) {
+              throw new NoSuchBeanDefinitionException("Bean is not defined: " + arg.getArg());
+            }
+            argClasses[i] = Class.forName(refBeanDefinition.getClassName());
+            argObjects[i] = createBean(refBeanDefinition);
+          }
+        }
+        bean = beanClass.getConstructor(argClasses).newInstance(argObjects);
+      }
+    } catch (ClassNotFoundException | IllegalAccessException
+            | InstantiationException | NoSuchMethodException | InvocationTargetException e) {
+      throw new BeanCreationFailureException("", e);
+    }
+
+    if (bean != null && beanDefinition.isSingleton()) {
+      singletonObjects.putIfAbsent(beanDefinition.getId(), bean);
+      return singletonObjects.get(beanDefinition.getId());
+    }
+    return bean;
+  }
+}
+```
+
+## 重点回顾
+
+好了，今天的内容到此就讲完了。我们来一块总结回顾一下，你需要重点掌握的内容。
+
+DI容器在一些软件开发中已经成为了标配，比如Spring IOC、Google Guice。但是，大部分人可能只是把它当作一个黑盒子来使用，并未真正去了解它的底层是如何实现的。当然，如果只是做一些简单的小项目，简单会用就足够了，但是，如果我们面对的是非常复杂的系统，当系统出现问题的时候，对底层原理的掌握程度，决定了我们排查问题的能力，直接影响到我们排查问题的效率。
+
+今天，我们讲解了一个简单的DI容器的实现原理，其核心逻辑主要包括：配置文件解析，以及根据配置文件通过“反射”语法来创建对象。其中，创建对象的过程就应用到了我们在学的工厂模式。对象创建、组装、管理完全有DI容器来负责，跟具体业务代码解耦，让程序员聚焦在业务代码的开发上。
+
+## 课堂讨论
+
+BeansFactory类中的createBean()函数是一个递归函数。当构造函数的参数是ref类型时，会递归地创建ref属性指向的对象。如果我们在配置文件中错误地配置了对象之间的依赖关系，导致存在循环依赖，那BeansFactory的createBean()函数是否会出现堆栈溢出？又该如何解决这个问题呢？
+
+你可以可以在留言区说一说，和同学一起交流和分享。如果有收获，也欢迎你把这篇文章分享给你的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>郑大钱</span> 👍（25） 💬（1）<div>“初级工程师在维护代码，高级工程师在设计代码，资深工程师在重构代码”
 依赖注入框架好牛逼呀！当手把手教我设计一个框架之后，才破除了我对框架的权威和迷信。
 自己最开始做业务也是在原有框架上面修修补补，回过头来看，发现自己非常能忍，即使原有的框架很难用，自己也能坚持用下去。
 转念一想，那不是能忍，那是懒。懒得去理解框架的原理，懒得让它更易用。
-像豌豆公主一样保持自己的敏感，是持续改进的动力。</div>2020-11-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/0a/63/165b0d40.jpg" width="30px"><span>少年锦时</span> 👍（0） 💬（1）<div>beanDefinition.isLazyInit() == false  为什么不直接写成!beanDefinition.isLazyInit() 呢</div>2020-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/95/11/eb431e52.jpg" width="30px"><span>沈康</span> 👍（165） 💬（7）<div>默默的掏出了《spring源码深度解析》回顾一番
+像豌豆公主一样保持自己的敏感，是持续改进的动力。</div>2020-11-17</li><br/><li><span>少年锦时</span> 👍（0） 💬（1）<div>beanDefinition.isLazyInit() == false  为什么不直接写成!beanDefinition.isLazyInit() 呢</div>2020-07-04</li><br/><li><span>沈康</span> 👍（165） 💬（7）<div>默默的掏出了《spring源码深度解析》回顾一番
  1、构造器循环依赖
 构造器注入的循环依赖是无法解决的，只能抛出bean创建异常使容器无法启动
 如何判断是循环依赖？
 把正在创建的bean放入到一个(正在创建的map)中，如果依赖创建bean在此map中存在，则抛出异常。
 2、setter方法循环依赖
 ①单例情况可以解决循环依赖，方法是提前暴露一个返回该单例的工厂方法，让依赖对象可以引用到
-②多例不能解决循环依赖，因为多例不需要缓存</div>2020-02-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/3a/5b/ce1724ca.jpg" width="30px"><span>undefined</span> 👍（66） 💬（2）<div>把本文的示例补全成了可执行代码：
+②多例不能解决循环依赖，因为多例不需要缓存</div>2020-02-18</li><br/><li><span>undefined</span> 👍（66） 💬（2）<div>把本文的示例补全成了可执行代码：
 https:&#47;&#47;github.com&#47;plusmancn&#47;learn-java&#47;tree&#47;master&#47;src&#47;main&#47;java&#47;Exercise&#47;di
 顺便纠正一个笔误：
-BeansFactory 下 createBean 方法中：singletonObjects.contains 应为 singletonObjects. containsKey</div>2020-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/44/47/3ddb94d0.jpg" width="30px"><span>javaadu</span> 👍（39） 💬（2）<div>20200218再次复习：
+BeansFactory 下 createBean 方法中：singletonObjects.contains 应为 singletonObjects. containsKey</div>2020-02-23</li><br/><li><span>javaadu</span> 👍（39） 💬（2）<div>20200218再次复习：
 1. 研究了Spring容器中处理循环依赖的知识点：（1）只能处理单例的、setter注入的循环依赖，其他的注入模式无法处理；（2）依赖缓存处理循环依赖，关键思想是，将正在创建中的对象提前暴露一个单例工厂，让其他实例可以引用到
-2. 网上一篇比较好的文章：https:&#47;&#47;juejin.im&#47;post&#47;5d0d8f64f265da1b7b3193ac</div>2020-02-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/7a/f5/54a5084b.jpg" width="30px"><span>简单猫</span> 👍（37） 💬（3）<div>不要被这些所谓的专业化名词吓到了 什么三级缓存。a依赖b，b依赖c，c依赖a,d依赖a，b，c什么的，你要解决的核心是不要重复创建。那么你就要把已经创建的对象存起来(map，hashmaps什么的) ，然后再次创建的时候先去缓存map中读取，没有才创建。 创建对象流程：1先反射创建类对象  2然后配置类里面的属性 方法(依赖就在这)。
-至于你要怎么利用设计模式解耦 分3级缓存 分别存储完全实例化的对象  未设置属性方法类对象  还是对象工厂  那就看如何好用咯</div>2020-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/2f/ed/a87bb8fa.jpg" width="30px"><span>此鱼不得水</span> 👍（23） 💬（0）<div>Spring解决循环依赖的办法是多级缓存。</div>2020-02-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/86/25/25ded6c3.jpg" width="30px"><span>zhengyu.nie</span> 👍（16） 💬（0）<div>基本就是Spring源码大体原型了，委托的BeanFactory在Spring源码里是DefaultListableBeanFactory。循环依赖解决是三级缓存，提前暴露还没有初始化结束的bean。检测是Map存一下过程，aba这样顺序判断，有重复（a出现两次）就是环了。
+2. 网上一篇比较好的文章：https:&#47;&#47;juejin.im&#47;post&#47;5d0d8f64f265da1b7b3193ac</div>2020-02-19</li><br/><li><span>简单猫</span> 👍（37） 💬（3）<div>不要被这些所谓的专业化名词吓到了 什么三级缓存。a依赖b，b依赖c，c依赖a,d依赖a，b，c什么的，你要解决的核心是不要重复创建。那么你就要把已经创建的对象存起来(map，hashmaps什么的) ，然后再次创建的时候先去缓存map中读取，没有才创建。 创建对象流程：1先反射创建类对象  2然后配置类里面的属性 方法(依赖就在这)。
+至于你要怎么利用设计模式解耦 分3级缓存 分别存储完全实例化的对象  未设置属性方法类对象  还是对象工厂  那就看如何好用咯</div>2020-05-14</li><br/><li><span>此鱼不得水</span> 👍（23） 💬（0）<div>Spring解决循环依赖的办法是多级缓存。</div>2020-02-14</li><br/><li><span>zhengyu.nie</span> 👍（16） 💬（0）<div>基本就是Spring源码大体原型了，委托的BeanFactory在Spring源码里是DefaultListableBeanFactory。循环依赖解决是三级缓存，提前暴露还没有初始化结束的bean。检测是Map存一下过程，aba这样顺序判断，有重复（a出现两次）就是环了。
 
 三级缓存源码对应
 org.springframework.beans.factory.support.DefaultSingletonBeanRegistry#getSingleton
@@ -68,45 +368,11 @@ org.springframework.beans.factory.support.DefaultSingletonBeanRegistry#getSingle
 
 	&#47;** Cache of early singleton objects: bean name to bean instance. *&#47;
 	private final Map&lt;String, Object&gt; earlySingletonObjects = new HashMap&lt;&gt;(16);
-</div>2020-04-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/99/3b/791d0f5e.jpg" width="30px"><span>王先森</span> 👍（11） 💬（0）<div>php开发者默默的去瞅laravel的DI容器</div>2020-06-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/18/81/83b6ade2.jpg" width="30px"><span>好吃不贵</span> 👍（9） 💬（1）<div>createBean先用Topology sort看是否有环，然后再按序创建？</div>2020-02-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/64/9b/d1ab239e.jpg" width="30px"><span>J.Smile</span> 👍（9） 💬（0）<div>思考题:
+</div>2020-04-24</li><br/><li><span>王先森</span> 👍（11） 💬（0）<div>php开发者默默的去瞅laravel的DI容器</div>2020-06-16</li><br/><li><span>好吃不贵</span> 👍（9） 💬（1）<div>createBean先用Topology sort看是否有环，然后再按序创建？</div>2020-02-14</li><br/><li><span>J.Smile</span> 👍（9） 💬（0）<div>思考题:
 ①构造器初始化方式，无法解决循环依赖
 ②set注入方式初始化，有两种:
 第一种，创建的是单例对象，可以解决。
-第二种，创建的是原型对象，由于di容器不缓存对象导致无法提前暴露一个创建中的对象，依赖对象就会getbean时创建一个新对象，接着又进去循环依赖创建新对象…依然解决不了。</div>2020-02-14</li><br/><li><img src="" width="30px"><span>Geek_3b1096</span> 👍（8） 💬（1）<div>终于解答了我对于DI的疑惑</div>2020-02-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f1/de/3ebcbb3f.jpg" width="30px"><span>DullBird</span> 👍（7） 💬（3）<div>1. 我理解spring 解决A和B对象的循环引用是这样的流程是这样的，假设先加载A，丢一个A的引用到一个引用map&lt;id, ref&gt;，发现A有一个filed 引用B，就初始化B，丢一个B的引用到Map，初始化发现需要一个A，就从map里面找，找到了一个A，就把A的引用丢给B的属性，然后B加载结束了，A继续加载，拿到map里面的B，加载完成。</div>2020-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/36/84/788f0c60.jpg" width="30px"><span>勤劳的明酱</span> 👍（7） 💬（3）<div>思考题：
+第二种，创建的是原型对象，由于di容器不缓存对象导致无法提前暴露一个创建中的对象，依赖对象就会getbean时创建一个新对象，接着又进去循环依赖创建新对象…依然解决不了。</div>2020-02-14</li><br/><li><span>Geek_3b1096</span> 👍（8） 💬（1）<div>终于解答了我对于DI的疑惑</div>2020-02-14</li><br/><li><span>DullBird</span> 👍（7） 💬（3）<div>1. 我理解spring 解决A和B对象的循环引用是这样的流程是这样的，假设先加载A，丢一个A的引用到一个引用map&lt;id, ref&gt;，发现A有一个filed 引用B，就初始化B，丢一个B的引用到Map，初始化发现需要一个A，就从map里面找，找到了一个A，就把A的引用丢给B的属性，然后B加载结束了，A继续加载，拿到map里面的B，加载完成。</div>2020-02-24</li><br/><li><span>勤劳的明酱</span> 👍（7） 💬（3）<div>思考题：
  构造器注入不好解决
- setter注入：根据BenDefinition创建的bean可以是未完成的bean，就是说bean里面的属性可以是没有填充过的，这个时候bean依然能创建成功，之后属性，postConstruct、InitializingBean、init-method完成之后才能算是一个完整的bean，所以即使出现循环依赖也能解决。</div>2020-02-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/37/3f/a9127a73.jpg" width="30px"><span>KK</span> 👍（6） 💬（1）<div>这里例子，过于限制语言了。对 java 用户友好，对其他用户似乎意义不大。</div>2022-05-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/44/47/3ddb94d0.jpg" width="30px"><span>javaadu</span> 👍（6） 💬（0）<div>关于思考题，对象的依赖关系应该是一个有向无环图（DAG），我倾向于在解析配置文件的时候检测是否存在环，不过这样在大型项目中可能性能不会太好。回头研究下Spring咋做的。</div>2020-02-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/50/d7/f82ed283.jpg" width="30px"><span>辣么大</span> 👍（5） 💬（0）<div>循环依赖的意思是A依赖于B，B依赖于A（Bean A → Bean B → Bean A）出现循环依赖，首先应该考虑设计出了问题，应该重新划分类的职责。如果是老的项目，则可以按照其他小伙伴给出的解决方式。最好的解决方案还是看官方文档：链接在这里https:&#47;&#47;docs.spring.io&#47;spring&#47;docs&#47;current&#47;spring-framework-reference&#47;core.html#beans
-Circular dependencies
-If you use predominantly constructor injection, it is possible to create an unresolvable circular dependency scenario.
-
-For example: Class A requires an instance of class B through constructor injection, and class B requires an instance of class A through constructor injection. If you configure beans for classes A and B to be injected into each other, the Spring IoC container detects this circular reference at runtime, and throws a BeanCurrentlyInCreationException.
-
-One possible solution is to edit the source code of some classes to be configured by setters rather than constructors. Alternatively, avoid constructor injection and use setter injection only. In other words, although it is not recommended, you can configure circular dependencies with setter injection.
-
-Unlike the typical case (with no circular dependencies), a circular dependency between bean A and bean B forces one of the beans to be injected into the other prior to being fully initialized itself (a classic chicken-and-egg scenario).</div>2020-02-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/1b/41/dbb7d785.jpg" width="30px"><span>xk_</span> 👍（4） 💬（5）<div>回答一下课后题：
-首先，我们不用spring创建对象去思考一下：
-1.构造函数是不可能存在循环依赖的，因为作为参数依赖的对象必须提前存在，参数的创建也需要参数，所以不存在。
-2.setter注入，A依赖B，B依赖A，只要最后形成闭环，就不会报错。
-3. setter注入，创建A需要B，创建B需要新的A，创建新的A需要新的B…如此循环下去就会栈溢出了。
-
-spring也正好是这样实现的。
-对于第二点，spring是用三级缓存来实现的。</div>2020-04-04</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/bFOAzic4EYicm2U3mdHKl67uceibPpgM7QBC8nAGdMCC6PCiamolNIfw9rstzGCEBNiaIWkianFG28VZzOggcehkMic5A/132" width="30px"><span>Geek_d1f952</span> 👍（3） 💬（0）<div>看着有点懵 这一讲对其他语言的同学不是很友好啊</div>2022-05-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f3/5c/8704e784.jpg" width="30px"><span>change</span> 👍（3） 💬（1）<div>工厂模式与DI容器
-1、DI容器相当于一个大的工厂类,负责在程序启动,根据配置参数将所需要的对象都创建好,当程序需要时,直接从容器中获取某类对象;
-2、工厂类只负责创建某一个或某一组类对象,而DI容器是创建整个应用所有需要的类对象
-DI容器的基本功能
-1、读取配置文件:配置文件中包含要创建的类对象及创建类对象的必要信息(使用那个构造函数及构造函数的参数列表);
-2、创建对象:利用反射机制,动态加载类、创建对象;
-3、对象生命周期管理:每次获取都返回新创建的对象(prototype)和每次获取都返回同一个事先创建好的对象(singleton,即单例对象),在单例对象中,还区分是否在程序启动时创建还是需要时创建(init-lazy);
-DI容器接口设计
-1、BeanConfigParser:解析配置文件
-2、BeanFactory:根据解析配置的结果来创建对象;
-1、ApplicationContext:DI容器内的上帝类(组装BeanFactory和ConfigParser),也是对外的接口;</div>2020-03-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/cb/38/4c9cfdf4.jpg" width="30px"><span>谢小路</span> 👍（2） 💬（2）<div>羡慕这些学 Java 的，看的清清楚楚，你问问没接触 Java 看的累不？</div>2022-04-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5f/d5/2fec2911.jpg" width="30px"><span>yu</span> 👍（2） 💬（0）<div>学习spring的时候老师讲过，当时就是背了一下，知道有这么回事儿，这回算是知道了来龙去脉</div>2020-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d7/ab/15c9b94e.jpg" width="30px"><span>Pluto</span> 👍（1） 💬（1）<div>看了留言有些感慨，@Autowired 是什么注入方式？这种方式的循环依赖 Spring 可以自动解决吗？如果可以，哪种场景下可以解决？如果不行，哪种场景下不能解决？真的踩过坑的人才懂</div>2020-05-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/e0/d7/744bd8c3.jpg" width="30px"><span>空白昵称</span> 👍（1） 💬（1）<div>作为一个swifter，我竟然也看懂了这里的demo实例代码。阅读java的能力果然在逐步提高。
-关于练习部分，如果单例在创建时发生了环依赖，这时一定是错误的、此时就要检查配置了。如果是非单例参数依赖，个人感觉这里依赖关系设计应该趋向于树的形状，而非设计成有向图。如果发现依赖关系是图的形状，应该考虑调整整体实现代码架构了。不知道我理解对不对。
-希望各位大神多多指点🙏</div>2020-03-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKZ16iaIia0029oI1Qh5NicibpbTiaBAaCOPYXoLplKHr6uQ2rSVxPZanBvpMcL2NuhwKQYCFnaHP5tedQ/132" width="30px"><span>FIGNT</span> 👍（1） 💬（1）<div>这个争哥的数据结构与算法之美的递归有答案。对象依赖个数可以限制个大小，递归时如果超过该深度就报错。可能有更好的方式，期待老师的答案</div>2020-02-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8a/02/828938c9.jpg" width="30px"><span>Frank</span> 👍（1） 💬（0）<div>什么场景下使用工厂模式判断依据为：当创建对象是一个“大工程”时，一般使用工厂模式来实现，将对象的复杂逻辑封装起来，实现对象的创建和使用分离，使得代码结构更加清晰，类的职责更加单一，也体现了依赖反转原则。“大工程”的判断依据有两个：创建过程涉及复杂的if-else逻辑判断和对象创建需要组装多个其他类对象或者需要复杂的初始化过程。
-Spring的IOC容器就是一个典型的工厂，当我们需要Bean时，只要正确的配置了对象创建需要的规则，他们通过IOC容器提供的接口就可以获取对象，实现了控制反转。
-对于课堂讨论：会出现堆栈溢出StackOverflowError异常。</div>2020-02-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/5b/83a35681.jpg" width="30px"><span>Monday</span> 👍（1） 💬（0）<div>思考题：
-1、如果循环依赖的类都是SINGLETON，不会出现堆栈溢出
-2、如果循环依赖的类都是PROTOTYPE，本章的代码来看，的确会出现堆栈溢出；解决办法，可以做递归的深度控制。</div>2020-02-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2d/06/a5/0245a2a8.jpg" width="30px"><span>Ben土豆</span> 👍（0） 💬（0）<div>createBean() 的递归逻辑会如果有循环依赖的确会产生栈溢出问题，springboot是通过加入缓存来实现，如果不考虑AOP代理问题的话，使用二级缓存可以解决这个问题，否则需要三级缓存。一级缓存中保存递归中初始化全部完成的bean,二级缓存保存半成品bean,当createBean出现循环依赖时，可以直接在半成品二级缓存中取出依赖bean进行填充。
-循环依赖问题可以解决的前提：
-1. Bean不是多例，必须是单例，否则每一次createBean()需要创建一个新的object，缓存便不可行
-2. 循环依赖必须是setter注入，而非构造器注入，构造器注入在new创建时就会抛出异常</div>2023-04-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/00/d2/d94c4858.jpg" width="30px"><span>iRex</span> 👍（0） 💬（0）<div>BeanDefinition refBeanDefinition = beanDefinitions.get(arg.getArg()); 这个地方get不到吧，key不是id吗</div>2022-11-16</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/90DWsNicbNLJqRBLXWgM0t7AomqD4UpNnGFtkw4CorUg27tfuPfDiaImEMQkesCzzmFNicCPwHtYFjQ16Alf2fxjQ/132" width="30px"><span>小学生的大铁锤</span> 👍（0） 💬（0）<div>通过spring IOC容器讲解了工厂方法模式的应用，明白了通过工厂方法模式隔离变化，隔离复杂的基本处理流程和效果。</div>2022-07-23</li><br/>
+ setter注入：根据BenDefinition创建的bean可以是未完成的bean，就是说bean里面的属性可以是没有填充过的，这个时候bean依然能创建成功，之后属性，postConstruct、InitializingBean、init-method完成之后才能算是一个完整的bean，所以即使出现循环依赖也能解决。</div>2020-02-14</li><br/><li><span>KK</span> 👍（6） 💬（1）<div>这里例子，过于限制语言了。对 java 用户友好，对其他用户似乎意义不大。</div>2022-05-05</li><br/>
 </ul>

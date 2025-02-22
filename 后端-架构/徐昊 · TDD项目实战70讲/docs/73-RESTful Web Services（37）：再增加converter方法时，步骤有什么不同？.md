@@ -306,7 +306,7 @@ class ResourceHandler implements ResourceRouter.Resource {
 
 欢迎把你的思考和想法分享在评论区，我们下节课再见！
 <div><strong>精选留言（2）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/d4/9c/030e80d3.jpg" width="30px"><span>java小霸王</span> 👍（0） 💬（0）<div>初衷就是为了让自己更专业吧，提高效率</div>2024-03-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（0）<div>学习 TDD 的初衷:不要因为重大 Bug 丢掉工作
+<li><span>java小霸王</span> 👍（0） 💬（0）<div>初衷就是为了让自己更专业吧，提高效率</div>2024-03-05</li><br/><li><span>aoe</span> 👍（0） 💬（0）<div>学习 TDD 的初衷:不要因为重大 Bug 丢掉工作
 驱动力:
 重要功能可以靠测试提高正确率,而不是靠运气;
 可以即时重构,代码越来越好(更容易修改);

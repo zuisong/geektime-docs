@@ -11,5 +11,5 @@
 
 最后，如果这篇文章让你有所收获，请把它分享给你的朋友，我们一起探讨。
 <div><strong>精选留言（4）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/96/b3/3dbc7878.jpg" width="30px"><span>hello  .</span> 👍（2） 💬（2）<div>您好十大坑里有一条我不太明白。 kr为什么不是行动计划？</div>2019-09-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/96/b3/3dbc7878.jpg" width="30px"><span>hello  .</span> 👍（0） 💬（1）<div>您好，OKR十大坑里有一条，是说“将KR当成行动计划或代办任务”是一种错误的情况，</div>2019-09-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/3b/5c/f77a77ef.jpg" width="30px"><span>小咖</span> 👍（1） 💬（0）<div>整个看下来，很嗨</div>2021-10-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/44/a4/7a45d979.jpg" width="30px"><span>IT蜗壳-Tango</span> 👍（1） 💬（0）<div>加餐的这几个图片，太棒了。</div>2020-03-29</li><br/>
+<li><span>hello  .</span> 👍（2） 💬（2）<div>您好十大坑里有一条我不太明白。 kr为什么不是行动计划？</div>2019-09-29</li><br/><li><span>hello  .</span> 👍（0） 💬（1）<div>您好，OKR十大坑里有一条，是说“将KR当成行动计划或代办任务”是一种错误的情况，</div>2019-09-29</li><br/><li><span>小咖</span> 👍（1） 💬（0）<div>整个看下来，很嗨</div>2021-10-03</li><br/><li><span>IT蜗壳-Tango</span> 👍（1） 💬（0）<div>加餐的这几个图片，太棒了。</div>2020-03-29</li><br/>
 </ul>

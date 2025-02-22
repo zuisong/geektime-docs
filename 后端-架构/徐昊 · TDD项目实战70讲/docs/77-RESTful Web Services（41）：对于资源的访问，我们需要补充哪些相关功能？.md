@@ -228,3 +228,13 @@ class ResourceHandler implements ResourceRouter.Resource {
     }
 }
 ```
+
+## 视频演示
+
+进入今天的环节：
+
+## 思考题
+
+我们的缺陷出在了什么地方？
+
+欢迎把你的思考和想法分享在留言区，咱们下节课再见！

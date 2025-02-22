@@ -7,35 +7,219 @@ Tomcat正是通过Context组件来加载管理Web应用的，所以今天我会�
 Java的类加载，就是把字节码格式“.class”文件加载到JVM的**方法区**，并在JVM的**堆区**建立一个`java.lang.Class`对象的实例，用来封装Java类相关的数据和方法。那Class对象又是什么呢？你可以把它理解成业务类的模板，JVM根据这个模板来创建具体业务类对象实例。
 
 JVM并不是在启动时就把所有的“.class”文件都加载一遍，而是程序在运行过程中用到了这个类才去加载。JVM类加载是由类加载器来完成的，JDK提供一个抽象类ClassLoader，这个抽象类中定义了三个关键方法，理解清楚它们的作用和关系非常重要。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/21/7e/fb725950.jpg" width="30px"><span>罗 乾 林</span> 👍（44） 💬（1）<div>我想打破双亲委托机制，能保证不同版本的类共存，就像一个tomcat下多个工程，使用了不同版本的spring，各加载各的互不影响。如果不打破双亲委托机制，都交由AppClassLoader去加载，那么相同包名相同类名的类就被判定已经加载过了，达不到加载不同版本的功能。由于自定义了类加载器，即使包名与类名相同，但类加载器不同依然被判断为不同的类</div>2019-07-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1e/3a/5b21c01c.jpg" width="30px"><span>nightmare</span> 👍（33） 💬（1）<div>tomcat的类加载机制老师剖析的很透彻，先扩展类加载器加载，这样避免自己覆盖JRE中的类然后再自定义的加载器加载，最后应用加载器加载，有一个疑问，就是比如我一个tomcat部署了多个web应用，如果都有spring的jar包，由于自定义的类加载器先加载spring的jar包，这样spring的jar在每一个context应用岂不是都要加载一次？如果应用加载器先加载，是不是就可以只加载一次spring的jar，然后自定义的加载器只加载不共用的class？</div>2019-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/5b/83a35681.jpg" width="30px"><span>Monday</span> 👍（24） 💬（5）<div>1、原文【tomcat 的自定义类加载器 WebAppClassLoader 打破了双亲委托机制，它首先自己尝试去加载某个类，如果找不到再代理给父类加载器，其目的是优先加载 Web 应用自己定义的类。具体实现就是重写 ClassLoader 的两个方法：findClass 和 loadClass。】
+
+```
+public abstract class ClassLoader {
+
+    //每个类加载器都有个父加载器
+    private final ClassLoader parent;
+    
+    public Class<?> loadClass(String name) {
+  
+        //查找一下这个类是不是已经加载过了
+        Class<?> c = findLoadedClass(name);
+        
+        //如果没有加载过
+        if( c == null ){
+          //先委托给父加载器去加载，注意这是个递归调用
+          if (parent != null) {
+              c = parent.loadClass(name);
+          }else {
+              // 如果父加载器为空，查找Bootstrap加载器是不是加载过了
+              c = findBootstrapClassOrNull(name);
+          }
+        }
+        // 如果父加载器没加载成功，调用自己的findClass去加载
+        if (c == null) {
+            c = findClass(name);
+        }
+        
+        return c；
+    }
+    
+    protected Class<?> findClass(String name){
+       //1. 根据传入的类名name，到在特定目录下去寻找类文件，把.class文件读入内存
+          ...
+          
+       //2. 调用defineClass将字节数组转成Class对象
+       return defineClass(buf, off, len)；
+    }
+    
+    // 将字节码数组解析成一个Class对象，用native方法实现
+    protected final Class<?> defineClass(byte[] b, int off, int len){
+       ...
+    }
+}
+```
+
+从上面的代码我们可以得到几个关键信息：
+
+- JVM的类加载器是分层次的，它们有父子关系，每个类加载器都持有一个parent字段，指向父加载器。
+- defineClass是个工具方法，它的职责是调用native方法把Java类的字节码解析成一个Class对象，所谓的native方法就是由C语言实现的方法，Java通过JNI机制调用。
+- findClass方法的主要职责就是找到“.class”文件，可能来自文件系统或者网络，找到后把“.class”文件读到内存得到字节码数组，然后调用defineClass方法得到Class对象。
+- loadClass是个public方法，说明它才是对外提供服务的接口，具体实现也比较清晰：首先检查这个类是不是已经被加载过了，如果加载过了直接返回，否则交给父加载器去加载。请你注意，这是一个递归调用，也就是说子加载器持有父加载器的引用，当一个类加载器需要加载一个Java类时，会先委托父加载器去加载，然后父加载器在自己的加载路径中搜索Java类，当父加载器在自己的加载范围内找不到时，才会交还给子加载器加载，这就是双亲委托机制。
+
+JDK中有哪些默认的类加载器？它们的本质区别是什么？为什么需要双亲委托机制？JDK中有3个类加载器，另外你也可以自定义类加载器，它们的关系如下图所示。
+
+![](https://static001.geekbang.org/resource/image/43/90/43ebbd8e7d24467d2182969fb0496d90.png?wh=452%2A443)
+
+- BootstrapClassLoader是启动类加载器，由C语言实现，用来加载JVM启动时所需要的核心类，比如`rt.jar`、`resources.jar`等。
+- ExtClassLoader是扩展类加载器，用来加载`\jre\lib\ext`目录下JAR包。
+- AppClassLoader是系统类加载器，用来加载classpath下的类，应用程序默认用它来加载类。
+- 自定义类加载器，用来加载自定义路径下的类。
+
+这些类加载器的工作原理是一样的，区别是它们的加载路径不同，也就是说findClass这个方法查找的路径不同。双亲委托机制是为了保证一个Java类在JVM中是唯一的，假如你不小心写了一个与JRE核心类同名的类，比如Object类，双亲委托机制能保证加载的是JRE里的那个Object类，而不是你写的Object类。这是因为AppClassLoader在加载你的Object类时，会委托给ExtClassLoader去加载，而ExtClassLoader又会委托给BootstrapClassLoader，BootstrapClassLoader发现自己已经加载过了Object类，会直接返回，不会去加载你写的Object类。
+
+这里请你注意，类加载器的父子关系不是通过继承来实现的，比如AppClassLoader并不是ExtClassLoader的子类，而是说AppClassLoader的parent成员变量指向ExtClassLoader对象。同样的道理，如果你要自定义类加载器，不去继承AppClassLoader，而是继承ClassLoader抽象类，再重写findClass和loadClass方法即可，Tomcat就是通过自定义类加载器来实现自己的类加载逻辑。不知道你发现没有，如果你要打破双亲委托机制，就需要重写loadClass方法，因为loadClass的默认实现就是双亲委托机制。
+
+## Tomcat的类加载器
+
+Tomcat的自定义类加载器WebAppClassLoader打破了双亲委托机制，它**首先自己尝试去加载某个类，如果找不到再代理给父类加载器**，其目的是优先加载Web应用自己定义的类。具体实现就是重写ClassLoader的两个方法：findClass和loadClass。
+
+**findClass方法**
+
+我们先来看看findClass方法的实现，为了方便理解和阅读，我去掉了一些细节：
+
+```
+public Class<?> findClass(String name) throws ClassNotFoundException {
+    ...
+    
+    Class<?> clazz = null;
+    try {
+            //1. 先在Web应用目录下查找类 
+            clazz = findClassInternal(name);
+    }  catch (RuntimeException e) {
+           throw e;
+       }
+    
+    if (clazz == null) {
+    try {
+            //2. 如果在本地目录没有找到，交给父加载器去查找
+            clazz = super.findClass(name);
+    }  catch (RuntimeException e) {
+           throw e;
+       }
+    
+    //3. 如果父类也没找到，抛出ClassNotFoundException
+    if (clazz == null) {
+        throw new ClassNotFoundException(name);
+     }
+
+    return clazz;
+}
+```
+
+在findClass方法里，主要有三个步骤：
+
+1. 先在Web应用本地目录下查找要加载的类。
+2. 如果没有找到，交给父加载器去查找，它的父加载器就是上面提到的系统类加载器AppClassLoader。
+3. 如何父加载器也没找到这个类，抛出ClassNotFound异常。
+
+**loadClass方法**
+
+接着我们再来看Tomcat类加载器的loadClass方法的实现，同样我也去掉了一些细节：
+
+```
+public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+
+    synchronized (getClassLoadingLock(name)) {
+ 
+        Class<?> clazz = null;
+
+        //1. 先在本地cache查找该类是否已经加载过
+        clazz = findLoadedClass0(name);
+        if (clazz != null) {
+            if (resolve)
+                resolveClass(clazz);
+            return clazz;
+        }
+
+        //2. 从系统类加载器的cache中查找是否加载过
+        clazz = findLoadedClass(name);
+        if (clazz != null) {
+            if (resolve)
+                resolveClass(clazz);
+            return clazz;
+        }
+
+        // 3. 尝试用ExtClassLoader类加载器类加载，为什么？
+        ClassLoader javaseLoader = getJavaseClassLoader();
+        try {
+            clazz = javaseLoader.loadClass(name);
+            if (clazz != null) {
+                if (resolve)
+                    resolveClass(clazz);
+                return clazz;
+            }
+        } catch (ClassNotFoundException e) {
+            // Ignore
+        }
+
+        // 4. 尝试在本地目录搜索class并加载
+        try {
+            clazz = findClass(name);
+            if (clazz != null) {
+                if (resolve)
+                    resolveClass(clazz);
+                return clazz;
+            }
+        } catch (ClassNotFoundException e) {
+            // Ignore
+        }
+
+        // 5. 尝试用系统类加载器(也就是AppClassLoader)来加载
+            try {
+                clazz = Class.forName(name, false, parent);
+                if (clazz != null) {
+                    if (resolve)
+                        resolveClass(clazz);
+                    return clazz;
+                }
+            } catch (ClassNotFoundException e) {
+                // Ignore
+            }
+       }
+    
+    //6. 上述过程都加载失败，抛出异常
+    throw new ClassNotFoundException(name);
+}
+```
+
+loadClass方法稍微复杂一点，主要有六个步骤：
+
+1. 先在本地Cache查找该类是否已经加载过，也就是说Tomcat的类加载器是否已经加载过这个类。
+2. 如果Tomcat类加载器没有加载过这个类，再看看系统类加载器是否加载过。
+3. 如果都没有，就让**ExtClassLoader**去加载，这一步比较关键，目的**防止Web应用自己的类覆盖JRE的核心类**。因为Tomcat需要打破双亲委托机制，假如Web应用里自定义了一个叫Object的类，如果先加载这个Object类，就会覆盖JRE里面的那个Object类，这就是为什么Tomcat的类加载器会优先尝试用ExtClassLoader去加载，因为ExtClassLoader会委托给BootstrapClassLoader去加载，BootstrapClassLoader发现自己已经加载了Object类，直接返回给Tomcat的类加载器，这样Tomcat的类加载器就不会去加载Web应用下的Object类了，也就避免了覆盖JRE核心类的问题。
+4. 如果ExtClassLoader加载器加载失败，也就是说JRE核心类中没有这类，那么就在本地Web应用目录下查找并加载。
+5. 如果本地目录下没有这个类，说明不是Web应用自己定义的类，那么由系统类加载器去加载。这里请你注意，Web应用是通过`Class.forName`调用交给系统类加载器的，因为`Class.forName`的默认加载器就是系统类加载器。
+6. 如果上述加载过程全部失败，抛出ClassNotFound异常。
+
+从上面的过程我们可以看到，Tomcat的类加载器打破了双亲委托机制，没有一上来就直接委托给父加载器，而是先在本地目录下加载，为了避免本地目录下的类覆盖JRE的核心类，先尝试用JVM扩展类加载器ExtClassLoader去加载。那为什么不先用系统类加载器AppClassLoader去加载？很显然，如果是这样的话，那就变成双亲委托机制了，这就是Tomcat类加载器的巧妙之处。
+
+## 本期精华
+
+今天我介绍了JVM的类加载器原理和源码剖析，以及Tomcat的类加载器是如何打破双亲委托机制的，目的是为了优先加载Web应用目录下的类，然后再加载其他目录下的类，这也是Servlet规范的推荐做法。
+
+要打破双亲委托机制，需要继承ClassLoader抽象类，并且需要重写它的loadClass方法，因为ClassLoader的默认实现就是双亲委托。
+
+## 课后思考
+
+如果你并不想打破双亲委托机制，但是又想定义自己的类加载器来加载特定目录下的类，你需要重写findClass和loadClass方法中的哪一个？还是两个都要重写？
+
+不知道今天的内容你消化得如何？如果还有疑问，请大胆的在留言区提问，也欢迎你把你的课后思考和心得记录下来，与我和其他同学一起讨论。如果你觉得今天有所收获，欢迎你把它分享给你的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>罗 乾 林</span> 👍（44） 💬（1）<div>我想打破双亲委托机制，能保证不同版本的类共存，就像一个tomcat下多个工程，使用了不同版本的spring，各加载各的互不影响。如果不打破双亲委托机制，都交由AppClassLoader去加载，那么相同包名相同类名的类就被判定已经加载过了，达不到加载不同版本的功能。由于自定义了类加载器，即使包名与类名相同，但类加载器不同依然被判断为不同的类</div>2019-07-06</li><br/><li><span>nightmare</span> 👍（33） 💬（1）<div>tomcat的类加载机制老师剖析的很透彻，先扩展类加载器加载，这样避免自己覆盖JRE中的类然后再自定义的加载器加载，最后应用加载器加载，有一个疑问，就是比如我一个tomcat部署了多个web应用，如果都有spring的jar包，由于自定义的类加载器先加载spring的jar包，这样spring的jar在每一个context应用岂不是都要加载一次？如果应用加载器先加载，是不是就可以只加载一次spring的jar，然后自定义的加载器只加载不共用的class？</div>2019-07-04</li><br/><li><span>Monday</span> 👍（24） 💬（5）<div>1、原文【tomcat 的自定义类加载器 WebAppClassLoader 打破了双亲委托机制，它首先自己尝试去加载某个类，如果找不到再代理给父类加载器，其目的是优先加载 Web 应用自己定义的类。具体实现就是重写 ClassLoader 的两个方法：findClass 和 loadClass。】
 问题：就不怕tomcat类加载器覆盖ExtClassloader加载的类？
 
 2、原文【从上面的过程我们可以看到，Tomcat 的类加载器打破了双亲委托机制，没有一上来就直接委托给父加载器，而是先在本地目录下加载，为了避免本地目录下的类覆盖 JRE 的核心类，先尝试用 JVM 扩展类加载器 ExtClassLoader 去加载。那为什么不先用系统类加载器 AppClassLoader 去加载？很显然，如果是这样的话，那就变成双亲委托机制了，这就是 Tomcat 类加载器的巧妙之处。】
 问题：后面的回答，感觉像是为了打破而打破似的。
 
-3、听&#47;看本节多次，最后还是没体悟到Tomcat打破双亲委托模式的好处。。。</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d2/ac/aeb9f156.jpg" width="30px"><span>吖蒲</span> 👍（18） 💬（4）<div>老师，我看源码了还是有点不懂，第三步骤tomcat的类加载器先用extclassloader加载类，ext让父加载器bootstrap去加载，防止优先加载应用中同名的类，那我用appclassloader，最终也能达到bootstrap加载器去加载类的效果，那为什么不直接调用appclassloader加载？？</div>2019-08-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1e/3a/5b21c01c.jpg" width="30px"><span>nightmare</span> 👍（16） 💬（2）<div>我明白了，比如可以把多个项目共享的jar包放到${CATALINA_HOME}&#47;shared目录下，让sharedclassloader来加载，并且是所有context的web应用共享的，而都有的放在web路径下，先让扩展类加载器加载，避免覆盖jre中的类，再让自定义的web加载器来加载独有的类，最后加载让应用加载器加载扩展类加载器和自定义加载器加载不到的类，谢谢李老师</div>2019-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/69/c6/513df085.jpg" width="30px"><span>强哥</span> 👍（13） 💬（1）<div>每篇文章最后的总结，若能概括出这么做的意图及优点，这样对读者来说收益更大。</div>2019-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a8/e2/f8e51df2.jpg" width="30px"><span>Li Shunduo</span> 👍（11） 💬（1）<div>在其他地方看到过可以通过配置&lt;Loader delegate=&quot;true&quot;&#47;&gt;让tomcat遵循双亲委派，老师在答疑篇可以展开讲讲吗？</div>2019-07-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/ee/6c/246fa0d1.jpg" width="30px"><span>Mr.差不多</span> 👍（11） 💬（3）<div>双亲委派规则是 当父加载器找不到此文件时才交给子加载器去加载。那么我觉得Tomcat重写loadClass方法其实也是这个逻辑。假设现在有一个类是需要在WebAppClassLoader加载的，那么它会先查询是否在AppClassLoader加载过，如果没有那么查看是否在ExtClassLoader加载过，那么这一系列步骤不就是为了保证没有在父加载器找不到此文件吗？这不还是双亲委派的模型吗？麻烦老师给解答下</div>2019-07-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/1b/f4b786b9.jpg" width="30px"><span>飞翔</span> 👍（9） 💬（1）<div>老师 您说 
+3、听&#47;看本节多次，最后还是没体悟到Tomcat打破双亲委托模式的好处。。。</div>2019-07-08</li><br/><li><span>吖蒲</span> 👍（18） 💬（4）<div>老师，我看源码了还是有点不懂，第三步骤tomcat的类加载器先用extclassloader加载类，ext让父加载器bootstrap去加载，防止优先加载应用中同名的类，那我用appclassloader，最终也能达到bootstrap加载器去加载类的效果，那为什么不直接调用appclassloader加载？？</div>2019-08-08</li><br/><li><span>nightmare</span> 👍（16） 💬（2）<div>我明白了，比如可以把多个项目共享的jar包放到${CATALINA_HOME}&#47;shared目录下，让sharedclassloader来加载，并且是所有context的web应用共享的，而都有的放在web路径下，先让扩展类加载器加载，避免覆盖jre中的类，再让自定义的web加载器来加载独有的类，最后加载让应用加载器加载扩展类加载器和自定义加载器加载不到的类，谢谢李老师</div>2019-07-04</li><br/><li><span>强哥</span> 👍（13） 💬（1）<div>每篇文章最后的总结，若能概括出这么做的意图及优点，这样对读者来说收益更大。</div>2019-07-04</li><br/><li><span>Li Shunduo</span> 👍（11） 💬（1）<div>在其他地方看到过可以通过配置&lt;Loader delegate=&quot;true&quot;&#47;&gt;让tomcat遵循双亲委派，老师在答疑篇可以展开讲讲吗？</div>2019-07-10</li><br/><li><span>Mr.差不多</span> 👍（11） 💬（3）<div>双亲委派规则是 当父加载器找不到此文件时才交给子加载器去加载。那么我觉得Tomcat重写loadClass方法其实也是这个逻辑。假设现在有一个类是需要在WebAppClassLoader加载的，那么它会先查询是否在AppClassLoader加载过，如果没有那么查看是否在ExtClassLoader加载过，那么这一系列步骤不就是为了保证没有在父加载器找不到此文件吗？这不还是双亲委派的模型吗？麻烦老师给解答下</div>2019-07-05</li><br/><li><span>飞翔</span> 👍（9） 💬（1）<div>老师 您说 
 java 的类加载器，就是把字节码格式.class 文件加载到JVM的方法区，并在JVM的堆区建立一个java.lang.Class 对象实例
 
 那loadclass方法负责把字节码格式.class 文件加载到JVM的方法区
 和defineclass负责在JVM的堆区建立一个java.lang.Class 对象实例 这样理解对嘛
 
 
-</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b3/c5/7fc124e2.jpg" width="30px"><span>Liam</span> 👍（9） 💬（3）<div>老师能讲下什么是上下文加载器吗，什么情况下会用到它？这个和双亲委派有关吗</div>2019-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/e9/0b/1171ac71.jpg" width="30px"><span>WL</span> 👍（8） 💬（1）<div>想问一下老师tomcat为什么采用&quot;首先自己尝试去加载某个类，如果找不到再代理给父类加载&quot;, 这种方式呢, 我不是很理解.  还有在Tomcat的类加载器的loadClass()方法, 会先调用ExtClassLoader加载类, 然后才调用findClass(name), 这是不是与上面的&quot;首先自己尝试去加载某个类，如果找不到再代理给父类加载&quot;这句话矛盾呢?</div>2019-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fa/f7/91ac44c5.jpg" width="30px"><span>Mq</span> 👍（7） 💬（3）<div>李老师，为什么要打破双亲委托</div>2019-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/06/4c/89ceb570.jpg" width="30px"><span>火凤凰</span> 👍（6） 💬（3）<div>老师，这边我有个疑问。tomcat 中的findClass方法里面首先是现在本地去查找要加载的类，找不到然后让父加载器去查找。然后在loadClass中，第四步调用findClass要加载的类的时候找不到，然后去调用第五步通过Class.forName()去加载尼？这一步是不是多余的？明明findClass方法应该包含了AppClassLoader需要查找的类吧？还望老师或者一起学习的大佬们解惑一下？</div>2019-08-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7b/57/a9b04544.jpg" width="30px"><span>QQ怪</span> 👍（6） 💬（6）<div>双亲委派模型其实不是叫单亲委派更好?</div>2019-07-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/78/c7/083a3a0b.jpg" width="30px"><span>新世界</span> 👍（6） 💬（1）<div>由于沿用双亲委派重写findClass即可，找不到最后到固定目录下查找，不需要重写loadClass，还有一点不明白，tomcat为什么要打破双亲委派定义自己的classloader，不定义不行吗？</div>2019-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/11/78/4f0cd172.jpg" width="30px"><span>妥协</span> 👍（5） 💬（1）<div>看到过这样一句话，一直没想明白:&quot;类的唯一性由类加载器实例和类的全名一同确定的，即使同一串字节流由不同的类加载器加载，也是不同的实例&quot; ，每个类加载器加载前都会判断是否已经加载过，同名的类判断加载过了，不是不会在加载吗？</div>2019-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e0/40/3301e490.jpg" width="30px"><span>despacito</span> 👍（5） 💬（1）<div>是不是只要自己写的类或是引用的jar里面的类只要有类名和bootstrap 加载路径下相同的类名，都不会加载成功，但是如果不是bootstrap加载路径下的类，比如appclass loader是可以加载成功的？</div>2019-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/1b/f4b786b9.jpg" width="30px"><span>飞翔</span> 👍（4） 💬（1）<div>老师 求教 1. 是不是tomcat就自己写了一种classloader叫 webappclassloader？
-2. 您说每一个context都有一个webappclassloader实例，这个classloader是不是就是load 我们自己写的各种sevlet应用类呀？ 其他tomcat的组分比如connection, 和所有的container组分都是用的appclassloader和他的父亲和爷爷load的？</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/5d/35/b1eb964a.jpg" width="30px"><span>🐟🐙🐬🐆🦌🦍🐑🦃</span> 👍（4） 💬（1）<div>老师 我想问下 App类加载器的类 为什么可以访问 由Ext类加载器加载的类和根类加载器加载的类。 不是不同的类加载器加载的类相互隔离么 .App类加载器和ext类加载器 和根类加载器都是不同类加载器啊。双亲委托机制是为了让类不重复加载和避免jvm类被破坏而已。那怎么说双器委派机制后 ，App类加载器可以访问Ext加载的类.不是命名空间隔离了么</div>2019-07-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f8/ca/1a1e190a.jpg" width="30px"><span>Nu11PointerEx</span> 👍（3） 💬（2）<div>这里有个疑问,
-原文【没有一上来就直接委托给父加载器，而是先在本地目录下加载，为了避免本地目录下的类覆盖 JRE 的核心类，先尝试用JVM 扩展类加载器 ExtClassLoader 去加载】
-如果本地目录定义了与核心库同样的类名，这样就无法保证安全了吧？</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/1b/f4b786b9.jpg" width="30px"><span>飞翔</span> 👍（2） 💬（1）<div>老师  首先加载Web 应用目录下的类，web应用目录指的是哪个目录呀
-</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/14/98/0251b8fd.jpg" width="30px"><span>Cy190622</span> 👍（2） 💬（1）<div>老师，您好。麻烦请教几个问题，希望您有时间解答，谢谢：
-1.双亲委托机制在ClassLoader类中，我看到仅显示了子加载器到父加载器的过程，没有自加载器加载的过程。具体子加载器加载过程是代码那部分体现。
-     if (parent != null) {
-		c = parent.loadClass(name, false);
-	} else {
-		c = findBootstrapClassOrNull(name);
-	}
-2.有些资料中显示系统类加载器是SytemClassLoader，而在源码中找到的是AppClassCloader。这两者有什么区别嘛</div>2019-07-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e3/45/7f069bee.jpg" width="30px"><span>林子恒#Ralegh</span> 👍（2） 💬（1）<div>老师您好，请教下，tomcat的loadclass方法里，本地和系统的cache是什么时候更新的呢？先加载cache的好处是？</div>2019-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/ca/bd/a51ae4b2.jpg" width="30px"><span>吃饭饭</span> 👍（1） 💬（1）<div>【没有一上来就直接委托给父加载器，而是先在本地目录下加载，为了避免本地目录下的类覆盖 JRE 的核心类，先尝试用JVM 扩展类加载器 ExtClassLoader 去加载】，这里为什么要先使用本地，然后是系统类加载器，接着是扩展类，如果系统类已经加载了自定义的 Object 类，那扩展类不就没有意义了？求解答啊老师，有点迷糊了</div>2019-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（1） 💬（1）<div>老师好!Tomcat这边就是跳过了一个 AppClassLoader 加载器打破了双亲委托模型。
-如果我需要加载一个系统类加载器加载的类是不是就classNotFound了。
-Tomcat打破双亲委派模型是由于Servlet规范，这样的有啥好处了?不只是少调用了一次AppClassLoader的loadClass吧。
-Tomcat的findClass里面用了super.findClass。正常的是基于组合的，Tomcat基于继承了么?这个super是哪个类?还有就是Tomcat的classLoad的loadClass为什么多了一个boolean形的入参。谢谢老师解惑</div>2019-07-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e0/40/3301e490.jpg" width="30px"><span>despacito</span> 👍（1） 💬（2）<div>自己写的Object 包名会不一样，加载的时候不会根据类的全路径名而只是通过简单的类名加载吗？</div>2019-07-04</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJDhZkQGEnzjnu3dibxbRiblWIUjXXrXic0MStUS2ApKt5WiaoxV3IVhAtSXkknODA9oibick3NHic4Frzfw/0" width="30px"><span>suncar</span> 👍（1） 💬（1）<div>老师您好，请问一下在应用中不同的tomcat启动方式，是不是调用的类加载器也不同。          1.在eclipse中是不是</div>2019-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/a3/a6/cd893765.jpg" width="30px"><span>christagger</span> 👍（0） 💬（2）<div>tomcat在启动时有没有使用AppClassLoader来加载tomcat服务自身的java类呢？我的理解是AppClassLoader并没有做任何类加载的工作，类的加载都是由catalinaClassLoader和commonClassLoader去做的，这样理解对吗老师</div>2019-09-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f9/9e/833b272e.jpg" width="30px"><span>阿坤</span> 👍（0） 💬（1）<div>李老师您好，我一直对“双亲委派机制”里的“双亲”一词感到很困惑。在刚开始学习jvm的时候，了解到jvm虚拟机有Bootstrap classloder、extensions classloder，App classloder。在开发者没有对jvm提供的类加载器做任何拓展的情况下，我们的应用都是由App classloder加载（很常见的场景就是在IDEA下启动main方法），这时App classloder之上确实“继承”了两个父加载器，这么看“双亲委派机制”理所当然。但最近在深入了解jvm的类加载机制，查阅到了oracle官方对jvm类加载机制的描述：The Java platform uses a delegation model for loading classes. The basic idea is that every class loader has a &quot;parent&quot; class loader. When loading a class, a class loader first &quot;delegates&quot; the search for the class to its parent class loader before attempting to find the class itself.
-jvm的类加载机制最基本的想法是，每一个类加载器都有一个父加载器，当它尝试加载类时，它会首先委托给它的父加载器（们）。描述中用到&quot;delegates&quot; 一词，表明可能会多重委托。
-这样再反过来看，把jvm的类加载机制翻译为“双亲委托机制”，实属有点让人不解。在学习中一点见解，不知道李老师，对&quot;双亲委派机制&quot;如何解读。</div>2019-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/11/78/4f0cd172.jpg" width="30px"><span>妥协</span> 👍（0） 💬（1）<div>老师，为什么Tomcat的类加载器的findclass函数在本地路径找不到后，要交给父类加载器去查找，如果查找到了，那不是由Tomcat类加载器加载了嘛？而不是父类加载器加载了</div>2019-07-04</li><br/>
+</div>2019-07-23</li><br/><li><span>Liam</span> 👍（9） 💬（3）<div>老师能讲下什么是上下文加载器吗，什么情况下会用到它？这个和双亲委派有关吗</div>2019-07-04</li><br/><li><span>WL</span> 👍（8） 💬（1）<div>想问一下老师tomcat为什么采用&quot;首先自己尝试去加载某个类，如果找不到再代理给父类加载&quot;, 这种方式呢, 我不是很理解.  还有在Tomcat的类加载器的loadClass()方法, 会先调用ExtClassLoader加载类, 然后才调用findClass(name), 这是不是与上面的&quot;首先自己尝试去加载某个类，如果找不到再代理给父类加载&quot;这句话矛盾呢?</div>2019-07-04</li><br/><li><span>Mq</span> 👍（7） 💬（3）<div>李老师，为什么要打破双亲委托</div>2019-07-04</li><br/><li><span>火凤凰</span> 👍（6） 💬（3）<div>老师，这边我有个疑问。tomcat 中的findClass方法里面首先是现在本地去查找要加载的类，找不到然后让父加载器去查找。然后在loadClass中，第四步调用findClass要加载的类的时候找不到，然后去调用第五步通过Class.forName()去加载尼？这一步是不是多余的？明明findClass方法应该包含了AppClassLoader需要查找的类吧？还望老师或者一起学习的大佬们解惑一下？</div>2019-08-29</li><br/><li><span>QQ怪</span> 👍（6） 💬（6）<div>双亲委派模型其实不是叫单亲委派更好?</div>2019-07-05</li><br/><li><span>新世界</span> 👍（6） 💬（1）<div>由于沿用双亲委派重写findClass即可，找不到最后到固定目录下查找，不需要重写loadClass，还有一点不明白，tomcat为什么要打破双亲委派定义自己的classloader，不定义不行吗？</div>2019-07-04</li><br/>
 </ul>

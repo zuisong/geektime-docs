@@ -45,9 +45,11 @@ mkdocs serve
 
 #### 1. http Referer导致的裂图，图片不显示 
 
-方案1： VIP用户，部署[mygeektime](https://github.com/zkep/mygeektime)服务，缓存对应的VIP课程 
+方案1： 直接看pdf吧 [geektime-pdfs](https://github.com/uaxe/geektime-pdfs)
 
-方案2： 推荐本地使用中间代理人服务，拦截请求，改写 http 请求的 Referer 的思路
+方案2： VIP用户，部署[mygeektime](https://github.com/zkep/mygeektime)服务，缓存对应的VIP课程 
+
+方案3： 推荐本地使用中间代理人服务，拦截请求，改写 http 请求的 Referer 的思路
 
 [go-mitmproxy](https://github.com/lqqyt2423/go-mitmproxy/blob/main/examples/http-add-header/main.go)
 

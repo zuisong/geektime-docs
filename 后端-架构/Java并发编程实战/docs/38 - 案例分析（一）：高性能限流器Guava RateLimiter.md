@@ -41,8 +41,171 @@ for (int i=0; i<20; i++){
 ## 经典限流算法：令牌桶算法
 
 Guava的限流器使用上还是很简单的，那它是如何实现的呢？Guava采用的是**令牌桶算法**，其**核心是要想通过限流器，必须拿到令牌**。也就是说，只要我们能够限制发放令牌的速率，那么就能控制流速了。令牌桶算法的详细描述如下：
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaELZPnUAiajaR5C25EDLWeJURggyiaOP5GGPe2qlwpQcm5e3ybib8OsP4tvddFDLVRSNNGL5I3SFPJHsA/132" width="30px"><span>null</span> 👍（71） 💬（7）<div>re：为什么令牌是从令牌桶中出的，那么 next 就无需增加一个 interval？
+
+1. 令牌以固定的速率添加到令牌桶中，假设限流的速率是 r/秒，则令牌每 1/r 秒会添加一个；
+2. 假设令牌桶的容量是 b ，如果令牌桶已满，则新的令牌会被丢弃；
+3. 请求能够通过限流器的前提是令牌桶中有令牌。
+
+这个算法中，限流的速率 r 还是比较容易理解的，但令牌桶的容量 b 该怎么理解呢？b 其实是burst的简写，意义是**限流器允许的最大突发流量**。比如b=10，而且令牌桶中的令牌已满，此时限流器允许10个请求同时通过限流器，当然只是突发流量而已，这10个请求会带走10个令牌，所以后续的流量只能按照速率 r 通过限流器。
+
+令牌桶这个算法，如何用Java实现呢？很可能你的直觉会告诉你生产者-消费者模式：一个生产者线程定时向阻塞队列中添加令牌，而试图通过限流器的线程则作为消费者线程，只有从阻塞队列中获取到令牌，才允许通过限流器。
+
+这个算法看上去非常完美，而且实现起来非常简单，如果并发量不大，这个实现并没有什么问题。可实际情况却是使用限流的场景大部分都是高并发场景，而且系统压力已经临近极限了，此时这个实现就有问题了。问题就出在定时器上，在高并发场景下，当系统压力已经临近极限的时候，定时器的精度误差会非常大，同时定时器本身会创建调度线程，也会对系统的性能产生影响。
+
+那还有什么好的实现方式呢？当然有，Guava的实现就没有使用定时器，下面我们就来看看它是如何实现的。
+
+## Guava如何实现令牌桶算法
+
+Guava实现令牌桶算法，用了一个很简单的办法，其关键是**记录并动态计算下一令牌发放的时间**。下面我们以一个最简单的场景来介绍该算法的执行过程。假设令牌桶的容量为 b=1，限流速率 r = 1个请求/秒，如下图所示，如果当前令牌桶中没有令牌，下一个令牌的发放时间是在第3秒，而在第2秒的时候有一个线程T1请求令牌，此时该如何处理呢？
+
+![](https://static001.geekbang.org/resource/image/39/ce/391179821a55fc798c9c17a6991c1dce.png?wh=1142%2A478)
+
+线程T1请求令牌示意图
+
+对于这个请求令牌的线程而言，很显然需要等待1秒，因为1秒以后（第3秒）它就能拿到令牌了。此时需要注意的是，下一个令牌发放的时间也要增加1秒，为什么呢？因为第3秒发放的令牌已经被线程T1预占了。处理之后如下图所示。
+
+![](https://static001.geekbang.org/resource/image/1a/87/1a4069c830e18de087ba7f490aa78087.png?wh=1142%2A284)
+
+线程T1请求结束示意图
+
+假设T1在预占了第3秒的令牌之后，马上又有一个线程T2请求令牌，如下图所示。
+
+![](https://static001.geekbang.org/resource/image/2c/2e/2cf695d0888a93e1e2d020d9514f5a2e.png?wh=1142%2A367)
+
+线程T2请求令牌示意图
+
+很显然，由于下一个令牌产生的时间是第4秒，所以线程T2要等待两秒的时间，才能获取到令牌，同时由于T2预占了第4秒的令牌，所以下一令牌产生时间还要增加1秒，完全处理之后，如下图所示。
+
+![](https://static001.geekbang.org/resource/image/68/f7/68c09a96049aacda7936c52b801c22f7.png?wh=1142%2A377)
+
+线程T2请求结束示意图
+
+上面线程T1、T2都是在**下一令牌产生时间之前**请求令牌，如果线程在**下一令牌产生时间之后**请求令牌会如何呢？假设在线程T1请求令牌之后的5秒，也就是第7秒，线程T3请求令牌，如下图所示。
+
+![](https://static001.geekbang.org/resource/image/e3/5c/e3125d72eb3d84eabf6de6ab987e695c.png?wh=1142%2A342)
+
+线程T3请求令牌示意图
+
+由于在第5秒已经产生了一个令牌，所以此时线程T3可以直接拿到令牌，而无需等待。在第7秒，实际上限流器能够产生3个令牌，第5、6、7秒各产生一个令牌。由于我们假设令牌桶的容量是1，所以第6、7秒产生的令牌就丢弃了，其实等价地你也可以认为是保留的第7秒的令牌，丢弃的第5、6秒的令牌，也就是说第7秒的令牌被线程T3占有了，于是下一令牌的的产生时间应该是第8秒，如下图所示。
+
+![](https://static001.geekbang.org/resource/image/ba/fc/baf159d05b2abf650839e29a2399a4fc.png?wh=1142%2A344)
+
+线程T3请求结束示意图
+
+通过上面简要地分析，你会发现，我们**只需要记录一个下一令牌产生的时间，并动态更新它，就能够轻松完成限流功能**。我们可以将上面的这个算法代码化，示例代码如下所示，依然假设令牌桶的容量是1。关键是**reserve()方法**，这个方法会为请求令牌的线程预分配令牌，同时返回该线程能够获取令牌的时间。其实现逻辑就是上面提到的：如果线程请求令牌的时间在下一令牌产生时间之后，那么该线程立刻就能够获取令牌；反之，如果请求时间在下一令牌产生时间之前，那么该线程是在下一令牌产生的时间获取令牌。由于此时下一令牌已经被该线程预占，所以下一令牌产生的时间需要加上1秒。
+
+```
+class SimpleLimiter {
+  //下一令牌产生时间
+  long next = System.nanoTime();
+  //发放令牌间隔：纳秒
+  long interval = 1000_000_000;
+  //预占令牌，返回能够获取令牌的时间
+  synchronized long reserve(long now){
+    //请求时间在下一令牌产生时间之后
+    //重新计算下一令牌产生时间
+    if (now > next){
+      //将下一令牌产生时间重置为当前时间
+      next = now;
+    }
+    //能够获取令牌的时间
+    long at=next;
+    //设置下一令牌产生时间
+    next += interval;
+    //返回线程需要等待的时间
+    return Math.max(at, 0L);
+  }
+  //申请令牌
+  void acquire() {
+    //申请令牌时的时间
+    long now = System.nanoTime();
+    //预占令牌
+    long at=reserve(now);
+    long waitTime=max(at-now, 0);
+    //按照条件等待
+    if(waitTime > 0) {
+      try {
+        TimeUnit.NANOSECONDS
+          .sleep(waitTime);
+      }catch(InterruptedException e){
+        e.printStackTrace();
+      }
+    }
+  }
+}
+```
+
+如果令牌桶的容量大于1，又该如何处理呢？按照令牌桶算法，令牌要首先从令牌桶中出，所以我们需要按需计算令牌桶中的数量，当有线程请求令牌时，先从令牌桶中出。具体的代码实现如下所示。我们增加了一个**resync()方法**，在这个方法中，如果线程请求令牌的时间在下一令牌产生时间之后，会重新计算令牌桶中的令牌数，**新产生的令牌的计算公式是：(now-next)/interval**，你可对照上面的示意图来理解。reserve()方法中，则增加了先从令牌桶中出令牌的逻辑，不过需要注意的是，如果令牌是从令牌桶中出的，那么next就无需增加一个 interval 了。
+
+```
+class SimpleLimiter {
+  //当前令牌桶中的令牌数量
+  long storedPermits = 0;
+  //令牌桶的容量
+  long maxPermits = 3;
+  //下一令牌产生时间
+  long next = System.nanoTime();
+  //发放令牌间隔：纳秒
+  long interval = 1000_000_000;
+  
+  //请求时间在下一令牌产生时间之后,则
+  // 1.重新计算令牌桶中的令牌数
+  // 2.将下一个令牌发放时间重置为当前时间
+  void resync(long now) {
+    if (now > next) {
+      //新产生的令牌数
+      long newPermits=(now-next)/interval;
+      //新令牌增加到令牌桶
+      storedPermits=min(maxPermits, 
+        storedPermits + newPermits);
+      //将下一个令牌发放时间重置为当前时间
+      next = now;
+    }
+  }
+  //预占令牌，返回能够获取令牌的时间
+  synchronized long reserve(long now){
+    resync(now);
+    //能够获取令牌的时间
+    long at = next;
+    //令牌桶中能提供的令牌
+    long fb=min(1, storedPermits);
+    //令牌净需求：首先减掉令牌桶中的令牌
+    long nr = 1 - fb;
+    //重新计算下一令牌产生时间
+    next = next + nr*interval;
+    //重新计算令牌桶中的令牌
+    this.storedPermits -= fb;
+    return at;
+  }
+  //申请令牌
+  void acquire() {
+    //申请令牌时的时间
+    long now = System.nanoTime();
+    //预占令牌
+    long at=reserve(now);
+    long waitTime=max(at-now, 0);
+    //按照条件等待
+    if(waitTime > 0) {
+      try {
+        TimeUnit.NANOSECONDS
+          .sleep(waitTime);
+      }catch(InterruptedException e){
+        e.printStackTrace();
+      }
+    }
+  }
+}
+```
+
+## 总结
+
+经典的限流算法有两个，一个是**令牌桶算法（Token Bucket）**，另一个是**漏桶算法（Leaky Bucket）**。令牌桶算法是定时向令牌桶发送令牌，请求能够从令牌桶中拿到令牌，然后才能通过限流器；而漏桶算法里，请求就像水一样注入漏桶，漏桶会按照一定的速率自动将水漏掉，只有漏桶里还能注入水的时候，请求才能通过限流器。令牌桶算法和漏桶算法很像一个硬币的正反面，所以你可以参考令牌桶算法的实现来实现漏桶算法。
+
+上面我们介绍了Guava是如何实现令牌桶算法的，我们的示例代码是对Guava RateLimiter的简化，Guava RateLimiter扩展了标准的令牌桶算法，比如还能支持预热功能。对于按需加载的缓存来说，预热后缓存能支持5万TPS的并发，但是在预热前5万TPS的并发直接就把缓存击垮了，所以如果需要给该缓存限流，限流器也需要支持预热功能，在初始阶段，限制的流速 r 很小，但是动态增长的。预热功能的实现非常复杂，Guava构建了一个积分函数来解决这个问题，如果你感兴趣，可以继续深入研究。
+
+欢迎在留言区与我分享你的想法，也欢迎你在留言区记录你的思考过程。感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>null</span> 👍（71） 💬（7）<div>re：为什么令牌是从令牌桶中出的，那么 next 就无需增加一个 interval？
 
 next 变量的意思是下一个令牌的生成时间，可以理解为当前线程请求的令牌的生成时刻，如第一张图所示：线程 T1 的令牌的生成时刻是第三秒。
 
@@ -61,40 +224,9 @@ next 变量的意思是下一个令牌的生成时间，可以理解为当前线
 ¹: long newPermits=(now-next)&#47;interval;
 ²: storedPermits=min(maxPermits, 
         storedPermits + newPermits);
-³: next = now;</div>2019-08-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/1e/8c/d9330d2b.jpg" width="30px"><span>花儿少年</span> 👍（27） 💬（7）<div>很精髓的就是reserve方法，我来试着稍微解释一下
+³: next = now;</div>2019-08-09</li><br/><li><span>花儿少年</span> 👍（27） 💬（7）<div>很精髓的就是reserve方法，我来试着稍微解释一下
 首先肯定是计算令牌桶里面的令牌数量
-然后取令牌桶中的令牌数量storedPermits 与当前的需要的令牌数量 1 做比较，大于等于 1，说明令牌桶至少有一个令牌，此时下一令牌的获取是不需要等待的，表现为 next 不需要变化；而当令牌桶中的令牌没有了即storedPermits等于 0 时，next 就会变化为下一个令牌的获取时间，注意 nr 的值变化</div>2019-06-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/bvj76PmeUvW8kokyu91IZWuRATKmabibDWbzAj2TajeEic7WvKCJOLaOh6jibEmdQ36EO3sBUZ0HibAiapsrZo64U8w/132" width="30px"><span>梦倚栏杆</span> 👍（19） 💬（4）<div>有个疑问：高并发情况下单独一个线程维护一个队列放令牌，性能上扛不住，那么获取令牌时每次加锁去计算性能就可以抗的主？是根据什么依据来判断性能的呢？</div>2019-12-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/26/38/ef063dc2.jpg" width="30px"><span>Darren</span> 👍（17） 💬（2）<div>老师，请教一下，限流器和信号量为什么感觉一样的，那为什么2个还都存在？是因为业务场景不同吗？请老师解惑下</div>2019-05-26</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epLhKkTgowm9PqUwP9k90DecpOU7HQ0IRuAp515kIonbfyqYm6ME7s2bmaPX0sSA14micZ2DAfLLibw/132" width="30px"><span>zsh0103</span> 👍（8） 💬（1）<div>老师好，问个问题。文中代码b=3，r=1&#47;s时，如果在next之后同时来了3个请求，应该时都可以获得令牌的对吧。就是说这3个请求都可以执行。那岂不是违背了r=1&#47;s的限制吗。
-</div>2019-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a5/8c/97b2f2ba.jpg" width="30px"><span>刘鸿博</span> 👍（5） 💬（2）<div>newPermits, storePermits, fb, nr 都应该是double, 而不是long. </div>2019-08-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/01/37/12e4c9c9.jpg" width="30px"><span>高源</span> 👍（5） 💬（1）<div>还有就是老师我问一下因为我不是在互联网公司工作接触高并发场景少，我又喜欢学习研究提高自己，是不是得多看多练，实战</div>2019-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d3/cb/f8157ad8.jpg" width="30px"><span>爱吃回锅肉的瘦子</span> 👍（4） 💬（1）<div>老师，有没什么资料推荐关于guava预热功能呢？主要网上资料太繁杂，不知道要如何甄别哪些是比较经典的</div>2019-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/77/5c/5d6fb47b.jpg" width="30px"><span>小强（jacky）</span> 👍（3） 💬（1）<div>老师请教个问题，maxPermits&#47;next 的变量在程序里面，不同线程之间存在依赖关系，这不是数据竞争吗？为啥这里没有加对应的锁？</div>2020-10-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/67/8a/babd74dc.jpg" width="30px"><span>锦</span> 👍（3） 💬（2）<div>很精彩！老师应该去讲数据结构与算法:)</div>2019-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4a/6f/e36b3908.jpg" width="30px"><span>xzy</span> 👍（1） 💬（1）<div>不知道课程结束后，老师还会出来答疑不？</div>2020-11-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/36/75/e346e04e.jpg" width="30px"><span>一个慢慢爬行的普通人</span> 👍（1） 💬（1）<div>老师，我刚刚应该是想错了，线程池任务提交频繁是不是导致线程池存储任务队列不断扩大，从而可能会导致系统不稳定，但是这方面线程池也可以用有界队列来控制，所以不太清楚是什么能够导致系统不稳定</div>2019-09-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/49/68/a05fb728.jpg" width="30px"><span>韩大</span> 👍（1） 💬（1）<div>guava的ratelimit好像是阻塞的，而不是抛弃请求，这样会不会导致用户响应时间过长的问题？</div>2019-08-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/76/89/3b15e9e6.jpg" width="30px"><span>一一</span> 👍（0） 💬（1）<div>老师你好，请问在高并发场景下定时器与线程睡眠的差距是怎样的？</div>2021-09-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/95/6d/bc01fdf7.jpg" width="30px"><span>白</span> 👍（0） 💬（1）<div>令牌桶的平滑特性这里怎么体现呢？
-比如1秒钟10个令牌这个算法里会在第一毫秒耗尽，而不是平滑的分散在1秒里吧？</div>2020-04-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/25/1f/8e304ec0.jpg" width="30px"><span>卖火柴的托儿索</span> 👍（0） 💬（1）<div>老师，请问您用的是什么画图工具？</div>2020-01-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/7c/63/115a4b23.jpg" width="30px"><span>静海</span> 👍（0） 💬（3）<div>老师，请教下接收rocketmq消息，能否采用限流器Guava RateLimiter进行限流? 要怎么做?</div>2019-09-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8e/a3/d7e5fe8a.jpg" width="30px"><span>0xABC</span> 👍（0） 💬（1）<div>限流器老师讲的浅显易懂，发现有些同学有些疑问，试着解答一下。
-
-1. 是否会有并发问题？
-并发问题应该是不存在的，限流器的竞争资源是令牌（permit），实现中令牌是动态计算出来的，增加了并发访问控制，synchronized reverse()，这里的同步仅仅是加在了预占令牌上，非常好的设计
-2. maxPermits 大于1的代码没看懂？
-分了两种情况，下一个令牌产生时间落后于当前时间时，需要重置下一次令牌产生时间和计算令牌桶中可用的令牌；然后，所有的请求都按照相同的令牌获取算法，代码中在计算能获得令牌的时间时，又分了两种情况，令牌桶中有令牌和没有令牌，没有令牌的时候需要计算下一次产生令牌的时间，有令牌的时候需要减去令牌桶中的令牌，这就是那几行比较晦涩一些代码要做的事情
-
-自己的浅显理解</div>2019-07-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/42/4f/ff1ac464.jpg" width="30px"><span>又双叒叕是一年啊</span> 👍（0） 💬（1）<div>guava ratelimiter 容量上限在哪个参数中体现或者在哪设置这个。比如我们设置的流速是 2&#47;s,当100s之内都没有请求到来，是不是会往令牌桶中持续放入200个令牌， 而这这时候突然来了一波300个并发请求，是不是200个请求可以被调用，剩下100个请求被阻塞慢慢释放。是这样的？</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/39/99/42929758.jpg" width="30px"><span>andy</span> 👍（0） 💬（1）<div>我有个疑问，这个令牌桶算法，多线程当中不会有问题么？还是我认为的使用场景不对，有点蒙</div>2019-05-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/7c/b5/4a7a2bd4.jpg" width="30px"><span>Sunqc</span> 👍（0） 💬（1）<div>皮一下，老王，这一节挺深奥的，哈哈哈</div>2019-05-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/01/37/12e4c9c9.jpg" width="30px"><span>高源</span> 👍（0） 💬（2）<div>老师想请教个实际问题，假设单机做服务器端win和下面Linux应用程序实时socket通信，每个消息交互时间大概10毫秒，我现在想提速，想把交互时间变成0.1毫秒，有啥方法解决此问题，服务器端承载业务处理逻辑和数据库读写操作，谢谢，我现在不清楚这个问题如何解决，我想法是更换网络框架，例如换成netty框架</div>2019-05-25</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLz3icr3mGs5ib8FbSPQZ2ic3ib90mHkd1btQrmGacZjJxfYXrerIdaTxglKyCicFzLcEAb6deC2cWjE5Q/132" width="30px"><span>the geek</span> 👍（5） 💬（5）<div>老师，当b&gt;1时的reserve方法写的有问题吧，long at = next;不应该是第一行，而应该在&#47;&#47; 重新计算下一令牌产生时间
-    next = next + nr*interval;
-这行代码之后吧</div>2019-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/4c/c8/bed1e08a.jpg" width="30px"><span>辣椒</span> 👍（5） 💬（10）<div>&#47;&#47; 令牌净需求：首先减掉令牌桶中的令牌
-    		long nr = 1 - fb;
-    		&#47;&#47; 重新计算下一令牌产生时间
-    		next = next + nr*interval;
-    		&#47;&#47; 重新计算令牌桶中的令牌
-    		this.storedPermits -= fb;
-
-老师这儿没有看懂，能不能解释一下？</div>2019-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/42/4f/ff1ac464.jpg" width="30px"><span>又双叒叕是一年啊</span> 👍（5） 💬（2）<div>long interval = 1000_000_000;
-这是什么写法</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/14/c2/46ebe3a0.jpg" width="30px"><span>侧耳倾听</span> 👍（4） 💬（0）<div>时间那个其实就是当前请求时间超过上次令牌的取得时间，我就发令牌，令牌满了就不发只取，有空间了继续发，总之就是一秒一个，通过时间差算出，来一个请求就算一次时间，没必要通过定时器去实现</div>2020-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/39/8c/ff48ece3.jpg" width="30px"><span>小乙哥</span> 👍（2） 💬（0）<div>http:&#47;&#47;ifeve.com&#47;guava-ratelimiter&#47;
-RateLimiter的文档翻译，mark一下</div>2021-08-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/8d/c7/d66952bc.jpg" width="30px"><span>Happy</span> 👍（2） 💬（1）<div>老师，经过单元测试后，个人感觉 resync 方法有bug。resync 的功能仅仅是将时间转换为令牌的操作，并更新下一次产生令牌的时间。不消耗令牌。
-resync 方法中 &#47;&#47;新产生的令牌数
-long newPermits = (now - next) &#47; interval; 这一步中，假如 now - next 为 1.9 秒，interval 为1秒，那么除法后，会将 0.9 秒丢弃，长期这种操作，会导致错误越来越多。我这边做了一个补偿操作：
-long diff = (now - next) % interval;
- &#47;&#47; 将下一个令牌发放时间重置为当前时间
-next = now - diff;
-
-单元测试在 https:&#47;&#47;github.com&#47;1996fanrui&#47;fanrui-learning&#47;blob&#47;755cb85bfc84981ba3a0309cc4fee91035e7ee25&#47;module-juc&#47;src&#47;test&#47;java&#47;com&#47;dream&#47;juc&#47;ratelimiter&#47;RateLimiterTest.java
-
-虽然课程早就结束了，但还是非常期待老师的反馈。</div>2020-01-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/40/e0/2f1816a8.jpg" width="30px"><span>speedy9</span> 👍（2） 💬（2）<div>老师，前一个桶大小为1的代码是不是写错了，&#47;&#47; 返回线程需要等待的时间 应该是return Math.max(at-now,0)吧
-</div>2019-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/30/c1/2dde6700.jpg" width="30px"><span>密码123456</span> 👍（2） 💬（0）<div>桶容量为1的时候，我能理解。但是桶容量为多个的时候，就不理解了，比如
-&#47;&#47; 新产生的令牌数
-      long newPermits=(now-next)&#47;interval;
-这句，不应该1秒生成桶的总容量吗？假设now为2，next为1。interval也为1。那么一个周期也就产生一个令牌啊？</div>2019-05-25</li><br/>
+然后取令牌桶中的令牌数量storedPermits 与当前的需要的令牌数量 1 做比较，大于等于 1，说明令牌桶至少有一个令牌，此时下一令牌的获取是不需要等待的，表现为 next 不需要变化；而当令牌桶中的令牌没有了即storedPermits等于 0 时，next 就会变化为下一个令牌的获取时间，注意 nr 的值变化</div>2019-06-18</li><br/><li><span>梦倚栏杆</span> 👍（19） 💬（4）<div>有个疑问：高并发情况下单独一个线程维护一个队列放令牌，性能上扛不住，那么获取令牌时每次加锁去计算性能就可以抗的主？是根据什么依据来判断性能的呢？</div>2019-12-13</li><br/><li><span>Darren</span> 👍（17） 💬（2）<div>老师，请教一下，限流器和信号量为什么感觉一样的，那为什么2个还都存在？是因为业务场景不同吗？请老师解惑下</div>2019-05-26</li><br/><li><span>zsh0103</span> 👍（8） 💬（1）<div>老师好，问个问题。文中代码b=3，r=1&#47;s时，如果在next之后同时来了3个请求，应该时都可以获得令牌的对吧。就是说这3个请求都可以执行。那岂不是违背了r=1&#47;s的限制吗。
+</div>2019-05-26</li><br/><li><span>刘鸿博</span> 👍（5） 💬（2）<div>newPermits, storePermits, fb, nr 都应该是double, 而不是long. </div>2019-08-26</li><br/><li><span>高源</span> 👍（5） 💬（1）<div>还有就是老师我问一下因为我不是在互联网公司工作接触高并发场景少，我又喜欢学习研究提高自己，是不是得多看多练，实战</div>2019-05-25</li><br/><li><span>爱吃回锅肉的瘦子</span> 👍（4） 💬（1）<div>老师，有没什么资料推荐关于guava预热功能呢？主要网上资料太繁杂，不知道要如何甄别哪些是比较经典的</div>2019-05-26</li><br/><li><span>小强（jacky）</span> 👍（3） 💬（1）<div>老师请教个问题，maxPermits&#47;next 的变量在程序里面，不同线程之间存在依赖关系，这不是数据竞争吗？为啥这里没有加对应的锁？</div>2020-10-14</li><br/><li><span>锦</span> 👍（3） 💬（2）<div>很精彩！老师应该去讲数据结构与算法:)</div>2019-05-25</li><br/><li><span>xzy</span> 👍（1） 💬（1）<div>不知道课程结束后，老师还会出来答疑不？</div>2020-11-11</li><br/><li><span>一个慢慢爬行的普通人</span> 👍（1） 💬（1）<div>老师，我刚刚应该是想错了，线程池任务提交频繁是不是导致线程池存储任务队列不断扩大，从而可能会导致系统不稳定，但是这方面线程池也可以用有界队列来控制，所以不太清楚是什么能够导致系统不稳定</div>2019-09-16</li><br/><li><span>韩大</span> 👍（1） 💬（1）<div>guava的ratelimit好像是阻塞的，而不是抛弃请求，这样会不会导致用户响应时间过长的问题？</div>2019-08-16</li><br/><li><span>一一</span> 👍（0） 💬（1）<div>老师你好，请问在高并发场景下定时器与线程睡眠的差距是怎样的？</div>2021-09-26</li><br/><li><span>白</span> 👍（0） 💬（1）<div>令牌桶的平滑特性这里怎么体现呢？
+比如1秒钟10个令牌这个算法里会在第一毫秒耗尽，而不是平滑的分散在1秒里吧？</div>2020-04-24</li><br/>
 </ul>

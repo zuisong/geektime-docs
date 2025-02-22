@@ -9,8 +9,135 @@
 细数经历，我和团队开始使用Spring可以追溯到10多年前，正是我刚参加工作的时候。那时候我们了解Spring都是从SSH框架开始的。到了今天，Spring已经随着技术的发展悄然换了一副面貌。
 
 在Spring还没有像今天这样被广泛应用时，我们开发一个Java Web程序还属于茹毛饮血的时代，我们会编写一堆看似重复的代码或者配置，然后战战兢兢地期待一次就能运行成功。然而，即使这些工作都是重复的，仍然会有各种各样的错误产生。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/1d/fe/83/df562574.jpg" width="30px"><span>慎独明强</span> 👍（1） 💬（1）<div>又见帅气的老师，跟着netty视频课程过来，见证老师的踩坑和填坑过程</div>2021-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/cb/ce/d9e00eb5.jpg" width="30px"><span>undefined</span> 👍（30） 💬（2）<div>嗨，大家好。
+
+到了2014年之后，便捷、强大的Spring Boot的引入，让Spring的应用变得更加广泛起来。它给我们这些Java程序员带来了福音，我第一次见到Spring编写的Hello World Web应用程序时（示例如下），那种惊叹的感觉至今记忆犹新。
+
+```
+@SpringBootApplication
+@RestController
+public class Application {
+
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+
+    @RequestMapping(path = "/hi")
+    public String hi(){
+        return "hi, spring";
+    };
+
+}
+```
+
+但利好往往就像一把双刃剑。后来有很多人说，Spring降低了程序员的技术门槛，确实，以往那些错综复杂的开发工作已经变得非常简单了。可也有很多人掉进了一个误区，因为简单，所以穿“格子衫”“会码字”就能搞Java开发了吗？唉～现实残酷啊！
+
+## Spring踩坑之旅
+
+不管你是新手程序员，还是资深程序员，只要你使用过Spring，应该都有过**类似这样的感受**。
+
+虽然完成了工作，但是总觉得心里没底。例如，我们在给一个接口类添加@RestController注解时，有时候难免会想，换成@Controller可以么？到底用哪个更好？
+
+当我们遇到一个过滤器（Filter）不按我们想要的顺序执行时，通常都是立马想到去加@Order，但是@Order不见得能搞定所有的情景呀。此时，我们又会抓狂地胡乱操作，各种注解来一遍，最终顺序可能保证了，但是每个过滤器都执行了多次。当然也可能真的搞定了问题，但解决得糊里糊涂。
+
+还有，为什么我们只是稍微动了下，就出故障了呢？例如，新手常遇到的一个错误，在Spring Boot中，将Controller层的类移动到Application的包之外，此时Controller层提供的接口就直接失效了。
+
+而当我们遇到问题时，又该从何查起？例如，下面这段代码在一些项目中是可以运行的，但是换成另外一个项目又不可以了，这是什么情况呢？
+
+```
+@RequestMapping(path = "/hi", method = RequestMethod.GET)
+public String hi(@RequestParam String name){
+    return name;
+};
+```
+
+甚至有时候，我们都不是换一个项目，而是添加一些新的功能，都会导致旧的功能出问题。例如，我们对下面这个 Bean 增加 AOP 切面配置来拦截它的 login 方法后：
+
+```
+@Service
+public class AdminUserService {
+    public final User adminUser = new User("fujian");
+    public User getAdminUser(){
+        return adminUser;
+    }    
+    public void login(){
+        //
+    }
+}
+```
+
+你可能会蒙圈地发现：下面这行本来在别处工作正常的代码，忽然就报空指针错误了，这又是为何？
+
+此时，相信你的内心是迷惘、纠结的，心里可能还会暗骂：去它的Spring，搞啥呢？
+
+> String adminUserName = adminUserService.adminUser.getUserName();
+
+为什么会有这些感受呢？追根溯源，还是在于 **Spring实在太“贴心”了**。它就像一个“保姆”，把我们所有常见的工作都完成了，如果你幸运的话，可能很久都不会遇到问题。
+
+但是，这份贴心毕竟是建立在很多**约定俗成的规则**之上。就像我们雇佣的保姆，她可能一直假定你是吃中餐的，所以每次你下班回家，中餐就已经做好了。但是假设有一天，你忽然临时兴起想吃西餐，你可能才会发现这个贴心的保姆她只会做中餐，你想不吃都不行。
+
+Spring就是这样，它有很多隐性的约定，而这些约定并不一定是你所熟悉的。所以，当你遇到问题时，很有可能就抓狂了。一方面我们得益于它所带来的轻松，因为不需要了解太多我们也能工作；另一方面也会崩溃于问题来临之时无法快速解决，因为我们平时根本不需要，甚至不觉得要了解更多。
+
+这个时候就有很多人跳出来跟你说：“你一定要提前把Spring吃透啊！”
+
+可当你翻阅Spring源码时，你肯定会望而生畏，真的太多了，不带着问题去学习无异于大海捞针。即使你去通读市场上大多数畅销的Spring教程，你可能仍然会感觉到茫然，不知道自己到底掌握得如何。毕竟读完之后，你不一定能预见到未来可能遇到哪些问题，而**这些问题的规避和处理往往才是检验你学习成果的标准。**
+
+## 我如何讲这门课？
+
+厌倦了遇到问题时的疲于奔命，自然就要寻找高效便捷的学习法门了，所以这几年我一直在整理Spring开发中所遇到的各种各样的问题，然后按类划分。
+
+项目忙的时候，就简单记录一下，忙过去了就深入研究。现在我的 ToDoList 已经非常详实了，对我的团队帮助也非常大。对于新人来说，这是份**全面的避坑指南**；对于老人来说，这又是个很好的**问题备忘录**。
+
+这就是我做这门课的初衷，这里也真心分享给你。
+
+在内容设计上，整个专栏都是以问题驱动的方式来组织知识点的，大概是这样的一个思路：
+
+![](https://static001.geekbang.org/resource/image/45/de/45d103389eab48e4d911a7a6f7d4c0de.png?wh=548%2A195)
+
+1. 给出50+错误案例；
+2. 从源码级别探究问题出现的原因；
+3. 给出问题的解决方案并总结关键点。
+
+另外，专栏中的大多数问题并没有太大关联，这是为了避免你的学习负担过重，我想尽可能地让你在碎片化时间里去吃透一个问题及其背后原理。最终，通过这些无数的问题点，帮助你形成对Spring的整体认知，做到独当一面。
+
+而在问题的选型上，我一共筛选出了50多个常见问题，这些问题主要来自：我和同事在生产环境中经常遇到问题，Stack Overflow网站上的一些高频问题，以及常用搜索引擎检索到的一些高频问题。
+
+这些问题的选择都遵循这样几个原则：
+
+1. 不难，但是常见，基本每个人都会遇到；
+2. 不太常见，但是一旦碰见，很容易入坑；
+3. 在某些场景下可以工作，换一种情况就失效。
+
+## 课程设计
+
+有了关于具体内容的详细说明，我相信你对专栏所能解决的问题已经有了大概的感知。接下来，我再跟你说说整体的课程设计，帮助你进一步了解。
+
+本专栏共分为以下三个部分，你可以对照着下面这张图去理解我的设计思路：
+
+![](https://static001.geekbang.org/resource/image/83/fc/834c92d778378859acf4e0e02ee778fc.png?wh=5300%2A1528)
+
+**Spring Core篇：**Spring Core包括Bean定义、注入、AOP等核心功能，可以说它们是Spring的基石。不管未来你是做Spring Web开发，还是使用Spring Cloud技术栈，你都绕不开这些功能。所以这里我会重点介绍在这些功能使用上的常见问题。
+
+**Spring Web篇：**大多项目使用Spring还是为了进行Web开发，所以我也梳理了从请求URL解析、Header解析、Body转化到授权等Web开发中绕不开的问题。不难发现，它们正好涵盖了从一个请求到来，到响应回去这一完整流程。
+
+**Spring 补充篇：**作为补充，这部分我会重点介绍Spring测试、Spring事务、Spring Data相关问题。最后，我还会为你系统总结下Spring使用中发生问题的根本原因。
+
+通过学习这50多个常见、典型的问题，我相信对于Spring的本质，你会有更加深刻的认识；而对于产生问题的原因，也能做到洞若观火。最终掌握这些问题的最佳解决方式，触类旁通。
+
+## Tips
+
+不过，有几点我还是要提醒你一下。这门课程**需要一定的基础**，你要知道最基本的Spring使用知识，比如如何自动注入一个Bean，如何使用AOP等；同时，你也需要有一定的耐心，因为涉及源码理解。
+
+另外，这门课程重在实践与查漏补缺，所以在每个问题的讲解上，我不可能追根溯源地把所有的背景知识、前后调用关系都完整呈现出来，否则你看到的无疑是一门包含大量重复内容的Spring教程而已，这也违背了这门课的初衷。
+
+我希望当你学到某个问题，但感觉基础有所欠缺时，你能**及时去补习相关的内容**。当然了，你也可以直接在留言区中问我，我会尽我所能为你提供帮助。
+
+还有就是，课程中会有**很多的案例和示例代码**，还有一些关键实现，我希望你能跟着我的节奏去验证一下，只有真正自己动手了印象才会深刻。
+
+最后，我想说，这个专栏是一个**问题库**，也是一本工具书，好好利用，当你再次遇到各种各样的Spring问题时，它会给你底气！如果你现在已经遇到了一些难题，也欢迎在留言区中与我交流，对于专栏中未涉及，却十分有价值的问题，我后期会考虑以加餐的形式交付给你。
+
+感谢信任，我们下节课见！
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>慎独明强</span> 👍（1） 💬（1）<div>又见帅气的老师，跟着netty视频课程过来，见证老师的踩坑和填坑过程</div>2021-04-21</li><br/><li><span>undefined</span> 👍（30） 💬（2）<div>嗨，大家好。
 
 之前忙业务需求疲于奔命，偶尔看些源码却只是窥豹一斑。
 
@@ -21,6 +148,5 @@
 不加班那是奢望，在此祝大家少加班，多点自己的学习时间~
 
 [2021-04-19 19:52:00]
-</div>2021-04-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/47/fe/d0e25d57.jpg" width="30px"><span>朱晔</span> 👍（16） 💬（4）<div>学习</div>2021-04-19</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/8NJXCibjiaDoMGwndhnKtxR4feTJbcUxPw0GIsgTXVz2bFkS5ibetwT1qGD5v77INW1ByuzGZVNSWbb7waVaWz1Yg/132" width="30px"><span>没理想的人不伤心</span> 👍（11） 💬（1）<div>在小马哥的推荐下买了老师这门课，在这里推荐大家两门课一起买，相辅相成！！！</div>2021-04-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/01/0d/75b3cb10.jpg" width="30px"><span>AYOU</span> 👍（4） 💬（0）<div>我想看 webflux 和 webclient常见错误</div>2021-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/50/2b/2344cdaa.jpg" width="30px"><span>第一装甲集群司令克莱斯特</span> 👍（4） 💬（0）<div>现在都是面向Spring编程，因为Spring体系涵盖了整个J2EE，你想要的他都有，你没用到的，他都提供了！</div>2021-04-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/e0/7c/7225bc0c.jpg" width="30px"><span>Lcf</span> 👍（1） 💬（0）<div>2022年4月20日，开始打卡</div>2022-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/0a/e9/6fad9109.jpg" width="30px"><span>宁静志远</span> 👍（1） 💬（0）<div>老师，开篇就讲的很好啊，期待后面的内容</div>2021-07-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/33/d7/739e2f6d.jpg" width="30px"><span>Utah</span> 👍（1） 💬（0）<div>Spring我来啦！</div>2021-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/fc/18/8e69f7cf.jpg" width="30px"><span>一记妙蛙直拳</span> 👍（1） 💬（0）<div>java即spring，spring即java，作为一线bug制造者，愿认真学完这个课程能少写点bug，冲鸭~！！！</div>2021-04-23</li><br/><li><img src="" width="30px"><span>Geek_47baf9</span> 👍（1） 💬（0）<div>之前跟着老师学过netty，感觉讲的很清晰很到位，所以看到老师讲spring 错误事例就过来了，支持一下</div>2021-04-19</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q3auHgzwzM7RKo5N6Y7Hgcr3YicsHul0XuDACAYzIpiaiazOc7LkkOoDlAHTTmX1dlIrhBZ6gP1QFXermLrP8Algg/132" width="30px"><span>小林桑</span> 👍（0） 💬（0）<div>2024&#47;01&#47;10 今天才来。开始打卡记录一下</div>2024-01-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f3/c6/5d186c6f.jpg" width="30px"><span>李米</span> 👍（0） 💬（0）<div>请问下案例和示例代码在哪里下载？</div>2023-03-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f3/c6/5d186c6f.jpg" width="30px"><span>李米</span> 👍（0） 💬（0）<div>主编，请问下源码在哪里？</div>2023-03-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/db/58/a7a0a85b.jpg" width="30px"><span>二饼</span> 👍（0） 💬（0）<div>打卡，开始系统学</div>2023-01-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2d/26/fe/6c0f9ac7.jpg" width="30px"><span>lava</span> 👍（0） 💬（0）<div>打卡</div>2022-11-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/bd/c1/992f6724.jpg" width="30px"><span>Andy</span> 👍（0） 💬（0）<div>老师非常不错，虽然我今天才过来学习查看。老师把多年的总结浓缩了起来，对于我而言，它就是一个问题库，我可以通过这个问题库，迅速找到对应领域的问题，真的是事半功倍。老师的价值贡献真的很大。
-我开始思考，做技术的太纠结于实现，有时候不太好，应该要学会从价值角度去想。而老师的这个总结，其实是完全满足java开发遇到的spring大多数问题，价值并不是直接体现在业务上，而是体现在更加底层的解决技术问题上。什么是价值，能够解决客户问题的东西就是价值。老师的课程，就是最好的价值呈现</div>2022-10-27</li><br/><li><img src="" width="30px"><span>Geek_0390be</span> 👍（0） 💬（0）<div>这个主题好吸引人啊</div>2022-10-02</li><br/><li><img src="" width="30px"><span>魏建文</span> 👍（0） 💬（0）<div>学习了</div>2022-08-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/27/5f/52/fac27c13.jpg" width="30px"><span>方木</span> 👍（0） 💬（0）<div>感谢老师,学习了</div>2022-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/f1/cd/210d3c74.jpg" width="30px"><span>dongdong5820</span> 👍（0） 💬（0）<div>2022&#47;06&#47;04开始打卡</div>2022-06-04</li><br/><li><img src="" width="30px"><span>Geek_c95698</span> 👍（0） 💬（0）<div>冲鸭</div>2022-04-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/bf/3e/cdc36608.jpg" width="30px"><span>子夜枯灯</span> 👍（0） 💬（0）<div>【2022&#47;01&#47;24】开始打卡学习</div>2022-01-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>开始学习</div>2021-10-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/78/c7/083a3a0b.jpg" width="30px"><span>新世界</span> 👍（0） 💬（0）<div>支持老师，开始继续撸</div>2021-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/5b/83a35681.jpg" width="30px"><span>Monday</span> 👍（0） 💬（0）<div>我来了</div>2021-06-15</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eoWQD3Hicg7jukxm5xgYH84Zk4UjaVN1xuxiacXcsyUvV0cPTkcqHUYA23mTxqYiasgQicrAhBwypu9Gg/132" width="30px"><span>warrior1991912</span> 👍（0） 💬（0）<div>打卡学习，开始建立自己的知识体系，从spring入手。</div>2021-05-25</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/wSdBrrprKiafx6c39iadevT47l2ibpZco9HRdKsjSdkeceF8QPNjXa9BOSic75PI0qiamoibOqUdOyYnGyTpTKtg2zfQ/132" width="30px"><span>心宇</span> 👍（0） 💬（0）<div>很期待老师的这门课程，希望可以通过这个课程加深自己对Spring的理解，弥补知识体系的欠缺</div>2021-04-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/36/ec/ca162d6b.jpg" width="30px"><span>sam3125C</span> 👍（0） 💬（0）<div>一年没写了，重拾 Spring</div>2021-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e1/06/c64246ee.jpg" width="30px"><span>何以见得</span> 👍（0） 💬（1）<div>还有两个月就毕业了，感觉自己会的还是很少，加油</div>2021-04-21</li><br/>
+</div>2021-04-19</li><br/><li><span>朱晔</span> 👍（16） 💬（4）<div>学习</div>2021-04-19</li><br/><li><span>没理想的人不伤心</span> 👍（11） 💬（1）<div>在小马哥的推荐下买了老师这门课，在这里推荐大家两门课一起买，相辅相成！！！</div>2021-04-27</li><br/><li><span>AYOU</span> 👍（4） 💬（0）<div>我想看 webflux 和 webclient常见错误</div>2021-04-20</li><br/><li><span>第一装甲集群司令克莱斯特</span> 👍（4） 💬（0）<div>现在都是面向Spring编程，因为Spring体系涵盖了整个J2EE，你想要的他都有，你没用到的，他都提供了！</div>2021-04-19</li><br/><li><span>Lcf</span> 👍（1） 💬（0）<div>2022年4月20日，开始打卡</div>2022-04-20</li><br/><li><span>宁静志远</span> 👍（1） 💬（0）<div>老师，开篇就讲的很好啊，期待后面的内容</div>2021-07-20</li><br/><li><span>Utah</span> 👍（1） 💬（0）<div>Spring我来啦！</div>2021-05-08</li><br/><li><span>一记妙蛙直拳</span> 👍（1） 💬（0）<div>java即spring，spring即java，作为一线bug制造者，愿认真学完这个课程能少写点bug，冲鸭~！！！</div>2021-04-23</li><br/><li><span>Geek_47baf9</span> 👍（1） 💬（0）<div>之前跟着老师学过netty，感觉讲的很清晰很到位，所以看到老师讲spring 错误事例就过来了，支持一下</div>2021-04-19</li><br/><li><span>小林桑</span> 👍（0） 💬（0）<div>2024&#47;01&#47;10 今天才来。开始打卡记录一下</div>2024-01-10</li><br/><li><span>李米</span> 👍（0） 💬（0）<div>请问下案例和示例代码在哪里下载？</div>2023-03-05</li><br/><li><span>李米</span> 👍（0） 💬（0）<div>主编，请问下源码在哪里？</div>2023-03-03</li><br/><li><span>二饼</span> 👍（0） 💬（0）<div>打卡，开始系统学</div>2023-01-29</li><br/>
 </ul>

@@ -12,5 +12,5 @@
 - 链接: [https://pan.baidu.com/s/1re6hKElwqtvnKDzYpReMeA](https://pan.baidu.com/s/1re6hKElwqtvnKDzYpReMeA)
 - 提取码: jkd4
 <div><strong>精选留言（2）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/15/1d/fa/89d625ed.jpg" width="30px"><span>滴滴答滴滴答</span> 👍（4） 💬（1）<div>佳哥讲的确实很赞！</div>2024-02-21</li><br/><li><img src="" width="30px"><span>Geek2808</span> 👍（0） 💬（1）<div>学习群怎么进入，没看到二维码</div>2024-02-06</li><br/>
+<li><span>滴滴答滴滴答</span> 👍（4） 💬（1）<div>佳哥讲的确实很赞！</div>2024-02-21</li><br/><li><span>Geek2808</span> 👍（0） 💬（1）<div>学习群怎么进入，没看到二维码</div>2024-02-06</li><br/>
 </ul>

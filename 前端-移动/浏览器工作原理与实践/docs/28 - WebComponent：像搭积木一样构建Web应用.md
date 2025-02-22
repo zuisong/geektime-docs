@@ -9,27 +9,193 @@
 使用组件化能带来很多优势，所以很多语言天生就对组件化提供了很好的支持，比如C/C++就可以很好地将功能封装成模块，无论是业务逻辑，还是基础功能，抑或是UI，都能很好地将其组合在一起，实现组件内部的高度内聚、组件之间的低耦合。
 
 大部分语言都能实现组件化，归根结底在于编程语言特性，大多数语言都有自己的函数级作用域、块级作用域和类，可以将内部的状态数据隐藏在作用域之下或者对象的内部，这样外部就无法访问了，然后通过约定好的接口和外部进行通信。
-<div><strong>精选留言（28）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/1a/e9/7b/b844f3a4.jpg" width="30px"><span>匡晨辉</span> 👍（82） 💬（0）<div>web component是通过浏览器引擎提供api接口进行操作，让后在dom，cssom生成过程中控制实现组件化的作用域&#47;执行执行上下文的隔离； vue&#47;react 是在没有浏览器引擎支持的情况下，通过采取一些取巧的手法（比如：js执行上下文的封装利用闭包；样式的封装利用文件hash值作为命名空间在css选择的时候多套一层选择条件（hash值），本质上还是全局的只是不同组件css选择的时候只能选择到组件相应的css样式，实现的隔离）</div>2019-12-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/5a/c5/221ab4d9.jpg" width="30px"><span>wubinsheng</span> 👍（50） 💬（1）<div>原来小程序用的是webComponent，控制台满屏的“#shadow-root”</div>2019-10-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c9/1d/c7586cfc.jpg" width="30px"><span>Snail</span> 👍（32） 💬（1）<div>Vue，React是从开发者层面解决了组件化的问题，提高了效率。WebComponent是从浏览器引擎实现层面解决了组件化的问题，从社区来看，前者的发展优势更明显</div>2019-12-16</li><br/><li><img src="" width="30px"><span>Geek_6x3b9v</span> 👍（16） 💬（4）<div>webComponent标准可以成为框架间的桥梁.
+
+JavaScript虽然有不少缺点，但是作为一门编程语言，它也能很好地实现组件化，毕竟有自己的函数级作用域和块级作用域，所以封装内部状态数据并提供接口给外部都是没有问题的。
+
+既然JavaScript可以很好地实现组件化，那么我们所谈论的WebComponent到底又是什么呢？
+
+## 阻碍前端组件化的因素
+
+在前端虽然HTML、CSS和JavaScript是强大的开发语言，但是在大型项目中维护起来会比较困难，如果在页面中嵌入第三方内容时，还需要确保第三方的内容样式不会影响到当前内容，同样也要确保当前的DOM不会影响到第三方的内容。
+
+所以要聊WebComponent，得先看看HTML和CSS是如何阻碍前端组件化的，这里我们就通过下面这样一个简单的例子来分析下：
+
+```
+<style>
+p {
+      background-color: brown;
+      color: cornsilk
+   }
+</style>
+<p>time.geekbang.org</p>
+```
+
+```
+<style>
+p {
+      background-color: red;
+      color: blue
+   }
+</style>
+<p>time.geekbang</p>
+```
+
+上面这两段代码分别实现了自己p标签的属性，如果两个人分别负责开发这两段代码的话，那么在测试阶段可能没有什么问题，不过当最终项目整合的时候，其中内部的CSS属性会影响到其他外部的p标签的，之所以会这样，是因为CSS是影响全局的。
+
+我们在[《23 | 渲染流水线：CSS如何影响首次加载时的白屏时间？》](https://time.geekbang.org/column/article/140703)这篇文章中分析过，渲染引擎会将所有的CSS内容解析为CSSOM，在生成布局树的时候，会在CSSOM中为布局树中的元素查找样式，所以有两个相同标签最终所显示出来的效果是一样的，渲染引擎是不能为它们分别单独设置样式的。
+
+除了CSS的全局属性会阻碍组件化，DOM也是阻碍组件化的一个因素，因为在页面中只有一个DOM，任何地方都可以直接读取和修改DOM。所以使用JavaScript来实现组件化是没有问题的，但是JavaScript一旦遇上CSS和DOM，那么就相当难办了。
+
+## WebComponent组件化开发
+
+现在我们了解了**CSS和DOM是阻碍组件化的两个因素**，那要怎么解决呢？
+
+WebComponent给出了解决思路，它提供了对局部视图封装能力，可以让DOM、CSSOM和JavaScript运行在局部环境中，这样就使得局部的CSS和DOM不会影响到全局。
+
+了解了这些，下面我们就结合具体代码来看看WebComponent是怎么实现组件化的。
+
+前面我们说了，WebComponent是一套技术的组合，具体涉及到了**Custom elements（自定义元素）、Shadow DOM（影子DOM）和HTML templates（HTML模板）**，详细内容你可以参考MDN上的[相关链接](https://developer.mozilla.org/zh-CN/docs/Web/Web_Components)。
+
+下面我们就来演示下这3个技术是怎么实现数据封装的，如下面代码所示：
+
+```
+<!DOCTYPE html>
+<html>
+
+
+<body>
+    <!--
+            一：定义模板
+            二：定义内部CSS样式
+            三：定义JavaScript行为
+    -->
+    <template id="geekbang-t">
+        <style>
+            p {
+                background-color: brown;
+                color: cornsilk
+            }
+
+
+            div {
+                width: 200px;
+                background-color: bisque;
+                border: 3px solid chocolate;
+                border-radius: 10px;
+            }
+        </style>
+        <div>
+            <p>time.geekbang.org</p>
+            <p>time1.geekbang.org</p>
+        </div>
+        <script>
+            function foo() {
+                console.log('inner log')
+            }
+        </script>
+    </template>
+    <script>
+        class GeekBang extends HTMLElement {
+            constructor() {
+                super()
+                //获取组件模板
+                const content = document.querySelector('#geekbang-t').content
+                //创建影子DOM节点
+                const shadowDOM = this.attachShadow({ mode: 'open' })
+                //将模板添加到影子DOM上
+                shadowDOM.appendChild(content.cloneNode(true))
+            }
+        }
+        customElements.define('geek-bang', GeekBang)
+    </script>
+
+
+    <geek-bang></geek-bang>
+    <div>
+        <p>time.geekbang.org</p>
+        <p>time1.geekbang.org</p>
+    </div>
+    <geek-bang></geek-bang>
+</body>
+
+
+</html>
+```
+
+详细观察上面这段代码，我们可以得出：要使用WebComponent，通常要实现下面三个步骤。
+
+**首先，使用template属性来创建模板**。利用DOM可以查找到模板的内容，但是模板元素是不会被渲染到页面上的，也就是说DOM树中的template节点不会出现在布局树中，所以我们可以使用template来自定义一些基础的元素结构，这些基础的元素结构是可以被重复使用的。一般模板定义好之后，我们还需要在模板的内部定义样式信息。
+
+**其次，我们需要创建一个GeekBang的类**。在该类的构造函数中要完成三件事：
+
+1. 查找模板内容；
+2. 创建影子DOM；
+3. 再将模板添加到影子DOM上。
+
+上面最难理解的是影子DOM，其实影子DOM的作用是将模板中的内容与全局DOM和CSS进行隔离，这样我们就可以实现元素和样式的私有化了。你可以把影子DOM看成是一个作用域，其内部的样式和元素是不会影响到全局的样式和元素的，而在全局环境下，要访问影子DOM内部的样式或者元素也是需要通过约定好的接口的。
+
+总之，通过影子DOM，我们就实现了CSS和元素的封装，在创建好封装影子DOM的类之后，我们就可以**使用customElements.define来自定义元素了**（可参考上述代码定义元素的方式）。
+
+**最后，就很简单了，可以像正常使用HTML元素一样使用该元素**，如上述代码中的`<geek-bang></geek-bang>`。
+
+上述代码最终渲染出来的页面，如下图所示：
+
+![](https://static001.geekbang.org/resource/image/57/7c/579c65e2d2221f4e476c7846b842c27c.png?wh=513%2A493)
+
+使用影子DOM的输出效果
+
+从图中我们可以看出，影子DOM内部的样式是不会影响到全局CSSOM的。另外，使用DOM接口也是无法直接查询到影子DOM内部元素的，比如你可以使用`document.getElementsByTagName('div')`来查找所有div元素，这时候你会发现影子DOM内部的元素都是无法查找的，因为要想查找影子DOM内部的元素需要专门的接口，所以通过这种方式又将影子内部的DOM和外部的DOM进行了隔离。
+
+通过影子DOM可以隔离CSS和DOM，不过需要注意一点，影子DOM的JavaScript脚本是不会被隔离的，比如在影子DOM定义的JavaScript函数依然可以被外部访问，这是因为JavaScript语言本身已经可以很好地实现组件化了。
+
+## 浏览器如何实现影子DOM
+
+关于WebComponent的使用方式我们就介绍到这里。WebComponent整体知识点不多，内容也不复杂，我认为核心就是影子DOM。上面我们介绍影子DOM的作用主要有以下两点：
+
+1. 影子DOM中的元素对于整个网页是不可见的；
+2. 影子DOM的CSS不会影响到整个网页的CSSOM，影子DOM内部的CSS只对内部的元素起作用。
+
+那么浏览器是如何实现影子DOM的呢？下面我们就来分析下，如下图：
+
+![](https://static001.geekbang.org/resource/image/5b/22/5bce3d00c8139a7fde9cc90f9d803322.png?wh=1142%2A775)
+
+影子DOM示意图
+
+该图是上面那段示例代码对应的DOM结构图，从图中可以看出，我们使用了两次geek-bang属性，那么就会生成两个影子DOM，并且每个影子DOM都有一个shadow root的根节点，我们可以将要展示的样式或者元素添加到影子DOM的根节点上，每个影子DOM你都可以看成是一个独立的DOM，它有自己的样式、自己的属性，内部样式不会影响到外部样式，外部样式也不会影响到内部样式。
+
+浏览器为了实现影子DOM的特性，在代码内部做了大量的条件判断，比如当通过DOM接口去查找元素时，渲染引擎会去判断geek-bang属性下面的shadow-root元素是否是影子DOM，如果是影子DOM，那么就直接跳过shadow-root元素的查询操作。所以这样通过DOM API就无法直接查询到影子DOM的内部元素了。
+
+另外，当生成布局树的时候，渲染引擎也会判断geek-bang属性下面的shadow-root元素是否是影子DOM，如果是，那么在影子DOM内部元素的节点选择CSS样式的时候，会直接使用影子DOM内部的CSS属性。所以这样最终渲染出来的效果就是影子DOM内部定义的样式。
+
+## 总结
+
+好了，今天就讲到这里，下面我来总结下本文的主要内容。
+
+首先，我们介绍了组件化开发是程序员的刚需，所谓组件化就是功能模块要实现高内聚、低耦合的特性。不过由于DOM和CSSOM都是全局的，所以它们是影响了前端组件化的主要元素。基于这个原因，就出现WebComponent，它包含自定义元素、影子DOM和HTML模板三种技术，使得开发者可以隔离CSS和DOM。在此基础上，我们还重点介绍了影子DOM到底是怎么实现的。
+
+关于WebComponent的未来如何，这里我们不好预测和评判，但是有一点可以肯定，WebComponent也会采用渐进式迭代的方式向前推进，未来依然有很多坑需要去填。
+
+## 思考时间
+
+今天留给你的思考题是：你是怎么看待WebComponents和前端框架（React、Vue）之间的关系的？
+
+欢迎在留言区与我分享你的想法，也欢迎你在留言区记录你的思考过程。感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>匡晨辉</span> 👍（82） 💬（0）<div>web component是通过浏览器引擎提供api接口进行操作，让后在dom，cssom生成过程中控制实现组件化的作用域&#47;执行执行上下文的隔离； vue&#47;react 是在没有浏览器引擎支持的情况下，通过采取一些取巧的手法（比如：js执行上下文的封装利用闭包；样式的封装利用文件hash值作为命名空间在css选择的时候多套一层选择条件（hash值），本质上还是全局的只是不同组件css选择的时候只能选择到组件相应的css样式，实现的隔离）</div>2019-12-18</li><br/><li><span>wubinsheng</span> 👍（50） 💬（1）<div>原来小程序用的是webComponent，控制台满屏的“#shadow-root”</div>2019-10-15</li><br/><li><span>Snail</span> 👍（32） 💬（1）<div>Vue，React是从开发者层面解决了组件化的问题，提高了效率。WebComponent是从浏览器引擎实现层面解决了组件化的问题，从社区来看，前者的发展优势更明显</div>2019-12-16</li><br/><li><span>Geek_6x3b9v</span> 👍（16） 💬（4）<div>webComponent标准可以成为框架间的桥梁.
 
 组件内部可以用vue&#47;react或随便什么技术实现,只要最终实现约定接口即可.
 
 这样的话,就可以引入用react开发的A组件,同时引入用vue开发的B组件,而他们都在一个Angular项目中.就像一个原生html标签一样被使用.
 
-所以这也可以是微前端的一种实现方式</div>2020-04-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/f5/b8/9f165f4b.jpg" width="30px"><span>mfist</span> 👍（12） 💬（0）<div>下面是我的理解，请老师纠正。
+所以这也可以是微前端的一种实现方式</div>2020-04-15</li><br/><li><span>mfist</span> 👍（12） 💬（0）<div>下面是我的理解，请老师纠正。
 在没有webcomponent的时候，通过react和vue基于当前的前端特性去实现组件化，他们之间是互相影响和借鉴的，最终react和vue也会向webcomponent标准的方向演进。但是现在由于webcomponent的浏览器支持还不是太好，所以现阶段它们还是会并存的
-</div>2019-10-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/94/82/d0a417ba.jpg" width="30px"><span>蓝配鸡</span> 👍（9） 💬（0）<div>才疏学浅， 以下是个人的理解：
+</div>2019-10-08</li><br/><li><span>蓝配鸡</span> 👍（9） 💬（0）<div>才疏学浅， 以下是个人的理解：
 
 两者互相补充， 互不影响
 
 react提供了陈述式的方法编写网页， 让用户不需要去关心dom改变之类的细节
 
-webComponent则是提供了封装</div>2019-10-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c0/5c/10111544.jpg" width="30px"><span>张峰</span> 👍（2） 💬（0）<div>web-component之于vue&#47;react，类似于ES6789之于coffeeScript&#47;typeScript，后者只是前者的临时替补，omi和angular都已经支持web-component</div>2019-10-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c0/5c/10111544.jpg" width="30px"><span>张峰</span> 👍（2） 💬（1）<div>shadow dom 中的style使用rem，r是相对的html的font-size 这点很坑</div>2019-10-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/f8/8a/f7e7fd54.jpg" width="30px"><span>君自兰芳</span> 👍（1） 💬（1）<div>“在影子 DOM 定义的 JavaScript 函数依然可以被外部访问”
+webComponent则是提供了封装</div>2019-10-09</li><br/><li><span>张峰</span> 👍（2） 💬（0）<div>web-component之于vue&#47;react，类似于ES6789之于coffeeScript&#47;typeScript，后者只是前者的临时替补，omi和angular都已经支持web-component</div>2019-10-08</li><br/><li><span>张峰</span> 👍（2） 💬（1）<div>shadow dom 中的style使用rem，r是相对的html的font-size 这点很坑</div>2019-10-08</li><br/><li><span>君自兰芳</span> 👍（1） 💬（1）<div>“在影子 DOM 定义的 JavaScript 函数依然可以被外部访问”
 
-有个疑问，在影子 DOM 定义的变量或函数是属于全局作用域吗？</div>2020-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/75/e3/ef489d57.jpg" width="30px"><span>Roy</span> 👍（1） 💬（0）<div>webcomponent很好的实现与第三方应用的组合使用。</div>2020-04-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a3/ea/53333dd5.jpg" width="30px"><span>HoSalt</span> 👍（1） 💬（0）<div>WebComponents 如何传递数据以及如何重置样式？</div>2020-04-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ac/f0/5d52d73e.jpg" width="30px"><span>Jy</span> 👍（1） 💬（1）<div>WebComponent使用后，搜索引擎的SEO支持如何？</div>2020-03-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/3a/f5/1fa34f88.jpg" width="30px"><span>润曦</span> 👍（0） 💬（0）<div>Web Components 和前端框架并不是非此即彼的关系，而是可以在不同的场景中互补使用。如果你想要构建一个高度可复用、与框架无关的组件库，Web Components 是很好的选择。而 React 和 Vue 提供了强大的生态系统和开发体验，更适合开发大型复杂的应用。</div>2024-10-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2024-05-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/c1/05/fd1d47b6.jpg" width="30px"><span>空间</span> 👍（0） 💬（0）<div>请问web componet 有没有解决跨文件代码复用和前端工程化的问题呢？是如何做到的？</div>2023-09-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ec/13/49e98289.jpg" width="30px"><span>neohope</span> 👍（0） 💬（0）<div>虚拟DOM解决的是效率问题，防止频繁的DOM操作，导致浏览器不断的刷新，将多次刷新操作，变成一次刷新操作。
-
-影子DOM解决的是作用域隔离的问题，特别是在大规模项目上，可以规避全局设置的相互影响。
-
-其实这两种方案，都是在现行标准下的解决方案，问题确实是解决了，但算不上优雅。还是期待能在语言规范和浏览器底层进行解决，这样才能真正去取代本地应用和各种小程序。</div>2020-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/b8/79/a4dbe9ee.jpg" width="30px"><span>blueBean</span> 👍（0） 💬（1）<div>老师请问应该如何拿到shadowDom呢？只能用选择器选中自定义标签，shadowDom下的元素全都选不到，没办法在它的子元素下操作dom，网上也没找到解决办法..老师知道怎么拿吗？</div>2020-03-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6b/1f/f7be5246.jpg" width="30px"><span>大前端洞见</span> 👍（0） 💬（0）<div>webcomponent 组件目前是可以在 angular react 框架中渲染使用的。</div>2020-03-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/00/e1/6538ec45.jpg" width="30px"><span>狂躁小胖</span> 👍（0） 💬（0）<div>Webcomponent、React以及Vue都实现了DOM的组件化，webcomponent 是W3C的亲儿子，通过shadow dom 技术实现dom以及css的隔离；React以及Vue则不是正规军，但是也同样达到了dom组件化的目的，然后结合已有的html特性实现样式的隔离比如scoped。</div>2020-03-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/e9/7b/b844f3a4.jpg" width="30px"><span>匡晨辉</span> 👍（0） 💬（1）<div>在回答课后题的过程中我又想到一个问题：文中讲述了WebComponent对cssom， dom的隔离，没有谈到对WebComponent中的js作用域的隔离，老师能具体讲讲js的作用域在web component的实现中是怎么实现隔离的呢？</div>2019-12-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/2c/70/02b627a6.jpg" width="30px"><span>coder</span> 👍（0） 💬（0）<div>有个疑问，“影子 DOM 中的元素对于整个网页是不可见的”，那么“再将模板添加到影子 DOM 上”，不还是看不见吗？也就是虽然我们组件化了，但是这个组件我们看不见？这样看不见的组件有什么使用意义吗？</div>2019-12-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/44/0e/ce14b7d3.jpg" width="30px"><span>-_-|||</span> 👍（0） 💬（0）<div>vue&#47;react的出现一个目的就是解决前端组件化，WebComponents也是在组件化的思想下产生的。有点像“开局就送vip，一刀999“的感觉，这样后期框架在基于WebComponents演进的过程中，会有更好的体验，自然也要求WebComponents不断的完善。</div>2019-12-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/f1/0f/8b36016d.jpg" width="30px"><span>陈十二</span> 👍（0） 💬（0）<div>React Vue 的出现是为了解决包括 WebComponent 想解决的问题在内的很多 web 开发的痛点，在单纯组件化方面 他们采取了各自的解决方案，我觉得 webcomponent 应该考虑借鉴流行度高的框架的实现。</div>2019-12-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a1/8e/03aeb9df.jpg" width="30px"><span>Rocky</span> 👍（0） 💬（0）<div>vue中的单组件和react组件类似webcomponent,dom和css隔离。vue和react是通过框架层面实现了组件化</div>2019-11-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/da/9b/e0ef47df.jpg" width="30px"><span>凭实力写bug</span> 👍（0） 💬（0）<div>个有问题, webComponent提供了封装但这组件怎么被引用用到其他html中,</div>2019-11-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9c/20/37ec7b9b.jpg" width="30px"><span>Tao</span> 👍（0） 💬（0）<div>Web Component 和 Vue 组件化开发方式相似，React 世界里一切都可以是js，css-in-js 方案，相比 Vue，React，Web Component 更具纯粹，不需要任何外库，缺点是用的人太少，相关生态（组件库）几乎没有</div>2019-10-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJbh5FQajwKhNlMrkoSklPpOXBtEYXCLvuWibhfWIS9QxHWDqzhEHJzEdmtUiaiaqFjfpsr2LwgNGpbQ/132" width="30px"><span>Geek_q29f6t</span> 👍（0） 💬（0）<div>angular js里的directive应该也是用webcomponent实现的吧？一直挺好奇它的实现方式的。今天懂了</div>2019-10-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9a/68/92caeed6.jpg" width="30px"><span>Shine</span> 👍（0） 💬（0）<div>react和vue通过scoped css来声明样式的局部性.通过给当前root元素添加一个hashed id, 其样式在当前id范围内。
-而angular是shadow dom实现的</div>2019-10-08</li><br/>
+有个疑问，在影子 DOM 定义的变量或函数是属于全局作用域吗？</div>2020-11-12</li><br/><li><span>Roy</span> 👍（1） 💬（0）<div>webcomponent很好的实现与第三方应用的组合使用。</div>2020-04-29</li><br/><li><span>HoSalt</span> 👍（1） 💬（0）<div>WebComponents 如何传递数据以及如何重置样式？</div>2020-04-12</li><br/><li><span>Jy</span> 👍（1） 💬（1）<div>WebComponent使用后，搜索引擎的SEO支持如何？</div>2020-03-02</li><br/><li><span>润曦</span> 👍（0） 💬（0）<div>Web Components 和前端框架并不是非此即彼的关系，而是可以在不同的场景中互补使用。如果你想要构建一个高度可复用、与框架无关的组件库，Web Components 是很好的选择。而 React 和 Vue 提供了强大的生态系统和开发体验，更适合开发大型复杂的应用。</div>2024-10-04</li><br/><li><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2024-05-16</li><br/><li><span>空间</span> 👍（0） 💬（0）<div>请问web componet 有没有解决跨文件代码复用和前端工程化的问题呢？是如何做到的？</div>2023-09-24</li><br/>
 </ul>

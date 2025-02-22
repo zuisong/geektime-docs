@@ -11,36 +11,159 @@
 ## YouTube推荐系统架构
 
 提起YouTube，我想你肯定不会陌生，作为全球最大的视频分享网站，YouTube平台中几乎所有的视频都来自UGC（User Generated Content，用户原创内容），这样的内容产生模式有两个特点：
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/l3RGUX8aLnPLmsQsra0yU5d8m7Se5jdVpaC3bkb99FuY11BPQNAsH4MPXbZjCTia9VVwn8lnBnKLkdfSiabOgxKg/132" width="30px"><span>Geek_e0d66a</span> 👍（28） 💬（2）<div>老师，请问召回模型中，输入层已经有了视频的预训练的Embedding向量，最后softmax 的参数也会作为视频的embedding向量。一开始不是都有了视频的Embedding向量了吗？最后ANN的为什么只用训练视频向量，而不用预训练的呢？</div>2020-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/28/a1/fd2bfc25.jpg" width="30px"><span>fsc2016</span> 👍（20） 💬（6）<div>思考题：
+
+- 一是其商业模式不同于Netflix，以及国内的腾讯视频、爱奇艺这样的流媒体，这些流媒体的大部分内容都是采购或自制的电影、剧集等头部内容，而YouTube的内容都是用户上传的自制视频，种类风格繁多，头部效应没那么明显；
+- 二是由于YouTube的视频基数巨大，用户难以发现喜欢的内容。
+
+这样的内容特点简直就是深度学习推荐系统最适合扎根的土壤，所以YouTube也是最早落地深度学习的一线公司。那YouTube的深度学习推荐系统架构长什么样呢？
+
+![](https://static001.geekbang.org/resource/image/47/05/47c0fa06ffc18912b027fe920ac30905.jpg?wh=1630%2A1032 "图1 YouTube推荐系统整体架构")
+
+上图就是YouTube在2016年发布的推荐系统架构。我们可以看到，为了对海量的视频进行快速、准确的排序，YouTube也采用了经典的召回层+排序层的推荐系统架构。
+
+**它的推荐过程可以分成二级。第一级是用候选集生成模型（Candidate Generation Model）完成候选视频的快速筛选，在这一步，候选视频集合由百万降低到几百量级，这就相当于经典推荐系统架构中的召回层。第二级是用排序模型（Ranking Model）完成几百个候选视频的精排，这相当于经典推荐系统架构中的排序层。**
+
+无论是候选集生成模型还是排序模型，YouTube都采用了深度学习的解决方案。下面，就让我们详细讲讲这两个深度学习模型是如何构建起来的。
+
+## 候选集生成模型
+
+首先，是用于视频召回的候选集生成模型，它的模型架构如下图所示。
+
+![](https://static001.geekbang.org/resource/image/69/cf/6968873184cf93194aa476398c2e35cf.jpg?wh=1772%2A1538 "图2 YouTube候选集生成模型架构")
+
+我们一起自下而上地好好看一看这个模型的结构。
+
+最底层是它的输入层，输入的特征包括用户历史观看视频的Embedding向量，以及搜索词的Embedding向量。对于这些Embedding特征，YouTube是利用用户的观看序列和搜索序列，采用了类似Item2vec的预训练方式生成的。
+
+当然，我们也完全可以采用Embedding跟模型在一起End2End训练的方式来训练模型。至于预训练和End2End训练这两种方式孰优孰劣，我们也探讨过很多次了，你可以自己再深入思考一下。
+
+除了视频和搜索词Embedding向量，特征向量中还包括用户的地理位置Embedding、年龄、性别等特征。这里我们需要注意的是，对于样本年龄这个特征，YouTube不仅使用了原始特征值，还把经过平方处理的特征值也作为一个新的特征输入模型。
+
+这个操作其实是为了挖掘特征非线性的特性，当然，这种对连续型特征的处理方式不仅限于平方，其他诸如开方、Log、指数等操作都可以用于挖掘特征的非线性特性。具体使用哪个，需要我们根据实际的效果而定。
+
+确定好了特征，跟我们之前实践过的深度学习模型一样，这些特征会在concat层中连接起来，输入到上层的ReLU神经网络进行训练。
+
+三层ReLU神经网络过后，YouTube又使用了softmax函数作为输出层。值得一提的是，**这里的输出层不是要预测用户会不会点击这个视频，而是要预测用户会点击哪个视频**，这就跟我们之前实现过的深度推荐模型不一样了。
+
+比如说，YouTube上有100万个视频，因为输出层要预测用户会点击哪个视频，所以这里的sofmax就有100万个输出。因此，这个候选集生成模型的最终输出，就是一个在所有候选视频上的概率分布。为什么要这么做呢？它其实是为了更好、更快地进行线上服务，这一点我们等会再详细讲。
+
+总的来讲，YouTube推荐系统的候选集生成模型，是一个标准的利用了Embedding预训练特征的深度推荐模型，它遵循我们之前实现的Embedding MLP模型的架构，只是在最后的输出层有所区别。
+
+## 候选集生成模型独特的线上服务方法
+
+好，现在我们就详细说一说，为什么候选集生成模型要用“视频ID”这个标签，来代替“用户会不会点击视频”这个标签作为预测目标。事实上，这跟候选集生成模型独特的线上服务方式紧密相关。
+
+![](https://static001.geekbang.org/resource/image/e9/69/e9a20bc7260296e09078509e3f42df69.jpg?wh=1772%2A471 "图3 模型服务部分示意图")
+
+细心的同学可能已经留意到，架构图左上角的模型服务（Serving）方法与模型训练方法完全不同。在候选集生成模型的线上服务过程中，YouTube并没有直接采用训练时的模型进行预测，而是采用了一种最近邻搜索的方法，我们曾经在[第12讲](https://time.geekbang.org/column/article/301739)详细讲过基于Embedding的最近邻搜索方法，不记得的同学可以先去回顾一下。
+
+具体来说，在模型服务过程中，网络结构比较复杂，如果我们对每次推荐请求都端到端地运行一遍模型，处理一遍候选集，那模型的参数数量就会巨大，整个推断过程的开销也会非常大。
+
+**因此，在通过“候选集生成模型”得到用户和视频的Embedding后，我们再通过Embedding最近邻搜索的方法，就可以提高模型服务的效率了。这样一来，我们甚至不用把模型推断的逻辑搬上服务器，只需要将用户Embedding和视频Embedding存到特征数据库就行了。**再加上可以使用局部敏感哈希这类快速Embedding查找方法，这对于百万量级规模的候选集生成过程的效率提升是巨大的。
+
+那么问题又来了，这里的用户Embedding和视频Embedding到底是从哪里来的呢？这个问题的答案就是，候选集生成模型为什么要用视频ID作为多分类输出的答案了。我们再仔细看一下图2的架构，架构图中从softmax向模型服务模块画了个箭头，用于代表视频Embedding向量的生成。
+
+由于最后的输出层是softmax，而这个softmax层的参数本质上就是一个m x n维的矩阵，其中m指的是最后一层红色的ReLU层的维度m，n指的是分类的总数，也就是YouTube所有视频的总数n。因此，视频Embedding就是这个m x n维矩阵的各列向量。
+
+这样的Embedding生成方法其实和word2vec中词向量的生成方法是相同的，你也可以参考[第6讲](https://time.geekbang.org/column/article/295939)的内容来理解它。
+
+清楚了视频Embedding的生成原理，用户Embedding的生成就非常好理解了，因为输入的特征向量全部都是用户相关的特征，一个物品和场景特征都没有，所以在使用某用户u的特征向量作为模型输入时，最后一层ReLU层的输出向量就可以当作该用户u的Embedding向量。
+
+在模型训练完成后，逐个输入所有用户的特征向量到模型中，YouTube就可以得到所有用户的Embedding向量，之后就可以把它们预存到线上的特征数据库中了。
+
+在预测某用户的视频候选集时，YouTube要先从特征数据库中拿到该用户的Embedding向量，再在视频Embedding向量空间中，利用局部敏感哈希等方法搜索该用户Embedding向量的K近邻，这样就可以快速得到k个候选视频集合。这就是整个候选集生成模型的训练原理和服务过程。
+
+到这里，你一定已经体会到了咱们前沿拓展篇案例分析的作用，通过一个YouTube候选集生成模型的原理分析，我们就已经把第6讲的Embedding、[第10讲](https://time.geekbang.org/column/article/299326)的特征数据库、第12讲的局部敏感哈希，以及[第17讲](https://time.geekbang.org/column/article/309846)的Embedding MLP模型都回顾了一遍。
+
+如果你喜欢这种通过学习业界实践方案，把知识串联起来的方式，可以给我留言反馈，我也会在之后的课程中多采用这样的方式。
+
+## 排序模型
+
+通过候选集生成模型，YouTube已经得到了几百个候选视频的集合了，下一步就是利用排序模型进行精排序。下图就是YouTube深度学习排序模型的架构，我们一起来看一看。
+
+![](https://static001.geekbang.org/resource/image/28/1a/28e0acbb64760670ee94d015025da81a.jpg?wh=1670%2A994 "图3 YouTube的深度学习排序模型的架构")
+
+第一眼看上去，你可能会认为排序模型的网络结构与候选集生成模型没有太大区别，在模型结构上确实是这样的，它们都遵循Embedding MLP的模型架构。但是我们来看其中的细节，特别是输入层和输出层的部分，它们跟候选集生成模型还是有很大不同的，这就是我们要重点关注的。
+
+我们先看输入层，相比于候选集生成模型需要对几百万候选集进行粗筛，排序模型只需对几百个候选视频进行排序，因此可以引入更多特征进行精排。具体来说，YouTube的输入层从左至右引入的特征依次是：
+
+1. impression video ID embedding：当前候选视频的Embedding；
+2. watched video IDs average embedding：用户观看过的最后N个视频Embedding的平均值；
+3. language embedding：用户语言的Embedding和当前候选视频语言的Embedding；
+4. time since last watch：表示用户上次观看同频道视频距今的时间；
+5. #previous impressions：该视频已经被曝光给该用户的次数；
+
+上面5个特征中，前3个Embedding特征的含义很好理解，我就不细说了。第4个特征和第5个特征，因为很好地引入了YouTube工程师对用户行为的观察，所以我来重点解释一下。
+
+第4个特征 **time since last watch**说的是用户观看同类视频的间隔时间。如果从用户的角度出发，假如某用户刚看过“DOTA比赛经典回顾”这个频道的视频，那他很大概率会继续看这个频道的其他视频，该特征就可以很好地捕捉到这一用户行为。
+
+第5个特征**#previous impressions** 说的是这个视频已经曝光给用户的次数。我们试想如果一个视频已经曝光给了用户10次，用户都没有点击，那我们就应该清楚，用户对这个视频很可能不感兴趣。所以**#previous impressions** 这个特征的引入就可以很好地捕捉到用户这样的行为习惯，避免让同一个视频对同一用户进行持续的无效曝光，尽量增加用户看到新视频的可能性。
+
+把这5类特征连接起来之后，需要再经过三层ReLU网络进行充分的特征交叉，然后就到了输出层。这里我们要重点注意，排序模型的输出层与候选集生成模型又有所不同。不同主要有两点：**一是候选集生成模型选择了softmax作为其输出层，而排序模型选择了weighted logistic regression（加权逻辑回归）作为模型输出层；二是候选集生成模型预测的是用户会点击“哪个视频”，排序模型预测的是用户“要不要点击当前视频”。**
+
+那么问题来了，YouTube为什么要这么做呢？
+
+其实，排序模型采用不同输出层的根本原因就在于，YouTube想要更精确地预测用户的观看时长，因为观看时长才是YouTube最看中的商业指标，而使用Weighted LR作为输出层，就可以实现这样的目标。
+
+这是怎么做到的呢？在Weighted LR的训练中，我们需要为每个样本设置一个权重，权重的大小，代表了这个样本的重要程度。为了能够预估观看时长，YouTube将正样本的权重设置为用户观看这个视频的时长，然后再用Weighted LR进行训练，就可以让模型学到用户观看时长的信息。
+
+这是因为观看时长长的样本更加重要，严格一点来说，就是观看时长长的样本被模型预测的为正样本的概率更高，这个概率与观看时长成正比，这就是使用Weighted LR来学习观看时长信息的基本原理。
+
+最后，我们再聊一聊排序模型的模型服务方法。我刚才讲过了，候选集生成模型是可以直接利用用户Embedding和视频Embedding进行快速最近邻搜索的。那排序模型还能这样做吗？
+
+这就不可以了，原因有两点：一是因为我们的输入向量中同时包含了用户和视频的特征，不再只是单纯的用户特征。这样一来，用户x物品特征的组合过多，就无法通过预存的方式保存所有模型结果；二是因为排序模型的输出层不再是预测视频ID，所以我们也无法拿到视频Embedding。因此对于排序模型，我们必须使用TensorFlow Serving等模型服务平台，来进行模型的线上推断。
+
+到这里，我们就讲完了YouTube推荐模型的全部细节。如果你有任何疑惑的地方，可以在留言区提问，同时我也建议你多看几遍这节课的内容，因为这个解决方案真的是太经典了。
+
+## 小结
+
+好了，这节课的内容讲完了，我们再总结一下YouTube推荐系统的重点知识。
+
+YouTube推荐系统的架构是一个典型的召回层加排序层的架构，其中候选集生成模型负责从百万候选集中召回几百个候选视频，排序模型负责几百个候选视频的精排，最终选出几十个推荐给用户。
+
+候选集生成模型是一个典型的Embedding MLP的架构，我们要注意的是它的输出层，它是一个多分类的输出层，预测的是用户点击了“哪个”视频。在候选集生成模型的serving过程中，需要从输出层提取出视频Embedding，从最后一层ReLU层得到用户Embedding，然后利用最近邻搜索快速得到候选集。
+
+排序模型同样是一个Embedding MLP的架构，不同的是，它的输入层包含了更多的用户和视频的特征，输出层采用了Weighted LR作为输出层，并且使用观看时长作为正样本权重，让模型能够预测出观看时长，这更接近YouTube要达成的商业目标。
+
+好了，这些关键知识点，我也总结在了下面的表格中，希望它能帮助你加深记忆。
+
+![](https://static001.geekbang.org/resource/image/60/2e/60509d00835ac95ayya3bdeb17f0532e.jpeg?wh=1920%2A1080)
+
+在这节课结束前，关于YouTube的推荐模型我还想多说几句。事实上，YouTube的推荐系统论文中还包含了更多的细节，业界真正好的论文并不多，YouTube的这篇《Deep Neural Networks for YouTube Recommendations》绝对是不可多得的一篇，我甚至推荐大家逐句来读，抓住每一个细节。
+
+当然，你也可以在我的书《深度学习推荐系统》中的相应章节找到更多的实现细节。这些内容让我曾经受益匪浅，相信也会对你有所帮助。
+
+## 课后思考
+
+YouTube的排序模型和候选集生成模型，都使用了平均池化这一操作，来把用户的历史观看视频整合起来。你能想到更好的方法来改进这个操作吗？
+
+期待在留言区看到你的思考和总结，我们下节课见！
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>Geek_e0d66a</span> 👍（28） 💬（2）<div>老师，请问召回模型中，输入层已经有了视频的预训练的Embedding向量，最后softmax 的参数也会作为视频的embedding向量。一开始不是都有了视频的Embedding向量了吗？最后ANN的为什么只用训练视频向量，而不用预训练的呢？</div>2020-12-20</li><br/><li><span>fsc2016</span> 👍（20） 💬（6）<div>思考题：
 1，在召回层，对用户历史观看的序列，按照时间衰减因子，对用户观看emb序列进行加权求平均，加强最近观看视频的影响力
 2，在排序层，可以加入注意力机制，类似DIN模型中，计算候选emb与用户行为序列中视频emb的权重，然后在进行加权求平均，得到用户行为序列的emb
 提问：老师 ，之前讲emb近邻搜索，需要用户emb和物品emb在同一向量空间。那么在召回层relu中提取的用户emb和softmax提取的物品emb，是在同一向量空间的，为什么？难道是因为同一个模型训练出来，输入特征一致才允许这样操作嘛？
-</div>2020-12-18</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/4icayE3ic5IA7RWwZcrxpMZE4T1WViakEgPsDC3UnhZwU83ad65IjmxPficy0vNZz6Q6vCiclnmyBDc5IYf7soHAXrQ/132" width="30px"><span>Geek_790c43</span> 👍（9） 💬（1）<div>关于id做输入再embedding vs. 预训练embedding的想法不知道对不对：
+</div>2020-12-18</li><br/><li><span>Geek_790c43</span> 👍（9） 💬（1）<div>关于id做输入再embedding vs. 预训练embedding的想法不知道对不对：
 1. 视频id作为输入再embedding的end2end模型，受cold start影响比较大，因为每遇到新视频模型就需要重新训练。但是用pretrained的视频embedding作为输入，哪怕遇到新视频也可以仿照airbnb的做法生成一个tmp的embedding再喂给模型。
-2. 假如有几亿候选视频，直接id做输入会导致embedding层的参数数量非常大，使用预训练embedding可以避免这一点。（用户塔的embedding可以通过平均观看过的视频的embedding得到）</div>2021-02-04</li><br/><li><img src="" width="30px"><span>SecooHR</span> 👍（9） 💬（2）<div>老师能够讲下 实际 Weighted LR  具体训练过程吗，比如 videoid1 labels=1  weights=15 , 实际中是把这个样本 重复抽样weights 次，放入训练样本吗，还是更改LR 的loss？</div>2020-12-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/cb/18/0139e086.jpg" width="30px"><span>骚动</span> 👍（8） 💬（1）<div>思考题：平均池化，在我的理解里，是把N个历史记录平等对待，每个user可能都会有2~4个感兴趣的标签（比如会同时关注音乐和生活的两类视频），平均池化这N个emb的方式，我觉得能更好的反映user的整体趋势，一定程度上关注了EE的问题。我看回答里采用时间加权以及注意力加权的回答，我觉得就是更加关注user最近兴趣的方式，也是非常好的方案，但是就是要考量user兴趣变化的快不快的问题，我觉得视频网站的user应该兴趣变化节奏应该并不快，采用平均池化的方式反而能挖掘用户的潜在兴趣，可能更适合youtube的业务。总体来说，我认为这两种方式孰优孰劣，并不一定，需要更多的数据分析来反映整个user群体的整体状况。
+2. 假如有几亿候选视频，直接id做输入会导致embedding层的参数数量非常大，使用预训练embedding可以避免这一点。（用户塔的embedding可以通过平均观看过的视频的embedding得到）</div>2021-02-04</li><br/><li><span>SecooHR</span> 👍（9） 💬（2）<div>老师能够讲下 实际 Weighted LR  具体训练过程吗，比如 videoid1 labels=1  weights=15 , 实际中是把这个样本 重复抽样weights 次，放入训练样本吗，还是更改LR 的loss？</div>2020-12-23</li><br/><li><span>骚动</span> 👍（8） 💬（1）<div>思考题：平均池化，在我的理解里，是把N个历史记录平等对待，每个user可能都会有2~4个感兴趣的标签（比如会同时关注音乐和生活的两类视频），平均池化这N个emb的方式，我觉得能更好的反映user的整体趋势，一定程度上关注了EE的问题。我看回答里采用时间加权以及注意力加权的回答，我觉得就是更加关注user最近兴趣的方式，也是非常好的方案，但是就是要考量user兴趣变化的快不快的问题，我觉得视频网站的user应该兴趣变化节奏应该并不快，采用平均池化的方式反而能挖掘用户的潜在兴趣，可能更适合youtube的业务。总体来说，我认为这两种方式孰优孰劣，并不一定，需要更多的数据分析来反映整个user群体的整体状况。
 
 另外，我有这么几个疑问：
 1. youtube 大部分都是UGC内容的情况下，怎么进行冷启动的？
 2. 候选集生成模型中最近邻索引会不会存在更新速度慢的问题，还是说离线更新？
 3. 候选集生成模型中为什么是用的ReLU ？实践得出来得结果吗？有没有先验理论的支撑？
-4. 候选集生成模型中样本年龄这种连续型特征在这个模型中不需要归一化吗？</div>2021-01-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/b2/cb/9c6c7bf7.jpg" width="30px"><span>张弛 Conor</span> 👍（7） 💬（1）<div>“YouTube模型结构仅占了30%的价值，剩下的70%价值在于其工程实现细节。”补充王喆老师对YouTube推荐系统十大工程问题的解读文章：https:&#47;&#47;zhuanlan.zhihu.com&#47;p&#47;52504407</div>2020-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/6d/c5/c0665034.jpg" width="30px"><span>Wiiki</span> 👍（6） 💬（1）<div>王老师，您好。作为读者，我们热切希望您能够出一个专栏针对大厂推荐系统的工程实践和理论方式面进行详细解析的课程，谢谢~ 还有一个问题想请教您：我司最近也上线了一个文章推荐系统，现实情况是文章大概有4千多篇存量，每天大概会有1到2篇的增量（文章比较少~），但是用户日志比较多，百万级别，每天的活跃用户也有几十万，针对我们的目前情况，您觉得我们是否有做文章推荐的需要？或者说在基于我们现实情况下，您觉得现阶段我们怎么做文章推荐~ 谢谢 ：）</div>2020-12-22</li><br/><li><img src="" width="30px"><span>Van</span> 👍（3） 💬（1）<div>老师您好 还是对于 user embedding 和 item embedding什么时候可以直接用ANN来取近似有些Confused. 想总结一下老师您讲的看看对不对：两者可以做内积的前提是他们必须要在一个向量空间。如何定义是同一向量空间就会是一个问题。我理解的两种方式然他们在一个向量空间：
+4. 候选集生成模型中样本年龄这种连续型特征在这个模型中不需要归一化吗？</div>2021-01-18</li><br/><li><span>张弛 Conor</span> 👍（7） 💬（1）<div>“YouTube模型结构仅占了30%的价值，剩下的70%价值在于其工程实现细节。”补充王喆老师对YouTube推荐系统十大工程问题的解读文章：https:&#47;&#47;zhuanlan.zhihu.com&#47;p&#47;52504407</div>2020-12-22</li><br/><li><span>Wiiki</span> 👍（6） 💬（1）<div>王老师，您好。作为读者，我们热切希望您能够出一个专栏针对大厂推荐系统的工程实践和理论方式面进行详细解析的课程，谢谢~ 还有一个问题想请教您：我司最近也上线了一个文章推荐系统，现实情况是文章大概有4千多篇存量，每天大概会有1到2篇的增量（文章比较少~），但是用户日志比较多，百万级别，每天的活跃用户也有几十万，针对我们的目前情况，您觉得我们是否有做文章推荐的需要？或者说在基于我们现实情况下，您觉得现阶段我们怎么做文章推荐~ 谢谢 ：）</div>2020-12-22</li><br/><li><span>Van</span> 👍（3） 💬（1）<div>老师您好 还是对于 user embedding 和 item embedding什么时候可以直接用ANN来取近似有些Confused. 想总结一下老师您讲的看看对不对：两者可以做内积的前提是他们必须要在一个向量空间。如何定义是同一向量空间就会是一个问题。我理解的两种方式然他们在一个向量空间：
 1. 只要是利用用户历史的item embedding生成的用户embedding，可以说都是在一个向量空间内，这些生成方式包括但不限于average pooling，sum pooling，attention等等
 2. 类似于MF的 矩阵分解。双塔模型运用的就是这个道理  
 
-我的问题是 基于此是不是说明只要有user 和 item feature有交叉的情况就不可以提取出他们做ANN了？我看到DeepFM有时也被拿来做召回 所以是因为他们只加入了user 和item feature 各自下的interaction嘛？ </div>2021-08-19</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/qw7rRHUPRzhibxXWLG7kc3zkhZwBn4JZaryzko2eWOjSxDlRvUathHugrIVKhcCqxhtsANUTq0140AlbDkLZmcw/132" width="30px"><span>shenhuaze</span> 👍（3） 💬（1）<div>老师，召回模型里的样本年龄是指的什么意思？这里的样本是指的一条带特征和label的训练样本，还是指的一个视频？</div>2021-03-04</li><br/><li><img src="" width="30px"><span>AstrHan</span> 👍（3） 💬（2）<div>老师 看了之后有个问题，您之前说的模型基本以天作为更新，这个说的是排序层吧？那召回层的呢？召回层模型更新一次，要把候选集几百万的数据重跑一次 开销好大。这种问题如何解决呢？我现在是采用word2vec的与训练模型，这样模型就基本不用更新了。不知道业界这一块怎么做的</div>2021-01-25</li><br/><li><img src="" width="30px"><span>haydenlo</span> 👍（3） 💬（1）<div>老师好，候选集生成模型中，采用softmax获得视频embedding的方法，面对youtube几千万甚至上亿的视频量，是不是要训练很久？如果换成nce加速的方式，由于是采样的，会不会有些视频miss掉</div>2020-12-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/25/42/69/8c56cea0.jpg" width="30px"><span>inkachenko</span> 👍（2） 💬（1）<div>老师您好，我有两个问题想问一下
+我的问题是 基于此是不是说明只要有user 和 item feature有交叉的情况就不可以提取出他们做ANN了？我看到DeepFM有时也被拿来做召回 所以是因为他们只加入了user 和item feature 各自下的interaction嘛？ </div>2021-08-19</li><br/><li><span>shenhuaze</span> 👍（3） 💬（1）<div>老师，召回模型里的样本年龄是指的什么意思？这里的样本是指的一条带特征和label的训练样本，还是指的一个视频？</div>2021-03-04</li><br/><li><span>AstrHan</span> 👍（3） 💬（2）<div>老师 看了之后有个问题，您之前说的模型基本以天作为更新，这个说的是排序层吧？那召回层的呢？召回层模型更新一次，要把候选集几百万的数据重跑一次 开销好大。这种问题如何解决呢？我现在是采用word2vec的与训练模型，这样模型就基本不用更新了。不知道业界这一块怎么做的</div>2021-01-25</li><br/><li><span>haydenlo</span> 👍（3） 💬（1）<div>老师好，候选集生成模型中，采用softmax获得视频embedding的方法，面对youtube几千万甚至上亿的视频量，是不是要训练很久？如果换成nce加速的方式，由于是采样的，会不会有些视频miss掉</div>2020-12-23</li><br/><li><span>inkachenko</span> 👍（2） 💬（1）<div>老师您好，我有两个问题想问一下
 1.召回的时候是否要采用negative sampling进行训练呢？视频数量有百万级别，负采样的时候我是根据视频pv的0.75次方为weight进行采样的
-2.召回的时候一个用户只生成一个训练集吗？感觉训练集有点不够用，我打算根据用户的前i次兴趣预测第i+1次，然后遍历i，这样一个用户就可以有好多个训练集。。最后预测的时候就使用最新的数据生成embedding，不知这样是否可行</div>2021-04-06</li><br/><li><img src="" width="30px"><span>WJing</span> 👍（1） 💬（1）<div>老师，学完本节课受益匪浅，但是同时我也产生了几个疑问：
+2.召回的时候一个用户只生成一个训练集吗？感觉训练集有点不够用，我打算根据用户的前i次兴趣预测第i+1次，然后遍历i，这样一个用户就可以有好多个训练集。。最后预测的时候就使用最新的数据生成embedding，不知这样是否可行</div>2021-04-06</li><br/><li><span>WJing</span> 👍（1） 💬（1）<div>老师，学完本节课受益匪浅，但是同时我也产生了几个疑问：
 1. YouTube每天增加的视频量是巨大的，在第一层模型的SoftMax是视频数量，这总感觉不科学。。。
-2. YouTube是如何做到最新更新的视频也被加入到训练中的呢？</div>2021-10-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/9c/7c/fdb85fde.jpg" width="30px"><span>xuexiqiu</span> 👍（1） 💬（1）<div>非常赞同“要想成为一名合格的推荐工程师，要追踪前沿”这个观点。我在google上搜相关问题的时候会看到twitter或者pinterest他们有时会有一些medium post，很有启发意义。请问前辈还有没有比较好的追踪业界前沿的渠道？感谢。</div>2021-07-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/27/54/3d/366462d0.jpg" width="30px"><span>Yvonne</span> 👍（1） 💬（1）<div>老师，初学者对这一章有两个疑问，先提前感谢老师解答^^：
+2. YouTube是如何做到最新更新的视频也被加入到训练中的呢？</div>2021-10-13</li><br/><li><span>xuexiqiu</span> 👍（1） 💬（1）<div>非常赞同“要想成为一名合格的推荐工程师，要追踪前沿”这个观点。我在google上搜相关问题的时候会看到twitter或者pinterest他们有时会有一些medium post，很有启发意义。请问前辈还有没有比较好的追踪业界前沿的渠道？感谢。</div>2021-07-31</li><br/><li><span>Yvonne</span> 👍（1） 💬（1）<div>老师，初学者对这一章有两个疑问，先提前感谢老师解答^^：
 
 1.第十九讲里的YT双塔召回模型和这里的召回模型不是同一个模型，对吗？
 第十九讲里面是两个塔分别生成user embeding 和video embeddings。而这里是最后一个relu层输出相当于user embdding(X)，通过预测每一个候选视频的下一个被播放概率(softmax(WX+b))，可得W，每一个wi相当于video embedding？
 但这两个模型又都是预测下一个被播放概率最高的视频？
 
-2.关于这里的排序层不可以直接生成用户embedding&#47;视频embedding。这里的模型可以改成双塔模型吗？就是把这个曝光视频id单独进行embedding？如果可以改成双塔模型，是不是也可以得到用户&#47;视频embedding了？</div>2021-05-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/a9/05/6822b8a5.jpg" width="30px"><span>灯灯灯</span> 👍（1） 💬（2）<div>老师请问，在召回层的模型训练中，被优化的目标函数是什么？对每个用户，模型得到的是Nx1的概率向量，真实的概率向量是在用户观看的k个视频处坐标为1&#47;k其他坐标为0吗？</div>2021-01-24</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/6MVSMTIeZO1ZTxDIa4bNj3mvpOEic3mZ9b8ibrWIdmOKzH2ysBIznNJyr8dh77HpstyXKiaPwQ5zdfxQnxc6Cmdqg/132" width="30px"><span>Geek_03b08e</span> 👍（1） 💬（1）<div>老师您好，我是在银行做数据挖掘的，银行产品种类没有电商那么多，大类也就十几种，细分到小类的话也不会超过100种，那用深度学习模型来推荐的的话会不会有点大材小用了？</div>2021-01-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/d1/27/68543b66.jpg" width="30px"><span>W</span> 👍（0） 💬（1）<div>那么softmax对应的embedding真值是怎么获得的呢？通过训练word2vec，得到权重矩阵获得的吗？</div>2021-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/27/f8/05/079444c2.jpg" width="30px"><span>创之巅</span> 👍（0） 💬（1）<div>
-理解不了用户向量做一层wx+b怎么就得到某个视频的embedding了？有点无中生有的感觉。为什么这个视频embedding不是视频属性或idembedding得到的？老师麻烦细致讲一下视频embedding的生成吧。输出不是一维？怎么是mxn的矩阵？全文就这个视频向量生成最不好理解。</div>2021-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/68/1c/d8db6177.jpg" width="30px"><span>Nee</span> 👍（0） 💬（1）<div>如果取出训练好的用户Embedding和视频Embedding用来线上推荐，那么利用相似度搜索某个用户的相似视频Embedding，同一用户得到的相似视频向量岂不是每次都相同吗，那为什么不直接保存每个用户的相似视频id呢？</div>2021-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b6/f1/a14fbf9d.jpg" width="30px"><span>Cwift</span> 👍（0） 💬（2）<div>不同 Embedding 层的长度可以有区别吗，如果可以有区别，是不是较长的 Embedding 层会比较短的层对结果有更大的影响？ </div>2021-03-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/2d/62/916961ab.jpg" width="30px"><span>大包子</span> 👍（0） 💬（1）<div>老师想问一下，为什么在排序的模型里面没有把用户的Embedding 或者相似度作为一个input</div>2021-02-09</li><br/><li><img src="" width="30px"><span>Geek_91c50b</span> 👍（0） 💬（1）<div>1.YouTube模型的召回层是如何实现与每个人相关的呢?
-2.召回层可以理解成只是为了更复杂的生成全量视频的Embedding吗，不是简单的直接对视频id进行Embedding</div>2020-12-23</li><br/><li><img src="" width="30px"><span>Geek_91c50b</span> 👍（0） 💬（1）<div>&quot;因为排序模型的输出层不再是预测视频 ID，所以我们也无法拿到视频 Embedding&quot;,这句话没看懂，在图三中用到的第一个特征不就是视频的Embedding吗</div>2020-12-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/14/34/9a96e8d2.jpg" width="30px"><span>浩浩</span> 👍（0） 💬（1）<div>其实我和一位网友的想法比较相近，既然排序可以采用最近，那找回同样可以采用最近观看视频，或者调整相应的权重来做，也有点兴趣变迁的意味</div>2020-12-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/23/ae/e2/eb1ee1be.jpg" width="30px"><span>会飞的鱼</span> 👍（0） 💬（2）<div>为什么不以一开始item2vec训练视频embedding 平均为用户的embedding呢？是因为维度对不上还是因为不在同一个向量空间?而且这时候输入的视频embedding可以finetune的</div>2020-12-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/e4/a1/2f5b9764.jpg" width="30px"><span>你笑起来真好看</span> 👍（0） 💬（3）<div>YouTube的召回模型中，视频可以用node2vec学习embedding，然后把softmax换成负采样这样做可以吗？</div>2020-12-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/97/8f/ccce7df1.jpg" width="30px"><span>小匚</span> 👍（0） 💬（1）<div>由于平均池化会丢掉原始特征 所以最大池化可能效果更好。池化的目的也是降维，那么是否可以考虑dense等其他层？</div>2020-12-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/2c/bc/5311e976.jpg" width="30px"><span>Emma</span> 👍（0） 💬（0）<div>请问老师，还是不太明白为什么softmax是作为视频的向量，我理解输入是用户的向量，输出也是应该关于用户的?</div>2024-09-18</li><br/><li><img src="" width="30px"><span>Geek_075add</span> 👍（0） 💬（0）<div>老师我想问以下几个问题
-1）召回层中召回的候选集，在排序层里的是作为输入特征来用的吗？（想LR或者FM里这样的非深度模型也可以这么用吗？）
-2）排序层的输出一般是候选集被点击或观看的概率吗（不考虑观看时间）。</div>2022-08-25</li><br/>
+2.关于这里的排序层不可以直接生成用户embedding&#47;视频embedding。这里的模型可以改成双塔模型吗？就是把这个曝光视频id单独进行embedding？如果可以改成双塔模型，是不是也可以得到用户&#47;视频embedding了？</div>2021-05-17</li><br/>
 </ul>

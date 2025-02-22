@@ -11,8 +11,73 @@
 随着互联网的发展，我们已经不满足于仅仅浏览静态页面，还希望通过一些交互操作，来获取动态结果，因此也就需要一些扩展机制能够让HTTP服务器调用服务端程序。
 
 于是Sun公司推出了Servlet技术。你可以把Servlet简单理解为运行在服务端的Java小程序，但是Servlet没有main方法，不能独立运行，因此必须把它部署到Servlet容器中，由容器来实例化并调用Servlet。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/17/64/da/5fb5817c.jpg" width="30px"><span>蔡伶</span> 👍（66） 💬（1）<div>打卡
+
+而Tomcat和Jetty就是一个Servlet容器。为了方便使用，它们也具有HTTP服务器的功能，因此**Tomcat或者Jetty就是一个“HTTP服务器 + Servlet容器”，我们也叫它们Web容器。**
+
+其他应用服务器比如JBoss和WebLogic，它们不仅仅有Servlet容器的功能，也包含EJB容器，是完整的Java EE应用服务器。从这个角度看，Tomcat和Jetty算是一个轻量级的应用服务器。
+
+在微服务架构日渐流行的今天，开发人员更喜欢稳定的、轻量级的应用服务器，并且应用程序用内嵌的方式来运行Servlet容器也逐渐流行起来。之所以选择轻量级，是因为在微服务架构下，我们把一个大而全的单体应用，拆分成一个个功能单一的微服务，在这个过程中，服务的数量必然要增加，但为了减少资源的消耗，并且降低部署的成本，我们希望运行服务的Web容器也是轻量级的，Web容器本身应该消耗较少的内存和CPU资源，并且由应用本身来启动一个嵌入式的Web容器，而不是通过Web容器来部署和启动应用，这样可以降低应用部署的复杂度。
+
+因此轻量级的Tomcat和Jetty就是一个很好的选择，并且Tomcat它本身也是Spring Boot默认的嵌入式Servlet容器。最新版本Tomcat和Jetty都支持Servlet 4.0规范。
+
+读到这里，我想你应该对Web容器有了基本的认识，可以结合平时工作再去细细体会一下。如果你对HTTP协议和Servlet依然是一头雾水，不用担心，在预习模块中我还会和你聊聊你应该掌握的HTTP协议和Servlet的相关知识，帮你打好学习的基础。
+
+## Web容器该怎么学？
+
+Java Web技术发展日新月异，各种框架也是百花齐放。在从事Java Web开发相关的工作时，面对这些眼花缭乱的技术时你是否会感到一丝迷茫？可能有些初学者不知道从哪里开始，我身边还有些已经进入了这个行业，并且有了一定Java基础的人，对于系统设计的体会可能还不够深刻，编程的时候还停留在完成功能的层次。这样不仅业务上难有突破，对于个人成长也很不利。
+
+为了打破这个瓶颈，就需要我们在深度上多下功夫，找准一个点，深挖下去，彻底理解它的原理和设计精髓。并且在深入学习Tomcat和Jetty这样的Web容器之前，你还需要掌握一定的基础知识，这样才能达到事半功倍的效果。
+
+下面我列举一些在学习Web容器之前需要掌握的关键点，我建议你在学习专栏的同时，再去复习一下这些基础知识。你可以把这些基础知识当作成为架构师的必经之路，在专栏以外也要花时间深入进去。当然为了让你更好地理解专栏每期所讲的内容，重点的基础知识我也会在文章里帮你再梳理一遍。
+
+**操作系统基础**
+
+Java语言其实是对操作系统API的封装，上层应用包括Web容器都是通过操作系统来工作的，因此掌握相关的操作系统原理是我们深刻理解Web容器的基础。
+
+对于Web容器来说，操作系统方面你应该掌握它的工作原理，比如什么是进程、什么是内核、什么是内核空间和用户空间、进程间通信的方式、进程和线程的区别、线程同步的方式、什么是虚拟内存、内存分配的过程、什么是I/O、什么是I/O模型、阻塞与非阻塞的区别、同步与异步的区别、网络通信的原理、OSI七层网络模型以及TCP/IP、UDP和HTTP协议。
+
+总之一句话，基础扎实了，你学什么都快。关于操作系统的学习，我推荐你读一读《UNIX环境高级编程》这本经典书籍。
+
+**Java语言基础**
+
+Java的基础知识包括Java基本语法、面向对象设计的概念（封装、继承、多态、接口、抽象类等）、Java集合的使用、Java I/O体系、异常处理、基本的多线程并发编程（包括线程同步、原子类、线程池、并发容器的使用和原理）、Java网络编程（I/O模型BIO、NIO、AIO的原理和相应的Java API）、Java注解以及Java反射的原理等。
+
+此外你还需要了解一些JVM的基本知识，比如JVM的类加载机制、JVM内存模型、JVM内存空间分布、JVM内存和本地内存的区别以及JVM GC的原理等。
+
+这方面我推荐的经典书籍有[《Java核心技术》](time://mall?url=http%3A%2F%2Fh5.youzan.com%2Fv2%2Fgoods%2F2fnx3ed6fpk3c)、[《Java编程思想》](time://mall?url=http%3A%2F%2Fh5.youzan.com%2Fv2%2Fgoods%2F3f0ddticdedfc)、[《Java并发编程实战》](time://mall?url=http%3A%2F%2Fh5.youzan.com%2Fv2%2Fgoods%2F2758xqdzr6uuw)和[《深入理解Java虚拟机：JVM高级特性与最佳实践》](time://mall?url=http%3A%2F%2Fh5.youzan.com%2Fv2%2Fgoods%2F36a92yq65q4x4)等。
+
+**Java Web开发基础**
+
+具备了一定的操作系统和Java基础，接下来就可以开始学习Java Web开发，你可以开始学习一些通用的设计原则和设计模式。这个阶段的核心任务就是了解Web的工作原理，**同时提高你的设计能力**，注重代码的质量。我的建议是可以从学习Servlet和Servlet容器开始。我见过不少同学跳过这个阶段直接学Web框架，这样做的话结果会事倍功半。
+
+为什么这么说呢？Web框架的本质是，开发者在使用某种语言编写Web应用时，总结出的一些经验和设计思路。很多Web框架都是从实际的Web项目抽取出来的，其目的是用于简化Web应用程序开发。
+
+我以Spring框架为例，给你讲讲Web框架是怎么产生的。Web应用程序的开发主要是完成两方面的工作。
+
+- 设计并实现类，包括定义类与类之间的关系，以及实现类的方法，方法对数据的操作就是具体的业务逻辑。
+- 类设计好之后，需要创建这些类的实例并根据类与类的关系把它们组装在一起，这样类的实例才能一起协作完成业务功能。
+
+就好比制造一辆汽车，汽车是由零件组装而成的。第一步是画出各种零件的图纸，以及定义零件之间的接口。第二步把把图纸交给工厂去生产零件并组装在一起。因此对于Web应用开发来说，第一步工作是具体业务逻辑的实现，每个应用都不一样。而第二步工作，相对来说比较通用和标准化，工厂拿到零件的图纸，就知道怎么生产零件并按照零件之间的接口把它们组装起来，因此这个工作就被抽取出来交给Spring框架来做。
+
+Spring又是用容器来完成这个工作的的，容器负责创建、组装和销毁这些类的实例，而应用只需要通过配置文件或者注解来告诉Spring类与类之间的关系。但是容器的概念不是Spring发明的，最开始来源于Servlet容器，并且Servlet容器也是通过配置文件来加载Servlet的。你会发现它们的“元神”是相似的，在Web应用的开发中，有一些本质的东西是不变的，而很多“元神”就藏在“老祖宗”那里，藏在Servlet容器的设计里。
+
+Spring框架就是对Servlet的封装，Spring应用本身就是一个Servlet，而Servlet容器是管理和运行Servlet的，因此我们需要先理解Servlet和Servlet容器是怎样工作的，才能更好地理解Spring。
+
+## 本期精华
+
+今天我谈了什么是Web容器，以及该如何学习Web容器。在深入学习之前，你需要掌握一些操作系统、Java和Web的基础知识。我希望你在学习专栏的过程中多温习一下这些基础知识，有扎实的基础，再结合专栏深入学习Web容器就比较容易了。
+
+等你深刻理解了Web容器的工作原理和设计精髓以后，你就可以把学到的知识扩展到其他领域，你会发现它们的本质都是相通的，这个时候你可以站在更高的角度来学习和审视各种Web框架。虽然Web框架的更新比较快，但是抓住了框架的本质，在学习的过程中，往往会更得心应手。
+
+不知道你有没有遇到过这样的场景，当你在看一个框架的技术细节时，会突然恍然大悟：对啊，就是应该这么设计！如果你有这种感觉，说明你的知识储备起到了作用，你对框架的运用也会更加自如。
+
+## 课后思考
+
+请你分享一下你对Web容器的理解，或者你在学习、使用Web容器时遇到了哪些问题？
+
+不知道今天的内容你消化得如何？如果还有疑问，请大胆的在留言区提问，也欢迎你把你的课后思考和心得记录下来，与我和其他同学一起讨论。如果你觉得今天有所收获，欢迎你把它分享给你的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>蔡伶</span> 👍（66） 💬（1）<div>打卡
 
 先说下听完老师课程的感受：经典不会随着时间而消逝。java和servlet规范已经发布20多年、操作系统和网络协议以及html更是经过了几十年的洗礼，现在依然是业内最核心的技术基础，毫不动摇。
 
@@ -21,24 +86,9 @@
 第二层：主流技术支撑相当于各类法律，包括java语言、各类中间件等；
 第三层：基于各行业的业务应用和框架，相当于行政法规地方法规。
 规范是基础，具体实现可以用java也可以用python等等，行业应用和框架更是可以百花齐放。
-那我们的学习一定是从具体技术入手，从规范和体系结构统筹安排，最后再落实到实现。是一个自底向上再由上向下的一个过程，也是一个由薄到厚再由厚到薄的过程。</div>2019-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/e1/d2/42ad2c87.jpg" width="30px"><span>今夜秋风和</span> 👍（43） 💬（3）<div>应用程序的上下文，这个概念总是感觉理解不透彻</div>2019-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/6a/59/ba3cad16.jpg" width="30px"><span>G</span> 👍（35） 💬（1）<div>你说的所有spring. 都应该说springMVC</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f6/66/991b7e3a.jpg" width="30px"><span>贤蛋蛋</span> 👍（30） 💬（2）<div>请问为什么说http是超文本传输协议，文本两字的含义是什么？http2.0所说的二进制帧，为什么说是二进制，和1.1格式上的本质区别是什么？再往下一层到TCP能否都看成二进制帧？</div>2019-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e7/4a/4dfb565a.jpg" width="30px"><span>凌霄</span> 👍（25） 💬（1）<div>遇到过一个偶发的tomcat8问题，请求到tomcat后，nio长连接，到了20秒后超时后才自动断开连接，返回结果内容正常，抓包发现和正常的比少了最后的回车换行。</div>2019-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7b/41/85796e32.jpg" width="30px"><span>飞向云端</span> 👍（12） 💬（1）<div>什么叫内嵌方式运行servlet容器，老师有时间普及一下。</div>2019-05-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/83/72/e37bbc52.jpg" width="30px"><span>yy_java</span> 👍（6） 💬（1）<div>请问老师，操作系统基础 除了您推荐的那本书以外还有其他薄点的书籍推荐吗？</div>2019-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/5f/73/bb3dc468.jpg" width="30px"><span>拒绝</span> 👍（6） 💬（2）<div>还停留在使用容器的阶段，并不清楚其原理，例如：一个请求到一个响应返回，其涉及到的设计模式，以及为什么这样做，这样做的好处是什么；我能在容器的基础上做一些自定义的扩展吗？希望在专栏收获到这些。</div>2019-05-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/BDqfaEhaYiaRLj92HaU4P8QmdPsNYGPaelpcMmUaM4ZVB2CRKErqWqnVibVMIKHjrV4Kg9g87VLSickPOqmeNvACA/132" width="30px"><span>chibohe</span> 👍（4） 💬（1）<div>如果我的服务全都是rpc调用，不涉及http调用，可以不部署在tomcat或者jetty容器中吗？还有你说的Spring都应该指的是SpringMVC吧？</div>2019-05-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/5b/83a35681.jpg" width="30px"><span>Monday</span> 👍（4） 💬（1）<div>操作系统还是我的痛，但也不是一两天就能补充得了的。只好边学本专栏边学操作系统了。希望不要因为操作系统的缘故拖了学习本专栏的后腿😃😃</div>2019-05-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/f8/ea/98738420.jpg" width="30px"><span>Jaswine</span> 👍（4） 💬（1）<div>带着问题学知识，学习的时候问自己几个为什么，为什么这么设计？为什么不那么设计？在自己解答这些为什么的时候，最后发现都是计算机基础知识决定的，操作系统，网络，数据结构和算法</div>2019-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/55/06/a495741c.jpg" width="30px"><span>刘三通</span> 👍（3） 💬（1）<div>Spring应用本身就是一个Servlet容器</div>2019-05-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e1/0e/2912db26.jpg" width="30px"><span>小可爱(๑• . •๑)</span> 👍（3） 💬（1）<div>期待不断更新，希望老师能够讲清楚，让大家都理解</div>2019-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e5/33/ff5c52ad.jpg" width="30px"><span>不负</span> 👍（2） 💬（1）<div>Web容器通常具备 HTTP 服务器和 Servlet 容器的功能，Tomcat 和 Jetty 是其经典代表。
+那我们的学习一定是从具体技术入手，从规范和体系结构统筹安排，最后再落实到实现。是一个自底向上再由上向下的一个过程，也是一个由薄到厚再由厚到薄的过程。</div>2019-05-15</li><br/><li><span>今夜秋风和</span> 👍（43） 💬（3）<div>应用程序的上下文，这个概念总是感觉理解不透彻</div>2019-05-14</li><br/><li><span>G</span> 👍（35） 💬（1）<div>你说的所有spring. 都应该说springMVC</div>2019-05-13</li><br/><li><span>贤蛋蛋</span> 👍（30） 💬（2）<div>请问为什么说http是超文本传输协议，文本两字的含义是什么？http2.0所说的二进制帧，为什么说是二进制，和1.1格式上的本质区别是什么？再往下一层到TCP能否都看成二进制帧？</div>2019-05-15</li><br/><li><span>凌霄</span> 👍（25） 💬（1）<div>遇到过一个偶发的tomcat8问题，请求到tomcat后，nio长连接，到了20秒后超时后才自动断开连接，返回结果内容正常，抓包发现和正常的比少了最后的回车换行。</div>2019-05-14</li><br/><li><span>飞向云端</span> 👍（12） 💬（1）<div>什么叫内嵌方式运行servlet容器，老师有时间普及一下。</div>2019-05-19</li><br/><li><span>yy_java</span> 👍（6） 💬（1）<div>请问老师，操作系统基础 除了您推荐的那本书以外还有其他薄点的书籍推荐吗？</div>2019-05-18</li><br/><li><span>拒绝</span> 👍（6） 💬（2）<div>还停留在使用容器的阶段，并不清楚其原理，例如：一个请求到一个响应返回，其涉及到的设计模式，以及为什么这样做，这样做的好处是什么；我能在容器的基础上做一些自定义的扩展吗？希望在专栏收获到这些。</div>2019-05-13</li><br/><li><span>chibohe</span> 👍（4） 💬（1）<div>如果我的服务全都是rpc调用，不涉及http调用，可以不部署在tomcat或者jetty容器中吗？还有你说的Spring都应该指的是SpringMVC吧？</div>2019-05-27</li><br/><li><span>Monday</span> 👍（4） 💬（1）<div>操作系统还是我的痛，但也不是一两天就能补充得了的。只好边学本专栏边学操作系统了。希望不要因为操作系统的缘故拖了学习本专栏的后腿😃😃</div>2019-05-16</li><br/><li><span>Jaswine</span> 👍（4） 💬（1）<div>带着问题学知识，学习的时候问自己几个为什么，为什么这么设计？为什么不那么设计？在自己解答这些为什么的时候，最后发现都是计算机基础知识决定的，操作系统，网络，数据结构和算法</div>2019-05-15</li><br/><li><span>刘三通</span> 👍（3） 💬（1）<div>Spring应用本身就是一个Servlet容器</div>2019-05-19</li><br/><li><span>小可爱(๑• . •๑)</span> 👍（3） 💬（1）<div>期待不断更新，希望老师能够讲清楚，让大家都理解</div>2019-05-14</li><br/><li><span>不负</span> 👍（2） 💬（1）<div>Web容器通常具备 HTTP 服务器和 Servlet 容器的功能，Tomcat 和 Jetty 是其经典代表。
 Servlet 容器：部署和启动 Web 应用的环境。
 
 1）文中提到的“嵌入式Web容器”，是已经不依赖外部容器，项目本身（具备Servlet功能）部署到一个HTTP服务器即可启动？
-2）web服务器就是一个HTTP服务器？</div>2019-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c9/cb/7b6802cc.jpg" width="30px"><span>贾智文</span> 👍（1） 💬（1）<div>想问下为什么内嵌的web容器会更加简单？</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c2/cc/ca22bb7c.jpg" width="30px"><span>蓝士钦</span> 👍（1） 💬（1）<div>想请问一下老师，我们平时的业务很简单的增删改查，从Controller到Service再到Dao层都是一个链式调用，这种简单的业务需要遵循面向接口设计的原则吗？</div>2019-06-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/56/90/be01bb8d.jpg" width="30px"><span>Asanz</span> 👍（1） 💬（1）<div>上来就搞 UNIX环境高级编程 这个大块头吗？？？</div>2019-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/56/05/152830ea.jpg" width="30px"><span>空亦非空</span> 👍（0） 💬（1）<div>是不是有些路线可以并行？</div>2019-08-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/cd/e0/c85bb948.jpg" width="30px"><span>朱雯</span> 👍（0） 💬（1）<div>我是一名运维工程师 工作经验不长 也断断续续 现在公司的系统是一个用java写的系统  其中tomcat也在其中使用 我本想抱着学习如何配置 如何使用 部署的来学这个tomcat容器 看到您推荐的这些书 我感受到了自己的操作系统基础以及java基础不够 存在担心自己跟不上的担心....这种担心正常吗 我是该去补完您说的那些课程 还是直接跟课呢</div>2019-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/2f/bb/f663ac5a.jpg" width="30px"><span>itschenxiang</span> 👍（0） 💬（1）<div>请问 &quot;由应用本身来启动一个嵌入式web容器，而不是通过web容器来部署和启动应用，这样可以降低应用的复杂度&quot; 这句话怎么理解，是指传统的使用Tomcat作为web容器和SpingBoot这种方式吗？</div>2019-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d0/69/5dbdc245.jpg" width="30px"><span>张德</span> 👍（0） 💬（1）<div>老师后期能不能说一下tomcat和weblogic的区别  以前在某知名股份制银行工作的时候  开发用jetty 但是线上却用weblogic  完全不懂为什么。。。</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e5/84/4a01e18d.jpg" width="30px"><span>nsn_huang</span> 👍（0） 💬（1）<div>老师您好,您在文章中说到要从操作系统学起,并建议读一读《UNIX环境高级编程》,我也深知操作系统的重要性,但是作为一名大学生,想读完本科就工作,从事Java方向,总感觉自己的时间不够用,感觉可能操作系统学不到太深,您有什么好的建议么?</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a0/a4/b060c723.jpg" width="30px"><span>阿斯蒂芬</span> 👍（0） 💬（1）<div>老师在讲servlet和tomcat有没有推荐书单🙏
-</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/00/01/5c28c66c.jpg" width="30px"><span>快跑吧小姑娘，快跑</span> 👍（0） 💬（1）<div>现在都用spring boot，很想压榨单应用http的并发请求处理，还有单应用启动速度，以及怎么优化容器</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/df/7d/d5bc03a4.jpg" width="30px"><span>落幕</span> 👍（30） 💬（2）<div>和一群优秀的人共同进步，这种感觉很好。</div>2019-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a8/e8/bc84c47d.jpg" width="30px"><span>熊斌</span> 👍（9） 💬（0）<div>工作几年之后才明白 万变不离其宗，所以一直努力往技术的最底层走。跟着大佬探寻常用技术的本质。双11刚买的课，每天看一两节</div>2019-11-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c3/3d/abb7bfe3.jpg" width="30px"><span>林炳强</span> 👍（7） 💬（0）<div>Spring 框架就是对 Servlet 的封装。。。
-这句话我感觉容易造成误解。Spring MVC只是Spring的一部分，只有Spring MVC是Servlet的实现，其他的并没有。</div>2019-06-23</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKMMsbPLKSkKJ5rEvoDE3T5aUgyicTXS2TyicIDPVDcsBStQfWQicuTNeFicBuEWibJepLQgEQOogpAcnQ/132" width="30px"><span>balsamspear</span> 👍（4） 💬（0）<div>**思考题**
-
-请你分享一下你对 Web 容器的理解，或者你在学习、使用 Web 容器时遇到了哪些问题？
-
-Web 容器是 HTTP 服务器 + Servlet 容器
-
-1. HTTP 服务器负责处理 HTTP 请求（接收请求、返回请求结果）
-2. Servlet 容器负责把 HTTP 请求分派给对应的 servlet 程序处理，并把结果返回给 HTTP 服务器
-
-问题
-
-1. 如何解析请求？
-2. HTTP 服务器线程、Servlet 容器线程和 servlet 程序线程的关系？
-3. Web 容器能支持什么量级的并发，由哪一块决定？HTTP 服务器、Servlet 容器还是 servlet 程序？</div>2020-09-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/0f/91/5e03fe38.jpg" width="30px"><span>Mr.tt</span> 👍（3） 💬（0）<div>说说对Web容器的理解:所谓容器就是一个装东西的东西，比如水容器，就是装水的，而我们的web容器就是装web的，从这里就可以看出，tomcat等这类容器是可以部署多个web项目的。在深入一点点，一个能作为水容器的要求是什么？不能有漏洞对不对，那么作为一个web容器它的要求是什么呢？一.能够处理网络请求，二.能返回数据。首先能够处理网络请求(作为http服务器)，这个意味着它能够监听端口，能够操作操作系统里的网络请求，并把这些请求和我们的web项目关联起来，交给我们的web项目处理这些请求，我们项目要怎么处理这些请求呢？什么样的程序能够处理这些请求呢？有没有什么规范呢？答案是有的，就是servlet规范。这个规范和tomat有啥关系？tomcat就是一个servlet容器。所以tomcat其实是一个http服务器+servlet服务器的集合</div>2020-08-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/c9/cb/467065d0.jpg" width="30px"><span>Rumble</span> 👍（2） 💬（0）<div>我天，1楼的大佬也太6了，没去从政真的是浪费人才</div>2020-01-15</li><br/>
+2）web服务器就是一个HTTP服务器？</div>2019-05-14</li><br/><li><span>贾智文</span> 👍（1） 💬（1）<div>想问下为什么内嵌的web容器会更加简单？</div>2019-06-24</li><br/>
 </ul>

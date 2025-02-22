@@ -326,6 +326,24 @@ class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
 - 自定义Scope标注
   
   - 可向容器注册自定义Scope标注的回调
+
+## 视频演示
+
+让我们进入今天的部分：
+
+## 思考题
+
+要如何对代码和测试进行重构？
+
+**编辑来信**：
+
+> 第二期“TDD·代码评点”活动启动啦！为了帮助你更平滑地过渡到第三个实战项目，徐老师发起了代码评点活动。  
+> 　  
+> 你可以填写[学习问卷](https://jinshuju.net/f/fnh84B)提交项目代码，而后，徐老师会一一查看，并进行评点与答疑。关于评点的详细内容，我们也将制成加餐展示在专栏里，供其他同学学习与参考。  
+> 　  
+> 请注意，此次收集时间截至5月27日晚上12点。此外，我也会从中选出1-2位同学，送出《重构与模式》一书。请抓紧上车，入股不亏哦！
+
+欢迎把你的想法分享在留言区，也欢迎把你的项目代码的链接分享出来。相信经过你的思考与实操，学习效果会更好！
 <div><strong>精选留言（2）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/65/21/101a7075.jpg" width="30px"><span>davix</span> 👍（0） 💬（0）<div>contructor&#47;field&#47;method有時test case都幾乎一樣，copy&#47;paste再改改就行，老師總還是手敲，是有意的嗎？</div>2022-08-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（0） 💬（0）<div>原来修改代码的时候选择简单方便的就行，不用严格遵守规范（视频中最后一个示例）</div>2022-05-22</li><br/>
+<li><span>davix</span> 👍（0） 💬（0）<div>contructor&#47;field&#47;method有時test case都幾乎一樣，copy&#47;paste再改改就行，老師總還是手敲，是有意的嗎？</div>2022-08-24</li><br/><li><span>aoe</span> 👍（0） 💬（0）<div>原来修改代码的时候选择简单方便的就行，不用严格遵守规范（视频中最后一个示例）</div>2022-05-22</li><br/>
 </ul>

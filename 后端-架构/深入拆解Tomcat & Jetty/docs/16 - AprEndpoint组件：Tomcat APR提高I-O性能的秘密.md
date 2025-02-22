@@ -7,32 +7,164 @@
 APR（Apache Portable Runtime Libraries）是Apache可移植运行时库，它是用C语言实现的，其目的是向上层应用程序提供一个跨平台的操作系统接口库。Tomcat可以用它来处理包括文件和网络I/O，从而提升性能。我在专栏前面提到过，Tomcat支持的连接器有NIO、NIO.2和APR。跟NioEndpoint一样，AprEndpoint也实现了非阻塞I/O，它们的区别是：NioEndpoint通过调用Java的NIO API来实现非阻塞I/O，而AprEndpoint是通过JNI调用APR本地库而实现非阻塞I/O的。
 
 那同样是非阻塞I/O，为什么Tomcat会提示使用APR本地库的性能会更好呢？这是因为在某些场景下，比如需要频繁与操作系统进行交互，Socket网络通信就是这样一个场景，特别是如果你的Web应用使用了TLS来加密传输，我们知道TLS协议在握手过程中有多次网络交互，在这种情况下Java跟C语言程序相比还是有一定的差距，而这正是APR的强项。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/3c/2a/f92c7681.jpg" width="30px"><span>YF</span> 👍（44） 💬（1）<div>老师，为什么从本地内存到 JVM 堆的拷贝过程中 JVM 可以保证不做 GC呢？那为什么从内核拷贝到JVM堆中就不能保证做GC呢？</div>2019-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（29） 💬（3）<div>NIO 的 Buffer 除了做了缓冲块优化之外，还提供了一个可以直接访问物理内存的类 DirectBuffer。普通的 Buffer 分配的是 JVM 堆内存，而 DirectBuffer 是直接分配物理内存。
+
+Tomcat本身是Java编写的，为了调用C语言编写的APR，需要通过JNI方式来调用。JNI（Java Native Interface） 是JDK提供的一个编程接口，它允许Java程序调用其他语言编写的程序或者代码库，其实JDK本身的实现也大量用到JNI技术来调用本地C程序库。
+
+在今天这一期文章，首先我会讲AprEndpoint组件的工作过程，接着我会在原理的基础上分析APR提升性能的一些秘密。在今天的学习过程中会涉及到一些操作系统的底层原理，毫无疑问掌握这些底层知识对于提高你的内功非常有帮助。
+
+## AprEndpoint工作过程
+
+下面我还是通过一张图来帮你理解AprEndpoint的工作过程。
+
+![](https://static001.geekbang.org/resource/image/37/93/37117f9fd6ed5523a331ac566a906893.jpg?wh=1518%2A1044)
+
+你会发现它跟NioEndpoint的图很像，从左到右有LimitLatch、Acceptor、Poller、SocketProcessor和Http11Processor，只是Acceptor和Poller的实现和NioEndpoint不同。接下来我分别来讲讲这两个组件。
+
+**Acceptor**
+
+Accpetor的功能就是监听连接，接收并建立连接。它的本质就是调用了四个操作系统API：Socket、Bind、Listen和Accept。那Java语言如何直接调用C语言API呢？答案就是通过JNI。具体来说就是两步：先封装一个Java类，在里面定义一堆用**native关键字**修饰的方法，像下面这样。
+
+```
+public class Socket {
+  ...
+  //用native修饰这个方法，表明这个函数是C语言实现
+  public static native long create(int family, int type,
+                                 int protocol, long cont)
+                                 
+  public static native int bind(long sock, long sa);
+  
+  public static native int listen(long sock, int backlog);
+  
+  public static native long accept(long sock)
+}
+```
+
+接着用C代码实现这些方法，比如Bind函数就是这样实现的：
+
+```
+//注意函数的名字要符合JNI规范的要求
+JNIEXPORT jint JNICALL 
+Java_org_apache_tomcat_jni_Socket_bind(JNIEnv *e, jlong sock,jlong sa)
+	{
+	    jint rv = APR_SUCCESS;
+	    tcn_socket_t *s = (tcn_socket_t *）sock;
+	    apr_sockaddr_t *a = (apr_sockaddr_t *) sa;
+	
+        //调用APR库自己实现的bind函数
+	    rv = (jint)apr_socket_bind(s->sock, a);
+	    return rv;
+	}
+```
+
+专栏里我就不展开JNI的细节了，你可以[扩展阅读](http://jnicookbook.owsiak.org/contents/)获得更多信息和例子。我们要注意的是函数名字要符合JNI的规范，以及Java和C语言如何互相传递参数，比如在C语言有指针，Java没有指针的概念，所以在Java中用long类型来表示指针。AprEndpoint的Acceptor组件就是调用了APR实现的四个API。
+
+**Poller**
+
+Acceptor接收到一个新的Socket连接后，按照NioEndpoint的实现，它会把这个Socket交给Poller去查询I/O事件。AprEndpoint也是这样做的，不过AprEndpoint的Poller并不是调用Java NIO里的Selector来查询Socket的状态，而是通过JNI调用APR中的poll方法，而APR又是调用了操作系统的epoll API来实现的。
+
+这里有个特别的地方是在AprEndpoint中，我们可以配置一个叫`deferAccept`的参数，它对应的是TCP协议中的`TCP_DEFER_ACCEPT`，设置这个参数后，当TCP客户端有新的连接请求到达时，TCP服务端先不建立连接，而是再等等，直到客户端有请求数据发过来时再建立连接。这样的好处是服务端不需要用Selector去反复查询请求数据是否就绪。
+
+这是一种TCP协议层的优化，不是每个操作系统内核都支持，因为Java作为一种跨平台语言，需要屏蔽各种操作系统的差异，因此并没有把这个参数提供给用户；但是对于APR来说，它的目的就是尽可能提升性能，因此它向用户暴露了这个参数。
+
+## APR提升性能的秘密
+
+APR连接器之所以能提高Tomcat的性能，除了APR本身是C程序库之外，还有哪些提速的秘密呢？
+
+**JVM堆 VS 本地内存**
+
+我们知道Java的类实例一般在JVM堆上分配，而Java是通过JNI调用C代码来实现Socket通信的，那么C代码在运行过程中需要的内存又是从哪里分配的呢？C代码能否直接操作Java堆？
+
+为了回答这些问题，我先来说说JVM和用户进程的关系。如果你想运行一个Java类文件，可以用下面的Java命令来执行。
+
+```
+java my.class
+```
+
+这个命令行中的`java`其实是**一个可执行程序，这个程序会创建JVM来加载和运行你的Java类**。操作系统会创建一个进程来执行这个`java`可执行程序，而每个进程都有自己的虚拟地址空间，JVM用到的内存（包括堆、栈和方法区）就是从进程的虚拟地址空间上分配的。请你注意的是，JVM内存只是进程空间的一部分，除此之外进程空间内还有代码段、数据段、内存映射区、内核空间等。从JVM的角度看，JVM内存之外的部分叫作本地内存，C程序代码在运行过程中用到的内存就是本地内存中分配的。下面我们通过一张图来理解一下。
+
+![](https://static001.geekbang.org/resource/image/83/80/839bfab2636634d47477cbd0920b5980.jpg?wh=1428%2A944)
+
+Tomcat的Endpoint组件在接收网络数据时需要预先分配好一块Buffer，所谓的Buffer就是字节数组`byte[]`，Java通过JNI调用把这块Buffer的地址传给C代码，C代码通过操作系统API读取Socket并把数据填充到这块Buffer。Java NIO API提供了两种Buffer来接收数据：HeapByteBuffer和DirectByteBuffer，下面的代码演示了如何创建两种Buffer。
+
+```
+//分配HeapByteBuffer
+ByteBuffer buf = ByteBuffer.allocate(1024);
+
+//分配DirectByteBuffer
+ByteBuffer buf = ByteBuffer.allocateDirect(1024);
+```
+
+创建好Buffer后直接传给Channel的read或者write函数，最终这块Buffer会通过JNI调用传递给C程序。
+
+```
+//将buf作为read函数的参数
+int bytesRead = socketChannel.read(buf);
+```
+
+那HeapByteBuffer和DirectByteBuffer有什么区别呢？HeapByteBuffer对象本身在JVM堆上分配，并且它持有的字节数组`byte[]`也是在JVM堆上分配。但是如果用**HeapByteBuffer**来接收网络数据，**需要把数据从内核先拷贝到一个临时的本地内存，再从临时本地内存拷贝到JVM堆**，而不是直接从内核拷贝到JVM堆上。这是为什么呢？这是因为数据从内核拷贝到JVM堆的过程中，JVM可能会发生GC，GC过程中对象可能会被移动，也就是说JVM堆上的字节数组可能会被移动，这样的话Buffer地址就失效了。如果这中间经过本地内存中转，从本地内存到JVM堆的拷贝过程中JVM可以保证不做GC。
+
+如果使用HeapByteBuffer，你会发现JVM堆和内核之间多了一层中转，而DirectByteBuffer用来解决这个问题，DirectByteBuffer对象本身在JVM堆上，但是它持有的字节数组不是从JVM堆上分配的，而是从本地内存分配的。DirectByteBuffer对象中有个long类型字段address，记录着本地内存的地址，这样在接收数据的时候，直接把这个本地内存地址传递给C程序，C程序会将网络数据从内核拷贝到这个本地内存，JVM可以直接读取这个本地内存，这种方式比HeapByteBuffer少了一次拷贝，因此一般来说它的速度会比HeapByteBuffer快好几倍。你可以通过上面的图加深理解。
+
+Tomcat中的AprEndpoint就是通过DirectByteBuffer来接收数据的，而NioEndpoint和Nio2Endpoint是通过HeapByteBuffer来接收数据的。你可能会问，NioEndpoint和Nio2Endpoint为什么不用DirectByteBuffer呢？这是因为本地内存不好管理，发生内存泄漏难以定位，从稳定性考虑，NioEndpoint和Nio2Endpoint没有去冒这个险。
+
+**sendfile**
+
+我们再来考虑另一个网络通信的场景，也就是静态文件的处理。浏览器通过Tomcat来获取一个HTML文件，而Tomcat的处理逻辑无非是两步：
+
+1. 从磁盘读取HTML到内存。
+2. 将这段内存的内容通过Socket发送出去。
+
+但是在传统方式下，有很多次的内存拷贝：
+
+- 读取文件时，首先是内核把文件内容读取到内核缓冲区。
+- 如果使用HeapByteBuffer，文件数据从内核到JVM堆内存需要经过本地内存中转。
+- 同样在将文件内容推入网络时，从JVM堆到内核缓冲区需要经过本地内存中转。
+- 最后还需要把文件从内核缓冲区拷贝到网卡缓冲区。
+
+从下面的图你会发现这个过程有6次内存拷贝，并且read和write等系统调用将导致进程从用户态到内核态的切换，会耗费大量的CPU和内存资源。
+
+![](https://static001.geekbang.org/resource/image/2b/0e/2b902479c36647142ccd413320b3900e.jpg?wh=1154%2A934)
+
+而Tomcat的AprEndpoint通过操作系统层面的sendfile特性解决了这个问题，sendfile系统调用方式非常简洁。
+
+```
+sendfile(socket, file, len);
+```
+
+它带有两个关键参数：Socket和文件句柄。将文件从磁盘写入Socket的过程只有两步：
+
+第一步：将文件内容读取到内核缓冲区。
+
+第二步：数据并没有从内核缓冲区复制到Socket关联的缓冲区，只有记录数据位置和长度的描述符被添加到Socket缓冲区中；接着把数据直接从内核缓冲区传递给网卡。这个过程你可以看下面的图。
+
+![](https://static001.geekbang.org/resource/image/19/00/193df268fccb59a09195810e34080a00.jpg?wh=590%2A908)
+
+## 本期精华
+
+对于一些需要频繁与操作系统进行交互的场景，比如网络通信，Java的效率没有C语言高，特别是TLS协议握手过程中需要多次网络交互，这种情况下使用APR本地库能够显著提升性能。
+
+除此之外，APR提升性能的秘密还有：通过DirectByteBuffer避免了JVM堆与本地内存之间的内存拷贝；通过sendfile特性避免了内核与应用之间的内存拷贝以及用户态和内核态的切换。其实很多高性能网络通信组件，比如Netty，都是通过DirectByteBuffer来收发网络数据的。由于本地内存难于管理，Netty采用了本地内存池技术，感兴趣的同学可以深入了解一下。
+
+## 课后思考
+
+为什么不同的操作系统，比如Linux和Windows，都有自己的Java虚拟机？
+
+不知道今天的内容你消化得如何？如果还有疑问，请大胆的在留言区提问，也欢迎你把你的课后思考和心得记录下来，与我和其他同学一起讨论。如果你觉得今天有所收获，欢迎你把它分享给你的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>YF</span> 👍（44） 💬（1）<div>老师，为什么从本地内存到 JVM 堆的拷贝过程中 JVM 可以保证不做 GC呢？那为什么从内核拷贝到JVM堆中就不能保证做GC呢？</div>2019-06-15</li><br/><li><span>-W.LI-</span> 👍（29） 💬（3）<div>NIO 的 Buffer 除了做了缓冲块优化之外，还提供了一个可以直接访问物理内存的类 DirectBuffer。普通的 Buffer 分配的是 JVM 堆内存，而 DirectBuffer 是直接分配物理内存。
 
 我们知道数据要输出到外部设备，必须先从用户空间复制到内核空间，再复制到输出设备，而 DirectBuffer 则是直接将步骤简化为从内核空间复制到外部设备，减少了数据拷贝。
 
-李老师好!上面是隔壁班刘超老师的原话。好像和您讲的优点冲突。请问答题时写哪个答案啊?</div>2019-06-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/1b/f4b786b9.jpg" width="30px"><span>飞翔</span> 👍（17） 💬（1）<div>老师 能不能讲讲什么时候用apr 什么时候用nio2 nio？</div>2019-06-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/94/35/42e7d75c.jpg" width="30px"><span>鱼仔💪</span> 👍（13） 💬（1）<div>看老师课收获很多，老师讲的很好，这一讲有个问题：
+李老师好!上面是隔壁班刘超老师的原话。好像和您讲的优点冲突。请问答题时写哪个答案啊?</div>2019-06-20</li><br/><li><span>飞翔</span> 👍（17） 💬（1）<div>老师 能不能讲讲什么时候用apr 什么时候用nio2 nio？</div>2019-06-16</li><br/><li><span>鱼仔💪</span> 👍（13） 💬（1）<div>看老师课收获很多，老师讲的很好，这一讲有个问题：
 之前讲到 同步和异步，是指应用程序在与内核通信时，数据从内核空间到应用空间的拷贝，是由内核主动发起还是由应用程序来触发。
 JVM 内存只是进程空间的一部分，除此之外进程空间内还有代码段、数据段、内存映射区、内核空间等。
-从内核空间到应用空间的拷贝是 应用程序本地内存向JVM堆上的拷贝；还是内核缓冲区向 应用程序本地内存的拷贝？</div>2019-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/ea/05/c0d8014d.jpg" width="30px"><span>一道阳光</span> 👍（9） 💬（1）<div>java语言有个特性，一次编译到处执行，而class文件需要通过虚拟机编译成操作系统指令。不同操作系统的指令不一样，所以有对应的虚拟机来简化代码开发。c语言好像是直接调用操作系统指令，代码开发中调用一个方法，不同的操作系统可能不一样，还得准备两份。老师，说的对吗？</div>2019-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/13/76/94912600.jpg" width="30px"><span>粉条炒肉</span> 👍（8） 💬（1）<div>老师，请教一个问题，每次服务的访问高峰期重启或者发布tomcat服务，都会出现阻塞线程过多 这种情况是不是容器初始化的时候需要预热很多资源，从而响应不过来请求而导致阻塞，关于这种情况，有什么好的解决办法。</div>2019-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/aa/e6/cc3f3853.jpg" width="30px"><span>gameboy120</span> 👍（7） 💬（1）<div>请问从本地内存拷贝到jvm堆不会引起gc是在哪里有说明？</div>2019-07-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a4/9c/b32ed9e9.jpg" width="30px"><span>陆离</span> 👍（7） 💬（1）<div>虚拟机只是抽象了操作系统，但并不是虚拟机也是一套的。
+从内核空间到应用空间的拷贝是 应用程序本地内存向JVM堆上的拷贝；还是内核缓冲区向 应用程序本地内存的拷贝？</div>2019-07-16</li><br/><li><span>一道阳光</span> 👍（9） 💬（1）<div>java语言有个特性，一次编译到处执行，而class文件需要通过虚拟机编译成操作系统指令。不同操作系统的指令不一样，所以有对应的虚拟机来简化代码开发。c语言好像是直接调用操作系统指令，代码开发中调用一个方法，不同的操作系统可能不一样，还得准备两份。老师，说的对吗？</div>2019-06-15</li><br/><li><span>粉条炒肉</span> 👍（8） 💬（1）<div>老师，请教一个问题，每次服务的访问高峰期重启或者发布tomcat服务，都会出现阻塞线程过多 这种情况是不是容器初始化的时候需要预热很多资源，从而响应不过来请求而导致阻塞，关于这种情况，有什么好的解决办法。</div>2019-06-15</li><br/><li><span>gameboy120</span> 👍（7） 💬（1）<div>请问从本地内存拷贝到jvm堆不会引起gc是在哪里有说明？</div>2019-07-10</li><br/><li><span>陆离</span> 👍（7） 💬（1）<div>虚拟机只是抽象了操作系统，但并不是虚拟机也是一套的。
 jvm的解释器在不同操作系统下是不同的，因为要将字节码解释生成本地机器码。
 这么简单个问题，感觉还是解释不清楚，这个要和操作系统原理联系起来了。
-烦请老师做一个详细的简单！</div>2019-06-15</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/6LaITPQ4Lk5fZn8ib1tfsPW8vI9icTuSwAddiajVfibPDiaDvMU2br6ZT7K0LWCKibSQuicT7sIEVmY4K7ibXY0T7UQEiag/132" width="30px"><span>尔东橙</span> 👍（6） 💬（1）<div>老师，tomcat解决了NIO的epoll空轮询么？</div>2019-08-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（5） 💬（4）<div>老师好!
+烦请老师做一个详细的简单！</div>2019-06-15</li><br/><li><span>尔东橙</span> 👍（6） 💬（1）<div>老师，tomcat解决了NIO的epoll空轮询么？</div>2019-08-09</li><br/><li><span>-W.LI-</span> 👍（5） 💬（4）<div>老师好!
 网卡-&gt;内核-&gt;用户空间-&gt;内核-&gt;网卡。
 IO读写都需要拷贝两次。
 之前一直不理解为啥不直接到用户空间，看完老师的解释才知道是因为网卡直接到用户空间，容易GC，GC后内存映射地址改变。所以多了一次内核空间做桥接。大部分基于虚拟机的语言都会有这个问题?
-</div>2019-06-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/05/7f/a7df049a.jpg" width="30px"><span>Standly</span> 👍（5） 💬（2）<div>请教老师,  DirectByteBuffer和常说的mmap是什么关系？</div>2019-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9a/68/92caeed6.jpg" width="30px"><span>Shine</span> 👍（2） 💬（2）<div>李老师，怎么想到去研究Tomcat  &amp; Jetty源码的？ 是由于项目上的需求吗？</div>2019-06-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（1） 💬（1）<div>老师好!deferAccept这个参数可以让链接创建推迟到介绍到数据的时候创建。底层是用的操作系统的epoll()函数，epoll()函数是一个阻塞方法然后坚持的是文件符号fd(fd只有三种是么?1.读就绪，2.写就绪，3.异常)。有满足条件的fd内核就会回调应用程序。这个deferAccept设置了这个参数。就是c底层给我们包装了同时满足accept和read时才会回调程序去创建链接。不是Linux底层epoll()支持的吧？</div>2019-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f9/92/30917242.jpg" width="30px"><span>愤怒💢的可乐😠</span> 👍（0） 💬（1）<div>大佬，本文中所介绍的I&#47;O，内存拷贝等知识有没有书籍推荐啊</div>2019-08-31</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/j9HvbdnfkovLvPx4g2jUwpDpH6Xm28DjSTENW6m0Xy6kmSibeHQZDbcSl7B5GqiagC2WNqXSuzbR5sSCp0pz3TIw/132" width="30px"><span>liquid</span> 👍（0） 💬（2）<div>老师为什么从本地内存到 JVM 堆的拷贝过程中 JVM 可以保证不做 ？出处在哪里呢，网上没有找到
-</div>2019-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b3/c5/7fc124e2.jpg" width="30px"><span>Liam</span> 👍（0） 💬（1）<div>hi，老师你好，能否讲讲零拷贝和文件内存映射机制的原理，和今天讲的buffer少一次copy是否有关？</div>2019-06-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/47/65/cce8eb34.jpg" width="30px"><span>nimil</span> 👍（12） 💬（0）<div>学到了，之前还纳闷，我在使用高版本的SpringBoot的时候总是会有arp的警告，今天终于知道是干嘛的了。感谢老师。</div>2019-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1e/3a/5b21c01c.jpg" width="30px"><span>nightmare</span> 👍（4） 💬（0）<div>老师，arp模式更加适合https，或者文件传输的业务场景，相对于nio会有更快的io速度</div>2019-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/b5/d4/e58e39f0.jpg" width="30px"><span>Geek_0quh3e</span> 👍（2） 💬（1）<div>sendfile的过程是不是就是所谓的零拷贝？</div>2019-10-10</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/y8HlniaJpukoLfFtTibK55mRan9NJHpcCTyb8lJcVSwoOXrFTQo9CbI8YMfWzv5iawYwMt36oxFb9oZdeBPtwkJiaA/132" width="30px"><span>莫妮卡的泥</span> 👍（2） 💬（1）<div>我不认同作者说的directbuffer少一次拷贝就一定性能好，我们先不提内联，可以简单地将directbuffer cache类比到page cache，就会发现如果做的够好，看起来的多一次拷贝反而会提升性能，而且作者的sendfile图画错了，两张图也都没有体现出page cache的存在，看到现在，个人感觉，作者在框架把控上确实一流，但是在io栈上有待提升。</div>2019-09-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/dc/e6/cfb409ab.jpg" width="30px"><span>intomymind</span> 👍（2） 💬（0）<div>老师您好，有两台服务器，A服务器向B服务器发起一个rpc调用，那么从A服务器发起请求到B服务器，B服务器接收请求处理最后在返回给服务器A，那么从A-&gt;B和B -&gt; A这两个过程的网卡、用户空间、内核空间的一个处理流程是什么样的呢？</div>2019-09-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/23/ed/a4a774a8.jpg" width="30px"><span>What for</span> 👍（2） 💬（2）<div>关于 TCP 连接我有一个问题想请教下老师：
-我理解的 TCP 是经过三次握手之后建立了连接才可以发送数据的，那么文中提到的等有了数据才建立连接是怎么回事呢？</div>2019-08-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/6a/64/3d4fccf8.jpg" width="30px"><span>Z_Z</span> 👍（1） 💬（0）<div>老师你好，学完你的tomcat课程之后，获益匪浅，请问你有没有讲netty的课程？或者推荐？</div>2021-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/83/c8/5ce842f6.jpg" width="30px"><span>maybe</span> 👍（1） 💬（0）<div>1、APR是一个C语言编写的可以植运行时库，目的是给上层应用提供跨平台的操作系统库。tomcat支持NIO、NIO2、APR三种连接器。APREndPoint和NIOEndPoint都实现了非阻塞IO，NIOEndPoint是通过java NIO API实现的，二APREndPoint是通过JNI调用APR库实现的。
-2、AprEndPoint工作原理。流程图和NIOEndPoint差不多。LimitLatch限制最大连接数，Acceptor是通过JNI调用APR的bind、accept、listen、create API。Aceptor得到一个一个socket连接后把socket交给Poller去查询I&#47;O事件。不过这里Poller没有像NIOEndPoint那样去调用java NIO 里的Selector来查询状态，而是调用APR的poll方法来实现。之后就是数据就绪了，然后创建一个SocketProccessor任务丢给线程池去执行run方法，然后调用Http11Proccessor解析读取数据然后再通过AprSocketWrapper写出。
-3、AprEndPoint提升系统性能的原因：
-	a、Apr是C写的库，性能要比java好。
-	b、Apr使用DirectByteBuffer接收数据，而不是HeapByteBuffer。HeapByteBuffer是在jvm上分配内存的，不能直接从内核空间直接拷贝数据到HeapByteBuffer，因为有可能会发生GC，Gc可能会导致对象会被移动，也就是说jvm堆上的字节数组可能被移动，这样buffer的地址就失效了。所以需要先把数据拷贝到应用进程的本地内存，再从本地内存拷贝到HeapByteBuffer，这个过程是由jvm保证不会发生GC。DirectByteBuffer就是来解决这个问题的，DirectByteBuffer对象本身在jvm，但它分配的字节数组不是在jvm上的，而是从本地内存分配，并且内部记录了本地内存的地址。内核把数据拷贝到本地内存那个地址后，jvm可以直接读取。这样就减少了一次数据拷贝过程，速度就快了很多。
-	c、Apr通过sendfile特性减少数据拷贝。传统方式下，一个文件响应需要如下步骤：数据-&gt;内核空间-&gt;本地内存-&gt;jvm堆-&gt;本地内存-&gt;内核空间-&gt;网卡,共6次拷贝且用户态和内核态的切换消耗大量CpU和内存资源。
-		而AprEndpoint通过操作系统层面的sendfile特性，只需要两步:第一步数据拷贝到内核空间，第二步数据并没有从内核空间拷贝到socket关联的缓冲区（也就是传统方式那样），而是只记录数据位置和长度的描述，然后添加到socket关联的缓冲区去，接着把数据直接从内核空间拷贝到网卡。
-		
-课后思考：每个操作系统提供的API是不同的，需要特定的虚拟机去适配不同的操作系统，这样java字节码才能编译成相应操作系统的指令，才能运行在不同的操作系统中。</div>2020-08-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/10/bb/f1061601.jpg" width="30px"><span>Demon.Lee</span> 👍（1） 💬（0）<div>所以，JNI调用（也就是java调用本地c&#47;c++实现的native方法），cpu会从用户空间切换到内核空间。</div>2020-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/23/cf/7429d6e8.jpg" width="30px"><span>爱码士</span> 👍（1） 💬（1）<div>那我有疑问想请教老师，一个tomcat启动之后对应一个进程？还是一个server对应一个进程？那JVM有几个？</div>2020-02-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/03/10/82c56b87.jpg" width="30px"><span>Cooler</span> 👍（0） 💬（0）<div>老师，请教下“最后还需要把文件从内核缓冲区拷贝到网卡缓冲区。”这里面的网卡缓冲区是不是指ring buffer ，内核缓冲区指的是socket buffer没有经过协议栈的数据</div>2023-07-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5f/cd/abb7bfe3.jpg" width="30px"><span>Zack</span> 👍（0） 💬（0）<div>老师好，直接内存DirectByteBuffer是何时被回收的，回收的流程又是怎么样的呢？</div>2022-08-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f4/49/2b938b4f.jpg" width="30px"><span>北极的大企鹅</span> 👍（0） 💬（0）<div>聊天不打岔</div>2021-05-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/07/d2/0d7ee298.jpg" width="30px"><span>惘 闻</span> 👍（0） 💬（0）<div>这是因为数据从内核拷贝到 JVM 堆的过程中，JVM 可能会发生 GC，GC 过程中对象可能会被移动，也就是说 JVM 堆上的字节数组可能会被移动，这样的话 Buffer 地址就失效了。
-上面是文章中的原话.
-为什么移动就失效了啊,别的对象不移动吗,别的对象移动了还生效为什么buff数组移动就不生效了呢?有无大佬讲解一下</div>2021-01-25</li><br/>
+</div>2019-06-20</li><br/><li><span>Standly</span> 👍（5） 💬（2）<div>请教老师,  DirectByteBuffer和常说的mmap是什么关系？</div>2019-06-15</li><br/><li><span>Shine</span> 👍（2） 💬（2）<div>李老师，怎么想到去研究Tomcat  &amp; Jetty源码的？ 是由于项目上的需求吗？</div>2019-06-20</li><br/><li><span>-W.LI-</span> 👍（1） 💬（1）<div>老师好!deferAccept这个参数可以让链接创建推迟到介绍到数据的时候创建。底层是用的操作系统的epoll()函数，epoll()函数是一个阻塞方法然后坚持的是文件符号fd(fd只有三种是么?1.读就绪，2.写就绪，3.异常)。有满足条件的fd内核就会回调应用程序。这个deferAccept设置了这个参数。就是c底层给我们包装了同时满足accept和read时才会回调程序去创建链接。不是Linux底层epoll()支持的吧？</div>2019-06-19</li><br/><li><span>愤怒💢的可乐😠</span> 👍（0） 💬（1）<div>大佬，本文中所介绍的I&#47;O，内存拷贝等知识有没有书籍推荐啊</div>2019-08-31</li><br/><li><span>liquid</span> 👍（0） 💬（2）<div>老师为什么从本地内存到 JVM 堆的拷贝过程中 JVM 可以保证不做 ？出处在哪里呢，网上没有找到
+</div>2019-07-18</li><br/>
 </ul>

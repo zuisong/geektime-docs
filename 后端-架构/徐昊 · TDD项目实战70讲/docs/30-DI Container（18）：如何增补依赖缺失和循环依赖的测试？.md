@@ -327,8 +327,26 @@ class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
 - 自定义Scope标注
   
   - 可向容器注册自定义Scope标注的回调
+
+## 视频演示
+
+让我们进入今天的部分：
+
+## 思考题
+
+对于在循环依赖中使用Qualifier，还有什么其他有效的测试方法？
+
+**编辑来信**：
+
+> 第二期“TDD·代码评点”活动启动啦！为了帮助你更平滑地过渡到第三个实战项目，徐老师发起了代码评点活动。  
+> 　  
+> 你可以填写[学习问卷](https://jinshuju.net/f/fnh84B)提交项目代码，而后，徐老师会一一查看，并进行评点与答疑。关于评点的详细内容，我们也将制成加餐展示在专栏里，供其他同学学习与参考。  
+> 　  
+> 请注意，此次收集时间截至5月27日晚上12点。此外，我也会从中选出1-2位同学，送出《重构与模式》一书。请抓紧上车，入股不亏哦！
+
+欢迎把你的想法分享在留言区，也欢迎把你的项目代码的链接分享出来。相信经过你的思考与实操，学习效果会更好！
 <div><strong>精选留言（1）</strong></div><ul>
-<li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJUCiacuh59wMbq1icuB8U1T7Vpic8FjKFdanvdt9bzClBmYqFUXmtKmh2Zibn9Dic6A8pjdoBiaia1LCrnA/132" width="30px"><span>tdd学徒</span> 👍（1） 💬（2）<div>因为声明的顺序和徐老师不一样
+<li><span>tdd学徒</span> 👍（1） 💬（2）<div>因为声明的顺序和徐老师不一样
 private Component dependencyComponent;
 private Component componentComponent;
 导致自动生成构造函数的参数顺序也不一样，查了半天，哈哈

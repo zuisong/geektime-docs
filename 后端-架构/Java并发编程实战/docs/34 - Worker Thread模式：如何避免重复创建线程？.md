@@ -11,8 +11,152 @@ Worker Thread模式可以类比现实世界里车间的工作模式：车间里�
 车间工作示意图
 
 那在编程领域该如何模拟车间的这种工作模式呢？或者说如何去实现Worker Thread模式呢？通过上面的图，你很容易就能想到用阻塞队列做任务池，然后创建固定数量的线程消费阻塞队列中的任务。其实你仔细想会发现，这个方案就是Java语言提供的线程池。
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/e5/42/fbe890c0.jpg" width="30px"><span>vector</span> 👍（103） 💬（1）<div>工厂里只有一个工人，他的工作就是同步的等待工厂里其他人给他提供东西，然而并没有其他人，他将等到天荒地老，海枯石烂~</div>2019-05-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/25/7f/473d5a77.jpg" width="30px"><span>曾轼麟</span> 👍（65） 💬（2）<div>EagerThreadPool 老师这个线程池可以避免死锁的情况，死锁的时候会自动撑大</div>2019-05-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/6b/55/2b0f219b.jpg" width="30px"><span>Geek_42f729</span> 👍（20） 💬（3）<div>看了一遍评论，有一部分同学回答了课后思考的结论，但是没有描述产生该结论的原因，我来描述一下吧，有不对的地方还请老师、同学们指出；
+
+线程池有很多优点，例如能够避免重复创建、销毁线程，同时能够限制创建线程的上限等等。学习完上一篇文章后你已经知道，用Java的Thread实现Thread-Per-Message模式难以应对高并发场景，原因就在于频繁创建、销毁Java线程的成本有点高，而且无限制地创建线程还可能导致应用OOM。线程池，则恰好能解决这些问题。
+
+那我们还是以echo程序为例，看看如何用线程池来实现。
+
+下面的示例代码是用线程池实现的echo服务端，相比于Thread-Per-Message模式的实现，改动非常少，仅仅是创建了一个最多线程数为500的线程池es，然后通过es.execute()方法将请求处理的任务提交给线程池处理。
+
+```
+ExecutorService es = Executors
+  .newFixedThreadPool(500);
+final ServerSocketChannel ssc = 
+  ServerSocketChannel.open().bind(
+    new InetSocketAddress(8080));
+//处理请求    
+try {
+  while (true) {
+    // 接收请求
+    SocketChannel sc = ssc.accept();
+    // 将请求处理任务提交给线程池
+    es.execute(()->{
+      try {
+        // 读Socket
+        ByteBuffer rb = ByteBuffer
+          .allocateDirect(1024);
+        sc.read(rb);
+        //模拟处理请求
+        Thread.sleep(2000);
+        // 写Socket
+        ByteBuffer wb = 
+          (ByteBuffer)rb.flip();
+        sc.write(wb);
+        // 关闭Socket
+        sc.close();
+      }catch(Exception e){
+        throw new UncheckedIOException(e);
+      }
+    });
+  }
+} finally {
+  ssc.close();
+  es.shutdown();
+}   
+```
+
+## 正确地创建线程池
+
+Java的线程池既能够避免无限制地**创建线程**导致OOM，也能避免无限制地**接收任务**导致OOM。只不过后者经常容易被我们忽略，例如在上面的实现中，就被我们忽略了。所以强烈建议你**用创建有界的队列来接收任务**。
+
+当请求量大于有界队列的容量时，就需要合理地拒绝请求。如何合理地拒绝呢？这需要你结合具体的业务场景来制定，即便线程池默认的拒绝策略能够满足你的需求，也同样建议你**在创建线程池时，清晰地指明拒绝策略**。
+
+同时，为了便于调试和诊断问题，我也强烈建议你**在实际工作中给线程赋予一个业务相关的名字**。
+
+综合以上这三点建议，echo程序中创建线程可以使用下面的示例代码。
+
+```
+ExecutorService es = new ThreadPoolExecutor(
+  50, 500,
+  60L, TimeUnit.SECONDS,
+  //注意要创建有界队列
+  new LinkedBlockingQueue<Runnable>(2000),
+  //建议根据业务需求实现ThreadFactory
+  r->{
+    return new Thread(r, "echo-"+ r.hashCode());
+  },
+  //建议根据业务需求实现RejectedExecutionHandler
+  new ThreadPoolExecutor.CallerRunsPolicy());
+```
+
+## 避免线程死锁
+
+使用线程池过程中，还要注意一种**线程死锁**的场景。如果提交到相同线程池的任务不是相互独立的，而是有依赖关系的，那么就有可能导致线程死锁。实际工作中，我就亲历过这种线程死锁的场景。具体现象是**应用每运行一段时间偶尔就会处于无响应的状态，监控数据看上去一切都正常，但是实际上已经不能正常工作了**。
+
+这个出问题的应用，相关的逻辑精简之后，如下图所示，该应用将一个大型的计算任务分成两个阶段，第一个阶段的任务会等待第二阶段的子任务完成。在这个应用里，每一个阶段都使用了线程池，而且两个阶段使用的还是同一个线程池。
+
+![](https://static001.geekbang.org/resource/image/f8/b8/f807b0935133b315870d2d7db5477db8.png?wh=1142%2A496)
+
+应用业务逻辑示意图
+
+我们可以用下面的示例代码来模拟该应用，如果你执行下面的这段代码，会发现它永远执行不到最后一行。执行过程中没有任何异常，但是应用已经停止响应了。
+
+```
+//L1、L2阶段共用的线程池
+ExecutorService es = Executors.
+  newFixedThreadPool(2);
+//L1阶段的闭锁    
+CountDownLatch l1=new CountDownLatch(2);
+for (int i=0; i<2; i++){
+  System.out.println("L1");
+  //执行L1阶段任务
+  es.execute(()->{
+    //L2阶段的闭锁 
+    CountDownLatch l2=new CountDownLatch(2);
+    //执行L2阶段子任务
+    for (int j=0; j<2; j++){
+      es.execute(()->{
+        System.out.println("L2");
+        l2.countDown();
+      });
+    }
+    //等待L2阶段任务执行完
+    l2.await();
+    l1.countDown();
+  });
+}
+//等着L1阶段任务执行完
+l1.await();
+System.out.println("end");
+```
+
+当应用出现类似问题时，首选的诊断方法是查看线程栈。下图是上面示例代码停止响应后的线程栈，你会发现线程池中的两个线程全部都阻塞在 `l2.await();` 这行代码上了，也就是说，线程池里所有的线程都在等待L2阶段的任务执行完，那L2阶段的子任务什么时候能够执行完呢？永远都没那一天了，为什么呢？因为线程池里的线程都阻塞了，没有空闲的线程执行L2阶段的任务了。
+
+![](https://static001.geekbang.org/resource/image/43/83/43c663eedd5b0b75b6c3022e26eb1583.png?wh=792%2A612)
+
+原因找到了，那如何解决就简单了，最简单粗暴的办法就是将线程池的最大线程数调大，如果能够确定任务的数量不是非常多的话，这个办法也是可行的，否则这个办法就行不通了。其实**这种问题通用的解决方案是为不同的任务创建不同的线程池**。对于上面的这个应用，L1阶段的任务和L2阶段的任务如果各自都有自己的线程池，就不会出现这种问题了。
+
+最后再次强调一下：**提交到相同线程池中的任务一定是相互独立的，否则就一定要慎重**。
+
+## 总结
+
+我们曾经说过，解决并发编程里的分工问题，最好的办法是和现实世界做对比。对比现实世界构建编程领域的模型，能够让模型更容易理解。上一篇我们介绍的Thread-Per-Message模式，类似于现实世界里的委托他人办理，而今天介绍的Worker Thread模式则类似于车间里工人的工作模式。如果你在设计阶段，发现对业务模型建模之后，模型非常类似于车间的工作模式，那基本上就能确定可以在实现阶段采用Worker Thread模式来实现。
+
+Worker Thread模式和Thread-Per-Message模式的区别有哪些呢？从现实世界的角度看，你委托代办人做事，往往是和代办人直接沟通的；对应到编程领域，其实现也是主线程直接创建了一个子线程，主子线程之间是可以直接通信的。而车间工人的工作方式则是完全围绕任务展开的，一个具体的任务被哪个工人执行，预先是无法知道的；对应到编程领域，则是主线程提交任务到线程池，但主线程并不关心任务被哪个线程执行。
+
+Worker Thread模式能避免线程频繁创建、销毁的问题，而且能够限制线程的最大数量。Java语言里可以直接使用线程池来实现Worker Thread模式，线程池是一个非常基础和优秀的工具类，甚至有些大厂的编码规范都不允许用new Thread()来创建线程的，必须使用线程池。
+
+不过使用线程池还是需要格外谨慎的，除了今天重点讲到的如何正确创建线程池、如何避免线程死锁问题，还需要注意前面我们曾经提到的ThreadLocal内存泄露问题。同时对于提交到线程池的任务，还要做好异常处理，避免异常的任务从眼前溜走，从业务的角度看，有时没有发现异常的任务后果往往都很严重。
+
+## 课后思考
+
+小灰同学写了如下的代码，本义是异步地打印字符串“QQ”，请问他的实现是否有问题呢？
+
+```
+ExecutorService pool = Executors
+  .newSingleThreadExecutor();
+pool.submit(() -> {
+  try {
+    String qq=pool.submit(()->"QQ").get();
+    System.out.println(qq);
+  } catch (Exception e) {
+  }
+});
+```
+
+欢迎在留言区与我分享你的想法，也欢迎你在留言区记录你的思考过程。感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>vector</span> 👍（103） 💬（1）<div>工厂里只有一个工人，他的工作就是同步的等待工厂里其他人给他提供东西，然而并没有其他人，他将等到天荒地老，海枯石烂~</div>2019-05-16</li><br/><li><span>曾轼麟</span> 👍（65） 💬（2）<div>EagerThreadPool 老师这个线程池可以避免死锁的情况，死锁的时候会自动撑大</div>2019-05-23</li><br/><li><span>Geek_42f729</span> 👍（20） 💬（3）<div>看了一遍评论，有一部分同学回答了课后思考的结论，但是没有描述产生该结论的原因，我来描述一下吧，有不对的地方还请老师、同学们指出；
 
 结论是：小灰写的代码会被一直阻塞；
 
@@ -26,12 +170,12 @@ Worker Thread模式可以类比现实世界里车间的工作模式：车间里�
 
 4. 在第二次submit时使用了.get()方法，这里会一直等到线程返回执行结果；
 
-5. 由于两次submit是嵌套执行的，并且此时线程池中也没有空闲线程，所以第二次submit的任务永远不会被执行，.get()方法会就被永远阻塞，从而导致第一次submit的线程也被永远阻塞。</div>2022-03-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKlwpFM3tkeG15YqyJTYWkfqkdmro9POq6SicYm57TaEFDOUZCXjoe0Z0Iz6UibGQqic3icJRsHdFzibtw/132" width="30px"><span>zero</span> 👍（15） 💬（1）<div>感觉这程序会调用栈内存溢出，这段代码相当于无限的递归调用啊。不知道理解的对不对，请老师指点。</div>2019-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a9/36/972f7abf.jpg" width="30px"><span>木刻</span> 👍（9） 💬（1）<div>希望老师能开一栏专门讲一讲Linux下多线程并发情况下程序性能的排查和调优。谢谢老师</div>2019-05-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/fc/90/c9df0459.jpg" width="30px"><span>ack</span> 👍（6） 💬（1）<div>老师，请教个问题，线程死锁那个代码，是活锁吗，思考题我也认为是活锁</div>2019-05-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/61/c1/9ad88d67.jpg" width="30px"><span>Mr_杨</span> 👍（2） 💬（1）<div>老师请教个问题，如果不同业务用不同线程池，保证不了线程数量，会带来并发线程过大，如何控制频繁上下文切换的问题</div>2019-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/fe/b4/6902ac00.jpg" width="30px"><span>王成</span> 👍（1） 💬（1）<div>最近工作中遇到一个关于线程池的问题，莫名其妙的线程就不在执行
+5. 由于两次submit是嵌套执行的，并且此时线程池中也没有空闲线程，所以第二次submit的任务永远不会被执行，.get()方法会就被永远阻塞，从而导致第一次submit的线程也被永远阻塞。</div>2022-03-18</li><br/><li><span>zero</span> 👍（15） 💬（1）<div>感觉这程序会调用栈内存溢出，这段代码相当于无限的递归调用啊。不知道理解的对不对，请老师指点。</div>2019-05-18</li><br/><li><span>木刻</span> 👍（9） 💬（1）<div>希望老师能开一栏专门讲一讲Linux下多线程并发情况下程序性能的排查和调优。谢谢老师</div>2019-05-17</li><br/><li><span>ack</span> 👍（6） 💬（1）<div>老师，请教个问题，线程死锁那个代码，是活锁吗，思考题我也认为是活锁</div>2019-05-16</li><br/><li><span>Mr_杨</span> 👍（2） 💬（1）<div>老师请教个问题，如果不同业务用不同线程池，保证不了线程数量，会带来并发线程过大，如何控制频繁上下文切换的问题</div>2019-11-07</li><br/><li><span>王成</span> 👍（1） 💬（1）<div>最近工作中遇到一个关于线程池的问题，莫名其妙的线程就不在执行
 问题的原因是
 每个线程都会去请求一次http，但是时间长了会出现阻塞现象（http工具类写的有点问题）
-最终解决方案，除了优化工具类，还给每一个线程设置了超时时间</div>2021-07-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0a/a4/828a431f.jpg" width="30px"><span>张申傲</span> 👍（1） 💬（1）<div>越来越发现，软件领域中的很多问题，都可以向现实世界寻求答案。</div>2021-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/5b/83a35681.jpg" width="30px"><span>Monday</span> 👍（0） 💬（3）<div>本篇就是一个主题，java创建线程池，并特别注意
+最终解决方案，除了优化工具类，还给每一个线程设置了超时时间</div>2021-07-07</li><br/><li><span>张申傲</span> 👍（1） 💬（1）<div>越来越发现，软件领域中的很多问题，都可以向现实世界寻求答案。</div>2021-03-22</li><br/><li><span>Monday</span> 👍（0） 💬（3）<div>本篇就是一个主题，java创建线程池，并特别注意
 1、生产中拒绝使用Executors提供的初始化线程池的方法（因为使用无解队列）
-2、生产环境应根据业务自定义拒绝策略</div>2020-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fe/58/2cddaca4.jpg" width="30px"><span>FH</span> 👍（0） 💬（1）<div>老师有个问题请教一下，线程池不应该是项目启动时加载或者懒加载模式吗，但是看示例代码都是调用业务代码时才去创建ExecutorService，这样合理吗？</div>2020-07-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7b/57/a9b04544.jpg" width="30px"><span>QQ怪</span> 👍（0） 💬（1）<div>老师，有个疑问，想问下线程池该什么时候销毁?</div>2019-05-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/4e/3a/86196508.jpg" width="30px"><span>linqw</span> 👍（23） 💬（2）<div>newSingleThreadExecutor线程池只有单个线程，先将外部线程提交给线程池，外部线程等待内部线程执行完成，但由于线程池只有单线程，导致内部线程一直没有执行的机会，相当于内部线程需要线程池的资源，外部线程需要内部线程的结果，导致死锁。</div>2019-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/b5/d4/e58e39f0.jpg" width="30px"><span>Geek_0quh3e</span> 👍（6） 💬（1）<div>原始的workerThread模式包含三种角色：工人、传送带、产品，
+2、生产环境应根据业务自定义拒绝策略</div>2020-12-20</li><br/><li><span>FH</span> 👍（0） 💬（1）<div>老师有个问题请教一下，线程池不应该是项目启动时加载或者懒加载模式吗，但是看示例代码都是调用业务代码时才去创建ExecutorService，这样合理吗？</div>2020-07-15</li><br/><li><span>QQ怪</span> 👍（0） 💬（1）<div>老师，有个疑问，想问下线程池该什么时候销毁?</div>2019-05-16</li><br/><li><span>linqw</span> 👍（23） 💬（2）<div>newSingleThreadExecutor线程池只有单个线程，先将外部线程提交给线程池，外部线程等待内部线程执行完成，但由于线程池只有单线程，导致内部线程一直没有执行的机会，相当于内部线程需要线程池的资源，外部线程需要内部线程的结果，导致死锁。</div>2019-05-26</li><br/><li><span>Geek_0quh3e</span> 👍（6） 💬（1）<div>原始的workerThread模式包含三种角色：工人、传送带、产品，
 传送带中维护一个productionsQueue以及最大的产品数量（为了防止产品无限积压）,
 在传送带初始化时，创建了若干个worker（线程），worker不断从传送带取产品进行加工，
 当传送带中无产品时，worker线程被挂起等待唤醒，当有新的产品加入到传送带中时，挂起的worker会被唤醒，取产品加工。
@@ -40,6 +184,5 @@ Worker Thread模式可以类比现实世界里车间的工作模式：车间里�
 线程池只是workerThread的一种实现，那么线程池中创建的Thread就是工人，线程池本身就是传送带，产品就是提交到线程池中的Runnable，
 而在线程池中的阻塞队列就相当于productionsQueue，请问老师，我这样理解是否正确？
 
- </div>2019-05-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/6f/63/abb7bfe3.jpg" width="30px"><span>扬～</span> 👍（2） 💬（0）<div>可以出个线程池异常处理的方案吗</div>2019-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/62/d5/1f5c5ab6.jpg" width="30px"><span>大大大熊myeh</span> 👍（1） 💬（0）<div>首先它是一个单线程的线程池，第一次submit的任务是获取“给pool线程池设置的第二个submit任务的返回值”，然后输出。然而因为是单线程池，永远也等不到第二个线程任务返回QQ。第一个线程任务依赖于第二个任务，导致死锁。呼应本章主题：线程池分工。</div>2019-12-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/b5/d4/e58e39f0.jpg" width="30px"><span>Geek_0quh3e</span> 👍（1） 💬（0）<div>有问题，singlepool中只有一个线程池，future.get方法阻塞当前线程，导致打印qq的线程没有机会执行，会根据丢弃策略进行不同的操作。</div>2019-05-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/ff/0a/12faa44e.jpg" width="30px"><span>晓杰</span> 👍（1） 💬（0）<div>线程池里面的最大线程数只有一个，无法做到异步</div>2019-05-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/25/31/e9/d0e75bf4.jpg" width="30px"><span>霰雪纷飞</span> 👍（0） 💬（0）<div>这个countdown同一个线程池死锁我就遇到了！！然后分析好久才得出老师的结论。天可怜见，要是早点学这个，我就不会编写那样代码了，后面那个代码改成了单独写的forkjoin，进行join操作。但forkjoin本身不推荐支持IO密集型，需要用manager blocker。</div>2023-03-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/74/aa/178a6797.jpg" width="30px"><span>阿昕</span> 👍（0） 💬（0）<div>思考题：现在线程提交嵌套问题</div>2023-02-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/5e/81/82709d6e.jpg" width="30px"><span>码小呆</span> 👍（0） 💬（0）<div>这段代码,感觉是对应了书中的 : 如果提交到相同线程池的任务不是相互独立的，而是有依赖关系的，那么就有可能导致线程死锁 这一段话.</div>2022-07-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4a/6f/e36b3908.jpg" width="30px"><span>xzy</span> 👍（0） 💬（0）<div>这跟上面讲的死锁例子一样呀</div>2021-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/aa/b6/46a5bbf3.jpg" width="30px"><span>俺能学个啥</span> 👍（0） 💬（0）<div>单线程池提交任务里面依然提交任务，这会导致里面的任务会放进阻塞队列，而只有一个线程会导致无法返回结果，外面的也会阻塞，里面的也会阻塞，就卡在那里。。</div>2021-03-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/e1/9d/3ec0adec.jpg" width="30px"><span>喃寻</span> 👍（0） 💬（0）<div>这里会死锁，原因是submit方法是需要等待返回值的，而这里是单线程，所以里面的submit没有可以执行的线程，导致一直等待</div>2021-01-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a7/29/977c3280.jpg" width="30px"><span>Axe</span> 👍（0） 💬（0）<div>Executors .newSingleThreadExecutor() 创建的线程池只有一个线程，在实现上只有一个线程处理，跟异步的概念有差别，更恐怖是在线程池里有重复使用线程池执行任务，任务之间出现依赖，这样任务永远不会打印了。</div>2020-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0f/9f/f4b06bd5.jpg" width="30px"><span>见南山</span> 👍（0） 💬（0）<div>单线程池线程池直接阻塞在get处，而再等待的任务永远在阻塞队列中放着。一个等结果，一个等线程。凉凉～</div>2020-04-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/24/5d/65e61dcb.jpg" width="30px"><span>学无涯</span> 👍（0） 💬（0）<div>老师，java的ThreadPoolExecutor里为什么把runState和WorkerCount两个字段包装到ctl一个变量里，分开两个它不香吗，还省得每次位运算才能获取到具体的runState和WorkerCount了</div>2020-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/b0/65/90387745.jpg" width="30px"><span>Mr.wang</span> 👍（0） 💬（0）<div>创建一个单线程线程池，再运行任务的时候，主任务先获取线程，进入到任务里面后，也使用线程中的线程，但这里是单线程线程池，子任务获取不到线程，解决方案是加大线程池的线程数量。</div>2020-03-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/75/a8/dfe4cade.jpg" width="30px"><span>电光火石</span> 👍（0） 💬（0）<div>有个问题是关于forkjoinpool的死锁问题，假设我现在创建了4个线程的forkjoinpool，当我做任务拆分的，可能需要拆分8次，我理解A拆成2个子任务的时候，A也是一直在等待的，那这样会不会造成没有线程可用而形成死锁？还是说forkjoinpool 有很好的机制，A线程等待的时候，可以把线程空出来进行调度？谢谢了！</div>2020-02-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e8/fd/035f4c94.jpg" width="30px"><span>欢乐小熊</span> 👍（0） 💬（0）<div>这个 WorkerThread 任务分配模式与生产者消费者很像啊
-</div>2019-09-30</li><br/>
+ </div>2019-05-17</li><br/><li><span>扬～</span> 👍（2） 💬（0）<div>可以出个线程池异常处理的方案吗</div>2019-05-18</li><br/>
 </ul>

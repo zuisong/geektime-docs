@@ -9,8 +9,55 @@ Java作为应用最广的语言，自然吸引了不少的攻击，而身为Java
 别担心，我就是来解答你对Java的种种疑虑的。“知其然”也要“知其所以然”，学习Java虚拟机的本质，更多是了解Java程序是如何被执行且优化的。这样一来，你才可以从内部入手，达到高效编程的目的。与此同时，你也可以为学习更深层级、更为核心的Java技术打好基础。
 
 我相信在不少程序员的观念里，Java虚拟机是透明的。在大家看来，我们仅需知道Java核心类库，以及第三方类库里API的用法，便可以专注于实现具体业务，并且依赖Java虚拟机自动执行乃至优化我们的应用程序。那么，我们还需要了解Java虚拟机吗？
-<div><strong>精选留言（30）</strong></div><ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（237） 💬（1）<div>JVM
+
+我认为是非常有必要的。如果我们把核心类库的API比做数学公式的话，那么Java虚拟机的知识就好比公式的推导过程。掌握数学公式固然可以应付考试，但是了解背后的推导过程更加有助于记忆和理解。并且，在遇到那些没法套公式的情况下，我们也能知道如何解决。
+
+具体来说，了解Java虚拟机有如下（但不限于）好处。
+
+首先，Java虚拟机提供了许多配置参数，用于满足不同应用场景下，对程序性能的需求。学习Java虚拟机，你可以针对自己的应用，最优化匹配运行参数。（你可以用下面这个例子看一下自己虚拟机的参数列表。）
+
+```
+举例来说，macOS上的Java 10共有近千个配置参数：
+
+$ java -XX:+PrintFlagsFinal -XX:+UnlockDiagnosticVMOptions -version | wc -l
+java version "10" 2018-03-20
+Java(TM) SE Runtime Environment 18.3 (build 10+46)
+Java HotSpot(TM) 64-Bit Server VM 18.3 (build 10+46, mixed mode)
+     812
+```
+
+其次，Java虚拟机本身是一种工程产品，在实现过程中自然存在不少局限性。学习Java虚拟机，可以更好地规避它在使用中的Bug，也可以更快地识别出Java虚拟机中的错误，
+
+再次，Java虚拟机拥有当前最前沿、最成熟的垃圾回收算法实现，以及即时编译器实现。学习Java虚拟机，我们可以了解背后的设计决策，今后再遇到其他代码托管技术也能触类旁通。
+
+最后，Java虚拟机发展到了今天，已经脱离Java语言，形成了一套相对独立的、高性能的执行方案。除了Java外，Scala、Clojure、Groovy，以及时下热门的Kotlin，这些语言都可以运行在Java虚拟机之上。学习Java虚拟机，便可以了解这些语言的通用机制，甚至于让这些语言共享生态系统。
+
+说起写作这个专栏的初心，与我个人的经历是分不开的，我现在是甲骨文实验室的高级研究员，工作主要是负责研究如何通过程序分析技术以及动态编译技术让程序语言跑得更快。明面上，我是Graal编译器的核心开发者之一，在为HotSpot虚拟机项目拧螺丝。
+
+这里顺便说明一下，Graal编译器是Java 10正式引入的实验性即时编译器，在国内同行口中被戏称为“甲骨文黑科技”。当然，在我看来，我们的工作同样也是分析应用程序的性能瓶颈，寻找优化空间，只不过我们的优化方式对自动化、通用性有更高的要求。
+
+加入甲骨文之前，我在瑞士卢加诺大学攻读博士学位，研究如何更加精准地监控Java程序，以便做出更具针对性的优化。这些研究工作均已发表在程序语言方向的顶级会议上，并获得了不少同行的认可（OOPSLA 2015最佳论文奖）。
+
+在这7年的学习工作生涯中，我拜读过许多大神关于Java虚拟机的技术博客。在受益匪浅的同时，我发觉不少文章的门槛都比较高，而且过分注重实现细节，这并不是大多数的开发人员可以受益的调优方案。这么一来，许多原本对Java虚拟机感兴趣的同学， 也因为过高的门槛，以及短时间内看不到的收益，而放弃了对Java虚拟机的学习。
+
+在收到极客时间的邀请后，我决定也挑战一下Java虚拟机的科普工作。和其他栏目一样，我会用简单通俗的语言，来介绍Java虚拟机的实现。具体到每篇文章，我将采用一个贯穿全文的案例来阐述知识点，并且给出相应的调优建议。在文章的末尾，我还将附上一个动手实践的环节，帮助你巩固对知识点的理解。
+
+整个专栏将分为四大模块。
+
+1. **基本原理**：剖析Java虚拟机的运行机制，逐一介绍Java虚拟机的设计决策以及工程实现；
+2. **高效实现**：探索Java编译器，以及内嵌于Java虚拟机中的即时编译器，帮助你更好地理解Java语言特性，继而写出简洁高效的代码；
+3. **代码优化**：介绍如何利用工具定位并解决代码中的问题，以及在已有工具不适用的情况下，如何打造专属轮子；
+4. **虚拟机黑科技**：介绍甲骨文实验室近年来的前沿工作之一GraalVM。包括如何在JVM上高效运行其他语言；如何混搭这些语言，实现Polyglot；如何将这些语言事前编译（Ahead-Of-Time，AOT）成机器指令，单独运行甚至嵌入至数据库中运行。
+
+我希望借由这四个模块36个案例，帮助你理解Java虚拟机的运行机制，掌握诊断手法和调优方式。最重要的，是激发你学习Java虚拟机乃至其他底层工作、前沿工作的热情。
+
+## 知识框架图
+
+![](https://static001.geekbang.org/resource/image/41/77/414248014bf825dd610c3095eed75377.jpg?wh=2500%2A3908)
+
+（点击查看高清大图，iOS用户可长按保存）
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>钱</span> 👍（237） 💬（1）<div>JVM
 1:现在我的理解
 1-1:三个英文单词的缩写，中文意思是Java虚拟机，作用是帮助执行Java字节码的，不同的平台有不同的JVM，这样java源代码经过编译为字节码之后就能在各种平台上运行了
 1-2:JVM还有内存管理，垃圾回收等底层功能，这样程序员就不用太操心这些事情了
@@ -25,31 +72,5 @@ Java作为应用最广的语言，自然吸引了不少的攻击，而身为Java
 2-4:JVM执行字节码的时候怎么定位的？他怎么知道该执行那句代码了？它怎么知道那句代码是什么意思？
 2-5:性能优化，我的理解是让干活快的干活，不让干的慢的干，如果做不到，就让干活快的多干，干的慢的少干？JVM的性能优化可能也类似，哪JVM怎么知道谁干的慢谁干的快？JVM在执行Java字节码的时候都是需要做什么事情呢？它怎么安排自己的工作的呢？
 2-6:实际开发工作中怎么监控JVM的工作情况哪？怎么定位那些懒蛋哪？定位到了怎么解决他们哪？
-</div>2018-07-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/34/b6/0feb574b.jpg" width="30px"><span>我的黄金时代</span> 👍（2） 💬（0）<div>下面这个讲课的目录很给力</div>2018-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b5/b0/7f350c5a.jpg" width="30px"><span>Desperado</span> 👍（2） 💬（0）<div>沙发期待中</div>2018-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/05/1c/d4854ba6.jpg" width="30px"><span>木甘</span> 👍（18） 💬（1）<div>是java10吗</div>2018-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ff/f1/8e9d8e97.jpg" width="30px"><span>lynd</span> 👍（7） 💬（1）<div>能够对java虚拟机做分块的详细介绍不，最好能附上简短的代码介绍，谢谢！</div>2018-07-17</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIJApYooQ8EHnStvnpnzUxusDjDib5icWcgHj73mqGicj6JwUbcnsS8HzV03LzoNAicQTtegNSgnUT2Gg/132" width="30px"><span>Geek_5sxyw2</span> 👍（41） 💬（0）<div>JVM很有用，目测会是个不错的专栏，期待！</div>2018-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b1/cc/d7558b97.jpg" width="30px"><span>沙漏人生</span> 👍（10） 💬（0）<div>已购，看看作者大能如何把复杂的东西简单化。</div>2018-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fa/6e/9ea01c1d.jpg" width="30px"><span>zhenTomcat</span> 👍（3） 💬（0）<div>期待</div>2018-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7a/7f/1b389e44.jpg" width="30px"><span>闪亮的老刘</span> 👍（2） 💬（0）<div>希望不虚此行，希望有趣。</div>2018-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/42/c0/980a1cd4.jpg" width="30px"><span>浮生老莫</span> 👍（8） 💬（0）<div>期待老师后续的内容，刚想学JVM，就来了，再打磨打磨自己的技术</div>2018-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/51/b1/7d6879dc.jpg" width="30px"><span>未设置</span> 👍（16） 💬（0）<div>看了知识框架图 可以说十分期待了</div>2018-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/f3/129d6dfe.jpg" width="30px"><span>李二木</span> 👍（2） 💬（0）<div>很期待</div>2018-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9c/f9/2a2be193.jpg" width="30px"><span>GL€</span> 👍（2） 💬（1）<div>能否分享一下如何编译hotspot?</div>2020-01-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7d/92/e5f22d7b.jpg" width="30px"><span>小当家</span> 👍（1） 💬（1）<div>希望老师能多推荐些自己研究方向最有用的书籍，补充原理</div>2018-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ac/a1/43d83698.jpg" width="30px"><span>云学</span> 👍（18） 💬（1）<div>提一个建议:  让读者看懂是第一位的。只要读者会java语法，就应该能让他看懂，谢谢</div>2018-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e9/69/779b48c2.jpg" width="30px"><span>苏忆</span> 👍（12） 💬（0）<div>看了下目录，介绍的比较笼统，希望讲解的时候比较深入并提供相关资料提供学习。谢谢，郑大，一起加油！</div>2018-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/97/25/eaa3132e.jpg" width="30px"><span>小宝儿</span> 👍（10） 💬（0）<div>Android用户也可以长按保存</div>2018-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fe/7b/43d8bbbb.jpg" width="30px"><span>Daph</span> 👍（10） 💬（0）<div>我最嫉妒那些长的比我帅还比我用功的人，期待+1</div>2018-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c9/75/62ce2d69.jpg" width="30px"><span>猿人谷</span> 👍（7） 💬（0）<div>单纯根据目录看，介绍的还是比较泛，希望在文章中对核心点能进行深入的分析，期待精彩干货。</div>2018-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e4/76/a97242c0.jpg" width="30px"><span>黄朋飞</span> 👍（6） 💬（0）<div>已经拜读过jvm方面的书籍，但对于调优方面还是比较欠缺，希望能针对jvm线上问题能够学习到有效的解决方案，期待</div>2018-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/11/8d/769c8d2a.jpg" width="30px"><span>Daniel</span> 👍（5） 💬（0）<div>果断学习了，站在巨人的肩膀上看世界，然后许下要让世界更加精彩的诺言</div>2018-07-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/00/07/8e3ceda8.jpg" width="30px"><span>吴双</span> 👍（4） 💬（0）<div>已购买，期待后续文章啊</div>2018-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/63/14/06eff9a4.jpg" width="30px"><span>Jerry银银</span> 👍（3） 💬（0）<div>这几天，我一直在思考，老师的课程为什么这么编排？如果想深入并且系统地研究Java虚拟机，有没有一个很好的学习主线？
-
-对于这个问题，我凭着我的认知，尝试来总结下：
-
-	1. 首先，Java程序需要被编译成字节码；
-	Java程序如何存储的？
-	Java编译器相关知识
-	字节码相关知识
-	编译Java程序，编译器又做了哪些优化？
-	AOT又是怎样的技术？
-
-	2. 然后，字节码被加载之后才能被执行
-	虚拟机是如何加载字节码的？
-	字节码被加载到虚拟机哪个内存区域？
-	虚拟机的内存布局又是怎么样的？
-	从字节码被加载到执行，这中间虚拟机会做哪些事情？（加载、链接、初始化）
-	
-	3. 字节码可以被解释执行，还能被即时编译（JIT）成机器码后，然后被执行。
-	解释执行的过程是怎么样的？
-	JIT具体的原理是？
-	虚拟机是如何检测热点代码的？这中间做了哪些优化？
-	字节码被执行起来后，对一些无用对象如何处理？——垃圾回收算法
-	
-</div>2019-12-23</li><br/><li><img src="" width="30px"><span>Knuthie</span> 👍（3） 💬（0）<div>与openjdk  open jvm的对比可以讲讲么？</div>2018-07-19</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/kFu49bDxfrBicVUkSWViaYS74oy6a45ys6oMibZicR978ariaRbu7ib0WqrkpkW34vXSS2JAshotL1L9icuqbxsFACaVQ/132" width="30px"><span>小猫也是老虎</span> 👍（3） 💬（0）<div>希望大佬能在以后更新快点，毕竟秋招要来了😁</div>2018-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/48/1d/11d34d57.jpg" width="30px"><span>杨昌明</span> 👍（3） 💬（0）<div>居然亲自朗读</div>2018-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/68/1a/dac67baa.jpg" width="30px"><span>Adele</span> 👍（3） 💬（1）<div>我业务+测试+部署，非开发，希望能和开发人员对上话，更好地优化我们的系统😃。</div>2018-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fe/85/9ab352a7.jpg" width="30px"><span>iMARS</span> 👍（3） 💬（0）<div>从.net clr平台转到JAVA平台，深知了解语言运行时处理的重要性，无论是对代码撰写还是效能分析都非常有帮助。</div>2018-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/19/78/54005251.jpg" width="30px"><span>鸡肉饭饭</span> 👍（3） 💬（0）<div>希望前期能尽快更新…期待不已</div>2018-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/12/93/3470fc43.jpg" width="30px"><span>Mr.钧👻</span> 👍（2） 💬（0）<div>我订阅这个专栏，是想学习到以下内容：
-1.了解什么是JVM，组成部分
-2.了解JVM为什么需要调优
-3.了解JVM怎么调优</div>2018-10-03</li><br/>
+</div>2018-07-21</li><br/><li><span>我的黄金时代</span> 👍（2） 💬（0）<div>下面这个讲课的目录很给力</div>2018-07-18</li><br/><li><span>Desperado</span> 👍（2） 💬（0）<div>沙发期待中</div>2018-07-18</li><br/><li><span>木甘</span> 👍（18） 💬（1）<div>是java10吗</div>2018-07-17</li><br/><li><span>lynd</span> 👍（7） 💬（1）<div>能够对java虚拟机做分块的详细介绍不，最好能附上简短的代码介绍，谢谢！</div>2018-07-17</li><br/><li><span>Geek_5sxyw2</span> 👍（41） 💬（0）<div>JVM很有用，目测会是个不错的专栏，期待！</div>2018-07-16</li><br/><li><span>沙漏人生</span> 👍（10） 💬（0）<div>已购，看看作者大能如何把复杂的东西简单化。</div>2018-07-16</li><br/><li><span>zhenTomcat</span> 👍（3） 💬（0）<div>期待</div>2018-07-16</li><br/><li><span>闪亮的老刘</span> 👍（2） 💬（0）<div>希望不虚此行，希望有趣。</div>2018-07-16</li><br/><li><span>浮生老莫</span> 👍（8） 💬（0）<div>期待老师后续的内容，刚想学JVM，就来了，再打磨打磨自己的技术</div>2018-07-16</li><br/><li><span>未设置</span> 👍（16） 💬（0）<div>看了知识框架图 可以说十分期待了</div>2018-07-16</li><br/><li><span>李二木</span> 👍（2） 💬（0）<div>很期待</div>2018-07-16</li><br/><li><span>GL€</span> 👍（2） 💬（1）<div>能否分享一下如何编译hotspot?</div>2020-01-17</li><br/><li><span>小当家</span> 👍（1） 💬（1）<div>希望老师能多推荐些自己研究方向最有用的书籍，补充原理</div>2018-08-19</li><br/><li><span>云学</span> 👍（18） 💬（1）<div>提一个建议:  让读者看懂是第一位的。只要读者会java语法，就应该能让他看懂，谢谢</div>2018-07-17</li><br/>
 </ul>
