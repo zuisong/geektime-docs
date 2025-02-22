@@ -11596,6 +11596,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何实现线程唯一的单例？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何实现集群环境下的单例？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何实现一个多例模式？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -14521,6 +14566,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何实现线程唯一的单例？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何实现集群环境下的单例？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何实现一个多例模式？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -14558,24 +14648,162 @@
 <p>首先，我们重新看一下单例的定义：“一个类只允许创建唯一一个对象（或者实例），那这个类就是一个单例类，这种设计模式就叫作单例设计模式，简称单例模式。”</p>
 <p>定义中提到，“一个类只允许创建唯一一个对象”。那对象的唯一性的作用范围是什么呢？是指线程内只允许创建一个对象，还是指进程内只允许创建一个对象？答案是后者，也就是说，单例模式创建的对象是进程唯一的。这里有点不好理解，我来详细地解释一下。</p>
 <p>我们编写的代码，通过编译、链接，组织在一起，就构成了一个操作系统可以执行的文件，也就是我们平时所说的“可执行文件”（比如Windows下的exe文件）。可执行文件实际上就是代码被翻译成操作系统可理解的一组指令，你完全可以简单地理解为就是代码本身。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>当我们使用命令行或者双击运行这个可执行文件的时候，操作系统会启动一个进程，将这个执行文件从磁盘加载到自己的进程地址空间（可以理解操作系统为进程分配的内存存储区，用来存储代码和数据）。接着，进程就一条一条地执行可执行文件中包含的代码。比如，当进程读到代码中的User user = new User();这条语句的时候，它就在自己的地址空间中创建一个user临时变量和一个User对象。</p>
+<p>进程之间是不共享地址空间的，如果我们在一个进程中创建另外一个进程（比如，代码中有一个fork()语句，进程执行到这条语句的时候会创建一个新的进程），操作系统会给新进程分配新的地址空间，并且将老进程地址空间的所有内容，重新拷贝一份到新进程的地址空间中，这些内容包括代码、数据（比如user临时变量、User对象）。</p>
+<p>所以，单例类在老进程中存在且只能存在一个对象，在新进程中也会存在且只能存在一个对象。而且，这两个对象并不是同一个对象，这也就说，单例类中对象的唯一性的作用范围是进程内的，在进程间是不唯一的。</p>
+<h2 id="_2">如何实现线程唯一的单例？</h2>
+<p>刚刚我们讲了单例类对象是进程唯一的，一个进程只能有一个单例对象。那如何实现一个线程唯一的单例呢？</p>
+<p>我们先来看一下，什么是线程唯一的单例，以及“线程唯一”和“进程唯一”的区别。</p>
+<p>“进程唯一”指的是进程内唯一，进程间不唯一。类比一下，“线程唯一”指的是线程内唯一，线程间可以不唯一。实际上，“进程唯一”还代表了线程内、线程间都唯一，这也是“进程唯一”和“线程唯一”的区别之处。这段话听起来有点像绕口令，我举个例子来解释一下。</p>
+<p>假设IdGenerator是一个线程唯一的单例类。在线程A内，我们可以创建一个单例对象a。因为线程内唯一，在线程A内就不能再创建新的IdGenerator对象了，而线程间可以不唯一，所以，在另外一个线程B内，我们还可以重新创建一个新的单例对象b。</p>
+<p>尽管概念理解起来比较复杂，但线程唯一单例的代码实现很简单，如下所示。在代码中，我们通过一个HashMap来存储对象，其中key是线程ID，value是对象。这样我们就可以做到，不同的线程对应不同的对象，同一个线程只能对应一个对象。实际上，Java语言本身提供了ThreadLocal工具类，可以更加轻松地实现线程唯一单例。不过，ThreadLocal底层实现原理也是基于下面代码中所示的HashMap。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>public class IdGenerator {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  private AtomicLong id = new AtomicLong(0);
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  private static final ConcurrentHashMap&lt;Long, IdGenerator&gt; instances
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>          = new ConcurrentHashMap&lt;&gt;();
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  private IdGenerator() {}
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  public static IdGenerator getInstance() {
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    Long currentThreadId = Thread.currentThread().getId();
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    instances.putIfAbsent(currentThreadId, new IdGenerator());
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    return instances.get(currentThreadId);
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>  }
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>  public long getId() {
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    return id.incrementAndGet();
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>  }
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>}
+</code></pre></div>
+<h2 id="_3">如何实现集群环境下的单例？</h2>
+<p>刚刚我们讲了“进程唯一”的单例和“线程唯一”的单例，现在，我们再来看下，“集群唯一”的单例。</p>
+<p>首先，我们还是先来解释一下，什么是“集群唯一”的单例。</p>
+<p>我们还是将它跟“进程唯一”“线程唯一”做个对比。“进程唯一”指的是进程内唯一、进程间不唯一。“线程唯一”指的是线程内唯一、线程间不唯一。集群相当于多个进程构成的一个集合，“集群唯一”就相当于是进程内唯一、进程间也唯一。也就是说，不同的进程间共享同一个对象，不能创建同一个类的多个对象。</p>
+<p>我们知道，经典的单例模式是进程内唯一的，那如何实现一个进程间也唯一的单例呢？如果严格按照不同的进程间共享同一个对象来实现，那集群唯一的单例实现起来就有点难度了。</p>
+<p>具体来说，我们需要把这个单例对象序列化并存储到外部共享存储区（比如文件）。进程在使用这个单例对象的时候，需要先从外部共享存储区中将它读取到内存，并反序列化成对象，然后再使用，使用完成之后还需要再存储回外部共享存储区。</p>
+<p>为了保证任何时刻，在进程间都只有一份对象存在，一个进程在获取到对象之后，需要对对象加锁，避免其他进程再将其获取。在进程使用完这个对象之后，还需要显式地将对象从内存中删除，并且释放对对象的加锁。</p>
+<p>按照这个思路，我用伪代码实现了一下这个过程，具体如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>public class IdGenerator {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  private AtomicLong id = new AtomicLong(0);
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  private static IdGenerator instance;
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  private static SharedObjectStorage storage = FileSharedObjectStorage(/*入参省略，比如文件地址*/);
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  private static DistributedLock lock = new DistributedLock();
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  private IdGenerator() {}
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>  public synchronized static IdGenerator getInstance() 
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    if (instance == null) {
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>      lock.lock();
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>      instance = storage.load(IdGenerator.class);
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    }
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    return instance;
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>  }
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>  public synchroinzed void freeInstance() {
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    storage.save(this, IdGeneator.class);
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    instance = null; //释放对象
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    lock.unlock();
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>  }
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>  public long getId() { 
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    return id.incrementAndGet();
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>  }
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>}
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>// IdGenerator使用举例
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>IdGenerator idGeneator = IdGenerator.getInstance();
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>long id = idGenerator.getId();
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>idGenerator.freeInstance();
+</code></pre></div>
+<h2 id="_4">如何实现一个多例模式？</h2>
+<p>跟单例模式概念相对应的还有一个多例模式。那如何实现一个多例模式呢？</p>
+<p>“单例”指的是，一个类只能创建一个对象。对应地，“多例”指的就是，一个类可以创建多个对象，但是个数是有限制的，比如只能创建3个对象。如果用代码来简单示例一下的话，就是下面这个样子：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>public class BackendServer {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  private long serverNo;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  private String serverAddress;
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  private static final int SERVER_COUNT = 3;
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  private static final Map&lt;Long, BackendServer&gt; serverInstances = new HashMap&lt;&gt;();
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  static {
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    serverInstances.put(1L, new BackendServer(1L, &quot;192.134.22.138:8080&quot;));
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    serverInstances.put(2L, new BackendServer(2L, &quot;192.134.22.139:8080&quot;));
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    serverInstances.put(3L, new BackendServer(3L, &quot;192.134.22.140:8080&quot;));
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>  }
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>  private BackendServer(long serverNo, String serverAddress) {
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    this.serverNo = serverNo;
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    this.serverAddress = serverAddress;
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>  }
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>  public BackendServer getInstance(long serverNo) {
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    return serverInstances.get(serverNo);
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>  }
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>  public BackendServer getRandomInstance() {
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    Random r = new Random();
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    int no = r.nextInt(SERVER_COUNT)+1;
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>    return serverInstances.get(no);
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>  }
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>}
+</code></pre></div>
+<p>实际上，对于多例模式，还有一种理解方式：同一类型的只能创建一个对象，不同类型的可以创建多个对象。这里的“类型”如何理解呢？</p>
+<p>我们还是通过一个例子来解释一下，具体代码如下所示。在代码中，logger name就是刚刚说的“类型”，同一个logger name获取到的对象实例是相同的，不同的logger name获取到的对象实例是不同的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>public class Logger {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  private static final ConcurrentHashMap&lt;String, Logger&gt; instances
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>          = new ConcurrentHashMap&lt;&gt;();
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  private Logger() {}
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>  public static Logger getInstance(String loggerName) {
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    instances.putIfAbsent(loggerName, new Logger());
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    return instances.get(loggerName);
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>  }
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>  public void log() {
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    //...
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>  }
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>}
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>//l1==l2, l1!=l3
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>Logger l1 = Logger.getInstance(&quot;User.class&quot;);
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>Logger l2 = Logger.getInstance(&quot;User.class&quot;);
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>Logger l3 = Logger.getInstance(&quot;Order.class&quot;);
+</code></pre></div>
+<p>这种多例模式的理解方式有点类似工厂模式。它跟工厂模式的不同之处是，多例模式创建的对象都是同一个类的对象，而工厂模式创建的是不同子类的对象，关于这一点，下一节课中就会讲到。实际上，它还有点类似享元模式，两者的区别等到我们讲到享元模式的时候再来分析。除此之外，实际上，枚举类型也相当于多例模式，一个类型只能对应一个对象，一个类可以创建多个对象。</p>
+<h2 id="_5">重点回顾</h2>
+<p>好了，今天的内容到此就讲完了。我们来一块总结回顾一下，你需要掌握的重点内容。</p>
+<p>今天的内容比较偏理论，在实际的项目开发中，没有太多的应用。讲解的目的，主要还是拓展你的思路，锻炼你的逻辑思维能力，加深你对单例的认识。</p>
+<p><strong>1.如何理解单例模式的唯一性？</strong></p>
+<p>单例类中对象的唯一性的作用范围是“进程唯一”的。“进程唯一”指的是进程内唯一，进程间不唯一；“线程唯一”指的是线程内唯一，线程间可以不唯一。实际上，“进程唯一”就意味着线程内、线程间都唯一，这也是“进程唯一”和“线程唯一”的区别之处。“集群唯一”指的是进程内唯一、进程间也唯一。</p>
+<p><strong>2.如何实现线程唯一的单例？</strong></p>
+<p>我们通过一个HashMap来存储对象，其中key是线程ID，value是对象。这样我们就可以做到，不同的线程对应不同的对象，同一个线程只能对应一个对象。实际上，Java语言本身提供了ThreadLocal并发工具类，可以更加轻松地实现线程唯一单例。</p>
+<p><strong>3.如何实现集群环境下的单例？</strong></p>
+<p>我们需要把这个单例对象序列化并存储到外部共享存储区（比如文件）。进程在使用这个单例对象的时候，需要先从外部共享存储区中将它读取到内存，并反序列化成对象，然后再使用，使用完成之后还需要再存储回外部共享存储区。为了保证任何时刻在进程间都只有一份对象存在，一个进程在获取到对象之后，需要对对象加锁，避免其他进程再将其获取。在进程使用完这个对象之后，需要显式地将对象从内存中删除，并且释放对对象的加锁。</p>
+<p><strong>4.如何实现一个多例模式？</strong></p>
+<p>“单例”指的是一个类只能创建一个对象。对应地，“多例”指的就是一个类可以创建多个对象，但是个数是有限制的，比如只能创建3个对象。多例的实现也比较简单，通过一个Map来存储对象类型和对象之间的对应关系，来控制对象的个数。</p>
+<h2 id="_6">课堂讨论</h2>
+<p>在文章中，我们讲到单例唯一性的作用范围是进程，实际上，对于Java语言来说，单例类对象的唯一性的作用范围并非进程，而是类加载器（Class Loader），你能自己研究并解释一下为什么吗？</p>
+<p>欢迎在留言区写下你的答案，和同学一起交流和分享。如果有收获，也欢迎你把这篇文章分享给你的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/33/e0/387ab6fd.jpg" width="30px"><span>郭强</span> 👍（7） 💬（3）<div>老师 能讲一讲 线程唯一和集群环境下唯一的单例的实际应用场景吗。光知道如何实现，不知道所谓何用，就变成了屠龙术了。</div>2020-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/60/a1/45ffdca3.jpg" width="30px"><span>静心</span> 👍（1） 💬（2）<div>序列化方式实现单例似乎有问题，因为序列化的一般只能序列化对象的属性，对于方法的实例化，除非使用字节码。另外，如果一个类如果没有属性只有方法呢？</div>2020-08-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/83/5f/50f2fdf2.jpg" width="30px"><span>『至爱闫』</span> 👍（1） 💬（4）<div>多个进程为啥能用synchronized加锁。？不要误导人吖</div>2020-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/ef/5b/ff28088f.jpg" width="30px"><span>郑大钱</span> 👍（0） 💬（1）<div>基于线程的单例暂时先不考虑了，多线程编程对我来说酷似洪水猛兽，不好掌控，更别提基于线程的单例了。
+<li><span>郭强</span> 👍（7） 💬（3）<div>老师 能讲一讲 线程唯一和集群环境下唯一的单例的实际应用场景吗。光知道如何实现，不知道所谓何用，就变成了屠龙术了。</div>2020-05-15</li><br/><li><span>静心</span> 👍（1） 💬（2）<div>序列化方式实现单例似乎有问题，因为序列化的一般只能序列化对象的属性，对于方法的实例化，除非使用字节码。另外，如果一个类如果没有属性只有方法呢？</div>2020-08-05</li><br/><li><span>『至爱闫』</span> 👍（1） 💬（4）<div>多个进程为啥能用synchronized加锁。？不要误导人吖</div>2020-06-29</li><br/><li><span>郑大钱</span> 👍（0） 💬（1）<div>基于线程的单例暂时先不考虑了，多线程编程对我来说酷似洪水猛兽，不好掌控，更别提基于线程的单例了。
 进程间的单例直接被iOS的沙盒机制封杀，不要想了。
-app开发用得最多的就是经典的单例，多例可能会用得到，mark。</div>2020-11-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/55/28/66bf4bc4.jpg" width="30px"><span>荷兰小猪8813</span> 👍（0） 💬（2）<div>为了保证任何时刻，在进程间都只有一份对象存在，一个进程在获取到对象之后，需要对对象加锁，避免其他进程再将其获取。在进程使用完这个对象之后，还需要显式地将对象从内存中删除，并且释放对对象的加锁。
+app开发用得最多的就是经典的单例，多例可能会用得到，mark。</div>2020-11-16</li><br/><li><span>荷兰小猪8813</span> 👍（0） 💬（2）<div>为了保证任何时刻，在进程间都只有一份对象存在，一个进程在获取到对象之后，需要对对象加锁，避免其他进程再将其获取。在进程使用完这个对象之后，还需要显式地将对象从内存中删除，并且释放对对象的加锁。
 
 
-这个加锁是怎么实现的？？</div>2020-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/47/31/f35367c8.jpg" width="30px"><span>小晏子</span> 👍（298） 💬（21）<div>要回答这个课后问题，要理解classloader和JDK8中使用的双亲委派模型。
+这个加锁是怎么实现的？？</div>2020-07-29</li><br/><li><span>小晏子</span> 👍（298） 💬（21）<div>要回答这个课后问题，要理解classloader和JDK8中使用的双亲委派模型。
 classloader有两个作用：1. 用于将class文件加载到JVM中；2. 确认每个类应该由哪个类加载器加载，并且也用于判断JVM运行时的两个类是否相等。
 双亲委派模型的原理是当一个类加载器接收到类加载请求时，首先会请求其父类加载器加载，每一层都是如此，当父类加载器无法找到这个类时（根据类的全限定名称），子类加载器才会尝试自己去加载。
 所以双亲委派模型解决了类重复加载的问题， 比如可以试想没有双亲委派模型时，如果用户自己写了一个全限定名为java.lang.Object的类，并用自己的类加载器去加载，同时BootstrapClassLoader加载了rt.jar包中的JDK本身的java.lang.Object，这样内存中就存在两份Object类了，此时就会出现很多问题，例如根据全限定名无法定位到具体的类。有了双亲委派模型后，所有的类加载操作都会优先委派给父类加载器，这样一来，即使用户自定义了一个java.lang.Object，但由于BootstrapClassLoader已经检测到自己加载了这个类，用户自定义的类加载器就不会再重复加载了。所以，双亲委派模型能够保证类在内存中的唯一性。
-联系到课后的问题，所以用户定义了单例类，这样JDK使用双亲委派模型加载一次之后就不会重复加载了，保证了单例类的进程内的唯一性，也可以认为是classloader内的唯一性。当然，如果没有双亲委派模型，那么多个classloader就会有多个实例，无法保证唯一性。 </div>2020-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/62/bb/323a3133.jpg" width="30px"><span>下雨天</span> 👍（58） 💬（8）<div>课堂讨论
+联系到课后的问题，所以用户定义了单例类，这样JDK使用双亲委派模型加载一次之后就不会重复加载了，保证了单例类的进程内的唯一性，也可以认为是classloader内的唯一性。当然，如果没有双亲委派模型，那么多个classloader就会有多个实例，无法保证唯一性。 </div>2020-02-10</li><br/><li><span>下雨天</span> 👍（58） 💬（8）<div>课堂讨论
      Java中，两个类来源于同一个Class文件，被同一个虚拟机加载，只要加载它们的类加载器不同，那这两个类就必定不相等。
-     单例类对象的唯一性前提也必须保证该类被同一个类加载器加载！</div>2020-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/26/38/ef063dc2.jpg" width="30px"><span>Darren</span> 👍（29） 💬（7）<div>JDK8中是双亲委派制，其实是单亲，parent只有一个，只不过国内翻译的时候翻译成双亲而已，应用类加载器（application class loader）的parent是扩展类加载器（extension class loader），扩展类加载器的parent是启动类加载器（bootstrap class loader）。启动类加载器是由 C++ 实现的，没有对应的 Java 对象，因此在 Java 中只能用 null 来指代。而且这里的类加载器并不是继承的关系，而是组合的的关系。
+     单例类对象的唯一性前提也必须保证该类被同一个类加载器加载！</div>2020-02-10</li><br/><li><span>Darren</span> 👍（29） 💬（7）<div>JDK8中是双亲委派制，其实是单亲，parent只有一个，只不过国内翻译的时候翻译成双亲而已，应用类加载器（application class loader）的parent是扩展类加载器（extension class loader），扩展类加载器的parent是启动类加载器（bootstrap class loader）。启动类加载器是由 C++ 实现的，没有对应的 Java 对象，因此在 Java 中只能用 null 来指代。而且这里的类加载器并不是继承的关系，而是组合的的关系。
 
 JDK 9 为了模块化的支持，对双亲委派模式做了一些改动：扩展类加载器被平台类加载器（Platform ClassLoader）取代。平台类加载器和应用程序类加载器都不再继承自 java.net.URLClassLoader，而是继承于 jdk.internal.loader.BuiltinClassLoader。
 
-https:&#47;&#47;docs.oracle.com&#47;javase&#47;9&#47;migrate&#47;toc.htm#JSMIG-GUID-A868D0B9-026F-4D46-B979-901834343F9E</div>2020-04-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/f7/eb/e7127bb8.jpg" width="30px"><span>，</span> 👍（19） 💬（3）<div>深入理解JAVA虚拟机第三版 总结:
+https:&#47;&#47;docs.oracle.com&#47;javase&#47;9&#47;migrate&#47;toc.htm#JSMIG-GUID-A868D0B9-026F-4D46-B979-901834343F9E</div>2020-04-10</li><br/><li><span>，</span> 👍（19） 💬（3）<div>深入理解JAVA虚拟机第三版 总结:
 大前提:每一个类加载器,都有一个独立的类名称空间(通俗的解释:两个类只有在同一个类加载器加载的前提下,才能比较它们是否&quot;相等&quot;)
 
 启动类加载器:加载JAVA_HOME\lib目录下的类库
@@ -14592,7 +14820,7 @@ https:&#47;&#47;docs.oracle.com&#47;javase&#47;9&#47;migrate&#47;toc.htm#JSMIG-G
  如果一个类加载器收到了加载请求,那么他会把这个请求委派给父类去完成,每一层都是如此,所以他最后会被委派到启动类加载器中,只有父类反馈自己无法完成这个加载请求时,子类才会尝试自己去加载
 类不会重复的原因:
  比如一个类,java.lang.Object,存放在JAVA_HOME&#47;lib&#47;rt.jar中,无论哪个类加载器想要加载他,最终都会被委派给启动类加载器去加载
-反之,如果没有双亲委派机制,用户自己编写一个java.lang.Object类,那么如果他被其他类加载器加载,内存中就会出现两个ava.lang.Object类</div>2020-02-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fa/ab/0d39e745.jpg" width="30px"><span>李小四</span> 👍（17） 💬（0）<div>设计模式_43:
+反之,如果没有双亲委派机制,用户自己编写一个java.lang.Object类,那么如果他被其他类加载器加载,内存中就会出现两个ava.lang.Object类</div>2020-02-17</li><br/><li><span>李小四</span> 👍（17） 💬（0）<div>设计模式_43:
 # 作业
 Java的类加载有一个双亲委托的机制(递归地让父加载器在cache中寻找，如果都找不到才会让当前加载器去加载)，这个机制保证了有诸多好处，与今天的内容相关的就是：不管类名是否相同，不同加载器，加载的一定是不同的类。
 1. 如果两个加载器是父子关系，那么只会被加载一次。
@@ -14603,33 +14831,29 @@ Java的类加载有一个双亲委托的机制(递归地让父加载器在cache�
 
 # 感想
 
-今天的内容，有一个感想: 程序员的头脑中，要能够想象程序运行的过程中，内存中发生了什么，我们要对底层多一些研究，否则真的不知其所以然。</div>2020-02-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（9） 💬（3）<div>老师讲的多例模式应该就是享元模式，常量池、数据库连接池经常使用。</div>2020-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/4e/d0/d8a5f720.jpg" width="30px"><span>Ken张云忠</span> 👍（7） 💬（4）<div>实际上，对于 Java 语言来说，单例类对象的唯一性的作用范围并非进程，而是类加载器（Class Loader），你能自己研究并解释一下为什么吗？
-因为Jvm中类加载时采用的是双亲委派模式，对于类的唯一性的确定是通过类全名和类加载器实例一起来实现的，jdk8可以支持多个Java应用共享jre下的很多类实例就是通过扩展类加载器实现的，所以这里所说单例类实例唯一性的作用范围是类加载器指的就是即使类全名相同的类文件也必须要保证被同个类应用类加载器加载。</div>2020-02-10</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJcxSpNMqwqyicMvdOSr9ic0p1ABiauHnv7g7YQVSJuoHPoQbYDu3YzdpgmSAk2KricUBQ5yibWBWIq75w/132" width="30px"><span>桂城老托尼</span> 👍（6） 💬（1）<div>感谢分享
+今天的内容，有一个感想: 程序员的头脑中，要能够想象程序运行的过程中，内存中发生了什么，我们要对底层多一些研究，否则真的不知其所以然。</div>2020-02-22</li><br/><li><span>aoe</span> 👍（9） 💬（3）<div>老师讲的多例模式应该就是享元模式，常量池、数据库连接池经常使用。</div>2020-02-10</li><br/><li><span>Ken张云忠</span> 👍（7） 💬（4）<div>实际上，对于 Java 语言来说，单例类对象的唯一性的作用范围并非进程，而是类加载器（Class Loader），你能自己研究并解释一下为什么吗？
+因为Jvm中类加载时采用的是双亲委派模式，对于类的唯一性的确定是通过类全名和类加载器实例一起来实现的，jdk8可以支持多个Java应用共享jre下的很多类实例就是通过扩展类加载器实现的，所以这里所说单例类实例唯一性的作用范围是类加载器指的就是即使类全名相同的类文件也必须要保证被同个类应用类加载器加载。</div>2020-02-10</li><br/><li><span>桂城老托尼</span> 👍（6） 💬（1）<div>感谢分享
 1，线程唯一性一节，threadlocal也好，记录线程id的方式也好，如果是线程池的话，需要确认下是否需要clean。另外如果线程能被销毁，再创建的线程id是否会重复？如果重复在某些场景下可能会有问题。
 2，分布式环境下的单例一节，针对id生成器这种频繁访问的服务，如果频繁加锁效率比较低，可以考虑常用的sequnce方案，每个进程持有一段id range，保证每个(分布式)进程某时间区间不重复即可。 
 3，尝试回答下课堂讨论，不同的classloader实例加载的class天然不属于一个，new出来的对象应该也不是一个，classloader是类的隔离级别。 
 
 
 
-</div>2020-02-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/49/f2/25cfa472.jpg" width="30px"><span>寒溪</span> 👍（3） 💬（5）<div>请教一下老师
+</div>2020-02-16</li><br/><li><span>寒溪</span> 👍（3） 💬（5）<div>请教一下老师
 线程唯一的单例模式中
 instances.putIfAbsent(currentThreadId, new IdGenerator());
 
 如果实例已经存在，那后续每次请求是不是都会创建一个游离状态的IdGenerator。
 这样会不会造成对象的频繁创建与消亡，增加GC压力。
 
-但是看好多源码中都是这么用的，还请您指教。</div>2020-03-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/45/2f/b0b0dd74.jpg" width="30px"><span>杨杰</span> 👍（3） 💬（0）<div>在多例的伪代码里面：
+但是看好多源码中都是这么用的，还请您指教。</div>2020-03-10</li><br/><li><span>杨杰</span> 👍（3） 💬（0）<div>在多例的伪代码里面：
  public BackendServer getInstance(long serverNo) {   
      return serverInstances.get(serverNo); 
  } 
 是不是应该改成：
  public static BackendServer getInstance(long serverNo) {   
      return serverInstances.get(serverNo); 
- } </div>2020-02-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/4c/6d/c20f2d5a.jpg" width="30px"><span>LJK</span> 👍（3） 💬（4）<div>对于集群下的单例实现加锁有点迷惑，对象第一次实例化之后再通过getInstance就不会加锁了直接返回实例，由此有两个问题不太明白：
-1. 这时如果多个进程都拿到了这个实例，save操作需要做并发控制吗？（还是就是synchronize就行了？对java不是很熟悉）
-2. 这时该进程没有锁，但是freeInstance会释放一把锁，会有重复释放锁的问题吗？</div>2020-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/54/ce/92029d2f.jpg" width="30px"><span>子夜2104</span> 👍（2） 💬（2）<div>看了这一节，感觉问题更多了？
-Java中单例的唯一性，范围确定在类加载器中。假如现在，我运行了一个JVM，两个JavaWeb（两个端口，两个进程），在每个JavaWeb中，写了一个单例，那么这两个单例是唯一的吗？是在哪个范围内唯一呢？另外，Boot ClassLoader这个类加载器是在一个JVM中唯一吗？还是在一个JavaWeb，一个进程中唯一呢？</div>2020-05-21</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKZ16iaIia0029oI1Qh5NicibpbTiaBAaCOPYXoLplKHr6uQ2rSVxPZanBvpMcL2NuhwKQYCFnaHP5tedQ/132" width="30px"><span>FIGNT</span> 👍（2） 💬（0）<div>类加载时采用双亲委派的机制，优先级排序启动加载器&gt;扩展加载器&gt;应用加载器&gt;自定义加载器。这种机制保证相同的类只能加载一次，而且已java类库的类优先加载，而自定义的后加载。比如自己实现一个String类,类库中也有String类，加载哪个呢？有个优先级，只有高优先级没有加载时低优先级的才能加载。从这个角度看其实单例的唯一性作用于ClassLoader。只不过双亲委派机制保证只有一个类加载器加载。如果没有双亲委派机制，那么实例在类加载器中唯一，在类加载器间不唯一。所以准确说单例类对象的唯一性的作用范围并非进程，而是类加载器。</div>2020-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/36/2c/8bd4be3a.jpg" width="30px"><span>小喵喵</span> 👍（2） 💬（2）<div>IdGenerator.freeInstance(); 应该是idGenerator.freeInstance();</div>2020-02-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/28/3b6546e8.jpg" width="30px"><span>Snway</span> 👍（2） 💬（0）<div>对于类加载器，可以简单理解：不同类加载器之间命名空间不一样，不同类加载器加载出来的类实例是不一样的，所以如果使用多个类加载器，可能会导致单例失效而产生多个实例</div>2020-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/32/99/91b58bf7.jpg" width="30px"><span>Tomy</span> 👍（1） 💬（1）<div>视频比音频好学，至少视频可以看到代码的运行结果，音频根本看不到，把代码复制到本地跑一下发现spring框架下
-org..util.包下有一个同名的IdGenerator导致代码跑起来的效果不确定就是老师的效果比如实现线程唯一的单例时打印的结果都是{1=IdGenerator@470e2030}看不出不同线程的对象，都是同一个线程对应同一个对象</div>2020-10-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/19/89/20488013.jpg" width="30px"><span>hanazawakana</span> 👍（1） 💬（3）<div>ThreadLocal底层是基于ThreadLocalMap，他有一个Entry[] table，好像并不是基于HashMap？</div>2020-02-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/15/c2/cd8052c8.jpg" width="30px"><span>Algo</span> 👍（1） 💬（0）<div>如果这个类已经被加载，则不会重复加载。如加载A类则也要确保其父类已经被加载完成。且不同的类在JVM中有不同的加载器。</div>2020-02-12</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/iaByN5IfYbE9jMtWrtTDXtPEIHeV77KW1p7ZkiasiaGgA50VXaibo4fbp5ib2JkFP3iaIe4AUudLibufkEIofu5euCNHg/132" width="30px"><span>小刀</span> 👍（1） 💬（0）<div>不同类加载器之间命名空间不一样，不同类加载器加载出来的类实例是不一样的，所以如果使用多个类加载器，可能会导致单例失效而产生多个实例</div>2020-02-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/74/a9/5eb3ebc6.jpg" width="30px"><span>唐龙</span> 👍（1） 💬（2）<div>不是很懂为什么需要多例模式，什么情况下需要用到多例模式。</div>2020-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ca/c7/00e544c2.jpg" width="30px"><span>黄林晴</span> 👍（1） 💬（0）<div>打卡</div>2020-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/27/02/65/ddb6460e.jpg" width="30px"><span>柯里</span> 👍（0） 💬（0）<div>同一个class文件，由不同的类加载器来加载，就是不同的类对象，比如注解这种单例，不同的类加载器就是不一样的，相同的调用其实在jvm看来就是两套代码</div>2023-11-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/6c/bc/f751786b.jpg" width="30px"><span>Ming</span> 👍（0） 💬（0）<div>看完了，不知道这节课有什么用啊？</div>2023-09-21</li><br/><li><img src="" width="30px"><span>阚德生</span> 👍（0） 💬（0）<div>老师你好，关于集群环境下单例模式有个疑问。就是通过FileSharedObjectStorage我们可以从共享存储中反序列化出IdGenerator的实例，那么初次使用时我们通过什么手段把IdGenerator的实例序列化到共享存储中去？谢谢！</div>2023-07-11</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIFgmmBXRltzTkfeajYGLptvvwEsMyiaCT5nJZNg4TZJWh02cgwxtrEIk6TWSbGpBibE7Bbvoicjciaiag/132" width="30px"><span>Geek_d7ede4</span> 👍（0） 💬（0）<div>不是特别理解：getInstance（）为什么要加synchronized？</div>2023-02-22</li><br/>
+ } </div>2020-02-12</li><br/>
 </ul>
 
 

@@ -3413,6 +3413,69 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例八：exists子查询优化一例
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rangeref" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例九：range和ref
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#in" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例十：in参数列表过长导致的全表扫描
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例十一：数据倾斜引起的性能问题
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#range-checked-for-each-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例十二：Range checked for each record
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13261,6 +13324,69 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例八：exists子查询优化一例
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rangeref" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例九：range和ref
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#in" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例十：in参数列表过长导致的全表扫描
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例十一：数据倾斜引起的性能问题
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#range-checked-for-each-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例十二：Range checked for each record
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13298,9 +13424,470 @@
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>OR t_group.gmt_modified &gt;= date_sub(&#39;2018-05-20 09:31:45&#39;, INTERVAL 30 SECOND)
 </code></pre></div>
 <p>业务的需求，是查询最近半分钟内发生过变化的数据。这个SQL的where条件中，用到了3个表的gmt_modified字段来过滤数据，而且这些条件使用or相连。看一下下面的示意图，业务关心的是新数据，每个表中，最近修改过的数据都只占了整个表数据的一小部分。而且t_user、t_group表的数据很少更新。但由于SQL的写法，每次都需要连接全量的数据，然后再过滤出一小部分数据，因此SQL的效率很低。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/c0/43/c0a2ayy449a7093714ff7102f920b743.jpg?wh=1470x564" /></p>
+<p>我们将SQL拆分成3个部分。</p>
+<ul>
+<li>SQL片段1</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>SELECT t_msg.msg_id，t_msg.content , ......
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>FROM t_msg 
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    LEFT JOIN t_user ON t_msg.user_id = t_user.user_id  
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    LEFT JOIN t_group ON t_msg.group_id = t_group.group_id
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>WHERE t_msg.gmt_modified &gt;= date_sub(&#39;2018-05-20 09:31:45&#39;, INTERVAL 30 SECOND)  
+</code></pre></div>
+<p>SQL片段1以t_msg表作为驱动表，先过滤出表中gmt_modified在半分钟之内的数据，然后再去连接t_user和t_group表，大大减少了连接的数据。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/f3/31/f3c4yy06a6a611f2425c718937858a31.jpg?wh=1458x568" /></p>
+<ul>
+<li>SQL片段2</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>SELECT t_msg.msg_id，t_msg.content , ......
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>FROM t_msg 
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    LEFT JOIN t_user ON t_msg.user_id = t_user.user_id  
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    LEFT JOIN t_group ON t_msg.group_id = t_group.group_id
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>WHERE t_user.gmt_modified &gt;= date_sub(&#39;2018-04-29 09:31:44&#39;, INTERVAL 30 SECOND)
+</code></pre></div>
+<p>SQL片段2中，对t_user表的left join等价于普通join。以t_user表为驱动表，先过滤t_user表最近修改过的数据，再去连接t_msg和t_group表。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/87/64/87f233fee5a4609802afd00db65aa464.jpg?wh=1486x608" /></p>
+<ul>
+<li>SQL片段3</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>SELECT t_msg.msg_id，t_msg.content , ......
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>FROM t_msg 
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    LEFT JOIN t_user ON t_msg.user_id = t_user.user_id  
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    LEFT JOIN t_group ON t_msg.group_id = t_group.group_id
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>WHERE t_group.gmt_modified &gt;= date_sub(&#39;2018-04-29 09:31:44&#39;, INTERVAL 30 SECOND)
+</code></pre></div>
+<p>SQL片段3中，对t_group表的left join等价于普通join。以t_group表为驱动表，先过滤t_group表最近修改过的数据，再去连接t_msg和t_user表。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/ee/68/eee9ae458224de2a85867b0f98236668.jpg?wh=1458x568" /></p>
+<p>将SQL拆分成3个部分后，优化器可以对这3个SQL片段分别优化，选取不同的表关联顺序。在这个业务场景下，由于t_user和t_group表的数据很少有变化，因此SQL片段2和SQL片段3大部分时间没有数据返回。</p>
+<p>SQL的写法灵活，但是在有些场景下，我们需要拆分SQL，使优化器可以选择到更好的执行计划。</p>
+<h2 id="exists">案例八：exists子查询优化一例</h2>
+<p>下面是一个带了exists子查询的SQL，当时这个SQL执行需要120秒。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>SELECT u.id userId, u.mobile, u.created_date createdDate 
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>FROM `user` u
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    LEFT JOIN user_cash_detail ucd ON u.id= ucd.user_id
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>WHERE 1=1
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>AND EXISTS( 
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    SELECT 1 
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    FROM borrow b 
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    WHERE b.user_id= u.id 
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    AND b.borrow_no LIKE &#39;202001011212XXX%&#39;) 
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>ORDER BY u.id limit 13;
+</code></pre></div>
+<p>我们来看一下执行计划，要扫描的记录数好像（rows 13）很少，连接的几个表也都有索引，索引的过滤性也都很好（rows=1）。这个SQL性能应该是比较好的，为什么执行需要120s 的时间呢？</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/a2/dd/a2e99857b7ab7f1648b9ee1784b6d8dd.png?wh=1806x304" /></p>
+<p>我们来分析一下这个SQL的执行过程：先执行主查询，从user表获取一行记录，再执行exists里的子查询，检查是否有匹配的记录。如果匹配了，检查已经获取到的记录数是否已经达到limit的要求。如果没匹配，那么从user表获取下一行记录，继续这个过程。如果主表的记录数比较大，而且在执行exists子查询时一直没有匹配到记录，那么整个查询的执行时间就会比较长。</p>
+<p>上一讲中，我们提到了，从5.6开始，MySQL会自动将子查询转换为半连接。但是为什么这个SQL没有被转化为半连接呢？</p>
+<p>原因是8.0之前的版本，MySQL还不支持转换exists子查询。在上面这个例子中，exists子查询中有一个b.borrow_no的条件，看起来过滤性比较高，因此我们手动改写了SQL。原始SQL中的LEFT JOIN user_cash_detail实际上是多余的，SQL改写为这个样子。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>SELECT distinct u.id userId, u.mobile, u.created_date createdDate  
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>FROM borrow b 
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>join `user` u on b.user_id= u.id 
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>where b.borrow_no LIKE &#39;202001011212XXX%&#39; 
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>order by u.id limit 13
+</code></pre></div>
+<p>改写后，SQL的执行时间从120秒降到了3毫秒。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/9f/16/9fb4f250c0e0884dab71fce5d15b7616.png?wh=1736x262" /></p>
+<p>将exists子查询改写为常规的表关联，有几个地方要注意。</p>
+<ol>
+<li>原始SQL中并没有使用到user_cash_detail表，可以将left join去掉。</li>
+<li>Exists 改成join后，由于borrow表user_id不唯一，可能会有重复数据出现，需要添加distinct去重。</li>
+</ol>
+<p>我们在SQL优化的时候，一个基本思想是<strong>尽早过滤掉尽可能多的数据</strong>。这个例子中，先执行exists中的子查询可以提前过滤掉大量数据。</p>
+<p>对于这个案例中的SQL，如果使用了8.0，就不再需要手动改写了。我们来构造一些测试数据验证一下。先创建SQL中的测试表，写入一些数据。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>create table user (
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    id int not null auto_increment,
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    mobile varchar(20),
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    created_date datetime,
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    padding varchar(2000),
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    primary key(id)
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>) engine=innodb;
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>create table user_cash_detail(
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    id int not null auto_increment,
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    user_id int not null,
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    padding varchar(2000),
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    primary key(id),
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    key idx_userid(user_id)
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>) engine=innodb;
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>create table borrow(
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>    id int not null auto_increment,
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>    user_id int not null,
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>    borrow_no varchar(30),
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>    padding varchar(2000),
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>    primary key(id),
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>    key idx_user_id(user_id),
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>    key idx_borrowno(borrow_no)
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>) engine=innodb;
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>insert into user(id, mobile, created_date, padding)
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>select 1000000 + n, 13500000000 + n, date_add(&#39;2024-01-01 00:00:00&#39;, interval n hour), rpad(&#39;&#39;, 1000, &#39;abcd &#39;)
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>from numbers;
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>insert into user_cash_detail(user_id, padding)
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>select 1000000 + n, rpad(&#39;&#39;, 1000, &#39;abcd &#39;)
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a>from numbers;
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a>
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a>insert into borrow(user_id, borrow_no, padding)
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a>select 1000000 + n - n % 2,  date_format(date_add(&#39;2019-06-01 00:00:00&#39;, interval n hour), &#39;%Y%m%d%H%i%s&#39;), rpad(&#39;&#39;, 1000, &#39;abcd &#39;)
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>from numbers;
+</code></pre></div>
+<p>在8.0中，这个SQL自动转换成了半连接。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>explain&gt; SELECT u.id userId, u.mobile, u.created_date createdDate 
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>FROM user u
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    LEFT JOIN user_cash_detail ucd ON u.id= ucd.user_id
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>WHERE 1= 1
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>AND EXISTS( 
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    SELECT 1 
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    FROM borrow b 
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    WHERE b.user_id= u.id 
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    AND b.borrow_no LIKE &#39;202007201%&#39;) 
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>ORDER BY u.id limit 13;
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>+----+--------------+-------------+--------+--------------------------+--------------+---------+---------------------+------+----------+---------------------------------+
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>| id | select_type  | table       | type   | possible_keys            | key          | key_len | ref                 | rows | filtered | Extra                           |
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>+----+--------------+-------------+--------+--------------------------+--------------+---------+---------------------+------+----------+---------------------------------+
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>|  1 | SIMPLE       | &lt;subquery2&gt; | ALL    | NULL                     | NULL         | NULL    | NULL                | NULL |   100.00 | Using temporary; Using filesort |
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>|  1 | SIMPLE       | u           | eq_ref | PRIMARY                  | PRIMARY      | 4       | &lt;subquery2&gt;.user_id |    1 |   100.00 | NULL                            |
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>|  1 | SIMPLE       | ucd         | ref    | idx_userid               | idx_userid   | 4       | &lt;subquery2&gt;.user_id |    1 |   100.00 | Using where; Using index        |
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>|  2 | MATERIALIZED | b           | range  | idx_user_id,idx_borrowno | idx_borrowno | 123     | NULL                |   10 |   100.00 | Using index condition           |
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>+----+--------------+-------------+--------+--------------------------+--------------+---------+---------------------+------+----------+---------------------------------+
+</code></pre></div>
+<h2 id="rangeref">案例九：range和ref</h2>
+<p>优化器在计算REF和Range的访问成本时，使用了不同的公式。在有些情况下，使用同一个索引，虽然range使用了更多的索引字段，但是成本比REF高，有时Range的成本比全表扫描还要高，此时优化器会使用REF访问路径，而不是效率更高的Range。</p>
+<p>下面的这个例子就是这种情况。这是在5.6版本中遇到的问题。先创建一个表，写入一些模拟数据。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>mysql&gt; create table mysql_stat(
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    id int not null auto_increment,
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    tenant_id int not null,
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    instance_name varchar(30) not null,
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    check_time datetime not null,
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    padding varchar(200),
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    primary key(id),
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    key idx_tenantid_instname_checktime(tenant_id, instance_name, check_time)
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>  ) engine=innodb;
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>mysql&gt; insert into mysql_stat(tenant_id, instance_name, check_time, padding)
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>select 1, &#39;dtstack-dev1:3306&#39;, 
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>  date_add(&#39;2024-01-01 00:00:00&#39;, interval n * 10 second) as check_time,
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>  rpad(&#39;x&#39;, 100, &#39;abcd &#39;)
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>from numbers_1m
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>mysql&gt; select min(check_time), max(check_time) from  mysql_stat;
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>+---------------------+---------------------+
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>| min(check_time)     | max(check_time)     |
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>+---------------------+---------------------+
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>| 2024-01-01 00:00:00 | 2024-04-25 17:46:30 |
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>+---------------------+---------------------+
+</code></pre></div>
+<p>我们来看一下这个SQL的执行计划，type为ref，只用到了tenant_id和instance_name的索引条件。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>mysql&gt; explain SELECT * 
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>FROM mysql_stat  
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>WHERE tenant_id = 1 
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  and instance_name=&#39;dtstack-dev1:3306&#39; 
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>  and check_time &gt;=&#39;2024-02-01&#39; and check_time &lt;= &#39;2024-03-01&#39; 
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>ORDER BY check_time desc limit 1\G
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>*************************** 1. row ***************************
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>           id: 1
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>  select_type: SIMPLE
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>        table: mysql_stat
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>         type: ref
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>possible_keys: idx_tenantid_instname_checktime
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>          key: idx_tenantid_instname_checktime
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>      key_len: 36
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>          ref: const,const
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>         rows: 468284
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>        Extra: Using where
+</code></pre></div>
+<p>check_time字段上的条件，本来也可以用来过滤数据，但是优化器却没有使用。在我的测试环境中，这个SQL耗时1秒多。从慢日志中，可以观察到SQL扫描了48万行数据。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a># Query_time: 1.245558  Lock_time: 0.000281 Rows_sent: 1  Rows_examined: 481600
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>SET timestamp=1725604597;
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>SELECT *
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>FROM mysql_stat
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>WHERE tenant_id = 1
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>  and instance_name=&#39;dtstack-dev1:3306&#39;
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>  and check_time &gt;=&#39;2024-02-01&#39; and check_time &lt;= &#39;2024-03-01&#39;
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>ORDER BY check_time desc limit 1;
+</code></pre></div>
+<p>我们给这个SQL加上一个force index提示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>mysql&gt; explain SELECT * 
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>FROM mysql_stat  force index(idx_tenantid_instname_checktime)
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>WHERE tenant_id = 1 
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>  and instance_name=&#39;dtstack-dev1:3306&#39; 
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>  and check_time &gt;=&#39;2024-02-01&#39; and check_time &lt;= &#39;2024-03-01&#39;
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>ORDER BY check_time desc limit 1\G
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>*************************** 1. row ***************************
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>           id: 1
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>  select_type: SIMPLE
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>        table: mysql_stat
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>         type: range
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>possible_keys: idx_tenantid_instname_checktime
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>          key: idx_tenantid_instname_checktime
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>      key_len: 41
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>          ref: NULL
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>         rows: 468284
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>        Extra: Using index condition
+</code></pre></div>
+<p>加上force index之后，执行计划type变成了range。观察慢日志，SQL只扫描了1行数据，执行时间不到1毫秒。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a># Query_time: 0.000468  Lock_time: 0.000162 Rows_sent: 1  Rows_examined: 1
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>SET timestamp=1725604885;
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>SELECT *
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>FROM mysql_stat  force index(idx_tenantid_instname_checktime)
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>WHERE tenant_id = 1
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>  and instance_name=&#39;dtstack-dev1:3306&#39;
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>  and check_time &gt;=&#39;2024-02-01&#39; and check_time &lt;= &#39;2024-03-01&#39;
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>ORDER BY check_time desc limit 1;
+</code></pre></div>
+<p>从optimizer trace中可以看到，加了force index后，ref的成本还是比range低。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>&quot;considered_execution_plans&quot;: [
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>  {
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    &quot;plan_prefix&quot;: [
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    ],
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    &quot;table&quot;: &quot;`mysql_stat` FORCE INDEX (`idx_tenantid_instname_checktime`)&quot;,
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    &quot;best_access_path&quot;: {
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>      &quot;considered_access_paths&quot;: [
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>        {
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>          &quot;access_type&quot;: &quot;ref&quot;,
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>          &quot;index&quot;: &quot;idx_tenantid_instname_checktime&quot;,
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>          &quot;rows&quot;: 468284,
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>          &quot;cost&quot;: 123354,
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>          &quot;chosen&quot;: true
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>        },
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>        {
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>          &quot;access_type&quot;: &quot;range&quot;,
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>          &quot;rows&quot;: 351213,
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>          &quot;cost&quot;: 655599,
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>          &quot;chosen&quot;: false
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>        }
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>      ]
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>    },
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>    &quot;cost_for_plan&quot;: 123354,
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>    &quot;rows_for_plan&quot;: 468284,
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>    &quot;chosen&quot;: true
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>  }
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>]
+</code></pre></div>
+<p>但是优化器最终还是选择了range，因为range能用到更多的索引字段。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>&quot;attached_conditions_computation&quot;: [
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>  {
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    &quot;access_type_changed&quot;: {
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>      &quot;table&quot;: &quot;`mysql_stat` FORCE INDEX (`idx_tenantid_instname_checktime`)&quot;,
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>      &quot;index&quot;: &quot;idx_tenantid_instname_checktime&quot;,
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>      &quot;old_type&quot;: &quot;ref&quot;,
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>      &quot;new_type&quot;: &quot;range&quot;,
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>      &quot;cause&quot;: &quot;uses_more_keyparts&quot;
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>    }
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>  }
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>]
+</code></pre></div>
+<p>上面的这个SQL，在5.7和8.0的环境中，不需要加force index，也会使用效率更高的range访问路径。有兴趣的话，你可以自己测试一下，使用优化器跟踪对比一下区别。</p>
+<h2 id="in">案例十：in参数列表过长导致的全表扫描</h2>
+<p>这是一个在MySQL 5.6中遇到的性能问题。我们来看这个单表查询的SQL。表里有几千万行数据。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>SELECT *
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>FROM t_exp t
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>WHERE t.link_id in (x,x,x, ......)
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>and t.com_id = xx
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>and t.expense in (x,x,x)
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>and t.link_type= 1 
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>and ledger_status= 1 
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>AND status = 1
+</code></pre></div>
+<p>表上有一个唯一索引。where条件中，link_id、com_id、expense, link_type这几个字段是索引的前缀。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>UNIQUE KEY uk (
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>  link_id,
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>  com_id,
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>  expense,
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>  link_type,
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>  link_com_id,
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>  trans_batch_id,
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>  status)
+</code></pre></div>
+<p>理论上这个SQL是可以用上这个索引的，但是SQL却使用了全表扫描。而且即使加上force index提示，还是全表扫描。</p>
+<p>SQL中link_id传入了几万个，我尝试着减少link_id的个数，当数量少于某个临界值时，就可以用上索引了，查询的性能也没有问题。但是为什么当IN列表中的参数多一点时，就使用全表扫描了呢？</p>
+<p>我们来对比下这两种情况下的优化器跟踪信息。</p>
+<ul>
+<li>使用全表扫描时的跟踪信息</li>
+</ul>
+<p>当IN传入的参数超过一定的个数后，优化器只考虑了全表扫描。从considered_execution_plans中可以看出这一点。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/99/d4/997f695c15fe43546a8c867e6a8ddbd4.png?wh=884x800" /></p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/75/4b/756d79ec6de5ac7f25e4e5f585b8004b.png?wh=684x698" /></p>
+<ul>
+<li>使用索引时的跟踪信息</li>
+</ul>
+<p>将IN的参数减少到某个临界值之后，优化器考虑了range访问路径，并且基于成本，选择了range执行计划。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/80/c4/8001e3be24849ddd22032fcf46f998c4.png?wh=1820x690" /><br />
+<img alt="图片" src="https://static001.geekbang.org/resource/image/e3/c5/e33a4bca4d29f4946e1cca5d77dc40c5.png?wh=872x798" /><br />
+<img alt="图片" src="https://static001.geekbang.org/resource/image/22/17/220a5545364818d9c76581d10f1d4217.png?wh=692x706" /></p>
+<p>当in条件中的值超过一定数量时，优化器会放弃使用range执行计划。原因是MySQL限制了生成range执行计划时使用的内存，当IN参数列表太长时，消耗的内存太多，超出了限制，因此放弃使用range执行计划，最终使用了全表扫描。MySQL 5.6中，range优化内存的上限是固定的。MySQL 5.7引入了参数range_optimizer_max_mem_size，我们可以调整这个参数来解决in参数列表过长无法使用索引的问题。实际上，在5.7版本中，如果in参数列表过长导致无法使用range优化，会有这样的warning信息。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>Warning    3170    Memory capacity of N bytes for
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>                   &#39;range_optimizer_max_mem_size&#39; exceeded. Range
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>                   optimization was not done for this query.
+</code></pre></div>
+<p>根据官方文档的描述，每个OR条件使用230字节，每个AND条件使用125字节，单个字段上的IN条件，会转换成OR。多个字段使用IN，会以组合形式展开，比如 c1 in (a,b) and c2 in (x,y,z)会转换成 (c1 = a and c2 = x) or (c1 = a and c2=y) or ( c1=a and c2=z) or (c1 = b and c2 = x) or (c1 = b and c2=y) or ( c1=b and c2=z) 。</p>
+<p>我们案例中的SQL，有2个in条件会在range优化时展开。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>SELECT *
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>FROM t_exp t
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>WHERE t.link_id in (x,x,x,…)
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>and t.com_id = xx
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>and t.expense in (x,x,x)
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>and t.link_type= 1 
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>and ledger_status= 1 
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>AND status = 1
+</code></pre></div>
+<p>怎么解决这个问题呢？一个方法是减少IN里面传入的参数个数，但这需要修改代码。所以当时我采用另外一种方法，调整索引字段顺序，将expense字段调整到了link_com_id之后。因为SQL缺少link_com_id的条件，调整索引字段顺序后，只需要展开link_id，而不是link_id和expense的组合，这样SQL就用上了索引。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>UNIQUE KEY uk_new (
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>  link_id,
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>  com_id,
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>  link_type,
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>  link_com_id,
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>  expense, 
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>  trans_batch_id,
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>  status)
+</code></pre></div>
+<h2 id="_1">案例十一：数据倾斜引起的性能问题</h2>
+<p>下面这个SQL是在一个系统压测时发现的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>select *
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>FROM trans_001 a LEFT JOIN purchase_001 b 
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>ON a.serial_no = b.order_no 
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>AND a.dist_name = b.inst_id 
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>AND a.alino = b.alino 
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>WHERE b.order_no IS NULL 
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>AND a.serial_no &gt;= &#39;201809200000057858291ALI&#39;
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>AND a.serial_no &lt;= &#39;201809216100342526601ALI&#39; 
+<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a>AND a.business_code = &#39;xx&#39; 
+<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>AND a.trans_date = &#39;20180921&#39;;
+</code></pre></div>
+<p>这是一个两表连接的SQL，当时这个SQL执行了两百多秒，从慢日志中看到扫描行数有1.1亿。下面是当时诊断报告的输出。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/3b/6d/3b66489b25903a17facc101a80c5a16d.png?wh=964x412" /></p>
+<p>这个系统使用了分库分表，这两个表大概有几十万行数据。SQL的执行计划并没有问题，连接条件中的字段上也建立了正确的联合索引。但是为什么扫描行数会这么高呢？你是不是会怀疑慢SQL的输出有问题？</p>
+<p>有经验的同学可能已经想到原因了，这其实是数据倾斜引起的问题。分别查看2个表中连接条件上的数据分布就能发现问题。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>select serial_no, dist_name, alino, count(*)
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>from trans_001
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>group by serial_no, dist_name, alino
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>order by count(*) desc limit 10;
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>select order_no, inst_id, alino, count(*)
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>from purchase_001
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>group by order_no, inst_id, alino
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>order by count(*) desc limit 10;
+</code></pre></div>
+<p>只要某个组合条件下的记录数超过1万，连接时扫描的记录数就会超过1亿。找到问题后，需要业务方来分析为什么会有这样的数据，并进行相应的处理。</p>
+<h2 id="range-checked-for-each-record">案例十二：Range checked for each record</h2>
+<p>MySQL优化器在评估一个索引的访问效率时，要么使用Index Dive，要么使用索引统计信息。在表连接时，如果连接条件是一个范围，那么对于驱动表中的每一行记录，都需要进行一次Index Dive，来评估被驱动表里满足条件的记录数。这种情况下，执行计划的Extra 列中会显示“Range checked for each record”，很多时候，这也是一个查询性能不好的信号。</p>
+<p>我们来看下面这个例子。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>SELECT t1.ppd , (
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>    SELECT sum(amount) AS total_amount        
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>    FROM `order`
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>    WHERE pay_date &lt;= t1.ppd         
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>    AND pay_date &gt;= date_sub(t1.ppd, INTERVAL 7 DAY)
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>) AS total_amount
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>FROM (
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>    select distinct pay_date as ppd 
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>    from `order`
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a>    where pay_date is not null
+<a id="__codelineno-22-11" name="__codelineno-22-11" href="#__codelineno-22-11"></a>) t1
+</code></pre></div>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/1f/yy/1f3c045f96b313fee457f639caa9b0yy.png?wh=1920x432" /></p>
+<p>这样的SQL还有优化的空间吗？我们来尝试一下。先准备一点测试数据。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>create table t_order(
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>    id int not null auto_increment,
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>    pay_date date not null,
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>    amount int not null,
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>    padding varchar(2000),
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>    primary key(id),
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>    key idx_paydate(pay_date)
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>) engine=innodb;
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a>insert into t_order(pay_date, amount, padding)
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>select date_add(&#39;2023-01-01&#39;, interval n % 365 day), 
+<a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a>    2000 + n % 1000, 
+<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a>    rpad(&#39;&#39;, 1000, &#39;abcd &#39;)
+<a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a>from numbers;
+</code></pre></div>
+<p>在我的测试环境中，原始SQL耗时35秒。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a># Query_time: 35.923849  
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a># Lock_time: 0.000086 
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a># Rows_sent: 365  
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a># Rows_examined: 3650365
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>SELECT t1.ppd , (SELECT sum(amount) AS total_amount        
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>    FROM t_order
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>    WHERE pay_date &lt;= t1.ppd         
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>    AND pay_date &gt;= date_sub(t1.ppd, INTERVAL 7 DAY) ) AS total_amount
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>FROM (
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a>    select distinct pay_date as ppd 
+<a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a>    from t_order
+<a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a>    where pay_date is not null
+<a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a>) t1;
+</code></pre></div>
+<p>我尝试把SQL改写成表连接，执行时间减少了一些。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a># Query_time: 7.566888  
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a># Lock_time: 0.000050 
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a># Rows_sent: 365  
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a># Rows_examined: 365
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>SELECT t1.ppd, sum(amount) AS leiji_amount
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>FROM  (select distinct pay_date as ppd 
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>       from t_order 
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a>       where pay_date is not null) t1
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a>    , t_order t2 
+<a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a>WHERE t1.ppd &gt;= t2. pay_date
+<a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a>    AND t2.pay_date &gt;= date_sub(t1.ppd, INTERVAL 7 DAY)
+<a id="__codelineno-25-12" name="__codelineno-25-12" href="#__codelineno-25-12"></a>GROUP BY t1.ppd;
+</code></pre></div>
+<p>就这个SQL的逻辑，我们还可以使用MySQL 8.0的窗口函数，这样SQL执行又更快了一些。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a># Query_time: 0.776545  
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a># Lock_time: 0.000046 
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a># Rows_sent: 365  
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a># Rows_examined: 730
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>select pay_date, sum(total_amount) over(
+<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>    order by pay_date 
+<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>    range BETWEEN INTERVAL 7 DAY PRECEDING AND CURRENT ROW)
+<a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a>from (
+<a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a>    select pay_date, sum(amount) as total_amount
+<a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a>    from t_order
+<a id="__codelineno-26-11" name="__codelineno-26-11" href="#__codelineno-26-11"></a>    where pay_date is not null
+<a id="__codelineno-26-12" name="__codelineno-26-12" href="#__codelineno-26-12"></a>    group by pay_date
+<a id="__codelineno-26-13" name="__codelineno-26-13" href="#__codelineno-26-13"></a>) t;
+</code></pre></div>
+<p>考虑到SQL中只用到了2个字段，我们给这个SQL建立一个联合索引。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>alter table t_order add key idx_paydate_amount(pay_date, amount);
+</code></pre></div>
+<p>这样执行的速度又提升了一些。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a># Query_time: 0.090399  
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a># Lock_time: 0.000026 
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a># Rows_sent: 365  
+<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a># Rows_examined: 730
+<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>select pay_date, sum(total_amount) over(
+<a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a>    order by pay_date
+<a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a>    range BETWEEN INTERVAL 7 DAY PRECEDING AND CURRENT ROW)
+<a id="__codelineno-28-8" name="__codelineno-28-8" href="#__codelineno-28-8"></a>from (
+<a id="__codelineno-28-9" name="__codelineno-28-9" href="#__codelineno-28-9"></a>    select pay_date, sum(amount) as total_amount
+<a id="__codelineno-28-10" name="__codelineno-28-10" href="#__codelineno-28-10"></a>    from t_order
+<a id="__codelineno-28-11" name="__codelineno-28-11" href="#__codelineno-28-11"></a>    where pay_date is not null
+<a id="__codelineno-28-12" name="__codelineno-28-12" href="#__codelineno-28-12"></a>    group by pay_date
+<a id="__codelineno-28-13" name="__codelineno-28-13" href="#__codelineno-28-13"></a>) t;
+</code></pre></div>
+<p>我们的测试表里，只写入了10000行数据，如果你有兴趣，可以尝试写入10万行或100万行数据，对比下这几种情况下几个SQL的耗时。</p>
+<h2 id="_2">总结</h2>
+<p>SQL优化是一项基本的技能。你需要掌握索引的特点，了解不同表连接算法的特点和适用场景，还需要了解优化器的一些工作原理。有的时候你可能需要改写SQL，或者使用SQL提示，来获得更好的性能。</p>
+<p>这两讲的十几个例子，都是从真实的业务场景中挑选出来的，当时使用的版本包括5.5、5.6、5.7。可以看到，在8.0中，有一些SQL实际上优化器已经能自动优化得更好了。这也是我们要使用新版本的一个重要的原因。</p>
+<h2 id="_3">思考题</h2>
+<p>下面这类SQL按多个表的字段来排序，请分析下这么排序，对SQL性能的影响是什么？如果只使用一个表的字段来排序，性能上会有什么区别吗？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>select * 
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>from t1, t2, t3
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>where t1.c1 = t2.c1
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a>and t2.c2 = t3.c3
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>order by t1.s1, t2.s2
+<a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a>limit 100;
+</code></pre></div>
+<p>期待你的思考，欢迎在留言区中与我交流。如果今天的课程让你有所收获，也欢迎转发给有需要的朋友。我们下节课再见！</p>
 <div><strong>精选留言（1）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/15/8d/4d/992070e8.jpg" width="30px"><span>叶明</span> 👍（1） 💬（1）<div>
+<li><span>叶明</span> 👍（1） 💬（1）<div>
 1、对 SQL 性能的影响，t1.s1 和 t2.s2 这两个字段来源不同表，并且没有关联关系，驱动表只有一个，当其中一个字段有序时，无法保证另一个字段也有序，因此必须使用到临时表和文件排序，另外如果数据量较大，则还会使用到更慢的磁盘临时表来处理。
 2、如果只使用一个表的字段来排序，性能上会有什么区别吗？如果表上这一个用来排序的字段上有索引，那么以这个表作为驱动表，一来不用建立临时表和排序，只需要有序遍历这个索引的前 100条记录就可以返回了，二来只用返回 100 条数据，大大减少了扫描行数</div>2024-10-16</li><br/>
 </ul>

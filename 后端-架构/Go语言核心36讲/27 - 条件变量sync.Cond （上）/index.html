@@ -2323,6 +2323,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      问题解析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13303,6 +13330,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      问题解析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13336,17 +13390,85 @@
 <p>如果我在放置的时候发现信箱里还有未被取走的情报，那就不再放置，而先返回。另一方面，如果你在获取的时候发现信箱里没有情报，那也只能先回去了。这就相当于写的线程或读的线程阻塞的情况。</p>
 <p>虽然我们俩都有信箱的钥匙，但是同一时刻只能有一个人插入钥匙并打开信箱，这就是锁的作用了。更何况咱们俩是不能直接见面的，所以这个信箱本身就可以被视为一个临界区。</p>
 <p>尽管没有协调好，咱们俩仍然要想方设法的完成任务啊。所以，如果信箱里有情报，而你却迟迟未取走，那我就需要每过一段时间带着新情报去检查一次，若发现信箱空了，我就需要及时地把新情报放到里面。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>另一方面，如果信箱里一直没有情报，那你也要每过一段时间去打开看看，一旦有了情报就及时地取走。这么做是可以的，但就是太危险了，很容易被敌人发现。</p>
+<p>后来，我们又想了一个计策，各自雇佣了一个不起眼的小孩儿。如果早上七点有一个戴红色帽子的小孩儿从你家楼下路过，那么就意味着信箱里有了新情报。另一边，如果上午九点有一个戴蓝色帽子的小孩儿从我家楼下路过，那就说明你已经从信箱中取走了情报。</p>
+<p>这样一来，咱们执行任务的隐蔽性高多了，并且效率的提升非常显著。这两个戴不同颜色帽子的小孩儿就相当于条件变量，在共享资源的状态产生变化的时候，起到了通知的作用。</p>
+<p>当然了，我们是在用Go语言编写程序，而不是在执行什么秘密任务。因此，条件变量在这里的最大优势就是在效率方面的提升。当共享资源的状态不满足条件的时候，想操作它的线程再也不用循环往复地做检查了，只要等待通知就好了。</p>
+<p>说到这里，想考考你知道怎么使用条件变量吗？所以，<strong>我们今天的问题就是：条件变量怎样与互斥锁配合使用？</strong></p>
+<p><strong>这道题的典型回答是：条件变量的初始化离不开互斥锁，并且它的方法有的也是基于互斥锁的。</strong></p>
+<p>条件变量提供的方法有三个：等待通知（wait）、单发通知（signal）和广播通知（broadcast）。</p>
+<p>我们在利用条件变量等待通知的时候，需要在它基于的那个互斥锁保护下进行。而在进行单发通知或广播通知的时候，却是恰恰相反的，也就是说，需要在对应的互斥锁解锁之后再做这两种操作。</p>
+<h2 id="_2">问题解析</h2>
+<p>这个问题看起来很简单，但其实可以基于它,延伸出很多其他的问题。比如，每个方法的使用时机是什么？又比如，每个方法执行的内部流程是怎样的？</p>
+<p>下面，我们一边用代码实现前面那个例子，一边讨论条件变量的使用。</p>
+<p>首先，我们先来创建如下几个变量。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>var mailbox uint8
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>var lock sync.RWMutex
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>sendCond := sync.NewCond(&amp;lock)
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>recvCond := sync.NewCond(lock.RLocker())
+</code></pre></div>
+<p><strong>变量<code>mailbox</code>代表信箱，是<code>uint8</code>类型的。</strong> 若它的值为<code>0</code>则表示信箱中没有情报，而当它的值为<code>1</code>时则说明信箱中有情报。<code>lock</code>是一个类型为<code>sync.RWMutex</code>的变量，是一个读写锁，也可以被视为信箱上的那把锁。</p>
+<p>另外，基于这把锁，我还创建了两个代表条件变量的变量，<strong>名字分别叫<code>sendCond</code>和<code>recvCond</code>。</strong> 它们都是<code>*sync.Cond</code>类型的，同时也都是由<code>sync.NewCond</code>函数来初始化的。</p>
+<p>与<code>sync.Mutex</code>类型和<code>sync.RWMutex</code>类型不同，<code>sync.Cond</code>类型并不是开箱即用的。我们只能利用<code>sync.NewCond</code>函数创建它的指针值。这个函数需要一个<code>sync.Locker</code>类型的参数值。</p>
+<p>还记得吗？我在前面说过，条件变量是基于互斥锁的，它必须有互斥锁的支撑才能够起作用。因此，这里的参数值是不可或缺的，它会参与到条件变量的方法实现当中。</p>
+<p><code>sync.Locker</code>其实是一个接口，在它的声明中只包含了两个方法定义，即：<code>Lock()</code>和<code>Unlock()</code>。<code>sync.Mutex</code>类型和<code>sync.RWMutex</code>类型都拥有<code>Lock</code>方法和<code>Unlock</code>方法，只不过它们都是指针方法。因此，这两个类型的指针类型才是<code>sync.Locker</code>接口的实现类型。</p>
+<p>我在为<code>sendCond</code>变量做初始化的时候，把基于<code>lock</code>变量的指针值传给了<code>sync.NewCond</code>函数。</p>
+<p>原因是， <strong><code>lock</code>变量的<code>Lock</code>方法和<code>Unlock</code>方法分别用于对其中写锁的锁定和解锁，它们与<code>sendCond</code>变量的含义是对应的。</strong><code>sendCond</code>是专门为放置情报而准备的条件变量，向信箱里放置情报，可以被视为对共享资源的写操作。</p>
+<p>相应的， <strong><code>recvCond</code>变量代表的是专门为获取情报而准备的条件变量。</strong> 虽然获取情报也会涉及对信箱状态的改变，但是好在做这件事的人只会有你一个，而且我们也需要借此了解一下，条件变量与读写锁中的读锁的联用方式。所以，在这里，我们暂且把获取情报看做是对共享资源的读操作。</p>
+<p>因此，为了初始化<code>recvCond</code>这个条件变量，我们需要的是<code>lock</code>变量中的读锁，并且还需要是<code>sync.Locker</code>类型的。</p>
+<p>可是，<code>lock</code>变量中用于对读锁进行锁定和解锁的方法却是<code>RLock</code>和<code>RUnlock</code>，它们与<code>sync.Locker</code>接口中定义的方法并不匹配。</p>
+<p>好在<code>sync.RWMutex</code>类型的<code>RLocker</code>方法可以实现这一需求。我们只要在调用<code>sync.NewCond</code>函数时，传入调用表达式<code>lock.RLocker()</code>的结果值，就可以使该函数返回符合要求的条件变量了。</p>
+<p>为什么说通过<code>lock.RLocker()</code>得来的值就是<code>lock</code>变量中的读锁呢？实际上，这个值所拥有的<code>Lock</code>方法和<code>Unlock</code>方法，在其内部会分别调用<code>lock</code>变量的<code>RLock</code>方法和<code>RUnlock</code>方法。也就是说，前两个方法仅仅是后两个方法的代理而已。</p>
+<p>好了，我们现在有四个变量。一个是代表信箱的<code>mailbox</code>，一个是代表信箱上的锁的<code>lock</code>。还有两个是，代表了蓝帽子小孩儿的<code>sendCond</code>，以及代表了红帽子小孩儿的<code>recvCond</code>。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/36/5d/3619456ade9d45a4d9c0fbd22bb6fd5d.png?wh=1627%2A829" /></p>
+<p>（互斥锁与条件变量）</p>
+<p>我，现在是一个goroutine（携带的<code>go</code>函数），想要适时地向信箱里放置情报并通知你，应该怎么做呢？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>lock.Lock()
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>for mailbox == 1 {
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a> sendCond.Wait()
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>}
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>mailbox = 1
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>lock.Unlock()
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>recvCond.Signal()
+</code></pre></div>
+<p>我肯定需要先调用<code>lock</code>变量的<code>Lock</code>方法。注意，这个<code>Lock</code>方法在这里意味的是：持有信箱上的锁，并且有打开信箱的权利，而不是锁上这个锁。</p>
+<p>然后，我要检查<code>mailbox</code>变量的值是否等于<code>1</code>，也就是说，要看看信箱里是不是还存有情报。如果还有情报，那么我就回家去等蓝帽子小孩儿了。</p>
+<p>这就是那条<code>for</code>语句以及其中的调用表达式<code>sendCond.Wait()</code>所表示的含义了。你可能会问，为什么这里是<code>for</code>语句而不是<code>if</code>语句呢？我在后面会对此进行解释的。</p>
+<p>我们再往后看，如果信箱里没有情报，那么我就把新情报放进去，关上信箱、锁上锁，然后离开。用代码表达出来就是<code>mailbox = 1</code>和<code>lock.Unlock()</code>。</p>
+<p>离开之后我还要做一件事，那就是让红帽子小孩儿准时去你家楼下路过。也就是说，我会及时地通知你“信箱里已经有新情报了”，我们调用<code>recvCond</code>的<code>Signal</code>方法就可以实现这一步骤。</p>
+<p>另一方面，你现在是另一个goroutine，想要适时地从信箱中获取情报，然后通知我。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>lock.RLock()
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>for mailbox == 0 {
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a> recvCond.Wait()
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>}
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>mailbox = 0
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>lock.RUnlock()
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>sendCond.Signal()
+</code></pre></div>
+<p>你跟我做的事情在流程上其实基本一致，只不过每一步操作的对象是不同的。你需要调用的是<code>lock</code>变量的<code>RLock</code>方法。因为你要进行的是读操作，并且会使用<code>recvCond</code>变量作为辅助。<code>recvCond</code>与<code>lock</code>变量的读锁是对应的。</p>
+<p>在打开信箱后，你要关注的是信箱里是不是没有情报，也就是检查<code>mailbox</code>变量的值是否等于<code>0</code>。如果它确实等于<code>0</code>，那么你就需要回家去等红帽子小孩儿，也就是调用<code>recvCond</code>的<code>Wait</code>方法。这里使用的依然是<code>for</code>语句。</p>
+<p>如果信箱里有情报，那么你就应该取走情报，关上信箱、锁上锁，然后离开。对应的代码是<code>mailbox = 0</code>和<code>lock.RUnlock()</code>。之后，你还需要让蓝帽子小孩儿准时去我家楼下路过。这样我就知道信箱中的情报已经被你获取了。</p>
+<p>以上这些，就是对咱们俩要执行秘密任务的代码实现。其中的条件变量的用法需要你特别注意。</p>
+<p>再强调一下，只要条件不满足，我就会通过调用<code>sendCond</code>变量的<code>Wait</code>方法，去等待你的通知，只有在收到通知之后我才会再次检查信箱。</p>
+<p>另外，当我需要通知你的时候，我会调用<code>recvCond</code>变量的<code>Signal</code>方法。你使用这两个条件变量的方式正好与我相反。你可能也看出来了，利用条件变量可以实现单向的通知，而双向的通知则需要两个条件变量。这也是条件变量的基本使用规则。</p>
+<p>你可以打开demo61.go文件，看到上述例子的全部实现代码。</p>
+<h2 id="_3">总结</h2>
+<p>我们这两期的文章会围绕条件变量的内容展开，条件变量是基于互斥锁的一种同步工具，它必须有互斥锁的支撑才能发挥作用。 条件变量可以协调那些想要访问共享资源的线程。当共享资源的状态发生变化时，它可以被用来通知被互斥锁阻塞的线程。我在文章举了一个两人访问信箱的例子，并用代码实现了这个过程。</p>
+<h2 id="_4">思考题</h2>
+<p><code>*sync.Cond</code>类型的值可以被传递吗？那<code>sync.Cond</code>类型的值呢？</p>
+<p>感谢你的收听，我们下期再见。</p>
+<p><a href="https://github.com/hyper0x/Golang_Puzzlers">戳此查看Go语言专栏文章配套详细代码。</a></p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/54/ba/8721e403.jpg" width="30px"><span>hello peter</span> 👍（39） 💬（2）<div>老师, 感觉这个送信的例子似乎用chanel实现更简单.在网上也查了一些例子, 发现都可以用chanel替代. 那使用sync.Cond 的优势是什么呢, 或者有哪些独特的使用场景?</div>2018-10-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/59/c0/6f02c096.jpg" width="30px"><span>属雨</span> 👍（34） 💬（1）<div>个人理解，不确定对不对，请老师评判一下：
-因为Go语言传递对象时，使用的是浅拷贝的值传递，所以，当传递一个Cond对象时复制了这个Cond对象，但是低层保存的L(Locker类型)，noCopy(noCopy类型)，notify(notifyList类型)，checker(copyChecker)对象的指针没变，因此，*sync.Cond和sync.Cond都可以传递。</div>2018-10-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/df/1e/cea897e8.jpg" width="30px"><span>传说中的成大大</span> 👍（19） 💬（1）<div>这几天一直对条件变量的理解比较模糊，但是我想既然要学就学好 于是又去翻了Unix环境高级编程 总算把它跟互斥锁区分开了
+<li><span>hello peter</span> 👍（39） 💬（2）<div>老师, 感觉这个送信的例子似乎用chanel实现更简单.在网上也查了一些例子, 发现都可以用chanel替代. 那使用sync.Cond 的优势是什么呢, 或者有哪些独特的使用场景?</div>2018-10-26</li><br/><li><span>属雨</span> 👍（34） 💬（1）<div>个人理解，不确定对不对，请老师评判一下：
+因为Go语言传递对象时，使用的是浅拷贝的值传递，所以，当传递一个Cond对象时复制了这个Cond对象，但是低层保存的L(Locker类型)，noCopy(noCopy类型)，notify(notifyList类型)，checker(copyChecker)对象的指针没变，因此，*sync.Cond和sync.Cond都可以传递。</div>2018-10-12</li><br/><li><span>传说中的成大大</span> 👍（19） 💬（1）<div>这几天一直对条件变量的理解比较模糊，但是我想既然要学就学好 于是又去翻了Unix环境高级编程 总算把它跟互斥锁区分开了
 互斥锁 是对一个共享区域进行加锁 所有线程都是一种竞争的状态去访问
-而条件变量 主要是通过条件状态来判断，实际上他还是会阻塞 只不过不会像互斥锁一样去参与竞争，而是在哪里等待条件变量的状态发生改变过后的通知 再被唤醒</div>2020-04-09</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKdiaUiaCYQe9tibemaNU5ya7RrU3MYcSGEIG7zF27u0ZDnZs5lYxPb7KPrAsj3bibM79QIOnPXAatfIw/132" width="30px"><span>Geek_a8be59</span> 👍（15） 💬（3）<div>var mailbox uint8
+而条件变量 主要是通过条件状态来判断，实际上他还是会阻塞 只不过不会像互斥锁一样去参与竞争，而是在哪里等待条件变量的状态发生改变过后的通知 再被唤醒</div>2020-04-09</li><br/><li><span>Geek_a8be59</span> 👍（15） 💬（3）<div>var mailbox uint8
 var lock sync.RWMutex
 sendCond := sync.NewCond(&amp;lock)
 recvCond := sync.NewCond(&amp;lock)
 为什么不能向上面那样都用同一个互斥量，非要两个不同呢？老师，能讲一下区别么
-</div>2019-08-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0a/0b/985d3800.jpg" width="30px"><span>郭星</span> 👍（5） 💬（1）<div>在for 循环中使用 wait,在我的测试中,当条件变量处于wait状态时,如果没有唤醒,当前协程会一直阻塞等待在wait这行代码,因此使用for 和 使用if 实际最终结果是相同的,为什么要使用for呢?
+</div>2019-08-12</li><br/><li><span>郭星</span> 👍（5） 💬（1）<div>在for 循环中使用 wait,在我的测试中,当条件变量处于wait状态时,如果没有唤醒,当前协程会一直阻塞等待在wait这行代码,因此使用for 和 使用if 实际最终结果是相同的,为什么要使用for呢?
 
 package lesson27
 
@@ -13414,7 +13536,7 @@ func TestCond(t *testing.T) {
     }(max)
     wg.Wait()
 }
-</div>2020-09-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2e/16/ed/acd6df5e.jpg" width="30px"><span>啦啦啦</span> 👍（3） 💬（1）<div>想请问下老师，两个goroutine都使用了同一把锁，26讲（Mutex）里不是说明，尽量使用：是让每一个互斥锁都只保护一个临界区或一组相关临界区。有点搞不明白，望老师指点
+</div>2020-09-02</li><br/><li><span>啦啦啦</span> 👍（3） 💬（1）<div>想请问下老师，两个goroutine都使用了同一把锁，26讲（Mutex）里不是说明，尽量使用：是让每一个互斥锁都只保护一个临界区或一组相关临界区。有点搞不明白，望老师指点
 
 
 
@@ -13451,11 +13573,11 @@ go func(max int) { &#47;&#47; 用于发信。
             lock.RUnlock()
             sendCond.Signal()
         }
-    }(max)</div>2022-06-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/9d/a4/e481ae48.jpg" width="30px"><span>lesserror</span> 👍（3） 💬（1）<div>郝林老师，demo61.go 中的  两个go function（收信 和 发信），是怎么保证先 发信 后收信的呢？
+    }(max)</div>2022-06-07</li><br/><li><span>lesserror</span> 👍（3） 💬（1）<div>郝林老师，demo61.go 中的  两个go function（收信 和 发信），是怎么保证先 发信 后收信的呢？
 
-不是说 go function 函数 的执行 是 随机的么？ 我打印了很多遍，发现 都是执行的 发信 操作，然后是 收信 操作。</div>2021-08-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/38/e2/28aa8e6c.jpg" width="30px"><span>会玩code</span> 👍（2） 💬（2）<div>老师，不懂这里的recvCond为什么可以用读锁呢？这里也是有对资源做操作的呀（将mailbox置为0），用读锁不会有问题吗？</div>2020-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/2e/39/7682b49e.jpg" width="30px"><span>lofaith</span> 👍（1） 💬（1）<div>老师，读写锁之间不是互斥的吗，我理解应该在加上读锁的时候，写锁就会阻塞在lock这里，不会走到 sendCond.Wait() 这里啊。虽然能明白条件变量的作用了，但还是不清楚它的使用场景，老师能说一下使用场景吗</div>2021-11-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/6d/52/404912c3.jpg" width="30px"><span>...</span> 👍（1） 💬（3）<div>老师 wait会释放锁吗</div>2019-02-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7f/75/551c5d6c.jpg" width="30px"><span>CrazyCodes</span> 👍（0） 💬（1）<div>*sync.Cond类型的值可以被传递吗？那sync.Cond类型的值呢？
+不是说 go function 函数 的执行 是 随机的么？ 我打印了很多遍，发现 都是执行的 发信 操作，然后是 收信 操作。</div>2021-08-15</li><br/><li><span>会玩code</span> 👍（2） 💬（2）<div>老师，不懂这里的recvCond为什么可以用读锁呢？这里也是有对资源做操作的呀（将mailbox置为0），用读锁不会有问题吗？</div>2020-05-15</li><br/><li><span>lofaith</span> 👍（1） 💬（1）<div>老师，读写锁之间不是互斥的吗，我理解应该在加上读锁的时候，写锁就会阻塞在lock这里，不会走到 sendCond.Wait() 这里啊。虽然能明白条件变量的作用了，但还是不清楚它的使用场景，老师能说一下使用场景吗</div>2021-11-15</li><br/><li><span>...</span> 👍（1） 💬（3）<div>老师 wait会释放锁吗</div>2019-02-20</li><br/><li><span>CrazyCodes</span> 👍（0） 💬（1）<div>*sync.Cond类型的值可以被传递吗？那sync.Cond类型的值呢？
 
-代码测试*sync.Cond 可以被传递，但sync.Cond不能，是因为必须是指针类型吗？</div>2023-11-24</li><br/><li><img src="" width="30px"><span>川川</span> 👍（0） 💬（1）<div>老师，我没太理解为啥 广播 是要在解锁之后再 触发吗？  client-go 中广播都是在锁内发生的啊
+代码测试*sync.Cond 可以被传递，但sync.Cond不能，是因为必须是指针类型吗？</div>2023-11-24</li><br/><li><span>川川</span> 👍（0） 💬（1）<div>老师，我没太理解为啥 广播 是要在解锁之后再 触发吗？  client-go 中广播都是在锁内发生的啊
 
 func (f *FIFO) Add(obj interface{}) error {
     id, err := f.keyFunc(obj)
@@ -13471,41 +13593,17 @@ func (f *FIFO) Add(obj interface{}) error {
     f.items[id] = obj
     f.cond.Broadcast()
     return nil
-}</div>2022-05-22</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKELX1Rd1vmLRWibHib8P95NA87F4zcj8GrHKYQL2RcLDVnxNy1ia2geTWgW6L2pWn2kazrPNZMRVrIg/132" width="30px"><span>jxs1211</span> 👍（0） 💬（1）<div>在运行读取mailbox的goroutine中，当mailbox=1时，可以取信，在这段由读锁锁定的临界区中，mailbox=0实际是一个写入操作，怎么理解这个读锁锁定的临界区中实则为一个写操作呢
+}</div>2022-05-22</li><br/><li><span>jxs1211</span> 👍（0） 💬（1）<div>在运行读取mailbox的goroutine中，当mailbox=1时，可以取信，在这段由读锁锁定的临界区中，mailbox=0实际是一个写入操作，怎么理解这个读锁锁定的临界区中实则为一个写操作呢
 log.Printf(&quot;receiver [%d]: the mailbox is full.&quot;, j)
 mailbox = 0
 log.Printf(&quot;receiver [%d]: the letter has been received.&quot;, j)
-lock.RUnlock()</div>2021-10-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/9d/a4/e481ae48.jpg" width="30px"><span>lesserror</span> 👍（0） 💬（1）<div>郝林老师，如果能对照代码的打印输出流程讲就好了，有好多讲我看代码的输出挺懵的。</div>2021-08-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/66/77/194ba21d.jpg" width="30px"><span>ileruza</span> 👍（0） 💬（1）<div>a := &amp;lock
+lock.RUnlock()</div>2021-10-21</li><br/><li><span>lesserror</span> 👍（0） 💬（1）<div>郝林老师，如果能对照代码的打印输出流程讲就好了，有好多讲我看代码的输出挺懵的。</div>2021-08-15</li><br/><li><span>ileruza</span> 👍（0） 💬（1）<div>a := &amp;lock
 b := lock.RLocker()
 
 fmt.Printf(&quot;%p\n&quot;, a)
 fmt.Printf(&quot;%p\n&quot;, b)
 
-它们地址都是一样的呀，为什么说是不同的lock呢？</div>2021-03-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/3f/8d/a89be8f9.jpg" width="30px"><span>寻路人</span> 👍（0） 💬（2）<div>var lock sync.RWMutex明明是读写锁，
-一个goroutine使用了lock.Lock()，另一个goroutine再调用lock.RLock()会互斥。
-这里作者应该忽略了告诉读者Wait()会释放独占锁的一个概念。</div>2021-01-23</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaEIBJYQ73yYqmiaU7Zg0BHPh9gpSglI79Dzcbob7I2tZOhTjbTTCw13KzVusYhLbKkukV9Ru5UfJMxQ/132" width="30px"><span>Geek_2d276a</span> 👍（0） 💬（2）<div>有个疑问：互斥锁的解锁操作可以唤醒之前因为加锁导致的阻塞的协程，为什么还要用条件变量来实现唤醒阻塞的协程呢？</div>2020-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fe/2d/2c9177ca.jpg" width="30px"><span>给力</span> 👍（0） 💬（1）<div>指针类型可以被传递，因为底层数据是同一份。
-传值的话
-type Cond struct {
-    noCopy noCopy
-
-    &#47;&#47; L is held while observing or changing the condition
-    L Locker
-
-    notify  notifyList
-    checker copyChecker
-}
-Locker 是接口，传递时是引用类型
-notifyList 是结构体，会被浅拷贝
-checker 是数值类型，也会被拷贝
-
-如果sync.Cond在传递过程中，结构体和数值类型各层都有一份备份数据，容易造成不一致情况，所以极容易出问题。
-</div>2020-03-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/2a/94/8c128d36.jpg" width="30px"><span>Howard</span> 👍（0） 💬（2）<div>我能把mailbox = 0放到lock.RUnlock()外面吗？总觉得读锁里面改动mailbox有点不好。</div>2019-12-16</li><br/><li><img src="" width="30px"><span>qiushye</span> 👍（0） 💬（2）<div>文章的例子是“我发信，你收信”，示例图表达的是“你发信，我收信”，稍有不足.</div>2019-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/97/86/fb564a19.jpg" width="30px"><span>bluuus</span> 👍（0） 💬（2）<div>我试了一下demo61.go, 发现永远只有一个协程可以进到wait方法，当mailbox初始值是0，只有可能收协程进到wait方法；当mailbox初始值为1，只有可能发协程进到wait方法。为什么会这样</div>2019-08-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c6/73/abb7bfe3.jpg" width="30px"><span>疯琴</span> 👍（7） 💬（0）<div>秘密接头的类比形象生动，学习过程轻松有趣又不失深度。</div>2019-12-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ea/80/8759e4c1.jpg" width="30px"><span>🐻</span> 👍（6） 💬（0）<div>需传递 *sync.Cond
-
-因为 Cond 结构体中的 notify 变量和 checker 变量都是值类型，传递sync.Cond 会复制值，这样两个锁保留的被阻塞的 Goroutine 就不同了。</div>2019-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/e0/513d185e.jpg" width="30px"><span>文@雨路</span> 👍（6） 💬（0）<div>指针可以传递，值不可以，传递值会拷贝一份，导致出现两份条件变量，彼此之间没有联系</div>2018-10-12</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLmBgic9UlGySyG377pCVzNnbgsGttrKTCFztunJlBTDS32oTyHsJjAFJJsYJyhk9cNE5OZeGKWJ6Q/132" width="30px"><span>beiliu</span> 👍（5） 💬（0）<div>您好，老师，官方文档是建议，singal在锁住的情况下使用的“Signal唤醒等待c的一个线程（如果存在）。调用者在调用本方法时，建议（但并非必须）保持c.L的锁定“</div>2018-12-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e8/58/ecb493dc.jpg" width="30px"><span>ming</span> 👍（5） 💬（3）<div>多routine从信箱中获取情报, 都在等mailbox变量的值不为0的时候再把它的值变为0，
-这个 RLock 限制不了写操作，可能会有多个routine同时将 mailbox 变为0的，跟文中的场景有些不合。 
-不知道我理解的有没有问题
-</div>2018-12-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d9/d2/4ae9b17f.jpg" width="30px"><span>q</span> 👍（4） 💬（0）<div>个人感觉，从底层原理解释条件变量可能更容易理解</div>2020-11-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/f7/62/947004d0.jpg" width="30px"><span>www</span> 👍（1） 💬（0）<div>这篇讲解太棒了，看了lock.RLocker()的源码，又返回去看了前面第14篇讲解接口的文章。多看多写，逐步提升</div>2020-06-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/2b/39/19041d78.jpg" width="30px"><span>😳</span> 👍（1） 💬（0）<div>这个类比生动形象，很有趣，简单易懂</div>2020-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/12/70/10faf04b.jpg" width="30px"><span>Lywane</span> 👍（1） 💬（0）<div>recvCond.Signal()表示接收方可以接受了，发送这个信号的是发送方。
-sendCond.Signal()表示发送方可以再次发送了，发送这个信号的是接收方。</div>2020-03-27</li><br/>
+它们地址都是一样的呀，为什么说是不同的lock呢？</div>2021-03-31</li><br/>
 </ul>
 
 

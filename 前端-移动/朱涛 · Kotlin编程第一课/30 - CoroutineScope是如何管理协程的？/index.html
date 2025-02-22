@@ -3720,6 +3720,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      父子关系在哪里建立的？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      协程是如何“结构化取消”的？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5284,6 +5320,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      父子关系在哪里建立的？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      协程是如何“结构化取消”的？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5334,15 +5406,406 @@
 <a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    }
 <a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>}
 </code></pre></div>
+<p>不过，很多初学者可能不知道，协程早期的API并不是这么设计的，最初的launch、async只是普通的顶层函数，我们不需要scope就可以直接创建协程，就像这样：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>// 代码段2
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>private fun testScope() {
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    // 早期协程API的写法
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    launch{
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        // 省略
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    }
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>}
+</code></pre></div>
+<p>很明显，代码段2的写法要比代码段1的简单很多，那么Kotlin官方为什么要舍近求远，专门设计一个更加复杂的API呢？这一切，都是因为<strong>结构化并发</strong>。</p>
+<p>让我们来看一段代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>// 代码段3
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>private fun testScope() {
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    val scope = CoroutineScope(Job())
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    scope.launch{
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        launch {
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>            delay(1000000L)
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>            logX(&quot;Inner&quot;)
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        }
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        logX(&quot;Hello!&quot;)
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        delay(1000000L)
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>        logX(&quot;World!&quot;)  // 不会执行
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    }
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    scope.launch{
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>        launch {
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>            delay(1000000L)
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>            logX(&quot;Inner！！！&quot;)
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>        }
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>        logX(&quot;Hello！！!&quot;)
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>        delay(1000000L)
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>        logX(&quot;World1!！！&quot;)  // 不会执行
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    }
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    Thread.sleep(500L)
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    scope.cancel()
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>}
+</code></pre></div>
+<p>上面这段代码很简单，我们使用scope创建了两个顶层的协程，接着，在协程的内部我们使用launch又创建了一个子协程。最后，我们在协程的外部等待了500毫秒，并且调用了scope.cancel()。这样一来，我们前面创建的4个协程就全部都取消了。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/7b/80/7b40c302yy14d01d07787dc857a5cf80.jpg?wh=2000x1125" /></p>
+<p>通过前面<a href="https://time.geekbang.org/column/article/488571">第17讲</a>的学习，我们知道上面的代码其实可以用这样的关系图来表示。父协程是属于Scope的，子协程是属于父协程的，因此，只要调用了scope.cancel()，这4个协程都会被取消。</p>
+<p>想象一下，如果我们将上面的代码用协程最初的API改写的话，这一切就完全不一样了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>// 代码段4
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>// 使用协程最初的API，只是伪代码
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>private fun testScopeJob() {
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    val job = Job()
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    launch(job){
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        launch {
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>            delay(1000000L)
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>            logX(&quot;Inner&quot;)
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        }
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        logX(&quot;Hello!&quot;)
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        delay(1000000L)
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>        logX(&quot;World!&quot;)  // 不会执行
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    }
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    launch(job){
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>        launch {
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>            delay(1000000L)
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>            logX(&quot;Inner！！！&quot;)
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>        }
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>        logX(&quot;Hello！！!&quot;)
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>        delay(1000000L)
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>        logX(&quot;World1!！！&quot;)  // 不会执行
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>    }
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    Thread.sleep(500L)
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>    job.cancel()
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>}
+</code></pre></div>
+<p>在上面的代码中，为了实现结构化并发，我们不得不创建一个Job对象，然后将其传入launch当中作为参数。</p>
+<p>你能感受到其中的差别吗？如果使用原始的协程API，结构化并发是需要开发者自觉往launch当中传job参数才能实现，它是<strong>可选</strong>的，开发者也可能疏忽大意，忘记传参数。而launch成为CoroutineScope的扩展函数以后，这一切就成为<strong>必须</strong>的了，我们开发者不可能忘记。</p>
+<p>而且，通过对比代码段3和4以后，我们也可以发现：<strong>CoroutineScope管理协程的能力，其实也是源自于Job。</strong></p>
+<p>那么，CoroutineScope与Job到底是如何实现结构化并发的呢？接下来，让我们从源码中寻找答案吧！</p>
+<h2 id="_1">父子关系在哪里建立的？</h2>
+<p>在分析源码之前，我们先来写一个简单的Demo。接下来，我们就以这个Demo为例，来研究一下CoroutineScope是如何通过Job来管理协程的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>// 代码段5
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>private fun testScope() {
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    // 1
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    val scope = CoroutineScope(Job())
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    scope.launch{
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        launch {
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>            delay(1000000L)
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>            logX(&quot;Inner&quot;)  // 不会执行
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        }
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        logX(&quot;Hello!&quot;)
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>        delay(1000000L)
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>        logX(&quot;World!&quot;)  // 不会执行
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    }
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    Thread.sleep(500L)
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    // 2
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    scope.cancel()
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>}
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>public interface CoroutineScope {
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    public val coroutineContext: CoroutineContext
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>}
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>public interface Job : CoroutineContext.Element {}
+</code></pre></div>
+<p>以上代码的逻辑很简单，我们先来看看注释1对应的地方。我们都知道，CoroutineScope是一个接口，那么我们<strong>为什么可以调用它的构造函数，来创建CoroutineScope对象呢？</strong>不应该使用object关键字创建匿名内部类吗？</p>
+<p>其实，代码段5当中调用CoroutineScope()并不是构造函数，而是一个顶层函数：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>// 代码段6
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>// 顶层函数
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>public fun CoroutineScope(context: CoroutineContext): CoroutineScope =
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    // 1
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    ContextScope(if (context[Job] != null) context else context + Job())
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>// 顶层函数
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>public fun Job(parent: Job? = null): CompletableJob = JobImpl(parent)
+</code></pre></div>
+<p>在<a href="https://time.geekbang.org/column/article/472154">第1讲</a>当中，我曾提到过，Kotlin当中的函数名称，在大部分情况下都是遵循“<a href="https://zh.wikipedia.org/wiki/%E9%A7%9D%E5%B3%B0%E5%BC%8F%E5%A4%A7%E5%B0%8F%E5%AF%AB">驼峰命名法</a>”的，而在一些特殊情况下则不遵循这种命名法。上面的顶层函数CoroutineScope()，其实就属于特殊的情况，因为它虽然是一个普通的顶层函数，但它发挥的作用却是“构造函数”。类似的用法，还有Job()这个顶层函数。</p>
+<p>因此，在Kotlin当中，当顶层函数作为构造函数使用的时候，<strong>它的首字母是要大写的</strong>。</p>
+<p>让我们回到代码段6，看看其中注释1的地方。这行代码的意思是，当我们创建CoroutineScope的时候，如果传入的Context是包含Job的，那就直接用；如果是不包含Job的，就会创建一个新的Job。这就意味着，<strong>每一个CoroutineScope对象，它的Context当中必定存在一个Job对象。</strong>而代码段5当中的CoroutineScope(Job())，改成CoroutineScope()也是完全没问题的。</p>
+<p>接下来，我们再来看看launch的源代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>// 代码段7
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>public fun CoroutineScope.launch(
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    context: CoroutineContext = EmptyCoroutineContext,
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    start: CoroutineStart = CoroutineStart.DEFAULT,
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    block: suspend CoroutineScope.() -&gt; Unit
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>): Job {
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    // 1
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    val newContext = newCoroutineContext(context)
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    // 2
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    val coroutine = if (start.isLazy)
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        LazyStandaloneCoroutine(newContext, block) else
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>        StandaloneCoroutine(newContext, active = true)
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    // 3
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    coroutine.start(start, coroutine, block)
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    return coroutine
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>}
+</code></pre></div>
+<p>在前面两节课里，我们已经分析过注释1和注释3当中的逻辑了，这节课呢，我们来分析注释2处的逻辑。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>// 代码段8
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>private open class StandaloneCoroutine(
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    parentContext: CoroutineContext,
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    active: Boolean
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>) : AbstractCoroutine&lt;Unit&gt;(parentContext, initParentJob = true, active = active) {
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    override fun handleJobException(exception: Throwable): Boolean {
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>        handleCoroutineException(context, exception)
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>        return true
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    }
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>}
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>private class LazyStandaloneCoroutine(
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    parentContext: CoroutineContext,
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    block: suspend CoroutineScope.() -&gt; Unit
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>) : StandaloneCoroutine(parentContext, active = false) {
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>    private val continuation = block.createCoroutineUnintercepted(this, this)
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>    override fun onStart() {
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>        continuation.startCoroutineCancellable(this)
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>    }
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>}
+</code></pre></div>
+<p>可以看到，StandaloneCoroutine是AbstractCoroutine的子类，而在<a href="https://time.geekbang.org/column/article/499826">第28讲</a>当中，我们就已经遇到过AbstractCoroutine，它其实就是代表了<strong>协程的抽象类</strong>。另外这里有一个initParentJob参数，它是true，代表了协程创建了以后，需要初始化协程的父子关系。而LazyStandaloneCoroutine则是StandaloneCoroutine的子类，它的active参数是false，代表了以懒加载的方式创建协程。</p>
+<p>接下来，我们就看看它们的父类AbstractCoroutine：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>// 代码段9
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>public abstract class AbstractCoroutine&lt;in T&gt;(
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    parentContext: CoroutineContext,
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    initParentJob: Boolean,
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    active: Boolean
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>) : JobSupport(active), Job, Continuation&lt;T&gt;, CoroutineScope {
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    init {
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>        if (initParentJob) initParentJob(parentContext[Job])
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    }
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>}
+</code></pre></div>
+<p>可以看到，<strong>AbstractCoroutine其实是JobSupport的子类</strong>，在它的init{} 代码块当中，会根据initParentJob参数，判断是否需要初始化协程的父子关系。这个参数我们在代码段8当中已经分析过了，它一定是true，所以这里的initParentJob()方法一定会执行，而它的参数parentContext[Job]取出来的Job，其实就是我们在Scope当中的Job。</p>
+<p>另外，这里的initParentJob()方法，是它的父类JobSupport当中的方法，我们来看看：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>// 代码段10
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>public open class JobSupport constructor(active: Boolean) : Job, ChildJob, ParentJob, SelectClause0 {
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    final override val key: CoroutineContext.Key&lt;*&gt; get() = Job
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    protected fun initParentJob(parent: Job?) {
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>        assert { parentHandle == null }
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>        // 1
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>        if (parent == null) {
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>            parentHandle = NonDisposableHandle
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>            return
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>        }
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>        // 2
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>        parent.start()
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>        @Suppress(&quot;DEPRECATION&quot;)
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>        // 3
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>        val handle = parent.attachChild(this)
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>        parentHandle = handle
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>        if (isCompleted) {
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>            handle.dispose()
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>            parentHandle = NonDisposableHandle 
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>        }
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>    }
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>}
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>// Job源码
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>public interface Job : CoroutineContext.Element {
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>    public val children: Sequence&lt;Job&gt;   
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>    public fun attachChild(child: ChildJob): ChildHandle
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>}
+</code></pre></div>
+<p>上面的代码一共有三个地方需要注意，我们来分析一下：</p>
+<ul>
+<li>注释1，判断传入的parent是否为空，如果parent为空，说明当前的协程不存在父Job，这时候就谈不上创建协程父子关系了。不过，如果按照代码段5的逻辑来分析的话，此处的parent则是scope当中的Job，因此，代码会继续执行到注释2。</li>
+<li>注释2，这里是确保parent对应的Job启动了。</li>
+<li>注释3，parent.attachChild(this)，这个方法我们在<a href="https://time.geekbang.org/column/article/487930">第16讲</a>当中提到过，它会将当前的Job，添加为parent的子Job。<strong>这里其实就是建立协程父子关系的关键代码。</strong></li>
+</ul>
+<p>所以，我们可以将协程的结构当作一颗<strong>N叉树</strong>。每一个协程，都对应着一个Job的对象，而每一个Job可以有一个父Job，也可以有多个子Job。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/30/9a/308decb3a0d5c89d2082673d00f33f9a.jpg?wh=2000x1013" /></p>
+<p>这样，当我们知道协程的父子关系是如何建立的了以后，父协程如何取消子协程也就很容易理解了。</p>
+<h2 id="_2">协程是如何“结构化取消”的？</h2>
+<p>其实，协程的结构化取消，本质上是<strong>事件的传递</strong>，它跟我们平时生活中的场景都是类似的：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/0b/da/0b95644933e584dcdf0e8a24696394da.jpg?wh=2000x986" /></p>
+<p>就比如，当我们在学校、公司内部，有消息或任务需要传递的时候，总是遵循这样的规则：处理好分内的事情，剩下的部分交给上级和下级。协程的结构化取消，也是通过这样的事件消息模型来实现的。</p>
+<p>甚至，如果让我们来实现协程API的话，都能想象到它的代码该怎么写：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>// 代码段11
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>fun Job.cancelJob() {
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    // 通知子Job
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    children.forEach {
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>        cancelJob()
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    }
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    // 通知父Job
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    notifyParentCancel()
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>}
+</code></pre></div>
+<p>当然，以上只是简化后的伪代码，真实的协程代码一定比这个复杂很多，但只要你能理解这一点，我们后面的分析就很简单了。让我们接着代码段5当中的注释2，继续分析scope.cancel()后续的流程。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>// 代码段12
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>public fun CoroutineScope.cancel(cause: CancellationException? = null) {
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    val job = coroutineContext[Job] ?: error(&quot;Scope cannot be cancelled because it does not have a job: $this&quot;)
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    job.cancel(cause)
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>}
+</code></pre></div>
+<p>可以看到，CoroutineScope的cancel()方法，本质上是调用了它当中的Job.cancel()。而这个方法的具体实现在JobSupport当中：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>// 代码段13
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>public override fun cancel(cause: CancellationException?) {
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    cancelInternal(cause ?: defaultCancellationException())
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>}
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>public open fun cancelInternal(cause: Throwable) {
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    cancelImpl(cause)
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>}
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>internal fun cancelImpl(cause: Any?): Boolean {
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>    var finalState: Any? = COMPLETING_ALREADY
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>    if (onCancelComplete) {
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>        // 1
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>        finalState = cancelMakeCompleting(cause)
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>        if (finalState === COMPLETING_WAITING_CHILDREN) return true
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>    }
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>    if (finalState === COMPLETING_ALREADY) {
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>        // 2
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>        finalState = makeCancelling(cause)
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>    }
+<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a>    return when {
+<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a>        finalState === COMPLETING_ALREADY -&gt; true
+<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a>        finalState === COMPLETING_WAITING_CHILDREN -&gt; true
+<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a>        finalState === TOO_LATE_TO_CANCEL -&gt; false
+<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a>        else -&gt; {
+<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a>            afterCompletion(finalState)
+<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a>            true
+<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a>        }
+<a id="__codelineno-12-30" name="__codelineno-12-30" href="#__codelineno-12-30"></a>    }
+<a id="__codelineno-12-31" name="__codelineno-12-31" href="#__codelineno-12-31"></a>}
+</code></pre></div>
+<p>可见，job.cancel()最终会调用JobSupport的 <strong>cancelImpl()方法</strong>。其中有两个注释，代表了两个分支，它的判断依据是onCancelComplete这个Boolean类型的成员属性。这个其实就代表了当前的Job，是否有协程体需要执行。</p>
+<p>另外，由于CoroutineScope当中的Job是我们手动创建的，并不需要执行任何协程代码，所以，它会是 <strong>true</strong>。也就是说，这里会执行注释1对应的代码。</p>
+<p>让我们继续分析cancelMakeCompleting()方法：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>// 代码段14
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>private fun cancelMakeCompleting(cause: Any?): Any? {
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    loopOnState { state -&gt;
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>        // 省略部分
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>        val finalState = tryMakeCompleting(state, proposedUpdate)
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>        if (finalState !== COMPLETING_RETRY) return finalState
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    }
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>}
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>private fun tryMakeCompleting(state: Any?, proposedUpdate: Any?): Any? {
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    if (state !is Incomplete)
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>        return COMPLETING_ALREADY
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>        // 省略部分
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>        return COMPLETING_RETRY
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>    }
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>    return tryMakeCompletingSlowPath(state, proposedUpdate)
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>}
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>private fun tryMakeCompletingSlowPath(state: Incomplete, proposedUpdate: Any?): Any? {
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>    // 省略部分
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>    notifyRootCause?.let { notifyCancelling(list, it) }
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>    return finalizeFinishingState(finishing, proposedUpdate)
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>}
+</code></pre></div>
+<p>从上面的代码中，我们可以看到cancelMakeCompleting()会调用tryMakeCompleting()方法，最终则会调用tryMakeCompletingSlowPath()当中的notifyCancelling()方法。所以，<strong>它才是最关键的代码。</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>// 代码段15
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>private fun notifyCancelling(list: NodeList, cause: Throwable) {
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    onCancelling(cause)
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    // 1，通知子Job
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    notifyHandlers&lt;JobCancellingNode&gt;(list, cause)
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    // 2，通知父Job
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>    cancelParent(cause)
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>}
+</code></pre></div>
+<p>可以看到，上面代码段15和我们前面写的代码段11当中的伪代码的逻辑是一致的。我们再分别来看看它们具体的逻辑：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>// 代码段16
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>private inline fun &lt;reified T: JobNode&gt; notifyHandlers(list: NodeList, cause: Throwable?) {
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    var exception: Throwable? = null
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    list.forEach&lt;T&gt; { node -&gt;
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>        try {
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>            node.invoke(cause)
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>        } catch (ex: Throwable) {
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>            exception?.apply { addSuppressedThrowable(ex) } ?: run {
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>                exception =  CompletionHandlerException(&quot;Exception in completion handler $node for $this&quot;, ex)
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>            }
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>        }
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>    }
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>    exception?.let { handleOnCompletionException(it) }
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>}
+</code></pre></div>
+<p>代码段16当中的逻辑，就是遍历当前Job的子Job，并将取消的cause传递过去，这里的invoke()最终会调用ChildHandleNode的invoke()方法：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>internal class ChildHandleNode(
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>    @JvmField val childJob: ChildJob
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>) : JobCancellingNode(), ChildHandle {
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>    override val parent: Job get() = job
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    override fun invoke(cause: Throwable?) = childJob.parentCancelled(job)
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    override fun childCancelled(cause: Throwable): Boolean = job.childCancelled(cause)
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>}
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>public final override fun parentCancelled(parentJob: ParentJob) {
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>    cancelImpl(parentJob)
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>}
+</code></pre></div>
+<p>然后，从以上代码中我们可以看到，ChildHandleNode的invoke()方法会调用parentCancelled()方法，而它最终会调用cancelImpl()方法。其实，这个就是代码段13当中的cancelImpl()方法，也就是Job取消的入口函数。这实际上就相当于在做<strong>递归调用</strong>。</p>
+<p>接下来，我们看看代码段15当中的注释2，通知父Job的流程：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>private fun cancelParent(cause: Throwable): Boolean {
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>    if (isScopedCoroutine) return true
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>    val isCancellation = cause is CancellationException
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    val parent = parentHandle
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    if (parent === null || parent === NonDisposableHandle) {
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>        return isCancellation
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>    }
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>    // 1
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>    return parent.childCancelled(cause) || isCancellation
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>}
+</code></pre></div>
+<p>请留意上面代码段的注释1，这个函数的返回值是有意义的，返回true代表父协程处理了异常，而返回false，代表父协程没有处理异常。这种类似<strong>责任链的设计模式</strong>，在很多领域都有应用，比如Android的事件分发机制、OkHttp的拦截器，等等。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>public open fun childCancelled(cause: Throwable): Boolean {
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>    if (cause is CancellationException) return true
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>    return cancelImpl(cause) &amp;&amp; handlesException
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>}
+</code></pre></div>
+<p>那么，当异常是CancellationException的时候，协程是会进行特殊处理的。一般来说，父协程会忽略子协程的取消异常，这一点我们在<a href="https://time.geekbang.org/column/article/493666">第23讲</a>当中也提到过。而如果是其他的异常，那么父协程就会响应子协程的取消了。这个时候，我们的代码又会继续递归调用代码段13当中的cancelImpl()方法了。</p>
+<p>至此，协程的“结构化取消”部分的逻辑，我们也分析完了。让我们通过视频来看看它们整体的执行流程。</p>
+<h2 id="_3">小结</h2>
+<p>今天的内容到这里就结束了，我们来总结和回顾一下这节课里涉及到的知识点：</p>
+<ul>
+<li>每次创建CoroutineScope的时候，它的内部会确保CoroutineContext当中一定存在Job元素，而CoroutineScope就是通过这个Job对象来管理协程的。</li>
+<li>在我们通过launch、async创建协程的时候，会同时创建AbstractCoroutine的子类，在它的initParentJob()方法当中，会建立协程的父子关系。每个协程都会对应一个Job，而每个Job都会有一个父Job，多个子Job。最终它们会形成一个N叉树的结构。</li>
+<li>由于协程是一个N叉树的结构，因此协程的取消事件以及异常传播，也会按照这个结构进行传递。每个Job取消的时候，都会通知自己的子Job和父Job，最终以递归的形式传递给每一个协程。另外，协程在向上取消父Job的时候，还利用了责任链模式，确保取消事件可以一步步传播到最顶层的协程。这里还有一个细节就是，默认情况下，父协程都会忽略子协程的CancellationException。</li>
+</ul>
+<p>到这里，我们其实就可以进一步总结出协程的<strong>结构化取消的规律</strong>了。</p>
+<p>对于CancellationException引起的取消，它只会向下传播，取消子协程；对于其他的异常引起的取消，它既向上传播，也向下传播，最终会导致所有协程都被取消。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/04/35/04a978310f722996c38bd09a00fdae35.gif?wh=1080x608" /></p>
+<h2 id="_4">思考题</h2>
+<p>在第23讲当中，我们学习过SupervisorJob，它可以起到隔离异常传播的作用，下面是它的源代码，请问你能借助这节课学的知识点来分析下它的原理吗？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>public fun SupervisorJob(parent: Job? = null) : CompletableJob = 
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    SupervisorJobImpl(parent)
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>private class SupervisorJobImpl(parent: Job?) : JobImpl(parent) {
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>    override fun childCancelled(cause: Throwable): Boolean = false
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>}
+</code></pre></div>
 <div><strong>精选留言（6）</strong></div>
 <ul>
-<li><img src="" width="30px"><span>Paul Shan</span> 👍（11） 💬（1）<div>思考题：SupervisorJob 重写了childCancelled方法，当异常发生，错误在整个树中传递，调用到​​cancelParent会调用parent.childCancelled，这个时候就会直接返回false而不是调用cancelImpl，错误传递就会终止，父协程不会被cancle掉。执行的路径其实和CancellationException异常类似，区别是cancelParent的返回值。</div>2022-04-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5a/75/4e0d7419.jpg" width="30px"><span>飓风</span> 👍（7） 💬（1）<div>CancellationException 引起的异常，会传递给兄弟节点吗？</div>2022-04-13</li><br/><li><img src="" width="30px"><span>辉哥</span> 👍（1） 💬（1）<div>原文: 另外，由于 CoroutineScope 当中的 Job 是我们手动创建的，并不需要执行任何协程代码，所以，它会是 true。也就是说，这里会执行注释 2 对应的代码
+<li><span>Paul Shan</span> 👍（11） 💬（1）<div>思考题：SupervisorJob 重写了childCancelled方法，当异常发生，错误在整个树中传递，调用到​​cancelParent会调用parent.childCancelled，这个时候就会直接返回false而不是调用cancelImpl，错误传递就会终止，父协程不会被cancle掉。执行的路径其实和CancellationException异常类似，区别是cancelParent的返回值。</div>2022-04-01</li><br/><li><span>飓风</span> 👍（7） 💬（1）<div>CancellationException 引起的异常，会传递给兄弟节点吗？</div>2022-04-13</li><br/><li><span>辉哥</span> 👍（1） 💬（1）<div>原文: 另外，由于 CoroutineScope 当中的 Job 是我们手动创建的，并不需要执行任何协程代码，所以，它会是 true。也就是说，这里会执行注释 2 对应的代码
 
-涛哥,结合上下文的意思,这里应该是会执行注释1对应的代码吧</div>2022-04-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/4a/5a/14eb7973.jpg" width="30px"><span>杨小妞</span> 👍（0） 💬（2）<div>环境：implementation &#39;org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0&#39;
+涛哥,结合上下文的意思,这里应该是会执行注释1对应的代码吧</div>2022-04-02</li><br/><li><span>杨小妞</span> 👍（0） 💬（2）<div>环境：implementation &#39;org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0&#39;
 问题1：“而代码段 5 当中的 CoroutineScope(Job())，改成 CoroutineScope() 也是完全没问题的”，这里参数是不能为空的吧？
 问题2：在创建CoroutineScope的时候，即使外部不传入Job，内部也会自己创建一个Job，那么JobSupport.initParentJob判断parent == null是否就多余了？
 问题3：SupervisorJob可以阻断异常传递给父协程，它自己本身的子协程也是能接收到异常的吧。
-</div>2022-04-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/36/61/54/31a8d7e6.jpg" width="30px"><span>anmi</span> 👍（0） 💬（0）<div>代码段4，假设launch是普通顶层函数，那么job应该取消不了里面的两个子协程吧了？</div>2023-12-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/91/d0/35bc62b1.jpg" width="30px"><span>无咎</span> 👍（0） 💬（0）<div>既然协程是结构化，有方法类似于tree命令，来dump协程的树形结构吗？</div>2022-06-24</li><br/>
+</div>2022-04-13</li><br/><li><span>anmi</span> 👍（0） 💬（0）<div>代码段4，假设launch是普通顶层函数，那么job应该取消不了里面的两个子协程吧了？</div>2023-12-21</li><br/><li><span>无咎</span> 👍（0） 💬（0）<div>既然协程是结构化，有方法类似于tree命令，来dump协程的树形结构吗？</div>2022-06-24</li><br/>
 </ul>
 
 

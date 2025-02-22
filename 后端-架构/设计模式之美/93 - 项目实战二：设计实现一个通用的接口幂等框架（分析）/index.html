@@ -12646,6 +12646,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      需求分析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -14521,6 +14548,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      需求分析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -14553,19 +14607,122 @@
 <p>我们先来看下幂等框架的需求场景。</p>
 <p>还记得之前讲到的限流框架的项目背景吗？为了复用代码，我们把通用的功能设计成了公共服务平台。公司内部的其他金融产品的后台系统，会调用公共服务平台的服务，不需要完全从零开始开发。公共服务平台提供的是RESTful接口。为了简化开发，调用方一般使用Feign框架（一个HTTP框架）来访问公共服务平台的接口。</p>
 <p>调用方访问公共服务平台的接口，会有三种可能的结果：成功、失败和超时。前两种结果非常明确，调用方可以自己决定收到结果之后如何处理。结果为“成功”，万事大吉。结果为“失败”，一般情况下，调用方会将失败的结果，反馈给用户（移动端App），让用户自行决定是否重试。</p>
-<div><strong>精选留言（23）</strong></div>
+<p>但是，当接口请求超时时，处理起来就没那么容易了。有可能业务逻辑已经执行成功了，只是公共服务平台返回结果给调用方的时候超时了，但也有可能业务逻辑没有执行成功，比如，因为数据库当时存在集中写入，导致部分数据写入超时。总之，超时对应的执行结果是未决的。那调用方调用接口超时时（基于Feign框架开发的话，一般是收到Timeout异常），该如何处理呢？</p>
+<p>如果接口只包含查询、删除、更新这些操作，那接口天然是幂等的。所以，超时之后，重新再执行一次，也没有任何副作用。不过，这里有两点需要特殊说明一下。</p>
+<p>删除操作需要当心ABA问题。删除操作超时了，又触发一次删除，但在这次删除之前，又有一次新的插入。后一次删除操作删除了新插入的数据，而新插入的数据本不应该删除。不过，大部分业务都可以容忍ABA问题。对于少数不能容忍的业务场景，我们可以针对性的特殊处理。</p>
+<p>除此之外，细究起来，update x = x+delta这样格式的更新操作并非幂等，只有update x=y这样格式的更新操作才是幂等的。不过，后者也存在跟删除同样的ABA问题。</p>
+<p>如果接口包含修改操作（插入操作、update x=x+delta更新操作），多次重复执行有可能会导致业务上的错误，这是不能接受的。如果插入的数据包含数据库唯一键，可以利用数据库唯一键的排他性，保证不会重复插入数据。除此之外，一般我会建议调用方按照这样几种方式来处理。</p>
+<p><strong>第一种处理方式</strong>是，调用方访问公共服务平台接口超时时，返回清晰明确的提醒给用户，告知执行结果未知，让用户自己判断是否重试。不过，你可能会说，如果用户看到了超时提醒，但还是重新发起了操作，比如重新发起了转账、充值等操作，那该怎么办呢？实际上，对这种情况，技术是无能为力的。因为两次操作都是用户主动发起的，我们无法判断第二次的转账、充值是新的操作，还是基于上一次超时的重试行为。</p>
+<p><strong>第二种处理方式</strong>是，调用方调用其他接口，来查询超时操作的结果，明确超时操作对应的业务，是执行成功了还是失败了，然后再基于明确的结果做处理。但是这种处理方法存在一个问题，那就是并不是所有的业务操作，都方便查询操作结果。</p>
+<p><strong>第三种处理方式</strong>是，调用方在遇到接口超时之后，直接发起重试操作。这样就需要接口支持幂等。我们可以选择在业务代码中触发重试，也可以将重试的操作放到Feign框架中完成。因为偶尔发生的超时，在正常的业务逻辑中编写一大坨补救代码，这样做会影响到代码的可读性，有点划不来。当然，如果项目中需要支持超时重试的业务不多，那对于仅有几个业务，特殊处理一下也未尝不可。但是，如果项目中需要支持超时重试的业务比较多，我们最好是把超时重试这些非业务相关的逻辑，统一在框架层面解决。</p>
+<p>对响应时间敏感的调用方来说，它们服务的是移动端的用户，过长的等待时间，还不如直接返回超时给用户。所以，这种情况下，第一种处理方式是比较推荐的。但是，对响应时间不敏感的调用方来说，比如Job类的调用方，我推荐选择后两种处理方式，能够提高处理的成功率。而第二种处理方法，本身有一定的局限性，因为并不是所有业务操作都方便查询是否执行成功。第三种保证接口幂等的处理方式，是比较通用的解决方案。所以，我们针对这种处理方式，抽象出一套统一的幂等框架，简化幂等接口的开发。</p>
+<h2 id="_2">需求分析</h2>
+<p>刚刚我们介绍了幂等框架的需求背景：超时重试需要接口幂等的支持。接下来，我们再对需求进行更加详细的分析和整理，这其中就包括功能性需求和非功能性需求。</p>
+<p><strong>不过，在此之前，我们需要先搞清楚一个重要的概念：幂等号。</strong></p>
+<p>前面多次提到“幂等”，那“幂等”到底是什么意思呢？放到接口调用的这个场景里，幂等的意思是，针对同一个接口，多次发起同一个业务请求，必须保证业务只执行一次。那如何判定两次接口请求是同一个业务请求呢？也就是说，如何判断两次接口请求是重试关系？而非独立的两个业务请求？比如，两次调用转账接口，尽管转账用户、金额等参数都一样，但我们也无法判断这两个转账请求就是重试关系。</p>
+<p>实际上，要确定重试关系，我们就需要给同一业务请求一个唯一标识，也就是“幂等号”！如果两个接口请求，带有相同的幂等号，那我们就判断它们是重试关系，是同一个业务请求，不要重复执行。</p>
+<p>幂等号需要保证全局唯一性。它可以有业务含义，比如，用户手机号码是唯一的，对于用户注册接口来说，我们可以拿它作为幂等号。不过，这样就会导致幂等框架的实现，无法完全脱离具体的业务。所以，我们更加倾向于，通过某种算法来随机生成没有业务含义的幂等号。</p>
+<p><strong>幂等号的概念搞清楚了，我们再来看下框架的功能性需求。</strong></p>
+<p>前面也介绍了一些需求分析整理方法，比如画线框图、写用户用例、基于测试驱动开发等。跟限流框架类似，这里我们也借助用户用例和测试驱动开发的思想，先去思考，如果框架最终被开发出来之后，它会如何被使用。我写了一个框架使用的Demo示例，如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>///////// 使用方式一: 在业务代码中处理幂等 ////////////
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>// 接口调用方
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Idempotence idempotence = new Idempotence();
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>String idempotenceId = idempotence.createId();
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>Order order = createOrderWithIdempotence(..., idempotenceId);
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>// 接口实现方
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>public class OrderController {
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  private Idempotence idempontence; // 依赖注入
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  public Order createOrderWithIdempotence(..., String idempotenceId) {
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    // 前置操作
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    boolean existed = idempotence.check(idempotenceId);
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    if (existed) {
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>      // 两种处理方式：
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>      // 1. 查询order，并且返回；
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>      // 2. 返回duplication operation Exception
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    }
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    idempotence.record(idempotenceId);
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    //...执行正常业务逻辑
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>  }
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>  public Order createOrder(...) {
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    //...
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>  }
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>}
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>///////// 使用方式二：在框架层面处理幂等 //////////////
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>// 接口调用方
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>Idempotence idempotence = new Idempotence();
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>String idempotenceId = idempotence.createId();
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>//...通过feign框架将幂等号添加到http header中...
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>// 接口实现方
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>public class OrderController {
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>  @IdempotenceRequired
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>  public Order createOrder(...) {
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>    //...
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>  }
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>}
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>// 在AOP切面中处理幂等
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>@Aspect
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>public class IdempotenceSupportAdvice {
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>  @Autowired
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>  private Idempotence idempotence;
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>@Pointcut(&quot;@annotation(com.xzg.cd.idempotence.annotation.IdempotenceRequired)&quot;)
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>  public void controllerPointcut() {
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>  }
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>  @Around(value = &quot;controllerPointcut()&quot;)
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>  public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>    // 从HTTP header中获取幂等号idempotenceId
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>    // 前置操作
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a>    boolean existed = idempotence.check(idempotenceId);
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a>    if (existed) {
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>      // 两种处理方式：
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a>      // 1. 查询order，并且返回；
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a>      // 2. 返回duplication operation Exception
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a>    }
+<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a>    idempotence.record(idempotenceId)
+<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a>
+<a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a>    Object result = joinPoint.proceed();    
+<a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a>    return result;
+<a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a>  }
+<a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a>}
+</code></pre></div>
+<p>结合刚刚的Demo，从使用的角度来说，幂等框架的主要处理流程是这样的。接口调用方生成幂等号，并且跟随接口请求，将幂等号传递给接口实现方。接口实现方接收到接口请求之后，按照约定，从HTTP Header或者接口参数中，解析出幂等号，然后通过幂等号查询幂等框架。如果幂等号已经存在，说明业务已经执行或正在执行，则直接返回；如果幂等号不存在，说明业务没有执行过，则记录幂等号，继续执行业务。</p>
+<p><strong>对于幂等框架，我们再来看下，它都有哪些非功能性需求。</strong></p>
+<p>在易用性方面，我们希望框架接入简单方便，学习成本低。只需编写简单的配置以及少许代码，就能完成接入。除此之外，框架最好对业务代码低侵入松耦合，在统一的地方（比如Spring AOP中）接入幂等框架，而不是将它耦合在业务代码中。</p>
+<p>在性能方面，针对每个幂等接口，在正式处理业务逻辑之前，我们都要添加保证幂等的处理逻辑。这或多或少地会增加接口请求的响应时间。而对于响应时间比较敏感的接口服务来说，我们要让幂等框架尽可能低延迟，尽可能减少对接口请求本身响应时间的影响。</p>
+<p>在容错性方面，跟限流框架相同，不能因为幂等框架本身的异常，导致接口响应异常，影响服务本身的可用性。所以，幂等框架要有高度的容错性。比如，存储幂等号的外部存储器挂掉了，幂等逻辑无法正常运行，这个时候业务接口也要能正常服务才行。</p>
+<h2 id="_3">重点回顾</h2>
+<p>好了，今天的内容到此就讲完了。我们一块来总结回顾一下，你需要重点掌握的内容。</p>
+<p>今天我们介绍了幂等框架的一个需求场景，那就是接口超时重试。大部分情况下，如果接口只包含查询、删除、更新这些操作，那接口天然是幂等的。除此之外，如果接口包含修改操作（插入操作或update x=x+delta更新操作），保证接口的幂等性就需要做一些额外的工作。</p>
+<p>现在开源的东西那么多，但幂等框架非常少见。原因是幂等性的保证是业务强相关的。大部分保证幂等性的方式都是针对具体的业务具体处理，比如利用业务数据中的ID唯一性来处理插入操作的幂等性。但是，针对每个需要幂等的业务逻辑，单独编写代码处理，一方面对程序员的开发能力要求比较高，另一方面开发成本也比较高。</p>
+<p>为了简化接口幂等的开发，我们希望开发一套统一的幂等框架，脱离具体的业务，让程序员通过简单的配置和少量代码，就能将非幂等接口改造成幂等接口。</p>
+<h2 id="_4">课堂讨论</h2>
+<ol>
+<li>重试无处不在，比如，Nginx、Dubbo、Feign等重试机制，你还能想到哪些其他的重试场景吗？</li>
+<li>超时重试只是接口幂等的一个需求场景。除此之外，处理消息队列中消息重复的一种常用方法，就是将消息对应的业务逻辑设计成幂等的。因为业务逻辑是幂等的，所以多次接收重复消息不会导致重复执行业务逻辑。除了这些场景，你还知道有哪些其他场景需要用到幂等设计？</li>
+</ol>
+<p>欢迎留言和我分享你的想法。如果有收获，也欢迎你把这篇文章分享给你的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/14/64/9b/d1ab239e.jpg" width="30px"><span>J.Smile</span> 👍（17） 💬（5）<div>“如果幂等号已经存在，说明业务已经执行或正在执行，则直接返回；如果幂等号不存在，说明业务没有执行过，则记录幂等号，继续执行业务“
+<li><span>J.Smile</span> 👍（17） 💬（5）<div>“如果幂等号已经存在，说明业务已经执行或正在执行，则直接返回；如果幂等号不存在，说明业务没有执行过，则记录幂等号，继续执行业务“
 -------------------------------------------------
-这个判断存在与否也要保证原子性</div>2020-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/36/2c/8bd4be3a.jpg" width="30px"><span>小喵喵</span> 👍（13） 💬（2）<div>1 如果存储幂等号的外部存储器里面的数据太多了，会影响查询性能，如何优化？
-2 如果存储幂等挂掉了，幂等逻辑无法正常运行，那这个就相当于没有幂等了。这个时候咋搞呢？</div>2020-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/49/3c/5d54c510.jpg" width="30px"><span>skull</span> 👍（3） 💬（1）<div>幂等如果外部存储挂掉了，就不能让业务正常使用了吧，否则会出问题</div>2020-06-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/17/27/ec30d30a.jpg" width="30px"><span>Jxin</span> 👍（1） 💬（1）<div>1.当给代码分论别类习惯了。那业务代码和技术代码的耦合就挺扎眼，总想着分离，透明掉技术代码，保护业务代码的干净。
+这个判断存在与否也要保证原子性</div>2020-06-05</li><br/><li><span>小喵喵</span> 👍（13） 💬（2）<div>1 如果存储幂等号的外部存储器里面的数据太多了，会影响查询性能，如何优化？
+2 如果存储幂等挂掉了，幂等逻辑无法正常运行，那这个就相当于没有幂等了。这个时候咋搞呢？</div>2020-06-05</li><br/><li><span>skull</span> 👍（3） 💬（1）<div>幂等如果外部存储挂掉了，就不能让业务正常使用了吧，否则会出问题</div>2020-06-18</li><br/><li><span>Jxin</span> 👍（1） 💬（1）<div>1.当给代码分论别类习惯了。那业务代码和技术代码的耦合就挺扎眼，总想着分离，透明掉技术代码，保护业务代码的干净。
 
 课后题
 1.mq消费重试，网络丢包重试。。。
 2.技术上的想不到。有重试的地方好像都要。
 
 疑问
-容错性这个有点不理解。限流这个不生效还好说。幂等功能不生效？刷数已经在路上。</div>2020-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/86/06/72b01bb7.jpg" width="30px"><span>美美</span> 👍（0） 💬（2）<div>分布式系统中，有一台机器挂了，请求会打到另一台机器上，这个时候，第二台机器不知道第一台是什么情况，第一台的日志，我认为也没有什么价值了，除非服务有状态，某一个请求一直只打到一台服务器上，但这个设计就很复杂了，老师有别的建议吗？</div>2020-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1d/de/62bfa83f.jpg" width="30px"><span>aoe</span> 👍（37） 💬（5）<div>重试场景：
+容错性这个有点不理解。限流这个不生效还好说。幂等功能不生效？刷数已经在路上。</div>2020-06-05</li><br/><li><span>美美</span> 👍（0） 💬（2）<div>分布式系统中，有一台机器挂了，请求会打到另一台机器上，这个时候，第二台机器不知道第一台是什么情况，第一台的日志，我认为也没有什么价值了，除非服务有状态，某一个请求一直只打到一台服务器上，但这个设计就很复杂了，老师有别的建议吗？</div>2020-06-15</li><br/><li><span>aoe</span> 👍（37） 💬（5）<div>重试场景：
 1. 微信发送消息失败，可以手动触发”重发“
 2. 网吧电脑卡顿、死机，可以重启
 3. 拨打电话无人接听，请稍后再拨
@@ -14576,8 +14733,8 @@
 1. 下单时不要出现重复订单
 2. 提款时千万别出Bug
 3. 火箭发射时，按下点火按钮，只能点火一次
-4. 造小宝宝的时候，自然界超强幂等</div>2020-09-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/48/f3/65c7e3ef.jpg" width="30px"><span>cricket1981</span> 👍（15） 💬（0）<div>分布式事务需要用到幂等设计：at-least-once + 幂等 == exactly-once</div>2020-06-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/47/31/f35367c8.jpg" width="30px"><span>小晏子</span> 👍（10） 💬（0）<div>1. RocketMQ支持消息失败定时重试。
-2. 用到幂等设计的还有：1）用户短时间内多次点击提交，2）第三方平台接口以为异常多次异步回调。</div>2020-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/f7/eb/e7127bb8.jpg" width="30px"><span>，</span> 👍（8） 💬（0）<div>偏个题,最近刚好在做硬件设备的断点重连,场景是这样的:
+4. 造小宝宝的时候，自然界超强幂等</div>2020-09-11</li><br/><li><span>cricket1981</span> 👍（15） 💬（0）<div>分布式事务需要用到幂等设计：at-least-once + 幂等 == exactly-once</div>2020-06-26</li><br/><li><span>小晏子</span> 👍（10） 💬（0）<div>1. RocketMQ支持消息失败定时重试。
+2. 用到幂等设计的还有：1）用户短时间内多次点击提交，2）第三方平台接口以为异常多次异步回调。</div>2020-06-05</li><br/><li><span>，</span> 👍（8） 💬（0）<div>偏个题,最近刚好在做硬件设备的断点重连,场景是这样的:
 在现场有wifi,所有的物联网设备通过wifi连接,有的设备在不断的移动过程中,可能移动到wifi范围之外,这个时候就需要支持断点重连,在设备进入wifi范围时重新建立连接,为此,有以下几种方案:
 1.提高wifi信号的强度,减少连接断掉的几率
 2.当前使用tcp连接,将其修改为udp连接,通过服务不断地向设备发包&#47;设备向服务发包来保证,此时不需要保持连接,做法相对简单
@@ -14586,23 +14743,14 @@
 方案2无法使用,通过观察设备厂家提供的sdk,发现只提供tcp连接的调用方式,因此该方案无效
 方案3感觉上可行,但是如果设备正在进行业务处理时重连,则必然会有负面影响,业务上有延迟,连接也有可能迟迟建立不起来
 在上述思考之后,感觉在失去连接时重新建立连接即可,于是通过学习厂家的sdk,发现确实有提供连接断开之后的回调,于是现在的做法像是方案3的升级版,每当连接断掉后就将其加入重连队列,定时轮询队列,建立连接,连接成功后从队列中弹出,不成功则在下一轮定时任务中处理
-  这一版本的断点重连稳定性很好,但是依旧存在问题,有人发现了吗?那么怎么解决这个问题呢?(提醒一下,迭代器)</div>2020-06-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/2e/94/e16c760e.jpg" width="30px"><span>麻薯不是年糕🍍</span> 👍（4） 💬（0）<div>我有个疑问。幂等号采用随机数生成，会不会这么个场景，比如下订单过程中由于网络波动，导致用户点了两次按钮 调用了两次接口，这种情况幂等号不是相当于生成两个不同的随机数吗？如果是这样，如果确保接口幂等性呢</div>2021-11-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/71/05/db554eba.jpg" width="30px"><span>👽</span> 👍（2） 💬（0）<div>这个要关联一下朱晔老师的专栏——第五讲
+  这一版本的断点重连稳定性很好,但是依旧存在问题,有人发现了吗?那么怎么解决这个问题呢?(提醒一下,迭代器)</div>2020-06-10</li><br/><li><span>麻薯不是年糕🍍</span> 👍（4） 💬（0）<div>我有个疑问。幂等号采用随机数生成，会不会这么个场景，比如下订单过程中由于网络波动，导致用户点了两次按钮 调用了两次接口，这种情况幂等号不是相当于生成两个不同的随机数吗？如果是这样，如果确保接口幂等性呢</div>2021-11-16</li><br/><li><span>👽</span> 👍（2） 💬（0）<div>这个要关联一下朱晔老师的专栏——第五讲
 
-需要关注一下，部分框架 请求的method，get请求是会自动重试的，因为get默认就认为它中间不会做任何操作，是幂等的。所以，如果请求中包含涉及数据操作，或者短信，服务调用业务的，就需要考虑是否仍然将其设置为get</div>2020-09-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/70/9e/9337ca8e.jpg" width="30px"><span>jaryoung</span> 👍（2） 💬（0）<div>1. 重试无处不在，比如，nginx、dubbo、feign 都重试机制，你还能想到哪些其他的重试场景吗？
+需要关注一下，部分框架 请求的method，get请求是会自动重试的，因为get默认就认为它中间不会做任何操作，是幂等的。所以，如果请求中包含涉及数据操作，或者短信，服务调用业务的，就需要考虑是否仍然将其设置为get</div>2020-09-30</li><br/><li><span>jaryoung</span> 👍（2） 💬（0）<div>1. 重试无处不在，比如，nginx、dubbo、feign 都重试机制，你还能想到哪些其他的重试场景吗？
 答：长连接因为超时被服务端断开（正常的访问，但是在缓存池里面拿出来的数据，刚刚好被服务端断开。），其实这个时候我们就需要重新发起请求。
 
 2. 超时重试只是接口幂等的一个需求场景。除此之外，处理消息队列中消息重复的一种常用方法，就是将消息对应的业务逻辑设计成幂等的。因为业务逻辑是幂等的，所以多次接收重复消息不会导致重复执行业务逻辑。除了这些场景，你还知道有哪些其他场景需要用到幂等设计？
-答：我觉得这个问题，多次重试接口，会不会产生异常的情况。例如，产生脏数据，严重的产生了双花等等。</div>2020-06-06</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epTx3WM1A1hxjOmtfQNa0QQ01QUlhaaSHrZ3OcnzYibY1gFeNFAcZ7yQpxZsbyk7D9m6JA9X5j44tA/132" width="30px"><span>糖醋排骨</span> 👍（2） 💬（0）<div>应该也要考虑并发的情况吧，并发情况下，这样的判断逻辑是不安全的</div>2020-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a5/98/a65ff31a.jpg" width="30px"><span>djfhchdh</span> 👍（1） 💬（0）<div>2、支付接口对于同一笔支付请求，需要幂等</div>2020-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/d9/ff/b23018a6.jpg" width="30px"><span>Heaven</span> 👍（1） 💬（1）<div>1.TCP维护的重试机制
-2.对于支付接口的幂等性需求,一般支付型接口都是有着调用其他接口查询结果的方式</div>2020-06-05</li><br/><li><img src="" width="30px"><span>Geek_7e0e83</span> 👍（0） 💬（0）<div>1.xxl-job 任务调度 支持重试 k8s容器构建应用 也支持重试 
-2.支付接口的场景需要幂等，用户如果重复付款，需要告知用户已经支付成功了。</div>2022-12-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/fb/6c/12fdc372.jpg" width="30px"><span>被水淹没</span> 👍（0） 💬（0）<div>断点续传算重试吗</div>2021-08-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4a/96/99466a06.jpg" width="30px"><span>Laughing</span> 👍（0） 💬（0）<div>我一直认为保持幂等的同时，降低幂等对业务影响的延迟是最难的地方，本身幂等的概念和设计都不算很大的难点。</div>2020-12-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/d0/42/6fd01fb9.jpg" width="30px"><span>我已经设置了昵称</span> 👍（0） 💬（0）<div>dubbo接口默认超时重试三次，但有可能就是提供者处理时间很长，这里我理解其实不需要重试。
-而如果是出错重试，那我理解就是需要重试。
-重试这件事情无法一概而论，如果统一的做了幂等，那么出错重试的情况下就会导致数据丢失了。</div>2020-09-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/68/ef/6264ca3d.jpg" width="30px"><span>Magic</span> 👍（0） 💬（0）<div>1 http，cas冲突
-2 cas冲突</div>2020-08-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/4a/e7/6c16af5d.jpg" width="30px"><span>汉江</span> 👍（0） 💬（0）<div>支付中的退款也是幂等的</div>2020-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/83/c8/5ce842f6.jpg" width="30px"><span>maybe</span> 👍（0） 💬（0）<div>1、httpclient请求重试，数据库获取链接重试
-2、外部系统消息回调重复</div>2020-07-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/50/d7/f82ed283.jpg" width="30px"><span>辣么大</span> 👍（0） 💬（0）<div>幂等性原本是数学上的概念，即使公式：f(x)=f(f(x)) 能够成立的数学性质。 用在编程领域，则意为对同一个系统，使用同样的条件，一次请求和重复的多次请求对系统资源的影响是一致的。
-
-从幂等性的根源考虑：CREATE和UPDATE时候需要考虑幂等性，业务设计到跟这个相关的需要考虑幂等性。例如申请，支付，网购支付，游戏充值。实现方式：可以是TOKEN，数据库唯一ID，或者状态机。
-
-我下使用下载工具下载电影的时候会超时重试。</div>2020-06-13</li><br/>
+答：我觉得这个问题，多次重试接口，会不会产生异常的情况。例如，产生脏数据，严重的产生了双花等等。</div>2020-06-06</li><br/><li><span>糖醋排骨</span> 👍（2） 💬（0）<div>应该也要考虑并发的情况吧，并发情况下，这样的判断逻辑是不安全的</div>2020-06-05</li><br/><li><span>djfhchdh</span> 👍（1） 💬（0）<div>2、支付接口对于同一笔支付请求，需要幂等</div>2020-06-05</li><br/><li><span>Heaven</span> 👍（1） 💬（1）<div>1.TCP维护的重试机制
+2.对于支付接口的幂等性需求,一般支付型接口都是有着调用其他接口查询结果的方式</div>2020-06-05</li><br/>
 </ul>
 
 

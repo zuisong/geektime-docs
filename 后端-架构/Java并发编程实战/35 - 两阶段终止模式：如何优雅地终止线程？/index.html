@@ -2925,6 +2925,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      用两阶段终止模式终止监控操作
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何优雅地终止线程池
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13219,6 +13255,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      用两阶段终止模式终止监控操作
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何优雅地终止线程池
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13252,14 +13324,154 @@
 <p>前辈们经过认真对比分析，已经总结出了一套成熟的方案，叫做<strong>两阶段终止模式</strong>。顾名思义，就是将终止过程分成两个阶段，其中第一个阶段主要是线程T1向线程T2<strong>发送终止指令</strong>，而第二阶段则是线程T2<strong>响应终止指令</strong>。</p>
 <p><img alt="" src="https://static001.geekbang.org/resource/image/a5/5c/a5ea3cb2106f11ef065702f34703645c.png?wh=1142%2A278" /></p>
 <p>两阶段终止模式示意图</p>
-<div><strong>精选留言（30）</strong></div>
+<p>那在Java语言里，终止指令是什么呢？这个要从Java线程的状态转换过程说起。我们在<a href="https://time.geekbang.org/column/article/86366">《09 | Java线程（上）：Java线程的生命周期》</a>中曾经提到过Java线程的状态转换图，如下图所示。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/3f/8c/3f6c6bf95a6e8627bdf3cb621bbb7f8c.png?wh=1142%2A714" /></p>
+<p>Java中的线程状态转换图</p>
+<p>从这个图里你会发现，Java线程进入终止状态的前提是线程进入RUNNABLE状态，而实际上线程也可能处在休眠状态，也就是说，我们要想终止一个线程，首先要把线程的状态从休眠状态转换到RUNNABLE状态。如何做到呢？这个要靠Java Thread类提供的<strong>interrupt()方法</strong>，它可以将休眠状态的线程转换到RUNNABLE状态。</p>
+<p>线程转换到RUNNABLE状态之后，我们如何再将其终止呢？RUNNABLE状态转换到终止状态，优雅的方式是让Java线程自己执行完 run() 方法，所以一般我们采用的方法是<strong>设置一个标志位</strong>，然后线程会在合适的时机检查这个标志位，如果发现符合终止条件，则自动退出run()方法。这个过程其实就是我们前面提到的第二阶段：<strong>响应终止指令</strong>。</p>
+<p>综合上面这两点，我们能总结出终止指令，其实包括两方面内容：<strong>interrupt()方法</strong>和<strong>线程终止的标志位</strong>。</p>
+<p>理解了两阶段终止模式之后，下面我们看一个实际工作中的案例。</p>
+<h2 id="_2">用两阶段终止模式终止监控操作</h2>
+<p>实际工作中，有些监控系统需要动态地采集一些数据，一般都是监控系统发送采集指令给被监控系统的监控代理，监控代理接收到指令之后，从监控目标收集数据，然后回传给监控系统，详细过程如下图所示。出于对性能的考虑（有些监控项对系统性能影响很大，所以不能一直持续监控），动态采集功能一般都会有终止操作。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/11/5f/11e3b0a4a9cf743124091b22e10d275f.png?wh=1142%2A339" /></p>
+<p>动态采集功能示意图</p>
+<p>下面的示例代码是<strong>监控代理</strong>简化之后的实现，start()方法会启动一个新的线程rptThread来执行监控数据采集和回传的功能，stop()方法需要优雅地终止线程rptThread，那stop()相关功能该如何实现呢？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>class Proxy {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  boolean started = false;
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  //采集线程
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  Thread rptThread;
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  //启动采集功能
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  synchronized void start(){
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    //不允许同时启动多个采集线程
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    if (started) {
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>      return;
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    }
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    started = true;
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    rptThread = new Thread(()-&gt;{
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>      while (true) {
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        //省略采集、回传实现
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        report();
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        //每隔两秒钟采集、回传一次数据
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        try {
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>          Thread.sleep(2000);
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>        } catch (InterruptedException e) {  
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>        }
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>      }
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>      //执行到此处说明线程马上终止
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>      started = false;
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    });
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    rptThread.start();
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>  }
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>  //终止采集功能
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>  synchronized void stop(){
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    //如何实现？
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>  }
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>}  
+</code></pre></div>
+<p>按照两阶段终止模式，我们首先需要做的就是将线程rptThread状态转换到RUNNABLE，做法很简单，只需要在调用 <code>rptThread.interrupt()</code> 就可以了。线程rptThread的状态转换到RUNNABLE之后，如何优雅地终止呢？下面的示例代码中，我们选择的标志位是线程的中断状态：<code>Thread.currentThread().isInterrupted()</code> ，需要注意的是，我们在捕获Thread.sleep()的中断异常之后，通过 <code>Thread.currentThread().interrupt()</code> 重新设置了线程的中断状态，因为JVM的异常处理会清除线程的中断状态。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>class Proxy {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  boolean started = false;
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  //采集线程
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  Thread rptThread;
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  //启动采集功能
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  synchronized void start(){
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    //不允许同时启动多个采集线程
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    if (started) {
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>      return;
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    }
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    started = true;
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    rptThread = new Thread(()-&gt;{
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>      while (!Thread.currentThread().isInterrupted()){
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        //省略采集、回传实现
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>        report();
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>        //每隔两秒钟采集、回传一次数据
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>        try {
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>          Thread.sleep(2000);
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>        } catch (InterruptedException e){
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>          //重新设置线程中断状态
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>          Thread.currentThread().interrupt();
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>        }
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>      }
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>      //执行到此处说明线程马上终止
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>      started = false;
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>    });
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>    rptThread.start();
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>  }
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>  //终止采集功能
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>  synchronized void stop(){
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>    rptThread.interrupt();
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>  }
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>}
+</code></pre></div>
+<p>上面的示例代码的确能够解决当前的问题，但是建议你在实际工作中谨慎使用。原因在于我们很可能在线程的run()方法中调用第三方类库提供的方法，而我们没有办法保证第三方类库正确处理了线程的中断异常，例如第三方类库在捕获到Thread.sleep()方法抛出的中断异常后，没有重新设置线程的中断状态，那么就会导致线程不能够正常终止。所以强烈建议你<strong>设置自己的线程终止标志位</strong>，例如在下面的代码中，使用isTerminated作为线程终止标志位，此时无论是否正确处理了线程的中断异常，都不会影响线程优雅地终止。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>class Proxy {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  //线程终止标志位
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  volatile boolean terminated = false;
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  boolean started = false;
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  //采集线程
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  Thread rptThread;
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>  //启动采集功能
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  synchronized void start(){
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    //不允许同时启动多个采集线程
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    if (started) {
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>      return;
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    }
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    started = true;
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    terminated = false;
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    rptThread = new Thread(()-&gt;{
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>      while (!terminated){
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>        //省略采集、回传实现
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>        report();
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>        //每隔两秒钟采集、回传一次数据
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>        try {
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>          Thread.sleep(2000);
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>        } catch (InterruptedException e){
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>          //重新设置线程中断状态
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>          Thread.currentThread().interrupt();
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>        }
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>      }
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>      //执行到此处说明线程马上终止
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>      started = false;
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>    });
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>    rptThread.start();
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>  }
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>  //终止采集功能
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>  synchronized void stop(){
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>    //设置中断标志位
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>    terminated = true;
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>    //中断线程rptThread
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>    rptThread.interrupt();
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>  }
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>}
+</code></pre></div>
+<h2 id="_3">如何优雅地终止线程池</h2>
+<p>Java领域用的最多的还是线程池，而不是手动地创建线程。那我们该如何优雅地终止线程池呢？</p>
+<p>线程池提供了两个方法：<strong>shutdown()和shutdownNow()</strong>。这两个方法有什么区别呢？要了解它们的区别，就先需要了解线程池的实现原理。</p>
+<p>我们曾经讲过，Java线程池是生产者-消费者模式的一种实现，提交给线程池的任务，首先是进入一个阻塞队列中，之后线程池中的线程从阻塞队列中取出任务执行。</p>
+<p>shutdown()方法是一种很保守的关闭线程池的方法。线程池执行shutdown()后，就会拒绝接收新的任务，但是会等待线程池中正在执行的任务和已经进入阻塞队列的任务都执行完之后才最终关闭线程池。</p>
+<p>而shutdownNow()方法，相对就激进一些了，线程池执行shutdownNow()后，会拒绝接收新的任务，同时还会中断线程池中正在执行的任务，已经进入阻塞队列的任务也被剥夺了执行的机会，不过这些被剥夺执行机会的任务会作为shutdownNow()方法的返回值返回。因为shutdownNow()方法会中断正在执行的线程，所以提交到线程池的任务，如果需要优雅地结束，就需要正确地处理线程中断。</p>
+<p>如果提交到线程池的任务不允许取消，那就不能使用shutdownNow()方法终止线程池。不过，如果提交到线程池的任务允许后续以补偿的方式重新执行，也是可以使用shutdownNow()方法终止线程池的。<a href="time://mall?url=https%3A%2F%2Fh5.youzan.com%2Fv2%2Fgoods%2F2758xqdzr6uuw">《Java并发编程实战》</a>这本书第7章《取消与关闭》的“shutdownNow的局限性”一节中，提到一种将已提交但尚未开始执行的任务以及已经取消的正在执行的任务保存起来，以便后续重新执行的方案，你可以参考一下，方案很简单，这里就不详细介绍了。</p>
+<p>其实分析完shutdown()和shutdownNow()方法你会发现，它们实质上使用的也是两阶段终止模式，只是终止指令的范围不同而已，前者只影响阻塞队列接收任务，后者范围扩大到线程池中所有的任务。</p>
+<h2 id="_4">总结</h2>
+<p>两阶段终止模式是一种应用很广泛的并发设计模式，在Java语言中使用两阶段终止模式来优雅地终止线程，需要注意两个关键点：一个是仅检查终止标志位是不够的，因为线程的状态可能处于休眠态；另一个是仅检查线程的中断状态也是不够的，因为我们依赖的第三方类库很可能没有正确处理中断异常。</p>
+<p>当你使用Java的线程池来管理线程的时候，需要依赖线程池提供的shutdown()和shutdownNow()方法来终止线程池。不过在使用时需要注意它们的应用场景，尤其是在使用shutdownNow()的时候，一定要谨慎。</p>
+<h2 id="_5">课后思考</h2>
+<p>本文的示例代码中，线程终止标志位isTerminated被声明为volatile，你觉得是否有必要呢？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>class Proxy {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  //线程终止标志位
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  volatile boolean terminated = false;
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  ......
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>}
+</code></pre></div>
+<p>欢迎在留言区与我分享你的想法，也欢迎你在留言区记录你的思考过程。感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/b5/d4/e58e39f0.jpg" width="30px"><span>Geek_0quh3e</span> 👍（69） 💬（4）<div>stop和start方法对于terminated访问由于syn关键字，线程安全，但是start中新起了一个线程rptthread，导致stop方法中对于terminated存在可见性问题，因此需要volatie，原子性问题对这个代码段没有影响，所以原子性问题无需关注。</div>2019-05-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7d/da/780f149e.jpg" width="30px"><span>echo＿陈</span> 👍（46） 💬（12）<div>我觉得，在本例子中。stop中，设置终止标识位对interupt是可见的。而interrupt对被中断线程检测到中断事件是可见的……根据传递性原则……我觉得本例子不需要volatile关键字。但平时开发中，一般会加上，主要是因为怕后续开发不注意这些事情导致修改破坏了规则，引起可见性问题产生bug，保险起见会加上volatile</div>2019-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/5d/78/f011d586.jpg" width="30px"><span>遇见阳光</span> 👍（30） 💬（4）<div>按道理而言，synchronized保证原子性的同时，也能间接的保证可见性啊。感觉可以不加 volatile关键字</div>2019-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3b/ad/31193b83.jpg" width="30px"><span>孙志强</span> 👍（28） 💬（3）<div>有必要，变量被多个线程访问，需要保证可见性</div>2019-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/e9/0b/1171ac71.jpg" width="30px"><span>WL</span> 👍（16） 💬（1）<div>请问一下老师&quot;JVM 的异常处理会清除线程的中断状态&quot;指的是什么意思, 是指把线程的为true的中断状态改为false吗, JVM是在catch到Interrupt异常的时候重置线程中断状态的吗? </div>2019-05-20</li><br/><li><img src="" width="30px"><span>远东通信-应用软件</span> 👍（13） 💬（2）<div>在本章节后面一个实例代码中while循环没有使用线程的中断标志位做判断，但是stop里面仍然去调用rptThread.interrupt()有必要吗？只是为了将采集线程从sleep状态唤醒吗？</div>2019-10-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/d2/00/9a247b1e.jpg" width="30px"><span>jason</span> 👍（7） 💬（1）<div>按这样说，新线程里会修改start变量的值，为了保证start的最新值能被start()方法看见，是不是也要对start变量加volatile修饰？</div>2020-01-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f7/9d/c7295d17.jpg" width="30px"><span>青铜5 周群力</span> 👍（6） 💬（2）<div>什么情况需要手动shutdown线程池呢，我理解只要线程池不再被引用，里面的线程自己就被gc回收掉了，不需要手动调shutdown?</div>2020-05-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/ae/1f/43b13ef0.jpg" width="30px"><span>其</span> 👍（5） 💬（2）<div>老师，想问一个问题如果interrupt()方法只是给线程打一个中断的标签，那么如果我线程本身没有显示的去做这个标的判断，线程还能被中断么，当然线程是runnable的，如果能中断又是谁去识别的呢？</div>2019-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c7/dc/9408c8c2.jpg" width="30px"><span>ban</span> 👍（5） 💬（1）<div>老师，思考题前的最后一个示例代码，为什么
+<li><span>Geek_0quh3e</span> 👍（69） 💬（4）<div>stop和start方法对于terminated访问由于syn关键字，线程安全，但是start中新起了一个线程rptthread，导致stop方法中对于terminated存在可见性问题，因此需要volatie，原子性问题对这个代码段没有影响，所以原子性问题无需关注。</div>2019-05-20</li><br/><li><span>echo＿陈</span> 👍（46） 💬（12）<div>我觉得，在本例子中。stop中，设置终止标识位对interupt是可见的。而interrupt对被中断线程检测到中断事件是可见的……根据传递性原则……我觉得本例子不需要volatile关键字。但平时开发中，一般会加上，主要是因为怕后续开发不注意这些事情导致修改破坏了规则，引起可见性问题产生bug，保险起见会加上volatile</div>2019-05-18</li><br/><li><span>遇见阳光</span> 👍（30） 💬（4）<div>按道理而言，synchronized保证原子性的同时，也能间接的保证可见性啊。感觉可以不加 volatile关键字</div>2019-05-18</li><br/><li><span>孙志强</span> 👍（28） 💬（3）<div>有必要，变量被多个线程访问，需要保证可见性</div>2019-05-18</li><br/><li><span>WL</span> 👍（16） 💬（1）<div>请问一下老师&quot;JVM 的异常处理会清除线程的中断状态&quot;指的是什么意思, 是指把线程的为true的中断状态改为false吗, JVM是在catch到Interrupt异常的时候重置线程中断状态的吗? </div>2019-05-20</li><br/><li><span>远东通信-应用软件</span> 👍（13） 💬（2）<div>在本章节后面一个实例代码中while循环没有使用线程的中断标志位做判断，但是stop里面仍然去调用rptThread.interrupt()有必要吗？只是为了将采集线程从sleep状态唤醒吗？</div>2019-10-12</li><br/><li><span>jason</span> 👍（7） 💬（1）<div>按这样说，新线程里会修改start变量的值，为了保证start的最新值能被start()方法看见，是不是也要对start变量加volatile修饰？</div>2020-01-11</li><br/><li><span>青铜5 周群力</span> 👍（6） 💬（2）<div>什么情况需要手动shutdown线程池呢，我理解只要线程池不再被引用，里面的线程自己就被gc回收掉了，不需要手动调shutdown?</div>2020-05-05</li><br/><li><span>其</span> 👍（5） 💬（2）<div>老师，想问一个问题如果interrupt()方法只是给线程打一个中断的标签，那么如果我线程本身没有显示的去做这个标的判断，线程还能被中断么，当然线程是runnable的，如果能中断又是谁去识别的呢？</div>2019-07-16</li><br/><li><span>ban</span> 👍（5） 💬（1）<div>老师，思考题前的最后一个示例代码，为什么
 &#47;&#47; 线程终止标志位
 volatile boolean terminated = false;
 boolean started = false;
 
-为什么started可以不加volatile，terminated却要加呢？</div>2019-05-24</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaELZPnUAiajaR5C25EDLWeJURggyiaOP5GGPe2qlwpQcm5e3ybib8OsP4tvddFDLVRSNNGL5I3SFPJHsA/132" width="30px"><span>null</span> 👍（3） 💬（3）<div>```java
+为什么started可以不加volatile，terminated却要加呢？</div>2019-05-24</li><br/><li><span>null</span> 👍（3） 💬（3）<div>```java
 &#47;&#47; 因为留言超字数：1. 省略未修改的代码片段，2. println 是 System.out.println 的简写
 class Proxy {
 &#47;&#47; 变量声明，（留言超字数，此处未做修改，省略）
@@ -13303,7 +13515,7 @@ synchronized void start() {
 
 &#47;&#47; 终止采集功能（留言超字数，此处未做修改，省略）
 }
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>
 </code></pre></div>
 执行结果：
 [外部线程_77]线程是否启动？false
@@ -13341,7 +13553,7 @@ synchronized void start() {
 3. 线程终止规则。
 4. 线程中断规则。
 好像也无法推导出：为何在内部线程 rptThread 修改的 started 变量，可以保证可见性。
-是根据什么规则，保证了 started 变量的可见性，老师可以帮忙分析一下么？期待您的回复，谢谢老师！！</div>2019-06-08</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJIocn8OMjfSGqyeSJEV3ID2rquLR0S6xo0ibdNYQgzicib6L6VlqWjhgxOqD2iaicX1KhbWXWCsmBTskA/132" width="30px"><span>虚竹</span> 👍（1） 💬（1）<div>王老师好，请教下：
+是根据什么规则，保证了 started 变量的可见性，老师可以帮忙分析一下么？期待您的回复，谢谢老师！！</div>2019-06-08</li><br/><li><span>虚竹</span> 👍（1） 💬（1）<div>王老师好，请教下：
 1.自定义标志位终止线程时，是不是这样可以这样写？
 whlie(!Thread.currentThread()isInterrupted() || !terminated){}
 2.线程池关闭时，完整的是这样吧?
@@ -13353,9 +13565,9 @@ while(true){
   Thread.sleep(1000);
 }
 
-</div>2019-10-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/86/06/72b01bb7.jpg" width="30px"><span>美美</span> 👍（1） 💬（1）<div>我看结束线程的示例都有while方法，如果没有while，如果中断呢？同时也没有处于休眠状态的话，是不是只能等程序自然结束了，是不是我的问题有问题。。。</div>2019-07-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/47/1b/64262861.jpg" width="30px"><span>胡小禾</span> 👍（1） 💬（1）<div>第一段代码中的第九行：
+</div>2019-10-12</li><br/><li><span>美美</span> 👍（1） 💬（1）<div>我看结束线程的示例都有while方法，如果没有while，如果中断呢？同时也没有处于休眠状态的话，是不是只能等程序自然结束了，是不是我的问题有问题。。。</div>2019-07-15</li><br/><li><span>胡小禾</span> 👍（1） 💬（1）<div>第一段代码中的第九行：
       started = true;
-有必要存在吗？</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/9f/41/82306dfe.jpg" width="30px"><span>包子</span> 👍（1） 💬（1）<div>老师你好，
+有必要存在吗？</div>2019-07-08</li><br/><li><span>包子</span> 👍（1） 💬（1）<div>老师你好，
 优雅关闭线程最后一个案例代码使用terminated作为线程中断的标志位，那cache住sleep时，不用设置terminated为true吗。不设置线程是关闭不了的啊。
         try {
           Thread.sleep(2000);
@@ -13364,16 +13576,7 @@ while(true){
           Thread.currentThread().interrupt();
         }
 
-</div>2019-05-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/2d/d0/1fe7144e.jpg" width="30px"><span>风起时</span> 👍（1） 💬（2）<div>老师，started是否需要加voliatle保证，多个线程看到的都是最新的值</div>2019-05-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1c/a9/49ffc8c7.jpg" width="30px"><span>一点点就好</span> 👍（0） 💬（1）<div>有这样一个场景
-A线程发次两次任务调度，将其放入到B线程中进行执行，如果B中已经有任务在执行，那么A线程中先中断线程中执行这个任务的进程后在进行任务提交，这个场景有没有优雅的方式</div>2022-03-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/e9/0b/1171ac71.jpg" width="30px"><span>WL</span> 👍（0） 💬（2）<div>老师请问一下对&quot;没有办法保证第三方类库正确处理了线程的中断异常&quot;这句话我不是很理解,  例子中的sleep方法不是在本地执行的吗, 为什么会跟第三方类库有关系 ?</div>2019-05-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/b4/3b/a1f7e3a4.jpg" width="30px"><span>ZOU志伟</span> 👍（0） 💬（1）<div>有必要，stop()方法执行后，读terminated的start()方法要再次执行才会可见</div>2019-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8c/4e/b81969fa.jpg" width="30px"><span>南北少卿</span> 👍（0） 💬（1）<div>start() 和stop()都是使用的同一把锁this，这样的话，没必要再用volatile声明isTerminated了吧
-</div>2019-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/b4/3b/a1f7e3a4.jpg" width="30px"><span>ZOU志伟</span> 👍（11） 💬（0）<div>shutdown()调用后，还要再调用awaitTermination方法等待一点时间，线程池里的线程才会终止。</div>2019-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/b5/d4/e58e39f0.jpg" width="30px"><span>Geek_0quh3e</span> 👍（5） 💬（0）<div>两阶段终止模式：发送终止指令+响应终止指令。
-终止指令通常可以定义一个终止标识变量(注意并发问题,需要volatie保证可见性)。
-如果线程中调用了可中断方法(wait等)，在发送终止指令的同时需要调用Thread.interrupt()。
-不建议使用线程自身的中断标识作为终止指令，因为项目中第三方的调用无法保证该标志位。</div>2019-05-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/ff/0a/12faa44e.jpg" width="30px"><span>晓杰</span> 👍（4） 💬（0）<div>有必要，因为stop方法对isTerminated的修改需要被start方法读取到，保证共享变量的可见性</div>2019-05-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/37/a6/3e7c2d5c.jpg" width="30px"><span>放牧人</span> 👍（3） 💬（0）<div>有趣的事，这里的terminate变量加上了volatile修饰，正常来说按照 happen-before的规则，对synchronize的解锁是能够被加锁可见的。
-但这个应该是保证在一个线程下的可见，例如对Proxy对象的解锁是在主线程中调用的，加锁也在主线程，那么主线程加锁时可以查看到解锁变量的最新值，但是这个代码的加锁新开了一个线程C，这个时候可见性是传递不到线程C的，只能传递给执行解锁的线程即主线程，所以要加volatile修饰 terminate变量</div>2020-12-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/ca/4b/c1ace3aa.jpg" width="30px"><span>蚝不鱿鱼</span> 👍（3） 💬（1）<div>大龄程序员的周末，必须来点精神食粮，不然就很慌，尽管它可能没啥用，但是谁知道呢，谁让咱输在了起跑线上呢……</div>2020-10-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/83/af/1cb42cd3.jpg" width="30px"><span>马以</span> 👍（2） 💬（0）<div>这里加不加volatile其实影响不大，应为程序中的stop()方法中只是把terminated设置为true，即使多个线程同时访问，影响的也只是多上报一段时间，影响不大，个人观点</div>2021-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/eb/dd/3c9c613c.jpg" width="30px"><span>IF You</span> 👍（2） 💬（1）<div>本文中的start()方法有问题，使用的sleep()方法，而该方法不会释放锁，导致调用stop的方法阻塞在获取监视器锁的状态，永远不能通过stop方法优雅停止线程</div>2020-01-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/20/9a/3b1c65fd.jpg" width="30px"><span>八百</span> 👍（1） 💬（0）<div>我记得在kafka0.8版本的时候，我设置中断来关闭消费者线程，结果不行，然后我把中断标志位，恢复了，就好了。。Ծ‸Ծ</div>2019-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6e/bd/b83ad32d.jpg" width="30px"><span>shangyu</span> 👍（1） 💬（0）<div>请问老师 用interrupt方式中断线程是设置标志位，在run方法中用循环检测该中断标志位，如果中断则不再循环。
-这里有个问题是必须执行完循环里的代码，重新检测循环条件才能中断，那有没有办法能在循环中中断，实现类似ctrl-C的功能，用Thread.stop吗？</div>2019-05-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/ff/ac/b5574a1f.jpg" width="30px"><span>GSP</span> 👍（0） 💬（0）<div>volatile修饰标记位停止线程的方法，在生产者-消费者模式下会有问题
-
-参考如下：https:&#47;&#47;www.bilibili.com&#47;video&#47;BV1SM411N7pt&#47;?p=3&amp;spm_id_from=pageDriver&amp;vd_source=b092b974c37b693d517dfa626ac4c727</div>2023-06-27</li><br/>
+</div>2019-05-20</li><br/>
 </ul>
 
 

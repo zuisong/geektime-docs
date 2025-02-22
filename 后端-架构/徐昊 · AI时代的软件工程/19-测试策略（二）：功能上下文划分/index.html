@@ -7527,6 +7527,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      在测试中引入测试替身
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12883,6 +12910,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      在测试中引入测试替身
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12916,16 +12970,166 @@
 <p>因而，通过组件负责的功能单元就可以很容易地获得功能上下文。让我们看一个非常简单的例子：</p>
 <p><img alt="" src="https://static001.geekbang.org/resource/image/08/01/085ddcb769ec544b7f6c0d833a5de901.jpg?wh=1417x635" /></p>
 <p>这是一个非常常见的后端分层架构模式，核心的业务逻辑处在业务逻辑层中，业务逻辑层通过持久化接口访问数据，所有的逻辑通过HTTP接口暴露对外访问的API。现在，我们有一个业务场景需要使用这个架构模式实现。业务场景是“作为一个用户，我希望获取所有的在售商品，从而我可以选择我想要购买的商品”。</p>
+<p>那么我们就可以按照架构模式的指引，为这个业务场景引入对应的组件，操作如下图所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/98/7d/98322c268d4b18805d0d559a492d647d.jpg?wh=1300x832" /></p>
+<p>在我们引入的组件中，按照架构模式，它们作用分别为：</p>
+<ul>
+<li>ProductsAPI：通过HTTP协议将ProductService暴露为API；</li>
+<li>ProductService：封装围绕产品目录相关的业务逻辑，通过ProductDAO访问持久化的数据；</li>
+<li>ProductDAO：封装对于持久化数据访问的相关逻辑。</li>
+</ul>
+<p>按照我们寻找到的功能上下文，就可以很容易地构造相互关联的Q1与Q2测试：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/75/8a/75f452cc3873f1ccd0afda90d380868a.jpg?wh=1875x1004" /></p>
+<p>这样划分之后，我们可以明显看到，对于“获取产品目录”的功能测试（Q2测试），测试了多个架构中的组件（HTTP interface，application logic以及persistent）。而与之相对的，另外三个测试则仅仅是测试了对应的组件。同时由于我们按照架构分解了不同的功能上下文，那么当属于Q2的功能测试失败时，至少会有一个处于Q1的测试失败。<strong>失败的测试就指明了发生问题的组件。</strong></p>
+<p><strong>需要注意的是，到底是Q1还是Q2的测试，并不是由使用的测试方式决定的</strong>。比如，前面这个例子中的ProductDAO测试。通常对于DAO测试，我们需要使用内存数据库（in-memory database）或是连接专门用于测试的数据库实例。</p>
+<p><strong>从测试技术的角度来看，这种使用数据库的测试通常会被归类为集成测试，而Q1测试通常是单元测试或者组件测试，那么这类测试往往被划归为Q2测试。</strong></p>
+<p>但是，按照我们上节课所讲的，Q1测试与Q2测试的划分，是因为其受众与目的不同。就算采用了内存数据库，或是专门用于测试的数据库实例，它的受众仍然是<strong>技术导向</strong>。因而，只能是Q1象限的测试。</p>
+<h2 id="_2">在测试中引入测试替身</h2>
+<p>测试策略中另一个重要的问题，就是对于不同的测试使用何种测试替身（Test Double）。如果没有测试替身，那么我们将无法独立测试架构模式中指定的组件。比如还是上面的例子，ProductsAPI可能是这样实现的（使用Java Jersey作为RESTful API的框架）：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>@Path(&quot;/products&quot;)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>public class ProductsAPI {
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    private ProductService productService = new ProductServiceImpl();
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    @GET
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    @Produces(MediaType.APPLICATION_JSON)
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    public List&lt;Product&gt; getAllProducts() {
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        return productService.getAllProducts();
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    }
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>}
+</code></pre></div>
+<p>其中ProductServiceImpl是生产环境中使用的代码，也就是要使用ProductsDAO去访问持久化数据的实现方式。当我们要测试这个API层的组件时，可能会用这样的方式：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>public class ProductsAPITest extends JerseyTest {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    @Override
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    protected Application configure() {
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        return new ResourceConfig(ProductsAPI.class);
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    }
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    @Test
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    public void testGetAllProducts() {
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        Response response = target(&quot;/products&quot;).request().get();
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>        // 验证响应状态码是否为200
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>        // 获取响应中的产品列表
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        List&lt;Product&gt; products = response.readEntity(new GenericType&lt;List&lt;Product&gt;&gt;() {});
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        // 验证返回的产品列表是否包含了预期的产品
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>        assertEquals(3, products.size()); // 假设我们期望有3个产品s
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    }
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>}
+</code></pre></div>
+<p>这里的问题是，如果按照现在的代码去写，那么这个测试就会是一个<strong>功能测试</strong>。因为无论我们怎么构造这个测试，它都会使用ProductServiceImpl去执行测试。而ProductServiceImpl则又会使用ProductsDAO。这个测试就变成了使用所有架构组件的测试。</p>
+<p>所以这里我们必须引入测试替身，才能解决这个问题。我们可以做一个简单的修改，首先，<strong>改为依赖注入（Dependency Injection）</strong>：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>@Path(&quot;/products&quot;)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>public class ProductsAPI {
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    @Inject
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    private ProductService productService;
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    @GET
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    @Produces(MediaType.APPLICATION_JSON)
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    public List&lt;Product&gt; getAllProducts() {
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        return productService.getAllProducts();
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    }
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>}
+</code></pre></div>
+<p>然后在测试中注入测试替身，而不是真实的实现：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>public class ProductResourceTest extends JerseyTest {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    private ProductService productService;
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    @Override
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    protected Application configure() {
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        // 创建 ProductService 的替身
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        productService = new ProductServiceDouble();
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        // 创建 ResourceConfig 实例并注册资源类及依赖
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        return new ResourceConfig()
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>                .register(ProductsAPI.class)
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>                .register(new AbstractBinder() {
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>                    @Override
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>                    protected void configure() {
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>                        bind(productService).to(ProductService.class);
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>                    }
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>                });
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    }
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    @Test
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    public void testGetAllProducts() {
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>        // 发送GET请求到&quot;/products&quot;端点
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>        Response response = target(&quot;/products&quot;).request().get();
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>        // 验证响应状态码是否为200
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>        // 获取响应中的产品列表
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>        List&lt;Product&gt; products = response.readEntity(new GenericType&lt;List&lt;Product&gt;&gt;() {});
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>        // 验证返回的产品列表是否包含了预期的产品
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>        assertEquals(3, products.size()); // 假设我们期望有3个产品
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>    }
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>}
+</code></pre></div>
+<p>这样，我们在测试中将使用ProductServiceDouble而不是ProductServiceImpl去进行测试。这个测试只会覆盖架构模式里，HTTP interface层中ProdcutsAPI这个组件。我们也就可以针对不同的功能上下文去进行独立的测试了。</p>
+<p><strong>如果不能在测试中引入测试替身，那么我们几乎无法在Q2测试与Q1测试之间直接建立关联，甚至都无法构造有效的Q1测试。因而，测试替身是测试策略能够落地的关键。</strong></p>
+<p>在确认能够引入测试替身之后，针对不同组件选择哪种测试替身，就是另一个重要的课题。测试替身有多种不同的形态，目前我们广泛使用的测试替身有这么几种：</p>
+<ul>
+<li>哑对象（Dummy Object）：哑对象不会被实际使用，通常它们只是用来填充参数列表。它们可以是简单的占位符，只是为了满足方法签名的需求；</li>
+<li>假实现（Fake Object）：假实现是一种实际可以使用的特定实现，但跟真实实现相比会简化很多。一般不会用于生产环境。比如，内存数据库就是一个很好的例子，对于绝大多数场景，它提供的功能已经足够了，但是不会被用于生产环境；</li>
+<li>存根对象（Stub）：为测试过程中调用的方法提供预先准备好的答案，但通常不会对测试调用之外的方法有任何响应。与假实现不同，存根只满足于特定的场景，而无法看作是一个可用的实现；</li>
+<li>间谍对象（Spy）：间谍对象是一种特殊的存根对象。除了响应某些具体方法之外，它还会根据测试的调用，记录一些信息。比如，使用间谍对象进行测试，它可能会记录某个方法一共被调用了多少次等等；</li>
+<li>模拟对象（Mock）：模拟对象对于将要进行的调用存在明确的预期。它会根据预先编排好的答案响应所有的调用。如果接收的调用不满足预期，它们会抛出异常。通常使用模拟对象时，会在最终的验证过程中进行检查，以确保它们接收到符合预期的所有调用。</li>
+</ul>
+<p>比如在前面的例子里，ProductDAO的测试就使用了假实现（Fake）。ProductService和ProdcutsAPI的测试则会使用存根对象（Stub）。</p>
+<p>为功能上下文选择合适的测试替身策略，是测试策略中非常容易被忽略的一环。而选择恰当的替身策略，则能保证测试的有效性，并控制测试成本。那么对应到我们的例子中，我们可以这样来总结：<br />
+<img alt="" src="https://static001.geekbang.org/resource/image/ea/30/ea247894f27de0a978a45c8345b16930.jpg?wh=1920x990" /></p>
+<p>需要注意的是，除了五种测试替身之外，我们还有一个选择，就是使用真实的对象。当我们使用真实对象的时候，我们实际上在合并不同的功能上下文。比如，对于之前的例子，我们可以选择让ProductsAPI直接使用ProductService，但并不使用真正的DAO对象。那么，测试可能就是这个样子：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>public class ProductResourceTest extends JerseyTest {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    private ProductService productService;
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    @Override
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    protected Application configure() {
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        // 创建 ProductService 的替身
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        productService = new ProductServiceImpl(new ProductDAOStub());
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        // 创建 ResourceConfig 实例并注册资源类及依赖
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        return new ResourceConfig()
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>                .register(ProductsAPI.class)
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>                .register(new AbstractBinder() {
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>                    @Override
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>                    protected void configure() {
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>                        bind(productService).to(ProductService.class);
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>                    }
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>                });
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    }
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    @Test
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>    public void testGetAllProducts() {
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>        // 发送GET请求到&quot;/products&quot;端点
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>        Response response = target(&quot;/products&quot;).request().get();
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>        // 验证响应状态码是否为200
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>        // 获取响应中的产品列表
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>        List&lt;Product&gt; products = response.readEntity(new GenericType&lt;List&lt;Product&gt;&gt;() {});
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>        // 验证返回的产品列表是否包含了预期的产品
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>        assertEquals(3, products.size()); // 假设我们期望有3个产品
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>    }
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>}
+</code></pre></div>
+<p>那么实际上，我们表达的测试策略是这样的：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/67/e9/6715d000fyyc7b98c09a6af10cff87e9.jpg?wh=1920x986" /></p>
+<p><strong>也就是说，虽然从架构模式上看，系统中存在两个不同的功能上下文，但是作为测试策略，我们选择将这两个功能上下文看作一个整体进行测试。</strong></p>
+<p>比如在上面的例子中，我们这个做法是非常有道理的。因为HTTP interface这一层，只有很少的逻辑，绝大部分逻辑都是将application logic层中的返回值进行格式转换。因而我们可以将这两个功能上下文合并，以减少低价值的测试。</p>
+<p>当然，我们也可以选择把Application Logic层与Persistent层合并，虽然在目前这个例子里，这么做并没有带来什么好处。</p>
+<h2 id="_3">小结</h2>
+<p>这节课我们主要讲解了利用架构划分功能上下文，以及为不同的功能上下文选择对应的测试替身。</p>
+<p>我们刻意回避了存根与模拟对象这一老生常谈的话题，感兴趣的同学，可以参考我TDD专栏中，关于<a href="https://time.geekbang.org/column/article/496698">行为验证</a>与<a href="https://time.geekbang.org/column/article/496697">状态验证</a>的章节，或是Martin Folwer在07年写下的经典文章 <a href="https://martinfowler.com/articles/mocksArentStubs.html#ClassicalAndMockistTesting">Mocks Ain’t Stubs</a>.</p>
+<p>当我们获得了测试策略之后，我们就能准确地要求大语言模型（Large Language Model）按照某个特定架构风格生成代码了。这将是我们下节课的内容。</p>
+<h2 id="_4">思考题</h2>
+<p>除了架构之外，还有什么划分功能上下文的办法？</p>
+<p>欢迎在留言区分享你的想法，我会让编辑置顶一些优质回答供大家学习讨论。</p>
 <div><strong>精选留言（5）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/3a/f9/69/106f4ff9.jpg" width="30px"><span>hakunamatata</span> 👍（1） 💬（0）<div>在买点咖啡的场景的中，可以按照消费者，咖啡馆服务员根据角色来划分上下文。</div>2024-05-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/1c/cd/8d552516.jpg" width="30px"><span>Gojustforfun</span> 👍（0） 💬（0）<div>最后代码中注释有问题 ——&#47;&#47; 创建 ProductService 的替身
+<li><span>hakunamatata</span> 👍（1） 💬（0）<div>在买点咖啡的场景的中，可以按照消费者，咖啡馆服务员根据角色来划分上下文。</div>2024-05-17</li><br/><li><span>Gojustforfun</span> 👍（0） 💬（0）<div>最后代码中注释有问题 ——&#47;&#47; 创建 ProductService 的替身
 
-应该是创建ProductDAO的替身，创建ProductService的真是对象</div>2024-05-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/95/53/70a70139.jpg" width="30px"><span>咖啡</span> 👍（0） 💬（0）<div>在DDD架构下通过参与者的角色或者领域&#47;子域划分功能上下文感觉也行</div>2024-04-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/f6/27/c27599ae.jpg" width="30px"><span>术子米德</span> 👍（0） 💬（0）<div>🤔☕️🤔☕️🤔
+应该是创建ProductDAO的替身，创建ProductService的真是对象</div>2024-05-10</li><br/><li><span>咖啡</span> 👍（0） 💬（0）<div>在DDD架构下通过参与者的角色或者领域&#47;子域划分功能上下文感觉也行</div>2024-04-29</li><br/><li><span>术子米德</span> 👍（0） 💬（0）<div>🤔☕️🤔☕️🤔
 【Q】除了架构之外，还有什么划分功能上下文的办法？
 【A】功能，它是钉子，它要技术的锤子，才能有用。可是，钉子死在田里，锤子窝在家里，两不相见，没用。
 功能，它是穿线引针，技术，它是面料、它是里子、它是边角饰件。一件好衣服，需要好的料子、加上好引针、再加好穿线。穿过的每个点，都会发生事件（Event），连续的事件线串起来的技术，做成我们期待的系统。
 因此，所谓的事件风暴法，我喜欢叫做穿针引线法，也是划分功能上下文的好法子。
-— by 术子米德@2024年4月20日</div>2024-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/f6/27/c27599ae.jpg" width="30px"><span>术子米德</span> 👍（0） 💬（0）<div>🤔☕️🤔☕️🤔
+— by 术子米德@2024年4月20日</div>2024-04-20</li><br/><li><span>术子米德</span> 👍（0） 💬（0）<div>🤔☕️🤔☕️🤔
 【R】划分功能上下文 简单法 软件架构。
 Q1的可行需要依赖注入（Dependency Inject）和测试替身（Test Double）的加持。
 哑（Dummy）&#47;有但不用，假（Fake）&#47;用随意值，存根（Stub）&#47;用特定值，间谍（Spy）&#47;记点东西，模拟（Mock）&#47;交互验证。

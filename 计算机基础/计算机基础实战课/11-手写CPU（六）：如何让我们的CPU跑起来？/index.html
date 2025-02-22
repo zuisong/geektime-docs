@@ -3730,6 +3730,60 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#rom" class="md-nav__link">
+    <span class="md-ellipsis">
+      只读存储器ROM的实现
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ram" class="md-nav__link">
+    <span class="md-ellipsis">
+      随机访问存储器RAM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uart" class="md-nav__link">
+    <span class="md-ellipsis">
+      外设UART设计
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cpuhello-world" class="md-nav__link">
+    <span class="md-ellipsis">
+      在CPU上跑个Hello World
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5675,6 +5729,60 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#rom" class="md-nav__link">
+    <span class="md-ellipsis">
+      只读存储器ROM的实现
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ram" class="md-nav__link">
+    <span class="md-ellipsis">
+      随机访问存储器RAM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uart" class="md-nav__link">
+    <span class="md-ellipsis">
+      外设UART设计
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cpuhello-world" class="md-nav__link">
+    <span class="md-ellipsis">
+      在CPU上跑个Hello World
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5710,11 +5818,270 @@
 <h2 id="_1">系统总线设计</h2>
 <p>首先，让我们看看CPU的系统总线。</p>
 <p>总线是连接多个部件的信息传输线，它是各部件共享的传输介质。在某一时刻，只允许有一个部件向总线发送信息，而多个部件可以同时从总线上接收相同的信息。MiniCPU的系统总线用来连接CPU内核与外设，完成信息传输的功能。</p>
+<p>系统总线在整个MiniCPU中是一个很关键的模块。你可以这样理解，总线就是CPU内核跟其他外设部件的“联络员”。举几个例子，总线可以从ROM中读取指令，再交给CPU去执行；CPU运行程序时的变量，也会交由总线保存到RAM中；用来实现芯片与外部通信的UART模块，也需要通过总线跟CPU进行信息交换……</p>
+<p>那总线的代码具体要怎么设计呢？我先展示一下写好的整体代码，再带你具体分析。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">module</span><span class="w"> </span><span class="n">sys_bus</span><span class="w"> </span><span class="p">(</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span><span class="c1">// cpu -&gt; imem</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="k">input</span><span class="w">  </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">cpu_imem_addr</span><span class="p">,</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">cpu_imem_data</span><span class="p">,</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">imem_addr</span><span class="p">,</span><span class="w">                </span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="k">input</span><span class="w">  </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">imem_data</span><span class="p">,</span><span class="w"> </span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="c1">// cpu -&gt; bus</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="k">input</span><span class="w">  </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">cpu_dmem_addr</span><span class="p">,</span><span class="w">        </span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="k">input</span><span class="w">  </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">cpu_dmem_data_in</span><span class="p">,</span><span class="w">     </span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="k">input</span><span class="w">         </span><span class="n">cpu_dmem_wen</span><span class="p">,</span><span class="w">        </span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">cpu_dmem_data_out</span><span class="p">,</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="c1">// bus -&gt; ram </span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">    </span><span class="k">input</span><span class="w">  </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">dmem_read_data</span><span class="p">,</span><span class="w">     </span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">dmem_write_data</span><span class="p">,</span><span class="w">    </span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">dmem_addr</span><span class="p">,</span><span class="w">           </span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="kt">reg</span><span class="w">    </span><span class="n">dmem_wen</span><span class="p">,</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">    </span><span class="c1">// bus -&gt; rom </span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">    </span><span class="k">input</span><span class="w">  </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">dmem_rom_read_data</span><span class="p">,</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">dmem_rom_addr</span><span class="p">,</span><span class="w"> </span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">    </span><span class="c1">// bus -&gt; uart</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">    </span><span class="k">input</span><span class="w">  </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">uart_read_data</span><span class="p">,</span><span class="w">   </span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">uart_write_data</span><span class="p">,</span><span class="w">   </span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">uart_addr</span><span class="p">,</span><span class="w">         </span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="kt">reg</span><span class="w">    </span><span class="n">uart_wen</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="p">);</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">imem_addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cpu_imem_addr</span><span class="p">;</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">cpu_imem_data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">imem_data</span><span class="p">;</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">dmem_addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cpu_dmem_addr</span><span class="p">;</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">dmem_write_data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cpu_dmem_data_in</span><span class="p">;</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">dmem_rom_addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cpu_dmem_addr</span><span class="p">;</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">uart_addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cpu_dmem_addr</span><span class="p">;</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">uart_write_data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cpu_dmem_data_in</span><span class="p">;</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">    </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="p">(</span><span class="n">cpu_dmem_addr</span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">28</span><span class="p">])</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">            </span><span class="mh">4&#39;h0</span><span class="o">:</span><span class="w"> </span><span class="k">begin</span><span class="w">                             </span><span class="c1">//ROM</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">                </span><span class="n">cpu_dmem_data_out</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">dmem_rom_read_data</span><span class="p">;</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">                </span><span class="n">dmem_wen</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">                </span><span class="n">uart_wen</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">            </span><span class="k">end</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="w">            </span><span class="mh">4&#39;h1</span><span class="o">:</span><span class="w"> </span><span class="k">begin</span><span class="w">                         </span><span class="c1">// RAM</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a><span class="w">                </span><span class="n">dmem_wen</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">cpu_dmem_wen</span><span class="p">;</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a><span class="w">                </span><span class="n">cpu_dmem_data_out</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">dmem_read_data</span><span class="p">;</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a><span class="w">                </span><span class="n">uart_wen</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a><span class="w">            </span><span class="k">end</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a><span class="w">            </span><span class="mh">4&#39;h2</span><span class="o">:</span><span class="w"> </span><span class="k">begin</span><span class="w">                         </span><span class="c1">// uart io</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a><span class="w">                </span><span class="n">uart_wen</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">cpu_dmem_wen</span><span class="p">;</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a><span class="w">                </span><span class="n">cpu_dmem_data_out</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">uart_read_data</span><span class="p">;</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a><span class="w">                </span><span class="n">dmem_wen</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a><span class="w">            </span><span class="k">end</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a><span class="w">            </span><span class="k">default</span><span class="o">:</span><span class="w">   </span><span class="k">begin</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a><span class="w">                </span><span class="n">dmem_wen</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a><span class="w">                </span><span class="n">uart_wen</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="w">                </span><span class="n">cpu_dmem_data_out</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a><span class="w">            </span><span class="k">end</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a><span class="w">        </span><span class="k">endcase</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a><span class="w">    </span><span class="k">end</span>
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a><span class="k">endmodule</span>
+</code></pre></div>
+<p>这里我们设计的系统总线其实是一个<strong>“一对多”</strong>的结构，也可以说是“一主多从”结构，就是一个CPU内核作为主设备（Master），多个外设作为从设备（Slave）。<br />
+<img alt="图片" src="https://static001.geekbang.org/resource/image/ac/0e/ac1d4cf173d140225fff21f2c9fedb0e.jpg?wh=1920x1166" /></p>
+<p>CPU内核具有系统总线的控制权，它可以通过系统总线，发起对外设的访问，而外设只能响应从CPU内核发来的各种总线命令。因此，每个外设都需要有一个固定的地址，作为CPU访问特定外设的标识。</p>
+<p>以下就是给从设备分配的地址空间：</p>
+<blockquote>
+<p>// 设备地址空间<br />
+// 0x0000_0000 -ROM (word to byte )<br />
+// 0x1000_0000 -RAM (word to byte )<br />
+// 0x2000_0000 -uart (word to byte )<br />
+// 0x3000_0000 -other(word to byte )</p>
+</blockquote>
+<p>从代码的第39～60行也可以看到，总线根据地址的<strong>高4 bit的值</strong>，就可以判断出CPU访问的是哪个从设备。</p>
+<p>当（cpu_dmem_addr[31:28] = 4’h0 ）时，CPU访问的是ROM，把从ROM返回的数据赋给总线；当（cpu_dmem_addr[31:28] = 4’h1 ）时，CPU访问的是RAM，把CPU的写使能cpu_dmem_wen赋给RAM的写使能信号dmem_wen，同时把从RAM返回的数据赋给总线；当（cpu_dmem_addr[31:28] = 4’h2 ）时，CPU访问的是串行通信模块UART，把CPU的写使能cpu_dmem_wen赋给uart的写使能信号uart_wen，同时把从UART返回的数据赋给总线。这就是MiniCPU总线的工作过程。</p>
+<h2 id="rom">只读存储器ROM的实现</h2>
+<p>接下来，我们看看连接在总线上的存储器要如何实现。</p>
+<p>ROM是个缩写，它表示只读存储器（Read Only Memory）。ROM具有非易失性的特点。什么是非易失性呢？说白了就是在系统断电的情况下，仍然可以保存数据。</p>
+<p>正是因为这一特点，ROM很适合用来存放计算机的程序。由于历史原因，虽然现在使用的ROM中，有些类型不仅是可以读，还可以写，但我们还是习惯性地把它们称作只读存储器。比如，现在电子系统中常用的EEPROM、NOR flash 、Nand flash等，都可以归类为ROM。</p>
+<p>在我们的MiniCPU中，目前没有真正使用上述的ROM作为指令存储器。让我们看看MiniCPU中实现ROM功能的代码，再相应分析我们的设计思路。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">module</span><span class="w"> </span><span class="n">imem</span><span class="w"> </span><span class="p">(</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="k">input</span><span class="w">  </span><span class="p">[</span><span class="mh">11</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">addr1</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">imem_o1</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="k">input</span><span class="w">  </span><span class="p">[</span><span class="mh">11</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">addr2</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">imem_o2</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">);</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">imem_reg</span><span class="p">[</span><span class="mh">0</span><span class="o">:</span><span class="mh">4096</span><span class="p">];</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">imem_o1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">imem_reg</span><span class="p">[</span><span class="n">addr1</span><span class="p">];</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">imem_o2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">imem_reg</span><span class="p">[</span><span class="n">addr2</span><span class="p">];</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="k">endmodule</span>
+</code></pre></div>
+<p>为了方便学习和仿真，我们使用了寄存器（reg）临时定义了一个指令存储器imem，并在仿真的顶层（tb_top.v）使用了$readmemh（）函数，把编译好的二进制指令读入到imem中，以便CPU内部读取并执行这些指令。这里我们设置的存储器在功能上是只读的。</p>
+<p>以下就是仿真的顶层（tb_top.v）调用$readmemh（）函数的语句。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">$readmemh</span><span class="p">(</span><span class="no">`HEXFILE</span><span class="p">,</span><span class="w"> </span><span class="n">MiniCPU</span><span class="p">.</span><span class="n">u_imem</span><span class="p">.</span><span class="n">imem_reg</span><span class="p">);</span>
+</code></pre></div>
+<p>函数里面有两个参数，一个是存放二进制指令的文件（HEXFILE），另一个就是实现ROM功能的寄存器（imem_reg）。这条语句可以在我们启动CPU仿真时，把二进制的指令一次性读入到imem中，这样CPU运行的过程中就可以取imem中的指令去执行了。</p>
+<h2 id="ram">随机访问存储器RAM</h2>
+<p>除了存放指令的ROM，我们还需要一个存放变量和数据的RAM（Random Access Memory）。</p>
+<p>RAM和特点跟ROM正好相反，它是易失性存储器，通常都是在掉电之后就会丢失数据。但是它具有读写速度快的优势，所以通常用作CPU的高速缓存。</p>
+<p>RAM之所以叫做随机访问存储器，是因为不同的地址可以在相同的时间内随机读写。这是由RAM的结构决定的，RAM使用存储阵列来存储数据，只要给出行地址和列地址，就能确定目标数据，而且这一过程和目标数据所处的物理位置无关。</p>
+<p>和ROM一样，为了方便对设计的MiniCPU进行仿真验证，我们还是用寄存器（reg）临时构建了一个数据存储器dmem，作为MiniCPU中的RAM使用。虽然临时构建的存储器和实际的ROM有点差别，但我们还在初期学习阶段，这已经足够了。</p>
+<p>下面就是实现RAM功能的数据存储器dmem的代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">module</span><span class="w"> </span><span class="n">dmem</span><span class="p">(</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="mh">11</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">addr</span><span class="p">,</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="k">input</span><span class="w"> </span><span class="n">we</span><span class="p">,</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">din</span><span class="p">,</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="k">input</span><span class="w"> </span><span class="n">clk</span><span class="p">,</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">dout</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="p">);</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">dmem_reg</span><span class="p">[</span><span class="mh">0</span><span class="o">:</span><span class="mh">4095</span><span class="p">];</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">    </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clk</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">        </span><span class="k">if</span><span class="p">(</span><span class="n">we</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">            </span><span class="n">dmem_reg</span><span class="p">[</span><span class="n">addr</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">din</span><span class="p">;</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="w">        </span><span class="k">end</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="w">            </span><span class="n">dout</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">dmem_reg</span><span class="p">[</span><span class="n">addr</span><span class="p">];</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="w">    </span><span class="k">end</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="k">endmodule</span>
+</code></pre></div>
+<p>代码的第11~16行可以看到，我们使用了时钟信号clk，说明这里的dmem实现的是一个时钟同步RAM。而且当写使能信号（we）为“1”时，才能往RAM里写数据，否则只能读取数据。</p>
+<h2 id="uart">外设UART设计</h2>
+<p>为了让MiniCPU能和其他电子设备进行通信，我们还要设计UART模块。</p>
+<p>同样地，设计代码之前我先带你快速了解一下UART是什么，它的工作原理是怎样的。</p>
+<p>UART的全称叫通用异步收发传输器（Universal Asynchronous Receiver/Transmitter），它是一种串行、异步、全双工的通信协议，是电子设备间进行异步通信的常用模块。</p>
+<p>UART负责对系统总线的并行数据和串行口上的串行数据进行转换，通信双方采用相同的波特率。在不使用时钟信号线的情况下，仅用一根数据发送信号线和一根数据接收信号线（Rx和Tx）就可以完成两个设备间的通信，因此我们也把UART称为异步串行通信。</p>
+<p>串行通信是指，利用一条传输线将数据按顺序一位位传送的过程。UART的发送模块会把来自CPU总线的并行数据转换为串行数据，再以串行方式将其发送到另一个设备的UART接收端。然后由UART的接收模块把串行数据转换为并行数据，以便接收设备存储和使用这些数据。</p>
+<p>UART的数据传输格式如下图所示：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/e7/c2/e7308850a0d185b3ccdde6b7ef4806c2.jpg?wh=1920x872" /></p>
+<p>从图里我们可以看到，UART传输数据包括起始位、数据位、奇偶校验位、停止位和空闲位。UART数据传输线通常在不传输数据时保持在高电平。</p>
+<p>这么多名词是不是有点应接不暇？我挨个解释一下，你就清楚了。</p>
+<ul>
+<li><strong>起始位</strong>是在数据线上先发出一个逻辑低电平“0”信号，表示数据传输的开始。</li>
+<li><strong>数据位</strong>是由5~8位逻辑高低电平表示的“1”或“0”信号。</li>
+<li><strong>校验位</strong>在传输的数据位的后面加1bit，表示“1”的位数应为偶数（偶校验）或奇数（奇校验）。</li>
+<li><strong>停止位</strong>是一个数据位宽的1倍、1.5倍、或者2倍的高电平信号，它是一次数据传输的结束标志。</li>
+<li><strong>空闲位</strong>是数据传输线处于逻辑高电平状态，表示当前线路上处于空闲状态，没有数据传送。</li>
+</ul>
+<p>跟数据发送信号线TX、数据接收信号线RX相对应，我们的UART也分别设计了发送模块（uart_tx）和接收模块（uart_rx）。如果你想了解具体的功能实现，可以课后查看我们的MiniCPU的<a href="https://gitee.com/lmos/Geek-time-computer-foundation/tree/master/lesson06~11/mini_cpu">项目代码</a>。</p>
+<p>这里只放出来发送模块的端口信号，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">module</span><span class="w"> </span><span class="n">uart_tx</span><span class="p">(</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">input</span><span class="w">           </span><span class="n">clk</span><span class="w">         </span><span class="p">,</span><span class="w"> </span><span class="c1">// Top level system clock input.</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">input</span><span class="w">           </span><span class="n">resetn</span><span class="w">      </span><span class="p">,</span><span class="w"> </span><span class="c1">// Asynchronous active low reset.</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="k">output</span><span class="w">          </span><span class="n">uart_txd</span><span class="w">    </span><span class="p">,</span><span class="w"> </span><span class="c1">// UART transmit pin.</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="k">output</span><span class="w">          </span><span class="n">uart_tx_busy</span><span class="p">,</span><span class="w"> </span><span class="c1">// Module busy sending previous item.</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="k">input</span><span class="w">           </span><span class="n">uart_tx_en</span><span class="w">  </span><span class="p">,</span><span class="w"> </span><span class="c1">// Send the data on uart_tx_data</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="k">input</span><span class="w">   </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w">   </span><span class="n">uart_tx_data</span><span class="w">  </span><span class="c1">// The data to be sent</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="p">);</span>
+</code></pre></div>
+<p>UART接收模块的端口信号如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">module</span><span class="w"> </span><span class="n">uart_rx</span><span class="p">(</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">input</span><span class="w">         </span><span class="n">clk</span><span class="w">          </span><span class="p">,</span><span class="w"> </span><span class="c1">// Top level system clock input.</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">input</span><span class="w">         </span><span class="n">resetn</span><span class="w">       </span><span class="p">,</span><span class="w"> </span><span class="c1">// Asynchronous active low reset.</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="k">input</span><span class="w">         </span><span class="n">uart_rxd</span><span class="w">     </span><span class="p">,</span><span class="w"> </span><span class="c1">// UART Recieve pin.</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">input</span><span class="w">         </span><span class="n">uart_rx_en</span><span class="w">   </span><span class="p">,</span><span class="w"> </span><span class="c1">// Recieve enable</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="k">output</span><span class="w">        </span><span class="n">uart_rx_break</span><span class="p">,</span><span class="w"> </span><span class="c1">// Did we get a BREAK message?</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="k">output</span><span class="w">        </span><span class="n">uart_rx_valid</span><span class="p">,</span><span class="w"> </span><span class="c1">// Valid data recieved and available.</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="k">output</span><span class="w"> </span><span class="kt">reg</span><span class="w">  </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">uart_rx_data</span><span class="w">   </span><span class="c1">// The recieved data.</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="p">);</span>
+</code></pre></div>
+<p>端口信号的代码你结合上面的注释很容易就能理解，后面CPU跑程序的时候就会用到这部分的功能。</p>
+<h2 id="cpuhello-world">在CPU上跑个Hello World</h2>
+<p>好，现在来到我们的最后一个环节，编写程序，并把它放到我们的MiniCPU上跑起来。</p>
+<p>为了能更直观看到CPU的运行效果，这里我们使用RISC-V汇编指令，设计了一段用UART发送“Hello MiniCPU!”字符串的代码，然后让串口接收端把发送的字符串在电脑上打印出来。</p>
+<p>具体的代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>#       Assembly                Description
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>main:   
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>        li      x2, 0x20000000          # uart address
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>        li      x6,  0x1500             #x6 &lt;== 0x1500, delay 1ms
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        addi    x7, x0, 0               #x7 &lt;== 0
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        addi    x5, x0, 0x48            #x5 &lt;== &quot;H&quot;
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        sw      x5, 0(x2)  
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>delay1: addi    x7, x7, 1               #x7 &lt;== x7 + 1
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>        bne     x7, x6, delay1          #x6 != x7 
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        addi    x7, x0, 0               #x7 &lt;== 0
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>        addi    x5, x0, 0x65            #x5 &lt;== &quot;e&quot;
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>        sw      x5, 0(x2)  
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>delay2: addi    x7, x7, 1               #x7 &lt;== x7 + 1
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>        bne     x7, x6, delay2           #x6 != x7
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>        addi    x7, x0, 0               #x7 &lt;== 0
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>        addi    x5, x0, 0x6c            #x5 &lt;== &quot;l&quot;
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>        sw      x5, 0(x2) 
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>delay3: addi    x7, x7, 1               #x7 &lt;== x7 + 1
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>        bne     x7, x6, delay3           #x6 != x7
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>        addi    x7, x0, 0               #x7 &lt;== 0
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>        addi    x5, x0, 0x6c            #x5 &lt;== &quot;l&quot;
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>        sw      x5, 0(x2)  
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>  …………  //由于代码较长，结构相似，这里省略了一部分，完整代码你可以从Gitee上获取
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>delay13: addi    x7, x7, 1               #x7 &lt;== x7 + 1
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>        bne     x7, x6, delay13           #x6 != x7
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>        addi    x7, x0, 0               #x7 &lt;== 0
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>        addi    x5, x0, 0x21            #x5 &lt;== &quot;!&quot;
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a>        sw      x5, 0(x2) 
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a>
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a>end:    j       end
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a>
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>        ret
+</code></pre></div>
+<p>有了代码，我们还需要把它编译成能在CPU上运行的机器码，才能把它放在CPU上跑。</p>
+<p>下面的代码就是放在课程代码中的Makefile，作用是编译汇编代码，还有定义好CPU仿真需要用到的一些命名规则。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nv">SOURCE_TB</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span>./tb/tb_top.v
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nv">TMP_DIR</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span>./tmp
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nv">SOURCE</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span>./rtl.f
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="nv">TARGET</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="si">${</span><span class="nv">TMP_DIR</span><span class="si">}</span>/tb_top.o
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="nv">TEST_HEX</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span>./sim/asm/build/test.dat
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="c"># 编译汇编程序，输出二进制指令</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="nf">asm</span><span class="o">:</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="w">    </span>make<span class="w"> </span>-C<span class="w"> </span>./sim/asm<span class="w"> </span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">    </span>python<span class="w"> </span>./sim/asm/word2byte.py
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="c"># 对CPU进行仿真</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="nf">cpu</span><span class="o">:</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="w">    </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">TMP_DIR</span><span class="si">}</span>/*
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="w">    </span>cp<span class="w"> </span><span class="si">${</span><span class="nv">SOURCE_TB</span><span class="si">}</span><span class="w"> </span><span class="si">${</span><span class="nv">TMP_DIR</span><span class="si">}</span>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="w">    </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;s#.hex#${TEST_HEX}#&#39;</span><span class="w"> </span><span class="si">${</span><span class="nv">TMP_DIR</span><span class="si">}</span>/tb_top.v
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="w">    </span>iverilog<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">SOURCE</span><span class="si">}</span><span class="w"> </span>-o<span class="w"> </span><span class="si">${</span><span class="nv">TARGET</span><span class="si">}</span>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="w">    </span>vvp<span class="w"> </span><span class="si">${</span><span class="nv">TARGET</span><span class="si">}</span>
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a><span class="c"># 查看波形</span>
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a><span class="nf">wave</span><span class="o">:</span>
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a><span class="w">    </span>gtkwave<span class="w"> </span><span class="si">${</span><span class="nv">TMP_DIR</span><span class="si">}</span>/tb_top.vcd<span class="w"> </span><span class="p">&amp;</span>
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a><span class="c"># 清除临时文件</span>
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a><span class="nf">clean</span><span class="o">:</span>
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a><span class="w">    </span>make<span class="w"> </span>-C<span class="w"> </span>./sim/asm<span class="w"> </span>clean
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a><span class="w">    </span>rm<span class="w"> </span>./tmp/*<span class="w"> </span>-rf
+</code></pre></div>
+<p>从Makefile的代码中可以看到，我们一共定义了4个目标命令，它们的作用分别是完成汇编程序编译的（asm）命令、执行MiniCPU仿真的（cpu）命令、用软件GTKwave打开仿真后的波形（wave）命令，以及清除仿真过程中产生的临时文件的（clean）命令。</p>
+<p>通过在终端上执行“make asm”命令，便可以把上面设计的汇编程序编译成二进制指令test.dat。然后我们再输入“make cpu”命令就启动MiniCPU的仿真了，运行结果如下图所示：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/93/77/93a1c6c0c1e71cb4cc6f5bffbc86f577.jpg?wh=1920x1043" /></p>
+<p>到此，我们的MiniCPU就设计完成啦！祝贺你一路进行到这里。看到页面上输出Hello MiniCPU的时候，是不是感觉还挺好玩的？</p>
+<p>如果你觉得意犹未尽，还可以在项目文件夹里的“./mini_cpu/sim/asm/src/miniCPU_sim.asm”这个文件中编写你自己的RISC-V汇编程序，然后就可以在我们的MiniCPU上玩出更多花样了。</p>
+<h2 id="_2">重点回顾</h2>
+<p>这节课，我们把MiniCPU的几个外部模块设计完成，这几个模块是让CPU“跑起来”的必要组件。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/31/dd/31b586c344cd7d0127775e7ff63711dd.jpg?wh=1920x1289" /></p>
+<p>我们首先设计了MiniCPU的系统总线。有了它，就能连接CPU内核与外设，完成信息传输的功能，相当于CPU内核与外部设备的一座桥梁。</p>
+<p>接下来的模块就是ROM和RAM。ROM是存放CPU指令的只读存储器。为了方便学习和仿真，我们通过寄存器临时定义了一个指令存储器，然后在仿真的顶层使用了$readmemh函数，把编译好的二进制指令读入到指令存储器中，这样CPU运行时就可以读取和执行这些指令了。</p>
+<p>RAM用来存放数据，它在掉电之后会丢失数据，但是读写速度快，通常用来作为CPU的高速缓存。跟ROM的实现思路一样，我们还是用寄存器临时构建了一个数据存储器dmem，作为MiniCPU中的RAM使用。</p>
+<p>为了让MiniCPU能和其他设备通信，我们还设计了异步串行通信模块UART，它用一根数据发送信号线和一根数据接收信号线就可以完成两个设备间的通信。</p>
+<p>MiniCPU设计好了之后，我们进入运行调试环节，用RISC-V指令编写了一段用UART发送“Hello MiniCPU!”字符串的汇编程序，然后让串口接收端把发送的字符串在电脑上打印出来。如果字符串显示正常，说明我们的miniCPU已经可以正常运行了。</p>
+<p>到这里，我们RISC-V处理器的实现就全部完成了。这节课要点，你可以参考下面的导图。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/54/83/54b5250d3992644cf27ebe953fb44283.jpg?wh=1920x2109" /></p>
+<p>你有兴趣的话，还可以课后做更多的探索，比如给它添加更多的RISCV指令功能，在CPU总线上挂载更多的外设……后面的课程里，我会带你学习更多的RISC-V指令，敬请期待！</p>
+<h2 id="_3">思考题</h2>
+<p>计算机两大体系结构分别是冯诺依曼体系结构和哈弗体系结构，请问我们的MiniCPU属于哪一种体系结构呢？</p>
+<p>期待你在留言区跟我交流互动，说说这个模块学习下来的感受，如果觉得手写CPU很酷，别忘了分享给身边更多的朋友。</p>
 <div><strong>精选留言（12）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/15/32/fe/c2179924.jpg" width="30px"><span>mantra</span> 👍（1） 💬（1）<div>询问小编一个小问题：学到此处 mini_cpu 小结了，还有后续的扩展吗？后续 “RISC-V 指令精讲（X）” 系列是在 GCC + QEMU 环境实现吗？会和 min_cpu 有关联吗？谢谢！</div>2022-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2f/03/8f/38038fb5.jpg" width="30px"><span>Liu Zheng</span> 👍（3） 💬（1）<div>需要指出一下，如果同学用13讲里的方法安装toolchain的话，需要作以下修改才能跑出hello world来：
+<li><span>mantra</span> 👍（1） 💬（1）<div>询问小编一个小问题：学到此处 mini_cpu 小结了，还有后续的扩展吗？后续 “RISC-V 指令精讲（X）” 系列是在 GCC + QEMU 环境实现吗？会和 min_cpu 有关联吗？谢谢！</div>2022-08-19</li><br/><li><span>Liu Zheng</span> 👍（3） 💬（1）<div>需要指出一下，如果同学用13讲里的方法安装toolchain的话，需要作以下修改才能跑出hello world来：
 1. 在`sim&#47;asm&#47;Makefile`中，需要把所有的`riscv32`都替换成`riscv64`。详情见12讲里面的multilib部分。
-2. 如果你和我一样用的是ubuntu 20.04，那么需要`mini_cpu&#47;Makefile`里面，把`python`换成`python3`。因为默认ubuntu20.04开始已经没有`python`了。</div>2022-08-24</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKy9XSxDLRibViazIs1wzhEmIQqMlhcoKhTXNvxXkaPGIveib8B9ibvpdkZxABKFIc4iaSMrkTh7EfWjtg/132" width="30px"><span>likejjj</span> 👍（1） 💬（3）<div>可以在fpga上面跑这个cpu不？</div>2022-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/27/f8/2c/92969c48.jpg" width="30px"><span>青玉白露</span> 👍（1） 💬（1）<div>打算写个汇编搞一下！</div>2022-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2e/d1/f0/0eafdb8e.jpg" width="30px"><span>😇</span> 👍（0） 💬（1）<div>总线你的cpu--&gt;imem的imem是啥意思啊</div>2022-09-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2e/d1/f0/0eafdb8e.jpg" width="30px"><span>😇</span> 👍（0） 💬（2）<div>老师你好，我的运行make asm后显示
+2. 如果你和我一样用的是ubuntu 20.04，那么需要`mini_cpu&#47;Makefile`里面，把`python`换成`python3`。因为默认ubuntu20.04开始已经没有`python`了。</div>2022-08-24</li><br/><li><span>likejjj</span> 👍（1） 💬（3）<div>可以在fpga上面跑这个cpu不？</div>2022-08-22</li><br/><li><span>青玉白露</span> 👍（1） 💬（1）<div>打算写个汇编搞一下！</div>2022-08-19</li><br/><li><span>😇</span> 👍（0） 💬（1）<div>总线你的cpu--&gt;imem的imem是啥意思啊</div>2022-09-26</li><br/><li><span>😇</span> 👍（0） 💬（2）<div>老师你好，我的运行make asm后显示
 make -C .&#47;sim&#47;asm 
 make[1]: 进入目录“&#47;home&#47;qianq&#47;mini_cpu&#47;sim&#47;asm”
 + AS src&#47;miniCPU_sim.asm build&#47;miniCPU_sim.o
@@ -5724,7 +6091,7 @@ make[1]: *** [build&#47;miniCPU_sim.o] Error 127
 make[1]: 离开目录“&#47;home&#47;qianq&#47;mini_cpu&#47;sim&#47;asm”
 Makefile:11: recipe for target &#39;asm&#39; failed
 make: *** [asm] Error 2
-请问这个出错是什么原因呢</div>2022-08-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2f/03/8f/38038fb5.jpg" width="30px"><span>Liu Zheng</span> 👍（0） 💬（2）<div>老师，想问一下，这里汇编代码里面没发送一个字符延时1ms是为了匹配uart的波特率吗？请问这个mini cpu的串口的波特率是在哪里指明的啊？是固定在uart的verilog代码的某个地方了吗？</div>2022-08-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2d/ff/22/dadbadb2.jpg" width="30px"><span>云海</span> 👍（0） 💬（1）<div>为什么我运行 make asm 的时候出现这样的error？谢谢
+请问这个出错是什么原因呢</div>2022-08-28</li><br/><li><span>Liu Zheng</span> 👍（0） 💬（2）<div>老师，想问一下，这里汇编代码里面没发送一个字符延时1ms是为了匹配uart的波特率吗？请问这个mini cpu的串口的波特率是在哪里指明的啊？是固定在uart的verilog代码的某个地方了吗？</div>2022-08-22</li><br/><li><span>云海</span> 👍（0） 💬（1）<div>为什么我运行 make asm 的时候出现这样的error？谢谢
 
 make -C .&#47;sim&#47;asm 
 make[1]: Entering directory &#39;&#47;home&#47;yh&#47;ws&#47;riscv&#47;Geek-time-computer-foundation&#47;lesson06~11&#47;mini_cpu&#47;sim&#47;asm&#39;
@@ -5735,9 +6102,9 @@ make[1]: *** [build&#47;miniCPU_sim.o] Error 127
 make[1]: Leaving directory &#39;&#47;home&#47;yh&#47;ws&#47;riscv&#47;Geek-time-computer-foundation&#47;lesson06~11&#47;mini_cpu&#47;sim&#47;asm&#39;
 Makefile:11: recipe for target &#39;asm&#39; failed
 make: *** [asm] Error 2
-</div>2022-08-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/8b/06/fb3be14a.jpg" width="30px"><span>TableBear</span> 👍（0） 💬（1）<div>好难o(╥﹏╥)o</div>2022-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/a6/ad/e65aec4c.jpg" width="30px"><span>苏流郁宓</span> 👍（0） 💬（1）<div>哈佛结构？</div>2022-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/d4/4b/ec621442.jpg" width="30px"><span>范廷东</span> 👍（0） 💬（0）<div>跑通这个案例，需要用ubuntu或centos的虚拟机？需要安装什么工具？
+</div>2022-08-20</li><br/><li><span>TableBear</span> 👍（0） 💬（1）<div>好难o(╥﹏╥)o</div>2022-08-19</li><br/><li><span>苏流郁宓</span> 👍（0） 💬（1）<div>哈佛结构？</div>2022-08-19</li><br/><li><span>范廷东</span> 👍（0） 💬（0）<div>跑通这个案例，需要用ubuntu或centos的虚拟机？需要安装什么工具？
 
-这些能不能补充说一下；</div>2024-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/0c/4decd1aa.jpg" width="30px"><span>氢原子</span> 👍（0） 💬（0）<div>计算机两大体系结构分别是冯诺依曼体系结构和哈弗体系结构，可以自己设计第三个体系结构吗？</div>2023-09-13</li><br/>
+这些能不能补充说一下；</div>2024-02-23</li><br/><li><span>氢原子</span> 👍（0） 💬（0）<div>计算机两大体系结构分别是冯诺依曼体系结构和哈弗体系结构，可以自己设计第三个体系结构吗？</div>2023-09-13</li><br/>
 </ul>
 
 

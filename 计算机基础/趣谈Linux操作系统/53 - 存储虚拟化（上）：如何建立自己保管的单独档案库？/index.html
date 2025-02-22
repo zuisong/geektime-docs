@@ -4803,6 +4803,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      初始化阶段的存储虚拟化
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#qemu" class="md-nav__link">
+    <span class="md-ellipsis">
+      qemu启动过程中的存储虚拟化
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5990,6 +6026,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      初始化阶段的存储虚拟化
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#qemu" class="md-nav__link">
+    <span class="md-ellipsis">
+      qemu启动过程中的存储虚拟化
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6021,9 +6093,354 @@
 <p>另外一种方式就是，虚拟机里面的操作系统不是一个通用的操作系统，它知道自己是运行在虚拟机里面的，使用的硬盘设备和网络设备都是虚拟的，应该加载特殊的驱动才能运行。这些特殊的驱动往往要通过虚拟机里面和外面配合工作的模式，来加速对于物理存储和网络设备的使用。</p>
 <h2 id="virtio">virtio的基本原理</h2>
 <p>在虚拟化技术的早期，不同的虚拟化技术会针对不同硬盘设备和网络设备实现不同的驱动，虚拟机里面的操作系统也要根据不同的虚拟化技术和物理存储和网络设备，选择加载不同的驱动。但是，由于硬盘设备和网络设备太多了，驱动纷繁复杂。</p>
+<p>后来慢慢就形成了一定的标准，这就是<strong>virtio</strong>，就是<strong>虚拟化I/O设备</strong>的意思。virtio负责对于虚拟机提供统一的接口。也就是说，在虚拟机里面的操作系统加载的驱动，以后都统一加载virtio就可以了。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/1e/33/1e13ffd5ac846c52739291cb489d0233.png?wh=1783%2A943" /></p>
+<p>在虚拟机外，我们可以实现不同的virtio的后端，来适配不同的物理硬件设备。那virtio到底长什么样子呢？我们一起来看一看。</p>
+<p>virtio的架构可以分为四层。</p>
+<ul>
+<li>首先，在虚拟机里面的virtio前端，针对不同类型的设备有不同的<strong>驱动程序</strong>，但是接口都是统一的。例如，硬盘就是virtio_blk，网络就是virtio_net。</li>
+<li>其次，在宿主机的qemu里面，实现virtio后端的逻辑，主要就是<strong>操作硬件的设备</strong>。例如通过写一个物理机硬盘上的文件来完成虚拟机写入硬盘的操作。再如向内核协议栈发送一个网络包完成虚拟机对于网络的操作。</li>
+<li>在virtio的前端和后端之间，有一个通信层，里面包含<strong>virtio层</strong>和<strong>virtio-ring层</strong>。virtio这一层实现的是虚拟队列接口，算是前后端通信的桥梁。而virtio-ring则是该桥梁的具体实现。</li>
+</ul>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/2e/f3/2e9ef612f7b80ec9fcd91e200f4946f3.png?wh=1843%2A1033" /></p>
+<p>virtio使用virtqueue进行前端和后端的高速通信。不同类型的设备队列数目不同。virtio-net使用两个队列，一个用于接收，另一个用于发送；而 virtio-blk仅使用一个队列。</p>
+<p>如果客户机要向宿主机发送数据，客户机会将数据的buffer添加到virtqueue中，然后通过写入寄存器通知宿主机。这样宿主机就可以从virtqueue 中收到的buffer里面的数据。</p>
+<p>了解了virtio的基本原理，接下来，我们以硬盘写入为例，具体看一下存储虚拟化的过程。</p>
+<h2 id="_1">初始化阶段的存储虚拟化</h2>
+<p>和咱们在学习CPU的时候看到的一样，Virtio Block Device也是一种类。它的继承关系如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>static const TypeInfo device_type_info = {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    .name = TYPE_DEVICE,
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    .parent = TYPE_OBJECT,
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    .instance_size = sizeof(DeviceState),
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    .instance_init = device_initfn,
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    .instance_post_init = device_post_init,
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    .instance_finalize = device_finalize,
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    .class_base_init = device_class_base_init,
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    .class_init = device_class_init,
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    .abstract = true,
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    .class_size = sizeof(DeviceClass),
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>};
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>static const TypeInfo virtio_device_info = {
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    .name = TYPE_VIRTIO_DEVICE,
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    .parent = TYPE_DEVICE,
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    .instance_size = sizeof(VirtIODevice),
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    .class_init = virtio_device_class_init,
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    .instance_finalize = virtio_device_instance_finalize,
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    .abstract = true,
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    .class_size = sizeof(VirtioDeviceClass),
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>};
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>static const TypeInfo virtio_blk_info = {
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    .name = TYPE_VIRTIO_BLK,
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    .parent = TYPE_VIRTIO_DEVICE,
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>    .instance_size = sizeof(VirtIOBlock),
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>    .instance_init = virtio_blk_instance_init,
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    .class_init = virtio_blk_class_init,
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>};
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>static void virtio_register_types(void)
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>{
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>    type_register_static(&amp;virtio_blk_info);
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>}
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>type_init(virtio_register_types)
+</code></pre></div>
+<p>Virtio Block Device这种类的定义是有多层继承关系的。TYPE_VIRTIO_BLK的父类是TYPE_VIRTIO_DEVICE，TYPE_VIRTIO_DEVICE的父类是TYPE_DEVICE，TYPE_DEVICE的父类是TYPE_OBJECT。到头了。</p>
+<p>type_init用于注册这种类。这里面每一层都有class_init，用于从TypeImpl生产xxxClass。还有instance_init，可以将xxxClass初始化为实例。</p>
+<p>在TYPE_VIRTIO_BLK层的class_init函数virtio_blk_class_init中，定义了DeviceClass的realize函数为virtio_blk_device_realize，这一点在<a href="https://time.geekbang.org/column/article/109335">CPU</a>那一节也有类似的结构。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>static void virtio_blk_device_realize(DeviceState *dev, Error **errp)
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>{
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    VirtIODevice *vdev = VIRTIO_DEVICE(dev);
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    VirtIOBlock *s = VIRTIO_BLK(dev);
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    VirtIOBlkConf *conf = &amp;s-&gt;conf;
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>......
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    blkconf_blocksizes(&amp;conf-&gt;conf);
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    virtio_blk_set_config_size(s, s-&gt;host_features);
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    virtio_init(vdev, &quot;virtio-blk&quot;, VIRTIO_ID_BLOCK, s-&gt;config_size);
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    s-&gt;blk = conf-&gt;conf.blk;
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    s-&gt;rq = NULL;
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    s-&gt;sector_mask = (s-&gt;conf.conf.logical_block_size / BDRV_SECTOR_SIZE) - 1;
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    for (i = 0; i &lt; conf-&gt;num_queues; i++) {
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        virtio_add_queue(vdev, conf-&gt;queue_size, virtio_blk_handle_output);
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    }
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    virtio_blk_data_plane_create(vdev, conf, &amp;s-&gt;dataplane, &amp;err);
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    s-&gt;change = qemu_add_vm_change_state_handler(virtio_blk_dma_restart_cb, s);
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    blk_set_dev_ops(s-&gt;blk, &amp;virtio_block_ops, s);
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    blk_set_guest_block_size(s-&gt;blk, s-&gt;conf.conf.logical_block_size);
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    blk_iostatus_enable(s-&gt;blk);
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>}
+</code></pre></div>
+<p>在virtio_blk_device_realize函数中，我们先是通过virtio_init初始化VirtIODevice结构。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>void virtio_init(VirtIODevice *vdev, const char *name,
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>                 uint16_t device_id, size_t config_size)
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>{
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    BusState *qbus = qdev_get_parent_bus(DEVICE(vdev));
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    VirtioBusClass *k = VIRTIO_BUS_GET_CLASS(qbus);
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    int i;
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    int nvectors = k-&gt;query_nvectors ? k-&gt;query_nvectors(qbus-&gt;parent) : 0;
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    if (nvectors) {
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        vdev-&gt;vector_queues =
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>            g_malloc0(sizeof(*vdev-&gt;vector_queues) * nvectors);
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    }
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    vdev-&gt;device_id = device_id;
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    vdev-&gt;status = 0;
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    atomic_set(&amp;vdev-&gt;isr, 0);
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    vdev-&gt;queue_sel = 0;
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    vdev-&gt;config_vector = VIRTIO_NO_VECTOR;
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    vdev-&gt;vq = g_malloc0(sizeof(VirtQueue) * VIRTIO_QUEUE_MAX);
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>    vdev-&gt;vm_running = runstate_is_running();
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    vdev-&gt;broken = false;
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    for (i = 0; i &lt; VIRTIO_QUEUE_MAX; i++) {
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>        vdev-&gt;vq[i].vector = VIRTIO_NO_VECTOR;
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>        vdev-&gt;vq[i].vdev = vdev;
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>        vdev-&gt;vq[i].queue_index = i;
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    }
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>    vdev-&gt;name = name;
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>    vdev-&gt;config_len = config_size;
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>    if (vdev-&gt;config_len) {
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>        vdev-&gt;config = g_malloc0(config_size);
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>    } else {
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>        vdev-&gt;config = NULL;
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>    }
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>    vdev-&gt;vmstate = qemu_add_vm_change_state_handler(virtio_vmstate_change,
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>                                                     vdev);
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>    vdev-&gt;device_endian = virtio_default_endian();
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>    vdev-&gt;use_guest_notifier_mask = true;
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>}
+</code></pre></div>
+<p>从virtio_init中可以看出，VirtIODevice结构里面有一个VirtQueue数组，这就是virtio前端和后端互相传数据的队列，最多VIRTIO_QUEUE_MAX个。</p>
+<p>我们回到virtio_blk_device_realize函数。接下来，根据配置的队列数目num_queues，对于每个队列都调用virtio_add_queue来初始化队列。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>VirtQueue *virtio_add_queue(VirtIODevice *vdev, int queue_size,
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>                            VirtIOHandleOutput handle_output)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>{
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    int i;
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    vdev-&gt;vq[i].vring.num = queue_size;
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    vdev-&gt;vq[i].vring.num_default = queue_size;
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    vdev-&gt;vq[i].vring.align = VIRTIO_PCI_VRING_ALIGN;
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    vdev-&gt;vq[i].handle_output = handle_output;
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    vdev-&gt;vq[i].handle_aio_output = NULL;
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    return &amp;vdev-&gt;vq[i];
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>}
+</code></pre></div>
+<p>在每个VirtQueue中，都有一个vring，用来维护这个队列里面的数据；另外还有一个函数virtio_blk_handle_output，用于处理数据写入，这个函数我们后面会用到。</p>
+<p>至此，VirtIODevice，VirtQueue，vring之间的关系如下图所示。这是在qemu里面的对应关系，请你记好，后面我们还能看到类似的结构。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/e1/6d/e18dae0a5951392c4a8e8630e53a616d.jpg?wh=2263%2A1741" /></p>
+<h2 id="qemu">qemu启动过程中的存储虚拟化</h2>
+<p>初始化过程解析完毕以后，我们接下来从qemu的启动过程看起。</p>
+<p>对于硬盘的虚拟化，qemu的启动参数里面有关的是下面两行：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>-drive file=/var/lib/nova/instances/1f8e6f7e-5a70-4780-89c1-464dc0e7f308/disk,if=none,id=drive-virtio-disk0,format=qcow2,cache=none
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>-device virtio-blk-pci,scsi=off,bus=pci.0,addr=0x4,drive=drive-virtio-disk0,id=virtio-disk0,bootindex=1
+</code></pre></div>
+<p>其中，第一行指定了宿主机硬盘上的一个文件，文件的格式是qcow2，这个格式我们这里不准备解析它，你只要明白，对于宿主机上的一个文件，可以被qemu模拟称为客户机上的一块硬盘就可以了。</p>
+<p>而第二行说明了，使用的驱动是virtio-blk驱动。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>configure_blockdev(&amp;bdo_queue, machine_class, snapshot);
+</code></pre></div>
+<p>在qemu启动的main函数里面，初始化块设备，是通过configure_blockdev调用开始的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>static void configure_blockdev(BlockdevOptionsQueue *bdo_queue, MachineClass *machine_class, int snapshot)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>{
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>......
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    if (qemu_opts_foreach(qemu_find_opts(&quot;drive&quot;), drive_init_func,
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>                          &amp;machine_class-&gt;block_default_type, &amp;error_fatal)) {
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>.....
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    }
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>}
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>static int drive_init_func(void *opaque, QemuOpts *opts, Error **errp)
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>{
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    BlockInterfaceType *block_default_type = opaque;
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    return drive_new(opts, *block_default_type, errp) == NULL;
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>}
+</code></pre></div>
+<p>在configure_blockdev中，我们能看到对于drive这个参数的解析，并且初始化这个设备要调用drive_init_func函数，这里面会调用drive_new创建一个设备。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>DriveInfo *drive_new(QemuOpts *all_opts, BlockInterfaceType block_default_type, Error **errp)
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>{
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    const char *value;
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    BlockBackend *blk;
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    DriveInfo *dinfo = NULL;
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    QDict *bs_opts;
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    QemuOpts *legacy_opts;
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    DriveMediaType media = MEDIA_DISK;
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    BlockInterfaceType type;
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    int max_devs, bus_id, unit_id, index;
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    const char *werror, *rerror;
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    bool read_only = false;
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    bool copy_on_read;
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    const char *filename;
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    Error *local_err = NULL;
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    int i;
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>......
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>    legacy_opts = qemu_opts_create(&amp;qemu_legacy_drive_opts, NULL, 0,
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>                                   &amp;error_abort);
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>......
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>    /* Add virtio block device */
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>    if (type == IF_VIRTIO) {
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>        QemuOpts *devopts;
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>        devopts = qemu_opts_create(qemu_find_opts(&quot;device&quot;), NULL, 0,
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>                                   &amp;error_abort);
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>        qemu_opt_set(devopts, &quot;driver&quot;, &quot;virtio-blk-pci&quot;, &amp;error_abort);
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>        qemu_opt_set(devopts, &quot;drive&quot;, qdict_get_str(bs_opts, &quot;id&quot;),
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>                     &amp;error_abort);
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>    }
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>    filename = qemu_opt_get(legacy_opts, &quot;file&quot;);
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>......
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>    /* Actual block device init: Functionality shared with blockdev-add */
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>    blk = blockdev_init(filename, bs_opts, &amp;local_err);
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>......
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>    /* Create legacy DriveInfo */
+<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>    dinfo = g_malloc0(sizeof(*dinfo));
+<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a>    dinfo-&gt;opts = all_opts;
+<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a>
+<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a>    dinfo-&gt;type = type;
+<a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a>    dinfo-&gt;bus = bus_id;
+<a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a>    dinfo-&gt;unit = unit_id;
+<a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a>
+<a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a>    blk_set_legacy_dinfo(blk, dinfo);
+<a id="__codelineno-7-45" name="__codelineno-7-45" href="#__codelineno-7-45"></a>
+<a id="__codelineno-7-46" name="__codelineno-7-46" href="#__codelineno-7-46"></a>    switch(type) {
+<a id="__codelineno-7-47" name="__codelineno-7-47" href="#__codelineno-7-47"></a>    case IF_IDE:
+<a id="__codelineno-7-48" name="__codelineno-7-48" href="#__codelineno-7-48"></a>    case IF_SCSI:
+<a id="__codelineno-7-49" name="__codelineno-7-49" href="#__codelineno-7-49"></a>    case IF_XEN:
+<a id="__codelineno-7-50" name="__codelineno-7-50" href="#__codelineno-7-50"></a>    case IF_NONE:
+<a id="__codelineno-7-51" name="__codelineno-7-51" href="#__codelineno-7-51"></a>        dinfo-&gt;media_cd = media == MEDIA_CDROM;
+<a id="__codelineno-7-52" name="__codelineno-7-52" href="#__codelineno-7-52"></a>        break;
+<a id="__codelineno-7-53" name="__codelineno-7-53" href="#__codelineno-7-53"></a>    default:
+<a id="__codelineno-7-54" name="__codelineno-7-54" href="#__codelineno-7-54"></a>        break;
+<a id="__codelineno-7-55" name="__codelineno-7-55" href="#__codelineno-7-55"></a>    }
+<a id="__codelineno-7-56" name="__codelineno-7-56" href="#__codelineno-7-56"></a>......
+<a id="__codelineno-7-57" name="__codelineno-7-57" href="#__codelineno-7-57"></a>}
+</code></pre></div>
+<p>在drive_new里面，会解析qemu的启动参数。对于virtio来讲，会解析device参数，把driver设置为virtio-blk-pci；还会解析file参数，就是指向那个宿主机上的文件。</p>
+<p>接下来，drive_new会调用blockdev_init，根据参数进行初始化，最后会创建一个DriveInfo来管理这个设备。</p>
+<p>我们重点来看blockdev_init。在这里面，我们发现，如果file不为空，则应该调用blk_new_open打开宿主机上的硬盘文件，返回的结果是BlockBackend，对应我们上面讲原理的时候的virtio的后端。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>BlockBackend *blk_new_open(const char *filename, const char *reference,
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>                           QDict *options, int flags, Error **errp)
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>{
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    BlockBackend *blk;
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    BlockDriverState *bs;
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    uint64_t perm = 0;
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>......
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    blk = blk_new(perm, BLK_PERM_ALL);
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    bs = bdrv_open(filename, reference, options, flags, errp);
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    blk-&gt;root = bdrv_root_attach_child(bs, &quot;root&quot;, &amp;child_root,
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>                                       perm, BLK_PERM_ALL, blk, errp);
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    return blk;
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>}
+</code></pre></div>
+<p>接下来的调用链为：bdrv_open-&gt;bdrv_open_inherit-&gt;bdrv_open_common.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>static int bdrv_open_common(BlockDriverState *bs, BlockBackend *file,
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>                            QDict *options, Error **errp)
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>{
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    int ret, open_flags;
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    const char *filename;
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    const char *driver_name = NULL;
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    const char *node_name = NULL;
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    const char *discard;
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    QemuOpts *opts;
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    BlockDriver *drv;
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    Error *local_err = NULL;
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>......
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    drv = bdrv_find_format(driver_name);
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>......
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    ret = bdrv_open_driver(bs, drv, node_name, options, open_flags, errp);
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>......
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>}
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>static int bdrv_open_driver(BlockDriverState *bs, BlockDriver *drv,
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>                            const char *node_name, QDict *options,
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>                            int open_flags, Error **errp)
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>{
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>......
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>    bs-&gt;drv = drv;
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>    bs-&gt;read_only = !(bs-&gt;open_flags &amp; BDRV_O_RDWR);
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>    bs-&gt;opaque = g_malloc0(drv-&gt;instance_size);
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>    if (drv-&gt;bdrv_open) {
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>        ret = drv-&gt;bdrv_open(bs, options, open_flags, &amp;local_err);
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>    } 
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>......
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>}
+</code></pre></div>
+<p>在bdrv_open_common中，根据硬盘文件的格式，得到BlockDriver。因为虚拟机的硬盘文件格式有很多种，qcow2是一种，raw是一种，vmdk是一种，各有优缺点，启动虚拟机的时候，可以自由选择。</p>
+<p>对于不同的格式，打开的方式不一样，我们拿qcow2来解析。它的BlockDriver定义如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>BlockDriver bdrv_qcow2 = {
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    .format_name        = &quot;qcow2&quot;,
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    .instance_size      = sizeof(BDRVQcow2State),
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    .bdrv_probe         = qcow2_probe,
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    .bdrv_open          = qcow2_open,
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    .bdrv_close         = qcow2_close,
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>......
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    .bdrv_snapshot_create   = qcow2_snapshot_create,
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    .bdrv_snapshot_goto     = qcow2_snapshot_goto,
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    .bdrv_snapshot_delete   = qcow2_snapshot_delete,
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    .bdrv_snapshot_list     = qcow2_snapshot_list,
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    .bdrv_snapshot_load_tmp = qcow2_snapshot_load_tmp,
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>    .bdrv_measure           = qcow2_measure,
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    .bdrv_get_info          = qcow2_get_info,
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>    .bdrv_get_specific_info = qcow2_get_specific_info,
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    .bdrv_save_vmstate    = qcow2_save_vmstate,
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>    .bdrv_load_vmstate    = qcow2_load_vmstate,
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>    .supports_backing           = true,
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>    .bdrv_change_backing_file   = qcow2_change_backing_file,
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>    .bdrv_refresh_limits        = qcow2_refresh_limits,
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>......
+<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>};
+</code></pre></div>
+<p>根据上面的定义，对于qcow2来讲，bdrv_open调用的是qcow2_open。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>static int qcow2_open(BlockDriverState *bs, QDict *options, int flags,
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>                      Error **errp)
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>{
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    BDRVQcow2State *s = bs-&gt;opaque;
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    QCow2OpenCo qoc = {
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>        .bs = bs,
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>        .options = options,
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>        .flags = flags,
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>        .errp = errp,
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>        .ret = -EINPROGRESS
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    };
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>    bs-&gt;file = bdrv_open_child(NULL, options, &quot;file&quot;, bs, &amp;child_file,
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>                               false, errp);
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>    qemu_coroutine_enter(qemu_coroutine_create(qcow2_open_entry, &amp;qoc));
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>......
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>}
+</code></pre></div>
+<p>在qcow2_open中，我们会通过qemu_coroutine_enter进入一个协程coroutine。什么叫协程呢？我们可以简单地将它理解为用户态自己实现的线程。</p>
+<p>前面咱们讲线程的时候说过，如果一个程序想实现并发，可以创建多个线程，但是线程是一个内核的概念，创建的每一个线程内核都能看到，内核的调度也是以线程为单位的。这对于普通的进程没有什么问题，但是对于qemu这种虚拟机，如果在用户态和内核态切换来切换去，由于还涉及虚拟机的状态，代价比较大。</p>
+<p>但是，qemu的设备也是需要多线程能力的，怎么办呢？我们就在用户态实现一个类似线程的东西，也就是协程，用于实现并发，并且不被内核看到，调度全部在用户态完成。</p>
+<p>从后面的读写过程可以看出，协程在后端经常使用。这里打开一个qcow2文件就是使用一个协程，创建一个协程和创建一个线程很像，也需要指定一个函数来执行，qcow2_open_entry就是协程的函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>static void coroutine_fn qcow2_open_entry(void *opaque)
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>{
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    QCow2OpenCo *qoc = opaque;
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    BDRVQcow2State *s = qoc-&gt;bs-&gt;opaque;
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    qemu_co_mutex_lock(&amp;s-&gt;lock);
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    qoc-&gt;ret = qcow2_do_open(qoc-&gt;bs, qoc-&gt;options, qoc-&gt;flags, qoc-&gt;errp);
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    qemu_co_mutex_unlock(&amp;s-&gt;lock);
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>}
+</code></pre></div>
+<p>我们可以看到，qcow2_open_entry函数前面有一个coroutine_fn，说明它是一个协程函数。在qcow2_do_open中，qcow2_do_open根据qcow2的格式打开硬盘文件。这个格式<a href="https://github.com/qemu/qemu/blob/master/docs/interop/qcow2.txt">官网</a>就有，我们这里就不花篇幅解析了。</p>
+<h2 id="_2">总结时刻</h2>
+<p>我们这里来总结一下，存储虚拟化的过程分为前端、后端和中间的队列。</p>
+<ul>
+<li>前端有前端的块设备驱动Front-end driver，在客户机的内核里面，它符合普通设备驱动的格式，对外通过VFS暴露文件系统接口给客户机里面的应用。这一部分这一节我们没有讲，放在下一节解析。</li>
+<li>后端有后端的设备驱动Back-end driver，在宿主机的qemu进程中，当收到客户机的写入请求的时候，调用文件系统的write函数，写入宿主机的VFS文件系统，最终写到物理硬盘设备上的qcow2文件。</li>
+<li>中间的队列用于前端和后端之间传输数据，在前端的设备驱动和后端的设备驱动，都有类似的数据结构virt-queue来管理这些队列，这一部分这一节我们也没有讲，也放到下一节解析。</li>
+</ul>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/1f/4b/1f0c3043a11d6ea1a802f7d0f3b0b34b.jpg?wh=2146%2A2173" /></p>
+<h2 id="_3">课堂练习</h2>
+<p>对于qemu-kvm来讲，qcow2是一种常见的文件格式。它有精妙的格式设计，从而适应虚拟化的场景，请你研究一下这个文件格式。</p>
+<p>欢迎留言和我分享你的疑惑和见解，也欢迎收藏本节内容，反复研读。你也可以把今天的内容分享给你的朋友，和他一起学习和进步。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/8c/37/8c0a95fa07a8b9a1abfd394479bdd637.jpg?wh=1110%2A659" /></p>
 <div><strong>精选留言（10）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/f6/4e/0066303c.jpg" width="30px"><span>cuikt</span> 👍（1） 💬（1）<div>留个言，讲的挺好！ </div>2019-08-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/15/5c/aa3f8306.jpg" width="30px"><span>潇是潇洒的洒</span> 👍（39） 💬（1）<div>留个爪，虽然大部分都看不懂，但是我的初心是了解操作系统的概念，所以第一遍不关注细节，构建系统的大体框架，知道有这么个事儿就好了，好像看到这里，还能坚持的人就很少了，留个言，鼓励自己一下，希望再回来来看的时候，自己会多一些明悟。</div>2019-09-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5e/96/a03175bc.jpg" width="30px"><span>莫名</span> 👍（4） 💬（1）<div>赞，之前只是粗略读了一遍，留个大概印象。最近在优化虚拟机存储性能，重新拜读，受益匪浅，理解深刻了很多。</div>2020-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/db/26/54f2c164.jpg" width="30px"><span>靠人品去赢</span> 👍（3） 💬（0）<div>老师他这个协程和go的协程对比有什么异同？</div>2019-09-17</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKkF14X58pdmTgBWwWzxVicJ0LQjNXiceL3xSj73eC4AZheyIPtf8tyqTicbP4VXia1TmDlm9rlCNCuDQ/132" width="30px"><span>Geek_c2c8d1</span> 👍（1） 💬（0）<div>哇！看到这里的人已经越来越少了，虽然我也看不懂，但是还是想坚持看完第一遍，有个印象。这两个月在找工作，来这里打个卡。</div>2021-08-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/68/12/031a05c3.jpg" width="30px"><span>A免帅叫哥</span> 👍（1） 💬（0）<div>这一节比内存和cpu的虚拟化简单很多。</div>2021-04-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/39/98/4c96c6f4.jpg" width="30px"><span>焦太郎</span> 👍（0） 💬（0）<div>没有什么复杂的问题是分层解决不了的，如果有，就是分的还不够（- -）</div>2023-05-17</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/yUAD9PkjPE1Xm6FMqgmWhhKMQf6zbyEdQO8oWJN5v020oRD8OgLScVDiatriakNlWQdo96m88GyWia3WVKCZtW5BQ/132" width="30px"><span>Geek_cc94b0</span> 👍（0） 💬（0）<div>看的晕，但是还是坚持下来</div>2022-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/80/6e/7f78292e.jpg" width="30px"><span>无</span> 👍（0） 💬（0）<div>在vm里用的大部分是协程的话,是不是一些long running的服务在vm上跑会比在裸机上跑性能更好? 用户&#47;内核态之间的切换会少很多吧?</div>2022-01-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/32/5b/d0c7e813.jpg" width="30px"><span>luo</span> 👍（0） 💬（1）<div>讲的好</div>2022-01-23</li><br/>
+<li><span>cuikt</span> 👍（1） 💬（1）<div>留个言，讲的挺好！ </div>2019-08-15</li><br/><li><span>潇是潇洒的洒</span> 👍（39） 💬（1）<div>留个爪，虽然大部分都看不懂，但是我的初心是了解操作系统的概念，所以第一遍不关注细节，构建系统的大体框架，知道有这么个事儿就好了，好像看到这里，还能坚持的人就很少了，留个言，鼓励自己一下，希望再回来来看的时候，自己会多一些明悟。</div>2019-09-06</li><br/><li><span>莫名</span> 👍（4） 💬（1）<div>赞，之前只是粗略读了一遍，留个大概印象。最近在优化虚拟机存储性能，重新拜读，受益匪浅，理解深刻了很多。</div>2020-07-29</li><br/><li><span>靠人品去赢</span> 👍（3） 💬（0）<div>老师他这个协程和go的协程对比有什么异同？</div>2019-09-17</li><br/><li><span>Geek_c2c8d1</span> 👍（1） 💬（0）<div>哇！看到这里的人已经越来越少了，虽然我也看不懂，但是还是想坚持看完第一遍，有个印象。这两个月在找工作，来这里打个卡。</div>2021-08-15</li><br/><li><span>A免帅叫哥</span> 👍（1） 💬（0）<div>这一节比内存和cpu的虚拟化简单很多。</div>2021-04-23</li><br/><li><span>焦太郎</span> 👍（0） 💬（0）<div>没有什么复杂的问题是分层解决不了的，如果有，就是分的还不够（- -）</div>2023-05-17</li><br/><li><span>Geek_cc94b0</span> 👍（0） 💬（0）<div>看的晕，但是还是坚持下来</div>2022-07-28</li><br/><li><span>无</span> 👍（0） 💬（0）<div>在vm里用的大部分是协程的话,是不是一些long running的服务在vm上跑会比在裸机上跑性能更好? 用户&#47;内核态之间的切换会少很多吧?</div>2022-01-24</li><br/><li><span>luo</span> 👍（0） 💬（1）<div>讲的好</div>2022-01-23</li><br/>
 </ul>
 
 

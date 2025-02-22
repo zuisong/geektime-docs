@@ -12541,6 +12541,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#mybatis-plugin_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      MyBatis Plugin的设计与实现
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -14521,6 +14548,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#mybatis-plugin_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      MyBatis Plugin的设计与实现
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -14552,26 +14606,291 @@
 <p>话不多说，让我们正式开始今天的学习吧！</p>
 <h2 id="mybatis-plugin">MyBatis Plugin功能介绍</h2>
 <p>实际上，MyBatis Plugin跟Servlet Filter、Spring Interceptor的功能是类似的，都是在不需要修改原有流程代码的情况下，拦截某些方法调用，在拦截的方法调用的前后，执行一些额外的代码逻辑。它们的唯一区别在于拦截的位置是不同的。Servlet Filter主要拦截Servlet请求，Spring Interceptor主要拦截Spring管理的Bean方法（比如Controller类的方法等），而MyBatis Plugin主要拦截的是MyBatis在执行SQL的过程中涉及的一些方法。</p>
-<div><strong>精选留言（23）</strong></div>
+<p>MyBatis Plugin使用起来比较简单，我们通过一个例子来快速看下。</p>
+<p>假设我们需要统计应用中每个SQL的执行耗时，如果使用MyBatis Plugin来实现的话，我们只需要定义一个SqlCostTimeInterceptor类，让它实现MyBatis的Interceptor接口，并且，在MyBatis的全局配置文件中，简单声明一下这个插件就可以了。具体的代码和配置如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>@Intercepts({
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>        @Signature(type = StatementHandler.class, method = &quot;query&quot;, args = {Statement.class, ResultHandler.class}),
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        @Signature(type = StatementHandler.class, method = &quot;update&quot;, args = {Statement.class}),
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        @Signature(type = StatementHandler.class, method = &quot;batch&quot;, args = {Statement.class})})
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>public class SqlCostTimeInterceptor implements Interceptor {
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  private static Logger logger = LoggerFactory.getLogger(SqlCostTimeInterceptor.class);
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  @Override
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  public Object intercept(Invocation invocation) throws Throwable {
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    Object target = invocation.getTarget();
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    long startTime = System.currentTimeMillis();
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    StatementHandler statementHandler = (StatementHandler) target;
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    try {
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>      return invocation.proceed();
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    } finally {
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>      long costTime = System.currentTimeMillis() - startTime;
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>      BoundSql boundSql = statementHandler.getBoundSql();
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>      String sql = boundSql.getSql();
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>      logger.info(&quot;执行 SQL：[ {} ]执行耗时[ {} ms]&quot;, sql, costTime);
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    }
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>  }
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>  @Override
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>  public Object plugin(Object target) {
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    return Plugin.wrap(target, this);
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>  }
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>  @Override
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>  public void setProperties(Properties properties) {
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    System.out.println(&quot;插件配置的信息：&quot;+properties);
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>  }
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>}
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>&lt;!-- MyBatis全局配置文件：mybatis-config.xml --&gt;
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>&lt;plugins&gt;
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>  &lt;plugin interceptor=&quot;com.xzg.cd.a88.SqlCostTimeInterceptor&quot;&gt;
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>    &lt;property name=&quot;someProperty&quot; value=&quot;100&quot;/&gt;
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>  &lt;/plugin&gt;
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>&lt;/plugins&gt;
+</code></pre></div>
+<p>因为待会我会详细地介绍MyBatis Plugin的底层实现原理，所以，这里暂时不对上面的代码做详细地解释。现在，我们只重点看下@Intercepts注解这一部分。</p>
+<p>我们知道，不管是拦截器、过滤器还是插件，都需要明确地标明拦截的目标方法。@Intercepts注解实际上就是起了这个作用。其中，@Intercepts注解又可以嵌套@Signature注解。一个@Signature注解标明一个要拦截的目标方法。如果要拦截多个方法，我们可以像例子中那样，编写多条@Signature注解。</p>
+<p>@Signature注解包含三个元素：type、method、args。其中，type指明要拦截的类、method指明方法名、args指明方法的参数列表。通过指定这三个元素，我们就能完全确定一个要拦截的方法。</p>
+<p>默认情况下，MyBatis Plugin允许拦截的方法有下面这样几个：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/cd/d1/cd0aae4a0758ac0913ad28988a6718d1.jpg?wh=1723%2A763" /></p>
+<p>为什么默认允许拦截的是这样几个类的方法呢？</p>
+<p>MyBatis底层是通过Executor类来执行SQL的。Executor类会创建StatementHandler、ParameterHandler、ResultSetHandler三个对象，并且，首先使用ParameterHandler设置SQL中的占位符参数，然后使用StatementHandler执行SQL语句，最后使用ResultSetHandler封装执行结果。所以，我们只需要拦截Executor、ParameterHandler、ResultSetHandler、StatementHandler这几个类的方法，基本上就能满足我们对整个SQL执行流程的拦截了。</p>
+<p>实际上，除了统计SQL的执行耗时，利用MyBatis Plugin，我们还可以做很多事情，比如分库分表、自动分页、数据脱敏、加密解密等等。如果感兴趣的话，你可以自己实现一下。</p>
+<h2 id="mybatis-plugin_1">MyBatis Plugin的设计与实现</h2>
+<p>刚刚我们简单介绍了MyBatis Plugin是如何使用的。现在，我们再剖析一下源码，看看如此简洁的使用方式，底层是如何实现的，隐藏了哪些复杂的设计。</p>
+<p>相对于Servlet Filter、Spring Interceptor中职责链模式的代码实现，MyBatis Plugin的代码实现还是蛮有技巧的，因为它是借助动态代理来实现职责链的。</p>
+<p>在<a href="https://time.geekbang.org/column/article/216278">第62节</a>和<a href="https://time.geekbang.org/column/article/217395">第63节</a>中，我们讲到，职责链模式的实现一般包含处理器（Handler）和处理器链（HandlerChain）两部分。这两个部分对应到Servlet Filter的源码就是Filter和FilterChain，对应到Spring Interceptor的源码就是HandlerInterceptor和HandlerExecutionChain，对应到MyBatis Plugin的源码就是Interceptor和InterceptorChain。除此之外，MyBatis Plugin还包含另外一个非常重要的类：Plugin。它用来生成被拦截对象的动态代理。</p>
+<p>集成了MyBatis的应用在启动的时候，MyBatis框架会读取全局配置文件（前面例子中的mybatis-config.xml文件），解析出Interceptor（也就是例子中的SqlCostTimeInterceptor），并且将它注入到Configuration类的InterceptorChain对象中。这部分逻辑对应到源码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>public class XMLConfigBuilder extends BaseBuilder {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  //解析配置
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  private void parseConfiguration(XNode root) {
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    try {
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>     //省略部分代码...
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>      pluginElement(root.evalNode(&quot;plugins&quot;)); //解析插件
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    } catch (Exception e) {
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>      throw new BuilderException(&quot;Error parsing SQL Mapper Configuration. Cause: &quot; + e, e);
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    }
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>  }
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>  //解析插件
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>   private void pluginElement(XNode parent) throws Exception {
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    if (parent != null) {
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>      for (XNode child : parent.getChildren()) {
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>        String interceptor = child.getStringAttribute(&quot;interceptor&quot;);
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>        Properties properties = child.getChildrenAsProperties();
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>        //创建Interceptor类对象
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>        Interceptor interceptorInstance = (Interceptor) resolveClass(interceptor).newInstance();
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>        //调用Interceptor上的setProperties()方法设置properties
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>        interceptorInstance.setProperties(properties);
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>        //下面这行代码会调用InterceptorChain.addInterceptor()方法
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>        configuration.addInterceptor(interceptorInstance);
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>      }
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    }
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>  }
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>}
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>// Configuration类的addInterceptor()方法的代码如下所示
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>public void addInterceptor(Interceptor interceptor) {
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>  interceptorChain.addInterceptor(interceptor);
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>}
+</code></pre></div>
+<p>我们再来看Interceptor和InterceptorChain这两个类的代码，如下所示。Interceptor的setProperties()方法就是一个单纯的setter方法，主要是为了方便通过配置文件配置Interceptor的一些属性值，没有其他作用。Interceptor类中intecept()和plugin()函数，以及InterceptorChain类中的pluginAll()函数，是最核心的三个函数，我们待会再详细解释。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>public class Invocation {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  private final Object target;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  private final Method method;
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  private final Object[] args;
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  // 省略构造函数和getter方法...
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  public Object proceed() throws InvocationTargetException, IllegalAccessException {
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    return method.invoke(target, args);
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  }
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>}
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>public interface Interceptor {
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>  Object intercept(Invocation invocation) throws Throwable;
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>  Object plugin(Object target);
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>  void setProperties(Properties properties);
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>}
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>public class InterceptorChain {
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>  private final List&lt;Interceptor&gt; interceptors = new ArrayList&lt;Interceptor&gt;();
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>  public Object pluginAll(Object target) {
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    for (Interceptor interceptor : interceptors) {
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>      target = interceptor.plugin(target);
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>    }
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    return target;
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>  }
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>  public void addInterceptor(Interceptor interceptor) {
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>    interceptors.add(interceptor);
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>  }
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>  public List&lt;Interceptor&gt; getInterceptors() {
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>    return Collections.unmodifiableList(interceptors);
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>  }
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>}
+</code></pre></div>
+<p>解析完配置文件之后，所有的Interceptor都加载到了InterceptorChain中。接下来，我们再来看下，这些拦截器是在什么时候被触发执行的？又是如何被触发执行的呢？</p>
+<p>前面我们提到，在执行SQL的过程中，MyBatis会创建Executor、StatementHandler、ParameterHandler、ResultSetHandler这几个类的对象，对应的创建代码在Configuration类中，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>public Executor newExecutor(Transaction transaction, ExecutorType executorType) {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  executorType = executorType == null ? defaultExecutorType : executorType;
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  executorType = executorType == null ? ExecutorType.SIMPLE : executorType;
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  Executor executor;
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  if (ExecutorType.BATCH == executorType) {
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    executor = new BatchExecutor(this, transaction);
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>  } else if (ExecutorType.REUSE == executorType) {
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    executor = new ReuseExecutor(this, transaction);
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>  } else {
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    executor = new SimpleExecutor(this, transaction);
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>  }
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>  if (cacheEnabled) {
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    executor = new CachingExecutor(executor);
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>  }
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>  executor = (Executor) interceptorChain.pluginAll(executor);
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>  return executor;
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>}
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>public ParameterHandler newParameterHandler(MappedStatement mappedStatement, Object parameterObject, BoundSql boundSql) {
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>  ParameterHandler parameterHandler = mappedStatement.getLang().createParameterHandler(mappedStatement, parameterObject, boundSql);
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>  parameterHandler = (ParameterHandler) interceptorChain.pluginAll(parameterHandler);
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>  return parameterHandler;
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>}
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>public ResultSetHandler newResultSetHandler(Executor executor, MappedStatement mappedStatement, RowBounds rowBounds, ParameterHandler parameterHandler,
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>    ResultHandler resultHandler, BoundSql boundSql) {
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>  ResultSetHandler resultSetHandler = new DefaultResultSetHandler(executor, mappedStatement, parameterHandler, resultHandler, boundSql, rowBounds);
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>  resultSetHandler = (ResultSetHandler) interceptorChain.pluginAll(resultSetHandler);
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>  return resultSetHandler;
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>}
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>public StatementHandler newStatementHandler(Executor executor, MappedStatement mappedStatement, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) {
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>  StatementHandler statementHandler = new RoutingStatementHandler(executor, mappedStatement, parameterObject, rowBounds, resultHandler, boundSql);
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>  statementHandler = (StatementHandler) interceptorChain.pluginAll(statementHandler);
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>  return statementHandler;
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>}
+</code></pre></div>
+<p>从上面的代码中，我们可以发现，这几个类对象的创建过程都调用了InteceptorChain的pluginAll()方法。这个方法的代码前面已经给出了。你可以回过头去再看一眼。它的代码实现很简单，嵌套调用InterceptorChain上每个Interceptor的plugin()方法。plugin()是一个接口方法（不包含实现代码），需要由用户给出具体的实现代码。在之前的例子中，SQLTimeCostInterceptor的plugin()方法通过直接调用Plugin的wrap()方法来实现。wrap()方法的代码实现如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>// 借助Java InvocationHandler实现的动态代理模式
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>public class Plugin implements InvocationHandler {
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  private final Object target;
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  private final Interceptor interceptor;
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  private final Map&lt;Class&lt;?&gt;, Set&lt;Method&gt;&gt; signatureMap;
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>  private Plugin(Object target, Interceptor interceptor, Map&lt;Class&lt;?&gt;, Set&lt;Method&gt;&gt; signatureMap) {
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    this.target = target;
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    this.interceptor = interceptor;
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    this.signatureMap = signatureMap;
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  }
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>  // wrap()静态方法，用来生成target的动态代理，
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>  // 动态代理对象=target对象+interceptor对象。
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>  public static Object wrap(Object target, Interceptor interceptor) {
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    Map&lt;Class&lt;?&gt;, Set&lt;Method&gt;&gt; signatureMap = getSignatureMap(interceptor);
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    Class&lt;?&gt; type = target.getClass();
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    Class&lt;?&gt;[] interfaces = getAllInterfaces(type, signatureMap);
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    if (interfaces.length &gt; 0) {
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>      return Proxy.newProxyInstance(
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>          type.getClassLoader(),
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>          interfaces,
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>          new Plugin(target, interceptor, signatureMap));
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>    }
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>    return target;
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>  }
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>  // 调用target上的f()方法，会触发执行下面这个方法。
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>  // 这个方法包含：执行interceptor的intecept()方法 + 执行target上f()方法。
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>  @Override
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>  public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>    try {
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>      Set&lt;Method&gt; methods = signatureMap.get(method.getDeclaringClass());
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>      if (methods != null &amp;&amp; methods.contains(method)) {
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>        return interceptor.intercept(new Invocation(target, method, args));
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>      }
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>      return method.invoke(target, args);
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>    } catch (Exception e) {
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>      throw ExceptionUtil.unwrapThrowable(e);
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>    }
+<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>  }
+<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>
+<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>  private static Map&lt;Class&lt;?&gt;, Set&lt;Method&gt;&gt; getSignatureMap(Interceptor interceptor) {
+<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>    Intercepts interceptsAnnotation = interceptor.getClass().getAnnotation(Intercepts.class);
+<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a>    // issue #251
+<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a>    if (interceptsAnnotation == null) {
+<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a>      throw new PluginException(&quot;No @Intercepts annotation was found in interceptor &quot; + interceptor.getClass().getName());      
+<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a>    }
+<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a>    Signature[] sigs = interceptsAnnotation.value();
+<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a>    Map&lt;Class&lt;?&gt;, Set&lt;Method&gt;&gt; signatureMap = new HashMap&lt;Class&lt;?&gt;, Set&lt;Method&gt;&gt;();
+<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a>    for (Signature sig : sigs) {
+<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a>      Set&lt;Method&gt; methods = signatureMap.get(sig.type());
+<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a>      if (methods == null) {
+<a id="__codelineno-4-54" name="__codelineno-4-54" href="#__codelineno-4-54"></a>        methods = new HashSet&lt;Method&gt;();
+<a id="__codelineno-4-55" name="__codelineno-4-55" href="#__codelineno-4-55"></a>        signatureMap.put(sig.type(), methods);
+<a id="__codelineno-4-56" name="__codelineno-4-56" href="#__codelineno-4-56"></a>      }
+<a id="__codelineno-4-57" name="__codelineno-4-57" href="#__codelineno-4-57"></a>      try {
+<a id="__codelineno-4-58" name="__codelineno-4-58" href="#__codelineno-4-58"></a>        Method method = sig.type().getMethod(sig.method(), sig.args());
+<a id="__codelineno-4-59" name="__codelineno-4-59" href="#__codelineno-4-59"></a>        methods.add(method);
+<a id="__codelineno-4-60" name="__codelineno-4-60" href="#__codelineno-4-60"></a>      } catch (NoSuchMethodException e) {
+<a id="__codelineno-4-61" name="__codelineno-4-61" href="#__codelineno-4-61"></a>        throw new PluginException(&quot;Could not find method on &quot; + sig.type() + &quot; named &quot; + sig.method() + &quot;. Cause: &quot; + e, e);
+<a id="__codelineno-4-62" name="__codelineno-4-62" href="#__codelineno-4-62"></a>      }
+<a id="__codelineno-4-63" name="__codelineno-4-63" href="#__codelineno-4-63"></a>    }
+<a id="__codelineno-4-64" name="__codelineno-4-64" href="#__codelineno-4-64"></a>    return signatureMap;
+<a id="__codelineno-4-65" name="__codelineno-4-65" href="#__codelineno-4-65"></a>  }
+<a id="__codelineno-4-66" name="__codelineno-4-66" href="#__codelineno-4-66"></a>
+<a id="__codelineno-4-67" name="__codelineno-4-67" href="#__codelineno-4-67"></a>  private static Class&lt;?&gt;[] getAllInterfaces(Class&lt;?&gt; type, Map&lt;Class&lt;?&gt;, Set&lt;Method&gt;&gt; signatureMap) {
+<a id="__codelineno-4-68" name="__codelineno-4-68" href="#__codelineno-4-68"></a>    Set&lt;Class&lt;?&gt;&gt; interfaces = new HashSet&lt;Class&lt;?&gt;&gt;();
+<a id="__codelineno-4-69" name="__codelineno-4-69" href="#__codelineno-4-69"></a>    while (type != null) {
+<a id="__codelineno-4-70" name="__codelineno-4-70" href="#__codelineno-4-70"></a>      for (Class&lt;?&gt; c : type.getInterfaces()) {
+<a id="__codelineno-4-71" name="__codelineno-4-71" href="#__codelineno-4-71"></a>        if (signatureMap.containsKey(c)) {
+<a id="__codelineno-4-72" name="__codelineno-4-72" href="#__codelineno-4-72"></a>          interfaces.add(c);
+<a id="__codelineno-4-73" name="__codelineno-4-73" href="#__codelineno-4-73"></a>        }
+<a id="__codelineno-4-74" name="__codelineno-4-74" href="#__codelineno-4-74"></a>      }
+<a id="__codelineno-4-75" name="__codelineno-4-75" href="#__codelineno-4-75"></a>      type = type.getSuperclass();
+<a id="__codelineno-4-76" name="__codelineno-4-76" href="#__codelineno-4-76"></a>    }
+<a id="__codelineno-4-77" name="__codelineno-4-77" href="#__codelineno-4-77"></a>    return interfaces.toArray(new Class&lt;?&gt;[interfaces.size()]);
+<a id="__codelineno-4-78" name="__codelineno-4-78" href="#__codelineno-4-78"></a>  }
+<a id="__codelineno-4-79" name="__codelineno-4-79" href="#__codelineno-4-79"></a>}
+</code></pre></div>
+<p>实际上，Plugin是借助Java InvocationHandler实现的动态代理类。用来代理给target对象添加Interceptor功能。其中，要代理的target对象就是Executor、StatementHandler、ParameterHandler、ResultSetHandler这四个类的对象。wrap()静态方法是一个工具函数，用来生成target对象的动态代理对象。</p>
+<p>当然，只有interceptor与target互相匹配的时候，wrap()方法才会返回代理对象，否则就返回target对象本身。怎么才算是匹配呢？那就是interceptor通过@Signature注解要拦截的类包含target对象，具体可以参看wrap()函数的代码实现（上面一段代码中的第16~19行）。</p>
+<p>MyBatis中的职责链模式的实现方式比较特殊。它对同一个目标对象嵌套多次代理（也就是InteceptorChain中的pluginAll()函数要执行的任务）。每个代理对象（Plugin对象）代理一个拦截器（Interceptor对象）功能。为了方便你查看，我将pluginAll()函数的代码又拷贝到了下面。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>public Object pluginAll(Object target) {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  // 嵌套代理
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  for (Interceptor interceptor : interceptors) {
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    target = interceptor.plugin(target);
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    // 上面这行代码等于下面这行代码，target(代理对象)=target(目标对象)+interceptor(拦截器功能)
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    // target = Plugin.wrap(target, interceptor);
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>  }
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>  return target;
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>}
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>// MyBatis像下面这样创建target(Executor、StatementHandler、ParameterHandler、ResultSetHandler），相当于多次嵌套代理
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>Object target = interceptorChain.pluginAll(target);
+</code></pre></div>
+<p>当执行Executor、StatementHandler、ParameterHandler、ResultSetHandler这四个类上的某个方法的时候，MyBatis会嵌套执行每层代理对象（Plugin对象）上的invoke()方法。而invoke()方法会先执行代理对象中的interceptor的intecept()函数，然后再执行被代理对象上的方法。就这样，一层一层地把代理对象上的intercept()函数执行完之后，MyBatis才最终执行那4个原始类对象上的方法。</p>
+<h2 id="_1">重点回顾</h2>
+<p>好了，今天内容到此就讲完了。我们来一块总结回顾一下，你需要重点掌握的内容。</p>
+<p>今天，我们带你剖析了如何利用职责链模式和动态代理模式来实现MyBatis Plugin。至此，我们就已经学习了三种职责链常用的应用场景：过滤器（Servlet Filter）、拦截器（Spring Interceptor）、插件（MyBatis Plugin）。</p>
+<p>职责链模式的实现一般包含处理器和处理器链两部分。这两个部分对应到Servlet Filter的源码就是Filter和FilterChain，对应到Spring Interceptor的源码就是HandlerInterceptor和HandlerExecutionChain，对应到MyBatis Plugin的源码就是Interceptor和InterceptorChain。除此之外，MyBatis Plugin还包含另外一个非常重要的类：Plugin类。它用来生成被拦截对象的动态代理。</p>
+<p>在这三种应用场景中，职责链模式的实现思路都不大一样。其中，Servlet Filter采用递归来实现拦截方法前后添加逻辑。Spring Interceptor的实现比较简单，把拦截方法前后要添加的逻辑放到两个方法中实现。MyBatis Plugin采用嵌套动态代理的方法来实现，实现思路很有技巧。</p>
+<h2 id="_2">课堂讨论</h2>
+<p>Servlet Filter、Spring Interceptor可以用来拦截用户自己定义的类的方法，而MyBatis Plugin默认可以拦截的只有Executor、StatementHandler、ParameterHandler、ResultSetHandler这四个类的方法，而且这四个类是MyBatis实现的类，并非用户自己定义的类。那MyBatis Plugin为什么不像Servlet Filter、Spring Interceptor那样，提供拦截用户自定义类的方法的功能呢？</p>
+<p>欢迎留言和我分享你的想法。如果有收获，也欢迎你把这篇文章分享给你的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/43/79/18073134.jpg" width="30px"><span>test</span> 👍（36） 💬（0）<div>思考题：因为用mybatis就是为了使用数据库。</div>2020-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/5b/83a35681.jpg" width="30px"><span>Monday</span> 👍（31） 💬（0）<div>精彩，看了源码，Mybatis分布工具PageHelper也通过Plugin方式实现的。
+<li><span>test</span> 👍（36） 💬（0）<div>思考题：因为用mybatis就是为了使用数据库。</div>2020-05-25</li><br/><li><span>Monday</span> 👍（31） 💬（0）<div>精彩，看了源码，Mybatis分布工具PageHelper也通过Plugin方式实现的。
 @Intercepts({@Signature(
     type = Executor.class,
     method = &quot;query&quot;,
     args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class}
 )})
-public class PageHelper implements Interceptor {...}</div>2020-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/3d/38/6f02a4b9.jpg" width="30px"><span>your problem？</span> 👍（20） 💬（0）<div>思考题：YAGNI，单一职责原则，MyBatis就是负责简化以及通用数据库的处理，没有必要支持过多无关的东西</div>2020-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/47/31/f35367c8.jpg" width="30px"><span>小晏子</span> 👍（11） 💬（0）<div>我感觉这要从mybatis的使用场景考虑，mybatis主要用于简化数据库操作，所以对于SQL语句的解析才是其本质，而不需要额外支持其他的东西，所以不需要拦截用户自定义类的方法</div>2020-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/64/9b/d1ab239e.jpg" width="30px"><span>J.Smile</span> 👍（10） 💬（0）<div>Springaop中的前置通知，后置通知，异常通知也是基于动态代理的职责链模式。</div>2020-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/76/66/cbd6013c.jpg" width="30px"><span>Lambor</span> 👍（7） 💬（2）<div>MyBatis 每次SQL执行都会创建 Executor 等对象，再通过 pluginAll 方法创建一个代理的职责链，然后递归调用每个代理对象，最后调用 Executor 对象的方法。个人认为这个代理职责链主要就是控制 Executor 的方法在最后一步执行，这种职责链+代理的实现方式虽然巧妙，但感觉得不偿失，每次SQL调用都会创建一个新的嵌套代理调用链，这本身就是有性能消耗的，而且是作为底层框架，这点性能还是要考虑的。感觉采用 ApplicationFilterChain 的那种方式会更好，固定的一个拦截器链路，不用每次创建代理。</div>2020-05-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/5b/83a35681.jpg" width="30px"><span>Monday</span> 👍（4） 💬（1）<div>看第一篇以为听懂了，再第二篇，发现根本没懂。如果换成是我要实现sql耗时的操作，走两步就行
+public class PageHelper implements Interceptor {...}</div>2020-05-26</li><br/><li><span>your problem？</span> 👍（20） 💬（0）<div>思考题：YAGNI，单一职责原则，MyBatis就是负责简化以及通用数据库的处理，没有必要支持过多无关的东西</div>2020-05-25</li><br/><li><span>小晏子</span> 👍（11） 💬（0）<div>我感觉这要从mybatis的使用场景考虑，mybatis主要用于简化数据库操作，所以对于SQL语句的解析才是其本质，而不需要额外支持其他的东西，所以不需要拦截用户自定义类的方法</div>2020-05-25</li><br/><li><span>J.Smile</span> 👍（10） 💬（0）<div>Springaop中的前置通知，后置通知，异常通知也是基于动态代理的职责链模式。</div>2020-05-30</li><br/><li><span>Lambor</span> 👍（7） 💬（2）<div>MyBatis 每次SQL执行都会创建 Executor 等对象，再通过 pluginAll 方法创建一个代理的职责链，然后递归调用每个代理对象，最后调用 Executor 对象的方法。个人认为这个代理职责链主要就是控制 Executor 的方法在最后一步执行，这种职责链+代理的实现方式虽然巧妙，但感觉得不偿失，每次SQL调用都会创建一个新的嵌套代理调用链，这本身就是有性能消耗的，而且是作为底层框架，这点性能还是要考虑的。感觉采用 ApplicationFilterChain 的那种方式会更好，固定的一个拦截器链路，不用每次创建代理。</div>2020-05-27</li><br/><li><span>Monday</span> 👍（4） 💬（1）<div>看第一篇以为听懂了，再第二篇，发现根本没懂。如果换成是我要实现sql耗时的操作，走两步就行
 1、写一个切面拦截StatementHander的某些方法，在执行sql前后加开始结束时间就行。
-2、上一点中拦截哪些方法，还是需要一个类似Plugin中的getSignatureMap方法的解析，没感觉到Plugin类其他的价值。。</div>2020-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/25/56/86/db4c0d1c.jpg" width="30px"><span>ljx</span> 👍（3） 💬（0）<div>感觉自己变强了，一年前看这段源码觉得云里雾里，只能理解个大概，如今再看是如此清晰。。。</div>2022-03-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/27/e3/3e/f22c2bad.jpg" width="30px"><span>高乐</span> 👍（3） 💬（0）<div>请问老师，动态代理后的代理类是final的吧，应该无法再次被动态代理吧？那这个嵌套代理是怎么实现的？</div>2021-11-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/d9/ff/b23018a6.jpg" width="30px"><span>Heaven</span> 👍（3） 💬（0）<div>职责单一,我用Mybatis就是为了更快更好的处理数据库之间的关系,所以专注于这四类是必然的,之前咱自己也看过Mybatis源码,但是并没有看出来是利用代理和职责链实现的整体执行过程</div>2020-05-26</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/eLNeJNaEkwGSK7xvtamMibVLMy2MpbIqX3iaEhT7JtSnTRMRTwZ2j4HX7WAapiashbiaBDVriaXKSP0Oeic6ZAEVEXag/132" width="30px"><span>M</span> 👍（2） 💬（0）<div>pluginAll()方法的设计，有点像观察者模式，所有的观察者注册到被观察者中，被观察者必须等到所有的观察者执行完之后才能够执行</div>2021-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/d7/e2/5e5cc8f3.jpg" width="30px"><span>Molyt</span> 👍（1） 💬（0）<div>这一节课更看不懂了，难顶（捂脸哭.jpg）</div>2022-04-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7d/95/dd73022c.jpg" width="30px"><span>我是曾经那个少年</span> 👍（1） 💬（0）<div>数据库的执行前我们一般能做的就是：
+2、上一点中拦截哪些方法，还是需要一个类似Plugin中的getSignatureMap方法的解析，没感觉到Plugin类其他的价值。。</div>2020-05-26</li><br/><li><span>ljx</span> 👍（3） 💬（0）<div>感觉自己变强了，一年前看这段源码觉得云里雾里，只能理解个大概，如今再看是如此清晰。。。</div>2022-03-11</li><br/><li><span>高乐</span> 👍（3） 💬（0）<div>请问老师，动态代理后的代理类是final的吧，应该无法再次被动态代理吧？那这个嵌套代理是怎么实现的？</div>2021-11-16</li><br/><li><span>Heaven</span> 👍（3） 💬（0）<div>职责单一,我用Mybatis就是为了更快更好的处理数据库之间的关系,所以专注于这四类是必然的,之前咱自己也看过Mybatis源码,但是并没有看出来是利用代理和职责链实现的整体执行过程</div>2020-05-26</li><br/><li><span>M</span> 👍（2） 💬（0）<div>pluginAll()方法的设计，有点像观察者模式，所有的观察者注册到被观察者中，被观察者必须等到所有的观察者执行完之后才能够执行</div>2021-04-06</li><br/><li><span>Molyt</span> 👍（1） 💬（0）<div>这一节课更看不懂了，难顶（捂脸哭.jpg）</div>2022-04-30</li><br/><li><span>我是曾经那个少年</span> 👍（1） 💬（0）<div>数据库的执行前我们一般能做的就是：
 1. 对数据库参数字段的一些处理，。
 2. 对数据库响应结果的一些处理。
 3. 或者动态概要SQL语句。
-数据库ORM组件也就是处理这些东西，没有其他的业务扩展的需要。</div>2021-12-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/70/9f/741cd6a4.jpg" width="30px"><span>Henry</span> 👍（1） 💬（0）<div>mybatis的拦截的范围粒度比较大，针对的是特定类型的sql查询及参数和返回结果处理。拦截用户自定义的方法可以通过spring aop进行更细粒度的方法拦截。</div>2020-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/be/e6/7808520d.jpg" width="30px"><span>Edward Lee</span> 👍（1） 💬（0）<div>Mybatis 需要更专注于数据库操作方面的代理，而更具体的方法代理可以交由 Spring 这类 AOP 框架配置实现，Mybatis 就不必再重复造轮子了。
+数据库ORM组件也就是处理这些东西，没有其他的业务扩展的需要。</div>2021-12-12</li><br/><li><span>Henry</span> 👍（1） 💬（0）<div>mybatis的拦截的范围粒度比较大，针对的是特定类型的sql查询及参数和返回结果处理。拦截用户自定义的方法可以通过spring aop进行更细粒度的方法拦截。</div>2020-11-12</li><br/><li><span>Edward Lee</span> 👍（1） 💬（0）<div>Mybatis 需要更专注于数据库操作方面的代理，而更具体的方法代理可以交由 Spring 这类 AOP 框架配置实现，Mybatis 就不必再重复造轮子了。
 
-对于 Mybatis 以动态代理的方式实现拦截器感觉到新颖，看似使用动态代理会影响效率，实则是提升了执行效率。这是因为只有在系统启动的时候会慢一些，在实际执行的过程中就不需要额外的匹配及判断过滤规则了，当然，动态代理还需要额外的内存开销。</div>2020-06-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/85/49/585c69c4.jpg" width="30px"><span>皮特尔</span> 👍（1） 💬（0）<div>MyBatis的使用场景仅限于数据库，所以只需要拦截数据库操作相关的四个类就可以了，没有拦截用户自定义类的必要。这也符合设计原则里的“单一职责”</div>2020-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/3a/44/19/791d0f5e.jpg" width="30px"><span>燕姿</span> 👍（0） 💬（0）<div>这篇可以。优点干货。</div>2024-04-17</li><br/><li><img src="" width="30px"><span>Geek_f73a3e</span> 👍（0） 💬（0）<div>不需要，用框架拦截应该也可以实现吧，粒度太大，不够精细</div>2023-08-12</li><br/><li><img src="" width="30px"><span>InfoQ_9b27327d1940</span> 👍（0） 💬（0）<div>老师，您好，在文章的最后部分“就这样，一层一层地把代理对象上的 intercept() 函数执行完之后，MyBatis 才最终执行那 4 个原始类对象上的方法。”
-这里应该是在intercept()函数内执行的4个原始类对象上的方法吧</div>2023-05-18</li><br/><li><img src="" width="30px"><span>Geek_7e0e83</span> 👍（0） 💬（0）<div>我觉得是mybatis 框架和spring相比会比较特殊。mybatis框架底层服务的是MYSQL数据库，和数据库相关的非功能性需求会比较集中 语句本身、执行过程、参数、结果集等等。而spring则是服务于系统开发人员的框架，内部需要提供很多扩展给到系统开发人员，保留自由和灵活性。
-
-</div>2022-11-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/e3/d8/6462cfdb.jpg" width="30px"><span>Edison</span> 👍（0） 💬（0）<div>学习了，这部分得看好久</div>2021-06-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/55/bc/fad0090b.jpg" width="30px"><span>Yeyw</span> 👍（0） 💬（0）<div>职责单一，每个框架都做自己领域的事</div>2021-04-21</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLlxr0eX6ZPlpiaUkH8SXoNibmOK9MJz2ZDYq5y57UfFHBu6dDc5VxKic1rAPiawLBVdSMl8y1Mwtp9Yg/132" width="30px"><span>Bern</span> 👍（0） 💬（0）<div>是不是因为mybatis的版本问题，有些方法和入参是不一样的</div>2020-05-28</li><br/>
+对于 Mybatis 以动态代理的方式实现拦截器感觉到新颖，看似使用动态代理会影响效率，实则是提升了执行效率。这是因为只有在系统启动的时候会慢一些，在实际执行的过程中就不需要额外的匹配及判断过滤规则了，当然，动态代理还需要额外的内存开销。</div>2020-06-20</li><br/>
 </ul>
 
 

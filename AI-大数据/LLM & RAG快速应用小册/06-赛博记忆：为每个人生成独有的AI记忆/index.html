@@ -1830,6 +1830,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#mem0" class="md-nav__link">
+    <span class="md-ellipsis">
+      Mem0 介绍
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      实现多轮对话
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      扩展记忆的应用场景
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1876,6 +1912,8 @@
   
     
     
+      
+        
       
         
       
@@ -5489,6 +5527,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#mem0" class="md-nav__link">
+    <span class="md-ellipsis">
+      Mem0 介绍
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      实现多轮对话
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      扩展记忆的应用场景
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5525,9 +5599,178 @@
 <p>在这个方法的指导下，针对对话场景，我们可以设计下边这个结构体，作为传递给 LLM 的消息。</p>
 <p><img alt="图片" src="https://static001.geekbang.org/resource/image/31/05/317f23bdb71264bbaa8de6a07d64c905.jpeg?wh=1920x1080" /></p>
 <p>短期记忆很简单，我们直接把对话记录的最近 N 条作为短期记忆，也就是对话上下文，这保证了用户在对话过程中聊天内容的连续性。长期记忆是把之前的历史消息进行总结提炼，只记录关键信息，类似于背景信息，再加上用户最新的对话，这三部分就组成了一个拥有记忆的 LLM，可以实现多轮对话的能力。</p>
+<p>按照上面的方案，长期记忆需要提取对话中的关键信息，我们可以自己实现这个功能。针对每轮对话，使用 LLM 处理一下，在 prompt 中告诉 LLM，要做的事情是提取关键信息，单独记录在数据库中。</p>
+<p>不过记忆还有一个特性，就是它是会更新的，要实现这个功能，还需要在长期记忆的数据库里，遍历查找更新，需要设计一个复杂的算法处理这个问题。好在有一个开源项目，帮我们解决了这些复杂的问题，它就是 Mem0 （GitHub 地址：<a href="https://github.com/mem0ai/mem0">https://github.com/mem0ai/mem0</a>）。</p>
+<h2 id="mem0">Mem0 介绍</h2>
+<p>Mem0 是一个功能强大的记忆框架，专为大语言模型（LLM）设计，设计的一个核心目标就是赋予模型类似于人类的长期记忆功能。相比传统 RAG 它的主要优势有：</p>
+<ol>
+<li><strong>实体关系</strong>：Mem0 能跨越多次交互理解和关联实体，而 RAG 仅从静态文档中检索信息，Mem0 能更深入理解上下文和关系。</li>
+<li><strong>最新性、相关性和衰减</strong>：Mem0 使用自定义搜索算法，优先考虑最近的交互，并逐渐遗忘过时信息，保持记忆的相关性和实时性，而 RAG 不具备这种动态特性。</li>
+<li><strong>上下文连续性</strong>：Mem0 能在不同会话中保持信息的连续性，适用于长期交互，如虚拟伴侣和个性化学习助手，RAG 则缺乏这种会话间的记忆功能。</li>
+<li><strong>自适应学习</strong>：Mem0 基于用户的交互和反馈不断优化个性化记忆，而 RAG 依赖于静态数据，无法动态学习用户的偏好。</li>
+<li><strong>动态更新</strong>：Mem0 能根据新信息实时更新记忆，支持即时调整，而 RAG 只能依赖固定的文档数据进行检索，缺乏实时性。</li>
+</ol>
+<p>我画了一张图来简单描述它的工作过程。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/a2/e6/a252ba79027bb2aa5165ed7d6250c6e6.jpeg?wh=1920x1080" /></p>
+<p>目前 Mem0 已经被广泛使用，应用在各种 AI 产品的后端。下面我们就基于 Mem0 来实现一下多轮对话。</p>
+<h2 id="_1">实现多轮对话</h2>
+<p>按照上边的方案，构造对话上下文的流程如下：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/e5/bd/e5bc7d04af2636092e7266610d721fbd.jpeg?wh=1920x1080" /></p>
+<p>首先，我们使用传统数据库来保存历史消息，这个模块会提供读取最近 N 条消息和保存历史消息的功能。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># todo：消息体可以支持更多信息，比如消息类型，消息发送者等</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">class</span> <span class="nc">MessageEntiry</span><span class="p">:</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">time</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="k">class</span> <span class="nc">HistoryMessage</span><span class="p">:</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">user_id</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="c1"># 保存消息</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="n">MessageEntiry</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        <span class="k">pass</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="c1"># 获取最近的消息</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="k">def</span> <span class="nf">get_latest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>        <span class="k">pass</span>
+</code></pre></div>
+<p>之后用 Mem0 来实现长期记忆功能，Mem0 默认使用 Qdrant 作为向量数据库。这里我们直接用 Docker 启动一个 Qdrant（或者也可以使用 Qdrant Cloud 服务）存储记忆信息，使用 OpenAI 的 Embedding 模型作为向量化文本的模型。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># 初始化 mem0 客户端</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="s2">&quot;vector_store&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        <span class="s2">&quot;provider&quot;</span><span class="p">:</span> <span class="s2">&quot;qdrant&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        <span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>            <span class="s2">&quot;host&quot;</span><span class="p">:</span> <span class="s2">&quot;localhost&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>            <span class="s2">&quot;port&quot;</span><span class="p">:</span> <span class="mi">6333</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="p">}</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="p">},</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="p">}</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="n">memory_client</span> <span class="o">=</span> <span class="n">Memory</span><span class="o">.</span><span class="n">from_config</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="c1"># 初始化 OpenAI 客户端</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="n">llm_client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">(</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    <span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;sk-xxx&quot;</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="p">)</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="c1"># 使用 mem0 作为长期记忆功能</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="k">class</span> <span class="nc">MemoryStore</span><span class="p">:</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">user_id</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    <span class="c1"># 保存消息</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="n">MessageEntiry</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>        <span class="n">memory_client</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>            <span class="n">message</span><span class="o">.</span><span class="n">message</span><span class="p">,</span>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>            <span class="n">user_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>            <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="n">message</span><span class="o">.</span><span class="n">time</span><span class="p">}</span>
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>        <span class="p">)</span>
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>    <span class="c1"># 查询记忆</span>
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>    <span class="k">def</span> <span class="nf">query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>        <span class="n">memories</span> <span class="o">=</span> <span class="n">memory_client</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">user_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span>
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>        <span class="c1"># 这里也可以使用 v2_search 方法，支持 metadata 过滤</span>
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>        <span class="c1"># memories = memory_client.v2_search(</span>
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>        <span class="c1">#     query, </span>
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>        <span class="c1">#     filters={</span>
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>        <span class="c1">#         &quot;AND&quot;:[</span>
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>        <span class="c1">#             {</span>
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a>        <span class="c1">#                 &quot;user_id&quot;:&quot;xxx&quot;</span>
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>        <span class="c1">#             },</span>
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a>        <span class="c1">#             {</span>
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>        <span class="c1">#                 &quot;time&quot;:{</span>
+<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a>        <span class="c1">#                     &quot;gte&quot;: 123 # 大于等于时间戳</span>
+<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a>        <span class="c1">#                 }</span>
+<a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a>        <span class="c1">#             }</span>
+<a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a>        <span class="c1">#         ]</span>
+<a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a>        <span class="c1">#     },</span>
+<a id="__codelineno-1-49" name="__codelineno-1-49" href="#__codelineno-1-49"></a>        <span class="c1"># )</span>
+<a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a>        <span class="k">return</span> <span class="n">memories</span>
+</code></pre></div>
+<p>最后我们实现对话逻辑，参考如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">def</span> <span class="nf">chat</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">question</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="c1"># 获取历史消息</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">history</span> <span class="o">=</span> <span class="n">HistoryMessage</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">messages</span> <span class="o">=</span> <span class="n">history</span><span class="o">.</span><span class="n">get_latest</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="c1"># 组合消息 重写问题</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">question_context</span> <span class="o">=</span> <span class="n">messages</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">question_context</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">question</span><span class="p">)</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="c1"># 调用 llm 进行重写</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    <span class="n">llm_completion</span> <span class="o">=</span> <span class="n">llm_client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>        <span class="n">messages</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>            <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;根据对话内容和用户问题，重写一下问题，完善一下必要的信息。&quot;</span><span class="p">},</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>            <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">question_context</span><span class="p">}</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>        <span class="p">]</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>    <span class="p">)</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    <span class="n">rewrite_question</span> <span class="o">=</span> <span class="n">llm_completion</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    <span class="k">if</span> <span class="n">rewrite_question</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>        <span class="n">rewrite_question</span> <span class="o">=</span> <span class="n">question</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>    <span class="c1"># 获取长期记忆</span>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>    <span class="n">memory_store</span> <span class="o">=</span> <span class="n">MemoryStore</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>    <span class="n">memories</span> <span class="o">=</span> <span class="n">memory_store</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">question</span><span class="p">)</span>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>    <span class="c1"># 组装 prompt</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>    <span class="n">prompt</span> <span class="o">=</span> <span class="s2">&quot;长期记忆：</span><span class="se">\n</span><span class="s2">&quot;</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>    <span class="k">for</span> <span class="n">memory</span> <span class="ow">in</span> <span class="n">memories</span><span class="p">:</span>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>        <span class="n">prompt</span> <span class="o">+=</span> <span class="n">memory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;memory&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>    <span class="c1"># 添加对话记录</span>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>    <span class="n">prompt</span> <span class="o">+=</span> <span class="s2">&quot;对话记录：</span><span class="se">\n</span><span class="s2">&quot;</span>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>    <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span><span class="p">:</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>        <span class="n">prompt</span> <span class="o">+=</span> <span class="n">message</span><span class="o">.</span><span class="n">message</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a>    <span class="c1"># 添加重写问题</span>
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a>    <span class="n">prompt</span> <span class="o">+=</span> <span class="s2">&quot;对话：&quot;</span>
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a>    <span class="n">prompt</span> <span class="o">+=</span> <span class="n">rewrite_question</span>
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a>
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a>
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a>    <span class="c1"># 调用 llm 进行回答</span>
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a>    <span class="n">response</span> <span class="o">=</span> <span class="n">llm_client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a>        <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a>        <span class="n">messages</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a>            <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;你是极客时间专家，精通各种编程领域问题。。.&quot;</span><span class="p">},</span> <span class="c1"># 这里根据业务设计角色信息</span>
+<a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a>            <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">prompt</span><span class="p">}</span>
+<a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a>        <span class="p">]</span>
+<a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a>    <span class="p">)</span>
+<a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a>    <span class="n">answer</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span>
+<a id="__codelineno-2-54" name="__codelineno-2-54" href="#__codelineno-2-54"></a>    <span class="k">if</span> <span class="n">answer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-2-55" name="__codelineno-2-55" href="#__codelineno-2-55"></a>        <span class="n">answer</span> <span class="o">=</span> <span class="s2">&quot;对不起，我不知道怎么回答你的问题。&quot;</span>
+<a id="__codelineno-2-56" name="__codelineno-2-56" href="#__codelineno-2-56"></a>
+<a id="__codelineno-2-57" name="__codelineno-2-57" href="#__codelineno-2-57"></a>
+<a id="__codelineno-2-58" name="__codelineno-2-58" href="#__codelineno-2-58"></a>    <span class="c1"># 保存消息</span>
+<a id="__codelineno-2-59" name="__codelineno-2-59" href="#__codelineno-2-59"></a>    <span class="n">history</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">MessageEntiry</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="s2">&quot;123456&quot;</span><span class="p">))</span> <span class="c1"># 这里可以扩展增加 AI 回复的消息</span>
+<a id="__codelineno-2-60" name="__codelineno-2-60" href="#__codelineno-2-60"></a>    <span class="n">memory_store</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">MessageEntiry</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="s2">&quot;123456&quot;</span><span class="p">))</span>
+<a id="__codelineno-2-61" name="__codelineno-2-61" href="#__codelineno-2-61"></a>
+<a id="__codelineno-2-62" name="__codelineno-2-62" href="#__codelineno-2-62"></a>
+<a id="__codelineno-2-63" name="__codelineno-2-63" href="#__codelineno-2-63"></a>    <span class="k">return</span> <span class="n">answer</span>
+</code></pre></div>
+<p>以上是多轮对话的主要逻辑实现。在真实使用场景中，可以完善 MessageEntity，增加 AI 回复，等等各种环境参数。在增加记忆的时候，也可以分类记忆，把额外的属性信息放到 metadata 中，方便在查询的时候，更加精准地选择合适的记忆内容。你也可以加入你的思考，在整个处理流程的每个阶段，更加精细化地处理数据，使最终的效果越来越好。</p>
+<h2 id="_2">扩展记忆的应用场景</h2>
+<p>记忆功能让 LLM 能够针对每个用户提供个性化的服务，在用户体验上可以提升一个档次，同时也给 LLM 扩展了很多能力，比如：</p>
+<ol>
+<li>上下文理解能力：本节课的多轮对话就是一个应用场景，通过对上下文的理解，使得 LLM 能理解整个对话的脉络，帮助 LLM 提供更加连贯、相关的回答，避免重复或矛盾的内容。</li>
+<li>个性化交互能力：通过记住用户的偏好、习惯和背景信息，LLM可以为每个用户提供高度个性化的体验。比如，它可以记住用户喜欢的话题、表达方式，甚至是用户的情绪状态，从而调整自己的回答风格和内容。</li>
+<li>长期任务处理能力：对于需要多次交互才能完成的复杂任务，记忆功能可以帮助LLM跟踪进度和中间结果。比如一些简单的对话类小游戏，就可以用这个来实现。</li>
+<li>知识积累和更新：知识更新能让 LLM 提供更加准确的回答，对于极客时间来说，以前 A 用户一直提问前端问题，最近一段时间一直问后端问题，我们就可以判断用户最近对后端内容更感兴趣，从而更新记忆，在对话中给用户提供更多后端知识。</li>
+<li>情感连接能力：通过记住与用户的互动历史，LLM可以建立一种类似于“情感连接”的能力。它可以回顾过去的对话，引用之前的互动，这种连续性可以让用户感觉到被理解和被重视。这个能力应用在客服类产品中，会给用户带来更加贴心的服务体验。</li>
+<li>深度分析能力：通过把记忆点连接成网络，形成记忆地图，能挖掘出更多用户深层次的需求，再配合上已有的用户数据，可以去预判和推断用户的行为，提前发现问题，帮助用户更好地解答问题。</li>
+</ol>
+<p>以上这些场景分析仅仅算是抛砖引玉，记忆能力本质上是给每个用户分配了一个专有的助理，一个知道用户喜好和习惯的助理，如果配合上用户画像和自己平台的数据分析系统，就可以为每个用户提供更加贴心的服务。</p>
+<h2 id="_3">小结</h2>
+<p>记忆功能对 LLM 来说是如虎添翼，大大丰富了 LLM 的应用场景。这节课我们介绍了一些使用场景，你也可以结合你的业务，探索一下适合自己需求的场景，也欢迎你在评论区分享你的思考，我们一起讨论。</p>
 <div><strong>精选留言（1）</strong></div>
 <ul>
-<li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/MpKow66ExJ0y3G471ql99hxqcdQ7RF0M7XBnN38uIvhK3bIxadn3W8KPnlbExTBgmAMhAsRnfkC0TsqKrNicnGg/132" width="30px"><span>乔克哥哥</span> 👍（0） 💬（0）<div>可以实现一个银翼杀手2049里的电子女友</div>2025-01-18</li><br/>
+<li><span>乔克哥哥</span> 👍（0） 💬（0）<div>可以实现一个银翼杀手2049里的电子女友</div>2025-01-18</li><br/>
 </ul>
 
 

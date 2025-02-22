@@ -3384,6 +3384,48 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#40" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.0 版本：支持挂起函数
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.0 版本：支持挂起函数">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ktcall" class="md-nav__link">
+    <span class="md-ellipsis">
+      解法一：扩展KtCall
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5284,6 +5326,48 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#40" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.0 版本：支持挂起函数
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.0 版本：支持挂起函数">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ktcall" class="md-nav__link">
+    <span class="md-ellipsis">
+      解法一：扩展KtCall
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5320,9 +5404,485 @@
 <h2 id="30-call">3.0 版本：支持异步（Call）</h2>
 <p>有了上一次实战课的基础，这节课就会轻松一些了。关于动态代理、注解、反射之类的知识不会牵涉太多，我们今天主要把精力都集中在协程上来。不过，在正式开始写协程代码之前，我们需要先让KtHttp支持异步请求，也就是Callback请求。</p>
 <p>这是为什么呢？别忘了<a href="https://time.geekbang.org/column/article/487085">第15讲</a>的内容：<strong>挂起函数本质就是Callback！</strong>所以，为了让KtHttp支持挂起函数，我们可以采用迂回的策略，让它先支持Callback。在之前1.0、2.0版本的代码中，KtHttp是只支持同步请求的，你可能对异步同步还有些懵，我带你来看个例子吧。</p>
+<p>首先，这个是同步代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>fun main() {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    // 同步代码
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    val api: ApiService = KtHttpV1.create(ApiService::class.java)
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    val data: RepoList = api.repos(lang = &quot;Kotlin&quot;, since = &quot;weekly&quot;)
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    println(data)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>}
+</code></pre></div>
+<p>可以看到，在main函数当中，我们调用了KtHttp 1.0的代码，其中3行代码的运行顺序是1、2、3，这就是典型的同步代码。它的另一个特点就是：所有代码都会在一个线程中执行，因此这样的代码如果运行在Android、Swing之类的UI编程平台上，是会导致主线程卡死的。</p>
+<p>那么，异步代码又是长什么样的呢？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>private fun testAsync() {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    // 异步代码
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    KtHttpV3.create(ApiServiceV3::class.java).repos(
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        lang = &quot;Kotlin&quot;,
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        since = &quot;weekly&quot;
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    ).call(object : Callback&lt;RepoList&gt; {
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        override fun onSuccess(data: RepoList) {
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>            println(data)
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        }
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        override fun onFail(throwable: Throwable) {
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>            println(throwable)
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        }
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    })
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>}
+</code></pre></div>
+<p>上面的testAsync()方法当中的代码，就是典型的异步代码，它跟同步代码最大的差异就是，有了一个Callback，而且代码不再是按照顺序执行的了。你可以参考下面这个动图：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/a8/ff/a8d0c46d74a17d0ddfb683e0ac7468ff.gif?wh=1080x608" /></p>
+<p>所以，在3.0版本的开发中，我们就是要实现类似上面testAsync()的请求方式。为此，我们首先需要创建一个<strong>Callback接口</strong>，在这个Callback当中，我们可以拿到API请求的结果。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>interface Callback&lt;T: Any&gt; {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    fun onSuccess(data: T)
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    fun onFail(throwable: Throwable)
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>}
+</code></pre></div>
+<p>在Callback这个接口里，有一个泛型参数T，还有两个回调，分别是onSuccess代表接口请求成功、onFail代表接口请求失败。需要特别注意的是，这里我们运用了<a href="https://time.geekbang.org/column/article/484921">空安全思维</a>当中的<strong>泛型边界“T: Any”</strong>，这样一来，我们就可以保证T类型一定是非空的。</p>
+<p>除此之外，我们还需要一个<strong>KtCall类</strong>，它的作用是承载Callback，或者说，它是用来调用Callback的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>class KtCall&lt;T: Any&gt;(
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    private val call: Call,
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    private val gson: Gson,
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    private val type: Type
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>) {
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    fun call(callback: Callback&lt;T&gt;): Call {
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        // TODO
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    }
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>}
+</code></pre></div>
+<p>KtCall这个类仍然使用了泛型边界“T: Any”，另外，它还有几个关键的成员分别是：OkHttp的Call对象、JSON解析的Gson对象，以及反射类型Type。然后还有一个call()方法，它接收的是前面我们定义的Callback对象，返回的是OkHttp的Call对象。所以总的来说，call()方法当中的逻辑会分为三个步骤。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>class KtCall&lt;T: Any&gt;(
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    private val call: Call,
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    private val gson: Gson,
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    private val type: Type
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>) {
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    fun call(callback: Callback&lt;T&gt;): Call {
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        // 步骤1， 使用call请求API
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        // 步骤2， 根据请求结果，调用callback.onSuccess()或者是callback.onFail()
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        // 步骤3， 返回OkHttp的Call对象
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    }
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>}
+</code></pre></div>
+<p>我们一步步来分析这三个步骤：</p>
+<ul>
+<li>步骤1，使用OkHttp的call对象请求API，这里需要注意的是，为了将请求任务派发到异步线程，我们需要使用OkHttp的异步请求方法enqueue()。</li>
+<li>步骤2，根据请求结果，调用callback.onSuccess()或者是callback.onFail()。如果请求成功了，我们在调用onSuccess()之前，还需要用Gson将请求结果进行解析，然后才返回。</li>
+<li>步骤3，返回OkHttp的Call对象。</li>
+</ul>
+<p>接下来，我们看看具体代码是怎么样的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>class KtCall&lt;T: Any&gt;(
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    private val call: Call,
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    private val gson: Gson,
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    private val type: Type
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>) {
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    fun call(callback: Callback&lt;T&gt;): Call {
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        call.enqueue(object : okhttp3.Callback {
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>            override fun onFailure(call: Call, e: IOException) {
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>                callback.onFail(e)
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>            }
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>            override fun onResponse(call: Call, response: Response) {
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>                try { // ①
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>                    val t = gson.fromJson&lt;T&gt;(response.body?.string(), type)
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>                    callback.onSuccess(t)
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>                } catch (e: Exception) {
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>                    callback.onFail(e)
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>                }
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>            }
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>        })
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>        return call
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    }
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>}
+</code></pre></div>
+<p>经过前面的解释，这段代码就很好理解了，唯一需要注意的是注释①处，由于API返回的结果并不可靠，即使请求成功了，其中的JSON数据也不一定合法，所以这里我们一般还需要进行额外的判断。在实际的商业项目当中，我们可能还需要根据当中的状态码，进行进一步区分和封装，这里为了便于理解，我就简单处理了。</p>
+<p>那么在实现了KtCall以后，我们就只差<strong>ApiService</strong>这个接口了，这里我们定义ApiServiceV3，以作区分。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>interface ApiServiceV3 {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    @GET(&quot;/repo&quot;)
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    fun repos(
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>        @Field(&quot;lang&quot;) lang: String,
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        @Field(&quot;since&quot;) since: String
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    ): KtCall&lt;RepoList&gt; // ①
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>}
+</code></pre></div>
+<p>我们需要格外留意以上代码中的注释①，这其实就是<strong>3.0和1.0之间的最大区别</strong>。由于repo()方法的返回值类型是KtCall，为了支持这种写法，我们的invoke方法就需要跟着做一些小的改动：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>// 这里也同样使用了泛型边界
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>private fun &lt;T: Any&gt; invoke(path: String, method: Method, args: Array&lt;Any&gt;): Any? {
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    if (method.parameterAnnotations.size != args.size) return null
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    var url = path
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    val parameterAnnotations = method.parameterAnnotations
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    for (i in parameterAnnotations.indices) {
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>        for (parameterAnnotation in parameterAnnotations[i]) {
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>            if (parameterAnnotation is Field) {
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>                val key = parameterAnnotation.value
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>                val value = args[i].toString()
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>                if (!url.contains(&quot;?&quot;)) {
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>                    url += &quot;?$key=$value&quot;
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>                } else {
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>                    url += &quot;&amp;$key=$value&quot;
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>                }
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>            }
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>        }
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>    }
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>    val request = Request.Builder()
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>        .url(url)
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>        .build()
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>    val call = okHttpClient.newCall(request)
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>    val genericReturnType = getTypeArgument(method)
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>    // 变化在这里
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>    return KtCall&lt;T&gt;(call, gson, genericReturnType)
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>}
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>// 拿到 KtCall&lt;RepoList&gt; 当中的 RepoList类型
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>private fun getTypeArgument(method: Method) =
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>    (method.genericReturnType as ParameterizedType).actualTypeArguments[0]
+</code></pre></div>
+<p>在上面的代码中，大部分代码和1.0版本的一样的，只是在最后封装了一个KtCall对象，直接返回。所以在后续调用它的时候，我们就可以这么写了：ktCall.call()。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>private fun testAsync() {
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    // 创建api对象
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    val api: ApiServiceV3 = KtHttpV3.create(ApiServiceV3::class.java)
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    // 获取ktCall
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    val ktCall: KtCall&lt;RepoList&gt; = api.repos(
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        lang = &quot;Kotlin&quot;,
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        since = &quot;weekly&quot;
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    )
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    // 发起call异步请求
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    ktCall.call(object : Callback&lt;RepoList&gt; {
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>        override fun onSuccess(data: RepoList) {
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>            println(data)
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>        }
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        override fun onFail(throwable: Throwable) {
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>            println(throwable)
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>        }
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>    })
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>}
+</code></pre></div>
+<p>以上代码很好理解，我们一步步创建API对象、ktCall对象，最后发起请求。不过，在工作中一般是不会这么写代码的，因为创建太多一次性临时对象了。我们完全可以用<strong>链式调用</strong>的方式来做：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>private fun testAsync() {
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    KtHttpV3.create(ApiServiceV3::class.java)
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    .repos(
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>        lang = &quot;Kotlin&quot;,
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        since = &quot;weekly&quot;
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    ).call(object : Callback&lt;RepoList&gt; {
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>        override fun onSuccess(data: RepoList) {
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>            println(data)
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>        }
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>        override fun onFail(throwable: Throwable) {
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>            println(throwable)
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>        }
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    })
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>}
+</code></pre></div>
+<p>如果你没有很多编程经验，那你可能会对这种方式不太适应，但在实际写代码的过程中，你会发现这种模式写起来会比上一种舒服很多，因为<strong>你再也不用为临时变量取名字伤脑筋了</strong>。</p>
+<p>总的来说，到这里的话，我们的异步请求接口就已经完成了。而且，由于我们的实际请求已经通过OkHttp派发（enqueue）到统一的线程池当中去了，并不会阻塞主线程，所以这样的代码模式执行在Android、Swing之类的UI编程平台，也不会引起UI界面卡死的问题。</p>
+<p>那么，3.0版本是不是到这里就结束了呢？其实并没有，因为我们还有一种情况没有考虑。我们来看看下面这段代码示例：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>interface ApiServiceV3 {
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    @GET(&quot;/repo&quot;)
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    fun repos(
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>        @Field(&quot;lang&quot;) lang: String,
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        @Field(&quot;since&quot;) since: String
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    ): KtCall&lt;RepoList&gt;
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    @GET(&quot;/repo&quot;)
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    fun reposSync(
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>        @Field(&quot;lang&quot;) lang: String,
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>        @Field(&quot;since&quot;) since: String
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    ): RepoList // 注意这里
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>}
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>private fun testSync() {
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>    val api: ApiServiceV3 = KtHttpV3.create(ApiServiceV3::class.java)
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    val data: RepoList = api.reposSync(lang = &quot;Kotlin&quot;, since = &quot;weekly&quot;)
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>    println(data)
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>}
+</code></pre></div>
+<p>请留意注释的地方，repoSync()的返回值类型是RepoList，而不是KtCall类型，这其实是我们1.0版本的写法。看到这，你是不是发现问题了？虽然KtHttp支持了异步请求，但原本的同步请求反而不支持了。</p>
+<p>所以，为了让KtHttp同时支持两种请求方式，我们只需要增加一个 <strong>if判断</strong>即可：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>private fun &lt;T: Any&gt; invoke(path: String, method: Method, args: Array&lt;Any&gt;): Any? {
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    // 省略其他代码
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    return if (isKtCallReturn(method)) {
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>        val genericReturnType = getTypeArgument(method)
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>        KtCall&lt;T&gt;(call, gson, genericReturnType)
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    } else {
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>        // 注意这里
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>        val response = okHttpClient.newCall(request).execute()
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>        val genericReturnType = method.genericReturnType
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>        val json = response.body?.string()
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>        gson.fromJson&lt;Any?&gt;(json, genericReturnType)
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>    }
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>}
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>// 判断当前接口的返回值类型是不是KtCall
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>private fun isKtCallReturn(method: Method) =
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>    getRawType(method.genericReturnType) == KtCall::class.java
+</code></pre></div>
+<p>在上面的代码中，我们定义了一个方法isKtCallReturn()，它的作用是判断当前接口方法的返回值类型是不是KtCall，如果是的话，我们就认为它是一个异步接口，这时候返回KtCall对象；如果不是，我们就认为它是同步接口。这样我们只需要将1.0的逻辑挪到else分支，就可以实现兼容了。</p>
+<p>那么到这里，我们3.0版本的开发就算是完成了。接下来，我们进入4.0版本的开发。</p>
+<h2 id="40">4.0 版本：支持挂起函数</h2>
+<p>终于来到协程实战的部分了。在日常的开发工作当中，你也许经常会面临这样的一个问题：虽然很想用Kotlin的协程来简化异步开发，但公司的底层框架全部都是Callback写的，根本不支持挂起函数，我一个上层的业务开发工程师，能有什么办法呢？</p>
+<p>其实，我们当前的KtHttp就面临着类似的问题：3.0版本只支持Callback异步调用，现在我们想要扩展出挂起函数的功能。这其实就是大部分Kotlin开发者会遇到的场景。</p>
+<p>就我这几年架构迁移的实践经验来看，针对这个问题，我们主要有两种解法：</p>
+<ul>
+<li>第一种解法，不改动SDK内部的实现，直接在SDK的基础上扩展出协程的能力。</li>
+<li>第二种解法，改动SDK内部，让SDK直接支持挂起函数。</li>
+</ul>
+<p>下面我们先来看看第一种解法。至于第二种解法，其实还可以细分出好几种思路，由于它涉及到挂起函数更底层的一些知识，具体方案我会在源码篇的第27讲介绍。</p>
+<h3 id="ktcall">解法一：扩展KtCall</h3>
+<p>这种方式有一个优势，那就是我们不需要改动3.0版本的任何代码。这种场景在工作中也是十分常见的，比如说，项目中用到的SDK是开源的，或者SDK是公司其他部门开发的，我们无法改动SDK。</p>
+<p>具体的做法，就是为KtCall这个类扩展出一个挂起函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>/*
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>注意这里                   函数名称
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>   ↓                        ↓        */
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>suspend fun &lt;T: Any&gt; KtCall&lt;T&gt;.await(): T = TODO()
+</code></pre></div>
+<p>在上面的代码中，我们定义了一个扩展函数await()。首先，它是一个挂起函数，其次，它的扩展接收者类型是KtCall，其中带着一个泛型T，挂起函数的返回值也是泛型T。</p>
+<p>而由于它是一个挂起函数，所以，我们的代码就可以换成这样的方式来写了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>fun main() = runBlocking {
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    val ktCall = KtHttpV3.create(ApiServiceV3::class.java)
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>        .repos(lang = &quot;Kotlin&quot;, since = &quot;weekly&quot;)
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    val result = ktCall.await() // 调用挂起函数
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    println(result)
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>}
+</code></pre></div>
+<p>那么，现在我们就只剩下一个问题了：<strong>await()具体该如何实现？</strong></p>
+<p>在这里，我们需要用到Kotlin官方提供的一个顶层函数：suspendCoroutine{}，它的函数签名是这样的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>public suspend inline fun &lt;T&gt; suspendCoroutine(crossinline block: (Continuation&lt;T&gt;) -&gt; Unit): T {
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    // 省略细节
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>}
+</code></pre></div>
+<p>从它的函数签名，我们可以发现，它是一个挂起函数，也是一个高阶函数，参数类型是“(Continuation) -&gt; Unit”，如果你还记得第15讲当中的内容，你应该就已经发现了，<strong>它其实就等价于挂起函数类型！</strong></p>
+<p>所以，我们可以使用suspendCoroutine{} 来实现await()方法：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>/*
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>注意这里                   
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>   ↓                                */
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>suspend fun &lt;T: Any&gt; KtCall&lt;T&gt;.await(): T = suspendCoroutine{
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    continuation -&gt;
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    //   ↑
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    // 注意这里 
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>}
+</code></pre></div>
+<p>如果你仔细分析这段代码的话，会发现suspendCoroutine{} 的作用，其实就是<strong>将挂起函数当中的continuation暴露出来</strong>。</p>
+<p>那么，suspendCoroutine{} 当中的代码具体该怎么写呢？答案应该也很明显了，当然是要用这个被暴露出来的continuation来做文章啦！</p>
+<p>这里我们再来回顾一下Continuation这个接口：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>public interface Continuation&lt;in T&gt; {
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>    public val context: CoroutineContext
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    // 关键在于这个方法
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>    public fun resumeWith(result: Result&lt;T&gt;)
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>}
+</code></pre></div>
+<p>通过定义可以看到，整个Continuation只有一个方法，那就是resumeWith()，根据它的名字我们就可以推测出，它是用于“恢复”的，参数类型是Result。所以很明显，这就是一个带有泛型的“结果”，它的作用就是承载协程执行的结果。</p>
+<p>所以，综合来看，我们就可以进一步写出这样的代码了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>suspend fun &lt;T: Any&gt; KtCall&lt;T&gt;.await(): T =
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>    suspendCoroutine { continuation -&gt;
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>        call(object : Callback&lt;T&gt; {
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>            override fun onSuccess(data: T) {
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>                continuation.resumeWith(Result.success(data))
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>            }
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>            override fun onFail(throwable: Throwable) {
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>                continuation.resumeWith(Result.failure(throwable))
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>            }
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>        })
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>    }
+</code></pre></div>
+<p>以上代码也很容易理解，当网络请求执行成功以后，我们就调用resumeWith()，同时传入Result.success(data)；如果请求失败，我们就传入Result.failure(throwable)，将对应的异常信息传进去。</p>
+<p>不过，也许你会觉得创建Result的写法太繁琐了，没关系，你可以借助Kotlin官方提供的扩展函数提升代码可读性。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>suspend fun &lt;T : Any&gt; KtCall&lt;T&gt;.await(): T =
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>    suspendCoroutine { continuation -&gt;
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>        call(object : Callback&lt;T&gt; {
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>            override fun onSuccess(data: T) {
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>                continuation.resume(data)
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>            }
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>            override fun onFail(throwable: Throwable) {
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>                continuation.resumeWithException(throwable)
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>            }
+<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>        })
+<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>    }
+</code></pre></div>
+<p>到目前为止，await()这个扩展函数其实就已经实现了。这时候，如果我们在协程当中调用await()方法的话，代码是可以正常执行的。不过，这种做法其实还有一点瑕疵，那就是<strong>不支持取消</strong>。</p>
+<p>让我们来写一个简单的例子：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>fun main() = runBlocking {
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    val start = System.currentTimeMillis()
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>    val deferred = async {
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>        KtHttpV3.create(ApiServiceV3::class.java)
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>            .repos(lang = &quot;Kotlin&quot;, since = &quot;weekly&quot;)
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>            .await()
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>    }
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>    deferred.invokeOnCompletion {
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>        println(&quot;invokeOnCompletion!&quot;)
+<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>    }
+<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>    delay(50L)
+<a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a>
+<a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a>    deferred.cancel()
+<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>    println(&quot;Time cancel: ${System.currentTimeMillis() - start}&quot;)
+<a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a>
+<a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a>    try {
+<a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a>        println(deferred.await())
+<a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a>    } catch (e: Exception) {
+<a id="__codelineno-19-20" name="__codelineno-19-20" href="#__codelineno-19-20"></a>        println(&quot;Time exception: ${System.currentTimeMillis() - start}&quot;)
+<a id="__codelineno-19-21" name="__codelineno-19-21" href="#__codelineno-19-21"></a>        println(&quot;Catch exception:$e&quot;)
+<a id="__codelineno-19-22" name="__codelineno-19-22" href="#__codelineno-19-22"></a>    } finally {
+<a id="__codelineno-19-23" name="__codelineno-19-23" href="#__codelineno-19-23"></a>        println(&quot;Time total: ${System.currentTimeMillis() - start}&quot;)
+<a id="__codelineno-19-24" name="__codelineno-19-24" href="#__codelineno-19-24"></a>    }
+<a id="__codelineno-19-25" name="__codelineno-19-25" href="#__codelineno-19-25"></a>}
+<a id="__codelineno-19-26" name="__codelineno-19-26" href="#__codelineno-19-26"></a>
+<a id="__codelineno-19-27" name="__codelineno-19-27" href="#__codelineno-19-27"></a>suspend fun &lt;T : Any&gt; KtCall&lt;T&gt;.await(): T =
+<a id="__codelineno-19-28" name="__codelineno-19-28" href="#__codelineno-19-28"></a>    suspendCoroutine { continuation -&gt;
+<a id="__codelineno-19-29" name="__codelineno-19-29" href="#__codelineno-19-29"></a>        call(object : Callback&lt;T&gt; {
+<a id="__codelineno-19-30" name="__codelineno-19-30" href="#__codelineno-19-30"></a>            override fun onSuccess(data: T) {
+<a id="__codelineno-19-31" name="__codelineno-19-31" href="#__codelineno-19-31"></a>                println(&quot;Request success!&quot;) // ①
+<a id="__codelineno-19-32" name="__codelineno-19-32" href="#__codelineno-19-32"></a>                continuation.resume(data)
+<a id="__codelineno-19-33" name="__codelineno-19-33" href="#__codelineno-19-33"></a>            }
+<a id="__codelineno-19-34" name="__codelineno-19-34" href="#__codelineno-19-34"></a>
+<a id="__codelineno-19-35" name="__codelineno-19-35" href="#__codelineno-19-35"></a>            override fun onFail(throwable: Throwable) {
+<a id="__codelineno-19-36" name="__codelineno-19-36" href="#__codelineno-19-36"></a>                println(&quot;Request fail!：$throwable&quot;)
+<a id="__codelineno-19-37" name="__codelineno-19-37" href="#__codelineno-19-37"></a>                continuation.resumeWithException(throwable)
+<a id="__codelineno-19-38" name="__codelineno-19-38" href="#__codelineno-19-38"></a>            }
+<a id="__codelineno-19-39" name="__codelineno-19-39" href="#__codelineno-19-39"></a>        })
+<a id="__codelineno-19-40" name="__codelineno-19-40" href="#__codelineno-19-40"></a>    }
+<a id="__codelineno-19-41" name="__codelineno-19-41" href="#__codelineno-19-41"></a>
+<a id="__codelineno-19-42" name="__codelineno-19-42" href="#__codelineno-19-42"></a>/*
+<a id="__codelineno-19-43" name="__codelineno-19-43" href="#__codelineno-19-43"></a>输出结果：
+<a id="__codelineno-19-44" name="__codelineno-19-44" href="#__codelineno-19-44"></a>Time cancel: 536   // ②
+<a id="__codelineno-19-45" name="__codelineno-19-45" href="#__codelineno-19-45"></a>Request success!   // ③
+<a id="__codelineno-19-46" name="__codelineno-19-46" href="#__codelineno-19-46"></a>invokeOnCompletion!
+<a id="__codelineno-19-47" name="__codelineno-19-47" href="#__codelineno-19-47"></a>Time exception: 3612  // ④
+<a id="__codelineno-19-48" name="__codelineno-19-48" href="#__codelineno-19-48"></a>Catch exception:kotlinx.coroutines.JobCancellationException: DeferredCoroutine was cancelled; job=DeferredCoroutine{Cancelled}@6043cd28
+<a id="__codelineno-19-49" name="__codelineno-19-49" href="#__codelineno-19-49"></a>Time total: 3612
+<a id="__codelineno-19-50" name="__codelineno-19-50" href="#__codelineno-19-50"></a>*/
+</code></pre></div>
+<p>在main函数当中，我们在async里调用了挂起函数，接着50ms过去后，我们就去尝试取消协程。这段代码中一共有三处地方需要注意，我们来分析一下：</p>
+<ul>
+<li>结合注释①、③一起分析，我们发现，即使调用了deferred.cancel()，网络请求仍然会继续执行。根据“Catch exception:”输出的异常信息，我们也发现，当deferred被取消以后我们还去调用await()的时候，会抛出异常。</li>
+<li>对比注释②、④，我们还能发现，deferred.await()虽然会抛出异常，但是它却耗时3000ms。虽然deferred被取消了，但是当我们调用await()的时候，它并不会马上就抛出异常，而是会等到内部的网络请求执行结束以后，才抛出异常，在此之前都会被挂起。</li>
+</ul>
+<p>综上所述，当我们使用suspendCoroutine{} 来实现挂起函数的时候，默认情况下是不支持取消的。那么，具体该怎么做呢？其实也很简单，就是使用Kotlin官方提供的另一个API：<strong>suspendCancellableCoroutine{}</strong>。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>suspend fun &lt;T : Any&gt; KtCall&lt;T&gt;.await(): T =
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>//            变化1
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>//              ↓
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>    suspendCancellableCoroutine { continuation -&gt;
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>        val call = call(object : Callback&lt;T&gt; {
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>            override fun onSuccess(data: T) {
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>                println(&quot;Request success!&quot;)
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>                continuation.resume(data)
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>            }
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>
+<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a>            override fun onFail(throwable: Throwable) {
+<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>                println(&quot;Request fail!：$throwable&quot;)
+<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a>                continuation.resumeWithException(throwable)
+<a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a>            }
+<a id="__codelineno-20-15" name="__codelineno-20-15" href="#__codelineno-20-15"></a>        })
+<a id="__codelineno-20-16" name="__codelineno-20-16" href="#__codelineno-20-16"></a>
+<a id="__codelineno-20-17" name="__codelineno-20-17" href="#__codelineno-20-17"></a>//            变化2
+<a id="__codelineno-20-18" name="__codelineno-20-18" href="#__codelineno-20-18"></a>//              ↓
+<a id="__codelineno-20-19" name="__codelineno-20-19" href="#__codelineno-20-19"></a>        continuation.invokeOnCancellation {
+<a id="__codelineno-20-20" name="__codelineno-20-20" href="#__codelineno-20-20"></a>            println(&quot;Call cancelled!&quot;)
+<a id="__codelineno-20-21" name="__codelineno-20-21" href="#__codelineno-20-21"></a>            call.cancel()
+<a id="__codelineno-20-22" name="__codelineno-20-22" href="#__codelineno-20-22"></a>        }
+<a id="__codelineno-20-23" name="__codelineno-20-23" href="#__codelineno-20-23"></a>    }
+</code></pre></div>
+<p>当我们使用suspendCancellableCoroutine{} 的时候，可以往continuation对象上面设置一个监听：invokeOnCancellation{}，它代表当前的协程被取消了，这时候，我们只需要将OkHttp的call取消即可。</p>
+<p>这样一来，main()函数就能保持不变，得到的输出结果却大不相同。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>/*
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>suspendCoroutine结果：
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>Time cancel: 536   
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>Request success!   
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>invokeOnCompletion!
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>Time exception: 3612  // ①
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>Catch exception:kotlinx.coroutines.JobCancellationException: DeferredCoroutine was cancelled; job=DeferredCoroutine{Cancelled}@6043cd28
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>Time total: 3612
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>*/
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>/*
+<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>suspendCancellableCoroutine结果：
+<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>
+<a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a>Call cancelled!
+<a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a>Time cancel: 464
+<a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a>invokeOnCompletion!
+<a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>Time exception: 466  // ②
+<a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a>Catch exception:kotlinx.coroutines.JobCancellationException: DeferredCoroutine was cancelled; job=DeferredCoroutine{Cancelled}@6043cd28
+<a id="__codelineno-21-20" name="__codelineno-21-20" href="#__codelineno-21-20"></a>Time total: 466
+<a id="__codelineno-21-21" name="__codelineno-21-21" href="#__codelineno-21-21"></a>Request fail!：java.io.IOException: Canceled  // ③
+<a id="__codelineno-21-22" name="__codelineno-21-22" href="#__codelineno-21-22"></a>*/
+</code></pre></div>
+<p>对比注释①、②，可以发现，后者是会立即响应协程取消事件的，所以当代码执行到deferred.await()的时候，会立即抛出异常，而不会挂起很长时间。另外，通过注释③这里的结果，我们也可以发现，OkHttp的网络请求确实被取消了。</p>
+<p>所以，我们可以得出一个结论，使用suspendCancellableCoroutine{}，我们可以避免不必要的挂起，比如例子中的deferred.await()；另外也可以节省计算机资源，因为这样可以避免不必要的协程任务，比如这里被成功取消的网络请求。</p>
+<p>到这里，我们的解法一就已经完成了。这种方式并没有改动KtHttp的源代码，而是以扩展函数来实现的。所以，从严格意义上来讲，KtHttp 4.0版本并没有开发完毕，等到第27讲我们深入理解了挂起函数的底层原理后，我们再来完成解法二的代码。</p>
+<h2 id="_1">小结</h2>
+<p>这节课，我们在KtHttp 1.0版本的基础上，扩展出了异步请求的功能，完成了3.0版本的开发；接着，我们又在3.0版本的基础上，让KtHttp支持了挂起函数，这里我们是用的外部扩展的思路，并没有碰KtHttp内部的代码。</p>
+<p>这里主要涉及以下几个知识点：</p>
+<ul>
+<li>在3.0版本开发中，我们运用了泛型边界“T: Any”，落实对泛型的非空限制，同时通过封装KtCall，为下一个版本打下了基础。</li>
+<li>接着，在4.0版本中，我们借助扩展函数的特性，为KtCall扩展了await()方法。</li>
+<li>在实现await()的过程中，我们使用了两个协程API，分别是suspendCoroutine{}、suspendCancellableCoroutine{}，在Kotlin协程当中，我们<strong>永远都要优先使用后者</strong>。</li>
+<li>suspendCancellableCoroutine{} 主要有两大优势：第一，它可以避免不必要的挂起，提升运行效率；第二，它可以避免不必要的资源浪费，改善软件的综合指标。</li>
+</ul>
+<h2 id="_2">思考题</h2>
+<p>你能分析出下面的代码执行结果吗？为什么会是这样的结果？它能给你带来什么启发？欢迎给我留言，也欢迎你把今天的内容分享给更多的朋友。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>fun main() = runBlocking {
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>    val start = System.currentTimeMillis()
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>    val deferred = async {
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>        KtHttpV3.create(ApiServiceV3::class.java)
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>            .repos(lang = &quot;Kotlin&quot;, since = &quot;weekly&quot;)
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>            .await()
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>    }
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>    deferred.invokeOnCompletion {
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a>        println(&quot;invokeOnCompletion!&quot;)
+<a id="__codelineno-22-11" name="__codelineno-22-11" href="#__codelineno-22-11"></a>    }
+<a id="__codelineno-22-12" name="__codelineno-22-12" href="#__codelineno-22-12"></a>    delay(50L)
+<a id="__codelineno-22-13" name="__codelineno-22-13" href="#__codelineno-22-13"></a>
+<a id="__codelineno-22-14" name="__codelineno-22-14" href="#__codelineno-22-14"></a>    deferred.cancel()
+<a id="__codelineno-22-15" name="__codelineno-22-15" href="#__codelineno-22-15"></a>    println(&quot;Time cancel: ${System.currentTimeMillis() - start}&quot;)
+<a id="__codelineno-22-16" name="__codelineno-22-16" href="#__codelineno-22-16"></a>
+<a id="__codelineno-22-17" name="__codelineno-22-17" href="#__codelineno-22-17"></a>    try {
+<a id="__codelineno-22-18" name="__codelineno-22-18" href="#__codelineno-22-18"></a>        println(deferred.await())
+<a id="__codelineno-22-19" name="__codelineno-22-19" href="#__codelineno-22-19"></a>    } catch (e: Exception) {
+<a id="__codelineno-22-20" name="__codelineno-22-20" href="#__codelineno-22-20"></a>        println(&quot;Time exception: ${System.currentTimeMillis() - start}&quot;)
+<a id="__codelineno-22-21" name="__codelineno-22-21" href="#__codelineno-22-21"></a>        println(&quot;Catch exception:$e&quot;)
+<a id="__codelineno-22-22" name="__codelineno-22-22" href="#__codelineno-22-22"></a>    } finally {
+<a id="__codelineno-22-23" name="__codelineno-22-23" href="#__codelineno-22-23"></a>        println(&quot;Time total: ${System.currentTimeMillis() - start}&quot;)
+<a id="__codelineno-22-24" name="__codelineno-22-24" href="#__codelineno-22-24"></a>    }
+<a id="__codelineno-22-25" name="__codelineno-22-25" href="#__codelineno-22-25"></a>}
+<a id="__codelineno-22-26" name="__codelineno-22-26" href="#__codelineno-22-26"></a>
+<a id="__codelineno-22-27" name="__codelineno-22-27" href="#__codelineno-22-27"></a>suspend fun &lt;T : Any&gt; KtCall&lt;T&gt;.await(): T =
+<a id="__codelineno-22-28" name="__codelineno-22-28" href="#__codelineno-22-28"></a>    suspendCancellableCoroutine { continuation -&gt;
+<a id="__codelineno-22-29" name="__codelineno-22-29" href="#__codelineno-22-29"></a>        val call = call(object : Callback&lt;T&gt; {
+<a id="__codelineno-22-30" name="__codelineno-22-30" href="#__codelineno-22-30"></a>            override fun onSuccess(data: T) {
+<a id="__codelineno-22-31" name="__codelineno-22-31" href="#__codelineno-22-31"></a>                println(&quot;Request success!&quot;)
+<a id="__codelineno-22-32" name="__codelineno-22-32" href="#__codelineno-22-32"></a>                continuation.resume(data)
+<a id="__codelineno-22-33" name="__codelineno-22-33" href="#__codelineno-22-33"></a>            }
+<a id="__codelineno-22-34" name="__codelineno-22-34" href="#__codelineno-22-34"></a>
+<a id="__codelineno-22-35" name="__codelineno-22-35" href="#__codelineno-22-35"></a>            override fun onFail(throwable: Throwable) {
+<a id="__codelineno-22-36" name="__codelineno-22-36" href="#__codelineno-22-36"></a>                println(&quot;Request fail!：$throwable&quot;)
+<a id="__codelineno-22-37" name="__codelineno-22-37" href="#__codelineno-22-37"></a>                continuation.resumeWithException(throwable)
+<a id="__codelineno-22-38" name="__codelineno-22-38" href="#__codelineno-22-38"></a>            }
+<a id="__codelineno-22-39" name="__codelineno-22-39" href="#__codelineno-22-39"></a>        })
+<a id="__codelineno-22-40" name="__codelineno-22-40" href="#__codelineno-22-40"></a>
+<a id="__codelineno-22-41" name="__codelineno-22-41" href="#__codelineno-22-41"></a>// 注意这里
+<a id="__codelineno-22-42" name="__codelineno-22-42" href="#__codelineno-22-42"></a>//        continuation.invokeOnCancellation {
+<a id="__codelineno-22-43" name="__codelineno-22-43" href="#__codelineno-22-43"></a>//            println(&quot;Call cancelled!&quot;)
+<a id="__codelineno-22-44" name="__codelineno-22-44" href="#__codelineno-22-44"></a>//            call.cancel()
+<a id="__codelineno-22-45" name="__codelineno-22-45" href="#__codelineno-22-45"></a>//        }
+<a id="__codelineno-22-46" name="__codelineno-22-46" href="#__codelineno-22-46"></a>    }
+</code></pre></div>
 <div><strong>精选留言（14）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/1a/c5/0a/c7267f5b.jpg" width="30px"><span>迩、卜懂莪</span> 👍（4） 💬（1）<div>Kthttp系列实战 像是简易版的retrofit2 对学习 retrofit的源码有很大帮助</div>2022-03-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/ee/8c/06f3aef0.jpg" width="30px"><span>神秘嘉Bin</span> 👍（3） 💬（3）<div>思考题：
+<li><span>迩、卜懂莪</span> 👍（4） 💬（1）<div>Kthttp系列实战 像是简易版的retrofit2 对学习 retrofit的源码有很大帮助</div>2022-03-15</li><br/><li><span>神秘嘉Bin</span> 👍（3） 💬（3）<div>思考题：
 （1）执行async可认为一瞬间就到了suspendCancellableCoroutine的await扩展方法，即协程被挂起。
 （2）执行deferred.cancel()，可以使得挂起函数立刻返回并抛出协程cancel异常
 （3）协程取消了，但网络请求还是发出去了，（因为网络请求有自己的线程）也会回来，调用continuation.resume，发现协程被取消了，抛出协程已经被取消的异常
@@ -5330,7 +5890,7 @@
 （4.2）网络IO比deferred.await()晚，那么deferred.await()会立刻返回，没有异常
 
 
-以上都是我猜的，没有实际运行  -.- </div>2022-03-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/23/83/dd/e0f79039.jpg" width="30px"><span>荒原</span> 👍（1） 💬（1）<div>KtHttpV3.invoke()方法返回值这样写会将同步请求的返回值转成了一个异步的KtCall
+以上都是我猜的，没有实际运行  -.- </div>2022-03-02</li><br/><li><span>荒原</span> 👍（1） 💬（1）<div>KtHttpV3.invoke()方法返回值这样写会将同步请求的返回值转成了一个异步的KtCall
 return if (isKtCallReturn(method)){
             KtCall&lt;T&gt;(
                 client.newCall(request),
@@ -5360,9 +5920,9 @@ if (isKtCallReturn(method)){
                 method.genericReturnType
             )
         }
-这是为什么呢</div>2022-05-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/25/29/21/d90429b1.jpg" width="30px"><span>王安泽</span> 👍（1） 💬（1）<div>请问为什么Async的写法response返回后程序没有结束呢？ </div>2022-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/d6/a7/ac23f5a6.jpg" width="30px"><span>better</span> 👍（1） 💬（1）<div>第一，它可以避免不必要的挂起，提升运行效率 ；请问老师，这一条指的是？
+这是为什么呢</div>2022-05-21</li><br/><li><span>王安泽</span> 👍（1） 💬（1）<div>请问为什么Async的写法response返回后程序没有结束呢？ </div>2022-04-14</li><br/><li><span>better</span> 👍（1） 💬（1）<div>第一，它可以避免不必要的挂起，提升运行效率 ；请问老师，这一条指的是？
 思考题：
-网络请求还是会执行，第一点避免了，但是二点没有避免。</div>2022-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/33/8a/f7a3d5e6.jpg" width="30px"><span>Allen</span> 👍（1） 💬（1）<div>问题二：像 suspendCoroutine 这一类系统所提供的挂起函数底层到底实现了什么，才使得其具有挂起的功能？是内部自己实现了 Callback 吗？为啥我们自己实现的 suspend 函数必须调用系统提供的挂起函数才能生效？</div>2022-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/33/8a/f7a3d5e6.jpg" width="30px"><span>Allen</span> 👍（0） 💬（1）<div>涛哥，问两个问题哈。如果上面例子中的网络请求是运行在当前线程，是不是这里的挂起实际上也没有什么用，因为其还是会阻塞当前线程（像下面的代码一样）？
+网络请求还是会执行，第一点避免了，但是二点没有避免。</div>2022-02-24</li><br/><li><span>Allen</span> 👍（1） 💬（1）<div>问题二：像 suspendCoroutine 这一类系统所提供的挂起函数底层到底实现了什么，才使得其具有挂起的功能？是内部自己实现了 Callback 吗？为啥我们自己实现的 suspend 函数必须调用系统提供的挂起函数才能生效？</div>2022-02-23</li><br/><li><span>Allen</span> 👍（0） 💬（1）<div>涛哥，问两个问题哈。如果上面例子中的网络请求是运行在当前线程，是不是这里的挂起实际上也没有什么用，因为其还是会阻塞当前线程（像下面的代码一样）？
 
 suspend fun testSuspendFunc() {
     suspendCancellableCoroutine&lt;Unit&gt; {
@@ -5370,13 +5930,13 @@ suspend fun testSuspendFunc() {
         Thread.sleep(5000)
         it.resumeWith(Result.success(Unit))
     }
-}</div>2022-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/33/8a/f7a3d5e6.jpg" width="30px"><span>Allen</span> 👍（0） 💬（3）<div>思考题的执行结果和 suspendCoroutine 的执行结果是一样的。取消了监听 invokeOnCancellation 的方法后，suspendCancellableoroutine 和 suspendCoroutine 本质上是一回事。</div>2022-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/4d/99/f133c8ff.jpg" width="30px"><span>梦佳</span> 👍（0） 💬（0）<div>已经实践于项目，协程包装原来网络请求，一行代码获取数据</div>2024-03-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/jibauP3icEFic4w56L2ddVghL7h2gGKhFdW8lBfE9rpwwRgzUKkLFY9wb4w70AXz7retME96a6EBRTA0LvSLn0ib8A/132" width="30px"><span>jack</span> 👍（0） 💬（0）<div>思考题的运行结果参考：
+}</div>2022-02-23</li><br/><li><span>Allen</span> 👍（0） 💬（3）<div>思考题的执行结果和 suspendCoroutine 的执行结果是一样的。取消了监听 invokeOnCancellation 的方法后，suspendCancellableoroutine 和 suspendCoroutine 本质上是一回事。</div>2022-02-23</li><br/><li><span>梦佳</span> 👍（0） 💬（0）<div>已经实践于项目，协程包装原来网络请求，一行代码获取数据</div>2024-03-09</li><br/><li><span>jack</span> 👍（0） 💬（0）<div>思考题的运行结果参考：
 Time cancel: 697
 invokeOnCompletion!
 Time exception: 702
 Catch exception:kotlinx.coroutines.JobCancellationException: DeferredCoroutine was cancelled; job=DeferredCoroutine{Cancelled}@25084a1e
 Time total: 703
-Request success!</div>2023-10-13</li><br/><li><img src="" width="30px"><span>常正午</span> 👍（0） 💬（0）<div>和retrofit2 源码相比，文章的代码质量差太远，还不如自己直接学习retrofit2如何支持suspend</div>2023-03-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/4d/99/f133c8ff.jpg" width="30px"><span>梦佳</span> 👍（0） 💬（0）<div>已经用起来了</div>2022-12-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f9/c5/95b97dfa.jpg" width="30px"><span>郑峰</span> 👍（0） 💬（0）<div>思考题：
+Request success!</div>2023-10-13</li><br/><li><span>常正午</span> 👍（0） 💬（0）<div>和retrofit2 源码相比，文章的代码质量差太远，还不如自己直接学习retrofit2如何支持suspend</div>2023-03-06</li><br/><li><span>梦佳</span> 👍（0） 💬（0）<div>已经用起来了</div>2022-12-06</li><br/><li><span>郑峰</span> 👍（0） 💬（0）<div>思考题：
 
 1. 除非没有Line 12 delay(50L) 或者 delay(0L)， 网络请求总是被发送出去，并返回结果。因为请求没有被取消。
 2. 取消协程不一定能catch到cancel exception。
@@ -5385,7 +5945,7 @@ Request success!</div>2023-10-13</li><br/><li><img src="" width="30px"><span>常
 
 注意两点
 1. 本课的协程输出受delay时间影响。出现了request未被发送， request发送未返回和request发送返回 多种不同状态。
-2. main函数执行完成后，process不能马上exit。因为okhttp创建了一个非daemon的线程。在timeout结束后process可以正常结束。</div>2022-08-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/0e/8d/d8f3298d.jpg" width="30px"><span>银河</span> 👍（0） 💬（0）<div>思考题结果：
+2. main函数执行完成后，process不能马上exit。因为okhttp创建了一个非daemon的线程。在timeout结束后process可以正常结束。</div>2022-08-11</li><br/><li><span>银河</span> 👍（0） 💬（0）<div>思考题结果：
 Time cancel: 301
 invokeOnCompletion!
 Time exception: 301

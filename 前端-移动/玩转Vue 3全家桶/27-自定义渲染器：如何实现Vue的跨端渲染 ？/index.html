@@ -3721,6 +3721,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      自定义渲染
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5158,6 +5185,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      自定义渲染
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5208,9 +5262,440 @@
 </code></pre></div>
 <p>渲染器是围绕虚拟Dom存在的。在浏览器中，我们把虚拟Dom渲染成真实的Dom对象，Vue源码内部把一个框架里所有和平台相关的操作，抽离成了独立的方法。所以，我们只需要实现下面这些方法，就可以实现Vue 3在一个平台的渲染。</p>
 <p>首先用createElement创建标签，还有用createText创建文本。创建之后就需要用insert新增元素，通过remove删除元素，通过setText更新文本和patchProps修改属性。然后再实现parentNode、nextSibling等方法实现节点的查找关系。完成这些工作，理论上就可以在一个平台内实现一个应用了。</p>
+<p>在Vue 3中的runtime-core模块，就对外暴露了这些接口，runtime-core内部基于这些函数实现了整个Vue内部的所有操作，然后在runtime-dom中传入以上所有方法。</p>
+<p>下面的代码就是Vue代码提供浏览器端操作的函数，这些DOM编程接口完成了浏览器端增加、添加和删除操作，这些API都是浏览器端独有的，如果一个框架强依赖于这些函数，那就只能在浏览器端运行。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">export</span><span class="w"> </span><span class="kd">const</span><span class="w"> </span><span class="nx">nodeOps</span><span class="o">:</span><span class="w"> </span><span class="nx">Omit</span><span class="o">&lt;</span><span class="nx">RendererOptions</span><span class="o">&lt;</span><span class="nx">Node</span><span class="p">,</span><span class="w"> </span><span class="nx">Element</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;patchProp&#39;</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="c1">//插入元素</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nx">insert</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">child</span><span class="p">,</span><span class="w"> </span><span class="nx">parent</span><span class="p">,</span><span class="w"> </span><span class="nx">anchor</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="nx">parent</span><span class="p">.</span><span class="nx">insertBefore</span><span class="p">(</span><span class="nx">child</span><span class="p">,</span><span class="w"> </span><span class="nx">anchor</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="c1">// 删除元素</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nx">remove</span><span class="o">:</span><span class="w"> </span><span class="nx">child</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">parent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">child</span><span class="p">.</span><span class="nx">parentNode</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">parent</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">      </span><span class="nx">parent</span><span class="p">.</span><span class="nx">removeChild</span><span class="p">(</span><span class="nx">child</span><span class="p">)</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">  </span><span class="c1">// 创建元素</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">  </span><span class="nx">createElement</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">tag</span><span class="p">,</span><span class="w"> </span><span class="nx">isSVG</span><span class="p">,</span><span class="w"> </span><span class="nx">is</span><span class="p">,</span><span class="w"> </span><span class="nx">props</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nx">Element</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">el</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">isSVG</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">      </span><span class="o">?</span><span class="w"> </span><span class="nx">doc</span><span class="p">.</span><span class="nx">createElementNS</span><span class="p">(</span><span class="nx">svgNS</span><span class="p">,</span><span class="w"> </span><span class="nx">tag</span><span class="p">)</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">      </span><span class="o">:</span><span class="w"> </span><span class="nx">doc</span><span class="p">.</span><span class="nx">createElement</span><span class="p">(</span><span class="nx">tag</span><span class="p">,</span><span class="w"> </span><span class="nx">is</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">is</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="kc">undefined</span><span class="p">)</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">tag</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;select&#39;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">props</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">props</span><span class="p">.</span><span class="nx">multiple</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">      </span><span class="p">;(</span><span class="nx">el</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">HTMLSelectElement</span><span class="p">).</span><span class="nx">setAttribute</span><span class="p">(</span><span class="s1">&#39;multiple&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">props</span><span class="p">.</span><span class="nx">multiple</span><span class="p">)</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">el</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">  </span><span class="c1">//...其他操作函数</span>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="p">}</span>
+</code></pre></div>
+<p>如果一个框架想要实现实现跨端的功能，那么渲染器本身不能依赖任何平台下特有的接口。</p>
+<p>在后面的代码中，我们通过createRenderer函数区创建了一个渲染器。通过参数options获取增删改查所有的函数以后，在内部的render、mount、patch等函数中，需要去渲染一个元素的时候，就可以通过option.createElement和option.insert来实现。</p>
+<p>这段代码给你展现的是核心逻辑，完整版本你可以看一下<a href="https://github.com/vuejs/vue-next/blob/master/packages/runtime-core/src/renderer.ts#L334">Vue 3的源码</a>。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">createRenderer</span><span class="p">(</span><span class="nx">options</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">        </span><span class="nx">insert</span><span class="o">:</span><span class="w"> </span><span class="nx">hostInsert</span><span class="p">,</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">        </span><span class="nx">remove</span><span class="o">:</span><span class="w"> </span><span class="nx">hostRemove</span><span class="p">,</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">        </span><span class="nx">patchProp</span><span class="o">:</span><span class="w"> </span><span class="nx">hostPatchProp</span><span class="p">,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">        </span><span class="nx">createElement</span><span class="o">:</span><span class="w"> </span><span class="nx">hostCreateElement</span><span class="p">,</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">        </span><span class="nx">createText</span><span class="o">:</span><span class="w"> </span><span class="nx">hostCreateText</span><span class="p">,</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">        </span><span class="nx">createComment</span><span class="o">:</span><span class="w"> </span><span class="nx">hostCreateComment</span><span class="p">,</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">        </span><span class="nx">setText</span><span class="o">:</span><span class="w"> </span><span class="nx">hostSetText</span><span class="p">,</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">        </span><span class="nx">setElementText</span><span class="o">:</span><span class="w"> </span><span class="nx">hostSetElementText</span><span class="p">,</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">        </span><span class="nx">parentNode</span><span class="o">:</span><span class="w"> </span><span class="nx">hostParentNode</span><span class="p">,</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">        </span><span class="nx">nextSibling</span><span class="o">:</span><span class="w"> </span><span class="nx">hostNextSibling</span><span class="p">,</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">        </span><span class="nx">setScopeId</span><span class="o">:</span><span class="w"> </span><span class="nx">hostSetScopeId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">NOOP</span><span class="p">,</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">        </span><span class="nx">cloneNode</span><span class="o">:</span><span class="w"> </span><span class="nx">hostCloneNode</span><span class="p">,</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">        </span><span class="nx">insertStaticContent</span><span class="o">:</span><span class="w"> </span><span class="nx">hostInsertStaticContent</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">   </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">options</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">  </span><span class="kd">function</span><span class="w"> </span><span class="nx">render</span><span class="p">(</span><span class="nx">vnode</span><span class="p">,</span><span class="w"> </span><span class="nx">container</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="w">  </span><span class="kd">function</span><span class="w"> </span><span class="nx">mount</span><span class="p">(</span><span class="nx">vnode</span><span class="p">,</span><span class="w"> </span><span class="nx">container</span><span class="p">,</span><span class="w"> </span><span class="nx">isSVG</span><span class="p">,</span><span class="w"> </span><span class="nx">refNode</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w">  </span><span class="kd">function</span><span class="w"> </span><span class="nx">mountElement</span><span class="p">(</span><span class="nx">vnode</span><span class="p">,</span><span class="w"> </span><span class="nx">container</span><span class="p">,</span><span class="w"> </span><span class="nx">isSVG</span><span class="p">,</span><span class="w"> </span><span class="nx">refNode</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="w">  </span><span class="kd">function</span><span class="w"> </span><span class="nx">mountText</span><span class="p">(</span><span class="nx">vnode</span><span class="p">,</span><span class="w"> </span><span class="nx">container</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="w">  </span><span class="kd">function</span><span class="w"> </span><span class="nx">patch</span><span class="p">(</span><span class="nx">prevVNode</span><span class="p">,</span><span class="w"> </span><span class="nx">nextVNode</span><span class="p">,</span><span class="w"> </span><span class="nx">container</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="w">  </span><span class="kd">function</span><span class="w"> </span><span class="nx">replaceVNode</span><span class="p">(</span><span class="nx">prevVNode</span><span class="p">,</span><span class="w"> </span><span class="nx">nextVNode</span><span class="p">,</span><span class="w"> </span><span class="nx">container</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="w">  </span><span class="kd">function</span><span class="w"> </span><span class="nx">patchElement</span><span class="p">(</span><span class="nx">prevVNode</span><span class="p">,</span><span class="w"> </span><span class="nx">nextVNode</span><span class="p">,</span><span class="w"> </span><span class="nx">container</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="w">  </span><span class="kd">function</span><span class="w"> </span><span class="nx">patchChildren</span><span class="p">(</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="w">    </span><span class="nx">prevChildFlags</span><span class="p">,</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="w">    </span><span class="nx">nextChildFlags</span><span class="p">,</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="w">    </span><span class="nx">prevChildren</span><span class="p">,</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a><span class="w">    </span><span class="nx">nextChildren</span><span class="p">,</span>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="w">    </span><span class="nx">container</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="w">  </span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="w">  </span><span class="kd">function</span><span class="w"> </span><span class="nx">patchText</span><span class="p">(</span><span class="nx">prevVNode</span><span class="p">,</span><span class="w"> </span><span class="nx">nextVNode</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="w">  </span><span class="kd">function</span><span class="w"> </span><span class="nx">patchComponent</span><span class="p">(</span><span class="nx">prevVNode</span><span class="p">,</span><span class="w"> </span><span class="nx">nextVNode</span><span class="p">,</span><span class="w"> </span><span class="nx">container</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a>
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">render</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="p">}</span>
+</code></pre></div>
+<p>在每个函数实现的内部，比如mountElemnt，我们之前的实现方式是调用浏览器的API创建。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kd">function</span><span class="w"> </span><span class="nx">mountElement</span><span class="p">(</span><span class="nx">vnode</span><span class="p">,</span><span class="w"> </span><span class="nx">container</span><span class="p">,</span><span class="w"> </span><span class="nx">isSVG</span><span class="p">,</span><span class="w"> </span><span class="nx">refNode</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">el</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">isSVG</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="o">?</span><span class="w"> </span><span class="nb">document</span><span class="p">.</span><span class="nx">createElementNS</span><span class="p">(....)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="o">:</span><span class="w"> </span><span class="nb">document</span><span class="p">.</span><span class="nx">createElement</span><span class="p">(</span><span class="nx">vnode</span><span class="p">.</span><span class="nx">tag</span><span class="p">)</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="p">}</span>
+</code></pre></div>
+<p>对比一下，经过渲染器抽离之后，内部的mountElmenet就会把所有document的操作全部换成options传递进来的hostCreate函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kd">function</span><span class="w"> </span><span class="nx">mountElement</span><span class="p">(</span><span class="nx">vnode</span><span class="p">,</span><span class="w"> </span><span class="nx">container</span><span class="p">,</span><span class="w"> </span><span class="nx">isSVG</span><span class="p">,</span><span class="w"> </span><span class="nx">refNode</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">el</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">hostCreateElement</span><span class="p">(</span><span class="nx">vnode</span><span class="p">.</span><span class="nx">tag</span><span class="p">,</span><span class="w"> </span><span class="nx">isSVG</span><span class="p">)</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="p">}</span>
+</code></pre></div>
+<p>然后，我们使用后面的代码创建一个具体平台的渲染器，这也是Vue 3中的runtime-dom包主要做的事。了解了Vue中自定义渲染器的实现方式后，我们还可以基于Vue 3的runtime-core包封装其他平台的渲染器，让其他平台也能使用Vue内部的响应式和组件化等优秀的特性。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kd">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">render</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">createRenderer</span><span class="p">({</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nx">nodeOps</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="nx">createElement</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">   </span><span class="p">},</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="nx">createText</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">   </span><span class="p">}</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="c1">// more...</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">  </span><span class="nx">patchData</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="p">})</span>
+</code></pre></div>
+<h2 id="_2">自定义渲染</h2>
+<p>说完了渲染器创建，我们再来看看自定义渲染。</p>
+<p>自定义渲染器让Vue脱离了浏览器的限制，我们只需要实现平台内部的增删改查函数后，就可以直接对接Vue 3。比方说，我们可以把Vue渲染到小程序平台，实现Vue 3-miniapp；也可以渲染到Canvas，实现vue 3-canvas，把虚拟dom渲染成Canvas；甚至还可以尝试把Vue 3渲染到threee.js中，在3D世界使用响应式开发。</p>
+<p>接下来，我们一起尝试实现一个Canvas的渲染器。具体操作是这样的，我们在项目的src目录下新建renderer.js，通过这个文件实现一个简易的Canvas渲染逻辑。Canvas平台中操作的方式相对简单，没有太多节点的概念，我们可以把整个Canvas维护成一个对象，每次操作的时候直接把Canvas重绘一下就可以了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">createRenderer</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@vue/runtime-core&#39;</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kd">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">createApp</span><span class="o">:</span><span class="w"> </span><span class="nx">originCa</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">createRenderer</span><span class="p">({</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nx">insert</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">child</span><span class="p">,</span><span class="w"> </span><span class="nx">parent</span><span class="p">,</span><span class="w"> </span><span class="nx">anchor</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="nx">createElement</span><span class="p">(</span><span class="nx">type</span><span class="p">,</span><span class="w"> </span><span class="nx">isSVG</span><span class="p">,</span><span class="w"> </span><span class="nx">isCustom</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">  </span><span class="nx">setElementText</span><span class="p">(</span><span class="nx">node</span><span class="p">,</span><span class="w"> </span><span class="nx">text</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">  </span><span class="nx">patchProp</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span><span class="w"> </span><span class="nx">key</span><span class="p">,</span><span class="w"> </span><span class="nx">prev</span><span class="p">,</span><span class="w"> </span><span class="nx">next</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="p">});</span>
+</code></pre></div>
+<p>下面的代码中我们实现了draw函数，这里我们就使用了Canvas的操作方法，<strong>递归</strong>地把Canvas对象渲染到了Canvas标签内部。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kd">let</span><span class="w"> </span><span class="nx">ctx</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kd">function</span><span class="w"> </span><span class="nx">draw</span><span class="p">(</span><span class="nx">ele</span><span class="p">,</span><span class="w"> </span><span class="nx">isChild</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">isChild</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">clearRect</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="w"> </span><span class="mf">0</span><span class="p">,</span><span class="w"> </span><span class="mf">500</span><span class="p">,</span><span class="w"> </span><span class="mf">500</span><span class="p">)</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">fillStyle</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">ele</span><span class="p">.</span><span class="nx">fill</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s1">&#39;white&#39;</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">  </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">fillRect</span><span class="p">(...</span><span class="nx">ele</span><span class="p">.</span><span class="nx">pos</span><span class="p">)</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">ele</span><span class="p">.</span><span class="nx">text</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="w">    </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">fillStyle</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">ele</span><span class="p">.</span><span class="nx">color</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s1">&#39;white&#39;</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">    </span><span class="nx">ele</span><span class="p">.</span><span class="nx">fontSize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">ele</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;h1&quot;</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mf">20</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mf">12</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="w">    </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">font</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">ele</span><span class="p">.</span><span class="nx">fontSize</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="mf">18</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s1">&#39;px serif&#39;</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="w">    </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">fillText</span><span class="p">(</span><span class="nx">ele</span><span class="p">.</span><span class="nx">text</span><span class="p">,</span><span class="w"> </span><span class="nx">ele</span><span class="p">.</span><span class="nx">pos</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mf">10</span><span class="p">,</span><span class="w"> </span><span class="nx">ele</span><span class="p">.</span><span class="nx">pos</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">ele</span><span class="p">.</span><span class="nx">fontSize</span><span class="p">)</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="w">  </span><span class="nx">ele</span><span class="p">.</span><span class="nx">child</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">ele</span><span class="p">.</span><span class="nx">child</span><span class="p">.</span><span class="nx">forEach</span><span class="p">(</span><span class="nx">c</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;child:::&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">c</span><span class="p">)</span>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="w">    </span><span class="nx">draw</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="w">  </span><span class="p">})</span>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="p">}</span>
+</code></pre></div>
+<p>由于我们主体需要维护的逻辑就是对于对象的操作，所以创建和更新操作直接去操作对象即可。新增insert需要维护parent和child元素。另外，插入的时候也需要调用draw函数，并且需要监听onclick事件。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kd">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">createApp</span><span class="o">:</span><span class="w"> </span><span class="nx">originCa</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">createRenderer</span><span class="p">({</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nx">insert</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">child</span><span class="p">,</span><span class="w"> </span><span class="nx">parent</span><span class="p">,</span><span class="w"> </span><span class="nx">anchor</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="ow">typeof</span><span class="w"> </span><span class="nx">child</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s1">&#39;string&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">      </span><span class="nx">parent</span><span class="p">.</span><span class="nx">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">child</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">      </span><span class="nx">child</span><span class="p">.</span><span class="nx">parent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">parent</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">parent</span><span class="p">.</span><span class="nx">child</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">        </span><span class="nx">parent</span><span class="p">.</span><span class="nx">child</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="nx">child</span><span class="p">]</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">      </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">        </span><span class="nx">parent</span><span class="p">.</span><span class="nx">child</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">child</span><span class="p">)</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">      </span><span class="p">}</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">parent</span><span class="p">.</span><span class="nx">nodeName</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="w">      </span><span class="nx">draw</span><span class="p">(</span><span class="nx">child</span><span class="p">)</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">child</span><span class="p">.</span><span class="nx">onClick</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="w">        </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">canvas</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;click&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="w">          </span><span class="nx">child</span><span class="p">.</span><span class="nx">onClick</span><span class="p">()</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="w">          </span><span class="nx">setTimeout</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a><span class="w">            </span><span class="nx">draw</span><span class="p">(</span><span class="nx">child</span><span class="p">)</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="w">          </span><span class="p">})</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="w">        </span><span class="p">},</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="w">      </span><span class="p">}</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="w">  </span><span class="nx">createElement</span><span class="p">(</span><span class="nx">type</span><span class="p">,</span><span class="w"> </span><span class="nx">isSVG</span><span class="p">,</span><span class="w"> </span><span class="nx">isCustom</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="w">      </span><span class="nx">type</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="w">  </span><span class="nx">setElementText</span><span class="p">(</span><span class="nx">node</span><span class="p">,</span><span class="w"> </span><span class="nx">text</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a><span class="w">    </span><span class="nx">node</span><span class="p">.</span><span class="nx">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">text</span>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a><span class="w">  </span><span class="nx">patchProp</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span><span class="w"> </span><span class="nx">key</span><span class="p">,</span><span class="w"> </span><span class="nx">prev</span><span class="p">,</span><span class="w"> </span><span class="nx">next</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a><span class="w">    </span><span class="nx">el</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">next</span>
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a><span class="p">});</span>
+</code></pre></div>
+<p>现在我们来到src/main.js中，这时候就不能直接从vue中引入createApp了，而是需要从runtime-core中导入createRenderer。</p>
+<p>接下来，通过createRenderer用我们自己定义的renderer去创建createApp，并且重写mount函数。在Canvas的mount中，我们需要创建Canvas标签并且挂载到App上。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">createRenderer</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@vue/runtime-core&#39;</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kd">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">createApp</span><span class="o">:</span><span class="w"> </span><span class="nx">originCa</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">createRenderer</span><span class="p">({</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="p">}</span><span class="err">）</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="kd">function</span><span class="w"> </span><span class="nx">createApp</span><span class="p">(...</span><span class="nx">args</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">app</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">originCa</span><span class="p">(...</span><span class="nx">args</span><span class="p">)</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">    </span><span class="nx">mount</span><span class="p">(</span><span class="nx">selector</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">      </span><span class="kd">const</span><span class="w"> </span><span class="nx">canvas</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">document</span><span class="p">.</span><span class="nx">createElement</span><span class="p">(</span><span class="s1">&#39;canvas&#39;</span><span class="p">)</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">      </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">window</span><span class="p">.</span><span class="nx">innerWidth</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">      </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">window</span><span class="p">.</span><span class="nx">innerHeight</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">      </span><span class="nb">document</span><span class="p">.</span><span class="nx">querySelector</span><span class="p">(</span><span class="nx">selector</span><span class="p">).</span><span class="nx">appendChild</span><span class="p">(</span><span class="nx">canvas</span><span class="p">)</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w">      </span><span class="nx">ctx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">getContext</span><span class="p">(</span><span class="s1">&#39;2d&#39;</span><span class="p">)</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="w">      </span><span class="nx">app</span><span class="p">.</span><span class="nx">mount</span><span class="p">(</span><span class="nx">canvas</span><span class="p">)</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="p">}</span>
+</code></pre></div>
+<p>下一步进入src/App.vue中，我们就可以在Vue组件中使用ref等响应式的写法了。我们实现了通过ref返回的响应式对象，渲染Canvas内部的文字和高度，并且点击的时候还可以修改文字。完成上面的操作，我们就实现了Canvas平台的基本渲染。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nt">&lt;template&gt;</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="nt">&lt;div</span><span class="w"> </span><span class="err">@</span><span class="na">click=</span><span class="s">&quot;setName(&#39;vue3真棒&#39;)&quot;</span><span class="w"> </span><span class="na">:pos=</span><span class="s">&quot;[10,10,300,300]&quot;</span><span class="w"> </span><span class="na">fill=</span><span class="s">&quot;#eee&quot;</span><span class="nt">&gt;</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">    </span><span class="nt">&lt;h1</span><span class="w"> </span><span class="na">:pos=</span><span class="s">&quot;[20,20,200,100]&quot;</span><span class="w"> </span><span class="na">fill=</span><span class="s">&quot;red&quot;</span><span class="w"> </span><span class="na">color=</span><span class="s">&quot;#000&quot;</span><span class="nt">&gt;</span>累加器{{count}}<span class="nt">&lt;/h1&gt;</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">    </span><span class="nt">&lt;span</span><span class="w"> </span><span class="na">:pos=</span><span class="s">&quot;pos&quot;</span><span class="w"> </span><span class="na">fill=</span><span class="s">&quot;black&quot;</span><span class="w"> </span><span class="nt">&gt;</span>哈喽{{name}}<span class="nt">&lt;/span&gt;</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="nt">&lt;/div&gt;</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="nt">&lt;/template&gt;</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="nt">&lt;script</span><span class="w"> </span><span class="err">setup</span><span class="nt">&gt;</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>import<span class="w"> </span>{ref}<span class="w"> </span>from<span class="w"> </span>&#39;vue&#39;
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>const<span class="w"> </span>name<span class="w"> </span>=<span class="w"> </span>ref(&#39;vue3入门&#39;)
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>const<span class="w"> </span>pos<span class="w"> </span>=<span class="w"> </span>ref([20,120,200,100])
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>const<span class="w"> </span>count<span class="w"> </span>=<span class="w"> </span>ref(1)
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>const<span class="w"> </span>setName<span class="w"> </span>=<span class="w"> </span>(n)=&gt;{
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a><span class="w">  </span>name.value<span class="w"> </span>=<span class="w"> </span>n
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="w">  </span>pos.value[1]+=20
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a><span class="w">  </span>count.value+=2
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>}
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a><span class="nt">&lt;/script&gt;</span>
+</code></pre></div>
+<p>上面的代码在浏览器里就会有下图的显示效果。我们点击Canvas后，文案就会显示为“哈喽vue3真棒”，并且黑色方块和红色方块的距离也会变大。<br />
+<img alt="图片" src="https://static001.geekbang.org/resource/image/b4/7b/b466ca102ef94ebce2d05c865ca4637b.png?wh=1920x992" /></p>
+<p>基于这个原理，我们其实可以做很多有意思的尝试。社区也有越来越多开源的Vue 3的自定义渲染器，比如小程序跨端框架uni-app，Vugel可以使用Vue渲染Webgl等，你也可以动手多多体验。</p>
+<p>比如下面的代码中，我们对three.js进行一个渲染的尝试。它的实现逻辑和Canvas比较类似，通过对于对象的维护和draw函数实现最终的绘制。在draw函数内部，我们调用three.js的操作方法去创建camera，sence，geometry等概念，最后对外暴露three.js的createApp函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>import<span class="w"> </span>{<span class="w"> </span>createRenderer<span class="w"> </span>}<span class="w"> </span>from<span class="w"> </span>&#39;@vue/runtime-core&#39;
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>import<span class="w"> </span>*<span class="w"> </span>as<span class="w"> </span>THREE<span class="w"> </span>from<span class="w"> </span>&#39;three&#39;
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>import<span class="w"> </span>{nextTick}<span class="w"> </span>from<span class="w"> </span>&#39;@vue/runtime-core&#39;
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>let<span class="w"> </span>renderer
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>function<span class="w"> </span>draw(obj)<span class="w"> </span>{
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="w">    </span>const<span class="w"> </span>{camera,cameraPos,<span class="w"> </span>scene,<span class="w"> </span>geometry,geometryArg,material,mesh,meshY,meshX}<span class="w"> </span>=<span class="w"> </span>obj
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="w">    </span>if([camera,cameraPos,<span class="w"> </span>scene,<span class="w"> </span>geometry,geometryArg,material,mesh,meshY,meshX].filter(v=&gt;v).length<span class="nt">&lt;9</span><span class="err">){</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="w">        </span><span class="err">return</span><span class="w"> </span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="w">    </span><span class="err">}</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="w">    </span><span class="err">let</span><span class="w"> </span><span class="na">cameraObj =</span><span class="w"> </span><span class="s">new</span><span class="w"> </span><span class="err">THREE[camera](</span><span class="w"> </span><span class="err">40,</span><span class="w"> </span><span class="err">window.innerWidth</span><span class="w"> </span><span class="err">/</span><span class="w"> </span><span class="err">window.innerHeight,</span><span class="w"> </span><span class="err">0.1,</span><span class="w"> </span><span class="err">10</span><span class="w"> </span><span class="err">)</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="w">    </span><span class="err">Object.assign(cameraObj.position,cameraPos)</span>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a><span class="w">    </span><span class="err">let</span><span class="w"> </span><span class="na">sceneObj =</span><span class="w"> </span><span class="s">new</span><span class="w"> </span><span class="err">THREE[scene]()</span>
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a><span class="w">    </span><span class="err">let</span><span class="w"> </span><span class="na">geometryObj =</span><span class="w"> </span><span class="s">new</span><span class="w"> </span><span class="err">THREE[geometry](</span><span class="w"> </span><span class="err">...geometryArg)</span>
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a><span class="w">    </span><span class="err">let</span><span class="w"> </span><span class="na">materialObj =</span><span class="w"> </span><span class="s">new</span><span class="w"> </span><span class="err">THREE[material]()</span>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a><span class="w">    </span><span class="err">let</span><span class="w"> </span><span class="na">meshObj =</span><span class="w"> </span><span class="s">new</span><span class="w"> </span><span class="err">THREE[mesh](</span><span class="w"> </span><span class="err">geometryObj,</span><span class="w"> </span><span class="err">materialObj</span><span class="w"> </span><span class="err">)</span>
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a><span class="w">    </span><span class="na">meshObj.rotation.x =</span><span class="w"> </span><span class="s">meshX</span>
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a><span class="w">    </span><span class="na">meshObj.rotation.y =</span><span class="w"> </span><span class="s">meshY</span>
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a><span class="w">    </span><span class="err">sceneObj.add(</span><span class="w"> </span><span class="err">meshObj</span><span class="w"> </span><span class="err">)</span>
+<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a><span class="w">    </span><span class="err">renderer.render(</span><span class="w"> </span><span class="err">sceneObj,</span><span class="w"> </span><span class="err">cameraObj</span><span class="w"> </span><span class="err">);</span>
+<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>
+<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a><span class="err">}</span>
+<a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>
+<a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a><span class="err">const</span><span class="w"> </span><span class="err">{</span><span class="w"> </span><span class="err">createApp:</span><span class="w"> </span><span class="err">originCa</span><span class="w"> </span><span class="err">}</span><span class="w"> </span><span class="err">=</span><span class="w"> </span><span class="err">createRenderer({</span>
+<a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a><span class="w">  </span><span class="err">insert:</span><span class="w"> </span><span class="err">(child,</span><span class="w"> </span><span class="err">parent,</span><span class="w"> </span><span class="err">anchor)</span><span class="w"> </span><span class="err">=</span><span class="nt">&gt;</span><span class="w"> </span>{
+<a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a><span class="w">    </span>if(parent.domElement){
+<a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a><span class="w">        </span>draw(child)
+<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a><span class="w">    </span>}
+<a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a><span class="w">  </span>},
+<a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a><span class="w">  </span>createElement(type,<span class="w"> </span>isSVG,<span class="w"> </span>isCustom)<span class="w"> </span>{
+<a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a><span class="w">    </span>return<span class="w"> </span>{
+<a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a><span class="w">      </span>type
+<a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a><span class="w">    </span>}
+<a id="__codelineno-11-38" name="__codelineno-11-38" href="#__codelineno-11-38"></a><span class="w">  </span>},
+<a id="__codelineno-11-39" name="__codelineno-11-39" href="#__codelineno-11-39"></a><span class="w">  </span>setElementText(node,<span class="w"> </span>text)<span class="w"> </span>{
+<a id="__codelineno-11-40" name="__codelineno-11-40" href="#__codelineno-11-40"></a><span class="w">  </span>},
+<a id="__codelineno-11-41" name="__codelineno-11-41" href="#__codelineno-11-41"></a><span class="w">  </span>patchProp(el,<span class="w"> </span>key,<span class="w"> </span>prev,<span class="w"> </span>next)<span class="w"> </span>{
+<a id="__codelineno-11-42" name="__codelineno-11-42" href="#__codelineno-11-42"></a><span class="w">    </span>el[key]<span class="w"> </span>=<span class="w"> </span>next
+<a id="__codelineno-11-43" name="__codelineno-11-43" href="#__codelineno-11-43"></a><span class="w">    </span>draw(el)
+<a id="__codelineno-11-44" name="__codelineno-11-44" href="#__codelineno-11-44"></a><span class="w">  </span>},
+<a id="__codelineno-11-45" name="__codelineno-11-45" href="#__codelineno-11-45"></a><span class="w">  </span>parentNode:<span class="w"> </span>node<span class="w"> </span>=&gt;<span class="w"> </span>node,
+<a id="__codelineno-11-46" name="__codelineno-11-46" href="#__codelineno-11-46"></a><span class="w">  </span>nextSibling:<span class="w"> </span>node<span class="w"> </span>=&gt;<span class="w"> </span>node,
+<a id="__codelineno-11-47" name="__codelineno-11-47" href="#__codelineno-11-47"></a><span class="w">  </span>createText:<span class="w"> </span>text<span class="w"> </span>=&gt;<span class="w"> </span>text,
+<a id="__codelineno-11-48" name="__codelineno-11-48" href="#__codelineno-11-48"></a><span class="w">  </span>remove:node=&gt;node
+<a id="__codelineno-11-49" name="__codelineno-11-49" href="#__codelineno-11-49"></a>
+<a id="__codelineno-11-50" name="__codelineno-11-50" href="#__codelineno-11-50"></a>});
+<a id="__codelineno-11-51" name="__codelineno-11-51" href="#__codelineno-11-51"></a>function<span class="w"> </span>createApp(...args)<span class="w"> </span>{
+<a id="__codelineno-11-52" name="__codelineno-11-52" href="#__codelineno-11-52"></a><span class="w">  </span>const<span class="w"> </span>app<span class="w"> </span>=<span class="w"> </span>originCa(...args)
+<a id="__codelineno-11-53" name="__codelineno-11-53" href="#__codelineno-11-53"></a><span class="w">  </span>return<span class="w"> </span>{
+<a id="__codelineno-11-54" name="__codelineno-11-54" href="#__codelineno-11-54"></a><span class="w">    </span>mount(selector)<span class="w"> </span>{
+<a id="__codelineno-11-55" name="__codelineno-11-55" href="#__codelineno-11-55"></a><span class="w">        </span>renderer<span class="w"> </span>=<span class="w"> </span>new<span class="w"> </span>THREE.WebGLRenderer(<span class="w"> </span>{<span class="w"> </span>antialias:<span class="w"> </span>true<span class="w"> </span>}<span class="w"> </span>);
+<a id="__codelineno-11-56" name="__codelineno-11-56" href="#__codelineno-11-56"></a><span class="w">        </span>renderer.setSize(<span class="w"> </span>window.innerWidth,<span class="w"> </span>window.innerHeight<span class="w"> </span>);
+<a id="__codelineno-11-57" name="__codelineno-11-57" href="#__codelineno-11-57"></a><span class="w">        </span>document.body.appendChild(<span class="w"> </span>renderer.domElement<span class="w"> </span>);
+<a id="__codelineno-11-58" name="__codelineno-11-58" href="#__codelineno-11-58"></a><span class="w">        </span>app.mount(renderer)
+<a id="__codelineno-11-59" name="__codelineno-11-59" href="#__codelineno-11-59"></a><span class="w">    </span>}
+<a id="__codelineno-11-60" name="__codelineno-11-60" href="#__codelineno-11-60"></a><span class="w">  </span>}
+<a id="__codelineno-11-61" name="__codelineno-11-61" href="#__codelineno-11-61"></a>}
+<a id="__codelineno-11-62" name="__codelineno-11-62" href="#__codelineno-11-62"></a>export<span class="w"> </span>{<span class="w"> </span>createApp<span class="w"> </span>}
+</code></pre></div>
+<p>然后我们在App.vue中，使用下面的代码渲染出一个立方体，并且通过ref响应式对象控制立方体偏移的角度，再通过setInterval实现立方体的动画，实现下图的翻转效果。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nt">&lt;template&gt;</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">    </span><span class="nt">&lt;div</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">        </span><span class="na">camera=</span><span class="s">&quot;PerspectiveCamera&quot;</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">        </span><span class="na">:cameraPos=</span><span class="s">{z:1}</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">        </span><span class="na">scene=</span><span class="s">&quot;Scene&quot;</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w">        </span><span class="na">geometry=</span><span class="s">&quot;BoxGeometry&quot;</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">        </span><span class="na">:geometryArg=</span><span class="s">&quot;[0.2,0.2,0.2]&quot;</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">        </span><span class="na">material=</span><span class="s">&quot;MeshNormalMaterial&quot;</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="w">        </span><span class="na">mesh=</span><span class="s">&quot;Mesh&quot;</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="w">        </span><span class="na">:meshY=</span><span class="s">&quot;y&quot;</span>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="w">        </span><span class="na">:meshX=</span><span class="s">&quot;x&quot;</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="w">    </span><span class="nt">&gt;</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="w">    </span><span class="nt">&lt;/div&gt;</span>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a><span class="nt">&lt;/template&gt;</span>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a><span class="nt">&lt;script&gt;</span>
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>import<span class="w"> </span>{ref}<span class="w"> </span>from<span class="w"> </span>&#39;vue&#39;
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>export<span class="w"> </span>default<span class="w"> </span>{
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a><span class="w">    </span>setup(){
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a><span class="w">        </span>const<span class="w"> </span>y<span class="w"> </span>=<span class="w"> </span>ref(0.3)
+<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a><span class="w">        </span>const<span class="w"> </span>x<span class="w"> </span>=<span class="w"> </span>ref(0.3)
+<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a><span class="w">        </span>setInterval(()=&gt;{
+<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a><span class="w">            </span>y.value+=0.3
+<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a><span class="w">            </span>x.value+=0.5
+<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a><span class="w">        </span>},100)
+<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a><span class="w">        </span>return<span class="w"> </span>{y,x}
+<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a><span class="w">    </span>}
+<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a>}
+<a id="__codelineno-12-30" name="__codelineno-12-30" href="#__codelineno-12-30"></a><span class="nt">&lt;/script&gt;</span>
+</code></pre></div>
+<p>反转效果演示如下：<br />
+<img alt="图片" src="https://static001.geekbang.org/resource/image/b0/4f/b0b20b2a314bcf650b8b56256bdf804f.gif?wh=1182x761" /></p>
+<p>我们还可以在Canvas的封装上更进一步，并且实现对一些Canvas已有框架Pixi.js的封装，这样就可以通过Vue 3的响应式的开发方式，快速开发一个小游戏。</p>
+<p>下面的代码中就是针对Pixi.js实现的封装函数，你可以看一下。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="w"> </span>import<span class="w"> </span>{Graphics}<span class="w"> </span>from<span class="w"> </span>&quot;PIXI.js&quot;;
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>export<span class="w"> </span>const<span class="w"> </span>getNodeOps<span class="w"> </span>=<span class="w"> </span>(app)<span class="w"> </span>=&gt;<span class="w"> </span>{
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">  </span>return<span class="w"> </span>{
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">    </span>insert:<span class="w"> </span>(child,<span class="w"> </span>parent,<span class="w"> </span>anchor)<span class="w"> </span>=&gt;<span class="w"> </span>{
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="w">      </span>parent.addChild(child);
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="w">    </span>},
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="w">    </span>remove:<span class="w"> </span>(child)<span class="w"> </span>=&gt;<span class="w"> </span>{
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="w">      </span>const<span class="w"> </span>parent<span class="w"> </span>=<span class="w"> </span>child.parentNode;
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="w">      </span>if<span class="w"> </span>(parent)<span class="w"> </span>{
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="w">        </span>parent.removeChild(child);
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="w">      </span>}
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a><span class="w">    </span>},
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a><span class="w">    </span>createElement:<span class="w"> </span>(tag,<span class="w"> </span>isSVG,<span class="w"> </span>is)<span class="w"> </span>=&gt;<span class="w"> </span>{
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a><span class="w">      </span>let<span class="w"> </span>element;
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a><span class="w">      </span>if<span class="w"> </span>(tag<span class="w"> </span>===<span class="w"> </span>&quot;Rectangle&quot;)<span class="w"> </span>{
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a><span class="w">        </span>//<span class="w"> </span>创建一个矩形
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a><span class="w">        </span>element<span class="w"> </span>=<span class="w"> </span>new<span class="w"> </span>window.PIXI.Graphics();
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a><span class="w">        </span>element.lineStyle(4,<span class="w"> </span>0xff3300,<span class="w"> </span>1);
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a><span class="w">        </span>element.beginFill(0x66ccff);
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a><span class="w">        </span>element.drawRect(0,<span class="w"> </span>0,<span class="w"> </span>64,<span class="w"> </span>64);
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a><span class="w">        </span>element.endFill();
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a><span class="w">        </span>element.x<span class="w"> </span>=<span class="w"> </span>0;
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a><span class="w">        </span>element.y<span class="w"> </span>=<span class="w"> </span>0;
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a><span class="w">        </span>//<span class="w"> </span>Opt-in<span class="w"> </span>to<span class="w"> </span>interactivity
+<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a><span class="w">        </span>element.interactive<span class="w"> </span>=<span class="w"> </span>true;
+<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>
+<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a><span class="w">        </span>//<span class="w"> </span>Shows<span class="w"> </span>hand<span class="w"> </span>cursor
+<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a><span class="w">        </span>element.buttonMode<span class="w"> </span>=<span class="w"> </span>true;
+<a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a><span class="w">      </span>}<span class="w"> </span>else<span class="w"> </span>if<span class="w"> </span>(tag<span class="w"> </span>===<span class="w"> </span>&quot;Sprite&quot;)<span class="w"> </span>{
+<a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a><span class="w">        </span>element<span class="w"> </span>=<span class="w"> </span>new<span class="w"> </span>window.PIXI.Sprite();
+<a id="__codelineno-13-34" name="__codelineno-13-34" href="#__codelineno-13-34"></a><span class="w">        </span>element.x<span class="w"> </span>=<span class="w"> </span>0;
+<a id="__codelineno-13-35" name="__codelineno-13-35" href="#__codelineno-13-35"></a><span class="w">        </span>element.y<span class="w"> </span>=<span class="w"> </span>0;
+<a id="__codelineno-13-36" name="__codelineno-13-36" href="#__codelineno-13-36"></a><span class="w">      </span>}<span class="w"> </span>else<span class="w"> </span>if<span class="w"> </span>(tag<span class="w"> </span>===<span class="w"> </span>&quot;Container&quot;)<span class="w"> </span>{
+<a id="__codelineno-13-37" name="__codelineno-13-37" href="#__codelineno-13-37"></a><span class="w">        </span>element<span class="w"> </span>=<span class="w"> </span>new<span class="w"> </span>window.PIXI.Container();
+<a id="__codelineno-13-38" name="__codelineno-13-38" href="#__codelineno-13-38"></a><span class="w">        </span>element.x<span class="w"> </span>=<span class="w"> </span>0;
+<a id="__codelineno-13-39" name="__codelineno-13-39" href="#__codelineno-13-39"></a><span class="w">        </span>element.y<span class="w"> </span>=<span class="w"> </span>0;
+<a id="__codelineno-13-40" name="__codelineno-13-40" href="#__codelineno-13-40"></a><span class="w">      </span>}
+<a id="__codelineno-13-41" name="__codelineno-13-41" href="#__codelineno-13-41"></a>
+<a id="__codelineno-13-42" name="__codelineno-13-42" href="#__codelineno-13-42"></a><span class="w">      </span>return<span class="w"> </span>element;
+<a id="__codelineno-13-43" name="__codelineno-13-43" href="#__codelineno-13-43"></a><span class="w">    </span>},
+<a id="__codelineno-13-44" name="__codelineno-13-44" href="#__codelineno-13-44"></a>
+<a id="__codelineno-13-45" name="__codelineno-13-45" href="#__codelineno-13-45"></a><span class="w">    </span>createText:<span class="w"> </span>(text)<span class="w"> </span>=&gt;<span class="w"> </span>doc.createTextNode(text),
+<a id="__codelineno-13-46" name="__codelineno-13-46" href="#__codelineno-13-46"></a>
+<a id="__codelineno-13-47" name="__codelineno-13-47" href="#__codelineno-13-47"></a><span class="w">    </span>createComment:<span class="w"> </span>(text)<span class="w"> </span>=&gt;<span class="w"> </span>{
+<a id="__codelineno-13-48" name="__codelineno-13-48" href="#__codelineno-13-48"></a><span class="w">    </span>//<span class="w">   </span>console.log(text);
+<a id="__codelineno-13-49" name="__codelineno-13-49" href="#__codelineno-13-49"></a><span class="w">    </span>},
+<a id="__codelineno-13-50" name="__codelineno-13-50" href="#__codelineno-13-50"></a>
+<a id="__codelineno-13-51" name="__codelineno-13-51" href="#__codelineno-13-51"></a><span class="w">    </span>setText:<span class="w"> </span>(node,<span class="w"> </span>text)<span class="w"> </span>=&gt;<span class="w"> </span>{
+<a id="__codelineno-13-52" name="__codelineno-13-52" href="#__codelineno-13-52"></a><span class="w">      </span>node.nodeValue<span class="w"> </span>=<span class="w"> </span>text;
+<a id="__codelineno-13-53" name="__codelineno-13-53" href="#__codelineno-13-53"></a><span class="w">    </span>},
+<a id="__codelineno-13-54" name="__codelineno-13-54" href="#__codelineno-13-54"></a>
+<a id="__codelineno-13-55" name="__codelineno-13-55" href="#__codelineno-13-55"></a><span class="w">    </span>setElementText:<span class="w"> </span>(el,<span class="w"> </span>text)<span class="w"> </span>=&gt;<span class="w"> </span>{
+<a id="__codelineno-13-56" name="__codelineno-13-56" href="#__codelineno-13-56"></a><span class="w">      </span>el.textContent<span class="w"> </span>=<span class="w"> </span>text;
+<a id="__codelineno-13-57" name="__codelineno-13-57" href="#__codelineno-13-57"></a><span class="w">    </span>},
+<a id="__codelineno-13-58" name="__codelineno-13-58" href="#__codelineno-13-58"></a>
+<a id="__codelineno-13-59" name="__codelineno-13-59" href="#__codelineno-13-59"></a><span class="w">    </span>parentNode:<span class="w"> </span>(node)<span class="w"> </span>=&gt;<span class="w"> </span>node.parentNode,
+<a id="__codelineno-13-60" name="__codelineno-13-60" href="#__codelineno-13-60"></a>
+<a id="__codelineno-13-61" name="__codelineno-13-61" href="#__codelineno-13-61"></a><span class="w">    </span>nextSibling:<span class="w"> </span>(node)<span class="w"> </span>=&gt;<span class="w"> </span>node.nextSibling,
+<a id="__codelineno-13-62" name="__codelineno-13-62" href="#__codelineno-13-62"></a>
+<a id="__codelineno-13-63" name="__codelineno-13-63" href="#__codelineno-13-63"></a><span class="w">    </span>querySelector:<span class="w"> </span>(selector)<span class="w"> </span>=&gt;<span class="w"> </span>doc.querySelector(selector),
+<a id="__codelineno-13-64" name="__codelineno-13-64" href="#__codelineno-13-64"></a>
+<a id="__codelineno-13-65" name="__codelineno-13-65" href="#__codelineno-13-65"></a><span class="w">    </span>setScopeId(el,<span class="w"> </span>id)<span class="w"> </span>{
+<a id="__codelineno-13-66" name="__codelineno-13-66" href="#__codelineno-13-66"></a><span class="w">      </span>el.setAttribute(id,<span class="w"> </span>&quot;&quot;);
+<a id="__codelineno-13-67" name="__codelineno-13-67" href="#__codelineno-13-67"></a><span class="w">    </span>},
+<a id="__codelineno-13-68" name="__codelineno-13-68" href="#__codelineno-13-68"></a>
+<a id="__codelineno-13-69" name="__codelineno-13-69" href="#__codelineno-13-69"></a><span class="w">    </span>cloneNode(el)<span class="w"> </span>{
+<a id="__codelineno-13-70" name="__codelineno-13-70" href="#__codelineno-13-70"></a><span class="w">      </span>return<span class="w"> </span>el.cloneNode(true);
+<a id="__codelineno-13-71" name="__codelineno-13-71" href="#__codelineno-13-71"></a><span class="w">    </span>},
+<a id="__codelineno-13-72" name="__codelineno-13-72" href="#__codelineno-13-72"></a><span class="w">  </span>};
+<a id="__codelineno-13-73" name="__codelineno-13-73" href="#__codelineno-13-73"></a>};
+</code></pre></div>
+<p>Pixi中的属性修改可以使用下面的代码，判断x、y、width和on属性不同的操作，就是用响应式包裹了Pixi的对象。关于Vue 3和Pixi实现的代码效果，你可以在<a href="https://github.dev/shengxinjing/vue3-vs-vue2/blob/0911af848941c2eeb2783c32c1907fd286134be1/vue3-runtime-canvas/index.js">GitHub</a>看到全部的源码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>export<span class="w"> </span>const<span class="w"> </span>patchProp<span class="w"> </span>=<span class="w"> </span>(
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span>el,
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">  </span>key,
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">  </span>prevValue,
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="w">  </span>nextValue,
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>见<span class="w">  </span>isSVG<span class="w"> </span>=<span class="w"> </span>false,
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>)<span class="w"> </span>=&gt;<span class="w"> </span>{
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="w">  </span>switch<span class="w"> </span>(key)<span class="w"> </span>{
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="w">    </span>case<span class="w"> </span>&quot;x&quot;:
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="w">    </span>case<span class="w"> </span>&quot;y&quot;:
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="w">    </span>case<span class="w"> </span>&quot;width&quot;:
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a><span class="w">    </span>case<span class="w"> </span>&quot;height&quot;:
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a><span class="w">        </span>el[key]<span class="w"> </span>=<span class="w"> </span>nextValue;
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a><span class="w">        </span>break;
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a><span class="w">    </span>case<span class="w"> </span>&quot;on&quot;:
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a><span class="w">      </span>Object.keys(nextValue).forEach((eventName)<span class="w"> </span>=&gt;<span class="w"> </span>{
+<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a><span class="w">        </span>const<span class="w"> </span>callback<span class="w"> </span>=<span class="w"> </span>nextValue[eventName];
+<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a><span class="w">        </span>el.on(eventName,<span class="w"> </span>callback);
+<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a><span class="w">      </span>});
+<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a><span class="w">      </span>break;
+<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a><span class="w">    </span>case<span class="w"> </span>&quot;texture&quot;:
+<a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a><span class="w">        </span>let<span class="w"> </span>texture<span class="w"> </span>=<span class="w"> </span>PIXI.Texture.from(nextValue);
+<a id="__codelineno-14-23" name="__codelineno-14-23" href="#__codelineno-14-23"></a><span class="w">        </span>el.texture<span class="w"> </span>=<span class="w"> </span>texture;
+<a id="__codelineno-14-24" name="__codelineno-14-24" href="#__codelineno-14-24"></a><span class="w">        </span>break;
+<a id="__codelineno-14-25" name="__codelineno-14-25" href="#__codelineno-14-25"></a><span class="w">  </span>}
+<a id="__codelineno-14-26" name="__codelineno-14-26" href="#__codelineno-14-26"></a>};
+</code></pre></div>
+<h2 id="_3">总结</h2>
+<p>今天聊的内容到此就结束了，我们来总结一下今天学到的知识点。</p>
+<p>首先我们了解了自定义渲染器的原理，就是<strong>把所有的增删改查操作暴露出去，使用的时候不需要知道内部的实现细节，我们只需要针对每个平台使用不同的API即可</strong>。</p>
+<p>你可以这样理解，就像武侠小说中高手可以通过给你传输内力的方式控制你进行比武。我们打出去的每招每式都是来源于背后的高手，只不过自己做了简单的适配。在Vue渲染器的设计中就把document所有的操作都抽离成了nodeOps，并且通过调用Vue的createRenderer函数创建平台的渲染器。</p>
+<p>这样一来，只要我们实现了Canvas平台的增删改查，就可以在Canvas的世界中使用Vue的响应式语法控制绘图和做游戏，Vue生态中对小程序和原生app的支持原理也是基于自定义渲染器实现的。</p>
+<p>其实，自定义渲染器也代表着适配器设计模式的一个实践。除了自定义渲染器 API 的学习，我们也要反思一下自己现在负责的项目中，有哪些地方为了不同的接口或者平台写了太多的判断代码，是否也可以使用类似自定义渲染器的逻辑和模式，把多个组件、平台、接口之间不同的操作方式封装成一个核心模块，去进行单独函数的扩展。</p>
+<h2 id="_4">思考题</h2>
+<p>最后留个思考题给你，Vue如何在node环境中渲染呢？欢迎在评论区分享你的答案，我们下一讲再见！</p>
 <div><strong>精选留言（14）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/e6/e5/b6980a7a.jpg" width="30px"><span>无双</span> 👍（3） 💬（1）<div>想深入了解一下three.js和vue的结合，有没有这方面的资料，或者最佳实践？</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3f/a8/8da58e53.jpg" width="30px"><span>海阔天空</span> 👍（1） 💬（1）<div>有很多都不是很懂。。。</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/c8/4a/3a322856.jpg" width="30px"><span>ll</span> 👍（13） 💬（2）<div>开眼界的一课。平时工作中涉及相关内容较少，所以这部分的内容还需课下多练几遍。
+<li><span>无双</span> 👍（3） 💬（1）<div>想深入了解一下three.js和vue的结合，有没有这方面的资料，或者最佳实践？</div>2021-12-22</li><br/><li><span>海阔天空</span> 👍（1） 💬（1）<div>有很多都不是很懂。。。</div>2021-12-22</li><br/><li><span>ll</span> 👍（13） 💬（2）<div>开眼界的一课。平时工作中涉及相关内容较少，所以这部分的内容还需课下多练几遍。
 结合之前所学，写几点感想，首先有以下几种“过程”;
 1. html --&gt; dom --&gt; 浏览器
 2. html --&gt; v-dom --&gt; dom --&gt; 浏览器
@@ -5230,7 +5715,7 @@ vue 的角色是提供了操作 v-dom 的“方式”，并且在 v-dom --&gt; d
 
 至于思考题，Vue 在 在 node 环境中渲染我能想到的应用场景，是前后端同构，SSR，SSG，产生这个问题的根本原因就是，node 它不懂 “dom&quot;, 不懂怎么办？配个翻译？要不你翻译成它能懂的再给它？
 
-已上，就是我的一些大致想法，谬误之处还望大家不吝赐教。</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3c/1c/47e5b7aa.jpg" width="30px"><span>Johnson</span> 👍（5） 💬（0）<div>这一讲的跨端原理讲解太实用啦！😁</div>2021-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/94/69/4937e1e4.jpg" width="30px"><span>Sean</span> 👍（1） 💬（0）<div>源码地址：https:&#47;&#47;github.com&#47;shengxinjing&#47;vue3-vs-vue2.git</div>2022-04-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/94/69/4937e1e4.jpg" width="30px"><span>Sean</span> 👍（1） 💬（0）<div>老师 这没有代码 可以运行一下吗</div>2022-04-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/d9/0b/d842b71a.jpg" width="30px"><span>乐多</span> 👍（1） 💬（0）<div>老师，这一讲的源码哪里有？</div>2022-04-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/9c/7a/39578e4e.jpg" width="30px"><span>老鼠砍猫</span> 👍（0） 💬（0）<div>仓库丢失</div>2024-08-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/d2/7f/44fbd96b.jpg" width="30px"><span>迷路森林</span> 👍（0） 💬（0）<div>我的renderer.js文件一直渲染不出来，请问是要安装什么依赖包吗</div>2022-09-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/92/a7/00fefed5.jpg" width="30px"><span>Chaos浩</span> 👍（0） 💬（0）<div>还是这种内容更吸引人</div>2022-09-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ac/62/37912d51.jpg" width="30px"><span>东方奇骥</span> 👍（0） 💬（0）<div>好文！最近工作中正要自定义stater，没想道就找到了。</div>2022-07-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/66/b2/cf691f56.jpg" width="30px"><span>江无花</span> 👍（0） 💬（0）<div>Vue 如何在 node 环境中渲染，这个其实没太明白。是指在node环境中，使用命令行输出？</div>2022-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/9f/ea/b587985a.jpg" width="30px"><span>李文华</span> 👍（0） 💬（0）<div>第一个例子累加器值并不会增加</div>2022-03-10</li><br/><li><img src="" width="30px"><span>Geek_15264a</span> 👍（0） 💬（0）<div>最终找到了，感觉还是需要把本节涉及的源码，在显眼的位置贴出来，找到本章中提的一个链接，打开有问题，结果直接去你的github仓库下找到对应的代码</div>2022-01-07</li><br/>
+已上，就是我的一些大致想法，谬误之处还望大家不吝赐教。</div>2021-12-22</li><br/><li><span>Johnson</span> 👍（5） 💬（0）<div>这一讲的跨端原理讲解太实用啦！😁</div>2021-12-22</li><br/><li><span>Sean</span> 👍（1） 💬（0）<div>源码地址：https:&#47;&#47;github.com&#47;shengxinjing&#47;vue3-vs-vue2.git</div>2022-04-15</li><br/><li><span>Sean</span> 👍（1） 💬（0）<div>老师 这没有代码 可以运行一下吗</div>2022-04-15</li><br/><li><span>乐多</span> 👍（1） 💬（0）<div>老师，这一讲的源码哪里有？</div>2022-04-13</li><br/><li><span>老鼠砍猫</span> 👍（0） 💬（0）<div>仓库丢失</div>2024-08-24</li><br/><li><span>迷路森林</span> 👍（0） 💬（0）<div>我的renderer.js文件一直渲染不出来，请问是要安装什么依赖包吗</div>2022-09-04</li><br/><li><span>Chaos浩</span> 👍（0） 💬（0）<div>还是这种内容更吸引人</div>2022-09-01</li><br/><li><span>东方奇骥</span> 👍（0） 💬（0）<div>好文！最近工作中正要自定义stater，没想道就找到了。</div>2022-07-24</li><br/><li><span>江无花</span> 👍（0） 💬（0）<div>Vue 如何在 node 环境中渲染，这个其实没太明白。是指在node环境中，使用命令行输出？</div>2022-06-25</li><br/><li><span>李文华</span> 👍（0） 💬（0）<div>第一个例子累加器值并不会增加</div>2022-03-10</li><br/><li><span>Geek_15264a</span> 👍（0） 💬（0）<div>最终找到了，感觉还是需要把本节涉及的源码，在显眼的位置贴出来，找到本章中提的一个链接，打开有问题，结果直接去你的github仓库下找到对应的代码</div>2022-01-07</li><br/>
 </ul>
 
 

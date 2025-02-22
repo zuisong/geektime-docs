@@ -12078,6 +12078,60 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      实体数据主动缓存
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#l1" class="md-nav__link">
+    <span class="md-ellipsis">
+      L1缓存及热点缓存延期
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      关系数据缓存
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      多数据引擎平台
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12799,6 +12853,60 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      实体数据主动缓存
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#l1" class="md-nav__link">
+    <span class="md-ellipsis">
+      L1缓存及热点缓存延期
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      关系数据缓存
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      多数据引擎平台
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12860,12 +12968,72 @@
 <a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>Redis.Set<span class="o">(</span><span class="s2">&quot;user_info_9527&quot;</span>,<span class="w"> </span><span class="s2">&quot;&quot;</span>,<span class="w"> </span><span class="m">30</span><span class="o">)</span>
 <a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="k">return</span><span class="w"> </span>nil,<span class="w"> </span>nil
 </code></pre></div>
+<p>上述代码演示了临时缓存提高读性能的常用方式：即查找用户信息时直接用ID从缓存中进行查找，如果在缓存中没有找到，那么会从数据库中回源查找数据，找到数据后，再将数据写入缓存方便下次查询。</p>
+<p>相对来说这个实现很简单，但是如果我们所有业务代码都需要去这么写，工作量还是很大的。</p>
+<p>即便我们会对这类实现做一些封装，但封装的功能在静态语言中并不是很通用，性能也不好。那有没有什么方式能统一解决这类问题，减少我们的重复工作量呢？</p>
+<h2 id="_2">实体数据主动缓存</h2>
+<p>之前我们在<a href="https://time.geekbang.org/column/article/596644">第二节课</a>讲过<strong>实体数据</strong>最容易做缓存，实体数据的缓存key可以设计为<strong>前缀+主键ID这种形式</strong> 。通过这个设计，我们只要拥有实体的ID，就可以直接在缓存中获取到实体的数据了。</p>
+<p>为了降低重复的工作量，我们对这个方式做个提炼，单独将这个流程做成中间件，具体实现如下图：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/09/02/095a50102cc42a37fa8543dd020b5d02.jpg?wh=1920x1626" title="通过canal 监控 实现 简单的主动推送数据缓存" /></p>
+<p>结合上图，我们分析一下这个中间件的工作原理。我们通过canal来监控MySQL数据库的binlog日志，当有数据变更时，消息监听端会收到变更通知。</p>
+<p>因为变更消息包含变更的表名和所有变更数据的所有主键ID，所以这时我们可以通过主键ID，回到数据库主库查询出最新的实体数据，再根据需要来加工这个数据，并将其推送数据到缓存当中。</p>
+<p>而从过往经验来看，很多刚变动的数据有很大概率会被马上读取。所以，这个实现会有较好的缓存命中率。同时，当我们的数据被缓存后会根据配置设置一个TTL，缓存在一段时间没有被读取的话，就会被LRU策略淘汰掉，这样还能节省缓存空间。</p>
+<p>如果你仔细思考一下，就会发现这个设计还是有缺陷：如果业务系统无法从缓存中拿到所需数据，还是要回数据库查找数据，并且再次将数据放到缓存当中。这和我们设计初衷不一致。为此，我们还需要配套一个缓存查询服务，请看下图：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c1/cb/c10415ec4034cc12yyab50b3c6e174cb.jpg?wh=2900x2456" title="缓存查询及数据缓存服务" /></p>
+<p>如上图所示，当我们查找缓存时如果没找到数据，中间件就会通过Key识别出待查数据属于数据库的哪个表和处理脚本，再按配置执行脚本查询数据库做数据加工，然后中间件将获取的数据回填到缓存当中，最后再返回结果。</p>
+<p>为了提高查询效率，建议查询服务使用类似Redis的纯文本长链接协议，同时还需要支持批量获取功能，比如Redis的mget实现。如果我们的数据支撑架构很复杂，并且一次查询的数据量很大，还可以做成批量并发处理来提高系统吞吐性能。</p>
+<p>落地缓存服务还有一些实操的技巧，我们一起看看。</p>
+<p>如果查询缓存时数据不存在，会导致请求缓存穿透的问题，请求量很大核心数据库就会崩溃。为了预防这类问题我们需要在缓存中加一个特殊标志，这样查询服务查不到数据时，就会直接返回数据不存在。</p>
+<p>我们还要考虑到万一真的出现缓存穿透问题时，要如何限制数据库的并发数，建议使用SingleFlight合并并行请求，无需使用全局锁，只要在每个服务范围内实现即可。</p>
+<p>有时要查询的数据分布在<strong>数据库的多个表内，我们需要把多个表的数据组合起来</strong>或<strong>需要刷新多个缓存</strong>，所以这要求我们的缓存服务能提供定制脚本，这样才能实现业务数据的刷新。</p>
+<p>另外，由于是数据库和缓存这两个系统之间的同步，为了更好的排查缓存同步问题，建议在数据库中和缓存中都记录数据最后更新的时间，方便之后对比。</p>
+<p>到这里，我们的服务就基本完整了。当业务需要按id查找数据时，直接调用数据中间件即可获取到最新的数据，而无需重复实现，开发过程变得简单很多。</p>
+<h2 id="l1">L1缓存及热点缓存延期</h2>
+<p>上面我们设计的缓存中间件已经能够应付大部分<strong>临时缓存</strong>所需的场景。但如果碰到大并发查询的场景，缓存出现缺失或过期的情况，就会给数据库造成很大压力，为此还需要继续改进这个服务。</p>
+<p>改进方式就是统计查询次数，判断被查询的key是否是热点缓存。举个例子，比如通过时间块异步统计5分钟内缓存key被访问的次数，单位时间内超过设定次数（根据业务实现设定）就是热点缓存。</p>
+<p>具体的热点缓存统计和续约流程如下图所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ea/e8/eabcdf7b249a4714993dafc7231b68e8.jpg?wh=2821x1818" title="热点缓存及续约" /></p>
+<p>对照流程图可以看到，热点统计服务获取了被认定是热点的key之后，会按统计次数大小做区分。如果是<strong>很高频率</strong>访问的key会被定期从脚本推送到L1缓存中（L1缓存可以部署在每台业务服务器上，或每几台业务服务器共用一个L1缓存）。</p>
+<p>当业务查询数据时，业务的查询SDK驱动会通过热点key配置，检测当前key是否为热点key，如果是会去L1缓存获取，如果不是热点缓存会去集群缓存获取数据。</p>
+<p>而<strong>相对频率较高</strong>的key热点缓存服务，只会定期通知查询服务刷新对应的key，或做TTL刷新续期的操作。</p>
+<p>当我们被查询的数据退热后，我们的数据时间块的访问统计数值会下降，这时L1热点缓存推送或TTL续期会停止继续操作，不久后数据会TTL过期。</p>
+<p>增加这个功能后，这个缓存中间件就可以改名叫做数据缓存平台了，不过它和真正的平台还有一些差距，因为这个平台只能提供实体数据的缓存，无法灵活加工推送的数据，一些业务结构代码还要人工实现。</p>
+<h2 id="_3">关系数据缓存</h2>
+<p>可以看到，目前我们的缓存还仅限于实体数据的缓存，并不支持关系数据库的缓存。</p>
+<p>为此，我们首先需要<strong>改进消息监听服务</strong>，将它做成Kafka Group Consumer服务，同时实现可动态扩容，这能提升系统的并行数据处理能力，支持更大量的并发修改。</p>
+<p>其次，对于量级更高的数据缓存系统，还可以引入多种数据引擎共同提供不同的数据支撑服务，比如：</p>
+<ul>
+<li>lua脚本引擎（具体可以回顾<a href="https://time.geekbang.org/column/article/608526">第十七节课</a>）是数据推送的“发动机”，能帮我们把数据动态同步到多个数据源；</li>
+<li>Elasticsearch负责提供全文检索功能；</li>
+<li>Pika负责提供大容量KV查询功能；</li>
+<li>ClickHouse负责提供实时查询数据的汇总统计功能；</li>
+<li>MySQL引擎负责支撑新维度的数据查询。</li>
+</ul>
+<p>你有没有发现这几个引擎我们在之前的课里都有涉及？唯一你可能感到有点陌生的就是Pika，不过它也没那么复杂，可以理解成RocksDB的加强版。</p>
+<p>这里我没有把每个引擎一一展开，但概括了它们各自擅长的方面。如果你有兴趣深入研究的话，可以自行探索，看看不同引擎适合用在什么业务场景中。</p>
+<h2 id="_4">多数据引擎平台</h2>
+<p>一个理想状态的多数据引擎平台是十分庞大的，需要投入很多人力建设，它能够给我们提供强大的数据查询及分析能力，并且接入简单方便，能够大大促进我们的业务开发效率。</p>
+<p>为了让你有个整体认知，这里我特意画了一张多数据引擎平台的架构图，帮助你理解数据引擎和缓存以及数据更新之间的关系，如下图所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/43/42/438612baefa2cbaf2be76b1715b75f42.jpg?wh=2067x2030" title="多数据引擎平台架构图" /></p>
+<p>可以看到，这时基础数据服务已经做成了一个平台。MySQL数据更新时，会通过我们订阅的变更消息，根据数据加工过滤进程，将数据推送到不同的引擎当中，对外提供数据统计、大数据KV、内存缓存、全文检索以及MySQL异构数据查询的服务。</p>
+<p>具体业务需要用到核心业务基础数据时，需要在该平台申请数据访问授权。如果还有特殊需要，可以向平台提交数据加工lua脚本。高流量的业务甚至可以申请独立部署一套数据支撑平台。</p>
+<h2 id="_5">总结</h2>
+<p>这节课我们一起学习了统一缓存数据平台的实现方案，有了这个中间件，研发效率会大大提高。在使用数据支撑组件之前，是<strong>业务自己实现的缓存以及多数据源的同步</strong>，需要我们业务重复写大量关于缓存刷新的逻辑，如下图：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/52/b1/521f3920d2430b1b2957590c97cbf5b1.jpg?wh=2337x1818" title="自实现多数据引擎同步及多级缓存" /></p>
+<p>而使用数据缓存平台后，我们省去了很多人工实现的工作量，研发同学只需要在平台里做好配置，就能坐享中间件提供的强大多级缓存功能、多种数据引擎提供的数据查询服务，如下图所示：<br />
+<img alt="" src="https://static001.geekbang.org/resource/image/d5/27/d59888a65ca981ae9c748b84cf325e27.jpg?wh=2067x1818" title="通过数据缓存平台对外服务" /></p>
+<p>我们回顾下中间件的工作原理。首先我们通过Canal订阅MySQL数据库的binlog，获取数据的变更消息。然后，缓存平台根据订阅变更信息实现触发式的缓存更新。另外，结合客户端SDK及缓存查询服务实现热点数据的识别，即可实现多级缓存服务。</p>
+<p>可以说,数据是我们系统的心脏，如数据引擎能力足够强大，能做的事情会变得更多。数据支撑平台最大的特点在于，将我们的数据和各种数据引擎结合起来，从而实现更强大的数据服务能力。</p>
+<p>大公司的核心系统通常会用多引擎组合的方式，共同提供数据支撑数据服务，甚至有些服务的服务端只需做配置就可以得到这些功能，这样业务实现更轻量，能给业务创造更广阔的增值空间。</p>
+<h2 id="_6">思考题</h2>
+<p>L1缓存使用BloomFilter来减少L1缓存查询，那么BloomFilter的hash列表如何更新到客户端呢？</p>
+<p>欢迎你在留言区与我交流讨论，我们下节课见！</p>
 <div><strong>精选留言（7）</strong></div>
 <ul>
-<li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/YbUxEV3741vKZAiasOXggWucQbmicJwIjg3HDE58oyibYXbSop9QQFqZ7X6OhynDoo6rDHwzK8njSeJjN9hx3pJXg/132" width="30px"><span>黄堃健</span> 👍（0） 💬（1）<div>老师，L1 缓存使用 BloomFilter 来减少 L1 缓存查询，那么 BloomFilter 的 hash 列表如何更新到客户端呢？
+<li><span>黄堃健</span> 👍（0） 💬（1）<div>老师，L1 缓存使用 BloomFilter 来减少 L1 缓存查询，那么 BloomFilter 的 hash 列表如何更新到客户端呢？
 
-老师 我是这样推测的， 第一个客户端不知道它是一个热key，服务端返回数据的时候，出了返回业务数据之外，带上标志，告诉它是热key。 这样，客户端知道了它以后可以通过直接到L1缓存查询，自己主动更新自身的BloomFilter 的 hash列表。</div>2024-03-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/47/00/3202bdf0.jpg" width="30px"><span>piboye</span> 👍（0） 💬（3）<div>多数据引擎平台图中，第一层的临时查询缓存和第二层中的redis集群的差别是什么？</div>2023-02-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/47/00/3202bdf0.jpg" width="30px"><span>piboye</span> 👍（0） 💬（1）<div>lua脚本生态太小了，我有一个想法 用quicjs做脚步引擎，对外接口使用http，很多聚合服务可以用graphql引擎替代了。老师觉得怎么样？</div>2023-02-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/47/00/3202bdf0.jpg" width="30px"><span>piboye</span> 👍（0） 💬（1）<div>这节课的图太有价值了👍</div>2023-02-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ce/6d/530df0dd.jpg" width="30px"><span>徐石头</span> 👍（0） 💬（1）<div>这正是我需要的，每个业务对象都要写个差不多的过程代码确实很繁琐：先查缓存，查不到去查DB，再同步数据到缓存，然后返回客户端。无法对缓存做集中管理，很粗糙分散在各个服务业务代码中，我的设想是统一mysql和redis作为一个数据源，业务层不用关注基础设施是mysql还是Redis，只需要从数据源读取。
-如果要做一个这样的数据缓存平台，应该怎么开始，从哪里入手，有哪些资料参考？</div>2022-12-16</li><br/><li><img src="" width="30px"><span>Geek_xbye50</span> 👍（0） 💬（1）<div>跟Layne想法一致！主要是根据此次请求的返回结果，也就是数据平台需要特别告诉客户端这次请求的是热点key。再者结合热点key的ttl 周期拉取更新列表</div>2022-12-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/94/fe/5fbf1bdc.jpg" width="30px"><span>Layne</span> 👍（0） 💬（1）<div>被动方式：根据缓存返回状态，客户端更新列表。
+老师 我是这样推测的， 第一个客户端不知道它是一个热key，服务端返回数据的时候，出了返回业务数据之外，带上标志，告诉它是热key。 这样，客户端知道了它以后可以通过直接到L1缓存查询，自己主动更新自身的BloomFilter 的 hash列表。</div>2024-03-13</li><br/><li><span>piboye</span> 👍（0） 💬（3）<div>多数据引擎平台图中，第一层的临时查询缓存和第二层中的redis集群的差别是什么？</div>2023-02-18</li><br/><li><span>piboye</span> 👍（0） 💬（1）<div>lua脚本生态太小了，我有一个想法 用quicjs做脚步引擎，对外接口使用http，很多聚合服务可以用graphql引擎替代了。老师觉得怎么样？</div>2023-02-17</li><br/><li><span>piboye</span> 👍（0） 💬（1）<div>这节课的图太有价值了👍</div>2023-02-17</li><br/><li><span>徐石头</span> 👍（0） 💬（1）<div>这正是我需要的，每个业务对象都要写个差不多的过程代码确实很繁琐：先查缓存，查不到去查DB，再同步数据到缓存，然后返回客户端。无法对缓存做集中管理，很粗糙分散在各个服务业务代码中，我的设想是统一mysql和redis作为一个数据源，业务层不用关注基础设施是mysql还是Redis，只需要从数据源读取。
+如果要做一个这样的数据缓存平台，应该怎么开始，从哪里入手，有哪些资料参考？</div>2022-12-16</li><br/><li><span>Geek_xbye50</span> 👍（0） 💬（1）<div>跟Layne想法一致！主要是根据此次请求的返回结果，也就是数据平台需要特别告诉客户端这次请求的是热点key。再者结合热点key的ttl 周期拉取更新列表</div>2022-12-08</li><br/><li><span>Layne</span> 👍（0） 💬（1）<div>被动方式：根据缓存返回状态，客户端更新列表。
 主动方式：定期去拉一下列表</div>2022-12-07</li><br/>
 </ul>
 

@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#oom" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -2371,6 +2376,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    17   别以为“自动挡”就不可能出现OOM
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -2380,6 +2396,68 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#oom" class="md-nav__link">
+    <span class="md-ellipsis">
+      太多份相同的对象导致OOM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#weakhashmapoom" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用WeakHashMap不等于不会OOM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tomcatoom" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tomcat参数配置不合理导致OOM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考与讨论
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -13099,6 +13177,59 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#oom" class="md-nav__link">
+    <span class="md-ellipsis">
+      太多份相同的对象导致OOM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#weakhashmapoom" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用WeakHashMap不等于不会OOM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tomcatoom" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tomcat参数配置不合理导致OOM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考与讨论
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -13127,17 +13258,327 @@
 <p>但，内存空间始终是有限的，Java的几大内存区域始终都有OOM的可能。相应地，Java程序的常见OOM类型，可以分为堆内存的OOM、栈OOM、元空间OOM、直接内存OOM等。几乎每一种OOM都可以使用几行代码模拟，市面上也有很多资料在堆、元空间、直接内存中分配超大对象或是无限分配对象，尝试创建无限个线程或是进行方法无限递归调用来模拟。</p>
 <p>但值得注意的是，我们的业务代码并不会这么干。所以今天，我会从内存分配意识的角度通过一些案例，展示业务代码中可能导致OOM的一些坑。这些坑，或是因为我们意识不到对象的分配，或是因为不合理的资源使用，或是没有控制缓存的数据量等。</p>
 <p>在<a href="https://time.geekbang.org/column/article/210337">第3讲</a>介绍线程时，我们已经看到了两种OOM的情况，一是因为使用无界队列导致的堆OOM，二是因为使用没有最大线程数量限制的线程池导致无限创建线程的OOM。接下来，我们再一起看看，在写业务代码的过程中，还有哪些意识上的疏忽可能会导致OOM。</p>
+<h2 id="oom">太多份相同的对象导致OOM</h2>
+<p>我要分享的第一个案例是这样的。有一个项目在内存中缓存了全量用户数据，在搜索用户时可以直接从缓存中返回用户信息。现在为了改善用户体验，需要实现输入部分用户名自动在下拉框提示补全用户名的功能（也就是所谓的自动完成功能）。</p>
+<p>在<a href="https://time.geekbang.org/column/article/216778">第10讲</a>介绍集合时，我提到对于这种快速检索的需求，最好使用Map来实现，会比直接从List搜索快得多。</p>
+<p>为实现这个功能，我们需要一个HashMap来存放这些用户数据，Key是用户姓名索引，Value是索引下对应的用户列表。举一个例子，如果有两个用户aa和ab，那么Key就有三个，分别是a、aa和ab。用户输入字母a时，就能从Value这个List中拿到所有字母a开头的用户，即aa和ab。</p>
+<p>在代码中，在数据库中存入1万个测试用户，用户名由a~j这6个字母随机构成，然后把每一个用户名的前1个字母、前2个字母以此类推直到完整用户名作为Key存入缓存中，缓存的Value是一个UserDTO的List，存放的是所有相同的用户名索引，以及对应的用户信息：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>//自动完成的索引，Key是用户输入的部分用户名，Value是对应的用户数据
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>private ConcurrentHashMap&lt;String, List&lt;UserDTO&gt;&gt; autoCompleteIndex = new ConcurrentHashMap&lt;&gt;();
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>@Autowired
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>private UserRepository userRepository;
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>@PostConstruct
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>public void wrong() {
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    //先保存10000个用户名随机的用户到数据库中
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    userRepository.saveAll(LongStream.rangeClosed(1, 10000).mapToObj(i -&gt; new UserEntity(i, randomName())).collect(Collectors.toList()));
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    //从数据库加载所有用户
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    userRepository.findAll().forEach(userEntity -&gt; {
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        int len = userEntity.getName().length();
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        //对于每一个用户，对其用户名的前N位进行索引，N可能是1~6六种长度类型
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        for (int i = 0; i &lt; len; i++) {
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>            String key = userEntity.getName().substring(0, i + 1);
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>            autoCompleteIndex.computeIfAbsent(key, s -&gt; new ArrayList&lt;&gt;())
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>                    .add(new UserDTO(userEntity.getName()));
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>        }
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    });
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    log.info(&quot;autoCompleteIndex size:{} count:{}&quot;, autoCompleteIndex.size(),
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>            autoCompleteIndex.entrySet().stream().map(item -&gt; item.getValue().size()).reduce(0, Integer::sum));
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>}
+</code></pre></div>
+<p>对于每一个用户对象UserDTO，除了有用户名，我们还加入了10K左右的数据模拟其用户信息：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>@Data
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>public class UserDTO {
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    private String name;
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    @EqualsAndHashCode.Exclude
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    private String payload;
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    public UserDTO(String name) {
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        this.name = name;
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        this.payload = IntStream.rangeClosed(1, 10_000)
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>                .mapToObj(__ -&gt; &quot;a&quot;)
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>                .collect(Collectors.joining(&quot;&quot;));
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    }
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>}
+</code></pre></div>
+<p>运行程序后，日志输出如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>[11:11:22.982] [main] [INFO ] [.t.c.o.d.UsernameAutoCompleteService:37  ] - autoCompleteIndex size:26838 count:60000
+</code></pre></div>
+<p>可以看到，一共有26838个索引（也就是所有用户名的1位、2位一直到6位有26838个组合），HashMap的Value，也就是List一共有1万个用户*6=6万个UserDTO对象。</p>
+<p>使用内存分析工具MAT打开堆dump发现，6万个UserDTO占用了约1.2GB的内存：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/d1/d2/d17fdb7d5123566312f7d3888ef82bd2.png?wh=1058%2A296" /></p>
+<p>看到这里发现，<strong>虽然真正的用户只有1万个，但因为使用部分用户名作为索引的Key，导致缓存的Key有26838个，缓存的用户信息多达6万个</strong>。如果我们的用户名不是6位而是10位、20位，那么缓存的用户信息可能就是10万、20万个，必然会产生堆OOM。</p>
+<p>尝试调大用户名的最大长度，重启程序可以看到类似如下的错误：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>[17:30:29.858] [main] [ERROR] [ringframework.boot.SpringApplication:826 ] - Application run failed
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>org.springframework.beans.factory.BeanCreationException: Error creating bean with name &#39;usernameAutoCompleteService&#39;: Invocation of init method failed; nested exception is java.lang.OutOfMemoryError: Java heap space
+</code></pre></div>
+<p>我们可能会想当然地认为，数据库中有1万个用户，内存中也应该只有1万个UserDTO对象，但实现的时候每次都会new出来UserDTO加入缓存，当然在内存中都是新对象。在实际的项目中，用户信息的缓存可能是随着用户输入增量缓存的，而不是像这个案例一样在程序初始化的时候全量缓存，所以问题暴露得不会这么早。</p>
+<p>知道原因后，解决起来就比较简单了。把所有UserDTO先加入HashSet中，因为UserDTO以name来标识唯一性，所以重复用户名会被过滤掉，最终加入HashSet的UserDTO就不足1万个。</p>
+<p>有了HashSet来缓存所有可能的UserDTO信息，我们再构建自动完成索引autoCompleteIndex这个HashMap时，就可以直接从HashSet获取所有用户信息来构建了。这样一来，同一个用户名前缀的不同组合（比如用户名为abc的用户，a、ab和abc三个Key）关联到UserDTO是同一份：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>@PostConstruct
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>public void right() {
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    ...
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    HashSet&lt;UserDTO&gt; cache = userRepository.findAll().stream()
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>            .map(item -&gt; new UserDTO(item.getName()))
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>            .collect(Collectors.toCollection(HashSet::new));
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    cache.stream().forEach(userDTO -&gt; {
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        int len = userDTO.getName().length();
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>        for (int i = 0; i &lt; len; i++) {
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>            String key = userDTO.getName().substring(0, i + 1);
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>            autoCompleteIndex.computeIfAbsent(key, s -&gt; new ArrayList&lt;&gt;())
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>                    .add(userDTO);
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>        }
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    });
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    ...
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>}
+</code></pre></div>
+<p>再次分析堆内存，可以看到UserDTO只有9945份，总共占用的内存不到200M。这才是我们真正想要的结果。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/34/52/34a0fc90ac8be7a20cb295c14f06d752.png?wh=1096%2A280" /></p>
+<p>修复后的程序，不仅相同的UserDTO只有一份，总副本数变为了原来的六分之一；而且因为HashSet的去重特性，双重节约了内存。</p>
+<p>值得注意的是，我们虽然清楚数据总量，但却忽略了每一份数据在内存中可能有多份。我之前还遇到一个案例，一个后台程序需要从数据库加载大量信息用于数据导出，这些数据在数据库中占用100M内存，但是1GB的JVM堆却无法完成导出操作。</p>
+<p>我来和你分析下原因吧。100M的数据加载到程序内存中，变为Java的数据结构就已经占用了200M堆内存；这些数据经过JDBC、MyBatis等框架其实是加载了2份，然后领域模型、DTO再进行转换可能又加载了2次；最终，占用的内存达到了200M*4=800M。</p>
+<p>所以，<strong>在进行容量评估时，我们不能认为一份数据在程序内存中也是一份</strong>。</p>
+<h2 id="weakhashmapoom">使用WeakHashMap不等于不会OOM</h2>
+<p>对于上一节实现快速检索的案例，为了防止缓存中堆积大量数据导致OOM，一些同学可能会想到使用WeakHashMap作为缓存容器。</p>
+<p>WeakHashMap的特点是Key在哈希表内部是弱引用的，当没有强引用指向这个Key之后，Entry会被GC，即使我们无限往WeakHashMap加入数据，只要Key不再使用，也就不会OOM。</p>
+<p>说到了强引用和弱引用，我先和你回顾下Java中引用类型和垃圾回收的关系：</p>
+<ul>
+<li>垃圾回收器不会回收有强引用的对象；</li>
+<li>在内存充足时，垃圾回收器不会回收具有软引用的对象；</li>
+<li>垃圾回收器只要扫描到了具有弱引用的对象就会回收，WeakHashMap就是利用了这个特点。</li>
+</ul>
+<p>不过，我要和你分享的第二个案例，恰巧就是不久前我遇到的一个使用WeakHashMap却最终OOM的案例。我们暂且不论使用WeakHashMap作为缓存是否合适，先分析一下这个OOM问题。</p>
+<p>声明一个Key是User类型、Value是UserProfile类型的WeakHashMap，作为用户数据缓存，往其中添加200万个Entry，然后使用ScheduledThreadPoolExecutor发起一个定时任务，每隔1秒输出缓存中的Entry个数：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>private Map&lt;User, UserProfile&gt; cache = new WeakHashMap&lt;&gt;();
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>@GetMapping(&quot;wrong&quot;)
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>public void wrong() {
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    String userName = &quot;zhuye&quot;;
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    //间隔1秒定时输出缓存中的条目数
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>            () -&gt; log.info(&quot;cache size:{}&quot;, cache.size()), 1, 1, TimeUnit.SECONDS);
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    LongStream.rangeClosed(1, 2000000).forEach(i -&gt; {
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        User user = new User(userName + i);
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        cache.put(user, new UserProfile(user, &quot;location&quot; + i));
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    });
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>}
+</code></pre></div>
+<p>执行程序后日志如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>[10:30:28.509] [pool-3-thread-1] [INFO ] [t.c.o.demo3.WeakHashMapOOMController:29  ] - cache size:2000000
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>[10:30:29.507] [pool-3-thread-1] [INFO ] [t.c.o.demo3.WeakHashMapOOMController:29  ] - cache size:2000000
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>[10:30:30.509] [pool-3-thread-1] [INFO ] [t.c.o.demo3.WeakHashMapOOMController:29  ] - cache size:2000000
+</code></pre></div>
+<p>可以看到，输出的cache size始终是200万，即使我们通过jvisualvm进行手动GC还是这样。这就说明，这些Entry无法通过GC回收。如果你把200万改为1000万，就可以在日志中看到如下的OOM错误：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Exception in thread &quot;http-nio-45678-exec-1&quot; java.lang.OutOfMemoryError: GC overhead limit exceeded
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>Exception in thread &quot;Catalina-utility-2&quot; java.lang.OutOfMemoryError: GC overhead limit exceeded
+</code></pre></div>
+<p>我们来分析一下这个问题。进行堆转储后可以看到，堆内存中有200万个UserProfie和User：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/b9/e9/b9bb8ef163a07a8da92e6e66a6dd55e9.png?wh=2386%2A572" /></p>
+<p>如下是User和UserProfile类的定义，需要注意的是，WeakHashMap的Key是User对象，而其Value是UserProfile对象，持有了User的引用：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>@Data
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>@AllArgsConstructor
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>@NoArgsConstructor
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>class User {
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    private String name;
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>}
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>@Data
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>@AllArgsConstructor
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>@NoArgsConstructor
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>public class UserProfile {
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    private User user;
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    private String location;
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>}
+</code></pre></div>
+<p>没错，这就是问题的所在。分析一下WeakHashMap的源码，你会发现WeakHashMap和HashMap的最大区别，是Entry对象的实现。接下来，我们暂且忽略HashMap的实现，来看下Entry对象：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>private static class Entry&lt;K,V&gt; extends WeakReference&lt;Object&gt; ...
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>/**
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a> * Creates new entry.
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a> */
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>Entry(Object key, V value,
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>      ReferenceQueue&lt;Object&gt; queue,
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>      int hash, Entry&lt;K,V&gt; next) {
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    super(key, queue);
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    this.value = value;
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    this.hash  = hash;
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    this.next  = next;
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>}
+</code></pre></div>
+<p>Entry对象继承了WeakReference，Entry的构造函数调用了super (key,queue)，这是父类的构造函数。其中，key是我们执行put方法时的key；queue是一个ReferenceQueue。如果你了解Java的引用就会知道，被GC的对象会被丢进这个queue里面。</p>
+<p>再来看看对象被丢进queue后是如何被销毁的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>public V get(Object key) {
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    Object k = maskNull(key);
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    int h = hash(k);
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    Entry&lt;K,V&gt;[] tab = getTable();
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    int index = indexFor(h, tab.length);
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    Entry&lt;K,V&gt; e = tab[index];
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    while (e != null) {
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>        if (e.hash == h &amp;&amp; eq(k, e.get()))
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>            return e.value;
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>        e = e.next;
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    }
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    return null;
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>}
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>private Entry&lt;K,V&gt;[] getTable() {
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>    expungeStaleEntries();
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    return table;
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>}
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>/**
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a> * Expunges stale entries from the table.
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a> */
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>private void expungeStaleEntries() {
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>    for (Object x; (x = queue.poll()) != null; ) {
+<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>        synchronized (queue) {
+<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a>            @SuppressWarnings(&quot;unchecked&quot;)
+<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a>                Entry&lt;K,V&gt; e = (Entry&lt;K,V&gt;) x;
+<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a>            int i = indexFor(e.hash, table.length);
+<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a>
+<a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a>            Entry&lt;K,V&gt; prev = table[i];
+<a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a>            Entry&lt;K,V&gt; p = prev;
+<a id="__codelineno-10-32" name="__codelineno-10-32" href="#__codelineno-10-32"></a>            while (p != null) {
+<a id="__codelineno-10-33" name="__codelineno-10-33" href="#__codelineno-10-33"></a>                Entry&lt;K,V&gt; next = p.next;
+<a id="__codelineno-10-34" name="__codelineno-10-34" href="#__codelineno-10-34"></a>                if (p == e) {
+<a id="__codelineno-10-35" name="__codelineno-10-35" href="#__codelineno-10-35"></a>                    if (prev == e)
+<a id="__codelineno-10-36" name="__codelineno-10-36" href="#__codelineno-10-36"></a>                        table[i] = next;
+<a id="__codelineno-10-37" name="__codelineno-10-37" href="#__codelineno-10-37"></a>                    else
+<a id="__codelineno-10-38" name="__codelineno-10-38" href="#__codelineno-10-38"></a>                        prev.next = next;
+<a id="__codelineno-10-39" name="__codelineno-10-39" href="#__codelineno-10-39"></a>                    // Must not null out e.next;
+<a id="__codelineno-10-40" name="__codelineno-10-40" href="#__codelineno-10-40"></a>                    // stale entries may be in use by a HashIterator
+<a id="__codelineno-10-41" name="__codelineno-10-41" href="#__codelineno-10-41"></a>                    e.value = null; // Help GC
+<a id="__codelineno-10-42" name="__codelineno-10-42" href="#__codelineno-10-42"></a>                    size--;
+<a id="__codelineno-10-43" name="__codelineno-10-43" href="#__codelineno-10-43"></a>                    break;
+<a id="__codelineno-10-44" name="__codelineno-10-44" href="#__codelineno-10-44"></a>                }
+<a id="__codelineno-10-45" name="__codelineno-10-45" href="#__codelineno-10-45"></a>                prev = p;
+<a id="__codelineno-10-46" name="__codelineno-10-46" href="#__codelineno-10-46"></a>    ``            p = next;
+<a id="__codelineno-10-47" name="__codelineno-10-47" href="#__codelineno-10-47"></a>            }
+<a id="__codelineno-10-48" name="__codelineno-10-48" href="#__codelineno-10-48"></a>        }
+<a id="__codelineno-10-49" name="__codelineno-10-49" href="#__codelineno-10-49"></a>    }
+<a id="__codelineno-10-50" name="__codelineno-10-50" href="#__codelineno-10-50"></a>}
+</code></pre></div>
+<p>从源码中可以看到，每次调用get、put、size等方法时，都会从queue里拿出所有已经被GC掉的key并删除对应的Entry对象。我们再来回顾下这个逻辑：</p>
+<ul>
+<li>put一个对象进Map时，它的key会被封装成弱引用对象；</li>
+<li>发生GC时，弱引用的key被发现并放入queue；</li>
+<li>调用get等方法时，扫描queue删除key，以及包含key和value的Entry对象。</li>
+</ul>
+<p><strong>WeakHashMap的Key虽然是弱引用，但是其Value却持有Key中对象的强引用，Value被Entry引用，Entry被WeakHashMap引用，最终导致Key无法回收</strong>。解决方案就是让Value变为弱引用，使用WeakReference来包装UserProfile即可：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>private Map&lt;User, WeakReference&lt;UserProfile&gt;&gt; cache2 = new WeakHashMap&lt;&gt;();
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>@GetMapping(&quot;right&quot;)
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>public void right() {
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    String userName = &quot;zhuye&quot;;
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    //间隔1秒定时输出缓存中的条目数
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>            () -&gt; log.info(&quot;cache size:{}&quot;, cache2.size()), 1, 1, TimeUnit.SECONDS);
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    LongStream.rangeClosed(1, 2000000).forEach(i -&gt; {
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>        User user = new User(userName + i);
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>        //这次，我们使用弱引用来包装UserProfile
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>        cache2.put(user, new WeakReference(new UserProfile(user, &quot;location&quot; + i)));
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>    });
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>}
+</code></pre></div>
+<p>重新运行程序，从日志中观察到cache size不再是固定的200万，而是在不断减少，甚至在手动GC后所有的Entry都被回收了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>[10:40:05.792] [pool-3-thread-1] [INFO ] [t.c.o.demo3.WeakHashMapOOMController:40  ] - cache size:1367402
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>[10:40:05.795] [pool-3-thread-1] [INFO ] [t.c.o.demo3.WeakHashMapOOMController:40  ] - cache size:1367846
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>[10:40:06.773] [pool-3-thread-1] [INFO ] [t.c.o.demo3.WeakHashMapOOMController:40  ] - cache size:549551
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>...
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>[10:40:20.742] [pool-3-thread-1] [INFO ] [t.c.o.demo3.WeakHashMapOOMController:40  ] - cache size:549551
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>[10:40:22.862] [pool-3-thread-1] [INFO ] [t.c.o.demo3.WeakHashMapOOMController:40  ] - cache size:547937
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>[10:40:22.865] [pool-3-thread-1] [INFO ] [t.c.o.demo3.WeakHashMapOOMController:40  ] - cache size:542134
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>[10:40:23.779] [pool-3-thread-1] [INFO ] 
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>//手动进行GC
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>[t.c.o.demo3.WeakHashMapOOMController:40  ] - cache size:0
+</code></pre></div>
+<p>当然，还有一种办法就是，让Value也就是UserProfile不再引用Key，而是重新new出一个新的User对象赋值给UserProfile：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>@GetMapping(&quot;right2&quot;)
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>public void right2() {
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    String userName = &quot;zhuye&quot;;
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    ...
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>        User user = new User(userName + i);
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>        cache.put(user, new UserProfile(new User(user.getName()), &quot;location&quot; + i));
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    });
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>}
+</code></pre></div>
+<p>此外，Spring提供的<a href="https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/util/ConcurrentReferenceHashMap.html">ConcurrentReferenceHashMap</a>类可以使用弱引用、软引用做缓存，Key和Value同时被软引用或弱引用包装，也能解决相互引用导致的数据不能释放问题。与WeakHashMap相比，ConcurrentReferenceHashMap不但性能更好，还可以确保线程安全。你可以自己做实验测试下。</p>
+<h2 id="tomcatoom">Tomcat参数配置不合理导致OOM</h2>
+<p>我们再来看看第三个案例。有一次运维同学反馈，有个应用在业务量大的情况下会出现假死，日志中也有大量OOM异常：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>[13:18:17.597] [http-nio-45678-exec-70] [ERROR] [ache.coyote.http11.Http11NioProtocol:175 ] - Failed to complete processing of a request
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>java.lang.OutOfMemoryError: Java heap space
+</code></pre></div>
+<p>于是，我让运维同学进行生产堆Dump。通过MAT打开dump文件后，我们一眼就看到OOM的原因是，有接近1.7GB的byte数组分配，而JVM进程的最大堆内存我们只配置了2GB：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/0b/ee/0b310e7da83f272afdf51b345d8057ee.png?wh=1738%2A194" /></p>
+<p>通过查看引用可以发现，大量引用都是Tomcat的工作线程。大部分工作线程都分配了两个10M左右的数组，100个左右工作线程吃满了内存。第一个红框是Http11InputBuffer，其buffer大小是10008192字节；而第二个红框的Http11OutputBuffer的buffer，正好占用10000000字节：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/53/12/53546299958a4fecef5fd473a0579012.png?wh=2186%2A1056" /></p>
+<p>我们先来看看第一个Http11InputBuffer为什么会占用这么多内存。查看Http11InputBuffer类的init方法注意到，其中一个初始化方法会分配headerBufferSize+readBuffer大小的内存：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>void init(SocketWrapperBase&lt;?&gt; socketWrapper) {
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    wrapper = socketWrapper;
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    wrapper.setAppReadBufHandler(this);
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    int bufLength = headerBufferSize +
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>            wrapper.getSocketBufferHandler().getReadBuffer().capacity();
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    if (byteBuffer == null || byteBuffer.capacity() &lt; bufLength) {
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>        byteBuffer = ByteBuffer.allocate(bufLength);
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>        byteBuffer.position(0).limit(0);
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    }
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>}
+</code></pre></div>
+<p>在<a href="https://tomcat.apache.org/tomcat-8.0-doc/config/http.html">Tomcat文档</a>中有提到，这个Socket的读缓冲，也就是readBuffer默认是8192字节。显然，问题出在了headerBufferSize上：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/0c/68/0c14d6aff749d74b3ee0e159e4552168.png?wh=2650%2A246" /></p>
+<p>向上追溯初始化Http11InputBuffer的Http11Processor类，可以看到，传入的headerBufferSize配置的是MaxHttpHeaderSize：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>inputBuffer = new Http11InputBuffer(request, protocol.getMaxHttpHeaderSize(),
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>        protocol.getRejectIllegalHeaderName(), httpParser);
+</code></pre></div>
+<p>Http11OutputBuffer中的buffer正好占用了10000000字节，这又是为什么？通过Http11OutputBuffer的构造方法，可以看到它是直接根据headerBufferSize分配了固定大小的headerBuffer：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>protected Http11OutputBuffer(Response response, int headerBufferSize){
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>...
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    headerBuffer = ByteBuffer.allocate(headerBufferSize);
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>}
+</code></pre></div>
+<p>那么我们就可以想到，一定是应用把Tomcat头相关的参数配置为10000000了，使得每一个请求对于Request和Response都占用了20M内存，最终在并发较多的情况下引起了OOM。</p>
+<p>果不其然，查看项目代码发现配置文件中有这样的配置项：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>server.max-http-header-size=10000000
+</code></pre></div>
+<p>翻看源码提交记录可以看到，当时开发同学遇到了这样的异常：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>java.lang.IllegalArgumentException: Request header is too large
+</code></pre></div>
+<p>于是他就到网上搜索了一下解决方案，随意将server.max-http-header-size修改为了一个超大值，期望永远不会再出现类似问题。但，没想到这个修改却引起了这么大的问题。把这个参数改为比较合适的20000再进行压测，我们就可以发现应用的各项指标都比较稳定。</p>
+<p>这个案例告诉我们，<strong>一定要根据实际需求来修改参数配置，可以考虑预留2到5倍的量。容量类的参数背后往往代表了资源，设置超大的参数就有可能占用不必要的资源，在并发量大的时候因为资源大量分配导致OOM</strong>。</p>
+<h2 id="_1">重点回顾</h2>
+<p>今天，我从内存分配意识的角度和你分享了OOM的问题。通常而言，Java程序的OOM有如下几种可能。</p>
+<p>一是，我们的程序确实需要超出JVM配置的内存上限的内存。不管是程序实现的不合理，还是因为各种框架对数据的重复处理、加工和转换，相同的数据在内存中不一定只占用一份空间。针对内存量使用超大的业务逻辑，比如缓存逻辑、文件上传下载和导出逻辑，我们在做容量评估时，可能还需要实际做一下Dump，而不是进行简单的假设。</p>
+<p>二是，出现内存泄露，其实就是我们认为没有用的对象最终会被GC，但却没有。GC并不会回收强引用对象，我们可能经常在程序中定义一些容器作为缓存，但如果容器中的数据无限增长，要特别小心最终会导致OOM。使用WeakHashMap是解决这个问题的好办法，但值得注意的是，如果强引用的Value有引用Key，也无法回收Entry。</p>
+<p>三是，不合理的资源需求配置，在业务量小的时候可能不会出现问题，但业务量一大可能很快就会撑爆内存。比如，随意配置Tomcat的max-http-header-size参数，会导致一个请求使用过多的内存，请求量大的时候出现OOM。在进行参数配置的时候，我们要认识到，很多限制类参数限制的是背后资源的使用，资源始终是有限的，需要根据实际需求来合理设置参数。</p>
+<p>最后我想说的是，在出现OOM之后，也不用过于紧张。我们可以根据错误日志中的异常信息，再结合jstat等命令行工具观察内存使用情况，以及程序的GC日志，来大致定位出现OOM的内存区块和类型。其实，我们遇到的90%的OOM都是堆OOM，对JVM进程进行堆内存Dump，或使用jmap命令分析对象内存占用排行，一般都可以很容易定位到问题。</p>
+<p>这里，<strong>我建议你为生产系统的程序配置JVM参数启用详细的GC日志，方便观察垃圾收集器的行为，并开启HeapDumpOnOutOfMemoryError，以便在出现OOM时能自动Dump留下第一问题现场</strong>。对于JDK8，你可以这么设置：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=. -XX:+PrintGCDateStamps -XX:+PrintGCDetails -Xloggc:gc.log -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M
+</code></pre></div>
+<p>今天用到的代码，我都放在了GitHub上，你可以点击<a href="https://github.com/JosephZhu1983/java-common-mistakes">这个链接</a>查看。</p>
+<h2 id="_2">思考与讨论</h2>
+<ol>
+<li>Spring的ConcurrentReferenceHashMap，针对Key和Value支持软引用和弱引用两种方式。你觉得哪种方式更适合做缓存呢？</li>
+<li>当我们需要动态执行一些表达式时，可以使用Groovy动态语言实现：new出一个GroovyShell类，然后调用evaluate方法动态执行脚本。这种方式的问题是，会重复产生大量的类，增加Metaspace区的GC负担，有可能会引起OOM。你知道如何避免这个问题吗？</li>
+</ol>
+<p>针对OOM或内存泄露，你还遇到过什么案例吗？我是朱晔，欢迎在评论区与我留言分享，也欢迎你把今天的内容分享给你的朋友或同事，一起交流。</p>
 <div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/18/f3/8b/a629f9d4.jpg" width="30px"><span>一个汉子~</span> 👍（27） 💬（3）<div>针对第二点，可以先compile，然后在内存中保存，脚本内容的hash作为key，compile结果作为value，用ConcurrentReferenceHashMap保存
-同样的风险还出现在表达式框架aviator中</div>2020-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/26/38/ef063dc2.jpg" width="30px"><span>Darren</span> 👍（12） 💬（3）<div>试着回到下问题：
+<li><span>一个汉子~</span> 👍（27） 💬（3）<div>针对第二点，可以先compile，然后在内存中保存，脚本内容的hash作为key，compile结果作为value，用ConcurrentReferenceHashMap保存
+同样的风险还出现在表达式框架aviator中</div>2020-04-18</li><br/><li><span>Darren</span> 👍（12） 💬（3）<div>试着回到下问题：
 第一个：
 肯定是软引用，因为弱引用是只要GC执行，扫描到就被回收，缓存的作用是为了提高速度，要有一定的存在周期；如果是弱引用，每次GC执行，缓存被回收，缓存命中率超低，完全达不到缓存的作用，而又要维护缓存和DB的数据一致性问题，得不偿失。
 第二个：
 第一种不完美的方案：GroovyShell不要设置成全局的，每次运行时，都创建一个GroovyShell，然后限制元数据区大小，当元数据回收时，GroovyShell和该GroovyShell加载的类一起被回收；
-第二种方法：GroovyShell设置为全局的，然后使用缓存，每次都是先从缓存中获取，获取不到了，在加载，然后更新缓存。</div>2020-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/24/2a/33441e2b.jpg" width="30px"><span>汝林外史</span> 👍（12） 💬（1）<div>1. 对于老师说的autoComplete的场景是不是Trie树更适合一些？
+第二种方法：GroovyShell设置为全局的，然后使用缓存，每次都是先从缓存中获取，获取不到了，在加载，然后更新缓存。</div>2020-04-20</li><br/><li><span>汝林外史</span> 👍（12） 💬（1）<div>1. 对于老师说的autoComplete的场景是不是Trie树更适合一些？
 2. 这个WeakReference可能导致内存溢出的典型就是ThreadLocal，虽然ThreadLocalMap的entry的key是weakReference，但是value是强引用，当用线程池的时候，就会内存溢出，还是要自己remove才行。
-3. 对于问题1，应该是用软引用更好一些，用弱引用总是被gc回收就失去了缓存的意义。对于问题2不是很了解。</div>2020-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/71/05/db554eba.jpg" width="30px"><span>👽</span> 👍（9） 💬（2）<div>应该用哪种引用，首先考虑的肯定是四大引用的区别。
+3. 对于问题1，应该是用软引用更好一些，用弱引用总是被gc回收就失去了缓存的意义。对于问题2不是很了解。</div>2020-04-20</li><br/><li><span>👽</span> 👍（9） 💬（2）<div>应该用哪种引用，首先考虑的肯定是四大引用的区别。
 1.强引用：最常见的一种，只要该引用存在，就不会被GC。
 2.软引用：内存空间不足时，进行回收。
 3.弱引用：当JVM进行GC时，则进行回收，无论内存是否充足。
@@ -13145,11 +13586,11 @@
 
 软引用和弱引用，这两个，让我选，肯定是选软引用。因为弱引用，被回收的频率更高。缓存，如果经常被回收的话，就达不到最大利用率。
 
-但是这里又要说点额外的，单说缓存设计，还要涉及其他的因素。包括缓存大小，缓存的过期时间等。让我来说的话，我可能会考虑使用现有的缓存实现，或者是redis。自己实现一套缓存，成本略高。</div>2020-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/f3/8b/a629f9d4.jpg" width="30px"><span>一个汉子~</span> 👍（8） 💬（3）<div>之前还遇到一个，一个导出功能，拥有管理员权限的人几乎没有限制，造成了全表查，再加上框架禁止join，所以又把外键拉出来做了一次in查询，也是全表扫，大量的Bo对象和超长sql，直接把系统oom了</div>2020-04-18</li><br/><li><img src="" width="30px"><span>不能忍的地精</span> 👍（7） 💬（1）<div>我遇到一个OOM,是这样的
+但是这里又要说点额外的，单说缓存设计，还要涉及其他的因素。包括缓存大小，缓存的过期时间等。让我来说的话，我可能会考虑使用现有的缓存实现，或者是redis。自己实现一套缓存，成本略高。</div>2020-04-18</li><br/><li><span>一个汉子~</span> 👍（8） 💬（3）<div>之前还遇到一个，一个导出功能，拥有管理员权限的人几乎没有限制，造成了全表查，再加上框架禁止join，所以又把外键拉出来做了一次in查询，也是全表扫，大量的Bo对象和超长sql，直接把系统oom了</div>2020-04-18</li><br/><li><span>不能忍的地精</span> 👍（7） 💬（1）<div>我遇到一个OOM,是这样的
 1. 首先有一个线程池,线程数量是20个,但是线程队列容器的数量是Integer的最大值,所以拒绝策略几乎无效,大概没过3秒往线程池提交3个任务
 2. 任务里面有一个Restemplate,没有设置超时时间,超时时间为-1,并且里面维护的连接池是5个,小于线程池数量
-3. 出现5个连接都超时,任务卡住了,但是还是不断的往任务队列里面添加任务,最终导致OOM</div>2020-04-24</li><br/><li><img src="" width="30px"><span>ddosyang</span> 👍（2） 💬（1）<div>老师想问一下，在WeakHashMap的那个例子里，可不可以直接用String name当作Key，而不是用User做Key。这样是不是也可以解决问题？</div>2020-04-20</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLwTZdUafC5YM7bCASt8icUnoyYfV4hUHulexibDI7B4eaokTxYXHFtoic97DBlCAU9j5Jw4QUuGhyZQ/132" width="30px"><span>Carisy</span> 👍（1） 💬（1）<div>老师请教一个问题，在使用CompletableFuture的时候出现了很奇怪的场景，就是buffers飙升出现oom，应用程序使用内存并不多，处理逻辑也相对简单就是调用接口通过http上传下载文件</div>2020-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/81/e6/6cafed37.jpg" width="30px"><span>旅途</span> 👍（1） 💬（2）<div>有点没懂 java.lang.IllegalArgumentException: Request header is too large 的意思不就是request header过大了么 为什么开发人员还设置的那么大？</div>2020-04-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/52/40/e57a736e.jpg" width="30px"><span>pedro</span> 👍（1） 💬（3）<div>问题一，弱引用是在内存不足时被 gc 掉，而软引用是只要 gc 就回收掉，自然就不能用来做缓存，否则动不动就缓存失效，数据库怕是要被玩坏哦，因为适合做缓存的是弱引用。
-问题二，没用过 groovy，希望看到别人的解答。😄</div>2020-04-18</li><br/><li><img src="" width="30px"><span>Geek_3b1096</span> 👍（2） 💬（1）<div>周六第一件事跟上老师进度</div>2020-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/95/3b/a7c94a53.jpg" width="30px"><span>自由港</span> 👍（2） 💬（0）<div>关于第二个向题限制了metadata的堆大小，发现就可自动回收了</div>2020-04-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/ZJjl8bEt5zdqufZ304Ra0eibWtJPoVqpMjhu5xgd0o2oAj1ib6MBBWicHzTSFkEPiahxWwiaGsPib4S6N38kCFF0pDDg/132" width="30px"><span>Geek_d432e7</span> 👍（0） 💬（0）<div>专栏内容非常具有参考价值，希望能够多推送此类专栏。</div>2023-10-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/93/7e/4f9a11af.jpg" width="30px"><span>子陌.</span> 👍（0） 💬（0）<div>享元模式</div>2023-09-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/bb/ca/86d58e40.jpg" width="30px"><span>yang</span> 👍（0） 💬（0）<div>技术方案也够奇葩的------------怎么设计出来的-----~-~----</div>2020-04-20</li><br/>
+3. 出现5个连接都超时,任务卡住了,但是还是不断的往任务队列里面添加任务,最终导致OOM</div>2020-04-24</li><br/><li><span>ddosyang</span> 👍（2） 💬（1）<div>老师想问一下，在WeakHashMap的那个例子里，可不可以直接用String name当作Key，而不是用User做Key。这样是不是也可以解决问题？</div>2020-04-20</li><br/><li><span>Carisy</span> 👍（1） 💬（1）<div>老师请教一个问题，在使用CompletableFuture的时候出现了很奇怪的场景，就是buffers飙升出现oom，应用程序使用内存并不多，处理逻辑也相对简单就是调用接口通过http上传下载文件</div>2020-06-05</li><br/><li><span>旅途</span> 👍（1） 💬（2）<div>有点没懂 java.lang.IllegalArgumentException: Request header is too large 的意思不就是request header过大了么 为什么开发人员还设置的那么大？</div>2020-04-28</li><br/><li><span>pedro</span> 👍（1） 💬（3）<div>问题一，弱引用是在内存不足时被 gc 掉，而软引用是只要 gc 就回收掉，自然就不能用来做缓存，否则动不动就缓存失效，数据库怕是要被玩坏哦，因为适合做缓存的是弱引用。
+问题二，没用过 groovy，希望看到别人的解答。😄</div>2020-04-18</li><br/><li><span>Geek_3b1096</span> 👍（2） 💬（1）<div>周六第一件事跟上老师进度</div>2020-04-18</li><br/><li><span>自由港</span> 👍（2） 💬（0）<div>关于第二个向题限制了metadata的堆大小，发现就可自动回收了</div>2020-04-18</li><br/><li><span>Geek_d432e7</span> 👍（0） 💬（0）<div>专栏内容非常具有参考价值，希望能够多推送此类专栏。</div>2023-10-03</li><br/><li><span>子陌.</span> 👍（0） 💬（0）<div>享元模式</div>2023-09-30</li><br/><li><span>yang</span> 👍（0） 💬（0）<div>技术方案也够奇葩的------------怎么设计出来的-----~-~----</div>2020-04-20</li><br/>
 </ul>
 
 

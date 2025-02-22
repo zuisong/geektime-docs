@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#avaudiosession" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -2600,6 +2605,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    10 iOS平台音频采集：如何使用AudioQueue和AudioUnit采集音频？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -2609,6 +2625,68 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#avaudiosession" class="md-nav__link">
+    <span class="md-ellipsis">
+      设置AVAudioSession
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audioqueue" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何使用AudioQueue采集音频？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audiounit" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何使用AudioUnit采集音频？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -4702,6 +4780,59 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#avaudiosession" class="md-nav__link">
+    <span class="md-ellipsis">
+      设置AVAudioSession
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audioqueue" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何使用AudioQueue采集音频？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audiounit" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何使用AudioUnit采集音频？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -4733,14 +4864,157 @@
 <li>AudioQueue，之前我们使用AudioQueue渲染过音频，其实AudioQueue也可以录制音频，也是对AudioUnit的封装，它允许开发者获取、操控中间的数据（按照配置的数据格式）。优点是灵活性较强，缺点是上手难度较高。</li>
 <li>AudioUnit，是音频最底层的API接口，之前我们使用AudioUnit渲染过音频，和AudioQueue一样，我们也可以使用它录制音频。当我们需要使用VPIO（VoiceProcessIO）等处理音频的AudioUnit、需要使用实时耳返或在低延迟场景下，必须使用这一层的API。优点是灵活性最强，缺点是上手难度更高。</li>
 </ul>
+<p>这节课我会重点讲解如何使用AudioQueue与AudioUnit来采集音频，但在学习这两个接口之前，我们还需要先设置并激活一下录制场景下AVAudioSession。</p>
+<h2 id="avaudiosession">设置AVAudioSession</h2>
+<p>要想使用iOS的麦克风录音，首先要为App声明使用麦克风的权限，在工程目录下找到info.plist，然后在里面新增麦克风权限的声明。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>&lt;key&gt;NSMicrophoneUsageDescription&lt;/key&gt;
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>&lt;string&gt;microphoneDesciption&lt;/string&gt;
+</code></pre></div>
+<p>这样添加完之后，就让系统知道了App要访问系统的麦克风权限。</p>
+<p>接下来需要判断一下麦克风的授权情况。如果已经询问过了，就根据实际授权的情况进行处理，如果未授权可以引导用户跳转设置页面重新打开，代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>[[UIApplication sharedApplication] openURL:[NSURL URLWithString:UIApplicationOpenSettingsURLString] options:@{} completionHandler:^(BOOL success) {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>}];
+</code></pre></div>
+<p>如果没有询问过用户是否授权，就调用询问接口。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>[[AVAudioSession sharedInstance] requestRecordPermission:^(BOOL granted) {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  if (granted) {
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    //获得授权      
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  } else {
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    //未获得授权   
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  }
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>}];
+</code></pre></div>
+<p>根据实际获得授权的情况，来决定是否继续开启录音流程。</p>
+<p>当获得授权之后，就要开启一个音频会话了，即设置对应的AVAudioSession，代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>[[AVAudioSession sharedInstance] setPreferredIOBufferDuration:AUDIO_RECORD_BUFFER_DURATION error:&amp;error];
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>[[AVAudioSession sharedInstance] setPreferredSampleRate:48000 error:nil];
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>[[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayAndRecord  error:nil];
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>[[AVAudioSession sharedInstance] setActive:YES error:nil];
+</code></pre></div>
+<p>代码的第一行是设置缓冲区的大小，一般设置得越大延迟越高，但是性能越好。如果需要实时耳返的话，一般设置5～8ms；不需要实时耳返的场景，设置23ms左右即可。第二行是设置采样率，目前的主流设备可以都设置成48k的采样率，兼容性是最好的；第三行是设置Category，如果是不戴耳机或戴有线耳机的情况，根据上面的代码设置就可以，但是如果是蓝牙耳机想保留高音质采集，就需要这样设置：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>[[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayAndRecord withOptions:AVAudioSessionCategoryOptionAllowBluetoothA2DP error:nil];
+</code></pre></div>
+<p>这里的麦克风使用的是机身麦克风，如果想使用蓝牙本身的麦克风，设置代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>[[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayAndRecord  withOptions:AVAudioSessionCategoryOptionAllowBluetooth error:nil];
+</code></pre></div>
+<p>最后，激活AVAudioSession之后，就可以使用具体的录音框架了，下面就让我们先来学习一下用AudioQueue来采集音频。</p>
+<h2 id="audioqueue">如何使用AudioQueue采集音频？</h2>
+<p>还记得我们<a href="https://time.geekbang.org/column/article/543649">第1节课</a>使用AudioQueue来渲染音频的方法吗？和渲染音频相比，采集音频就相当于是一个相反的过程，我们先来看一下AudioQueue采集音频的结构图。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/10/6f/10f88a7a26ef4b3bd0f691296c53f76f.png?wh=1920x782" title="AudioQueue采集音频结构图" /></p>
+<p>从结构图里，我们可以看到AudioQueue的输入是左侧的麦克风，输出是把BufferQueue里面填充好数据的buffer回调给业务层，让业务层自己处理或者执行IO操作。</p>
+<p>下面我们再看一下AudioQueue录音的整个流程图。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/45/73/45a9cb9ac4bbb1d2ffd66b49b1cebd73.png?wh=1920x2035" title="AudioQueue录音流程图" /></p>
+<ol>
+<li>AudioQueue把采集进来的音频填充到第一个buffer里。</li>
+<li>填满了第一个buffer之后，会把第一个buffer返回给业务层处理，同时把采集进来的音频填充到第二个buffer里。</li>
+<li>业务层把接收到的第一个buffer写到磁盘里。</li>
+<li>业务层把第一个buffer再返还给AudioQueue，也就是重新让buffer入队。</li>
+<li>AudioQueue填充好了第二个buffer回调给业务端，同时把麦克风采集到的数据写到第三个buffer里。</li>
+<li>业务层把第二个buffer写到磁盘上，同时把第二个buffer再返还给AudioQueue。</li>
+</ol>
+<p>你可以再回顾一下<a href="https://time.geekbang.org/column/article/543649">AudioQueue渲染音频</a>的数据流程，录制的数据运行流程恰恰是和音频渲染相反的一个过程：<strong>渲染音频是需要业务端来填充数据，然后给AudioQueue进行播放；采集音频是需要业务端把采集到的数据消费掉，然后再返回给AudioQueue来填充音频。</strong></p>
+<p>在学习AudioQueue音频渲染的时候，我们了解了AudioQueue内部是可以自动做解码操作的，其实在采集音频过程中也有一个逆过程的处理，就是AudioQueue内部会根据我们指定的数据格式来执行压缩编码，你可以看一下流程图。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/81/3f/81a4e7e86fe0d97ed67eb3yyf5556b3f.png?wh=1920x918" /></p>
+<p>在创建采集音频类型的AudioQueue的时候，要指定dataFormat（ASBD类型）参数，而这个DataFormat里有一个mFormatID属性，当这个属性被指定为kAudioFormatMPEG4AAC的时候，AudioQueue内部就会自动把采集到的PCM数据编码为AAC类型的数据返回给业务层。</p>
+<p>在实际使用过程中，你可以根据自己的需要来制定dataFormat，如果你需要PCM数据，那么这里就不需要使用AudioQueue的编码能力，我们要根据自己的使用场景来做配置。</p>
+<p>在充分理解了AudioQueue的整体数据流程之后，我们再来看一下它的核心使用方法。第一步是创建采集音频类型的AudioQueue。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>AudioQueueNewInput(&amp;dataformat, recoderCB, (__bridge void *)self, NULL, NULL, 0, &amp;queueRef);
+</code></pre></div>
+<p>代码里的dataFormat代表期望AudioQueue采集音频之后返回给业务层的具体的音频格式，recoderCB代表AudioQueue填充好一个buffer之后回调给业务层的方法，这个方法的实现如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>static void recoderCB(void *aqData, AudioQueueRef inAQ, AudioQueueBufferRef inBuffer, const AudioTimeStamp *timestamp, UInt32 inNumPackets, const AudioStreamPacketDescription *inPacketDesc) {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    //1 inBuffer-&gt;mAudioData 处理 &amp; IO
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    //2 重新入队
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    AudioQueueEnqueueBuffer(inAQ, inBuffer, 0, NULL);
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>}
+</code></pre></div>
+<p>这个方法内部消费掉inBuffer里的音频数据，然后将这个buffer重新入队。</p>
+<p>当创建好一个AudioQueue之后，一般要为这个AudioQueue分配3个buffer，然后依次入队。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>for (int i = 0; i &lt; kNumberBuffers; i++) {
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  AudioQueueAllocateBuffer(queueRef, self.bufferBytesSize, &amp;buffers[i]);
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>  AudioQueueEnqueueBuffer(queueRef, buffers[i], 0, NULL);
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>}
+</code></pre></div>
+<p>其中代码里的bufferBytesSize代表每个buffer的数据大小，这个可以根据dataFormat与期望的数据长度（比如50ms）来计算。</p>
+<p>最后调用Start方法来启动AudioQueue。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>AudioQueueStart(mQueue, NULL)
+</code></pre></div>
+<p>像Stop、Reset等方法这里我就不再赘述了。整体来看，AudioQueue的使用其实比较简单，核心就是配置好dataFormat，然后实现回调函数，再按照期望的dataFormat处理数据就可以了。</p>
+<h2 id="audiounit">如何使用AudioUnit采集音频？</h2>
+<p>我们这个部分使用的AudioUnit接口，其实在专栏的<a href="https://time.geekbang.org/column/article/543993">第2节课</a>已经详细地讲过了，所以这里我们就直接来看如何使用AudioUnit实现人声的采集，同时还会给耳机一个监听耳返。等完成这个功能之后，你就会感叹这在iOS平台上实现起来太简单了。</p>
+<p>在激活AVAudioSession之后，我们就要构造一个AUGraph了，构造AUGraph的过程和第2节课渲染音频时构造的AUGraph几乎是一致的，这里就不再赘述了。由于这里我们要使用采集音频的能力，所以要启用RemoteIO这个AudioUnit的InputElement，代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>static UInt32 kInputBus = 1;
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>UInt32 flag = 1;
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>AudioUnitSetProperty(ioUnit, kAudioOutputUnitProperty_EnableIO, kAudioUnitScope_Input, kInputBus, &amp;flag, sizeof(flag));
+</code></pre></div>
+<p>RemoteIO这个AudioUnit其实是比较特别的，InputElement（kInputBus的值为1）代表的是麦克风，而OutputElement代表的是扬声器，上述这行代码就是启用RemoteIOUnit的InputElement。</p>
+<p>为了支持开发的App可以在后续扩展出Mix一轨伴奏这个功能，我们需要额外在AUGraph中增加MultiChannelMixer这个AudioUnit。由于每个AudioUnit的输入输出格式并不相同，所以这里还要使用AudioConvert这个AudioUnit来把输入的AudioUnit连接到MixerUnit上。最终让MixerUnit连接上RemoteIO的OutputElement，将声音送到耳机或者扬声器中。</p>
+<p>这里需要注意，如果没有插耳机的情况下需要Mute（消音）掉这一路，否则就会出现啸叫的现象。到这里我们就把AUGraph构建出来了，如下图所示。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/d9/36/d952faf11ee9b2c96b29b1b1a61ed736.png?wh=2145x803" /></p>
+<p>如何把采集的音频存储成为一个文件呢？</p>
+<p>我们可以在RemoteIO这个节点的OutputElement增加一个回调，然后在回调方法中来拉取预期节点的数据，同时也可以去写文件，这种方式其实已经在音频渲染的时候使用过。首先给RemoteIO这个AudioUnit的OutputElement增加一个回调。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>AURenderCallbackStruct finalRenderProc;
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>finalRenderProc.inputProc = &amp;renderCallback;
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>finalRenderProc.inputProcRefCon = (__bridge void *)self;
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>status = AUGraphSetNodeInputCallback(_auGraph, _ioNode, 0, &amp;finalRenderProc);
+</code></pre></div>
+<p>然后在上述的回调方法的实现中，把它的前一级MixerUnit的数据渲染出来，同时写文件。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>static OSStatus renderCallback(void *inRefCon,
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>        AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp         
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>        *inTimeStamp, UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList         
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>        *ioData){
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    OSStatus result = noErr;
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    __unsafe_unretained AudioRecorder *THIS = (__bridge AudioRecorder *)inRefCon;
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    AudioUnitRender(THIS-&gt;_mixerUnit, ioActionFlags,
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>            inTimeStamp, 0, inNumberFrames, ioData);
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>    //Write To File
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>    return result;
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>}
+</code></pre></div>
+<p>关于写文件，我们会在第12节课使用AudioToolbox来给文件编码，但是这里我们使用一个更高级的API——ExtAudioFile 来写文件，其实这个ExtAudioFile内部封装了AudioToolbox里面的AudioConverterReference。iOS提供的这个API只需要我们设置好输入格式和输出格式以及输出文件路径和文件格式。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>AudioStreamBasicDescription destinationFormat;
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>CFURLRef destinationURL;
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>result = ExtAudioFileCreateWithURL(destinationURL, kAudioFileCAFType,
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>        &amp;destinationFormat, NULL, kAudioFileFlags_EraseFile, &amp;audioFile);
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>result = ExtAudioFileSetProperty(audioFile,
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>        kExtAudioFileProperty_ClientDataFormat, sizeof(clientFormat),
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>        &amp;clientFormat);
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>UInt32 codec = kAppleHardwareAudioCodecManufacturer;
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>result = ExtAudioFileSetProperty(audioFile,
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>        kExtAudioFileProperty_CodecManufacturer, sizeof(codec), &amp;codec);
+</code></pre></div>
+<p>在需要给文件编码时，就直接写入数据。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>ExtAudioFileWriteAsync(audioFile, inNumberFrames, ioData);
+</code></pre></div>
+<p>在停止写入的时候调用关闭方法即可。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>ExtAudioFileDispose(audioFile);
+</code></pre></div>
+<p>注意，这里调用的是WriteAsync，就是异步的方式来写文件，这样它不会阻塞Remote IO这个线程。在停止写入的时候，我们关闭这个方法就可以了。</p>
+<p>最终就可以得到我们想要的文件了，你可以从应用的沙盒中将保存的文件拿出来（在XCode中用Device或iExplorer取出文件），然后播放试听一下。</p>
+<h2 id="_1">小结</h2>
+<p>最后，我们一起来回顾一下今天的内容。</p>
+<p>在iOS平台采集音频数据，比较常用的就是AVAudioRecoder，AudioQueue以及AudioUnit三套接口。</p>
+<ul>
+<li>AVAudioRecorder使用起来比较简单，如果是简单的录音，使用AVAudioRecorder就可以。但因为无法操控中间的数据，它提供不了更高级的能力支持。</li>
+<li>使用AudioQueue录制音频，灵活性比较强。如果只是获取内存中的录音数据，然后编码、输出，使用AudioQueue来采集音频会更适合。</li>
+<li>使用AudioUnit录制音频灵活性最强，如果要使用更多的音效处理以及实时的监听功能，那么使用AudioUnit会更方便一些。</li>
+</ul>
+<p>后续我们视频录制器项目中，使用的都是AudioUnit，因为实现的场景不单单需要耳返，也需要音效的实时处理等功能。</p>
+<h2 id="_2">思考题</h2>
+<p>你可以使用一下回森这个App，这个App有一个特色的功能就是语音弹幕，它支持用户在观看音乐作品的同时演唱一段弹幕（启动音频采集），而从听到唱的过程中整个音乐作品播放是非常流畅的，这里我给你留两个问题：</p>
+<ol>
+<li>这个App是如何实现启动录音的时候音乐作品可以流畅地播放的呢？</li>
+<li>使用蓝牙耳机的情况下，在保证录制高音质音频的同时，音乐作品如何保持声音的流畅性呢？</li>
+</ol>
+<p>欢迎在评论区留下你的思考，也欢迎你把这节课分享给更多对音视频感兴趣的朋友，我们一起交流、共同进步。下节课再见！</p>
 <div><strong>精选留言（4）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/16/73/9b/67a38926.jpg" width="30px"><span>keepgoing</span> 👍（0） 💬（2）<div>老师一直没有介绍audio unit录制音频的方式，请问用audiounit来录制音频是需要给audiounit的input element设置回调，像audioqueue一样按时回调数据保存到自己的队列里，还是有特定的api可以从audio unit 的input element 中获取呢，多谢老师解答</div>2022-12-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/54/20/abb7bfe3.jpg" width="30px"><span>Geek_wad2tx</span> 👍（0） 💬（1）<div>1.  这个 App 是如何实现启动录音的时候音乐作品可以流畅地播放的呢？
+<li><span>keepgoing</span> 👍（0） 💬（2）<div>老师一直没有介绍audio unit录制音频的方式，请问用audiounit来录制音频是需要给audiounit的input element设置回调，像audioqueue一样按时回调数据保存到自己的队列里，还是有特定的api可以从audio unit 的input element 中获取呢，多谢老师解答</div>2022-12-13</li><br/><li><span>Geek_wad2tx</span> 👍（0） 💬（1）<div>1.  这个 App 是如何实现启动录音的时候音乐作品可以流畅地播放的呢？
 A: 播放音乐的过程中录音是启动的。只不过塞的是空白帧，开始录制时，填充录制帧？
 
 2. 使用蓝牙耳机的情况下，在保证录制高音质音频的同时，音乐作品如何保持声音的流畅性呢？
-A: 采集用手机Mic，播放用蓝牙耳机？</div>2022-10-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/25/87/f3a69d1b.jpg" width="30px"><span>peter</span> 👍（0） 💬（0）<div>请教老师一个问题：
-Q1：关于“混音”功能，是的，这个功能有点类似于回森App的弹幕功能。其实就是一个音乐编辑的功能。音乐编辑的APP，我搜到并下载了“音乐剪辑”、“音频音乐”这两个APP，都具有“混音”、“变速”、“变调”等功能。关于“混音”功能，从实现的角度，安卓上应该怎么做？基于安卓的MediaPlayer来开发吗？ (我感觉MediaPlayer不能实现该功能，就是说没有API可以调用)。是基于OpenSL ES或AAudio来开发吗？ 也许OpenSL ES、AAudio有音频合并方面的API，调用即可。（甚至，需要采用FFmpeg来开发？）。针对安卓平台的“混音”开发，请老师从架构、技术方案层面给我一点指导，非常感谢！  （“混音”也可能只是一种叫法，或者叫“音频合并”？）</div>2022-08-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/e5/bd/d6fc7a09.jpg" width="30px"><span>余生不渝</span> 👍（0） 💬（0）<div>请问audioqueue可以在后台执行开始录音采集么</div>2024-04-23</li><br/>
+A: 采集用手机Mic，播放用蓝牙耳机？</div>2022-10-25</li><br/><li><span>peter</span> 👍（0） 💬（0）<div>请教老师一个问题：
+Q1：关于“混音”功能，是的，这个功能有点类似于回森App的弹幕功能。其实就是一个音乐编辑的功能。音乐编辑的APP，我搜到并下载了“音乐剪辑”、“音频音乐”这两个APP，都具有“混音”、“变速”、“变调”等功能。关于“混音”功能，从实现的角度，安卓上应该怎么做？基于安卓的MediaPlayer来开发吗？ (我感觉MediaPlayer不能实现该功能，就是说没有API可以调用)。是基于OpenSL ES或AAudio来开发吗？ 也许OpenSL ES、AAudio有音频合并方面的API，调用即可。（甚至，需要采用FFmpeg来开发？）。针对安卓平台的“混音”开发，请老师从架构、技术方案层面给我一点指导，非常感谢！  （“混音”也可能只是一种叫法，或者叫“音频合并”？）</div>2022-08-16</li><br/><li><span>余生不渝</span> 👍（0） 💬（0）<div>请问audioqueue可以在后台执行开始录音采集么</div>2024-04-23</li><br/>
 </ul>
 
 

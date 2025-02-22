@@ -7883,6 +7883,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#modelandview" class="md-nav__link">
+    <span class="md-ellipsis">
+      ModelAndView
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#view" class="md-nav__link">
+    <span class="md-ellipsis">
+      View
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12694,6 +12730,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#modelandview" class="md-nav__link">
+    <span class="md-ellipsis">
+      ModelAndView
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#view" class="md-nav__link">
+    <span class="md-ellipsis">
+      View
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12728,17 +12800,502 @@
 <p>我们手写MiniSpring的目的是深入理解Spring框架，剖析它的程序结构，所以作为学习的对象，这两种情况我们都会分析到。</p>
 <h2 id="_1">处理返回数据</h2>
 <p>和绑定传入的参数相对，处理返回数据是反向的，也就是说，要从后端把方法得到的返回值（一个Java对象）按照某种字符串格式回传给前端。我们以这个@ResponseBody注解为例，来分析一下。</p>
+<p>先定义一个接口，增加一个功能，让controller返回给前端的字符流数据可以进行格式转换。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>package com.minis.web;
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>import java.io.IOException;
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>import javax.servlet.http.HttpServletResponse;
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>public interface HttpMessageConverter {
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    void write(Object obj, HttpServletResponse response) throws IOException;
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>}
+</code></pre></div>
+<p>我们这里给一个默认的实现——DefaultHttpMessageConverter，把Object转成JSON串。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>package com.minis.web;
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>import java.io.IOException;
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>import java.io.PrintWriter;
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>import javax.servlet.http.HttpServletResponse;
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>public class DefaultHttpMessageConverter implements HttpMessageConverter {
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    String defaultContentType = &quot;text/json;charset=UTF-8&quot;;
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    String defaultCharacterEncoding = &quot;UTF-8&quot;;
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    ObjectMapper objectMapper;
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    public ObjectMapper getObjectMapper() {
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        return objectMapper;
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    }
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    public void setObjectMapper(ObjectMapper objectMapper) {
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>        this.objectMapper = objectMapper;
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    }
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    public void write(Object obj, HttpServletResponse response) throws IOException {
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>        response.setContentType(defaultContentType);
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>        response.setCharacterEncoding(defaultCharacterEncoding);
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>        writeInternal(obj, response);
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>        response.flushBuffer();
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    }
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    private void writeInternal(Object obj, HttpServletResponse response) throws IOException{
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>        String sJsonStr = this.objectMapper.writeValuesAsString(obj);
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>        PrintWriter pw = response.getWriter();
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>        pw.write(sJsonStr);
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    }
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>}
+</code></pre></div>
+<p>这个message converter很简单，就是给response写字符串，用到的工具是ObjectMapper。我们就重点看看这个mapper是怎么做的。</p>
+<p>定义一个接口ObjectMapper。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>package com.minis.web;
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>public interface ObjectMapper {
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    void setDateFormat(String dateFormat);
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    void setDecimalFormat(String decimalFormat);
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    String writeValuesAsString(Object obj);
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>}
+</code></pre></div>
+<p>最重要的接口方法就是writeValuesAsString()，将对象转成字符串。</p>
+<p>我们给一个默认的实现——DefaultObjectMapper，在writeValuesAsString中拼JSON串。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>package com.minis.web;
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>import java.lang.reflect.Field;
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>import java.math.BigDecimal;
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>import java.text.DecimalFormat;
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>import java.time.LocalDate;
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>import java.time.ZoneId;
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>import java.time.format.DateTimeFormatter;
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>import java.util.Date;
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>public class DefaultObjectMapper implements ObjectMapper{
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    String dateFormat = &quot;yyyy-MM-dd&quot;;
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    DateTimeFormatter datetimeFormatter = DateTimeFormatter.ofPattern(dateFormat);
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    String decimalFormat = &quot;#,##0.00&quot;;
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    DecimalFormat decimalFormatter = new DecimalFormat(decimalFormat);
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    public DefaultObjectMapper() {
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    }
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    @Override
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>    public void setDateFormat(String dateFormat) {
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>        this.dateFormat = dateFormat;
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>        this.datetimeFormatter = DateTimeFormatter.ofPattern(dateFormat);
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    }
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>    @Override
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>    public void setDecimalFormat(String decimalFormat) {
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>        this.decimalFormat = decimalFormat;
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>        this.decimalFormatter = new DecimalFormat(decimalFormat);
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>    }
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>    public String writeValuesAsString(Object obj) {
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>        String sJsonStr = &quot;{&quot;;      
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>        Class&lt;?&gt; clz = obj.getClass();
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>        Field[] fields = clz.getDeclaredFields();
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>        //对返回对象中的每一个属性进行格式转换
+<a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>        for (Field field : fields) {
+<a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>            String sField = &quot;&quot;;
+<a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>            Object value = null;
+<a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>            Class&lt;?&gt; type = null;
+<a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>            String name = field.getName();
+<a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a>            String strValue = &quot;&quot;;
+<a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a>            field.setAccessible(true);
+<a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a>            value = field.get(obj);
+<a id="__codelineno-3-46" name="__codelineno-3-46" href="#__codelineno-3-46"></a>            type = field.getType();
+<a id="__codelineno-3-47" name="__codelineno-3-47" href="#__codelineno-3-47"></a>
+<a id="__codelineno-3-48" name="__codelineno-3-48" href="#__codelineno-3-48"></a>            //针对不同的数据类型进行格式转换
+<a id="__codelineno-3-49" name="__codelineno-3-49" href="#__codelineno-3-49"></a>            if (value instanceof Date) {
+<a id="__codelineno-3-50" name="__codelineno-3-50" href="#__codelineno-3-50"></a>                LocalDate localDate = ((Date)value).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+<a id="__codelineno-3-51" name="__codelineno-3-51" href="#__codelineno-3-51"></a>                strValue = localDate.format(this.datetimeFormatter);
+<a id="__codelineno-3-52" name="__codelineno-3-52" href="#__codelineno-3-52"></a>            }
+<a id="__codelineno-3-53" name="__codelineno-3-53" href="#__codelineno-3-53"></a>            else if (value instanceof BigDecimal || value instanceof Double || value instanceof Float){
+<a id="__codelineno-3-54" name="__codelineno-3-54" href="#__codelineno-3-54"></a>                strValue = this.decimalFormatter.format(value);
+<a id="__codelineno-3-55" name="__codelineno-3-55" href="#__codelineno-3-55"></a>            }
+<a id="__codelineno-3-56" name="__codelineno-3-56" href="#__codelineno-3-56"></a>            else {
+<a id="__codelineno-3-57" name="__codelineno-3-57" href="#__codelineno-3-57"></a>                strValue = value.toString();
+<a id="__codelineno-3-58" name="__codelineno-3-58" href="#__codelineno-3-58"></a>            }
+<a id="__codelineno-3-59" name="__codelineno-3-59" href="#__codelineno-3-59"></a>
+<a id="__codelineno-3-60" name="__codelineno-3-60" href="#__codelineno-3-60"></a>            //拼接Json串
+<a id="__codelineno-3-61" name="__codelineno-3-61" href="#__codelineno-3-61"></a>            if (sJsonStr.equals(&quot;{&quot;)) {
+<a id="__codelineno-3-62" name="__codelineno-3-62" href="#__codelineno-3-62"></a>                sField = &quot;\&quot;&quot; + name + &quot;\&quot;:\&quot;&quot; + strValue + &quot;\&quot;&quot;;
+<a id="__codelineno-3-63" name="__codelineno-3-63" href="#__codelineno-3-63"></a>            }
+<a id="__codelineno-3-64" name="__codelineno-3-64" href="#__codelineno-3-64"></a>            else {
+<a id="__codelineno-3-65" name="__codelineno-3-65" href="#__codelineno-3-65"></a>                sField = &quot;,\&quot;&quot; + name + &quot;\&quot;:\&quot;&quot; + strValue + &quot;\&quot;&quot;;  
+<a id="__codelineno-3-66" name="__codelineno-3-66" href="#__codelineno-3-66"></a>            }
+<a id="__codelineno-3-67" name="__codelineno-3-67" href="#__codelineno-3-67"></a>
+<a id="__codelineno-3-68" name="__codelineno-3-68" href="#__codelineno-3-68"></a>            sJsonStr += sField;
+<a id="__codelineno-3-69" name="__codelineno-3-69" href="#__codelineno-3-69"></a>        }
+<a id="__codelineno-3-70" name="__codelineno-3-70" href="#__codelineno-3-70"></a>        sJsonStr += &quot;}&quot;;
+<a id="__codelineno-3-71" name="__codelineno-3-71" href="#__codelineno-3-71"></a>        return sJsonStr;
+<a id="__codelineno-3-72" name="__codelineno-3-72" href="#__codelineno-3-72"></a>    }
+<a id="__codelineno-3-73" name="__codelineno-3-73" href="#__codelineno-3-73"></a>}
+</code></pre></div>
+<p>实际转换过程用到了LocalDate和DecimalFormatter。从上述代码中也可以看出，目前为止，我们也只支持Date、Number和String三种类型。你自己可以考虑扩展到更多的数据类型。</p>
+<p>那么我们在哪个地方用这个工具来处理返回的数据呢？其实跟绑定参数一样，数据返回之前，也是要经过方法调用。所以我们还是要回到RequestMappingHandlerAdapter这个类，增加一个属性messageConverter，通过它来转换数据。</p>
+<p>程序变成了这个样子。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>    public class RequestMappingHandlerAdapter implements HandlerAdapter {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>        private WebBindingInitializer webBindingInitializer = null;
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        private HttpMessageConverter messageConverter = null;
+</code></pre></div>
+<p>现在既有传入的webBingingInitializer，也有传出的messageConverter。<br />
+在关键方法invokeHandlerMethod()里增加对@ResponseBody的处理，也就是调用messageConverter.write()把方法返回值转换成字符串。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>    protected ModelAndView invokeHandlerMethod(HttpServletRequest request,
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>        HttpServletResponse response, HandlerMethod handlerMethod) throws Exception {
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        ... ...
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        if (invocableMethod.isAnnotationPresent(ResponseBody.class)){ //ResponseBody
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>            this.messageConverter.write(returnObj, response);
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        }   
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        ... ...
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    }
+</code></pre></div>
+<p>同样的webBindingInitializer和messageConverter都可以通过配置注入。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>    &lt;bean id=&quot;handlerAdapter&quot; class=&quot;com.minis.web.servlet.RequestMappingHandlerAdapter&quot;&gt; 
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>     &lt;property type=&quot;com.minis.web.HttpMessageConverter&quot; name=&quot;messageConverter&quot; ref=&quot;messageConverter&quot;/&gt;
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>     &lt;property type=&quot;com.minis.web.WebBindingInitializer&quot; name=&quot;webBindingInitializer&quot; ref=&quot;webBindingInitializer&quot;/&gt;
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    &lt;/bean&gt;
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    &lt;bean id=&quot;webBindingInitializer&quot; class=&quot;com.test.DateInitializer&quot; /&gt; 
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    &lt;bean id=&quot;messageConverter&quot; class=&quot;com.minis.web.DefaultHttpMessageConverter&quot;&gt; 
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>     &lt;property type=&quot;com.minis.web.ObjectMapper&quot; name=&quot;objectMapper&quot; ref=&quot;objectMapper&quot;/&gt;
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    &lt;/bean&gt;
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    &lt;bean id=&quot;objectMapper&quot; class=&quot;com.minis.web.DefaultObjectMapper&quot; &gt;
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>     &lt;property type=&quot;String&quot; name=&quot;dateFormat&quot; value=&quot;yyyy/MM/dd&quot;/&gt;
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>     &lt;property type=&quot;String&quot; name=&quot;decimalFormat&quot; value=&quot;###.##&quot;/&gt;
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    &lt;/bean&gt;
+</code></pre></div>
+<p>最后在DispatcherServlet里，通过getBean获取handlerAdapter，当然这里需要约定一个名字，整个过程就连起来了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>    protected void initHandlerAdapters(WebApplicationContext wac) {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>        this.handlerAdapter = (HandlerAdapter) wac.getBean(HANDLER_ADAPTER_BEAN_NAME);
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    }
+</code></pre></div>
+<p>测试的客户程序HelloWorldBean修改如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>    @RequestMapping(&quot;/test7&quot;)
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    @ResponseBody
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    public User doTest7(User user) {
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>        user.setName(user.getName() + &quot;---&quot;);
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>        user.setBirthday(new Date());
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>        return user;
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    }   
+</code></pre></div>
+<p>程序里面声明了一个注解@ResponseBody，程序中返回的是对象User，框架处理的时候用message converter将其转换成JSON字符串返回。</p>
+<p>到这里，我们就知道MVC是如何把方法返回对象自动转换成response字符串的了。我们在调用目标方法后，通过messageConverter进行转换，它要分别转换每一种数据类型的格式，同时格式可以由用户自己指定。</p>
+<h2 id="modelandview">ModelAndView</h2>
+<p>调用完目标方法，得到返回值，把数据按照指定格式转换好之后，就该处理它们，并把它们送到前端去了。我们用一个统一的结构，包装调用方法之后返回的数据，以及需要启动的前端页面，这个结构就是ModelAndView，我们看下它的定义。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>package com.minis.web.servlet;
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>import java.util.HashMap;
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>import java.util.Map;
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>public class ModelAndView {
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    private Object view;
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    private Map&lt;String, Object&gt; model = new HashMap&lt;&gt;();
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    public ModelAndView() {
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    }
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    public ModelAndView(String viewName) {
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>        this.view = viewName;
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    }
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    public ModelAndView(View view) {
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>        this.view = view;
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>    }
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>    public ModelAndView(String viewName, Map&lt;String, ?&gt; modelData) {
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>        this.view = viewName;
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>        if (modelData != null) {
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>            addAllAttributes(modelData);
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>        }
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>    }
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>    public ModelAndView(View view, Map&lt;String, ?&gt; model) {
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>        this.view = view;
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>        if (model != null) {
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>            addAllAttributes(model);
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>        }
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>    }
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>    public ModelAndView(String viewName, String modelName, Object modelObject) {
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>        this.view = viewName;
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>        addObject(modelName, modelObject);
+<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>    }
+<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>    public ModelAndView(View view, String modelName, Object modelObject) {
+<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>        this.view = view;
+<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a>        addObject(modelName, modelObject);
+<a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a>    }
+<a id="__codelineno-9-38" name="__codelineno-9-38" href="#__codelineno-9-38"></a>    public void setViewName(String viewName) {
+<a id="__codelineno-9-39" name="__codelineno-9-39" href="#__codelineno-9-39"></a>        this.view = viewName;
+<a id="__codelineno-9-40" name="__codelineno-9-40" href="#__codelineno-9-40"></a>    }
+<a id="__codelineno-9-41" name="__codelineno-9-41" href="#__codelineno-9-41"></a>    public String getViewName() {
+<a id="__codelineno-9-42" name="__codelineno-9-42" href="#__codelineno-9-42"></a>        return (this.view instanceof String ? (String) this.view : null);
+<a id="__codelineno-9-43" name="__codelineno-9-43" href="#__codelineno-9-43"></a>    }
+<a id="__codelineno-9-44" name="__codelineno-9-44" href="#__codelineno-9-44"></a>    public void setView(View view) {
+<a id="__codelineno-9-45" name="__codelineno-9-45" href="#__codelineno-9-45"></a>        this.view = view;
+<a id="__codelineno-9-46" name="__codelineno-9-46" href="#__codelineno-9-46"></a>    }
+<a id="__codelineno-9-47" name="__codelineno-9-47" href="#__codelineno-9-47"></a>    public View getView() {
+<a id="__codelineno-9-48" name="__codelineno-9-48" href="#__codelineno-9-48"></a>        return (this.view instanceof View ? (View) this.view : null);
+<a id="__codelineno-9-49" name="__codelineno-9-49" href="#__codelineno-9-49"></a>    }
+<a id="__codelineno-9-50" name="__codelineno-9-50" href="#__codelineno-9-50"></a>    public boolean hasView() {
+<a id="__codelineno-9-51" name="__codelineno-9-51" href="#__codelineno-9-51"></a>        return (this.view != null);
+<a id="__codelineno-9-52" name="__codelineno-9-52" href="#__codelineno-9-52"></a>    }
+<a id="__codelineno-9-53" name="__codelineno-9-53" href="#__codelineno-9-53"></a>    public boolean isReference() {
+<a id="__codelineno-9-54" name="__codelineno-9-54" href="#__codelineno-9-54"></a>        return (this.view instanceof String);
+<a id="__codelineno-9-55" name="__codelineno-9-55" href="#__codelineno-9-55"></a>    }
+<a id="__codelineno-9-56" name="__codelineno-9-56" href="#__codelineno-9-56"></a>    public Map&lt;String, Object&gt; getModel() {
+<a id="__codelineno-9-57" name="__codelineno-9-57" href="#__codelineno-9-57"></a>        return this.model;
+<a id="__codelineno-9-58" name="__codelineno-9-58" href="#__codelineno-9-58"></a>    }
+<a id="__codelineno-9-59" name="__codelineno-9-59" href="#__codelineno-9-59"></a>    private void addAllAttributes(Map&lt;String, ?&gt; modelData) {
+<a id="__codelineno-9-60" name="__codelineno-9-60" href="#__codelineno-9-60"></a>        if (modelData != null) {
+<a id="__codelineno-9-61" name="__codelineno-9-61" href="#__codelineno-9-61"></a>            model.putAll(modelData);
+<a id="__codelineno-9-62" name="__codelineno-9-62" href="#__codelineno-9-62"></a>        }
+<a id="__codelineno-9-63" name="__codelineno-9-63" href="#__codelineno-9-63"></a>    }
+<a id="__codelineno-9-64" name="__codelineno-9-64" href="#__codelineno-9-64"></a>    public void addAttribute(String attributeName, Object attributeValue) {
+<a id="__codelineno-9-65" name="__codelineno-9-65" href="#__codelineno-9-65"></a>        model.put(attributeName, attributeValue);
+<a id="__codelineno-9-66" name="__codelineno-9-66" href="#__codelineno-9-66"></a>    }
+<a id="__codelineno-9-67" name="__codelineno-9-67" href="#__codelineno-9-67"></a>    public ModelAndView addObject(String attributeName, Object attributeValue) {
+<a id="__codelineno-9-68" name="__codelineno-9-68" href="#__codelineno-9-68"></a>        addAttribute(attributeName, attributeValue);
+<a id="__codelineno-9-69" name="__codelineno-9-69" href="#__codelineno-9-69"></a>        return this;
+<a id="__codelineno-9-70" name="__codelineno-9-70" href="#__codelineno-9-70"></a>    }
+<a id="__codelineno-9-71" name="__codelineno-9-71" href="#__codelineno-9-71"></a>}
+</code></pre></div>
+<p>这个类里面定义了Model和View，分别代表返回的数据以及前端表示，我们这里就是指JSP。</p>
+<p>有了这个结构，我们回头看调用目标方法之后返回的那段代码，把类RequestMappingHandlerAdapter的方法invokeHandlerMethod()返回值改为ModelAndView。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>protected ModelAndView invokeHandlerMethod(HttpServletRequest request,
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>                HttpServletResponse response, HandlerMethod handlerMethod) throws Exception {
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    ModelAndView mav = null;
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    //如果是ResponseBody注解，仅仅返回值，则转换数据格式后直接写到response
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    if (invocableMethod.isAnnotationPresent(ResponseBody.class)){ //ResponseBody
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>            this.messageConverter.write(returnObj, response);
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    }
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    else { //返回的是前端页面
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>        if (returnObj instanceof ModelAndView) {
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>            mav = (ModelAndView)returnObj;
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>        }
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>        else if(returnObj instanceof String) { //字符串也认为是前端页面
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>            String sTarget = (String)returnObj;
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>            mav = new ModelAndView();
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>            mav.setViewName(sTarget);
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>        }
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    }
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>    return mav;
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>}
+</code></pre></div>
+<p>通过上面这段代码我们可以知道，调用方法返回的时候，我们处理了三种情况。</p>
+<ol>
+<li>如果声明返回的是ResponseBody，那就用MessageConvert把结果转换一下，之后直接写回response。</li>
+<li>如果声明返回的是ModelAndView，那就把结果包装成一个ModelAndView对象返回。</li>
+<li>如果声明返回的是字符串，就以这个字符串为目标，最后还是包装成ModelAndView返回。</li>
+</ol>
+<h2 id="view">View</h2>
+<p>到这里，调用方法就返回了。不过事情还没完，之后我们就把注意力转移到MVC环节的最后一部分：View层。View，顾名思义，就是负责前端界面展示的部件，当然它最主要的功能就是，把数据按照一定格式显示并输出到前端界面上，因此可以抽象出它的核心方法render()，我们可以看下View接口的定义。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>package com.minis.web.servlet;
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>import java.util.Map;
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>import javax.servlet.http.HttpServletRequest;
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>import javax.servlet.http.HttpServletResponse;
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>public interface View {
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    void render(Map&lt;String, ?&gt; model, HttpServletRequest request, HttpServletResponse response)
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>            throws Exception;
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    default String getContentType() {
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>        return null;
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>    }
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>    void setContentType(String contentType);
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>    void setUrl(String url);
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>    String getUrl();
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    void setRequestContextAttribute(String requestContextAttribute);
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>    String getRequestContextAttribute();
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>}
+</code></pre></div>
+<p>这个render()方法的思路很简单，就是获取HTTP请求的request和response，以及中间产生的业务数据Model，最后写到response里面。request和response是HTTP访问时由服务器创建的，ModelAndView是由我们的MiniSpring创建的。</p>
+<p>准备好数据之后，我们以JSP为例，来看看怎么把结果显示在前端界面上。其实，这跟我们自己手工写JSP是一样的，先设置属性值，然后把请求转发（forward）出去，就像下面我给出的这几行代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>    request.setAttribute(key1, value1);
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    request.setAttribute(key2, value2);
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    request.getRequestDispatcher(url).forward(request, response);
+</code></pre></div>
+<p>照此办理，DispatcherServlet的doDispatch()方法调用目标方法后，可以通过一个render()来渲染这个JSP，你可以看一下doDispatch()相关代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>    HandlerAdapter ha = this.handlerAdapter;
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    mv = ha.handle(processedRequest, response, handlerMethod);
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    render(processedRequest, response, mv);
+</code></pre></div>
+<p>这个render()方法可以考虑这样实现。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>    //用jsp 进行render
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    protected void render( HttpServletRequest request, HttpServletResponse response,ModelAndView mv) throws Exception {
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>        //获取model，写到request的Attribute中：
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>        Map&lt;String, Object&gt; modelMap = mv.getModel();
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>        for (Map.Entry&lt;String, Object&gt; e : modelMap.entrySet()) {
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>            request.setAttribute(e.getKey(),e.getValue());
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>        }
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>        //输出到目标JSP
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>        String sTarget = mv.getViewName();
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>        String sPath = &quot;/&quot; + sTarget + &quot;.jsp&quot;;
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>        request.getRequestDispatcher(sPath).forward(request, response);
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>    }
+</code></pre></div>
+<p>我们看到了，程序从Model里获取数据，并将其作为属性值写到request的attribute里，然后获取页面路径，再显示出来，跟手工写JSP过程一样，简明有效。</p>
+<p>但是上面的程序有两个问题，一是这个程序是怎么找到显示目标View的呢？上面的例子，我们是写了一个固定的路径/xxxx.jsp，但实际上这些应该是可以让用户自己来配置的，不应该写死在代码中。二是拿到View后，直接用的是request的forward()方法，这只对JSP有效，没办法扩展到别的页面，比如说Excel、PDF。所以上面的render()是需要改造的。</p>
+<p>先解决第一个问题，怎么找到需要显示的目标View? 这里又得引出了一个新的部件ViewResolver，由它来根据某个规则或者是用户配置来确定View在哪里，下面是它的定义。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>package com.minis.web.servlet;
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>public interface ViewResolver {
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    View resolveViewName(String viewName) throws Exception;
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>}
+</code></pre></div>
+<p>这个ViewResolver就是根据View的名字找到实际的View，有了这个ViewResolver，就不用写死JSP路径，而是可以通过resolveViewName()方法来获取一个View。拿到目标View之后，我们把实际渲染的功能交给View自己完成。我们把程序改成下面这个样子。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>    protected void render( HttpServletRequest request, HttpServletResponse response,ModelAndView mv) throws Exception {
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>        String sTarget = mv.getViewName();
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>        Map&lt;String, Object&gt; modelMap = mv.getModel();
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>        View view = resolveViewName(sTarget, modelMap, request);
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>        view.render(modelMap, request, response);
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    }
+</code></pre></div>
+<p>在MiniSpring里，我们提供一个InternalResourceViewResolver，作为启动JSP的默认实现，它是这样定位到显示目标View的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>package com.minis.web.servlet.view;
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>import com.minis.web.servlet.View;
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>import com.minis.web.servlet.ViewResolver;
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>public class InternalResourceViewResolver implements ViewResolver{
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    private Class&lt;?&gt; viewClass = null;
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>    private String viewClassName = &quot;&quot;;  
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>    private String prefix = &quot;&quot;;
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>    private String suffix = &quot;&quot;;
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>    private String contentType;
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>    public InternalResourceViewResolver() {
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>        if (getViewClass() == null) {
+<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>            setViewClass(JstlView.class);           
+<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>        }
+<a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a>    }
+<a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a>
+<a id="__codelineno-17-19" name="__codelineno-17-19" href="#__codelineno-17-19"></a>    public void setViewClassName(String viewClassName) {
+<a id="__codelineno-17-20" name="__codelineno-17-20" href="#__codelineno-17-20"></a>        this.viewClassName = viewClassName;
+<a id="__codelineno-17-21" name="__codelineno-17-21" href="#__codelineno-17-21"></a>        Class&lt;?&gt; clz = null;
+<a id="__codelineno-17-22" name="__codelineno-17-22" href="#__codelineno-17-22"></a>        try {
+<a id="__codelineno-17-23" name="__codelineno-17-23" href="#__codelineno-17-23"></a>            clz = Class.forName(viewClassName);
+<a id="__codelineno-17-24" name="__codelineno-17-24" href="#__codelineno-17-24"></a>        } catch (ClassNotFoundException e) {
+<a id="__codelineno-17-25" name="__codelineno-17-25" href="#__codelineno-17-25"></a>            e.printStackTrace();
+<a id="__codelineno-17-26" name="__codelineno-17-26" href="#__codelineno-17-26"></a>        }
+<a id="__codelineno-17-27" name="__codelineno-17-27" href="#__codelineno-17-27"></a>        setViewClass(clz);
+<a id="__codelineno-17-28" name="__codelineno-17-28" href="#__codelineno-17-28"></a>    }
+<a id="__codelineno-17-29" name="__codelineno-17-29" href="#__codelineno-17-29"></a>
+<a id="__codelineno-17-30" name="__codelineno-17-30" href="#__codelineno-17-30"></a>    protected String getViewClassName() {
+<a id="__codelineno-17-31" name="__codelineno-17-31" href="#__codelineno-17-31"></a>        return this.viewClassName;
+<a id="__codelineno-17-32" name="__codelineno-17-32" href="#__codelineno-17-32"></a>    }
+<a id="__codelineno-17-33" name="__codelineno-17-33" href="#__codelineno-17-33"></a>    public void setViewClass(Class&lt;?&gt; viewClass) {
+<a id="__codelineno-17-34" name="__codelineno-17-34" href="#__codelineno-17-34"></a>        this.viewClass = viewClass;
+<a id="__codelineno-17-35" name="__codelineno-17-35" href="#__codelineno-17-35"></a>    }
+<a id="__codelineno-17-36" name="__codelineno-17-36" href="#__codelineno-17-36"></a>    protected Class&lt;?&gt; getViewClass() {
+<a id="__codelineno-17-37" name="__codelineno-17-37" href="#__codelineno-17-37"></a>        return this.viewClass;
+<a id="__codelineno-17-38" name="__codelineno-17-38" href="#__codelineno-17-38"></a>    }
+<a id="__codelineno-17-39" name="__codelineno-17-39" href="#__codelineno-17-39"></a>    public void setPrefix(String prefix) {
+<a id="__codelineno-17-40" name="__codelineno-17-40" href="#__codelineno-17-40"></a>        this.prefix = (prefix != null ? prefix : &quot;&quot;);
+<a id="__codelineno-17-41" name="__codelineno-17-41" href="#__codelineno-17-41"></a>    }
+<a id="__codelineno-17-42" name="__codelineno-17-42" href="#__codelineno-17-42"></a>    protected String getPrefix() {
+<a id="__codelineno-17-43" name="__codelineno-17-43" href="#__codelineno-17-43"></a>        return this.prefix;
+<a id="__codelineno-17-44" name="__codelineno-17-44" href="#__codelineno-17-44"></a>    }
+<a id="__codelineno-17-45" name="__codelineno-17-45" href="#__codelineno-17-45"></a>    public void setSuffix(String suffix) {
+<a id="__codelineno-17-46" name="__codelineno-17-46" href="#__codelineno-17-46"></a>        this.suffix = (suffix != null ? suffix : &quot;&quot;);
+<a id="__codelineno-17-47" name="__codelineno-17-47" href="#__codelineno-17-47"></a>    }
+<a id="__codelineno-17-48" name="__codelineno-17-48" href="#__codelineno-17-48"></a>    protected String getSuffix() {
+<a id="__codelineno-17-49" name="__codelineno-17-49" href="#__codelineno-17-49"></a>        return this.suffix;
+<a id="__codelineno-17-50" name="__codelineno-17-50" href="#__codelineno-17-50"></a>    }
+<a id="__codelineno-17-51" name="__codelineno-17-51" href="#__codelineno-17-51"></a>    public void setContentType(String contentType) {
+<a id="__codelineno-17-52" name="__codelineno-17-52" href="#__codelineno-17-52"></a>        this.contentType = contentType;
+<a id="__codelineno-17-53" name="__codelineno-17-53" href="#__codelineno-17-53"></a>    }
+<a id="__codelineno-17-54" name="__codelineno-17-54" href="#__codelineno-17-54"></a>    protected String getContentType() {
+<a id="__codelineno-17-55" name="__codelineno-17-55" href="#__codelineno-17-55"></a>        return this.contentType;
+<a id="__codelineno-17-56" name="__codelineno-17-56" href="#__codelineno-17-56"></a>    }
+<a id="__codelineno-17-57" name="__codelineno-17-57" href="#__codelineno-17-57"></a>
+<a id="__codelineno-17-58" name="__codelineno-17-58" href="#__codelineno-17-58"></a>    @Override
+<a id="__codelineno-17-59" name="__codelineno-17-59" href="#__codelineno-17-59"></a>    public View resolveViewName(String viewName) throws Exception {
+<a id="__codelineno-17-60" name="__codelineno-17-60" href="#__codelineno-17-60"></a>        return buildView(viewName);
+<a id="__codelineno-17-61" name="__codelineno-17-61" href="#__codelineno-17-61"></a>    }
+<a id="__codelineno-17-62" name="__codelineno-17-62" href="#__codelineno-17-62"></a>
+<a id="__codelineno-17-63" name="__codelineno-17-63" href="#__codelineno-17-63"></a>    protected View buildView(String viewName) throws Exception {
+<a id="__codelineno-17-64" name="__codelineno-17-64" href="#__codelineno-17-64"></a>        Class&lt;?&gt; viewClass = getViewClass();
+<a id="__codelineno-17-65" name="__codelineno-17-65" href="#__codelineno-17-65"></a>
+<a id="__codelineno-17-66" name="__codelineno-17-66" href="#__codelineno-17-66"></a>        View view = (View) viewClass.newInstance();
+<a id="__codelineno-17-67" name="__codelineno-17-67" href="#__codelineno-17-67"></a>        view.setUrl(getPrefix() + viewName + getSuffix());
+<a id="__codelineno-17-68" name="__codelineno-17-68" href="#__codelineno-17-68"></a>
+<a id="__codelineno-17-69" name="__codelineno-17-69" href="#__codelineno-17-69"></a>        String contentType = getContentType();
+<a id="__codelineno-17-70" name="__codelineno-17-70" href="#__codelineno-17-70"></a>        view.setContentType(contentType);
+<a id="__codelineno-17-71" name="__codelineno-17-71" href="#__codelineno-17-71"></a>
+<a id="__codelineno-17-72" name="__codelineno-17-72" href="#__codelineno-17-72"></a>        return view;
+<a id="__codelineno-17-73" name="__codelineno-17-73" href="#__codelineno-17-73"></a>    }
+<a id="__codelineno-17-74" name="__codelineno-17-74" href="#__codelineno-17-74"></a>}
+</code></pre></div>
+<p>从代码里可以知道，它先创建View实例，通过配置生成URL定位到显示目标，然后设置ContentType。这个过程也跟我们手工写JSP是一样的。通过这个resolver，就解决了第一个问题，框架会根据配置从/jsp/路径下拿到xxxx.jsp页面。</p>
+<p>对于第二个问题，DispatcherServlet是不应该负责实际的渲染工作的，它只负责控制流程，并不知道如何渲染前端，这些工作由具体的View实现类来完成。所以我们不再把request forward()这样的代码写到DispatcherServlet里，而是写到View的render()方法中。</p>
+<p>MiniSpring也提供了一个默认的实现：JstlView。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>package com.minis.web.servlet.view;
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>import java.util.Map;
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>import java.util.Map.Entry;
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>import javax.servlet.http.HttpServletRequest;
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>import javax.servlet.http.HttpServletResponse;
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>import com.minis.web.servlet.View;
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>public class JstlView implements View{
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>    public static final String DEFAULT_CONTENT_TYPE = &quot;text/html;charset=ISO-8859-1&quot;;
+<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>    private String contentType = DEFAULT_CONTENT_TYPE;
+<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>    private String requestContextAttribute;
+<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>    private String beanName;
+<a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a>    private String url;
+<a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>
+<a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a>    public void setContentType(String contentType) {
+<a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a>        this.contentType = contentType;
+<a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a>    }
+<a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a>    public String getContentType() {
+<a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a>        return this.contentType;
+<a id="__codelineno-18-21" name="__codelineno-18-21" href="#__codelineno-18-21"></a>    }
+<a id="__codelineno-18-22" name="__codelineno-18-22" href="#__codelineno-18-22"></a>    public void setRequestContextAttribute(String requestContextAttribute) {
+<a id="__codelineno-18-23" name="__codelineno-18-23" href="#__codelineno-18-23"></a>        this.requestContextAttribute = requestContextAttribute;
+<a id="__codelineno-18-24" name="__codelineno-18-24" href="#__codelineno-18-24"></a>    }
+<a id="__codelineno-18-25" name="__codelineno-18-25" href="#__codelineno-18-25"></a>    public String getRequestContextAttribute() {
+<a id="__codelineno-18-26" name="__codelineno-18-26" href="#__codelineno-18-26"></a>        return this.requestContextAttribute;
+<a id="__codelineno-18-27" name="__codelineno-18-27" href="#__codelineno-18-27"></a>    }
+<a id="__codelineno-18-28" name="__codelineno-18-28" href="#__codelineno-18-28"></a>    public void setBeanName(String beanName) {
+<a id="__codelineno-18-29" name="__codelineno-18-29" href="#__codelineno-18-29"></a>        this.beanName = beanName;
+<a id="__codelineno-18-30" name="__codelineno-18-30" href="#__codelineno-18-30"></a>    }
+<a id="__codelineno-18-31" name="__codelineno-18-31" href="#__codelineno-18-31"></a>    public String getBeanName() {
+<a id="__codelineno-18-32" name="__codelineno-18-32" href="#__codelineno-18-32"></a>        return this.beanName;
+<a id="__codelineno-18-33" name="__codelineno-18-33" href="#__codelineno-18-33"></a>    }
+<a id="__codelineno-18-34" name="__codelineno-18-34" href="#__codelineno-18-34"></a>    public void setUrl(String url) {
+<a id="__codelineno-18-35" name="__codelineno-18-35" href="#__codelineno-18-35"></a>        this.url = url;
+<a id="__codelineno-18-36" name="__codelineno-18-36" href="#__codelineno-18-36"></a>    }
+<a id="__codelineno-18-37" name="__codelineno-18-37" href="#__codelineno-18-37"></a>    public String getUrl() {
+<a id="__codelineno-18-38" name="__codelineno-18-38" href="#__codelineno-18-38"></a>        return this.url;
+<a id="__codelineno-18-39" name="__codelineno-18-39" href="#__codelineno-18-39"></a>    }
+<a id="__codelineno-18-40" name="__codelineno-18-40" href="#__codelineno-18-40"></a>    public void render(Map&lt;String, ?&gt; model, HttpServletRequest request, HttpServletResponse response)
+<a id="__codelineno-18-41" name="__codelineno-18-41" href="#__codelineno-18-41"></a>            throws Exception {
+<a id="__codelineno-18-42" name="__codelineno-18-42" href="#__codelineno-18-42"></a>        for (Entry&lt;String, ?&gt; e : model.entrySet()) {
+<a id="__codelineno-18-43" name="__codelineno-18-43" href="#__codelineno-18-43"></a>            request.setAttribute(e.getKey(),e.getValue());
+<a id="__codelineno-18-44" name="__codelineno-18-44" href="#__codelineno-18-44"></a>        }   
+<a id="__codelineno-18-45" name="__codelineno-18-45" href="#__codelineno-18-45"></a>        request.getRequestDispatcher(getUrl()).forward(request, response);
+<a id="__codelineno-18-46" name="__codelineno-18-46" href="#__codelineno-18-46"></a>    }
+<a id="__codelineno-18-47" name="__codelineno-18-47" href="#__codelineno-18-47"></a>}
+</code></pre></div>
+<p>从代码里可以看到，程序其实还是一样的，因为要完成的任务是一样的，只不过现在这个代码移到了View这个位置。但是这个位置的移动，就让前端的渲染工作解耦了，DispatcherServlet不负责渲染了，我们可以由此扩展到多种前端，如Excel、PDF等等。</p>
+<p>然后，对于InternalResourceViewResolver和JstlView，我们可以再次利用IoC容器机制通过配置进行注入。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>    &lt;bean id=&quot;viewResolver&quot; class=&quot;com.minis.web.servlet.view.InternalResourceViewResolver&quot; &gt;
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>     &lt;property type=&quot;String&quot; name=&quot;viewClassName&quot; value=&quot;com.minis.web.servlet.view.JstlView&quot; /&gt;
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>     &lt;property type=&quot;String&quot; name=&quot;prefix&quot; value=&quot;/jsp/&quot; /&gt;
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>     &lt;property type=&quot;String&quot; name=&quot;suffix&quot; value=&quot;.jsp&quot; /&gt;
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>    &lt;/bean&gt;
+</code></pre></div>
+<p>当DispatcherServlet初始化的时候，根据配置获取实际的ViewResolver和View。</p>
+<p>整个过程就完美结束了。</p>
+<h2 id="_2">小结</h2>
+<p>这节课，我们重点探讨了MVC调用目标方法之后的处理过程，如何自动转换数据、如何找到指定的View、如何去渲染页面。我们可以看到，作为一个框架，我们没有规定数据要如何转换格式，而是交给了MessageConverter去做；我们也没有规定如何找到这些目标页面，而是交给了ViewResolver去做；我们同样没有规定如何去渲染前端界面，而是通过View这个接口去做。我们可以自由地实现具体的场景。</p>
+<p>这里，我们的重点并不是去看具体代码如何实现，而是要学习Spring框架如何分解这些工作，把专门的事情交给专门的部件去完成。虽然现在已经不流行JSP，我们不用特地去学习它，但是把这些部件解耦的框架思想，却是值得我们好好琢磨的。</p>
+<p>完整源代码参见：<a href="https://github.com/YaleGuo/minis">https://github.com/YaleGuo/minis</a></p>
+<h2 id="_3">课后题</h2>
+<p>学完这节课，我也给你留一道思考题。现在我们返回的数据只支持Date、Number和String三种类型，如何扩展到更多的数据类型？现在也只支持JSP，如何扩展到别的前端？欢迎你在留言区和我交流讨论，也欢迎你把这节课分享给需要的朋友。我们下节课见！</p>
 <div><strong>精选留言（7）</strong></div>
 <ul>
-<li><img src="" width="30px"><span>Geek3485</span> 👍（1） 💬（1）<div>老师的minitomcat源码在哪可以看到</div>2023-08-04</li><br/><li><img src="" width="30px"><span>马儿</span> 👍（0） 💬（2）<div>1.目前如果加了ResponseBody注解返回String的话返回的是String在内存中的信息，而需要的字符串值字段在这个json中也是内存中的地址值，这将导致结果不符合预期，这里应该还需要对writeValuesAsString这个函数优化一下，或者是拓展一些其他的实现。
+<li><span>Geek3485</span> 👍（1） 💬（1）<div>老师的minitomcat源码在哪可以看到</div>2023-08-04</li><br/><li><span>马儿</span> 👍（0） 💬（2）<div>1.目前如果加了ResponseBody注解返回String的话返回的是String在内存中的信息，而需要的字符串值字段在这个json中也是内存中的地址值，这将导致结果不符合预期，这里应该还需要对writeValuesAsString这个函数优化一下，或者是拓展一些其他的实现。
 2. 目前在InternalResourceViewResolver中写死了处理Jsp的View，可以在加一个有参构造函数，传入参数为资源类型，InternalResourceViewResolver内部维护一个资源类型和View的Map
 
-希望老师可以抽时间加一些答疑课，对之前一些同学问到的问题在课上统一解答一下。或者是将一些mini-spring中的一些拓展点提供一个思路，比如上节课遇到的传参数不支持基本类型和自定义类型中WebDataBinder不可用的问题。谢谢老师。</div>2023-04-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/25/87/f3a69d1b.jpg" width="30px"><span>peter</span> 👍（0） 💬（1）<div>请教老师几个问题：
+希望老师可以抽时间加一些答疑课，对之前一些同学问到的问题在课上统一解答一下。或者是将一些mini-spring中的一些拓展点提供一个思路，比如上节课遇到的传参数不支持基本类型和自定义类型中WebDataBinder不可用的问题。谢谢老师。</div>2023-04-08</li><br/><li><span>peter</span> 👍（0） 💬（1）<div>请教老师几个问题：
 Q1：本文所讲的内容，就是模仿SpringMVC，对吗？
 Q2：很多信息都存在request中，那这个request对象会占用很大内存吗？对于一个用户，一般地讲，会占用多大内存？比如10M？
-Q3：View这个类，是生成一个页面文件吗？还是把数据填充到已经存在的页面上？</div>2023-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/31/45/3f/e4fc2781.jpg" width="30px"><span>梦某人</span> 👍（2） 💬（0）<div>打卡成功，从理解上这节课并不难，虽然很多代码（主要是User类和一些辅助）需要参考GitHub不然无法进行。但是调整环境浪费了接近2个小时，因为访问jsp一直报404的错误，后来意识到是没在idea的Project Structe 中的 Module设置资源文件夹。。。。另外目前的返回来讲，string包装成了 ModelAndView，但是这样做在reander的时候无法辨别，导致最基础的 &#47;test反而无法访问。思考题来说，View的两个类，一个负责分析内容，一个负责渲染内容，将 ViewResolver 进行扩展就可以解决相关问题了。</div>2023-04-18</li><br/><li><img src="" width="30px"><span>Geek_b3425a</span> 👍（1） 💬（0）<div>最新版初始化的handleAdapter的时候并没有给webBindingInitialize赋值，只给了一个set方法但是没有找到调用的地方，这样有请求进来的时候不会就空指针了吗？是我漏看东西了吗</div>2023-09-14</li><br/><li><img src="" width="30px"><span>Geek_b3425a</span> 👍（0） 💬（0）<div>
+Q3：View这个类，是生成一个页面文件吗？还是把数据填充到已经存在的页面上？</div>2023-04-06</li><br/><li><span>梦某人</span> 👍（2） 💬（0）<div>打卡成功，从理解上这节课并不难，虽然很多代码（主要是User类和一些辅助）需要参考GitHub不然无法进行。但是调整环境浪费了接近2个小时，因为访问jsp一直报404的错误，后来意识到是没在idea的Project Structe 中的 Module设置资源文件夹。。。。另外目前的返回来讲，string包装成了 ModelAndView，但是这样做在reander的时候无法辨别，导致最基础的 &#47;test反而无法访问。思考题来说，View的两个类，一个负责分析内容，一个负责渲染内容，将 ViewResolver 进行扩展就可以解决相关问题了。</div>2023-04-18</li><br/><li><span>Geek_b3425a</span> 👍（1） 💬（0）<div>最新版初始化的handleAdapter的时候并没有给webBindingInitialize赋值，只给了一个set方法但是没有找到调用的地方，这样有请求进来的时候不会就空指针了吗？是我漏看东西了吗</div>2023-09-14</li><br/><li><span>Geek_b3425a</span> 👍（0） 💬（0）<div>
 
-有点不懂，老师仓库代码，handleMaping和handleAdapter都实现了applicationContextAware接口，类中applicationContext属性是abstractApplicationContext在getBean的时候给set进去的，不懂得是在容器启动的时候并没有这个bean相应的实体对象，并不会调用这个方法，我本地handleMapping中容器属性也是空，并没有掉set方法给他赋值</div>2023-09-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/0b/5a/453ad411.jpg" width="30px"><span>C.</span> 👍（0） 💬（1）<div>结束结束！</div>2023-04-06</li><br/>
+有点不懂，老师仓库代码，handleMaping和handleAdapter都实现了applicationContextAware接口，类中applicationContext属性是abstractApplicationContext在getBean的时候给set进去的，不懂得是在容器启动的时候并没有这个bean相应的实体对象，并不会调用这个方法，我本地handleMapping中容器属性也是空，并没有掉set方法给他赋值</div>2023-09-14</li><br/><li><span>C.</span> 👍（0） 💬（1）<div>结束结束！</div>2023-04-06</li><br/>
 </ul>
 
 

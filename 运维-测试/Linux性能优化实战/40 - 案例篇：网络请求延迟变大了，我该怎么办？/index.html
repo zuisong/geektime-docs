@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -2739,6 +2744,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    40   案例篇：网络请求延迟变大了，我该怎么办？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -2748,6 +2764,68 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      网络延迟
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例准备
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例分析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -5995,6 +6073,59 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      网络延迟
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例准备
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例分析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -6031,145 +6162,262 @@
 <li>Linux 内核协议栈报文处理慢，导致延迟；</li>
 <li>应用程序数据处理慢，导致延迟等等。</li>
 </ul>
-<div><strong>精选留言（30）</strong></div>
+<p>那么，当碰到这些原因的延迟时，我们该怎么办呢？又该如何定位网络延迟的根源呢？今天，我就通过一个案例，带你一起看看这些问题。</p>
+<h2 id="_1">网络延迟</h2>
+<p>我相信，提到<strong>网络延迟</strong>时，你可能轻松想起它的含义——网络数据传输所用的时间。不过要注意，这个时间可能是单向的，指从源地址发送到目的地址的单程时间；也可能是双向的，即从源地址发送到目的地址，然后又从目的地址发回响应，这个往返全程所用的时间。</p>
+<p>通常，我们更常用的是双向的往返通信延迟，比如 ping 测试的结果，就是往返延时 RTT（Round-Trip Time）。</p>
+<p>除了网络延迟外，另一个常用的指标是<strong>应用程序延迟</strong>，它是指，从应用程序接收到请求，再到发回响应，全程所用的时间。通常，应用程序延迟也指的是往返延迟，是网络数据传输时间加上数据处理时间的和。</p>
+<p>在 <a href="https://time.geekbang.org/column/article/81057">Linux 网络基础篇</a> 中，我曾经介绍到，你可以用 ping 来测试网络延迟。ping 基于 ICMP 协议，它通过计算 ICMP 回显响应报文与 ICMP 回显请求报文的时间差，来获得往返延时。这个过程并不需要特殊认证，常被很多网络攻击利用，比如端口扫描工具 nmap、组包工具 hping3 等等。</p>
+<p>所以，为了避免这些问题，很多网络服务会把 ICMP 禁止掉，这也就导致我们无法用 ping ，来测试网络服务的可用性和往返延时。这时，你可以用 traceroute 或 hping3 的 TCP 和 UDP 模式，来获取网络延迟。</p>
+<p>比如，以 baidu.com 为例，你可以执行下面的 hping3 命令，测试你的机器到百度搜索服务器的网络延迟：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a># -c表示发送3次请求，-S表示设置TCP SYN，-p表示端口号为80
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>$ hping3 -c 3 -S -p 80 baidu.com
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>HPING baidu.com (eth0 123.125.115.110): S set, 40 headers + 0 data bytes
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>len=46 ip=123.125.115.110 ttl=51 id=47908 sport=80 flags=SA seq=0 win=8192 rtt=20.9 ms
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>len=46 ip=123.125.115.110 ttl=51 id=6788  sport=80 flags=SA seq=1 win=8192 rtt=20.9 ms
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>len=46 ip=123.125.115.110 ttl=51 id=37699 sport=80 flags=SA seq=2 win=8192 rtt=20.9 ms
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>--- baidu.com hping statistic ---
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>3 packets transmitted, 3 packets received, 0% packet loss
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>round-trip min/avg/max = 20.9/20.9/20.9 ms
+</code></pre></div>
+<p>从 hping3 的结果中，你可以看到，往返延迟 RTT 为 20.9ms。</p>
+<p>当然，我们用 traceroute ，也可以得到类似结果：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a># --tcp表示使用TCP协议，-p表示端口号，-n表示不对结果中的IP地址执行反向域名解析
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>$ traceroute --tcp -p 80 -n baidu.com
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>traceroute to baidu.com (123.125.115.110), 30 hops max, 60 byte packets
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a> 1  * * *
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a> 2  * * *
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a> 3  * * *
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a> 4  * * *
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a> 5  * * *
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a> 6  * * *
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a> 7  * * *
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a> 8  * * *
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a> 9  * * *
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>10  * * *
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>11  * * *
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>12  * * *
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>13  * * *
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>14  123.125.115.110  20.684 ms *  20.798 ms
+</code></pre></div>
+<p>traceroute 会在路由的每一跳发送三个包，并在收到响应后，输出往返延时。如果无响应或者响应超时（默认5s），就会输出一个星号。</p>
+<p>知道了基于 TCP 测试网络服务延迟的方法后，接下来，我们就通过一个案例，来学习网络延迟升高时的分析思路。</p>
+<h2 id="_2">案例准备</h2>
+<p>下面的案例仍然基于 Ubuntu 18.04，同样适用于其他的 Linux 系统。我使用的案例环境是这样的：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/64/05/6989dce6.jpg" width="30px"><span>我来也</span> 👍（18） 💬（1）<div>[D40打卡]
-我之前理解的网络延迟分三部分：客户端到服务端，服务端逻辑处理，服务端到客户端到耗时。
-
-其中服务端逻辑处理的耗时是跟自身程序有关的，另外两个耗时跟宽带服务提供商有关，想更短的耗时就得加钱：选更优的线路或者在靠近客户端的地方加入口。
-
-目前我们线上程序是可以推算出单次响应的时间的，因为在出入口的地方有记录。不管中间经过了多少服务的处理，都可以算出总的耗时。
-
-我们在客户端中也加了汇报功能，在客户端的某些消息中会汇报 客户端实际发送请求-&gt;收到服务端响应 的时间差。这样便于我们确认客户端的网络状况。
-
-从本文中，第一次见到了 Nagle 算法。也知道了服务端关闭icmp时怎么用tcp&#47;udp测试网络延迟。
-
-文中的内容也是跌宕起伏，分析着怎么还是客户端的问题，客户端访问另外一个服务还是好的。原来是服务端程序也有问题，一个巴掌拍不响。😂
-</div>2019-02-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/8c/2b/3ab96998.jpg" width="30px"><span>青石</span> 👍（10） 💬（1）<div>网上查了Nagle算法的定义：任意时刻，最多只能有一个未被确认的小段。所谓“小段”，指的是小于MSS尺寸的数据块，所谓“未被确认”，是指一个数据块发送出去后，没有收到对方发送的ACK确认该数据已收到。
-
-对比80端口和8080端口的报文，80端口的报文中，响应消息再发送完header后立刻发送body部分；8080端口的报文，响应消息再发送完header后，需要获得ACK响应后，才会发送body部分。
-
-8080端口报文中server端在获得到ACK响应后才发送body部分，就是因为Nagle算法必须确认这个数据块被收到的原因。client在40ms后发送ACK是因为客户端没有开启TCP_QUICKACK的缘故。
-
-请问老师，这样理解，对吗？</div>2019-03-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3a/6e/e39e90ca.jpg" width="30px"><span>大坏狐狸</span> 👍（6） 💬（1）<div>额 第二次居然curl不通了。。18.04 的防火墙是ufw ,需要ufw allow 80&#47;tcp
-</div>2019-05-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9e/a3/0bfaaf13.jpg" width="30px"><span>楚</span> 👍（6） 💬（1）<div>你好，我在网络编程中遇到一个问题，
-我们用go语言做的服务调用其他HTTP服务器，发现HTTP请求中卡住，概率非常低。
-然后我看了发现write，返回eagain，然后就等待epoll通知描述符是否可用，这个时候发现等了很久很久都不可用。netstata看了下，TCP写buffer有数据但是没有满，等了很久也貌似发生不出去，有重传，但是还是传不出去。直接达到rto次数内核中断连接。
-我们只能将rto改很小让内核中断连接。
-请问这种情况一般都是由什么原因引起的呢？
-</div>2019-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/d8/425e1b0a.jpg" width="30px"><span>小虾米</span> 👍（5） 💬（1）<div>我记得之前碰到的延迟ack是200ms，这个是可以配置的吗？</div>2019-02-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9b/ba/333b59e5.jpg" width="30px"><span>Linuxer</span> 👍（3） 💬（1）<div>案例中能设置客户端的TCP_QUICKACK解决吗？</div>2019-02-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/97/7d/791d0f5e.jpg" width="30px"><span>蚂蚁吃大象</span> 👍（2） 💬（1）<div>您好，请教下。我通过客户端直接访问服务器，平均响应延迟是30ms，经过nginx代理响应延迟是200ms，我使用的ngx+lua，业务逻辑是先查询worker进程的缓存，没有再查redis，再没有查mysql，现在lua层面可以优化的已经优化了，平均响应延迟还是170ms,不知道通过什么工具能定位具体哪里导致响应延迟慢呢？谢谢！</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/93/43/0e84492d.jpg" width="30px"><span>Maxwell</span> 👍（2） 💬（1）<div>为什么执行strace -f wrk --latency -c 100 -t 2 --timeout 2 http:&#47;&#47;192.168.126.136:8080&#47;，输出结果中并没有TCP_NODELAY配置选项呢？</div>2019-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9b/ba/333b59e5.jpg" width="30px"><span>Linuxer</span> 👍（2） 💬（1）<div>同一套环境碰到一个低并发高延时，高并发低延时得的问题，请问倪老师像这种问题该如何排查?</div>2019-02-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5c/cb/3ebdcc49.jpg" width="30px"><span>怀特</span> 👍（2） 💬（2）<div>traceroute 会在路由的每一跳发送三个包，并在收到响应后，输出往返延时。如果无响应或者响应超时（默认 5s），就会输出一个星号。
-----这个地方，还有些不明白，希望老师能在这里再解释几句
-</div>2019-02-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/ca/79/139615aa.jpg" width="30px"><span>Magic Star Trace</span> 👍（0） 💬（1）<div>请问：物理机centos 7 ，kvm 上虚拟机 丢包不稳定是什么问题导致的呢？
-time 延迟很不稳定</div>2019-08-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/73/99/eb99b2cb.jpg" width="30px"><span>坤丰</span> 👍（0） 💬（1）<div>不考虑磁盘问题，tcpdump 长期在生产环境打开，会有什么不良的影响吗？会影响到网络性能吗？如何去评估这样的问题</div>2019-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9e/a3/0bfaaf13.jpg" width="30px"><span>楚</span> 👍（0） 💬（1）<div>你好，但是每次出问题都要等到重传15次。而且write buffer都不变。
-应该不是简单超时吧。</div>2019-03-05</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/PiajxSqBRaEKQMM4m7NHuicr55aRiblTSEWIYe0QqbpyHweaoAbG7j2v7UUElqqeP3Ihrm3UfDPDRb1Hv8LvPwXqA/132" width="30px"><span>ninuxer</span> 👍（0） 💬（1）<div>打卡day42
-案例中的问题，可能我通过抓包仔细看后，能得出ack有异常，但是没办法跟客户端默认的ack延时发送，以及nginx的tcp_nodelay联系起来～😂</div>2019-02-26</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTL9hlAIKQ1sGDu16oWLOHyCSicr18XibygQSMLMjuDvKk73deDlH9aMphFsj41WYJh121aniaqBLiaMNg/132" width="30px"><span>腾达</span> 👍（0） 💬（4）<div>为什么我无法出现延迟40ms左右的情况？ 我都是按照老师的步骤来的。我的nginx端（VM1）是ubuntu 18.04，跟老师版本一样的，VM2端是Ubuntu16，wrk，curl工作在此。我用wrk跑三个nginx（分别是good，nginx-latency，nginx-nodelay）差不多，Latency  Avg在   90ms，有时候，反而还是nginx-latency最好。我观察了包的顺序，确实如课程所说的那样(老师能否将本课中说抓的包一起上传到github？)
-我的三个nginx的配置如下：
-
-good的配置：
-http {
-    include       &#47;etc&#47;nginx&#47;mime.types;
-    default_type  application&#47;octet-stream;
-
-    log_format  main  &#39;$remote_addr - $remote_user [$time_local] &quot;$request&quot; &#39;
-                      &#39;$status $body_bytes_sent &quot;$http_referer&quot; &#39;
-                      &#39;&quot;$http_user_agent&quot; &quot;$http_x_forwarded_for&quot;&#39;;
-
-    access_log  &#47;var&#47;log&#47;nginx&#47;access.log  main;
-
-    sendfile        on;
-    #tcp_nopush     on;
-
-    keepalive_timeout  65;
-
-    #gzip  on;
-
-    include &#47;etc&#47;nginx&#47;conf.d&#47;*.conf;
-}
-
-
-nginx-nodelay的配置：
-http {
-    include       &#47;etc&#47;nginx&#47;mime.types;
-    default_type  application&#47;octet-stream;
-
-    log_format  main  &#39;$remote_addr - $remote_user [$time_local] &quot;$request&quot; &#39;
-                      &#39;$status $body_bytes_sent &quot;$http_referer&quot; &#39;
-                      &#39;&quot;$http_user_agent&quot; &quot;$http_x_forwarded_for&quot;&#39;;
-
-    access_log  &#47;var&#47;log&#47;nginx&#47;access.log  main;
-
-    sendfile        on;
-    tcp_nopush     off;
-    tcp_nodelay     on;
-
-    keepalive_timeout  65;
-
-    #gzip  on;
-
-    include &#47;etc&#47;nginx&#47;conf.d&#47;*.conf;
-}
-
-
-nginx-latency的配置：
-http {
-    include       &#47;etc&#47;nginx&#47;mime.types;
-    default_type  application&#47;octet-stream;
-
-    log_format  main  &#39;$remote_addr - $remote_user [$time_local] &quot;$request&quot; &#39;
-                      &#39;$status $body_bytes_sent &quot;$http_referer&quot; &#39;
-                      &#39;&quot;$http_user_agent&quot; &quot;$http_x_forwarded_for&quot;&#39;;
-
-    access_log  &#47;var&#47;log&#47;nginx&#47;access.log  main;
-
-    sendfile        on;
-    tcp_nopush     off;
-    tcp_nodelay    off;
-
-    keepalive_timeout  65;
-
-    #gzip  on;
-
-    include &#47;etc&#47;nginx&#47;conf.d&#47;*.conf;
-}
-
-
-
-</div>2019-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/9a/64/ad837224.jpg" width="30px"><span>Christmas</span> 👍（20） 💬（0）<div>以前经常看到tcp no delay的socket设置，一直不求甚解，这次终于懂了，nagle算法</div>2019-03-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/20/52/11/af170b65.jpg" width="30px"><span>骑驴找你</span> 👍（5） 💬（0）<div>40ms最小延迟确认是有一个算法的，那我自己的centos8举例：
-&#47;usr&#47;src&#47;kernels&#47;4.18.0-80.el8.x86_64+debug&#47;include&#47;net&#47;tcp.h文件中记录了这个变量&#47;宏的定义：
-#define TCP_DELACK_MAX  ((unsigned)(HZ&#47;5))      &#47;* maximal time to delay before sending an ACK *&#47;
-#if HZ &gt;= 100
-#define TCP_DELACK_MIN  ((unsigned)(HZ&#47;25))     &#47;* minimal time to delay before sending an ACK *&#47;
-HZ的值可以利用老师之前讲过的软中断相关知识计算出来，即相隔10s计算&#47;proc&#47;interrupts里面的中断次数变化，两次做差再除以10就是每秒的中断数，我这边计算出来的值是1005，那么HZ就应该是1000，所以1000&#47;25=40ms</div>2020-09-25</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/MibOYDxw9TDxwBuTyI79AoHlJGeUFiabGtUmdeiaMrjxFy3FXmNFTIAVxrESMojrReIDbhOib4os01uBZdbMBZGCVg/132" width="30px"><span>微微</span> 👍（5） 💬（2）<div>遇到一个问题，backlog设置的很大，有22w，但是用ss -ltn命令查看这个监听端口的Send-Q和Recv-Q都是0，但是用命令netstat -s|egrep &quot;listen|LISTEN&quot;的溢出值一直在上升，统计这个端口的连接数还不到5000，请问可能会是什么原因？</div>2019-10-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/82/3d/356fc3d6.jpg" width="30px"><span>忆水寒</span> 👍（4） 💬（0）<div>本文是一个很好的案例，条理清晰，。抛砖引玉，我分享一个分析tcp断连的案例分析：https:&#47;&#47;mp.weixin.qq.com&#47;s&#47;XS3Jnn3Xl4_12gzg0zrSTA</div>2021-08-01</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqtXSgThiaEiaEqqic5YIJ7v469nCM3VXiccOJ4SxbYjW91ciczuYYEzcTVtYWaWXaokZqShuLdKsXjnFA/132" width="30px"><span>Geek_b85295</span> 👍（3） 💬（1）<div>老师，这个案例中，为什么第一个请求没有延迟，第二个请求才开始有延迟</div>2021-06-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/f6/24/547439f1.jpg" width="30px"><span>ghostwritten</span> 👍（2） 💬（0）<div>1. hping3 -c 3 -S -p 80 baidu.com
-traceroute --tcp -p 80 -n baidu.com
-2.  wrk --latency -c 100 -t 2 --timeout 2 http:&#47;&#47;192.168.0.30&#47;
-3.  tcpdump -nn tcp port 8080 -w nginx.pcap
-4. man tcp---TCP_QUICKACK,TCP_NODELAY
-5. strace -f wrk --latency -c 100 -t 2 --timeout 2 http:&#47;&#47;192.168.0.30:8080&#47;
-6. Nagle 算法，是 TCP 协议中用于减少小包发送数量的一种优化算法，它通过合并 TCP 小包,目的是为了提高实际带宽的利用率,
-7.  Wireshark分析</div>2021-08-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/64/9b/d1ab239e.jpg" width="30px"><span>J.Smile</span> 👍（2） 💬（0）<div>很棒的一篇文章，让我串联起来陶辉老师课程中关于延迟确认 、nagle相关知识。也被科普了一波为什么一般生产环境的ping都被禁止了。</div>2020-08-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/93/38/71615300.jpg" width="30px"><span>DayDayUp</span> 👍（1） 💬（0）<div>老师，我在想，案例中的恰好是“延迟回复” + “Nagle 算法”的“偶遇”导致了这个延时，如果有大量数据包的情况下，那么一两个包可能是延迟的，如果有大量数据包的情况下应该就没有问题了吧。因为客户端会把所有ACK攒齐一起发送，而服务端也是将数据包的数据部分凑满发送。
-
-感觉整体不会有特别大的时延。</div>2022-06-05</li><br/><li><img src="" width="30px"><span>Geek_392979</span> 👍（1） 💬（2）<div>老师，学了课程后， 面试的时候遇到一个问题: &quot;1000台服务器， 95%的服务器QPS正常(1000QPS), 其他的是2000QPS, cpu正常, 怎么排查？&quot;
-我的思路是首先看平均负载， 如果平均负载高，看是什么导致的平局负载高。依次看各个CPU利用率，但题目里说CPU正常。然后能想到的就是：
-1. sar -n DEV 2 10 看整个的网络收发情况
-2. traceroute --tcp -p port -n xxx.xxx.com 看到目标服务的网络延时
-3. pstack看目标服务器上的应用程序的调用堆栈，是不是阻塞在某个调用上
-4. perf top分析目标应用程序
-
-感觉这样的答案没有让面试官满意， 所以老师遇到这种问题应该怎么分析？ 到目标服务器的延时高和QPS低是正相关的吗？</div>2021-03-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/af/00/9b49f42b.jpg" width="30px"><span>skye</span> 👍（1） 💬（1）<div>那nagle算法用在什么情况下呢？</div>2019-05-06</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q3auHgzwzM78picDmK4b2roBGAqoLicqc5EPPbsPQWkb3xbMk6kDpft19DgeLEfBeekPlvFg2O5lrEXa0XdYhhng/132" width="30px"><span>Geek_e2b7bc</span> 👍（0） 💬（0）<div>客户端延迟40秒ACK，服务端因为nagle等待ACK后才会发下一个分组，所以延迟。解决方案：让服务端多发分组，客户端也可以快速桐应回复ACK了</div>2025-01-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/a3/4d/59390ba9.jpg" width="30px"><span>排骨</span> 👍（0） 💬（0）<div>当 Nagle 算法和延迟确认同时使用时，可能会产生所谓的 &quot;40ms 延迟问题&quot;：</div>2025-01-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/6e/1d/3fef83ac.jpg" width="30px"><span>不一样的烟火</span> 👍（0） 💬（0）<div>
-TCP_QUICKACK和TCP_NODELAY关系
-TCP_QUICKACK 和 TCP_NODELAY 是 TCP socket 选项，用于不同的目的：
-
-TCP_NODELAY: 这个选项关闭了 Nagle 算法，默认情况下，TCP 将等待更多的小段数据再发送，以减少网络中的小包数量，这个选项让数据尽快发送出去，但可能会增加小数据的延迟。
-
-TCP_QUICKACK: 这个选项使得当 TCP 接收到一个段后，立即发送一个 ACK，而不是等待发送方的下一个段，这在某些情况下可以减少网络延迟。
-
-TCP_QUICKACK 和 TCP_NODELAY 并不直接相关，它们是针对不同问题的解决方案：
-
-TCP_NODELAY 主要用于减少发送的小数据包延迟。
-
-TCP_QUICKACK 主要用于减少数据接收后的确认延迟。</div>2024-05-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJGXndj5N66z9BL1ic9GibZzWWgoVeWaWTL2XUnCYic7iba2kAEvN9WfjmlXELD5lqt8IJ1P023N5ZWicg/132" width="30px"><span>Geek_f93234</span> 👍（0） 💬（0）<div>为什么第一次请求和响应没有延迟，第二次请求才开始有延迟
-</div>2023-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0c/bf/863d440a.jpg" width="30px"><span>jaxzhai</span> 👍（0） 💬（0）<div>我们业务请求oracle遇到一个同样 延迟确认的问题，但我们客户端加上 TCP_NODELAY  还是同样的问题，现在不知道怎么弄了？</div>2021-12-27</li><br/>
+<li>机器配置：2 CPU，8GB 内存。</li>
+<li>预先安装 docker、hping3、tcpdump、curl、wrk、Wireshark 等工具，比如 apt-get install docker.io hping3 tcpdump curl。</li>
 </ul>
+<p>这里的工具你应该都比较熟悉了，其中 wrk 的安装和使用方法在 <a href="https://time.geekbang.org/column/article/81497">怎么评估系统的网络性能</a> 中曾经介绍过。如果你还没有安装，请执行下面的命令来安装它：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ https://github.com/wg/wrk
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>$ cd wrk
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>$ apt-get install build-essential -y
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>$ make
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>$ sudo cp wrk /usr/local/bin/
+</code></pre></div>
+<p>由于Wireshark 需要图形界面，如果你的虚拟机没有图形界面，就可以把 Wireshark 安装到其他的机器中（比如 Windows 笔记本）。</p>
+<p>本次案例用到两台虚拟机，我画了一张图来表示它们的关系。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/55/63/55347dc1ec78688da5673f29b60aa863.png?wh=816%2A516" /></p>
+<p>接下来，我们打开两个终端，分别 SSH 登录到两台机器上（以下步骤，假设终端编号与图示VM 编号一致），并安装上面提到的这些工具。注意， curl 和 wrk 只需要安装在客户端 VM（即 VM2）中。</p>
+<p>同以前的案例一样，下面的所有命令都默认以 root 用户运行，如果你是用普通用户身份登陆系统，请运行 sudo su root 命令切换到 root 用户。</p>
+<blockquote>
+<p>如果安装过程中有什么问题，同样鼓励你先自己搜索解决，解决不了的，可以在留言区向我提问。如果你以前已经安装过了，就可以忽略这一点了。</p>
+</blockquote>
+<p>接下来，我们就进入到案例操作的环节。</p>
+<h2 id="_3">案例分析</h2>
+<p>为了对比得出延迟增大的影响，首先，我们来运行一个最简单的 Nginx，也就是用官方的 Nginx 镜像启动一个容器。在终端一中，执行下面的命令，运行官方 Nginx，它会在 80 端口监听：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ docker run --network=host --name=good -itd nginx
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>fb4ed7cb9177d10e270f8320a7fb64717eac3451114c9fab3c50e02be2e88ba2
+</code></pre></div>
+<p>继续在终端一中，执行下面的命令，运行案例应用，它会监听 8080 端口：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ docker run --name nginx --network=host -itd feisky/nginx:latency
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>b99bd136dcfd907747d9c803fdc0255e578bad6d66f4e9c32b826d75b6812724
+</code></pre></div>
+<p>然后，在终端二中执行 curl 命令，验证两个容器已经正常启动。如果一切正常，你将看到如下的输出：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a># 80端口正常
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>$ curl http://192.168.0.30
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>&lt;!DOCTYPE html&gt;
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>&lt;html&gt;
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>...
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>&lt;p&gt;&lt;em&gt;Thank you for using nginx.&lt;/em&gt;&lt;/p&gt;
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>&lt;/body&gt;
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>&lt;/html&gt;
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a># 8080端口正常
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>$ curl http://192.168.0.30:8080
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>...
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>&lt;p&gt;&lt;em&gt;Thank you for using nginx.&lt;/em&gt;&lt;/p&gt;
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>&lt;/body&gt;
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>&lt;/html&gt;
+</code></pre></div>
+<p>接着，我们再用上面提到的 hping3 ，来测试它们的延迟，看看有什么区别。还是在终端二，执行下面的命令，分别测试案例机器 80 端口和 8080 端口的延迟：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a># 测试80端口延迟
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>$ hping3 -c 3 -S -p 80 192.168.0.30
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>HPING 192.168.0.30 (eth0 192.168.0.30): S set, 40 headers + 0 data bytes
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>len=44 ip=192.168.0.30 ttl=64 DF id=0 sport=80 flags=SA seq=0 win=29200 rtt=7.8 ms
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>len=44 ip=192.168.0.30 ttl=64 DF id=0 sport=80 flags=SA seq=1 win=29200 rtt=7.7 ms
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>len=44 ip=192.168.0.30 ttl=64 DF id=0 sport=80 flags=SA seq=2 win=29200 rtt=7.6 ms
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>--- 192.168.0.30 hping statistic ---
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>3 packets transmitted, 3 packets received, 0% packet loss
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>round-trip min/avg/max = 7.6/7.7/7.8 ms
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a># 测试8080端口延迟
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>$ hping3 -c 3 -S -p 8080 192.168.0.30
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>HPING 192.168.0.30 (eth0 192.168.0.30): S set, 40 headers + 0 data bytes
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>len=44 ip=192.168.0.30 ttl=64 DF id=0 sport=8080 flags=SA seq=0 win=29200 rtt=7.7 ms
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>len=44 ip=192.168.0.30 ttl=64 DF id=0 sport=8080 flags=SA seq=1 win=29200 rtt=7.6 ms
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>len=44 ip=192.168.0.30 ttl=64 DF id=0 sport=8080 flags=SA seq=2 win=29200 rtt=7.3 ms
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>--- 192.168.0.30 hping statistic ---
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>3 packets transmitted, 3 packets received, 0% packet loss
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>round-trip min/avg/max = 7.3/7.6/7.7 ms
+</code></pre></div>
+<p>从这个输出你可以看到，两个端口的延迟差不多，都是 7ms。不过，这只是单个请求的情况。换成并发请求的话，又会怎么样呢？接下来，我们就用 wrk 试试。</p>
+<p>这次在终端二中，执行下面的新命令，分别测试案例机器并发 100 时， 80 端口和 8080 端口的性能：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a># 测试80端口性能
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>$ # wrk --latency -c 100 -t 2 --timeout 2 http://192.168.0.30/
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>Running 10s test @ http://192.168.0.30/
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  2 threads and 100 connections
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>  Thread Stats   Avg      Stdev     Max   +/- Stdev
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    Latency     9.19ms   12.32ms 319.61ms   97.80%
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    Req/Sec     6.20k   426.80     8.25k    85.50%
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>  Latency Distribution
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>     50%    7.78ms
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>     75%    8.22ms
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>     90%    9.14ms
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>     99%   50.53ms
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>  123558 requests in 10.01s, 100.15MB read
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>Requests/sec:  12340.91
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>Transfer/sec:     10.00MB
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a># 测试8080端口性能
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>$ wrk --latency -c 100 -t 2 --timeout 2 http://192.168.0.30:8080/
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>Running 10s test @ http://192.168.0.30:8080/
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  2 threads and 100 connections
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>  Thread Stats   Avg      Stdev     Max   +/- Stdev
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    Latency    43.60ms    6.41ms  56.58ms   97.06%
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    Req/Sec     1.15k   120.29     1.92k    88.50%
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>  Latency Distribution
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>     50%   44.02ms
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>     75%   44.33ms
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>     90%   47.62ms
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>     99%   48.88ms
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>  22853 requests in 10.01s, 18.55MB read
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>Requests/sec:   2283.31
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>Transfer/sec:      1.85MB
+</code></pre></div>
+<p>从上面两个输出可以看到，官方Nginx（监听在80端口）的平均延迟是 9.19ms，而案例 Nginx 的平均延迟（监听在 8080 端口）则是 43.6ms。从延迟的分布上来看，官方 Nginx 90% 的请求，都可以在 9ms以内完成；而案例 Nginx 50% 的请求，就已经达到了 44 ms。</p>
+<p>再结合上面 hping3 的输出，我们很容易发现，案例 Nginx 在并发请求下的延迟增大了很多，这是怎么回事呢？</p>
+<p>分析方法我想你已经想到了，上节课学过的，使用 tcpdump 抓取收发的网络包，分析网络的收发过程有没有问题。</p>
+<p>接下来，我们在终端一中，执行下面的 tcpdump 命令，抓取 8080 端口上收发的网络包，并保存到 nginx.pcap 文件：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$ tcpdump -nn tcp port 8080 -w nginx.pcap
+</code></pre></div>
+<p>然后切换到终端二中，重新执行 wrk 命令：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a># 测试8080端口性能
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>$ wrk --latency -c 100 -t 2 --timeout 2 http://192.168.0.30:8080/
+</code></pre></div>
+<p>当 wrk 命令结束后，再次切换回终端一，并按下 Ctrl+C 结束 tcpdump 命令。然后，再把抓取到的 nginx.pcap ，复制到装有 Wireshark 的机器中（如果 VM1 已经带有图形界面，那么可以跳过复制步骤），并用 Wireshark 打开它。</p>
+<p>由于网络包的数量比较多，我们可以先过滤一下。比如，在选择一个包后，你可以单击右键并选择 “Follow” -&gt; “TCP Stream”，如下图所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/45/98/4590d2477d54bf9aa3d2881ff3296498.png?wh=453%2A372" /></p>
+<p>然后，关闭弹出来的对话框，回到 Wireshark 主窗口。这时候，你会发现 Wireshark 已经自动帮你设置了一个过滤表达式 tcp.stream eq 24。如下图所示（图中省去了源和目的IP地址）：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/f9/6e/f9fa457f95276ae4904a91619501376e.png?wh=761%2A295" /></p>
+<p>从这里，你可以看到这个 TCP 连接从三次握手开始的每个请求和响应情况。当然，这可能还不够直观，你可以继续点击菜单栏里的 Statics -&gt; Flow Graph，选中 “Limit to display filter” 并设置 Flow type 为 “TCP Flows”：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ff/cc/ff498170eb58abcdd841709fb4c036cc.png?wh=722%2A471" /></p>
+<p>注意，这个图的左边是客户端，而右边是 Nginx 服务器。通过这个图就可以看出，前面三次握手，以及第一次 HTTP 请求和响应还是挺快的，但第二次 HTTP 请求就比较慢了，特别是客户端在收到服务器第一个分组后，40ms 后才发出了 ACK 响应（图中蓝色行）。</p>
+<p>看到 40ms 这个值，你有没有想起什么东西呢？实际上，这是 TCP 延迟确认（Delayed ACK）的最小超时时间。</p>
+<p>这里我解释一下延迟确认。这是针对 TCP ACK 的一种优化机制，也就是说，不用每次请求都发送一个 ACK，而是先等一会儿（比如 40ms），看看有没有“顺风车”。如果这段时间内，正好有其他包需要发送，那就捎带着 ACK 一起发送过去。当然，如果一直等不到其他包，那就超时后单独发送 ACK。</p>
+<p>因为案例中 40ms 发生在客户端上，我们有理由怀疑，是客户端开启了延迟确认机制。而这儿的客户端，实际上就是前面运行的 wrk。</p>
+<p>查询 TCP 文档（执行 man tcp），你就会发现，只有 TCP 套接字专门设置了 TCP_QUICKACK ，才会开启快速确认模式；否则，默认情况下，采用的就是延迟确认机制：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>TCP_QUICKACK (since Linux 2.4.4)
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>              Enable  quickack mode if set or disable quickack mode if cleared.  In quickack mode, acks are sent imme‐
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>              diately, rather than delayed if needed in accordance to normal TCP operation.  This flag is  not  perma‐
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>              nent,  it only enables a switch to or from quickack mode.  Subsequent operation of the TCP protocol will
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>              once again enter/leave quickack mode depending on internal  protocol  processing  and  factors  such  as
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>              delayed ack timeouts occurring and data transfer.  This option should not be used in code intended to be
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>              portable.
+</code></pre></div>
+<p>为了验证我们的猜想，确认 wrk 的行为，我们可以用 strace ，来观察 wrk 为套接字设置了哪些 TCP 选项。</p>
+<p>比如，你可以切换到终端二中，执行下面的命令：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>$ strace -f wrk --latency -c 100 -t 2 --timeout 2 http://192.168.0.30:8080/
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>...
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>setsockopt(52, SOL_TCP, TCP_NODELAY, [1], 4) = 0
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>...
+</code></pre></div>
+<p>这样，你可以看到，wrk 只设置了 TCP_NODELAY 选项，而没有设置 TCP_QUICKACK。这说明 wrk 采用的正是延迟确认，也就解释了上面这个40ms 的问题。</p>
+<p>不过，别忘了，这只是客户端的行为，按理来说，Nginx 服务器不应该受到这个行为的影响。那是不是我们分析网络包时，漏掉了什么线索呢？让我们回到 Wireshark 重新观察一下。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/72/8a/72eb14e8996147a458aa6523110c938a.png?wh=750%2A268" /></p>
+<p>仔细观察 Wireshark 的界面，其中， 1173 号包，就是刚才说到的延迟 ACK 包；下一行的 1175 ，则是 Nginx 发送的第二个分组包，它跟 697 号包组合起来，构成一个完整的 HTTP 响应（ACK 号都是 85）。</p>
+<p>第二个分组没跟前一个分组（697 号）一起发送，而是等到客户端对第一个分组的 ACK 后（1173 号）才发送，这看起来跟延迟确认有点像，只不过，这儿不再是 ACK，而是发送数据。</p>
+<p>看到这里，我估计你想起了一个东西—— Nagle 算法（纳格算法）。进一步分析案例前，我先简单介绍一下这个算法。</p>
+<p>Nagle 算法，是 TCP 协议中用于减少小包发送数量的一种优化算法，目的是为了提高实际带宽的利用率。</p>
+<p>举个例子，当有效负载只有 1 字节时，再加上 TCP 头部和 IP 头部分别占用的 20 字节，整个网络包就是 41 字节，这样实际带宽的利用率只有 2.4%（1/41）。往大了说，如果整个网络带宽都被这种小包占满，那整个网络的有效利用率就太低了。</p>
+<p>Nagle 算法正是为了解决这个问题。它通过合并 TCP 小包，提高网络带宽的利用率。Nagle 算法规定，一个 TCP 连接上，最多只能有一个未被确认的未完成分组；在收到这个分组的 ACK 前，不发送其他分组。这些小分组会被组合起来，并在收到 ACK 后，用同一个分组发送出去。</p>
+<p>显然，Nagle 算法本身的想法还是挺好的，但是知道 Linux 默认的延迟确认机制后，你应该就不这么想了。因为它们一起使用时，网络延迟会明显。如下图所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c5/c6/c51439692921cbf67b746a45fded2ec6.png?wh=672%2A934" /></p>
+<ul>
+<li>当 Sever 发送了第一个分组后，由于 Client 开启了延迟确认，就需要等待 40ms 后才会回复 ACK。</li>
+<li>同时，由于 Server 端开启了 Nagle，而这时还没收到第一个分组的 ACK，Server 也会在这里一直等着。</li>
+<li>直到 40ms 超时后，Client 才会回复ACK，然后，Server 才会继续发送第二个分组。</li>
+</ul>
+<p>既然可能是 Nagle 的问题，那该怎么知道，案例 Nginx 有没有开启 Nagle 呢？</p>
+<p>查询 tcp 的文档，你就会知道，只有设置了 TCP_NODELAY 后，Nagle 算法才会禁用。所以，我们只需要查看 Nginx 的 tcp_nodelay 选项就可以了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>TCP_NODELAY
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>              If set, disable the Nagle algorithm.  This means that segments are always sent as soon as possible, even
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>              if there is only a small amount of data.  When not set, data is buffered until  there  is  a  sufficient
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>              amount  to  send out, thereby avoiding the frequent sending of small packets, which results in poor uti‐
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>              lization of the network.  This option is overridden by TCP_CORK; however, setting this option forces  an
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>              explicit flush of pending output, even if TCP_CORK is currently set.
+</code></pre></div>
+<p>我们回到终端一中，执行下面的命令，查看案例 Nginx 的配置:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>$ docker exec nginx cat /etc/nginx/nginx.conf | grep tcp_nodelay
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    tcp_nodelay    off;
+</code></pre></div>
+<p>果然，你可以看到，案例 Nginx 的 tcp_nodelay 是关闭的，将其设置为 on ，应该就可以解决了。</p>
+<p>改完后，问题是否就解决了呢？自然需要验证我们一下。修改后的应用，我已经打包到了Docker 镜像中，在终端一中执行下面的命令，你就可以启动它：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a># 删除案例应用
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>$ docker rm -f nginx
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a># 启动优化后的应用
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>$ docker run --name nginx --network=host -itd feisky/nginx:nodelay
+</code></pre></div>
+<p>接着，切换到终端二，重新执行 wrk 测试延迟：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>$ wrk --latency -c 100 -t 2 --timeout 2 http://192.168.0.30:8080/
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>Running 10s test @ http://192.168.0.30:8080/
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>  2 threads and 100 connections
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>  Thread Stats   Avg      Stdev     Max   +/- Stdev
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    Latency     9.58ms   14.98ms 350.08ms   97.91%
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    Req/Sec     6.22k   282.13     6.93k    68.50%
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>  Latency Distribution
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>     50%    7.78ms
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>     75%    8.20ms
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>     90%    9.02ms
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>     99%   73.14ms
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>  123990 requests in 10.01s, 100.50MB read
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>Requests/sec:  12384.04
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>Transfer/sec:     10.04MB
+</code></pre></div>
+<p>果然，现在延迟已经缩短成了 9ms，跟我们测试的官方 Nginx 镜像是一样的（Nginx 默认就是开启 tcp_nodelay 的） 。</p>
+<p>作为对比，我们用 tcpdump ，抓取优化后的网络包（这儿实际上抓取的是官方 Nginx 监听的 80 端口）。你可以得到下面的结果：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/b5/ba/b5f1643cdca33f29408881542fca4eba.png?wh=1599%2A621" /></p>
+<p>从图中你可以发现，由于 Nginx 不用再等 ACK，536 和 540 两个分组是连续发送的；而客户端呢，虽然仍开启了延迟确认，但这时收到了两个需要回复 ACK 的包，所以也不用等 40ms，可以直接合并回复 ACK。</p>
+<p>案例最后，不要忘记停止这两个容器应用。在终端一中，执行下面的命令，就可以删除案例应用：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>$ docker rm -f nginx good
+</code></pre></div>
+<h2 id="_4">小结</h2>
+<p>今天，我们学习了网络延迟增大后的分析方法。网络延迟，是最核心的网络性能指标。由于网络传输、网络包处理等各种因素的影响，网络延迟不可避免。但过大的网络延迟，会直接影响用户的体验。</p>
+<p>所以，在发现网络延迟增大后，你可以用 traceroute、hping3、tcpdump、Wireshark、strace 等多种工具，来定位网络中的潜在问题。比如，</p>
+<ul>
+<li>使用 hping3 以及 wrk 等工具，确认单次请求和并发请求情况的网络延迟是否正常。</li>
+<li>使用 traceroute，确认路由是否正确，并查看路由中每一跳网关的延迟。</li>
+<li>使用 tcpdump 和 Wireshark，确认网络包的收发是否正常。</li>
+<li>使用 strace 等，观察应用程序对网络套接字的调用情况是否正常。</li>
+</ul>
+<p>这样，你就可以依次从路由、网络包的收发、再到应用程序等，逐层排查，直到定位问题根源。</p>
+<h2 id="_5">思考</h2>
+<p>最后，我想邀请你一起来聊聊，你所理解的网络延迟，以及在发现网络延迟增大时，你又是怎么分析的呢？你可以结合今天的内容，和你自己的操作记录，来总结思路。</p>
+<p>欢迎在留言区和我讨论，也欢迎把这篇文章分享给你的同事、朋友。我们一起在实战中演练，在交流中进步。</p>
 
 
 

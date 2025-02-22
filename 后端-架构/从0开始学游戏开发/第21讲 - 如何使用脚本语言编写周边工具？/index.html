@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -5729,6 +5734,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    第21讲   如何使用脚本语言编写周边工具？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -5738,6 +5754,32 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -12973,6 +13015,23 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -13008,9 +13067,144 @@
 <p>因为这个工具简单、小巧，我们可以将Lua脚本语句直接拿来用作Makefile语句，而在这个过程中，我们同时还可以通过Lua语句来了解Lua的工作机理。 而且这个编写过程我们一篇文章差不多就可以说清楚。</p>
 <p>而别的周边工具编写起来可能会比较复杂，比如如果要编写类似Awk的工具的话，就要编写文本解析和文件查找功能；如果编写游戏更新工具的话，就必须涉及网络基础以及压缩解压缩的功能。</p>
 <p>简单直白地说，Makefile是一种编译器的配置脚本文件。这个文件被GNU Make命令读取，并且解析其中的意义，调用C/C++（绝大部分时候）或者别的编译器（小部分）来将源代码编译成为执行文件或者动态、静态链接库。</p>
+<p>我们可以自己定义一系列的规则，然后通过顺利地运行gcc、cl 等命令来进行源代码编译。</p>
+<p>我们先定义一系列函数，来固定我们在Lua中所使用的函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>int compiler(lua_State*);
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>int linker(lua_State*);
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>int target(lua_State*);
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>int source_code(lua_State*);
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>int source_object(lua_State*);
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>int shell_command(lua_State*);
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>int compile_param(lua_State*);
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>int link_param(lua_State*);
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>int make(lua_State*);   
+</code></pre></div>
+<p>这些都是注册到Lua内部的C/C++函数。我们现在要将这些函数封装给Lua使用，但是在这之前，我们要将大部分的功能都在C/C++里编写好。</p>
+<p>随后，我们来看一下，在Lua脚本里面，具体是怎么实现Make命令操作的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>target(&quot;test.exe&quot;);
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>linker(&quot;c:\\develop\\dm\\bin\\dmc.exe&quot;);
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>compiler(&quot;c:\\develop\\dm\\bin\\dmc.exe&quot;);
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>source_code(&quot;c.cpp&quot;, &quot;fun.cpp&quot;, &quot;x.cpp&quot;);
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>source_object(&quot;c.obj&quot;, &quot;fun.obj&quot;, &quot;x.obj&quot;);
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>compile_param( &quot;$SRC&quot;, &quot;-c&quot;,
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>                      &quot;-Ic:/develop/dm/stlport/stlport&quot;,
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>                    &quot;c:/develop/dm/lib/stlp45dm_static.lib&quot;);
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>link_param(&quot;$TARGET&quot;, &quot;$OBJ&quot;);
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>make();
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>shell_command(&quot;del *.obj&quot;);
+</code></pre></div>
+<p>首先，第一行对应的就是目标文件target函数，后续的每一个Lua函数都能在最初的函数定义里找到。</p>
+<p>在这个例子当中，我们使用的是DigitalMars的C/C++编译器，执行文件叫dmc.exe。我们可以看到，在linker和compiler函数里都填写了dmc.exe，说明编译器和链接器都是dmc.exe文件。</p>
+<p>现在来看一下在C/C++里面是如何定义这个类的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>struct my_make
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>{
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>      string target;
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>      string compiler;
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>      string linker;
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>      vector&lt;string&gt; source_code;
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>      vector&lt;string&gt; source_object;
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>      vector&lt;string&gt; c_param;
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>      vector&lt;string&gt; l_param;
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>};
+</code></pre></div>
+<p>为了便于理解，我将C++类声明改成了struct，也就是把成员变量改为公有变量，你可以通过一个对象直接访问到。</p>
+<p>随后，我们来看一下如何将target、compiler和linker传入到C函数里面。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>int compiler(lua_State* L)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>{
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>      string c = lua_tostring(L, 1);
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>      get_my_make().compiler = c;
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>      return 0;
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>}
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>int linker(lua_State* L)
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>{
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>      string l = lua_tostring(L, 1);
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>      get_my_make().linker = l;
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>      return 0;       
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>}
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>int target(lua_State* L)
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>{
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>      string t = lua_tostring(L, 1);
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>      get_my_make().target = t;
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>      return 0;
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>}
+</code></pre></div>
+<p>在这三个函数里面，我们看到，get_my_make函数就是返回一个my_make类的对象。这个具体就不进行说明了，因为返回对象有多种方式，比如new一个对象并且return，或者直接返回一个静态对象。</p>
+<p>随后，我们直接使用了Lua函数lua_tostring，来得到Lua传入的参数，比如如果是target的话，我们就会得到”test.exe”，并且将这个字符串传给my_make对象的 string target 变量。后续的compiler、linker也是一样的道理。</p>
+<p>我们接着看下面两行。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>source_code(&quot;c.cpp&quot;, &quot;fun.cpp&quot;, &quot;x.cpp&quot;);
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>source_object(&quot;c.obj&quot;, &quot;fun.obj&quot;, &quot;x.obj&quot;);
+</code></pre></div>
+<p>这两行填入了cpp源文件以及obj中间文件，这些填入的参数并没有一个固定值，可能是1个，也可能是100个，那在C/C++和Lua的结合里面，我们应该怎么做呢？</p>
+<p>我们看到一个函数lua_gettop。这个函数是取得在当前函数中，虚拟机中堆栈的大小，所以返回的值，就是堆栈的大小值，比如我们传入3个参数，那么返回的就是3。</p>
+<p>接下来可以看到，使用Lua的计数方式，从1开始计数，并且循环结束的条件是和堆栈大小一样大，然后就在循环内，将传入的参数字符串，压入到C++的vector中。</p>
+<p>随后的source_object、compile_param和link_param都是相同的方法，将传入的参数压入到vector中。</p>
+<p>你可能要问了，我在Lua的代码中看到了$TARGET、$OBJ、$SRC等字样的字符串，这些字符串的处理在哪里，这些字符串又是做什么的呢？</p>
+<p>这些字符串是替代符号，你可以理解为C语言中printf函数的格式化符号，例如 “%d %s”等等，虽然在这里，这些符号都是自己定义的，但是我们仍然需要解析它们。</p>
+<p>其实解析的步骤并不难，我们只需要将vector内的内容提取出来，对比是不是字符串$TARGET等，如果是的话，就被替代为前面我们在target函数或者source_code函数中所定义的内容。</p>
+<p>我们拿source_code部分来举例，来看一下部分代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>void run()
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>      {
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>               string command_line;
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>               string src = &quot;$SRC&quot;;
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>               string tar = &quot;$TARGET&quot;;
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>               string obj = &quot;$OBJ&quot;;
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        for(int i = 0; i &lt; source_code.size(); i++)
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>         {
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>         ..............
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        for(int j=0; j&lt;c_param.size(); j++)
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>                        {
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>                                 if(c_param[j] == src)
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>                                 {
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>                                 command_line += source_code[i];
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>                                        .....
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>                                         }
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>                       }
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>          }
+</code></pre></div>
+<p>在这部分的代码里面可以看到，我们将压入的source_code内容进行循环。在循环之后，必须对c_param（compile_param），也就是编译参数进行循环。当我们发现编译参数里面出现了$SRC这个替代字符串的时候，就将source_code的内容（其实就是源代码文件）合并到command_line（命令行）里面去，然后整合成为一个完整的、可以运行的命令行。</p>
+<p>随后我再贴一部分代码，可以看到别的可替代字符串是怎么做的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>else if(c_param[j] == obj)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>{
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>      command_line += source_object[i];
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>}
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>else if(c_param[j] == tar)
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>{
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>      command_line += target;
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>}
+</code></pre></div>
+<p>我们对替代字符串做了相同的比较，如果是一致的话，就将被替代内容添加到command_line变量里面，组成一个完整的可运行命令行。</p>
+<p>这个run函数其实就是在make的时候调用的函数。至于如何调用这一串command命令，在C里面最简单的方式就是调用system函数，或者使用execl函数系列。注意，这个execl并不是来自微软的excel表格，而是C语言的函数。</p>
+<p>我们封装完了Lua部分的代码之后，就需要将Lua的函数注册到Lua虚拟机里面，这个我上一节已经具体说过了。</p>
+<p>最后，由于我们的Lua源代码本身就是一个Makefile文件，所以我们不需要做过多的解析，直接将这个源代码输入给Lua虚拟机即可。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>string makefile;
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>ifstream in(&quot;my_makefile&quot;);
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>makefile = &quot;my_makefile&quot;;
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>if(!in.is_open())
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>{
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>in.close();
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>}
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>else luaL_dofile(L, makefile.c_str());
+</code></pre></div>
+<p>在这段代码里面，我们首先使用C++的fstream库中的ifstream来尝试读取是不是有这个my_makefile文件，如果没有的话，就跳过，并且关闭文件句柄，如果存在的话，就把这个文件填入到Lua虚拟机中，让Lua虚拟机直接运行这个源文件。所以这种方式是最简单快捷的。</p>
+<p>代码有点多，不要担心，我带你梳理一下今天的内容。</p>
+<ol>
+<li><strong>利用C/C++语言和Lua源代码进行交互，从Lua代码中获取数据并且在C语言里面进行算法的封装和计算，最后将结果返回给Lua。</strong> 我们在C/C++语言里面进行大量的封装和算法提取，并且也利用C/C++进行调用和结果的呈现，这是一种常用的方式，也就是C语言占比60%～70%，Lua代码占比30%～40%。</li>
+<li>另一种比较好的方式是，<strong>使用C/C++编写底层实现逻辑，随后将数据传输给Lua，让Lua来做逻辑运算，最终将结果返回给C语言并且呈现出来</strong>。这是很多人在游戏开发中都会做的事情，比如我们编写地图编辑器，先在Lua中编写好逻辑，用C语言在界面中呈现出来即可。如果反过来做的话，那就会出现大量的硬代码，是很不合适的。所以这种情况下，C语言占比30%～40%，Lua代码占比60%～70%。</li>
+<li><strong>Lua可以是一种胶水语言。严谨地说，像Python、Ruby等脚本语言，都是合格的胶水语言。</strong> 在这种情况下，胶水语言起到的作用就是粘合系统语言（C/C++）和上层脚本逻辑。所以，使用胶水语言，就像是一种动态的配置文件。<br />
+   按照普通的配置文件来讲，你需要手工解析比如类似INI、XML、JSON等配置文件，随后按照这些文件的内容来做出一系列的配置，但是胶水语言不需要，它本身就是一种动态的语言。<br />
+   你也可以把它当作一种配置的文件，就像今天讲的Makefile，它可以不需要你检测语法问题，这些问题在Lua虚拟机本身就已经做掉了，你需要做的就是将我们脑海里想让它做的事情，通过C和Lua的库代码进行整合，直接使用就可以了。所以，<strong>胶水语言的本身就是一个配置文件，同时它也是一个脚本语言源代码。</strong></li>
+</ol>
+<h2 id="_1">小结</h2>
+<p>在使用C/C++结合脚本语言的时候，需要梳理这些内容，比如哪些是放在C/C++硬代码里写的，那些可以放到脚本语言里写，梳理完后，就可以将脚本语言和C/C++结合起来，编写出易于修改脚本逻辑（如果有不同需求，可以很方便地改写脚本而不需要动C/C++硬代码）、易于使用的工具。</p>
+<p>现在给你留一个小问题吧。</p>
+<p>在Lua当中有table表的存在，如何在C语言中，给Lua源代码生成一个table表，并且可以在Lua中正常使用呢？</p>
+<p>欢迎留言说出你的看法。我在下一节的挑战中等你！</p>
 <div><strong>精选留言（3）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/62/00/7cca8104.jpg" width="30px"><span>OCEAN</span> 👍（1） 💬（0）<div>table表对应c中数据，Lua中给出访问接口，并构造这个table表</div>2018-07-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2024-03-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fd/f7/8c78c31d.jpg" width="30px"><span>放羊大王</span> 👍（0） 💬（0）<div>第一次见这样的make file 感觉更像makeList.txt ，听的懂，但实践太难了。😅</div>2018-08-08</li><br/>
+<li><span>OCEAN</span> 👍（1） 💬（0）<div>table表对应c中数据，Lua中给出访问接口，并构造这个table表</div>2018-07-30</li><br/><li><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2024-03-29</li><br/><li><span>放羊大王</span> 👍（0） 💬（0）<div>第一次见这样的make file 感觉更像makeList.txt ，听的懂，但实践太难了。😅</div>2018-08-08</li><br/>
 </ul>
 
 

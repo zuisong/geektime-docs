@@ -4467,6 +4467,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      信号的处理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5990,6 +6017,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      信号的处理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6021,9 +6075,396 @@
 <p>有的时候，硬件异常也会产生信号。比如，执行了除以0的指令，CPU就会产生异常，然后把SIGFPE信号发送给进程。再如，进程访问了非法内存，内存管理模块就会产生异常，然后把信号SIGSEGV发送给进程。</p>
 <p>这里同样是硬件产生的，对于中断和信号还是要加以区别。咱们前面讲过，中断要注册中断处理函数，但是中断处理函数是在内核驱动里面的，信号也要注册信号处理函数，信号处理函数是在用户态进程里面的。</p>
 <p>对于硬件触发的，无论是中断，还是信号，肯定是先到内核的，然后内核对于中断和信号处理方式不同。一个是完全在内核里面处理完毕，一个是将信号放在对应的进程task_struct里信号相关的数据结构里面，然后等待进程在用户态去处理。当然有些严重的信号，内核会把进程干掉。但是，这也能看出来，中断和信号的严重程度不一样，信号影响的往往是某一个进程，处理慢了，甚至错了，也不过这个进程被干掉，而中断影响的是整个系统。一旦中断处理中有了bug，可能整个Linux都挂了。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>有时候，内核在某些情况下，也会给进程发送信号。例如，向读端已关闭的管道写数据时产生SIGPIPE信号，当子进程退出时，我们要给父进程发送SIG_CHLD信号等。</p>
+<p>最直接的发送信号的方法就是，通过命令kill来发送信号了。例如，我们都知道的kill -9 pid可以发送信号给一个进程，杀死它。</p>
+<p>另外，我们还可以通过kill或者sigqueue系统调用，发送信号给某个进程，也可以通过tkill或者tgkill发送信号给某个线程。虽然方式多种多样，但是最终都是调用了do_send_sig_info函数，将信号放在相应的task_struct的信号数据结构中。</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/a2/94/ae0a60d8.jpg" width="30px"><span>江山未</span> 👍（32） 💬（3）<div>感觉看的过程中，我的大脑不断的发出&quot;我看不懂&quot;的中断，让我不断的的从&quot;认真态&quot;返回到&quot;涣散态&quot;。随后执行启动时注册的看不懂处理函数&quot;逼自己看&quot;后，才重新进入&quot;认真态&quot;(并不能)。</div>2019-08-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/83/0c/b9e39db4.jpg" width="30px"><span>韩俊臣</span> 👍（4） 💬（1）<div>能把这么复杂的调用链讲的这么生动，大写的服</div>2020-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/59/f6/ed66d1c1.jpg" width="30px"><span>chengzise</span> 👍（2） 💬（3）<div>老师好，文章的信号处理流程是在程序进入系统调用后接收到信号的情况。希望老师补充一下，程序没有进入系统调用（一个简单的死循环程序），此时接收到系统信号会走什么样的流程。谢谢。</div>2019-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/cd/5c/e09eac13.jpg" width="30px"><span>刘強</span> 👍（1） 💬（1）<div>老师，既然内核态对用户态的栈随意操作（果然是内核，权利就是大），但返回的时候还是保持系统调用前的样子，丝毫没有察觉背后发生了这么多事情，就好像调用了一个普通用户态的函数一样，那么我在用户态调试程序的时候，能否看到这种内核对用户栈的修改？</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/99/af/d29273e2.jpg" width="30px"><span>饭粒</span> 👍（0） 💬（1）<div>梳理的真清楚。</div>2019-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/08/ab/caec7bca.jpg" width="30px"><span>humor</span> 👍（0） 💬（3）<div>老师，我突然想到了一个稍微无关的问题想请教一下。就是linux的安全问题，现在基本服务器上使用的操作系统都是linux，而安装linux只是下载一个系统镜像就可以安装了，但是，我们怎么能相信我们下载的linux镜像肯定没有安全问题呢，比如发布方安装了恶意程序或者开了一个后门之类的。我想了解一下一般的云服务厂商是怎么检测这类操作系统或者更加底层的硬件的安全问题的呢？</div>2019-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/39/fa/a7edbc72.jpg" width="30px"><span>安排</span> 👍（52） 💬（1）<div>能把这个流程串起来，老师功力深厚啊</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e8/fd/035f4c94.jpg" width="30px"><span>欢乐小熊</span> 👍（13） 💬（0）<div>Linux 信号通信主要由如下几个步骤组成
+<li>kill-&gt;kill_something_info-&gt;kill_pid_info-&gt;group_send_sig_info-&gt;do_send_sig_info</li>
+<li>tkill-&gt;do_tkill-&gt;do_send_specific-&gt;do_send_sig_info</li>
+<li>tgkill-&gt;do_tkill-&gt;do_send_specific-&gt;do_send_sig_info</li>
+<li>rt_sigqueueinfo-&gt;do_rt_sigqueueinfo-&gt;kill_proc_info-&gt;kill_pid_info-&gt;group_send_sig_info-&gt;do_send_sig_info</li>
+</ul>
+<p>do_send_sig_info会调用send_signal，进而调用__send_signal。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>SYSCALL_DEFINE2(kill, pid_t, pid, int, sig)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>{
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    struct siginfo info;
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    info.si_signo = sig;
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    info.si_errno = 0;
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    info.si_code = SI_USER;
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    info.si_pid = task_tgid_vnr(current);
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    info.si_uid = from_kuid_munged(current_user_ns(), current_uid());
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    return kill_something_info(sig, &amp;info, pid);
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>}
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>static int __send_signal(int sig, struct siginfo *info, struct task_struct *t,
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>            int group, int from_ancestor_ns)
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>{
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    struct sigpending *pending;
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    struct sigqueue *q;
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    int override_rlimit;
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    int ret = 0, result;
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>......
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    pending = group ? &amp;t-&gt;signal-&gt;shared_pending : &amp;t-&gt;pending;
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>......
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    if (legacy_queue(pending, sig))
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>        goto ret;
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>    if (sig &lt; SIGRTMIN)
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>        override_rlimit = (is_si_special(info) || info-&gt;si_code &gt;= 0);
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    else
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>        override_rlimit = 0;
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>    q = __sigqueue_alloc(sig, t, GFP_ATOMIC | __GFP_NOTRACK_FALSE_POSITIVE,
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>        override_rlimit);
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>    if (q) {
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>        list_add_tail(&amp;q-&gt;list, &amp;pending-&gt;list);
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>        switch ((unsigned long) info) {
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>        case (unsigned long) SEND_SIG_NOINFO:
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>            q-&gt;info.si_signo = sig;
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>            q-&gt;info.si_errno = 0;
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>            q-&gt;info.si_code = SI_USER;
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>            q-&gt;info.si_pid = task_tgid_nr_ns(current,
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>                            task_active_pid_ns(t));
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>            q-&gt;info.si_uid = from_kuid_munged(current_user_ns(), current_uid());
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>            break;
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>        case (unsigned long) SEND_SIG_PRIV:
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>            q-&gt;info.si_signo = sig;
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>            q-&gt;info.si_errno = 0;
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>            q-&gt;info.si_code = SI_KERNEL;
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>            q-&gt;info.si_pid = 0;
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>            q-&gt;info.si_uid = 0;
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>            break;
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>        default:
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>            copy_siginfo(&amp;q-&gt;info, info);
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>            if (from_ancestor_ns)
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>                q-&gt;info.si_pid = 0;
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>            break;
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a>        }
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a>
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>        userns_fixup_signal_uid(&amp;q-&gt;info, t);
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a>
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a>    } 
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a>......
+<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a>out_set:
+<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a>    signalfd_notify(t, sig);
+<a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a>    sigaddset(&amp;pending-&gt;signal, sig);
+<a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a>    complete_signal(sig, t, group);
+<a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a>ret:
+<a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a>    return ret;
+<a id="__codelineno-0-70" name="__codelineno-0-70" href="#__codelineno-0-70"></a>}
+</code></pre></div>
+<p>在这里，我们看到，在学习进程数据结构中task_struct里面的sigpending。在上面的代码里面，我们先是要决定应该用哪个sigpending。这就要看我们发送的信号，是给进程的还是线程的。如果是kill发送的，也就是发送给整个进程的，就应该发送给t-&gt;signal-&gt;shared_pending。这里面是整个进程所有线程共享的信号；如果是tkill发送的，也就是发给某个线程的，就应该发给t-&gt;pending。这里面是这个线程的task_struct独享的。</p>
+<p>struct sigpending里面有两个成员，一个是一个集合sigset_t，表示都收到了哪些信号，还有一个链表，也表示收到了哪些信号。它的结构如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>struct sigpending {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    struct list_head list;
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    sigset_t signal;
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>};
+</code></pre></div>
+<p>如果都表示收到了信号，这两者有什么区别呢？我们接着往下看__send_signal里面的代码。接下来，我们要调用legacy_queue。如果满足条件，那就直接退出。那legacy_queue里面判断的是什么条件呢？我们来看它的代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>static inline int legacy_queue(struct sigpending *signals, int sig)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>{
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    return (sig &lt; SIGRTMIN) &amp;&amp; sigismember(&amp;signals-&gt;signal, sig);
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>}
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>#define SIGRTMIN    32
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>#define SIGRTMAX    _NSIG
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>#define _NSIG       64
+</code></pre></div>
+<p>当信号小于SIGRTMIN，也即32的时候，如果我们发现这个信号已经在集合里面了，就直接退出了。这样会造成什么现象呢？就是信号的丢失。例如，我们发送给进程100个SIGUSR1（对应的信号为10），那最终能够被我们的信号处理函数处理的信号有多少呢？这就不好说了，比如总共5个SIGUSR1，分别是A、B、C、D、E。</p>
+<p>如果这五个信号来得太密。A来了，但是信号处理函数还没来得及处理，B、C、D、E就都来了。根据上面的逻辑，因为A已经将SIGUSR1放在sigset_t集合中了，因而后面四个都要丢失。 如果是另一种情况，A来了已经被信号处理函数处理了，内核在调用信号处理函数之前，我们会将集合中的标志位清除，这个时候B再来，B还是会进入集合，还是会被处理，也就不会丢。</p>
+<p>这样信号能够处理多少，和信号处理函数什么时候被调用，信号多大频率被发送，都有关系，而且从后面的分析，我们可以知道，信号处理函数的调用时间也是不确定的。看小于32的信号如此不靠谱，我们就称它为<strong>不可靠信号</strong>。</p>
+<p>如果大于32的信号是什么情况呢？我们接着看。接下来，__sigqueue_alloc会分配一个struct sigqueue对象，然后通过list_add_tail挂在struct sigpending里面的链表上。这样就靠谱多了是不是？如果发送过来100个信号，变成链表上的100项，都不会丢，哪怕相同的信号发送多遍，也处理多遍。因此，大于32的信号我们称为<strong>可靠信号</strong>。当然，队列的长度也是有限制的，如果我们执行ulimit命令，可以看到，这个限制pending signals (-i) 15408。</p>
+<p>当信号挂到了task_struct结构之后，最后我们需要调用complete_signal。这里面的逻辑也很简单，就是说，既然这个进程有了一个新的信号，赶紧找一个线程处理一下吧。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>static void complete_signal(int sig, struct task_struct *p, int group)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>{
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    struct signal_struct *signal = p-&gt;signal;
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    struct task_struct *t;
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    /*
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>     * Now find a thread we can wake up to take the signal off the queue.
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>     *
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>     * If the main thread wants the signal, it gets first crack.
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>     * Probably the least surprising to the average bear.
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>     */
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    if (wants_signal(sig, p))
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>        t = p;
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    else if (!group || thread_group_empty(p))
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>        /*
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>         * There is just one thread and it does not need to be woken.
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>         * It will dequeue unblocked signals before it runs again.
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>         */
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>        return;
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    else {
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>        /*
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>         * Otherwise try to find a suitable thread.
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>         */
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>        t = signal-&gt;curr_target;
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>        while (!wants_signal(sig, t)) {
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>            t = next_thread(t);
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>            if (t == signal-&gt;curr_target)
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>                return;
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>        }
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>        signal-&gt;curr_target = t;
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>    }
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>......
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>    /*
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>     * The signal is already in the shared-pending queue.
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>     * Tell the chosen thread to wake up and dequeue it.
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>     */
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>    signal_wake_up(t, sig == SIGKILL);
+<a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>    return;
+<a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>}
+</code></pre></div>
+<p>在找到了一个进程或者线程的task_struct之后，我们要调用signal_wake_up，来企图唤醒它，signal_wake_up会调用signal_wake_up_state。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>void signal_wake_up_state(struct task_struct *t, unsigned int state)
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>{
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    set_tsk_thread_flag(t, TIF_SIGPENDING);
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    if (!wake_up_state(t, state | TASK_INTERRUPTIBLE))
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        kick_process(t);
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>}
+</code></pre></div>
+<p>signal_wake_up_state里面主要做了两件事情。第一，就是给这个线程设置TIF_SIGPENDING，这就说明其实信号的处理和进程的调度是采取这样一种类似的机制。还记得咱们调度的时候是怎么操作的吗？</p>
+<p>当发现一个进程应该被调度的时候，我们并不直接把它赶下来，而是设置一个标识位TIF_NEED_RESCHED，表示等待调度，然后等待系统调用结束或者中断处理结束，从内核态返回用户态的时候，调用schedule函数进行调度。信号也是类似的，当信号来的时候，我们并不直接处理这个信号，而是设置一个标识位TIF_SIGPENDING，来表示已经有信号等待处理。同样等待系统调用结束，或者中断处理结束，从内核态返回用户态的时候，再进行信号的处理。</p>
+<p>signal_wake_up_state的第二件事情，就是试图唤醒这个进程或者线程。wake_up_state会调用try_to_wake_up方法。这个函数我们讲进程的时候讲过，就是将这个进程或者线程设置为TASK_RUNNING，然后放在运行队列中，这个时候，当随着时钟不断的滴答，迟早会被调用。如果wake_up_state返回0，说明进程或者线程已经是TASK_RUNNING状态了，如果它在另外一个CPU上运行，则调用kick_process发送一个处理器间中断，强制那个进程或者线程重新调度，重新调度完毕后，会返回用户态运行。这是一个时机会检查TIF_SIGPENDING标识位。</p>
+<h2 id="_2">信号的处理</h2>
+<p>好了，信号已经发送到位了，什么时候真正处理它呢？</p>
+<p>就是在从系统调用或者中断返回的时候，咱们讲调度的时候讲过，无论是从系统调用返回还是从中断返回，都会调用exit_to_usermode_loop，只不过我们上次主要关注了_TIF_NEED_RESCHED这个标识位，这次我们重点关注<strong>_TIF_SIGPENDING标识位</strong>。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>static void exit_to_usermode_loop(struct pt_regs *regs, u32 cached_flags)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>{
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    while (true) {
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>......
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        if (cached_flags &amp; _TIF_NEED_RESCHED)
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>            schedule();
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>......
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        /* deal with pending signal delivery */
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        if (cached_flags &amp; _TIF_SIGPENDING)
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>            do_signal(regs);
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>......
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>        if (!(cached_flags &amp; EXIT_TO_USERMODE_LOOP_FLAGS))
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>            break;
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    }
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>}
+</code></pre></div>
+<p>如果在前一个环节中，已经设置了_TIF_SIGPENDING，我们就调用do_signal进行处理。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>void do_signal(struct pt_regs *regs)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>{
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    struct ksignal ksig;
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    if (get_signal(&amp;ksig)) {
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>        /* Whee! Actually deliver the signal.  */
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        handle_signal(&amp;ksig, regs);
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        return;
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    }
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    /* Did we come from a system call? */
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    if (syscall_get_nr(current, regs) &gt;= 0) {
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>        /* Restart the system call - no handlers present */
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>        switch (syscall_get_error(current, regs)) {
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>        case -ERESTARTNOHAND:
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>        case -ERESTARTSYS:
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>        case -ERESTARTNOINTR:
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>            regs-&gt;ax = regs-&gt;orig_ax;
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>            regs-&gt;ip -= 2;
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>            break;
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>        case -ERESTART_RESTARTBLOCK:
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>            regs-&gt;ax = get_nr_restart_syscall(regs);
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>            regs-&gt;ip -= 2;
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>            break;
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>        }
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>    }
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>    restore_saved_sigmask();
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>}
+</code></pre></div>
+<p>do_signal会调用handle_signal。按说，信号处理就是调用用户提供的信号处理函数，但是这事儿没有看起来这么简单，因为信号处理函数是在用户态的。</p>
+<p>咱们又要来回忆系统调用的过程了。这个进程当时在用户态执行到某一行Line A，调用了一个系统调用，在进入内核的那一刻，在内核pt_regs里面保存了用户态执行到了Line A。现在我们从系统调用返回用户态了，按说应该从pt_regs拿出Line A，然后接着Line A执行下去，但是为了响应信号，我们不能回到用户态的时候返回Line A了，而是应该返回信号处理函数的起始地址。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>static void
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>handle_signal(struct ksignal *ksig, struct pt_regs *regs)
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>{
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    bool stepping, failed;
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>......
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    /* Are we from a system call? */
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    if (syscall_get_nr(current, regs) &gt;= 0) {
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>        /* If so, check system call restarting.. */
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>        switch (syscall_get_error(current, regs)) {
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>        case -ERESTART_RESTARTBLOCK:
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>        case -ERESTARTNOHAND:
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>            regs-&gt;ax = -EINTR;
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>            break;
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>        case -ERESTARTSYS:
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>            if (!(ksig-&gt;ka.sa.sa_flags &amp; SA_RESTART)) {
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>                regs-&gt;ax = -EINTR;
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>                break;
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>            }
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>        /* fallthrough */
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>        case -ERESTARTNOINTR:
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>            regs-&gt;ax = regs-&gt;orig_ax;
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>            regs-&gt;ip -= 2;
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>            break;
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>        }
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>    }
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>......
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>    failed = (setup_rt_frame(ksig, regs) &lt; 0);
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>......
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>    signal_setup_done(failed, ksig, stepping);
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>}
+</code></pre></div>
+<p>这个时候，我们就需要干预和自己来定制pt_regs了。这个时候，我们要看，是否从系统调用中返回。如果是从系统调用返回的话，还要区分我们是从系统调用中正常返回，还是在一个非运行状态的系统调用中，因为会被信号中断而返回。</p>
+<p>我们这里解析一个最复杂的场景。还记得咱们解析进程调度的时候，我们举的一个例子，就是从一个tap网卡中读取数据。当时我们主要关注schedule那一行，也即如果当发现没有数据的时候，就调用schedule，自己进入等待状态，然后将CPU让给其他进程。具体的代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>static ssize_t tap_do_read(struct tap_queue *q,
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>               struct iov_iter *to,
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>               int noblock, struct sk_buff *skb)
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>{
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>......
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    while (1) {
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        if (!noblock)
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>            prepare_to_wait(sk_sleep(&amp;q-&gt;sk), &amp;wait,
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>                    TASK_INTERRUPTIBLE);
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>        /* Read frames from the queue */
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>        skb = skb_array_consume(&amp;q-&gt;skb_array);
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>        if (skb)
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>            break;
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>        if (noblock) {
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>            ret = -EAGAIN;
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>            break;
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>        }
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>        if (signal_pending(current)) {
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>            ret = -ERESTARTSYS;
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>            break;
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>        }
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>        /* Nothing to read, let&#39;s sleep */
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>        schedule();
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>    }
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>......
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>}
+</code></pre></div>
+<p>这里我们关注和信号相关的部分。这其实是一个信号中断系统调用的典型逻辑。</p>
+<p>首先，我们把当前进程或者线程的状态设置为TASK_INTERRUPTIBLE，这样才能使这个系统调用可以被中断。</p>
+<p>其次，可以被中断的系统调用往往是比较慢的调用，并且会因为数据不就绪而通过schedule让出CPU进入等待状态。在发送信号的时候，我们除了设置这个进程和线程的_TIF_SIGPENDING标识位之外，还试图唤醒这个进程或者线程，也就是将它从等待状态中设置为TASK_RUNNING。</p>
+<p>当这个进程或者线程再次运行的时候，我们根据进程调度第一定律，从schedule函数中返回，然后再次进入while循环。由于这个进程或者线程是由信号唤醒的，而不是因为数据来了而唤醒的，因而是读不到数据的，但是在signal_pending函数中，我们检测到了_TIF_SIGPENDING标识位，这说明系统调用没有真的做完，于是返回一个错误ERESTARTSYS，然后带着这个错误从系统调用返回。</p>
+<p>然后，我们到了exit_to_usermode_loop-&gt;do_signal-&gt;handle_signal。在这里面，当发现出现错误ERESTARTSYS的时候，我们就知道这是从一个没有调用完的系统调用返回的，设置系统调用错误码EINTR。</p>
+<p>接下来，我们就开始折腾pt_regs了，主要通过调用setup_rt_frame-&gt;__setup_rt_frame。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>static int __setup_rt_frame(int sig, struct ksignal *ksig,
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>                sigset_t *set, struct pt_regs *regs)
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>{
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    struct rt_sigframe __user *frame;
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    void __user *fp = NULL;
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    int err = 0;
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    frame = get_sigframe(&amp;ksig-&gt;ka, regs, sizeof(struct rt_sigframe), &amp;fp);
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>......
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    put_user_try {
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>......
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>        /* Set up to return from userspace.  If provided, use a stub
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>           already in userspace.  */
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>        /* x86-64 should always use SA_RESTORER. */
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>        if (ksig-&gt;ka.sa.sa_flags &amp; SA_RESTORER) {
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>            put_user_ex(ksig-&gt;ka.sa.sa_restorer, &amp;frame-&gt;pretcode);
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>        } 
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>    } put_user_catch(err);
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>    err |= setup_sigcontext(&amp;frame-&gt;uc.uc_mcontext, fp, regs, set-&gt;sig[0]);
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>    err |= __copy_to_user(&amp;frame-&gt;uc.uc_sigmask, set, sizeof(*set));
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>    /* Set up registers for signal handler */
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>    regs-&gt;di = sig;
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>    /* In case the signal handler was declared without prototypes */
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>    regs-&gt;ax = 0;
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>    regs-&gt;si = (unsigned long)&amp;frame-&gt;info;
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>    regs-&gt;dx = (unsigned long)&amp;frame-&gt;uc;
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>    regs-&gt;ip = (unsigned long) ksig-&gt;ka.sa.sa_handler;
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>    regs-&gt;sp = (unsigned long)frame;
+<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>    regs-&gt;cs = __USER_CS;
+<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>......
+<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>    return 0;
+<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a>}
+</code></pre></div>
+<p>frame的类型是rt_sigframe。frame的意思是帧。我们只有在学习栈的时候，提到过栈帧的概念。对的，这个frame就是一个栈帧。</p>
+<p>我们在get_sigframe中会得到pt_regs的sp变量，也就是原来这个程序在用户态的栈顶指针，然后get_sigframe中，我们会将sp减去sizeof(struct rt_sigframe)，也就是把这个栈帧塞到了栈里面，然后我们又在__setup_rt_frame中把regs-&gt;sp设置成等于frame。这就相当于强行在程序原来的用户态的栈里面插入了一个栈帧，并在最后将regs-&gt;ip设置为用户定义的信号处理函数sa_handler。这意味着，本来返回用户态应该接着原来的代码执行的，现在不了，要执行sa_handler了。那执行完了以后呢？按照函数栈的规则，弹出上一个栈帧来，也就是弹出了frame。</p>
+<p>那如果我们假设sa_handler成功返回了，怎么回到程序原来在用户态运行的地方呢？玄机就在frame里面。要想恢复原来运行的地方，首先，原来的pt_regs不能丢，这个没问题，是在setup_sigcontext里面，将原来的pt_regs保存在了frame中的uc_mcontext里面。</p>
+<p>另外，很重要的一点，程序如何跳过去呢？在__setup_rt_frame中，还有一个不引起重视的操作，那就是通过put_user_ex，将sa_restorer放到了frame-&gt;pretcode里面，而且还是按照函数栈的规则。函数栈里面包含了函数执行完跳回去的地址。当sa_handler执行完之后，弹出的函数栈是frame，也就应该跳到sa_restorer的地址。这是什么地址呢？</p>
+<p>咱们在sigaction介绍的时候就没有介绍它，在Glibc的__libc_sigaction函数中也没有注意到，它被赋值成了restore_rt。这其实就是sa_handler执行完毕之后，马上要执行的函数。从名字我们就能感觉到，它将恢复原来程序运行的地方。</p>
+<p>在Glibc中，我们可以找到它的定义，它竟然调用了一个系统调用，系统调用号为__NR_rt_sigreturn。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>RESTORE (restore_rt, __NR_rt_sigreturn)
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>#define RESTORE(name, syscall) RESTORE2 (name, syscall)
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a># define RESTORE2(name, syscall) \
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>asm                                     \
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>  (                                     \
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>   &quot;.LSTART_&quot; #name &quot;:\n&quot;               \
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>   &quot;    .type __&quot; #name &quot;,@function\n&quot;  \
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>   &quot;__&quot; #name &quot;:\n&quot;                     \
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>   &quot;    movq $&quot; #syscall &quot;, %rax\n&quot;     \
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>   &quot;    syscall\n&quot;                      \
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>......
+</code></pre></div>
+<p>我们可以在内核里面找到__NR_rt_sigreturn对应的系统调用。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>asmlinkage long sys_rt_sigreturn(void)
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>{
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    struct pt_regs *regs = current_pt_regs();
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    struct rt_sigframe __user *frame;
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    sigset_t set;
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    unsigned long uc_flags;
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    frame = (struct rt_sigframe __user *)(regs-&gt;sp - sizeof(long));
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    if (__copy_from_user(&amp;set, &amp;frame-&gt;uc.uc_sigmask, sizeof(set)))
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>        goto badframe;
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    if (__get_user(uc_flags, &amp;frame-&gt;uc.uc_flags))
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>        goto badframe;
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>    set_current_blocked(&amp;set);
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    if (restore_sigcontext(regs, &amp;frame-&gt;uc.uc_mcontext, uc_flags))
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>        goto badframe;
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>......
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>    return regs-&gt;ax;
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>......
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>}
+</code></pre></div>
+<p>在这里面，我们把上次填充的那个rt_sigframe拿出来，然后restore_sigcontext将pt_regs恢复成为原来用户态的样子。从这个系统调用返回的时候，应用还误以为从上次的系统调用返回的呢。</p>
+<p>至此，整个信号处理过程才全部结束。</p>
+<h2 id="_3">总结时刻</h2>
+<p>信号的发送与处理是一个复杂的过程，这里来总结一下。</p>
+<ol>
+<li>假设我们有一个进程A，main函数里面调用系统调用进入内核。</li>
+<li>按照系统调用的原理，会将用户态栈的信息保存在pt_regs里面，也即记住原来用户态是运行到了line A的地方。</li>
+<li>在内核中执行系统调用读取数据。</li>
+<li>当发现没有什么数据可读取的时候，只好进入睡眠状态，并且调用schedule让出CPU，这是进程调度第一定律。</li>
+<li>将进程状态设置为TASK_INTERRUPTIBLE，可中断的睡眠状态，也即如果有信号来的话，是可以唤醒它的。</li>
+<li>其他的进程或者shell发送一个信号，有四个函数可以调用kill、tkill、tgkill、rt_sigqueueinfo。</li>
+<li>四个发送信号的函数，在内核中最终都是调用do_send_sig_info。</li>
+<li>do_send_sig_info调用send_signal给进程A发送一个信号，其实就是找到进程A的task_struct，或者加入信号集合，为不可靠信号，或者加入信号链表，为可靠信号。</li>
+<li>do_send_sig_info调用signal_wake_up唤醒进程A。</li>
+<li>进程A重新进入运行状态TASK_RUNNING，根据进程调度第一定律，一定会接着schedule运行。</li>
+<li>进程A被唤醒后，检查是否有信号到来，如果没有，重新循环到一开始，尝试再次读取数据，如果还是没有数据，再次进入TASK_INTERRUPTIBLE，即可中断的睡眠状态。</li>
+<li>当发现有信号到来的时候，就返回当前正在执行的系统调用，并返回一个错误表示系统调用被中断了。</li>
+<li>系统调用返回的时候，会调用exit_to_usermode_loop。这是一个处理信号的时机。</li>
+<li>调用do_signal开始处理信号。</li>
+<li>根据信号，得到信号处理函数sa_handler，然后修改pt_regs中的用户态栈的信息，让pt_regs指向sa_handler。同时修改用户态的栈，插入一个栈帧sa_restorer，里面保存了原来的指向line A的pt_regs，并且设置让sa_handler运行完毕后，跳到sa_restorer运行。</li>
+<li>返回用户态，由于pt_regs已经设置为sa_handler，则返回用户态执行sa_handler。</li>
+<li>sa_handler执行完毕后，信号处理函数就执行完了，接着根据第15步对于用户态栈帧的修改，会跳到sa_restorer运行。</li>
+<li>sa_restorer会调用系统调用rt_sigreturn再次进入内核。</li>
+<li>在内核中，rt_sigreturn恢复原来的pt_regs，重新指向line A。</li>
+<li>从rt_sigreturn返回用户态，还是调用exit_to_usermode_loop。</li>
+<li>这次因为pt_regs已经指向line A了，于是就到了进程A中，接着系统调用之后运行，当然这个系统调用返回的是它被中断了，没有执行完的错误。</li>
+</ol>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/3d/fb/3dcb3366b11a3594b00805896b7731fb.png?wh=5908%2A3052" /></p>
+<h2 id="_4">课堂练习</h2>
+<p>在Linux内核里面，很多地方都存在信号和信号处理，所以signal_pending这个函数也随处可见，这样我们就能判断是否有信号发生。请你在内核代码中找到signal_pending出现的一些地方，看有什么规律，我们后面的章节会经常遇到它。</p>
+<p>欢迎留言和我分享你的疑惑和见解 ，也欢迎可以收藏本节内容，反复研读。你也可以把今天的内容分享给你的朋友，和他一起学习和进步。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/8c/37/8c0a95fa07a8b9a1abfd394479bdd637.jpg?wh=1110%2A659" /></p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>江山未</span> 👍（32） 💬（3）<div>感觉看的过程中，我的大脑不断的发出&quot;我看不懂&quot;的中断，让我不断的的从&quot;认真态&quot;返回到&quot;涣散态&quot;。随后执行启动时注册的看不懂处理函数&quot;逼自己看&quot;后，才重新进入&quot;认真态&quot;(并不能)。</div>2019-08-15</li><br/><li><span>韩俊臣</span> 👍（4） 💬（1）<div>能把这么复杂的调用链讲的这么生动，大写的服</div>2020-06-12</li><br/><li><span>chengzise</span> 👍（2） 💬（3）<div>老师好，文章的信号处理流程是在程序进入系统调用后接收到信号的情况。希望老师补充一下，程序没有进入系统调用（一个简单的死循环程序），此时接收到系统信号会走什么样的流程。谢谢。</div>2019-06-25</li><br/><li><span>刘強</span> 👍（1） 💬（1）<div>老师，既然内核态对用户态的栈随意操作（果然是内核，权利就是大），但返回的时候还是保持系统调用前的样子，丝毫没有察觉背后发生了这么多事情，就好像调用了一个普通用户态的函数一样，那么我在用户态调试程序的时候，能否看到这种内核对用户栈的修改？</div>2019-06-24</li><br/><li><span>饭粒</span> 👍（0） 💬（1）<div>梳理的真清楚。</div>2019-08-06</li><br/><li><span>humor</span> 👍（0） 💬（3）<div>老师，我突然想到了一个稍微无关的问题想请教一下。就是linux的安全问题，现在基本服务器上使用的操作系统都是linux，而安装linux只是下载一个系统镜像就可以安装了，但是，我们怎么能相信我们下载的linux镜像肯定没有安全问题呢，比如发布方安装了恶意程序或者开了一个后门之类的。我想了解一下一般的云服务厂商是怎么检测这类操作系统或者更加底层的硬件的安全问题的呢？</div>2019-06-25</li><br/><li><span>安排</span> 👍（52） 💬（1）<div>能把这个流程串起来，老师功力深厚啊</div>2019-06-24</li><br/><li><span>欢乐小熊</span> 👍（13） 💬（0）<div>Linux 信号通信主要由如下几个步骤组成
 - 信号处理函数的注册
   - 信号处理函数的注册, 定义在用户空间 
   - 注册最终通过 rt_sigaction 系统调用发起
@@ -6036,9 +6477,9 @@
 - 信号的处理
   - 信号的处理会在系统调用或中断处理结束返回用户空间的时机通过 exit_to_usermode_loop 中的 do_signal 执行
   - 修改用户函数栈, 插入我们构建的信号处理函数的栈帧 rt_sigframe, 并且将原来的函数栈信息保存在 uc_mcontext 中
-  - 信号处理函数执行结束之后, 会通过系统调用 rt_sigreturn 恢复之前用户态栈</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/58/9f/abb7bfe3.jpg" width="30px"><span>小龙的城堡</span> 👍（5） 💬（1）<div>这一章讲得非常棒！很清晰！感谢老师！</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/7c/bb/635a2710.jpg" width="30px"><span>徐少文</span> 👍（4） 💬（0）<div>看了后面的图一下子就茅塞顿开了，一边感叹Linux内核设计的精妙，一边觉得老师功力深厚</div>2021-09-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5e/96/a03175bc.jpg" width="30px"><span>莫名</span> 👍（3） 💬（0）<div>最后一张图很棒。</div>2020-10-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/4f/6a/0a6b437e.jpg" width="30px"><span>有风</span> 👍（1） 💬（1）<div>老师有一点，没有想明白。信号处理函数处理完成之后，系统设计的时候，为啥不直接返回用户态LineA的地方？ 这样不是省事了吗？</div>2021-11-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/6b/d7/8872624a.jpg" width="30px"><span>xmeng</span> 👍（1） 💬（0）<div>最后一张总结图画得真心好，niubility</div>2021-09-21</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epcs6PibsP9vEXv4EibUw3bhQPUK04zRTOvfrvF08TwM67xPb1LBh2uRENHQwo2VqYfC5GhJmM7icxHA/132" width="30px"><span>蹦哒</span> 👍（1） 💬（0）<div>请问老师：
+  - 信号处理函数执行结束之后, 会通过系统调用 rt_sigreturn 恢复之前用户态栈</div>2019-06-24</li><br/><li><span>小龙的城堡</span> 👍（5） 💬（1）<div>这一章讲得非常棒！很清晰！感谢老师！</div>2019-06-24</li><br/><li><span>徐少文</span> 👍（4） 💬（0）<div>看了后面的图一下子就茅塞顿开了，一边感叹Linux内核设计的精妙，一边觉得老师功力深厚</div>2021-09-16</li><br/><li><span>莫名</span> 👍（3） 💬（0）<div>最后一张图很棒。</div>2020-10-27</li><br/><li><span>有风</span> 👍（1） 💬（1）<div>老师有一点，没有想明白。信号处理函数处理完成之后，系统设计的时候，为啥不直接返回用户态LineA的地方？ 这样不是省事了吗？</div>2021-11-17</li><br/><li><span>xmeng</span> 👍（1） 💬（0）<div>最后一张总结图画得真心好，niubility</div>2021-09-21</li><br/><li><span>蹦哒</span> 👍（1） 💬（0）<div>请问老师：
 1.如果系统调用和信号处理不是在同一个线程，那么处理逻辑也是差不多的吗，也就是会保存用户态栈到sa_resstore - 系统处理函数插入用户态栈中 - 恢复sa_resstore - 返回系统调用位置？
-2.debug也是基于信号的，那么触发了断点后，在调试过程中，同一线程中原来的系统调用（比如Socket请求）的处理函数一直得不到处理吗？</div>2020-06-21</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKJrOl63enWXCRxN0SoucliclBme0qrRb19ATrWIOIvibKIz8UAuVgicBMibIVUznerHnjotI4dm6ibODA/132" width="30px"><span>Helios</span> 👍（1） 💬（1）<div>我们在 get_sigframe 中会得到 pt_regs 的 sp 变量，也就是原来这个程序在用户态的栈顶指针，然后 get_sigframe 中，我们会将 sp 减去 sizeof(struct rt_sigframe)，也就是把这个栈帧塞到了栈里面，然后我们又在 __setup_rt_frame 中把 regs-&gt;sp 设置成等于 frame。这就相当于强行在程序原来的用户态的栈里面插入了一个栈帧，并在最后将 regs-&gt;ip 设置为用户定义的信号处理函数 sa_handler。这意味着，本来返回用户态应该接着原来的代码执行的，现在不了，要执行 sa_handler 了。那执行完了以后呢？按照函数栈的规则，弹出上一个栈帧来，也就是弹出了 frame。
+2.debug也是基于信号的，那么触发了断点后，在调试过程中，同一线程中原来的系统调用（比如Socket请求）的处理函数一直得不到处理吗？</div>2020-06-21</li><br/><li><span>Helios</span> 👍（1） 💬（1）<div>我们在 get_sigframe 中会得到 pt_regs 的 sp 变量，也就是原来这个程序在用户态的栈顶指针，然后 get_sigframe 中，我们会将 sp 减去 sizeof(struct rt_sigframe)，也就是把这个栈帧塞到了栈里面，然后我们又在 __setup_rt_frame 中把 regs-&gt;sp 设置成等于 frame。这就相当于强行在程序原来的用户态的栈里面插入了一个栈帧，并在最后将 regs-&gt;ip 设置为用户定义的信号处理函数 sa_handler。这意味着，本来返回用户态应该接着原来的代码执行的，现在不了，要执行 sa_handler 了。那执行完了以后呢？按照函数栈的规则，弹出上一个栈帧来，也就是弹出了 frame。
 
 
 ------------------------
@@ -6048,10 +6489,7 @@
 
 **我们又在 __setup_rt_frame 中把 regs-&gt;sp 设置成等于 frame。这就相当于强行在程序原来的用户态的栈里面插入了一个栈帧**
 为什么要把sp先减掉一部分，在换指向呢，直接换指向不行么
-</div>2019-10-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/23/b6/0c/9e339ba0.jpg" width="30px"><span>sunshine</span> 👍（0） 💬（0）<div>请问下老师用的什么画图工具？</div>2024-10-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/8a/99/f50df019.jpg" width="30px"><span>cellphone峰</span> 👍（0） 💬（0）<div>返回- ERESTARTSYS而不是EINRT用户态需要自己重启系统调用吗？还是内核会自动重启？</div>2022-07-03</li><br/><li><img src="" width="30px"><span>Geek_964a1d</span> 👍（0） 💬（0）<div>如果进程一直在用户态，是不是就不会处理信号了？</div>2022-06-19</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLMDBq7lqg9ZasC4f21R0axKJRVCBImPKlQF8yOicLLXIsNgsZxsVyN1mbvFOL6eVPluTNgJofwZeA/132" width="30px"><span>Run</span> 👍（0） 💬（0）<div>受益良多啊</div>2021-12-21</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLMDBq7lqg9ZasC4f21R0axKJRVCBImPKlQF8yOicLLXIsNgsZxsVyN1mbvFOL6eVPluTNgJofwZeA/132" width="30px"><span>Run</span> 👍（0） 💬（0）<div>配合最后的总结加图片过一下流程,让我顿时有种醍醐灌顶的感觉,爽歪歪啊</div>2021-11-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/ad/45/beab1b3f.jpg" width="30px"><span>mouse</span> 👍（0） 💬（0）<div>我只能自己封装下了。
-信号处理不是中断，在调度的时候折腾栈帧在用户栈里执行信号处理函数，然后继续折腾栈帧返回。</div>2021-07-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/c8/c4/6e50a16b.jpg" width="30px"><span>阿虎</span> 👍（0） 💬（0）<div>这个图是画的真的好</div>2021-06-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/76/33/928ffd21.jpg" width="30px"><span>AlexS</span> 👍（0） 💬（0）<div>哇，这一段分析可太秀了。佩服。</div>2021-01-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/43/79/18073134.jpg" width="30px"><span>test</span> 👍（0） 💬（1）<div>所以只有在调用系统调用的时候才能处理收到的信号吗？</div>2020-09-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/4e/99/3e095dd0.jpg" width="30px"><span>Geek_Mason</span> 👍（0） 💬（0）<div>这可比自己看书通透好多</div>2020-08-06</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTI2icbib62icXtibTkThtyRksbuJLoTLMts7zook2S30MiaBtbz0f5JskwYicwqXkhpYfvCpuYkcvPTibEaQ/132" width="30px"><span>xuanyuan</span> 👍（0） 💬（0）<div>讲得很清楚</div>2020-07-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/a1/2d/599e9051.jpg" width="30px"><span>CycleGAN</span> 👍（0） 💬（0）<div>老师的这个图是真的清晰</div>2020-03-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6e/bd/b83ad32d.jpg" width="30px"><span>shangyu</span> 👍（0） 💬（0）<div>最后的图一目了然 👍</div>2019-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/1c/6f/3ea2a599.jpg" width="30px"><span>嘉木</span> 👍（0） 💬（0）<div>21.这次因为 pt_regs 已经指向 line A 了，于是就到了进程 A 中，接着系统调用之后运行，然这个系统调用返回的是它被中断了，没有执行完的错误。
-
-清除SA_RESTART标志位的话会返回没有执行完的错误，但如果设置了SA_RESTART，系统调用会在哪一步重试呢？</div>2019-08-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4d/fd/0aa0e39f.jpg" width="30px"><span>许童童</span> 👍（0） 💬（0）<div>讲得太好了，真是深入浅出啊！</div>2019-06-24</li><br/>
+</div>2019-10-13</li><br/>
 </ul>
 
 

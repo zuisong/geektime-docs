@@ -2465,6 +2465,75 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      函数式选项模式
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      通道的底层原理
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="通道的底层原理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      无缓冲区的通道
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      带缓冲区的通道
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#select" class="md-nav__link">
+    <span class="md-ellipsis">
+      Select 机制的底层原理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13366,6 +13435,75 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      函数式选项模式
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      通道的底层原理
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="通道的底层原理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      无缓冲区的通道
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      带缓冲区的通道
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#select" class="md-nav__link">
+    <span class="md-ellipsis">
+      Select 机制的底层原理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13412,13 +13550,296 @@
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    go s.Schedule()
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>}
 </code></pre></div>
+<p>Run方法首先初始化了三个通道。其中，requestCh负责接收请求，workerCh负责分配任务给worker，out负责处理爬取后的数据，完成下一步的存储操作。schedule函数会创建调度程序，负责的是调度的核心逻辑。</p>
+<p>第一步我们来看看schedule函数如何接收任务并完成任务的调度。</p>
+<p>schedule函数如下所示，其中，requestCh通道接收来自外界的请求，并将请求存储到reqQueue队列中。workerCh通道负责传送任务，后面每一个worker将获取该通道的内容，并执行对应的操作。</p>
+<p>在这里，我们使用了for语句，让调度器循环往复地获取外界的爬虫任务，并将任务分发到worker中。如果任务队列reqQueue大于0，意味着有爬虫任务，这时我们获取队列中第一个任务，并将其剔除出队列。最后ch &lt;- req 会将任务发送到workerCh通道中，等待worker接收。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>func (s *Schedule) Schedule() {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    var reqQueue = s.Seeds
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    go func() {
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        for {
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>            var req *collect.Request
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>            var ch chan *collect.Request
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>            if len(reqQueue) &gt; 0 {
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>                req = reqQueue[0]
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>                reqQueue = reqQueue[1:]
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>                ch = s.workerCh
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>            }
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>            select {
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>            case r := &lt;-s.requestCh:
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>                reqQueue = append(reqQueue, r)
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>            case ch &lt;- req:
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>            }
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>        }
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    }()
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>}
+</code></pre></div>
+<p>通道还有一个特性，就是我们往nil通道中写入数据会陷入到堵塞的状态。因此，如果reqQueue为空，这时req和ch都是nil，当前协程就会陷入到堵塞的状态，直到接收到新的请求才会被唤醒。</p>
+<p>我们可以用一个例子来验证这一特性：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>func main() {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    var ch chan *int
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    go func() {
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        &lt;-ch
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    }()
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    select {
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    case ch &lt;- nil:
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        fmt.Println(&quot;it&#39;s time&quot;)
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    }
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>}
+</code></pre></div>
+<p>在这个例子中，运行后会出现死锁，因为当前程序全部陷入到了无限堵塞的状态。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>fatal error: all goroutines are asleep - deadlock!
+</code></pre></div>
+<p>调度引擎除了启动schedule函数，还需要安排多个实际干活的worker程序。</p>
+<p>下一步，让我们创建指定数量的worker，完成实际任务的处理。其中WorkCount为执行任务的数量，可以灵活地去配置。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>func (s *ScheduleEngine) Run() {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    ...
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    go s.Schedule()
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    for i := 0; i &lt; s.WorkCount; i++ {
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        go s.CreateWork()
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    }
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>}
+</code></pre></div>
+<p>这里的 CreateWork 创建出实际处理任务的函数，它又细分为下面几个步骤：</p>
+<ul>
+<li>←s.workerCh接收到调度器分配的任务；</li>
+<li>s.fetcher.Get 访问服务器，r.ParseFunc 解析服务器返回的数据；</li>
+<li>s.out ← result 将返回的数据发送到out通道中，方便后续的处理。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>func (s *Schedule) CreateWork() {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    for {
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        r := &lt;-s.workerCh
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        body, err := s.Fetcher.Get(r)
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        if err != nil {
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>            s.Logger.Error(&quot;can&#39;t fetch &quot;,
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>                zap.Error(err),
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>            )
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>            continue
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        }
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        result := r.ParseFunc(body, r)
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>        s.out &lt;- result
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    }
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>}
+</code></pre></div>
+<p>最后一步，我们需要单独安排一个函数来处理爬取并解析后的数据结构，完整的函数如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>func (s *Schedule) HandleResult() {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    for {
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>        select {
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>        case result := &lt;-s.out:
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>            for _, req := range result.Requesrts {
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>                s.requestCh &lt;- req
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>            }
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>            for _, item := range result.Items {
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>                // todo: store
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>                s.Logger.Sugar().Info(&quot;get result&quot;, item)
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>            }
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        }
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    }
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>}
+</code></pre></div>
+<p>在HandleResult函数中，&lt;-s.out接收所有worker解析后的数据，其中要进一步爬取的Requests列表将全部发送回s.requestCh通道，而result.Items里包含了我们实际希望得到的结果，所以我们先用日志把结果打印出来。</p>
+<p>最后，让我们用之前介绍的爬取豆瓣小组的例子来验证调度器的功能。</p>
+<p>在main函数中，生成初始网址列表作为种子任务。构建engine.Schedule，设置worker的数量，采集器Fetcher和日志Logger，并调用s.Run()运行调度器。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a> func main(){
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>        var seeds []*collect.Request
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>        for i := 0; i &lt;= 0; i += 25 {
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>            str := fmt.Sprintf(&quot;&lt;https://www.douban.com/group/szsh/discussion?start=%d&gt;&quot;, i)
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>            seeds = append(seeds, &amp;collect.Request{
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>                Url:       str,
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>                WaitTime:  1 * time.Second,
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>                Cookie:    &quot;xxx&quot;,
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>                ParseFunc: doubangroup.ParseURL,
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>            })
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>        }
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>        var f collect.Fetcher = &amp;collect.BrowserFetch{
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>            Timeout: 3000 * time.Millisecond,
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>            Logger:  logger,
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>            Proxy:   p,
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>        }
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>        s := engine.Schedule{
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>            WorkCount: 5,
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>            Logger:    logger,
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>            Fetcher:   f,
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>            Seeds:     seeds,
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>        }
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>        s.Run()
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>}
+</code></pre></div>
+<p>输出结果为：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>{&quot;level&quot;:&quot;INFO&quot;,&quot;ts&quot;:&quot;2022-10-19T00:55:54.281+0800&quot;,&quot;caller&quot;:&quot;engine/schedule.go:78&quot;,&quot;msg&quot;:&quot;get result: &lt;https://www.douban.com/group/topic/276978032/&gt;&quot;}
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>{&quot;level&quot;:&quot;INFO&quot;,&quot;ts&quot;:&quot;2022-10-19T00:55:54.355+0800&quot;,&quot;caller&quot;:&quot;engine/schedule.go:78&quot;,&quot;msg&quot;:&quot;get result: &lt;https://www.douban.com/group/topic/276973871/&gt;&quot;}
+</code></pre></div>
+<h2 id="_2">函数式选项模式</h2>
+<p>在上面的例子中，我们初始化engine.Schedule时将一系列的参数传递到了结构体当中。在实践中可能会有几十个参数等着我们赋值，从面向对象的角度来看，不同参数的灵活组合可能会带来不同的调度器类型。在实践中为了方便使用，开发者可能会创建非常多的 API 来满足不同场景的需要，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>// 基本调度器
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>func NewBaseSchedule() *Schedule {
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    return &amp;Schedule{
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>        WorkCount: 1,
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        Fetcher：baseFetch,
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    }
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>}
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>// 多worker调度器
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>func NewMultiWorkSchedule(workCount int) *Schedule {
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    return &amp;Schedule{
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>        WorkCount: workCount,
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>        Fetcher：baseFetch,
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    }
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>}
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>// 代理调度器
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>func NewProxySchedule(proxy string) *Schedule {
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>    return &amp;Schedule{
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>        WorkCount: 1,
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>        Fetcher：proxyFetch(proxy),
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>    }
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>}
+</code></pre></div>
+<p>随着参数的不断增多，这种API会变得越来越多，这就增加了开发者的心理负担。</p>
+<p>另一种使用方式就是传递一个统一的Config配置结构，如下所示。这种方式只需要创建单个API，但是需要在内部对所有的变量进行判断，繁琐且不优雅。对于使用者来说，也很难确定自己需要使用哪一个字段。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>type Config struct {
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    WorkCount int
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    Fetcher   collect.Fetcher
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    Logger    *zap.Logger
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    Seeds     []*collect.Request
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>}
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>func NewSchedule(c *Config) *Schedule {
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    var s = &amp;Schedule{}
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    if c.Seeds != nil {
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>        s.Seeds = c.Seeds
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    }
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>    if c.Fetcher != nil {
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>        s.Fetcher = c.Fetcher
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>    }
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    if c.Logger != nil {
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>        s.Logger = c.Logger
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>    }
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>    ...
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>    return s
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>}
+</code></pre></div>
+<p>那么有没有方法可以更加优雅地处理这种多参数配置问题呢？</p>
+<p>Rob Pike 在2014年的<a href="https://commandcenter.blogspot.com/2014/01/self-referential-functions-and-design.html">一篇博客中</a>提到了一种优雅的处理方法叫做<strong>函数式选项模式(Functional Options)。</strong>这种模式展示了闭包函数的有趣用途，目前在很多开源库中都能看到它的身影，我们项目中使用的日志库 Zap 也使用了这种模式。下面我以上面schedule的配置为例来说明函数式选项模式（完整代码请查看<a href="https://github.com/dreamerjackson/crawler">tag v0.1.5</a>）。</p>
+<p><strong>第一步，</strong>我们要对schedule结构进行改造，把可以配置的参数放入到<code>options</code> 结构中：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>type Schedule struct {
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    requestCh chan *collect.Request
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    workerCh  chan *collect.Request
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    out       chan collect.ParseResult
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    options
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>}
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>type options struct {
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    WorkCount int
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    Fetcher   collect.Fetcher
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    Logger    *zap.Logger
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>    Seeds     []*collect.Request
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>}
+</code></pre></div>
+<p><strong>第二步，</strong>我们需要书写一系列的闭包函数，这些函数的返回值是一个参数为 <code>options</code> 的函数：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>type Option func(opts *options)
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>func WithLogger(logger *zap.Logger) Option {
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    return func(opts *options) {
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>        opts.Logger = logger
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    }
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>}
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>func WithFetcher(fetcher collect.Fetcher) Option {
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>    return func(opts *options) {
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>        opts.Fetcher = fetcher
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>    }
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>}
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>func WithWorkCount(workCount int) Option {
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>    return func(opts *options) {
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>        opts.WorkCount = workCount
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>    }
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>}
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>func WithSeeds(seed []*collect.Request) Option {
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>    return func(opts *options) {
+<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a>        opts.Seeds = seed
+<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a>    }
+<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a>}
+</code></pre></div>
+<p><strong>第三步，</strong>创建一个生成schedule的新函数，函数参数为Option的可变参数列表。defaultOptions为默认的Option，代表默认的参数列表，然后循环遍历可变函数参数列表并执行。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>func NewSchedule(opts ...Option) *Schedule {
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    options := defaultOptions
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    for _, opt := range opts {
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>        opt(&amp;options)
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    }
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    s := &amp;Schedule{}
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    s.options = options
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    return s
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>}
+</code></pre></div>
+<p><strong>第四步，</strong>在main函数中调用NewSchedule。让我们来看看函数式选项模式的效果：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>func main(){
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    s := engine.NewSchedule(
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>            engine.WithFetcher(f),
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>            engine.WithLogger(logger),
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>            engine.WithWorkCount(5),
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>            engine.WithSeeds(seeds),
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>        )
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    s.Run()
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>}
+</code></pre></div>
+<p>从这个例子中，我们可以看到函数式选项模式的好处：</p>
+<ul>
+<li>API 具有可扩展性，高度可配置化，新增参数不会破坏现有代码；</li>
+<li>参数列表非常简洁，并且可以使用默认的参数；</li>
+<li>option函数使参数的含义非常清晰，易于开发者理解和使用；</li>
+<li>如果将 options 结构中的参数设置为小写，还可以限制这些参数的权限，防止这些参数在package 外部使用。</li>
+</ul>
+<p>刚才，我们实战了 fan-in 和 fan-out 高并发模型，并深度使用了通道和select的机制。接下来让我们更进一步，看一下实现通道和select机制的原理，掌握这种高并发模型的底层图像。</p>
+<h2 id="_3">通道的底层原理</h2>
+<p>通道的实现并没有想象中复杂。它利用互斥锁实现了并发安全，只不过Go运行时为我们屏蔽了底层的细节。<strong>通道包括两种类型，一种是无缓冲的通道，另一种是带缓冲区的通道。</strong>通道的结构如下：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/1d/2d/1d3df16f6b81e75537442a0a226de12d.jpg?wh=1920x1743" /></p>
+<p>可以看到，通道中包含了数据的类型、大小、数量，堵塞协程队列，以及用于缓存区的诸多字段。</p>
+<p>我们先来看看无缓冲区的通道是怎么实现的。</p>
+<h3 id="_4">无缓冲区的通道</h3>
+<p>通道需要有多个协程分别完成读和写的功能，这样才能保证数据传输是顺畅的。对于无缓冲区的通道来说，如果有一个协程正在将数据写入通道，但是当前没有协程读取数据，那么写入协程将立即陷入到休眠状态。写入协程堵塞之前协程会被封装到sudog结构中，并存储到写入的堵塞队列sendq中，之后协程陷入休眠。</p>
+<p>之前我们介绍过，协程的堵塞是位于用户态的，协程切换时，运行时会保存当前协程的状态、并调用 <code>gopark</code> 函数切换到g0完成新一轮的调度。如果之后有协程读取数据，那么读取协程会立即读取sendq队列中第一个等待的协程，并将该协程对应的元素拷贝到读取协程中，同时调用 <code>goready</code> 唤醒写入协程，将写入协程放入到可运行队列中等待被调度器调度。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/95/df/951ea2060624460486cd7c19yy2c52df.jpg?wh=1920x1242" /></p>
+<h3 id="_5">带缓冲区的通道</h3>
+<p>而对于带缓冲区的通道来说，假设缓存队列的数量为N，那么如果写入的数据量不大于N，写入协程就不会陷入到休眠状态，所有数据都会存储在缓冲队列中。</p>
+<p>缓冲队列可以在一定程度上削峰填谷，加快处理速度。但是如果写入速度始终大于读取数据，那么缓冲区迟早也有写满的时候，到时候仍然会陷入堵塞，只是延迟了问题的暴露并带来内存的浪费。因此缓冲区的容量不可以过大，我们可以根据实际情况给出一个经验值。例如上面的爬虫案例中，我们就可以给接收任务的requestCh通道加上缓存区，先将缓存区设置为500，这样就不会频繁堵塞住调度器了。</p>
+<p>对于有缓存的通道，存储在 buf 中的数据虽然是线性的数组，但是这些数组和序号recvx、recvq 模拟了一个环形队列。recvx 可以定位到 buf 是从哪个位置读取的通道中的元素，而 sendx 则能够找到写入时放入 buf 的位置，这样做主要是为了再次利用已经使用过的空间。从 recvx 到 sendx 的距离qcount就是通道队列中的元素数量。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/44/c9/44d5ac405f5997b198747c6b6acaacc9.jpg?wh=1920x1013" /></p>
+<h2 id="select">Select 机制的底层原理</h2>
+<p>在前面的实战案例中，我们还看到了大量channel与select结合使用的场景。</p>
+<p>受到通道特性的限制，如果单个通道被堵塞，协程就无法继续执行了。那有没有一种机制可以像网络中的多路复用一样，监听多个通道，使后续处理协程能够及时地运行？</p>
+<p>其实就和网络中把select用于Socket的多路复用机制一样，Go中也可以用select语句实现这样的多路复用机制。select语句中的每一个case都对应着一个待处理的读取或写入通道。举个简单实用的例子，下面的程序如果800毫秒之后也接受不到通道c中的数据，定时器time.After就会接收到数据，从而打印timeout。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>select {
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    case &lt;-c:
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>        fmt.Println(&quot;random 01&quot;)
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    case &lt;-time.After(800 * time.Millisecond):
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>        fmt.Println(&quot;timeout&quot;)
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    }
+</code></pre></div>
+<p>借助select可以实现许多有表现力的设计，那select是如何工作的呢？</p>
+<p>Select底层调用了 <code>selectgo</code> 函数，它的工作可以分为三个部分：</p>
+<ul>
+<li>第一部分涉及到遍历。<code>selectgo</code> 首先循环查找当前准备就绪的通道，如果能够找到，则正常进行后续处理。在具体的实现方式上，由于 select内部的 <code>scases</code> 数组存储了所有需要管理的通道，所以很容易想到循环遍历 <code>scases</code> ，最终找到可用的通道。不过这可能导致一个问题，那就是如果前面的通道始终有数据，后面的通道将永远得不到执行的机会。为了解决这一问题，Go语言为select加入了随机性，会利用洗牌算法随机打散数组顺序，保证了所有通道都有执行的机会。</li>
+<li>第二部分涉及到协程的休眠。如果select找不到准备就绪的通道，这时和单个协程的堵塞一样，它会将当前协程放入到所有通道的等待队列中，并陷入到休眠状态。</li>
+<li>第三部分涉及到协程的唤醒。如果有任意一个通道准备就绪，当前的协程将会被唤醒，并到准备就绪的case处继续执行。 要注意的一点是，最后 <code>selectgo</code> 会将sudog结构体从其他通道的等待队列中移出，因为当前协程已经能够正常运行，不再需要被其他通道唤醒了。</li>
+</ul>
+<h2 id="_6">总结</h2>
+<p>这节课，我们用fan-in、fan-out并发模式实战了爬虫的任务调度器。在实战中，我们频繁使用了通道与select结合的方式，还深入底层看到了通道与select的原理。最后我们还学习了函数选项模式在构建API时的优势。在后面的项目中，我们还会频繁地用到这种特性。</p>
+<h2 id="_7">课后题</h2>
+<p>在我们的课程中，schedule函数其实有一个bug，您能看出来吗？你觉得可以用什么方式找出这样的Bug？</p>
+<p>欢迎你在留言区与我交流讨论，我们下节课见！</p>
 <div><strong>精选留言（13）</strong></div>
 <ul>
-<li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83ep075ibtmxMf3eOYlBJ96CE9TEelLUwePaLqp8M75gWHEcM3za0voylA0oe9y3NiaboPB891rypRt7w/132" width="30px"><span>shuff1e</span> 👍（1） 💬（1）<div>bug应该是，会丢失发给worker的任务。
+<li><span>shuff1e</span> 👍（1） 💬（1）<div>bug应该是，会丢失发给worker的任务。
 
-case r := &lt;-s.requestCh:的情况下，如果req不是nil，应该把req再添加到reqQueue头部</div>2022-12-15</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTI8qibAw4lRCic1pbnA6yzQU3UqtQm3NqV1bUJ5EiaUnJ24V1yf4rtY7n2Wx7ZVvTemqq5a61ERWrrHA/132" width="30px"><span>Alex</span> 👍（0） 💬（2）<div>有个小问题请教一下老师， 这个Seeds 是slice， 我觉得在取出任务的时候会有并发问题 如果没有请老师指教下 </div>2023-02-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/32/fe/c2179924.jpg" width="30px"><span>mantra</span> 👍（0） 💬（1）<div>本文档中的代码链接 tag v0.1.4 （之前的文档，也一样）对应的 URL 都是主库的地址（https:&#47;&#47;github.com&#47;dreamerjackson&#47;crawler），这是故意的吗？正确的应该是 https:&#47;&#47;github.com&#47;dreamerjackson&#47;crawler&#47;archive&#47;refs&#47;tags&#47;v0.1.4.tar.gz</div>2023-01-13</li><br/><li><img src="" width="30px"><span>7oty</span> 👍（0） 💬（1）<div>如何控制某个爬虫任务的启动，停止和任务的实时运行状态？</div>2022-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/18/4f/9e4d5591.jpg" width="30px"><span>翡翠虎</span> 👍（0） 💬（2）<div>如果任务推送到worker，但又还没实施，这时候那台服务器停机了，或者进程退出了，任务会不会丢？怎么处理任务还没执行就丢了的这种情况呢？</div>2022-12-20</li><br/><li><img src="" width="30px"><span>Geek_a9ea01</span> 👍（0） 💬（1）<div>for { var req *collect.Request var ch chan *collect.Request if len(reqQueue) &gt; 0 { req = reqQueue[0] reqQueue = reqQueue[1:] ch = s.workerCh } select { case r := &lt;-s.requestCh: reqQueue = append(reqQueue, r) case ch &lt;- req: } }
+case r := &lt;-s.requestCh:的情况下，如果req不是nil，应该把req再添加到reqQueue头部</div>2022-12-15</li><br/><li><span>Alex</span> 👍（0） 💬（2）<div>有个小问题请教一下老师， 这个Seeds 是slice， 我觉得在取出任务的时候会有并发问题 如果没有请老师指教下 </div>2023-02-12</li><br/><li><span>mantra</span> 👍（0） 💬（1）<div>本文档中的代码链接 tag v0.1.4 （之前的文档，也一样）对应的 URL 都是主库的地址（https:&#47;&#47;github.com&#47;dreamerjackson&#47;crawler），这是故意的吗？正确的应该是 https:&#47;&#47;github.com&#47;dreamerjackson&#47;crawler&#47;archive&#47;refs&#47;tags&#47;v0.1.4.tar.gz</div>2023-01-13</li><br/><li><span>7oty</span> 👍（0） 💬（1）<div>如何控制某个爬虫任务的启动，停止和任务的实时运行状态？</div>2022-12-20</li><br/><li><span>翡翠虎</span> 👍（0） 💬（2）<div>如果任务推送到worker，但又还没实施，这时候那台服务器停机了，或者进程退出了，任务会不会丢？怎么处理任务还没执行就丢了的这种情况呢？</div>2022-12-20</li><br/><li><span>Geek_a9ea01</span> 👍（0） 💬（1）<div>for { var req *collect.Request var ch chan *collect.Request if len(reqQueue) &gt; 0 { req = reqQueue[0] reqQueue = reqQueue[1:] ch = s.workerCh } select { case r := &lt;-s.requestCh: reqQueue = append(reqQueue, r) case ch &lt;- req: } }
 有个问题：
-如果ch堵塞了  这时候又有requestCh请求上来；会不会导致ch数据丢失？</div>2022-12-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/54/21/8c13a2b4.jpg" width="30px"><span>周龙亭</span> 👍（2） 💬（0）<div>func (s *Schedule) Schedule() {
+如果ch堵塞了  这时候又有requestCh请求上来；会不会导致ch数据丢失？</div>2022-12-13</li><br/><li><span>周龙亭</span> 👍（2） 💬（0）<div>func (s *Schedule) Schedule() {
     var reqQueue = s.Seeds
     go func() {
         for {
@@ -13438,16 +13859,16 @@ case r := &lt;-s.requestCh:的情况下，如果req不是nil，应该把req再�
             }
         }
     }()
-}</div>2023-01-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7f/d3/b5896293.jpg" width="30px"><span>Realm</span> 👍（2） 💬（0）<div>                          
+}</div>2023-01-25</li><br/><li><span>Realm</span> 👍（2） 💬（0）<div>                          
                        Seeds
                            |
                            |              req                     ParseFunc(req)      HandleResult()
 requestCh----&gt; reqQueue -----&gt; workerCh ----------&gt; out-----------&gt; result:
 ^                                                                                                                - item ==&gt; 存储
 |                                                                                                                 - req |
-|---------------&lt;----------------------&lt;---------------------&lt;------|</div>2022-12-13</li><br/><li><img src="" width="30px"><span>Geek_38ea75</span> 👍（0） 💬（0）<div>我有好几个问题
+|---------------&lt;----------------------&lt;---------------------&lt;------|</div>2022-12-13</li><br/><li><span>Geek_38ea75</span> 👍（0） 💬（0）<div>我有好几个问题
 1.为啥req和ch放在for循环内部声明，这样有个问题，就是work来不及执行的话，会丢失。
-2.如果requestCh中的任务很多的话，会导致work队列中没有能够运行的任务。</div>2024-03-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/54/21/8c13a2b4.jpg" width="30px"><span>周龙亭</span> 👍（0） 💬（0）<div>修复下Schedule方法的bug：
+2.如果requestCh中的任务很多的话，会导致work队列中没有能够运行的任务。</div>2024-03-07</li><br/><li><span>周龙亭</span> 👍（0） 💬（0）<div>修复下Schedule方法的bug：
 
 func (s *Schedule) schedule() {
     go func() {
@@ -13477,7 +13898,7 @@ func (s *Schedule) schedule() {
         }
 
     }()
-}</div>2023-01-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7f/d3/b5896293.jpg" width="30px"><span>Realm</span> 👍（0） 💬（0）<div>```
+}</div>2023-01-25</li><br/><li><span>Realm</span> 👍（0） 💬（0）<div>```
 func (s *ScheduleEngine) Schedule() {
     var reqQueue = s.Seeds
     go func() {
@@ -13486,7 +13907,7 @@ func (s *ScheduleEngine) Schedule() {
             &#47;&#47;var ch chan *collect.Request
             ch := make(chan *collect.Request)
 ```
-使用make创建ch，这样ch就不是nil了，即使reqQueue为空的时候，case ch &lt;- req:就不是往nil通道中写数据了。</div>2022-12-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/62/8e/985cbc25.jpg" width="30px"><span>老猫</span> 👍（0） 💬（0）<div>&#47;&#47; s.requestCh = make(chan *collect.Request,100)
+使用make创建ch，这样ch就不是nil了，即使reqQueue为空的时候，case ch &lt;- req:就不是往nil通道中写数据了。</div>2022-12-14</li><br/><li><span>老猫</span> 👍（0） 💬（0）<div>&#47;&#47; s.requestCh = make(chan *collect.Request,100)
 &#47;&#47; s.workerCh = make(chan *collect.Request,500)
 func (s *ScheduleEngine) Schedule() {
     var reqQueue = s.Seeds
@@ -13501,7 +13922,7 @@ func (s *ScheduleEngine) Schedule() {
             }
         }
     }()
-}</div>2022-12-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0c/e1/f663213e.jpg" width="30px"><span>拾掇拾掇</span> 👍（0） 💬（0）<div>开启go run 的datarace参数吗？</div>2022-12-13</li><br/>
+}</div>2022-12-13</li><br/><li><span>拾掇拾掇</span> 👍（0） 💬（0）<div>开启go run 的datarace参数吗？</div>2022-12-13</li><br/>
 </ul>
 
 

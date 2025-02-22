@@ -6863,6 +6863,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      补充自动化守护测试
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      小步安全重构
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      集成验收
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12757,6 +12802,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      补充自动化守护测试
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      小步安全重构
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      集成验收
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12816,11 +12906,217 @@
 <a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    }
 <a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>}
 </code></pre></div>
+<p>我们从上述核心代码，可以看出Sharing项目主要通过SQLite提供的SQLiteDatabase以及SQLiteOpenHelper来创建数据表。</p>
+<p>目前Sharing项目仅有一个表以及简单的几个字段，通过SQL拼写的方式看起来也还好维护，但是<strong>如果现在面临的是几十个表以及几百个字段，那么管理和维护这些拼写的SQL字符串就会非常困难，当有修改的时候也非常容易出错。</strong></p>
+<p>我们继续来看数据的缓存以及读取操作。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>//进行信息缓存以及读取的代码
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>class LocalDataSource constructor( private var mContext: Context) : IDataSource {
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    override fun getMessageListFromCache(): MutableList&lt;Message&gt; {
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        val messageList: MutableList&lt;Message&gt; = ArrayList()
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        val dataBaseHelper = DataBaseHelper(mContext)
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        val c = dataBaseHelper.writableDatabase.query(
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>            DataBaseHelper.Companion.message_info, null,null, null, null, null,null)
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        if (c.moveToFirst()) { 
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>            for (i in 0 until c.count) {
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>                c.move(i) //移动到指定记录
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>                val id = c.getInt(c.getColumnIndex(DataBaseHelper.Companion.id))
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>                val content = c.getString(c.getColumnIndex(DataBaseHelper.Companion.content))
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>                val fileName = c.getString(c.getColumnIndex(DataBaseHelper.Companion.fileName))
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>                val date = c.getLong(c.getColumnIndex(DataBaseHelper.Companion.date))
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>                messageList.add(Message(id, content, fileName, date))
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>            }
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>        }
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>        return messageList
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    }
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    override fun saveMessageToCache(messageList: List&lt;Message&gt;) {
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>        val dataBaseHelper = DataBaseHelper(mContext)
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>        if (messageList.isNotEmpty()) {
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>            dataBaseHelper.writableDatabase.delete(
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>                DataBaseHelper.Companion.message_info, null,null)
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>            for (message in messageList) {
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>                val cv = ContentValues()
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>                cv.put(DataBaseHelper.Companion.id, message.id)
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>                cv.put(DataBaseHelper.Companion.content, message.content)
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>                cv.put(DataBaseHelper.Companion.date, message.date)
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>                cv.put(DataBaseHelper.Companion.fileName, message.fileName)
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>                dataBaseHelper.writableDatabase.insert(
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>                    DataBaseHelper.Companion.message_info,null,cv)
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>            }
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>        }
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>    }
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>}
+</code></pre></div>
+<p>通过上述代码可以看到，<strong>减少虽然SQLite提供了query以及delete等操作方法，我们可以减少编写SQL字符串，但是我们仍然需要去编写大量的对象转换代码。</strong></p>
+<p>其实这些代码都是我们前面提到的非业务的模板代码，这会大大增加我们维护代码的成本。为了解决这些问题，官方也提供了新的数据库框架 <a href="https://developer.android.com/training/data-storage/room?hl=zh_cn">Room</a>。官方文档强烈建议使用 Room，而不是<a href="https://developer.android.com/training/data-storage/sqlite?hl=zh-cn">直接使用 SQLite API</a>。</p>
+<p>下面我们就一起来看看如何安全地升级Room框架。</p>
+<h2 id="_2">补充自动化守护测试</h2>
+<p>首先第一步还是需要先做基本的自动化测试覆盖，作为后续重构的安全守护网。</p>
+<p>这里我们主要针对LocalDataSource 类来做测试，保证基本的数据缓存以及读取功能是正确的。用例设计是这样的。</p>
+<ul>
+<li>测试用例1：当message数据表没有缓存数据时，获取的缓存数据为空。</li>
+<li>测试用例2：当message数据表中有缓存数据时，能够成功获取缓存数据。读取的缓存数据内容需要与保持的缓存数据内容一致。</li>
+</ul>
+<p>现在，我们需要将测试用例转换成自动化测试用例。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>class LocalDataSourceTest {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    //用例1
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    @Test
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    fun `should get message list is empty when database has not data`() = runBlocking {
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>        //given
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        val localDataSource = LocalDataSource(ApplicationProvider.getApplicationContext())
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        //when
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        val messageListFromCache = localDataSource.getMessageListFromCache()
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        //then
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        assert(messageListFromCache.isEmpty())
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    }
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    //用例2
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    @Test
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    fun `should get message list success when database has data`() = runBlocking {
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>        //given
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>        val localDataSource = LocalDataSource(ApplicationProvider.getApplicationContext())
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>        localDataSource.saveMessageToCache(getMockData())
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>        //when
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>        val messageListFromCache = localDataSource.getMessageListFromCache()
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>        //then
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>        val messageOne = messageListFromCache[0]
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>        Truth.assertThat(messageOne.id).isEqualTo(1)
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>        Truth.assertThat(messageOne.content).isEqualTo(&quot;张三共享文件到消息中...&quot;)
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>        Truth.assertThat(messageOne.fileName).isEqualTo(&quot;大型Android遗留系统重构.pdf&quot;)
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>        Truth.assertThat(messageOne.formatDate).isEqualTo(&quot;2021-03-17 14:47:55&quot;)
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>        val messageTwo = messageListFromCache[1]
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>        Truth.assertThat(messageTwo.id).isEqualTo(2)
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>        Truth.assertThat(messageTwo.content).isEqualTo(&quot;李四共享视频到消息中……&quot;)
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>        Truth.assertThat(messageTwo.fileName).isEqualTo(&quot;修改代码的艺术.pdf&quot;)
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>        Truth.assertThat(messageTwo.formatDate).isEqualTo(&quot;2021-03-17 14:48:08&quot;)
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>    }
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>}
+</code></pre></div>
+<p>后面是执行测试用例的结果。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/1b/63/1b5fd583635f8aed02c496cc44104663.jpg?wh=2748x1455" /></p>
+<h2 id="_3">小步安全重构</h2>
+<p>有了基本的测试守护以后，接下来我们就可以小步地做安全重构，<strong>注意在过程中每当我们完成一步重构后，都可以频繁运行测试来验证是否有破坏原有的逻辑。</strong></p>
+<p>拆分重构过程的要求是，每一小步的重构都不能破坏之前的功能，而且全部步骤都完成之后即可完成整体的重构。</p>
+<p>这里我们结合Room框架的设计，把整个重构分成下面这5个步骤。</p>
+<p>第一步是使用Room注解更新实体。</p>
+<p>第二步是使用Room的SupportSQLiteOpenHelper进行SQL操作。这2个步骤完成后，不会修改原有的查询及删除操作代码。</p>
+<p>接下来是第三步，进阶使用Room的Dao注解方式来管理数据的增删改查，替换掉原有的查询及删除代码。第四步是优化操作，使用协程来优化IO的异步操作。最后是第五步，迁移旧数据。</p>
+<p><strong>1. 使用Room注解更新实体</strong></p>
+<p>首先我们来看第一步，这一步相对比较简单，使用Room的注解标记新的实体代码就可以了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>@Entity(tableName = &quot;message_info&quot;)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>class Message(
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    @PrimaryKey @ColumnInfo(name = &quot;id&quot;) var id: Int,
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    @ColumnInfo(name = &quot;content&quot;) var content: String,
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    @ColumnInfo(name = &quot;fileName&quot;) var fileName: String,
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    @ColumnInfo(name = &quot;date&quot;) var date: Long
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>) {
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    @Ignore
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    val formatDate = DateUtil.getDateToString(date)
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    @Ignore
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    val downloadCount = ARouter.getInstance().navigation(IFileStatistics::class.java)
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        ?.getDownloadCount(id.toString())
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>}
+</code></pre></div>
+<p><strong>2. 使用Room的SupportSQLiteOpenHelper进行SQL操作</strong></p>
+<p>Room提供了SupportSQLiteOpenHelper类，可以用它替换SQLite中的SQLiteOpenHelper，我们将原本使用SQLiteOpenHelper的地方替换为使用Room的SupportSQLiteOpenHelper。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>@Database(entities = [Message::class], version = 1)
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>abstract class AppDatabase : RoomDatabase() {
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>}
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>class LocalDataSource constructor(
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    private var mContext: Context
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>) : IDataSource {
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    val db = Room.databaseBuilder(
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        mContext,
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        AppDatabase::class.java, &quot;message.db&quot;
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    ).build()
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>   override fun getMessageListFromCache(): MutableList&lt;Message&gt; {
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    val messageList: MutableList&lt;Message&gt; = ArrayList()
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    val dataBaseHelper = db.openHelper
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    //... ...
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    return messageList
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>  }
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>  override fun saveMessageToCache(messageList: List&lt;Message&gt;) {
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>    val dataBaseHelper = db.openHelper
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>     //... ...
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    }
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>}
+</code></pre></div>
+<p><strong>3. 使用Dao注解方式来管理数据的增删改查</strong></p>
+<p>接下来，我们可以选择将query及delete等的操作，使用Room的Dao注解做替换。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>@Dao
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>interface MessageDao {
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    @Query(&quot;SELECT * FROM message_info&quot;)
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    suspend fun getAll(): List&lt;Message&gt;
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    @Insert
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    suspend fun insertAll(vararg message: Message)
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    @Query(&quot;DELETE FROM message_info&quot;)
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    suspend fun deleteAll()
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>}
+</code></pre></div>
+<p>完成后，就可以将LocalDataSource的实现替换为使用MessageDao进行操作了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>class LocalDataSource constructor(
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    private var mContext: Context
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>) : IDataSource {
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    val db = Room.databaseBuilder(
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        mContext,
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>        AppDatabase::class.java, &quot;message.db&quot;
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    ).build()
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    override suspend fun getMessageListFromCache(): MutableList&lt;Message&gt; {
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>        return db.messageDao().getAll().toMutableList()
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    }
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    override suspend fun saveMessageToCache(messageList: List&lt;Message&gt;) {
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        messageList.let {
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>            db.messageDao().deleteAll()
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>            db.messageDao().insertAll(*it.toTypedArray())
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>        }
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    }
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>}
+</code></pre></div>
+<p>至此我们完成了Room框架的升级，你可以对比一下LocalDataSource改造前后的代码，<strong>使用Room框架大大帮我们减少了模板代码的编写，代码更加容易维护。</strong></p>
+<p><strong>4. 数据迁移</strong></p>
+<p>如果我们升级数据库框架时，调整过表结构的话，这时就可以用Room提供的Migration机制升级数据。</p>
+<p>例如Sharing项目在升级Room框架时，我们新增了一个count字段用于缓存文件的下载数量，但是在旧的数据表中并没有这个字段，这时就可以使用Migration机制来迁移升级数据。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>private val MIGRATION_1_2 = object : Migration(1, 2) {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    override fun migrate(database: SupportSQLiteDatabase) {
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>        database.execSQL(&quot;ALTER TABLE message_info RENAME TO message_info_back_up&quot;)
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>        database.execSQL(&quot;CREATE TABLE message_info ( id  INTEGER PRIMARY KEY NOT NULL, content TEXT NOT NULL,date INTEGER NOT NULL, count INTEGER NOT NUL)&quot;)
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>        database.execSQL(&quot;INSERT INTO message_info (id, content,date，0) SELECT id, content,date FROM message_info_back_up&quot;)
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    }
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>}
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>private val db = Room.databaseBuilder(
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    mContext,
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    AppDatabase::class.java, &quot;message.db&quot;
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>).addMigrations(MIGRATION_1_2).build()
+</code></pre></div>
+<p>在实际的项目中，我们需要根据数据对用户的重要性，来决定是否要做数据的迁移。例如一些缓存数据只是提高用户的体验，哪怕这部分数据没有了，从网络获取它也很方便，我们就不必迁移数据。</p>
+<p>但如果对用户来说是关键的数据，就必须迁移和做专项的测试。例如一个短信息的APP（信息只缓存在本地），当升级框架后，迁移这些短信息就非常重要，因为这部分数据丢失的话，对用户来说是非常糟糕的体验。更多迁移数据的方法，你可以参考<a href="https://developer.android.google.cn/training/data-storage/room/migrating-db-versions">官网的说明</a>。</p>
+<h2 id="_4">集成验收</h2>
+<p>跟之前的组件内分层架构重构一样，完成重构后我们需要完成最后的集成验收。</p>
+<p>验收有三个标准：第一是编译通过，能够打包出安装包；第二是架构守护用例执行通过；第三是验收自动化测试执行通过。</p>
+<p>下面我们来看看改造后相关的自动化测试运行结果。</p>
+<p>基本冒烟及架构守护用例自动化测试报告如下：<br />
+<img alt="" src="https://static001.geekbang.org/resource/image/08/68/0865058ae824d41ce3585802de45c868.jpg?wh=2748x1084" /></p>
+<p>消息组件自动化测试报告如下：<br />
+<img alt="" src="https://static001.geekbang.org/resource/image/05/6a/05ea5579a087fcb7dcb66e0edce3026a.jpg?wh=2748x1084" /><br />
+至此，我们完成了对Sharing项目的数据库框架升级重构。</p>
+<h2 id="_5">总结</h2>
+<p>今天我给你讲解了如何小步安全地升级数据库框架。</p>
+<p>改造前Sharing项目使用了SQLite来管理数据库，这个方式主要存在2个问题。第一个是使用拼写SQL方式来管理表创建，不便于扩展；第二个是存在大量的对象转换重复代码，不便于维护。所以我们根据官方的建议，使用Room框架来帮我们完成这些重复的工作，让我们可以更聚焦在业务开发上。</p>
+<p>Room框架的升级可以分2个阶段完成。</p>
+<p>第一个阶段是先引入 <strong>Room框架</strong>，将原本使用SQLiteOpenHelper操作数据库的方式，调整为使用Room提供的SupportSQLiteOpenHelper来进行管理，此时不会修改原有的查询及删除操作代码。</p>
+<p>第二个阶段可以使用 <strong>Room提供的Dao注解方式</strong>，替换掉原来的insert、query等方法，完成后可以减少大量的增删改查模板代码。此时你就可以充分感受到使用框架带来的收益。同样完成一个功能，我们可以少写很多模板的代码。</p>
+<p>特别需要注意的是，<strong>如果在改造过程中，如果数据表结构有变化，我们需要采用Room框架提供的Migration机制来迁移数据。</strong></p>
+<p>至此，我们已经完成了第三篇解耦重构篇的学习。接下来我们将进入第四篇持续交付篇的学习，让我们一起学习组件化架构持续交付的核心实践，帮助我们更好提高版本发布的效率及质量，敬请期待！</p>
+<h2 id="_6">思考题</h2>
+<p>感谢你学完了今天的内容，今天的思考题是这样的：曾经在一个项目上有一个同学问我说我们团队就想使用SQL拼写的方式，因为这样能做到最极端的性能优化，你怎么看这个问题呢？</p>
+<p>感谢你学完了今天的课程，欢迎你把它分享给你的同事或朋友，让我们一起来高效高质量交付软件！</p>
 <div><strong>精选留言（2）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/25/87/f3a69d1b.jpg" width="30px"><span>peter</span> 👍（0） 💬（1）<div>请教老师两个问题：
+<li><span>peter</span> 👍（0） 💬（1）<div>请教老师两个问题：
 Q1：屏幕适配一般怎么做？采用框架？如采用，什么框架好？还是逐页面来做？不采用框架的话，布局时控件宽高都用weight，距离用dp，字体用sp，这样就可以适配吗？
-Q2：MessageDao的定义中，@Insert后面为什么没有SQL语句？另外，Delete函数的注解写的是@Query，应该是笔误吧。</div>2023-03-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/59/97/9b7a412c.jpg" width="30px"><span>Aā 阳～</span> 👍（1） 💬（0）<div>老师，可以解释一下思考题吗</div>2023-10-12</li><br/>
+Q2：MessageDao的定义中，@Insert后面为什么没有SQL语句？另外，Delete函数的注解写的是@Query，应该是笔误吧。</div>2023-03-20</li><br/><li><span>Aā 阳～</span> 👍（1） 💬（0）<div>老师，可以解释一下思考题吗</div>2023-10-12</li><br/>
 </ul>
 
 

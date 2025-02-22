@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#rpc" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -11233,6 +11238,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    41   实战（一）：“画图”程序后端实战
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -11242,6 +11258,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rpc" class="md-nav__link">
+    <span class="md-ellipsis">
+      RPC 框架
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      业务逻辑的分层
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      单元测试
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      结语
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -13960,6 +14029,50 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rpc" class="md-nav__link">
+    <span class="md-ellipsis">
+      RPC 框架
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      业务逻辑的分层
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      单元测试
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      结语
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -13993,9 +14106,245 @@
 <ul>
 <li><a href="https://github.com/qiniu/qpaint/tree/v31/paintdom">https://github.com/qiniu/qpaint/tree/v31/paintdom</a></li>
 </ul>
+<p>接下来我们一步步把它变成一个产品级的服务端程序。</p>
+<h2 id="rpc">RPC 框架</h2>
+<p>第一步，我们引入 RPC 框架。</p>
+<p>为了方便你理解，在上一章的实战中，我们的 mock 服务端程序没有引入任何非标准库的内容。代码如下：</p>
+<ul>
+<li><a href="https://github.com/qiniu/qpaint/blob/v31/paintdom/service.go">https://github.com/qiniu/qpaint/blob/v31/paintdom/service.go</a></li>
+</ul>
+<p>整个 Service 大约 280 行代码。</p>
+<p>我们改为基于七牛云开源的 <a href="https://github.com/qiniu/http/tree/v2.0.1/restrpc">restrpc</a> 框架来实现，代码如下：</p>
+<ul>
+<li><a href="https://github.com/qiniu/qpaint/blob/v41/paintdom/service.go">https://github.com/qiniu/qpaint/blob/v41/paintdom/service.go</a></li>
+</ul>
+<p>这样，整个 Service 就大约只剩下 163 行代码，只有原先的 60% 不到。</p>
+<p>到底少写了哪些代码？我们拿创建一个新图形来看下。原先我们这样写：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>func (p *Service) PostShapes(w http.ResponseWriter, req *http.Request, args []string) {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    id := args[0]
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    drawing, err := p.doc.Get(id)
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    if err != nil {
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        ReplyError(w, err)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        return
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    }
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    var aShape serviceShape
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    err = json.NewDecoder(req.Body).Decode(&amp;aShape)
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    if err != nil {
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        ReplyError(w, err)
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        return
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    }
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    err = drawing.Add(aShape.Get())
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    if err != nil {
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        ReplyError(w, err)
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>        return
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    }
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    ReplyCode(w, 200)
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>}
+</code></pre></div>
+<p>现在这样写：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>func (p *Service) PostShapes(aShape *serviceShape, env *restrpc.Env) (err error) {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    id := env.Args[0]
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    drawing, err := p.doc.Get(id)
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    if err != nil {
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        return
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    }
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    return drawing.Add(aShape.Get())
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>}
+</code></pre></div>
+<p>这个例子返回包比较简单，没有 HTTP 包的正文。</p>
+<p>我们再来看一个返回包比较复杂的例子，取图形的内容。原先我们这样写：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>func (p *Service) GetShape(w http.ResponseWriter, req *http.Request, args []string) {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    id := args[0]
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    drawing, err := p.doc.Get(id)
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    if err != nil {
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>        ReplyError(w, err)
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        return
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    }
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    shapeID := args[1]
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    shape, err := drawing.Get(shapeID)
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    if err != nil {
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>        ReplyError(w, err)
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        return
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    }
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    Reply(w, 200, shape)
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>}
+</code></pre></div>
+<p>现在这样写：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>func (p *Service) GetShape(env *restrpc.Env) (shape Shape, err error) {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    id := env.Args[0]
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    drawing, err := p.doc.Get(id)
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    if err != nil {
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        return
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    }
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    shapeID := env.Args[1]
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    return drawing.Get(shapeID)
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>}
+</code></pre></div>
+<p>对比这两个例子，我们可以看出：</p>
+<ul>
+<li>原先这两个请求 <code>POST /drawings/&lt;DrawingID&gt;/shapes</code>、<code>GET /drawings/&lt;DrawingID&gt;/shapes/&lt;ShapeID&gt;</code> 中的 URL 参数如 DrawingID、ShapeID 的值，是通过参数 args[0]、args[1] 传入，现在通过 env.Args[0]、env.Args[1] 传入。</li>
+<li>原先我们 PostShapes 需要自己定义 Shape 实例并解析 HTTP 请求包 req.Body 的内容。现在我们只需要在参数中指定 Shape 类型，restrpc 框架就自动完成参数的解析。</li>
+<li>原先我们 GetShape 需要自己回复错误或者返回正常的 HTTP 协议包。现在我们只需要在返回值列表中返回要回复的数据，restrpc 框架自动完成返回值的序列化并回复 HTTP 请求。</li>
+</ul>
+<p>通过对比两个版本的代码差异，我们大体能够猜得出来，restrpc 的 HTTP 处理函数背后都干了些啥。其核心代码如下：</p>
+<ul>
+<li><a href="https://github.com/qiniu/http/blob/v2.0.2/rpcutil/rpc_util.go#L96">https://github.com/qiniu/http/blob/v2.0.2/rpcutil/rpc_util.go#L96</a></li>
+</ul>
+<p>值得关注的是 Env 的支持，RPC 框架并没有限定 Env 类具体是什么样子的，只是规定它需要满足以下接口：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>type itfEnv interface {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    OpenEnv(rcvr interface{}, w *http.ResponseWriter, req *http.Request) error
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    CloseEnv()
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>}
+</code></pre></div>
+<p>在 OpenEnv 方法中，我们一般进行 Env 的初始化工作。CloseEnv 方法则反之。为什么 OpenEnv 方法中，ResponseWriter 接口是以指针方式传入？因为可能会有客户希望改写 ResponseWriter 的实现。</p>
+<p>比如，假设我们要给 RPC 框架扩展 API 审计日志的功能。那么我们就需要接管并记录用户返回的 HTTP 包，这时我们就需要改写 ResponseWriter 以达到接管并记录的目的。</p>
+<p>另外值得注意的是，restrpc 版本的 HTTP 请求的处理函数，看起来不再那么像 HTTP 处理函数，倒像一个普通函数。</p>
+<p>这意味着我们可以有两种方式来测试 Service 类。除了用正常测试 HTTP Service 的方法来测试它以外，我们也可以把 Service 类当成普通类来测试，这大大降低单元测试的成本。因为我们不用再需要包装服务的 Client SDK，然后再基于 Client SDK 做单元测试。</p>
+<p>当然，我们有这样的一种低成本测试方式，但还是会担心这种测试方法可能不能覆盖一些编码上的小意外，毕竟我们没有走 HTTP 协议，心里多多少少有些不踏实。</p>
+<p>理解了 restrpc 的 HTTP 处理函数，剩下的就是 restrpc 的路由功能。它是由 restrpc.Router 类的 Register 函数完成的。代码如下：</p>
+<ul>
+<li><a href="https://github.com/qiniu/http/blob/v2.0.1/restrpc/restroute.go#L39">https://github.com/qiniu/http/blob/v2.0.1/restrpc/restroute.go#L39</a></li>
+</ul>
+<p>它支持两种路由方式，一种是根据方法名字自动路由。比如 <code>POST /drawings/&lt;DrawingID&gt;/shapes</code> 这样的请求，要求方法名为 “PostDrawings_Shapes”。<code>GET /drawings/&lt;DrawingID&gt;/shapes/&lt;ShapeID&gt;</code> 这样的请求，要求方法名为 “GetDrawings_Shapes_”。</p>
+<p>规则倒是比较简单，路径中的 “/” 由单词首字母大写来分隔，URL 参数如 DrawingID、ShapeID 这些则替换为 “_”。</p>
+<p>当然有的人会认为这种方法名字看起来很丑。那么就可以选择手工路由的方式，传入 routeTable。它看起来是这样的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>var routeTable = [][2]string{
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    {&quot;POST /drawings&quot;, &quot;PostDrawings&quot;},
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    {&quot;GET /drawings/*&quot;, &quot;GetDrawing&quot;},
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    {&quot;DELETE /drawings/*&quot;, &quot;DeleteDrawing&quot;},
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    {&quot;POST /drawings/*/sync&quot;, &quot;PostDrawingSync&quot;},
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    {&quot;POST /drawings/*/shapes&quot;, &quot;PostShapes&quot;},
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    {&quot;GET /drawings/*/shapes/*&quot;, &quot;GetShape&quot;},
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    {&quot;POST /drawings/*/shapes/*&quot;, &quot;PostShape&quot;},
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    {&quot;DELETE /drawings/*/shapes/*&quot;, &quot;DeleteShape&quot;},
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>}
+</code></pre></div>
+<p>虽然是手工路由，但是方法名仍然有限制，要求必须是 Get、Put、Post、Delete 开头。</p>
+<h2 id="_1">业务逻辑的分层</h2>
+<p>理解了 restrpc 框架，我们再看下 QPaint 服务端的业务本身。可以看出，我们的服务端业务逻辑被分为两层：一层是业务逻辑的实现层，通常我们有意识地把它组织为一颗 DOM 树。代码如下：</p>
+<ul>
+<li><a href="https://github.com/qiniu/qpaint/blob/v41/paintdom/drawing.go">https://github.com/qiniu/qpaint/blob/v41/paintdom/drawing.go</a></li>
+<li><a href="https://github.com/qiniu/qpaint/blob/v41/paintdom/shape.go">https://github.com/qiniu/qpaint/blob/v41/paintdom/shape.go</a></li>
+</ul>
+<p>另一层则是 RESTful API 层，它负责接收用户的网络请求，并转为对底层 DOM 树的方法调用。有了上面我们介绍的 restrpc 框架，这一层的每个方法往往都比较简单，甚至有的只是很简单的一句函数调用。比如：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>func (p *Service) DeleteDrawing(env *restrpc.Env) (err error) {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    id := env.Args[0]
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    return p.doc.Delete(id)
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>}
+</code></pre></div>
+<p>完整的RESTful API 层代码如下：</p>
+<ul>
+<li><a href="https://github.com/qiniu/qpaint/blob/v41/paintdom/service.go">https://github.com/qiniu/qpaint/blob/v41/paintdom/service.go</a></li>
+</ul>
+<p>这样分层的原因，是因为我们实现核心业务逻辑的时候，并不会假设一定通过 RESTful API 暴露。我们考虑这样几种可能性：</p>
+<p>其一，有可能我们根本不需要网络调用。</p>
+<p>做个类比，我们都知道 mysql 是通过 TCP 协议提供服务接口的，而 sqlite 是嵌入式数据库，是通过本地的函数调用提供服务接口的。这里分层就类似于我实现 mysql 的时候，先在底层实现了一个类似 sqlite 的嵌入式数据库，然后再提供基于 TCP 协议的网络接口。</p>
+<p>其二，有可能我们需要支持很多种网络协议。</p>
+<p>我们今天流行 RESTful API，所以我们的接口是 RESTful 风格的。如果有一天我们像 Github 一样想改用 GraphQL，那么至少底层的业务逻辑实现层是不需要改变的，我们只需要实现相对薄的 GraphQL 层就行了。</p>
+<p>而且，往往在这种情况下 RESTful API 和 GraphQL 是需要同时支持的。毕竟我们不可能为了赶时髦，就把老用户弃之不顾了。</p>
+<p>在需要同时支持多套网络接口的时候，这种分层的价值就体现出来了，不同网络接口的模块之间，共享了同一份 DOM 树的实例，整个体系不仅实现了多协议并存，还实现了完美的解耦，彼此之间完全独立。</p>
+<h2 id="_2">单元测试</h2>
+<p>聊完了业务，我们再来看看单元测试。</p>
+<p>之前，我们单元测试基本上没怎么做：</p>
+<ul>
+<li><a href="https://github.com/qiniu/qpaint/blob/v31/paintdom/service_test.go#L62">https://github.com/qiniu/qpaint/blob/v31/paintdom/service_test.go#L62</a></li>
+</ul>
+<p>代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>type idRet struct {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    ID string `json:&quot;id&quot;`
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>}
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>func TestNewDrawing(t *testing.T) {
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>        ...
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    var ret idRet
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    err := Post(&amp;ret, ts.URL + &quot;/drawings&quot;, &quot;&quot;)
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    if err != nil {
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>        t.Fatal(&quot;Post /drawings failed:&quot;, err)
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    }
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    if ret.ID != &quot;10001&quot; {
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>        t.Log(&quot;new drawing id:&quot;, ret.ID)
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    }
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>}
+</code></pre></div>
+<p>从这里的测试代码可以看出，我们就只是创建了一个 drawing，并且要求返回的 drawingID 为 "10001"。</p>
+<p>从单元测试的角度，这样的测试力度当然是非常不足的。同样的测试案例，用我们上一讲介绍的 <a href="https://github.com/qiniu/httptest">httptest</a> 测试框架实现如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>func TestNewDrawing(t *testing.T) {
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    ...
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    ctx := httptest.New(t)
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    ctx.Exec(
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    `
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    post http://qpaint.com/drawings
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    ret 200
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    json &#39;{&quot;id&quot;: &quot;10001&quot;}&#39;
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    `)
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>}
+</code></pre></div>
+<p>当然，实际我们应该去测试更多的情况，比如：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>func TestService(t *testing.T) {
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>        ...
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    ctx := httptest.New(t)
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    ctx.Exec(
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    `
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    post http://qpaint.com/drawings
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    ret 200
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    json &#39;{
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>        &quot;id&quot;: $(id1)
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    }&#39;
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    match $(line1) &#39;{
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>        &quot;id&quot;: &quot;1&quot;,
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>        &quot;line&quot;: {
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>            &quot;pt1&quot;: {&quot;x&quot;: 2.0, &quot;y&quot;: 3.0},
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>            &quot;pt2&quot;: {&quot;x&quot;: 15.0, &quot;y&quot;: 30.0},
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>            &quot;style&quot;: {
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>                &quot;lineWidth&quot;: 3,
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>                &quot;lineColor&quot;: &quot;red&quot;
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>            }
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>        }
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>    }&#39;
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>    post http://qpaint.com/drawings/$(id1)/shapes
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>    json $(line1)
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>    ret 200
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>    get http://qpaint.com/drawings/$(id1)/shapes/1
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>    ret 200
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>    json $(line1)
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>    `)
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>    if !ctx.GetVar(&quot;id1&quot;).Equal(&quot;10001&quot;) {
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>        t.Fatal(`$(id1) != &quot;10001&quot;`)
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>    }
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>}
+</code></pre></div>
+<p>这个案例我们想演示什么？这是一个相对复杂的案例。首先我们创建了一个 drawing，并且将 drawingID 放到变量 <code>$(id1)</code> 中。随后，我们向该 drawing 中添加了一条直线 <code>$(line1)</code>。为了确认添加成功，我们取出了该图形对象，并且判断取得的图形和添加进去的 <code>$(line1)</code> 是否一致。</p>
+<p>另外，它也演示了 qiniutest DSL 脚本和 Go 语言代码的互操作性。我们用 Go 代码取得变量 <code>$(id1)</code>，并且判断它是否和 "10001" 相等。</p>
+<p>关于 qiniutest 更多的内容，请查阅以下资料：</p>
+<ul>
+<li><a href="https://github.com/qiniu/httptest">https://github.com/qiniu/httptest</a></li>
+<li><a href="https://github.com/qiniu/qiniutest">https://github.com/qiniu/qiniutest</a></li>
+<li>演讲稿：<a href="http://open.qiniudn.com/qiniutest.pdf">http://open.qiniudn.com/qiniutest.pdf</a></li>
+</ul>
+<p>在我们的测试代码中，还使用了一个七牛云开源的 mockhttp 组件，它也非常有意思：</p>
+<ul>
+<li><a href="https://github.com/qiniu/x/blob/v8.0.1/mockhttp/mockhttp.go">https://github.com/qiniu/x/blob/v8.0.1/mockhttp/mockhttp.go</a></li>
+</ul>
+<p>这个 mockhttp 并不真去监听端口，感兴趣的同学可以研究一下。</p>
+<h2 id="_3">结语</h2>
+<p>我们总结一下今天的内容。</p>
+<p>从今天开始我们会一步步将之前写的 mock 服务端改造为真实的服务端程序。</p>
+<p>我们第一步改造的是 RPC 框架和单元测试。这样我们第一次开始依赖第三方的代码库，如下：</p>
+<ul>
+<li><a href="http://github.com/qiniu/http">http://github.com/qiniu/http</a> （用到 restrpc）</li>
+<li><a href="http://github.com/qiniu/qiniutest">http://github.com/qiniu/qiniutest</a></li>
+<li><a href="http://github.com/qiniu/x">http://github.com/qiniu/x</a> （用到 mockhttp）</li>
+</ul>
+<p>一旦有了外部依赖，我们就需要考虑依赖库的版本管理。好的一点是大多数现代语言都有很好的版本管理规范，对于 Go 语言我们用 go mod 来做版本管理。</p>
+<p>如果你对今天的内容有什么思考与解读，欢迎给我留言，我们一起讨论。下一讲开始我们继续实战。</p>
+<p>如果你觉得有所收获，也欢迎把文章分享给你的朋友。感谢你的收听，我们下期再见。</p>
 <div><strong>精选留言（8）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/16/cd/db/7467ad23.jpg" width="30px"><span>Bachue Zhou</span> 👍（7） 💬（1）<div>用这样炫酷的 DSL 虽然看上去很棒，但其实是以放弃了编译时检查为代价的，增加了以后长期维护的困难程度。而且使用自定义的语法而非一门原本就是全功能的编程语言，可能以后会疲于应对各种需求，比如七牛 API 中 base64 的成分很多就专门增加了 base64 的功能，甚至语法上设计的很像 shell 语法，但以后说不定就会有其他编解码算法出现，最终发现还不如把 openssl 都弄进来</div>2019-10-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/47/c2/e9fa4cf6.jpg" width="30px"><span>Charles</span> 👍（3） 💬（1）<div>基础不大好，请教下许老师，这篇中提到的rpc框架作用是为了更快速的开发RESTful API，而封装了底层http协议处理吗？</div>2019-09-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/39/ac/d185d0e5.jpg" width="30px"><span>Quincy</span> 👍（0） 💬（1）<div>go 的第三方包管理工具，老师推荐用gomod嘛？</div>2019-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7a/08/4d3e47dd.jpg" width="30px"><span>Aaron Cheung</span> 👍（5） 💬（0）<div>今天中秋节 没人打卡了吗</div>2019-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/b9/8d/00bded19.jpg" width="30px"><span>不温暖啊不纯良</span> 👍（1） 💬（0）<div>在实现业务层的时候，将业务层分成了两层，一层是对外提供网络接口，一层是实现具体业务的逻辑。在工作中曾经看到一个同事将逻辑代码，写到了接口层，直接省去了service处理层，直接使用接口层去调用dao层的数据返回，当然我们是基于三层架构，将业务层代码分为三层，分别是接口层controller，服务处理层service，数据交互层dao，但是我倒是觉得他这种方法也有一番风味，不知道是否在负担设计史上存在过这样的分层，如果我们用领域驱动型设计，只要设计好model层，那完全可以用接口层直接调用model层和dao层，不必使用service.层。</div>2021-04-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2023-09-11</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLMDBq7lqg9ZasC4f21R0axKJRVCBImPKlQF8yOicLLXIsNgsZxsVyN1mbvFOL6eVPluTNgJofwZeA/132" width="30px"><span>Run</span> 👍（0） 💬（0）<div>略过</div>2021-03-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/64/05/6989dce6.jpg" width="30px"><span>我来也</span> 👍（0） 💬（0）<div>终于又看到了熟悉的golang代码😄</div>2019-09-13</li><br/>
+<li><span>Bachue Zhou</span> 👍（7） 💬（1）<div>用这样炫酷的 DSL 虽然看上去很棒，但其实是以放弃了编译时检查为代价的，增加了以后长期维护的困难程度。而且使用自定义的语法而非一门原本就是全功能的编程语言，可能以后会疲于应对各种需求，比如七牛 API 中 base64 的成分很多就专门增加了 base64 的功能，甚至语法上设计的很像 shell 语法，但以后说不定就会有其他编解码算法出现，最终发现还不如把 openssl 都弄进来</div>2019-10-23</li><br/><li><span>Charles</span> 👍（3） 💬（1）<div>基础不大好，请教下许老师，这篇中提到的rpc框架作用是为了更快速的开发RESTful API，而封装了底层http协议处理吗？</div>2019-09-16</li><br/><li><span>Quincy</span> 👍（0） 💬（1）<div>go 的第三方包管理工具，老师推荐用gomod嘛？</div>2019-09-20</li><br/><li><span>Aaron Cheung</span> 👍（5） 💬（0）<div>今天中秋节 没人打卡了吗</div>2019-09-13</li><br/><li><span>不温暖啊不纯良</span> 👍（1） 💬（0）<div>在实现业务层的时候，将业务层分成了两层，一层是对外提供网络接口，一层是实现具体业务的逻辑。在工作中曾经看到一个同事将逻辑代码，写到了接口层，直接省去了service处理层，直接使用接口层去调用dao层的数据返回，当然我们是基于三层架构，将业务层代码分为三层，分别是接口层controller，服务处理层service，数据交互层dao，但是我倒是觉得他这种方法也有一番风味，不知道是否在负担设计史上存在过这样的分层，如果我们用领域驱动型设计，只要设计好model层，那完全可以用接口层直接调用model层和dao层，不必使用service.层。</div>2021-04-26</li><br/><li><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2023-09-11</li><br/><li><span>Run</span> 👍（0） 💬（0）<div>略过</div>2021-03-03</li><br/><li><span>我来也</span> 👍（0） 💬（0）<div>终于又看到了熟悉的golang代码😄</div>2019-09-13</li><br/>
 </ul>
 
 

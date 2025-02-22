@@ -2377,6 +2377,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#jackson-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      注意Jackson JSON反序列化对额外字段的处理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      反序列化时要小心类的构造方法
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      枚举作为API接口参数或返回值的两个大坑
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考与讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13156,6 +13201,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#jackson-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      注意Jackson JSON反序列化对额外字段的处理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      反序列化时要小心类的构造方法
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      枚举作为API接口参数或返回值的两个大坑
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考与讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13188,9 +13278,529 @@
 <p>今天，我们就一起聊聊开发中序列化常见的一些坑吧。</p>
 <h2 id="_1">序列化和反序列化需要确保算法一致</h2>
 <p>业务代码中涉及序列化时，很重要的一点是要确保序列化和反序列化的算法一致性。有一次我要排查缓存命中率问题，需要运维同学帮忙拉取Redis中的Key，结果他反馈Redis中存的都是乱码，怀疑Redis被攻击了。其实呢，这个问题就是序列化算法导致的，我们来看下吧。</p>
-<div><strong>精选留言（19）</strong></div>
+<p>在这个案例中，开发同学使用RedisTemplate来操作Redis进行数据缓存。因为相比于Jedis，使用Spring提供的RedisTemplate操作Redis，除了无需考虑连接池、更方便外，还可以与Spring Cache等其他组件无缝整合。如果使用Spring Boot的话，无需任何配置就可以直接使用。</p>
+<p>数据（包含Key和Value）要保存到Redis，需要经过序列化算法来序列化成字符串。虽然Redis支持多种数据结构，比如Hash，但其每一个field的Value还是字符串。如果Value本身也是字符串的话，能否有便捷的方式来使用RedisTemplate，而无需考虑序列化呢？</p>
+<p>其实是有的，那就是StringRedisTemplate。</p>
+<p>那StringRedisTemplate和RedisTemplate的区别是什么呢？开头提到的乱码又是怎么回事呢？带着这些问题让我们来研究一下吧。</p>
+<p>写一段测试代码，在应用初始化完成后向Redis设置两组数据，第一次使用RedisTemplate设置Key为redisTemplate、Value为User对象，第二次使用StringRedisTemplate设置Key为stringRedisTemplate、Value为JSON序列化后的User对象：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>@Autowired
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>private RedisTemplate redisTemplate;
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>@Autowired
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>private StringRedisTemplate stringRedisTemplate;
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>@Autowired
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>private ObjectMapper objectMapper;
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>@PostConstruct
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>public void init() throws JsonProcessingException {
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    redisTemplate.opsForValue().set(&quot;redisTemplate&quot;, new User(&quot;zhuye&quot;, 36));
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    stringRedisTemplate.opsForValue().set(&quot;stringRedisTemplate&quot;, objectMapper.writeValueAsString(new User(&quot;zhuye&quot;, 36)));
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>}
+</code></pre></div>
+<p>如果你认为，StringRedisTemplate和RedisTemplate的区别，无非是读取的Value是String和Object，那就大错特错了，因为使用这两种方式存取的数据完全无法通用。</p>
+<p>我们做个小实验，通过RedisTemplate读取Key为stringRedisTemplate的Value，使用StringRedisTemplate读取Key为redisTemplate的Value：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>log.info(&quot;redisTemplate get {}&quot;, redisTemplate.opsForValue().get(&quot;stringRedisTemplate&quot;));
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>log.info(&quot;stringRedisTemplate get {}&quot;, stringRedisTemplate.opsForValue().get(&quot;redisTemplate&quot;));
+</code></pre></div>
+<p>结果是，两次都无法读取到Value：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>[11:49:38.478] [http-nio-45678-exec-1] [INFO ] [.t.c.s.demo1.RedisTemplateController:38  ] - redisTemplate get null
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>[11:49:38.481] [http-nio-45678-exec-1] [INFO ] [.t.c.s.demo1.RedisTemplateController:39  ] - stringRedisTemplate get null
+</code></pre></div>
+<p>通过redis-cli客户端工具连接到Redis，你会发现根本就没有叫作redisTemplate的Key，所以StringRedisTemplate无法查到数据：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/0a/35/0a86608821f52833e3ffaecb69945635.png?wh=670%2A120" /></p>
+<p>查看RedisTemplate的源码发现，默认情况下RedisTemplate针对Key和Value使用了JDK序列化：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>public void afterPropertiesSet() {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    ...
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    if (defaultSerializer == null) {
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        defaultSerializer = new JdkSerializationRedisSerializer(
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>                classLoader != null ? classLoader : this.getClass().getClassLoader());
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    }
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    if (enableDefaultSerializer) {
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        if (keySerializer == null) {
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>            keySerializer = defaultSerializer;
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>            defaultUsed = true;
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        }
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        if (valueSerializer == null) {
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>            valueSerializer = defaultSerializer;
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>            defaultUsed = true;
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>        }
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>        if (hashKeySerializer == null) {
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>            hashKeySerializer = defaultSerializer;
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>            defaultUsed = true;
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>        }
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>        if (hashValueSerializer == null) {
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>            hashValueSerializer = defaultSerializer;
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>            defaultUsed = true;
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>        }
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>    }
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    ...
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>}
+</code></pre></div>
+<p><strong>redis-cli看到的类似一串乱码的"\xac\xed\x00\x05t\x00\rredisTemplate"字符串，其实就是字符串redisTemplate经过JDK序列化后的结果</strong>。这就回答了之前提到的乱码问题。而RedisTemplate尝试读取Key为stringRedisTemplate数据时，也会对这个字符串进行JDK序列化处理，所以同样无法读取到数据。</p>
+<p>而StringRedisTemplate对于Key和Value，使用的是String序列化方式，Key和Value只能是String：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>public class StringRedisTemplate extends RedisTemplate&lt;String, String&gt; {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    public StringRedisTemplate() {
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        setKeySerializer(RedisSerializer.string());
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        setValueSerializer(RedisSerializer.string());
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        setHashKeySerializer(RedisSerializer.string());
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        setHashValueSerializer(RedisSerializer.string());
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    }
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>}
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>public class StringRedisSerializer implements RedisSerializer&lt;String&gt; {
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    @Override
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    public String deserialize(@Nullable byte[] bytes) {
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>        return (bytes == null ? null : new String(bytes, charset));
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    }
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    @Override
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    public byte[] serialize(@Nullable String string) {
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>        return (string == null ? null : string.getBytes(charset));
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    }
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>}
+</code></pre></div>
+<p>看到这里，我们应该知道RedisTemplate和StringRedisTemplate保存的数据无法通用。修复方式就是，让它们读取自己存的数据：</p>
 <ul>
-<li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/bvj76PmeUvW8kokyu91IZWuRATKmabibDWbzAj2TajeEic7WvKCJOLaOh6jibEmdQ36EO3sBUZ0HibAiapsrZo64U8w/132" width="30px"><span>梦倚栏杆</span> 👍（25） 💬（1）<div>老师，现在像fastJson, jackson 一般使用序列化和反序列化不都是属性类型兼容就能来回序列化吗？java序列化的时候存储序列化id记录版本号的意义是什么。 java序列化一开始存在的意义是什么？为什么要那样处理呢？如果按照现在fastJson 和jackson等的处理方式，toString 不也是一种序列化方式吗？反序列化时按照一种规则解析回去不就行了</div>2020-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/26/38/ef063dc2.jpg" width="30px"><span>Darren</span> 👍（22） 💬（4）<div>试着回答下今天的问题：
+<li>使用RedisTemplate读出的数据，由于是Object类型的，使用时可以先强制转换为User类型；</li>
+<li>使用StringRedisTemplate读取出的字符串，需要手动将JSON反序列化为User类型。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>//使用RedisTemplate获取Value，无需反序列化就可以拿到实际对象，虽然方便，但是Redis中保存的Key和Value不易读
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>User userFromRedisTemplate = (User) redisTemplate.opsForValue().get(&quot;redisTemplate&quot;);
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>log.info(&quot;redisTemplate get {}&quot;, userFromRedisTemplate);
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>//使用StringRedisTemplate，虽然Key正常，但是Value存取需要手动序列化成字符串
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>User userFromStringRedisTemplate = objectMapper.readValue(stringRedisTemplate.opsForValue().get(&quot;stringRedisTemplate&quot;), User.class);
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>log.info(&quot;stringRedisTemplate get {}&quot;, userFromStringRedisTemplate);
+</code></pre></div>
+<p>这样就可以得到正确输出：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>[13:32:09.087] [http-nio-45678-exec-6] [INFO ] [.t.c.s.demo1.RedisTemplateController:45  ] - redisTemplate get User(name=zhuye, age=36)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>[13:32:09.092] [http-nio-45678-exec-6] [INFO ] [.t.c.s.demo1.RedisTemplateController:47  ] - stringRedisTemplate get User(name=zhuye, age=36)
+</code></pre></div>
+<p>看到这里你可能会说，使用RedisTemplate获取Value虽然方便，但是Key和Value不易读；而使用StringRedisTemplate虽然Key是普通字符串，但是Value存取需要手动序列化成字符串，有没有两全其美的方式呢？</p>
+<p>当然有，自己定义RedisTemplate的Key和Value的序列化方式即可：Key的序列化使用RedisSerializer.string()（也就是StringRedisSerializer方式）实现字符串序列化，而Value的序列化使用Jackson2JsonRedisSerializer：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>@Bean
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>public &lt;T&gt; RedisTemplate&lt;String, T&gt; redisTemplate(RedisConnectionFactory redisConnectionFactory) {
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    RedisTemplate&lt;String, T&gt; redisTemplate = new RedisTemplate&lt;&gt;();
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    redisTemplate.setConnectionFactory(redisConnectionFactory);
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    Jackson2JsonRedisSerializer jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer(Object.class);
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    redisTemplate.setKeySerializer(RedisSerializer.string());
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    redisTemplate.setValueSerializer(jackson2JsonRedisSerializer);
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    redisTemplate.setHashKeySerializer(RedisSerializer.string());
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    redisTemplate.setHashValueSerializer(jackson2JsonRedisSerializer);
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    redisTemplate.afterPropertiesSet();
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    return redisTemplate;
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>}
+</code></pre></div>
+<p>写代码测试一下存取，直接注入类型为RedisTemplate&lt;String, User&gt;的userRedisTemplate字段，然后在right2方法中，使用注入的userRedisTemplate存入一个User对象，再分别使用userRedisTemplate和StringRedisTemplate取出这个对象：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>@Autowired
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>private RedisTemplate&lt;String, User&gt; userRedisTemplate;
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>@GetMapping(&quot;right2&quot;)
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>public void right2() {
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    User user = new User(&quot;zhuye&quot;, 36);
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    userRedisTemplate.opsForValue().set(user.getName(), user);
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    Object userFromRedis = userRedisTemplate.opsForValue().get(user.getName());
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    log.info(&quot;userRedisTemplate get {} {}&quot;, userFromRedis, userFromRedis.getClass());
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    log.info(&quot;stringRedisTemplate get {}&quot;, stringRedisTemplate.opsForValue().get(user.getName()));
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>}
+</code></pre></div>
+<p>乍一看没啥问题，StringRedisTemplate成功查出了我们存入的数据：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>[14:07:41.315] [http-nio-45678-exec-1] [INFO ] [.t.c.s.demo1.RedisTemplateController:55  ] - userRedisTemplate get {name=zhuye, age=36} class java.util.LinkedHashMap
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>[14:07:41.318] [http-nio-45678-exec-1] [INFO ] [.t.c.s.demo1.RedisTemplateController:56  ] - stringRedisTemplate get {&quot;name&quot;:&quot;zhuye&quot;,&quot;age&quot;:36}
+</code></pre></div>
+<p>Redis里也可以查到Key是纯字符串，Value是JSON序列化后的User对象：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ac/cc/ac20bd2117053fafee390bbb6ce1eccc.png?wh=568%2A76" /></p>
+<p>但值得注意的是，这里有一个坑。<strong>第一行的日志输出显示，userRedisTemplate获取到的Value，是LinkedHashMap类型的</strong>，完全不是泛型的RedisTemplate设置的User类型。</p>
+<p>如果我们把代码里从Redis中获取到的Value变量类型由Object改为User，编译不会出现问题，但会出现ClassCastException：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>java.lang.ClassCastException: java.util.LinkedHashMap cannot be cast to org.geekbang.time.commonmistakes.serialization.demo1.User
+</code></pre></div>
+<p>修复方式是，修改自定义RestTemplate的代码，把new出来的Jackson2JsonRedisSerializer设置一个自定义的ObjectMapper，启用activateDefaultTyping方法把类型信息作为属性写入序列化后的数据中（当然了，你也可以调整JsonTypeInfo.As枚举以其他形式保存类型信息）：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>...
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>Jackson2JsonRedisSerializer jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer(Object.class);
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>ObjectMapper objectMapper = new ObjectMapper();
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>//把类型信息作为属性写入Value
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>objectMapper.activateDefaultTyping(objectMapper.getPolymorphicTypeValidator(), ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>jackson2JsonRedisSerializer.setObjectMapper(objectMapper);
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>...
+</code></pre></div>
+<p>或者，直接使用RedisSerializer.json()快捷方法，它内部使用的GenericJackson2JsonRedisSerializer直接设置了把类型作为属性保存到Value中：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>redisTemplate.setKeySerializer(RedisSerializer.string());
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>redisTemplate.setValueSerializer(RedisSerializer.json());
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>redisTemplate.setHashKeySerializer(RedisSerializer.string());
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>redisTemplate.setHashValueSerializer(RedisSerializer.json());
+</code></pre></div>
+<p>重启程序调用right2方法进行测试，可以看到，从自定义的RedisTemplate中获取到的Value是User类型的（第一行日志），而且Redis中实际保存的Value包含了类型完全限定名（第二行日志）：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>[15:10:50.396] [http-nio-45678-exec-1] [INFO ] [.t.c.s.demo1.RedisTemplateController:55  ] - userRedisTemplate get User(name=zhuye, age=36) class org.geekbang.time.commonmistakes.serialization.demo1.User
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>[15:10:50.399] [http-nio-45678-exec-1] [INFO ] [.t.c.s.demo1.RedisTemplateController:56  ] - stringRedisTemplate get [&quot;org.geekbang.time.commonmistakes.serialization.demo1.User&quot;,{&quot;name&quot;:&quot;zhuye&quot;,&quot;age&quot;:36}]
+</code></pre></div>
+<p>因此，反序列化时可以直接得到User类型的Value。</p>
+<p>通过对RedisTemplate组件的分析，可以看到，当数据需要序列化后保存时，读写数据使用一致的序列化算法的必要性，否则就像对牛弹琴。</p>
+<p>这里，我再总结下Spring提供的4种RedisSerializer（Redis序列化器）：</p>
+<ul>
+<li>默认情况下，RedisTemplate使用JdkSerializationRedisSerializer，也就是JDK序列化，容易产生Redis中保存了乱码的错觉。</li>
+<li>通常考虑到易读性，可以设置Key的序列化器为StringRedisSerializer。但直接使用RedisSerializer.string()，相当于使用了UTF_8编码的StringRedisSerializer，需要注意字符集问题。</li>
+<li>如果希望Value也是使用JSON序列化的话，可以把Value序列化器设置为Jackson2JsonRedisSerializer。默认情况下，不会把类型信息保存在Value中，即使我们定义RedisTemplate的Value泛型为实际类型，查询出的Value也只能是LinkedHashMap类型。如果希望直接获取真实的数据类型，你可以启用Jackson ObjectMapper的activateDefaultTyping方法，把类型信息一起序列化保存在Value中。</li>
+<li>如果希望Value以JSON保存并带上类型信息，更简单的方式是，直接使用RedisSerializer.json()快捷方法来获取序列化器。</li>
+</ul>
+<h2 id="jackson-json">注意Jackson JSON反序列化对额外字段的处理</h2>
+<p>前面我提到，通过设置JSON序列化工具Jackson的activateDefaultTyping方法，可以在序列化数据时写入对象类型。其实，Jackson还有很多参数可以控制序列化和反序列化，是一个功能强大而完善的序列化工具。因此，很多框架都将Jackson作为JDK序列化工具，比如Spring Web。但也正是这个原因，我们使用时要小心各个参数的配置。</p>
+<p>比如，在开发Spring Web应用程序时，如果自定义了ObjectMapper，并把它注册成了Bean，那很可能会导致Spring Web使用的ObjectMapper也被替换，导致Bug。</p>
+<p>我们来看一个案例。程序一开始是正常的，某一天开发同学希望修改一下ObjectMapper的行为，让枚举序列化为索引值而不是字符串值，比如默认情况下序列化一个Color枚举中的Color.BLUE会得到字符串BLUE：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>@Autowired
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>private ObjectMapper objectMapper;
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>@GetMapping(&quot;test&quot;)
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>public void test() throws JsonProcessingException {
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    log.info(&quot;color:{}&quot;, objectMapper.writeValueAsString(Color.BLUE));
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>}
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>enum Color {
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>    RED, BLUE
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>}
+</code></pre></div>
+<p>于是，这位同学就重新定义了一个ObjectMapper Bean，开启了WRITE_ENUMS_USING_INDEX功能特性：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>@Bean
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>public ObjectMapper objectMapper(){
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    ObjectMapper objectMapper=new ObjectMapper();
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    objectMapper.configure(SerializationFeature.WRITE_ENUMS_USING_INDEX,true);
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    return objectMapper;
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>}
+</code></pre></div>
+<p>开启这个特性后，Color.BLUE枚举序列化成索引值1：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>[16:11:37.382] [http-nio-45678-exec-1] [INFO ] [c.s.d.JsonIgnorePropertiesController:19  ] - color:1
+</code></pre></div>
+<p>修改后处理枚举序列化的逻辑是满足了要求，但线上爆出了大量400错误，日志中也出现了很多UnrecognizedPropertyException：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>JSON parse error: Unrecognized field \&quot;ver\&quot; (class org.geekbang.time.commonmistakes.serialization.demo4.UserWrong), not marked as ignorable; nested exception is com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException: Unrecognized field \&quot;version\&quot; (class org.geekbang.time.commonmistakes.serialization.demo4.UserWrong), not marked as ignorable (one known property: \&quot;name\&quot;])\n at [Source: (PushbackInputStream); line: 1, column: 22] (through reference chain: org.geekbang.time.commonmistakes.serialization.demo4.UserWrong[\&quot;ver\&quot;])
+</code></pre></div>
+<p>从异常信息中可以看到，这是因为反序列化的时候，原始数据多了一个version属性。进一步分析发现，我们使用了UserWrong类型作为Web控制器wrong方法的入参，其中只有一个name属性：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>@Data
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>public class UserWrong {
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>    private String name;
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>}
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>@PostMapping(&quot;wrong&quot;)
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>public UserWrong wrong(@RequestBody UserWrong user) {
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>    return user;
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>}
+</code></pre></div>
+<p>而客户端实际传过来的数据多了一个version属性。那，为什么之前没这个问题呢？</p>
+<p>问题就出在，<strong>自定义ObjectMapper启用WRITE_ENUMS_USING_INDEX序列化功能特性时，覆盖了Spring Boot自动创建的ObjectMapper</strong>；而这个自动创建的ObjectMapper设置过FAIL_ON_UNKNOWN_PROPERTIES反序列化特性为false，以确保出现未知字段时不要抛出异常。源码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>public MappingJackson2HttpMessageConverter() {
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    this(Jackson2ObjectMapperBuilder.json().build());
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>}
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>public class Jackson2ObjectMapperBuilder {
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>...
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>    private void customizeDefaultFeatures(ObjectMapper objectMapper) {
+<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>        if (!this.features.containsKey(MapperFeature.DEFAULT_VIEW_INCLUSION)) {
+<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>            configureFeature(objectMapper, MapperFeature.DEFAULT_VIEW_INCLUSION, false);
+<a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a>        }
+<a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a>        if (!this.features.containsKey(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)) {
+<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>            configureFeature(objectMapper, DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+<a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a>        }
+<a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a>    }
+<a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a>}
+</code></pre></div>
+<p>要修复这个问题，有三种方式：</p>
+<ul>
+<li>第一种，同样禁用自定义的ObjectMapper的FAIL_ON_UNKNOWN_PROPERTIES：</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>@Bean
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>public ObjectMapper objectMapper(){
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>    ObjectMapper objectMapper=new ObjectMapper();
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>    objectMapper.configure(SerializationFeature.WRITE_ENUMS_USING_INDEX,true);
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false);
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>    return objectMapper;
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>}
+</code></pre></div>
+<ul>
+<li>第二种，设置自定义类型，加上@JsonIgnoreProperties注解，开启ignoreUnknown属性，以实现反序列化时忽略额外的数据：</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>@Data
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>@JsonIgnoreProperties(ignoreUnknown = true)
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>public class UserRight {
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    private String name;
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>}
+</code></pre></div>
+<ul>
+<li>第三种，不要自定义ObjectMapper，而是直接在配置文件设置相关参数，来修改Spring默认的ObjectMapper的功能。比如，直接在配置文件启用把枚举序列化为索引号：</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>spring.jackson.serialization.write_enums_using_index=true
+</code></pre></div>
+<p>或者可以直接定义Jackson2ObjectMapperBuilderCustomizer Bean来启用新特性：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>@Bean
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>public Jackson2ObjectMapperBuilderCustomizer customizer(){
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>    return builder -&gt; builder.featuresToEnable(SerializationFeature.WRITE_ENUMS_USING_INDEX);
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>}
+</code></pre></div>
+<p>这个案例告诉我们两点：</p>
+<ul>
+<li>Jackson针对序列化和反序列化有大量的细节功能特性，我们可以参考Jackson官方文档来了解这些特性，详见<a href="https://fasterxml.github.io/jackson-databind/javadoc/2.10/com/fasterxml/jackson/databind/SerializationFeature.html">SerializationFeature</a>、<a href="https://fasterxml.github.io/jackson-databind/javadoc/2.10/com/fasterxml/jackson/databind/DeserializationFeature.html">DeserializationFeature</a>和<a href="https://fasterxml.github.io/jackson-databind/javadoc/2.10/com/fasterxml/jackson/databind/MapperFeature.html">MapperFeature</a>。</li>
+<li>忽略多余字段，是我们写业务代码时最容易遇到的一个配置项。Spring Boot在自动配置时贴心地做了全局设置。如果需要设置更多的特性，可以直接修改配置文件spring.jackson.**或设置Jackson2ObjectMapperBuilderCustomizer回调接口，来启用更多设置，无需重新定义ObjectMapper Bean。</li>
+</ul>
+<h2 id="_2">反序列化时要小心类的构造方法</h2>
+<p>使用Jackson反序列化时，除了要注意忽略额外字段的问题外，还要小心类的构造方法。我们看一个实际的踩坑案例吧。</p>
+<p>有一个APIResult类包装了REST接口的返回体（作为Web控制器的出参），其中boolean类型的success字段代表是否处理成功、int类型的code字段代表处理状态码。</p>
+<p>开始时，在返回APIResult的时候每次都根据code来设置success。如果code是2000，那么success是true，否则是false。后来为了减少重复代码，把这个逻辑放到了APIResult类的构造方法中处理：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>@Data
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>public class APIResultWrong {
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>    private boolean success;
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>    private int code;
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>    public APIResultWrong() {
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>    }
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>    public APIResultWrong(int code) {
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a>        this.code = code;
+<a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a>        if (code == 2000) success = true;
+<a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a>        else success = false;
+<a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a>    }
+<a id="__codelineno-24-14" name="__codelineno-24-14" href="#__codelineno-24-14"></a>}
+</code></pre></div>
+<p>经过改动后发现，即使code为2000，返回APIResult的success也是false。比如，我们反序列化两次APIResult，一次使用code==1234，一次使用code==2000：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>@Autowired
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>ObjectMapper objectMapper;
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>@GetMapping(&quot;wrong&quot;)
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>public void wrong() throws JsonProcessingException {
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>    log.info(&quot;result :{}&quot;, objectMapper.readValue(&quot;{\&quot;code\&quot;:1234}&quot;, APIResultWrong.class));
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>    log.info(&quot;result :{}&quot;, objectMapper.readValue(&quot;{\&quot;code\&quot;:2000}&quot;, APIResultWrong.class));
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a>}
+</code></pre></div>
+<p>日志输出如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>[17:36:14.591] [http-nio-45678-exec-1] [INFO ] [DeserializationConstructorController:20  ] - result :APIResultWrong(success=false, code=1234)
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>[17:36:14.591] [http-nio-45678-exec-1] [INFO ] [DeserializationConstructorController:21  ] - result :APIResultWrong(success=false, code=2000)
+</code></pre></div>
+<p>可以看到，两次的APIResult的success字段都是false。</p>
+<p>出现这个问题的原因是，<strong>默认情况下，在反序列化的时候，Jackson框架只会调用无参构造方法创建对象</strong>。如果走自定义的构造方法创建对象，需要通过@JsonCreator来指定构造方法，并通过@JsonProperty设置构造方法中参数对应的JSON属性名：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>@Data
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>public class APIResultRight {
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>    ...
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a>
+<a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a>    @JsonCreator
+<a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a>    public APIResultRight(@JsonProperty(&quot;code&quot;) int code) {
+<a id="__codelineno-27-7" name="__codelineno-27-7" href="#__codelineno-27-7"></a>        this.code = code;
+<a id="__codelineno-27-8" name="__codelineno-27-8" href="#__codelineno-27-8"></a>        if (code == 2000) success = true;
+<a id="__codelineno-27-9" name="__codelineno-27-9" href="#__codelineno-27-9"></a>        else success = false;
+<a id="__codelineno-27-10" name="__codelineno-27-10" href="#__codelineno-27-10"></a>    }
+<a id="__codelineno-27-11" name="__codelineno-27-11" href="#__codelineno-27-11"></a>}
+</code></pre></div>
+<p>重新运行程序，可以得到正确输出：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>[17:41:23.188] [http-nio-45678-exec-1] [INFO ] [DeserializationConstructorController:26  ] - result :APIResultRight(success=false, code=1234)
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>[17:41:23.188] [http-nio-45678-exec-1] [INFO ] [DeserializationConstructorController:27  ] - result :APIResultRight(success=true, code=2000)
+</code></pre></div>
+<p>可以看到，这次传入code==2000时，success可以设置为true。</p>
+<h2 id="api">枚举作为API接口参数或返回值的两个大坑</h2>
+<p>在前面的例子中，我演示了如何把枚举序列化为索引值。但对于枚举，我建议尽量在程序内部使用，而不是作为API接口的参数或返回值，原因是枚举涉及序列化和反序列化时会有两个大坑。</p>
+<p><strong>第一个坑是，客户端和服务端的枚举定义不一致时，会出异常。</strong>比如，客户端版本的枚举定义了4个枚举值：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>@Getter
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>enum StatusEnumClient {
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>    CREATED(1, &quot;已创建&quot;),
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a>    PAID(2, &quot;已支付&quot;),
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>    DELIVERED(3, &quot;已送到&quot;),
+<a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a>    FINISHED(4, &quot;已完成&quot;);
+<a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a>
+<a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a>    private final int status;
+<a id="__codelineno-29-9" name="__codelineno-29-9" href="#__codelineno-29-9"></a>    private final String desc;
+<a id="__codelineno-29-10" name="__codelineno-29-10" href="#__codelineno-29-10"></a>
+<a id="__codelineno-29-11" name="__codelineno-29-11" href="#__codelineno-29-11"></a>    StatusEnumClient(Integer status, String desc) {
+<a id="__codelineno-29-12" name="__codelineno-29-12" href="#__codelineno-29-12"></a>        this.status = status;
+<a id="__codelineno-29-13" name="__codelineno-29-13" href="#__codelineno-29-13"></a>        this.desc = desc;
+<a id="__codelineno-29-14" name="__codelineno-29-14" href="#__codelineno-29-14"></a>    }
+<a id="__codelineno-29-15" name="__codelineno-29-15" href="#__codelineno-29-15"></a>}
+</code></pre></div>
+<p>服务端定义了5个枚举值：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>@Getter
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>enum StatusEnumServer {
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>    ...
+<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>    CANCELED(5, &quot;已取消&quot;);
+<a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a>
+<a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a>    private final int status;
+<a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a>    private final String desc;
+<a id="__codelineno-30-8" name="__codelineno-30-8" href="#__codelineno-30-8"></a>
+<a id="__codelineno-30-9" name="__codelineno-30-9" href="#__codelineno-30-9"></a>    StatusEnumServer(Integer status, String desc) {
+<a id="__codelineno-30-10" name="__codelineno-30-10" href="#__codelineno-30-10"></a>        this.status = status;
+<a id="__codelineno-30-11" name="__codelineno-30-11" href="#__codelineno-30-11"></a>        this.desc = desc;
+<a id="__codelineno-30-12" name="__codelineno-30-12" href="#__codelineno-30-12"></a>    }
+<a id="__codelineno-30-13" name="__codelineno-30-13" href="#__codelineno-30-13"></a>}
+</code></pre></div>
+<p>写代码测试一下，使用RestTemplate来发起请求，让服务端返回客户端不存在的枚举值：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>@GetMapping(&quot;getOrderStatusClient&quot;)
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>public void getOrderStatusClient() {
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>    StatusEnumClient result = restTemplate.getForObject(&quot;http://localhost:45678/enumusedinapi/getOrderStatus&quot;, StatusEnumClient.class);
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>    log.info(&quot;result {}&quot;, result);
+<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>}
+<a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a>
+<a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a>@GetMapping(&quot;getOrderStatus&quot;)
+<a id="__codelineno-31-8" name="__codelineno-31-8" href="#__codelineno-31-8"></a>public StatusEnumServer getOrderStatus() {
+<a id="__codelineno-31-9" name="__codelineno-31-9" href="#__codelineno-31-9"></a>    return StatusEnumServer.CANCELED;
+<a id="__codelineno-31-10" name="__codelineno-31-10" href="#__codelineno-31-10"></a>}
+</code></pre></div>
+<p>访问接口会出现如下异常信息，提示在枚举StatusEnumClient中找不到CANCELED：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>JSON parse error: Cannot deserialize value of type `org.geekbang.time.commonmistakes.enums.enumusedinapi.StatusEnumClient` from String &quot;CANCELED&quot;: not one of the values accepted for Enum class: [CREATED, FINISHED, DELIVERED, PAID];
+</code></pre></div>
+<p>要解决这个问题，可以开启Jackson的read_unknown_enum_values_using_default_value反序列化特性，也就是在枚举值未知的时候使用默认值：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>spring.jackson.deserialization.read_unknown_enum_values_using_default_value=true
+</code></pre></div>
+<p>并为枚举添加一个默认值，使用@JsonEnumDefaultValue注解注释：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>@JsonEnumDefaultValue
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>UNKNOWN(-1, &quot;未知&quot;);
+</code></pre></div>
+<p>需要注意的是，这个枚举值一定是添加在客户端StatusEnumClient中的，因为反序列化使用的是客户端枚举。</p>
+<p>这里还有一个小坑是，仅仅这样配置还不能让RestTemplate生效这个反序列化特性，还需要配置RestTemplate，来使用Spring Boot的MappingJackson2HttpMessageConverter才行：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>@Bean
+<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>public RestTemplate restTemplate(MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter) {
+<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a>    return new RestTemplateBuilder()
+<a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a>            .additionalMessageConverters(mappingJackson2HttpMessageConverter)
+<a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a>            .build();
+<a id="__codelineno-35-6" name="__codelineno-35-6" href="#__codelineno-35-6"></a>}
+</code></pre></div>
+<p>现在，请求接口可以返回默认值了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>[21:49:03.887] [http-nio-45678-exec-1] [INFO ] [o.g.t.c.e.e.EnumUsedInAPIController:25  ] - result UNKNOWN
+</code></pre></div>
+<p><strong>第二个坑，也是更大的坑，枚举序列化反序列化实现自定义的字段非常麻烦，会涉及Jackson的Bug</strong>。比如，下面这个接口，传入枚举List，为List增加一个CENCELED枚举值然后返回：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>@PostMapping(&quot;queryOrdersByStatusList&quot;)
+<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>public List&lt;StatusEnumServer&gt; queryOrdersByStatus(@RequestBody List&lt;StatusEnumServer&gt; enumServers) {
+<a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a>    enumServers.add(StatusEnumServer.CANCELED);
+<a id="__codelineno-37-4" name="__codelineno-37-4" href="#__codelineno-37-4"></a>    return enumServers;
+<a id="__codelineno-37-5" name="__codelineno-37-5" href="#__codelineno-37-5"></a>}
+</code></pre></div>
+<p>如果我们希望根据枚举的Desc字段来序列化，传入“已送到”作为入参：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/50/26/50a81c64fef9f9f3a8f57bccaaad5226.png?wh=1510%2A370" /></p>
+<p>会得到异常，提示“已送到”不是正确的枚举值：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>JSON parse error: Cannot deserialize value of type `org.geekbang.time.commonmistakes.enums.enumusedinapi.StatusEnumServer` from String &quot;已送到&quot;: not one of the values accepted for Enum class: [CREATED, CANCELED, FINISHED, DELIVERED, PAID]
+</code></pre></div>
+<p>显然，这里反序列化使用的是枚举的name，序列化也是一样：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/04/43/0455db08f97feb2382be6e3c8329da43.png?wh=1518%2A932" /></p>
+<p>你可能也知道，要让枚举的序列化和反序列化走desc字段，可以在字段上加@JsonValue注解，修改StatusEnumServer和StatusEnumClient：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>@JsonValue
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>private final String desc;
+</code></pre></div>
+<p>然后再尝试下，果然可以用desc作为入参了，而且出参也使用了枚举的desc：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/08/2b/08acd86f0cabd174d45f6319bffa802b.png?wh=1442%2A974" /></p>
+<p>但是，如果你认为这样就完美解决问题了，那就大错特错了。你可以再尝试把@JsonValue注解加在int类型的status字段上，也就是希望序列化反序列化走status字段：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>@JsonValue
+<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a>private final int status;
+</code></pre></div>
+<p>写一个客户端测试一下，传入CREATED和PAID两个枚举值：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a>@GetMapping(&quot;queryOrdersByStatusListClient&quot;)
+<a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a>public void queryOrdersByStatusListClient() {
+<a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a>    List&lt;StatusEnumClient&gt; request = Arrays.asList(StatusEnumClient.CREATED, StatusEnumClient.PAID);
+<a id="__codelineno-41-4" name="__codelineno-41-4" href="#__codelineno-41-4"></a>    HttpEntity&lt;List&lt;StatusEnumClient&gt;&gt; entity = new HttpEntity&lt;&gt;(request, new HttpHeaders());
+<a id="__codelineno-41-5" name="__codelineno-41-5" href="#__codelineno-41-5"></a>    List&lt;StatusEnumClient&gt; response = restTemplate.exchange(&quot;http://localhost:45678/enumusedinapi/queryOrdersByStatusList&quot;,
+<a id="__codelineno-41-6" name="__codelineno-41-6" href="#__codelineno-41-6"></a>            HttpMethod.POST, entity, new ParameterizedTypeReference&lt;List&lt;StatusEnumClient&gt;&gt;() {}).getBody();
+<a id="__codelineno-41-7" name="__codelineno-41-7" href="#__codelineno-41-7"></a>    log.info(&quot;result {}&quot;, response);
+<a id="__codelineno-41-8" name="__codelineno-41-8" href="#__codelineno-41-8"></a>}
+</code></pre></div>
+<p>请求接口可以看到，传入的是CREATED和PAID，返回的居然是DELIVERED和FINISHED。果然如标题所说，一来一回你已不是原来的你：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a>[22:03:03.579] [http-nio-45678-exec-4] [INFO ] [o.g.t.c.e.e.EnumUsedInAPIController:34  ] - result [DELIVERED, FINISHED, UNKNOWN]
+</code></pre></div>
+<p>出现这个问题的原因是，<strong>序列化走了status的值，而反序列化并没有根据status来，还是使用了枚举的ordinal()索引值</strong>。这是Jackson<a href="https://github.com/FasterXML/jackson-databind/issues/1850">至今（2.10）没有解决的Bug</a>，应该会在2.11解决。</p>
+<p>如下图所示，我们调用服务端接口，传入一个不存在的status值0，也能反序列化成功，最后服务端的返回是1：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ac/bd/ac6cd2c0957d1654fced53e99eb556bd.png?wh=1360%2A940" /></p>
+<p>有一个解决办法是，设置@JsonCreator来强制反序列化时使用自定义的工厂方法，可以实现使用枚举的status字段来取值。我们把这段代码加在StatusEnumServer枚举类中：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a>@JsonCreator
+<a id="__codelineno-43-2" name="__codelineno-43-2" href="#__codelineno-43-2"></a>public static StatusEnumServer parse(Object o) {
+<a id="__codelineno-43-3" name="__codelineno-43-3" href="#__codelineno-43-3"></a>    return Arrays.stream(StatusEnumServer.values()).filter(value-&gt;o.equals(value.status)).findFirst().orElse(null);
+<a id="__codelineno-43-4" name="__codelineno-43-4" href="#__codelineno-43-4"></a>}
+</code></pre></div>
+<p>要特别注意的是，我们同样要为StatusEnumClient也添加相应的方法。因为除了服务端接口接收StatusEnumServer参数涉及一次反序列化外，从服务端返回值转换为List还会有一次反序列化：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a>@JsonCreator
+<a id="__codelineno-44-2" name="__codelineno-44-2" href="#__codelineno-44-2"></a>public static StatusEnumClient parse(Object o) {
+<a id="__codelineno-44-3" name="__codelineno-44-3" href="#__codelineno-44-3"></a>    return Arrays.stream(StatusEnumClient.values()).filter(value-&gt;o.equals(value.status)).findFirst().orElse(null);
+<a id="__codelineno-44-4" name="__codelineno-44-4" href="#__codelineno-44-4"></a>}
+</code></pre></div>
+<p>重新调用接口发现，虽然结果正确了，但是服务端不存在的枚举值CANCELED被设置为了null，而不是@JsonEnumDefaultValue设置的UNKNOWN。</p>
+<p>这个问题，我们之前已经通过设置@JsonEnumDefaultValue注解解决了，但现在又出现了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a>[22:20:13.727] [http-nio-45678-exec-1] [INFO ] [o.g.t.c.e.e.EnumUsedInAPIController:34  ] - result [CREATED, PAID, null]
+</code></pre></div>
+<p>原因也很简单，我们自定义的parse方法实现的是找不到枚举值时返回null。</p>
+<p>为彻底解决这个问题，并避免通过@JsonCreator在枚举中自定义一个非常复杂的工厂方法，我们可以实现一个自定义的反序列化器。这段代码比较复杂，我特意加了详细的注释：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-46-1" name="__codelineno-46-1" href="#__codelineno-46-1"></a>class EnumDeserializer extends JsonDeserializer&lt;Enum&gt; implements
+<a id="__codelineno-46-2" name="__codelineno-46-2" href="#__codelineno-46-2"></a>        ContextualDeserializer {
+<a id="__codelineno-46-3" name="__codelineno-46-3" href="#__codelineno-46-3"></a>
+<a id="__codelineno-46-4" name="__codelineno-46-4" href="#__codelineno-46-4"></a>    private Class&lt;Enum&gt; targetClass;
+<a id="__codelineno-46-5" name="__codelineno-46-5" href="#__codelineno-46-5"></a>
+<a id="__codelineno-46-6" name="__codelineno-46-6" href="#__codelineno-46-6"></a>    public EnumDeserializer() {
+<a id="__codelineno-46-7" name="__codelineno-46-7" href="#__codelineno-46-7"></a>    }
+<a id="__codelineno-46-8" name="__codelineno-46-8" href="#__codelineno-46-8"></a>
+<a id="__codelineno-46-9" name="__codelineno-46-9" href="#__codelineno-46-9"></a>    public EnumDeserializer(Class&lt;Enum&gt; targetClass) {
+<a id="__codelineno-46-10" name="__codelineno-46-10" href="#__codelineno-46-10"></a>        this.targetClass = targetClass;
+<a id="__codelineno-46-11" name="__codelineno-46-11" href="#__codelineno-46-11"></a>    }
+<a id="__codelineno-46-12" name="__codelineno-46-12" href="#__codelineno-46-12"></a>
+<a id="__codelineno-46-13" name="__codelineno-46-13" href="#__codelineno-46-13"></a>    @Override
+<a id="__codelineno-46-14" name="__codelineno-46-14" href="#__codelineno-46-14"></a>    public Enum deserialize(JsonParser p, DeserializationContext ctxt) {
+<a id="__codelineno-46-15" name="__codelineno-46-15" href="#__codelineno-46-15"></a>        //找枚举中带有@JsonValue注解的字段，这是我们反序列化的基准字段
+<a id="__codelineno-46-16" name="__codelineno-46-16" href="#__codelineno-46-16"></a>        Optional&lt;Field&gt; valueFieldOpt = Arrays.asList(targetClass.getDeclaredFields()).stream()
+<a id="__codelineno-46-17" name="__codelineno-46-17" href="#__codelineno-46-17"></a>                .filter(m -&gt; m.isAnnotationPresent(JsonValue.class))
+<a id="__codelineno-46-18" name="__codelineno-46-18" href="#__codelineno-46-18"></a>                .findFirst();
+<a id="__codelineno-46-19" name="__codelineno-46-19" href="#__codelineno-46-19"></a>
+<a id="__codelineno-46-20" name="__codelineno-46-20" href="#__codelineno-46-20"></a>        if (valueFieldOpt.isPresent()) {
+<a id="__codelineno-46-21" name="__codelineno-46-21" href="#__codelineno-46-21"></a>            Field valueField = valueFieldOpt.get();
+<a id="__codelineno-46-22" name="__codelineno-46-22" href="#__codelineno-46-22"></a>            if (!valueField.isAccessible()) {
+<a id="__codelineno-46-23" name="__codelineno-46-23" href="#__codelineno-46-23"></a>                valueField.setAccessible(true);
+<a id="__codelineno-46-24" name="__codelineno-46-24" href="#__codelineno-46-24"></a>            }
+<a id="__codelineno-46-25" name="__codelineno-46-25" href="#__codelineno-46-25"></a>            //遍历枚举项，查找字段的值等于反序列化的字符串的那个枚举项
+<a id="__codelineno-46-26" name="__codelineno-46-26" href="#__codelineno-46-26"></a>            return Arrays.stream(targetClass.getEnumConstants()).filter(e -&gt; {
+<a id="__codelineno-46-27" name="__codelineno-46-27" href="#__codelineno-46-27"></a>                try {
+<a id="__codelineno-46-28" name="__codelineno-46-28" href="#__codelineno-46-28"></a>                    return valueField.get(e).toString().equals(p.getValueAsString());
+<a id="__codelineno-46-29" name="__codelineno-46-29" href="#__codelineno-46-29"></a>                } catch (Exception ex) {
+<a id="__codelineno-46-30" name="__codelineno-46-30" href="#__codelineno-46-30"></a>                    ex.printStackTrace();
+<a id="__codelineno-46-31" name="__codelineno-46-31" href="#__codelineno-46-31"></a>                }
+<a id="__codelineno-46-32" name="__codelineno-46-32" href="#__codelineno-46-32"></a>                return false;
+<a id="__codelineno-46-33" name="__codelineno-46-33" href="#__codelineno-46-33"></a>            }).findFirst().orElseGet(() -&gt; Arrays.stream(targetClass.getEnumConstants()).filter(e -&gt; {
+<a id="__codelineno-46-34" name="__codelineno-46-34" href="#__codelineno-46-34"></a>                //如果找不到，就需要寻找默认枚举值来替代，同样遍历所有枚举项，查找@JsonEnumDefaultValue注解标识的枚举项
+<a id="__codelineno-46-35" name="__codelineno-46-35" href="#__codelineno-46-35"></a>                try {
+<a id="__codelineno-46-36" name="__codelineno-46-36" href="#__codelineno-46-36"></a>                    return targetClass.getField(e.name()).isAnnotationPresent(JsonEnumDefaultValue.class);
+<a id="__codelineno-46-37" name="__codelineno-46-37" href="#__codelineno-46-37"></a>                } catch (Exception ex) {
+<a id="__codelineno-46-38" name="__codelineno-46-38" href="#__codelineno-46-38"></a>                    ex.printStackTrace();
+<a id="__codelineno-46-39" name="__codelineno-46-39" href="#__codelineno-46-39"></a>                }
+<a id="__codelineno-46-40" name="__codelineno-46-40" href="#__codelineno-46-40"></a>                return false;
+<a id="__codelineno-46-41" name="__codelineno-46-41" href="#__codelineno-46-41"></a>            }).findFirst().orElse(null));
+<a id="__codelineno-46-42" name="__codelineno-46-42" href="#__codelineno-46-42"></a>        }
+<a id="__codelineno-46-43" name="__codelineno-46-43" href="#__codelineno-46-43"></a>        return null;
+<a id="__codelineno-46-44" name="__codelineno-46-44" href="#__codelineno-46-44"></a>    }
+<a id="__codelineno-46-45" name="__codelineno-46-45" href="#__codelineno-46-45"></a>
+<a id="__codelineno-46-46" name="__codelineno-46-46" href="#__codelineno-46-46"></a>    @Override
+<a id="__codelineno-46-47" name="__codelineno-46-47" href="#__codelineno-46-47"></a>    public JsonDeserializer&lt;?&gt; createContextual(DeserializationContext ctxt,
+<a id="__codelineno-46-48" name="__codelineno-46-48" href="#__codelineno-46-48"></a>                                                BeanProperty property) throws JsonMappingException {
+<a id="__codelineno-46-49" name="__codelineno-46-49" href="#__codelineno-46-49"></a>        targetClass = (Class&lt;Enum&gt;) ctxt.getContextualType().getRawClass();
+<a id="__codelineno-46-50" name="__codelineno-46-50" href="#__codelineno-46-50"></a>        return new EnumDeserializer(targetClass);
+<a id="__codelineno-46-51" name="__codelineno-46-51" href="#__codelineno-46-51"></a>    }
+<a id="__codelineno-46-52" name="__codelineno-46-52" href="#__codelineno-46-52"></a>}
+</code></pre></div>
+<p>然后，把这个自定义反序列化器注册到Jackson中：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-47-1" name="__codelineno-47-1" href="#__codelineno-47-1"></a>@Bean
+<a id="__codelineno-47-2" name="__codelineno-47-2" href="#__codelineno-47-2"></a>public Module enumModule() {
+<a id="__codelineno-47-3" name="__codelineno-47-3" href="#__codelineno-47-3"></a>    SimpleModule module = new SimpleModule();
+<a id="__codelineno-47-4" name="__codelineno-47-4" href="#__codelineno-47-4"></a>    module.addDeserializer(Enum.class, new EnumDeserializer());
+<a id="__codelineno-47-5" name="__codelineno-47-5" href="#__codelineno-47-5"></a>    return module;
+<a id="__codelineno-47-6" name="__codelineno-47-6" href="#__codelineno-47-6"></a>}
+</code></pre></div>
+<p>第二个大坑终于被完美地解决了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-48-1" name="__codelineno-48-1" href="#__codelineno-48-1"></a>[22:32:28.327] [http-nio-45678-exec-1] [INFO ] [o.g.t.c.e.e.EnumUsedInAPIController:34  ] - result [CREATED, PAID, UNKNOWN]
+</code></pre></div>
+<p>这样做，虽然解决了序列化反序列化使用枚举中自定义字段的问题，也解决了找不到枚举值时使用默认值的问题，但解决方案很复杂。因此，我还是建议在DTO中直接使用int或String等简单的数据类型，而不是使用枚举再配合各种复杂的序列化配置，来实现枚举到枚举中字段的映射，会更加清晰明了。</p>
+<h2 id="_3">重点回顾</h2>
+<p>今天，我基于Redis和Web API的入参和出参两个场景，和你介绍了序列化和反序列化时需要避开的几个坑。</p>
+<p>第一，要确保序列化和反序列化算法的一致性。因为，不同序列化算法输出必定不同，要正确处理序列化后的数据就要使用相同的反序列化算法。</p>
+<p>第二，Jackson有大量的序列化和反序列化特性，可以用来微调序列化和反序列化的细节。需要注意的是，如果自定义ObjectMapper的Bean，小心不要和Spring Boot自动配置的Bean冲突。</p>
+<p>第三，在调试序列化反序列化问题时，我们一定要捋清楚三点：是哪个组件在做序列化反序列化、整个过程有几次序列化反序列化，以及目前到底是序列化还是反序列化。</p>
+<p>第四，对于反序列化默认情况下，框架调用的是无参构造方法，如果要调用自定义的有参构造方法，那么需要告知框架如何调用。更合理的方式是，对于需要序列化的POJO考虑尽量不要自定义构造方法。</p>
+<p>第五，枚举不建议定义在DTO中跨服务传输，因为会有版本问题，并且涉及序列化反序列化时会很复杂，容易出错。因此，我只建议在程序内部使用枚举。</p>
+<p>最后还有一点需要注意，如果需要跨平台使用序列化的数据，那么除了两端使用的算法要一致外，还可能会遇到不同语言对数据类型的兼容问题。这，也是经常踩坑的一个地方。如果你有相关需求，可以多做实验、多测试。</p>
+<p>今天用到的代码，我都放在了GitHub上，你可以点击<a href="https://github.com/JosephZhu1983/java-common-mistakes">这个链接</a>查看。</p>
+<h2 id="_4">思考与讨论</h2>
+<ol>
+<li>在讨论Redis序列化方式的时候，我们自定义了RedisTemplate，让Key使用String序列化、让Value使用JSON序列化，从而使Redis获得的Value可以直接转换为需要的对象类型。那么，使用RedisTemplate&lt;String, Long&gt;能否存取Value是Long的数据呢？这其中有什么坑吗？</li>
+<li>你可以看一下Jackson2ObjectMapperBuilder类源码的实现（注意configure方法），分析一下其除了关闭FAIL_ON_UNKNOWN_PROPERTIES外，还做了什么吗？</li>
+</ol>
+<p>关于序列化和反序列化，你还遇到过什么坑吗？我是朱晔，欢迎在评论区与我留言分享，也欢迎你把这篇文章分享给你的朋友或同事，一起交流。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>梦倚栏杆</span> 👍（25） 💬（1）<div>老师，现在像fastJson, jackson 一般使用序列化和反序列化不都是属性类型兼容就能来回序列化吗？java序列化的时候存储序列化id记录版本号的意义是什么。 java序列化一开始存在的意义是什么？为什么要那样处理呢？如果按照现在fastJson 和jackson等的处理方式，toString 不也是一种序列化方式吗？反序列化时按照一种规则解析回去不就行了</div>2020-04-14</li><br/><li><span>Darren</span> 👍（22） 💬（5）<div>试着回答下今天的问题：
 1、Long序列化的时候，Redis会认为是int，因此是获取不到的Long数据的，需要处理；
 2、Jackson2ObjectMapperBuilder的采用了构建者模式创建对象；调用的是build()方法
     public &lt;T extends ObjectMapper&gt; T build() {
@@ -13206,27 +13816,26 @@
         configure(mapper);
         return (T) mapper;
     }
- 然后configure里面出了了甚多事情，比如：日式、Local、时间等的格式化器以及自定义属性命名策略等，具体详见https:&#47;&#47;github.com&#47;y645194203&#47;geektime-java-100&#47;blob&#47;master&#47;ConfigInfo.java</div>2020-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/69/65/eb778125.jpg" width="30px"><span>左琪</span> 👍（10） 💬（1）<div>老师，我之前遇到一个，我用redis存入一个Map&lt;Long,object&gt;，取出时发现却是Map&lt;int,object&gt;,然后响应给前端springmvc就报类型转换异常了，我redis的value也是用的Jackson序列化，自定义了objectmapper，正常对象都能序列化，反序列化，就是Long不行，我想知道该如何修正呢</div>2020-04-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/71/05/db554eba.jpg" width="30px"><span>👽</span> 👍（7） 💬（1）<div>之前其实一直还是比较喜欢枚举的，一直只是觉得枚举这个是个好的功能，只是我不会用。
+ 然后configure里面出了了甚多事情，比如：日式、Local、时间等的格式化器以及自定义属性命名策略等，具体详见https:&#47;&#47;github.com&#47;y645194203&#47;geektime-java-100&#47;blob&#47;master&#47;ConfigInfo.java</div>2020-04-14</li><br/><li><span>左琪</span> 👍（10） 💬（1）<div>老师，我之前遇到一个，我用redis存入一个Map&lt;Long,object&gt;，取出时发现却是Map&lt;int,object&gt;,然后响应给前端springmvc就报类型转换异常了，我redis的value也是用的Jackson序列化，自定义了objectmapper，正常对象都能序列化，反序列化，就是Long不行，我想知道该如何修正呢</div>2020-04-16</li><br/><li><span>👽</span> 👍（7） 💬（1）<div>之前其实一直还是比较喜欢枚举的，一直只是觉得枚举这个是个好的功能，只是我不会用。
 现在来看，看来枚举在使用上确实时需要谨慎。
 
 个人理解，枚举的本质，其实就是一个Map&lt;Object,Object&gt;，但是扩展性更强一些。其本身的存在，类似于一个 不可变的常量Map，本身的存在与意义，个人感觉，与数据字典也很像。存索引值（key），但对应一个具体对象或数值（value）。经过这一讲，之后的业务，我个人可能也会使用数据字典，而慎用枚举了。
 
 
 
-</div>2020-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/17/3b/37bcd31e.jpg" width="30px"><span>扎紧绷带</span> 👍（6） 💬（1）<div>有个同学说不用 int 来枚举，而选择语义性的字符串。我也觉得语义明确的字符串更好一些，但很多人认为数字占空间小，应该用int。老师怎么看，你们是怎么用的呢？</div>2020-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/52/40/e57a736e.jpg" width="30px"><span>pedro</span> 👍（5） 💬（2）<div>关于枚举，无论是在 dto 还是数据库存储，我们都已经不用 int 来枚举了，而选择语义性的字符串，这在 debug 和维护上十分方便，也有利于迁移，int 枚举太难看了，每次调试，眼睛都花了😭</div>2020-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/73/a3/2b077607.jpg" width="30px"><span>Michael</span> 👍（2） 💬（2）<div>我们项目中遇到的坑是：key是字符串，value是一个自定义对象，我们环境分为inner和prd,inner验证过了才会发生产，但是inner和prd是同一个Redis缓存和DB，value值对应的对象中加了字段，生产和inner同时作用，prd缓存失效了，正好把inner的给存进去了，结果导致生产接口从缓存取数据的时候出现反序列化报错问题，影响了生产。
-后面采取方法是在缓存key加上环境前缀来避免这个问题。</div>2020-04-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/23/f8/24fcccea.jpg" width="30px"><span>💢 星星💢</span> 👍（1） 💬（1）<div>老师，我最近遇到一个坑，也是Jackson 序列化反序列的。一开始在xml中定义只定义mappingJacksonHttpMessageConverter，然后在DTO中某日期字段中加上@JsonDeserialize(using = DateJsonDeserialize.class)能实现日期转为功能。但是前台页面中显示的日期全都为时间戳。
-于是在定义了ObjectMapper 里面重写了日期格式化的序列化方法,然后原先的进行接口Json格式反序列，@JsonDeserialize这个功能不能用了，找了好久都没有解决办法。老师这个坑，该如何解决？</div>2020-07-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ce/79/673f4268.jpg" width="30px"><span>小杰</span> 👍（1） 💬（1）<div>   log.info(&quot;longRedisTemplate get {}&quot;, (Long)longRedisTemplate.opsForValue().get(&quot;longRedisTemplate&quot;));
+</div>2020-04-14</li><br/><li><span>扎紧绷带</span> 👍（6） 💬（1）<div>有个同学说不用 int 来枚举，而选择语义性的字符串。我也觉得语义明确的字符串更好一些，但很多人认为数字占空间小，应该用int。老师怎么看，你们是怎么用的呢？</div>2020-07-04</li><br/><li><span>pedro</span> 👍（5） 💬（2）<div>关于枚举，无论是在 dto 还是数据库存储，我们都已经不用 int 来枚举了，而选择语义性的字符串，这在 debug 和维护上十分方便，也有利于迁移，int 枚举太难看了，每次调试，眼睛都花了😭</div>2020-04-14</li><br/><li><span>Michael</span> 👍（2） 💬（2）<div>我们项目中遇到的坑是：key是字符串，value是一个自定义对象，我们环境分为inner和prd,inner验证过了才会发生产，但是inner和prd是同一个Redis缓存和DB，value值对应的对象中加了字段，生产和inner同时作用，prd缓存失效了，正好把inner的给存进去了，结果导致生产接口从缓存取数据的时候出现反序列化报错问题，影响了生产。
+后面采取方法是在缓存key加上环境前缀来避免这个问题。</div>2020-04-19</li><br/><li><span>💢 星星💢</span> 👍（1） 💬（1）<div>老师，我最近遇到一个坑，也是Jackson 序列化反序列的。一开始在xml中定义只定义mappingJacksonHttpMessageConverter，然后在DTO中某日期字段中加上@JsonDeserialize(using = DateJsonDeserialize.class)能实现日期转为功能。但是前台页面中显示的日期全都为时间戳。
+于是在定义了ObjectMapper 里面重写了日期格式化的序列化方法,然后原先的进行接口Json格式反序列，@JsonDeserialize这个功能不能用了，找了好久都没有解决办法。老师这个坑，该如何解决？</div>2020-07-07</li><br/><li><span>小杰</span> 👍（1） 💬（1）<div>   log.info(&quot;longRedisTemplate get {}&quot;, (Long)longRedisTemplate.opsForValue().get(&quot;longRedisTemplate&quot;));
 java.lang.ClassCastException: java.lang.Integer cannot be cast to java.lang.Long
-强转异常，也就是说我们获取到这样的值还要自己从Integer转成Long是吗老师？</div>2020-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/96/63/7eb32c9b.jpg" width="30px"><span>捞鱼的搬砖奇</span> 👍（0） 💬（1）<div>ObjectMapper 的 activateDefaultTyping 方法 在2.10版本才提供，那之前的版本有替代方案吗。</div>2020-08-21</li><br/><li><img src="" width="30px"><span>Geek_3b1096</span> 👍（2） 💬（0）<div>习惯用枚举表示数据库状态字段
-希望老师能指点枚举最佳实践</div>2020-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/20/d7/72/cbef720d.jpg" width="30px"><span>鲁鸣</span> 👍（1） 💬（0）<div>gson处理数值的时候也有类似的情况，整数变为浮点数，或者是长整数变为科学计数法</div>2020-09-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ee/f0/f2577e45.jpg" width="30px"><span>额。</span> 👍（1） 💬（0）<div>我们遇到了一个坑，在用restTemplate远程调用的时候，用FastJson的JSONObject接收，然后springboot利用jackson序列化和反序列化返回来一个LinkedHashMap，开发同学的操作不规范，喜欢直接转型，就报错了</div>2020-06-04</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/bvj76PmeUvW8kokyu91IZWuRATKmabibDWbzAj2TajeEic7WvKCJOLaOh6jibEmdQ36EO3sBUZ0HibAiapsrZo64U8w/132" width="30px"><span>梦倚栏杆</span> 👍（1） 💬（0）<div>redis 的序列化也遇到过问题，但是当时处理的比较紧急比较模糊，记不清了。
+强转异常，也就是说我们获取到这样的值还要自己从Integer转成Long是吗老师？</div>2020-04-14</li><br/><li><span>捞鱼的搬砖奇</span> 👍（0） 💬（1）<div>ObjectMapper 的 activateDefaultTyping 方法 在2.10版本才提供，那之前的版本有替代方案吗。</div>2020-08-21</li><br/><li><span>Geek_3b1096</span> 👍（2） 💬（0）<div>习惯用枚举表示数据库状态字段
+希望老师能指点枚举最佳实践</div>2020-04-18</li><br/><li><span>鲁鸣</span> 👍（1） 💬（0）<div>gson处理数值的时候也有类似的情况，整数变为浮点数，或者是长整数变为科学计数法</div>2020-09-24</li><br/><li><span>额。</span> 👍（1） 💬（0）<div>我们遇到了一个坑，在用restTemplate远程调用的时候，用FastJson的JSONObject接收，然后springboot利用jackson序列化和反序列化返回来一个LinkedHashMap，开发同学的操作不规范，喜欢直接转型，就报错了</div>2020-06-04</li><br/><li><span>梦倚栏杆</span> 👍（1） 💬（0）<div>redis 的序列化也遇到过问题，但是当时处理的比较紧急比较模糊，记不清了。
   一个类里需要不同结构的redis或者类型不同==&gt; 
   a&gt; 序列化报错，写不进去。
   b&gt; 没报错，阿里云后台查看redis的结构是None,key是乱码，也无法删除。
   最终的解决方案是：自己new RedisTemplate, 对于每一种结构对象都设置对应的序列化反序列化方式。
- redis 的incrby需要long接收，因为返回值是64的整数。当时看到integer 单词还以为是java的integer，结果是64位的integer</div>2020-04-14</li><br/><li><img src="" width="30px"><span>Geek_7de969</span> 👍（0） 💬（0）<div>@JsonFormat(pattern = &quot;yyyy-MM-dd&quot;)
+ redis 的incrby需要long接收，因为返回值是64的整数。当时看到integer 单词还以为是java的integer，结果是64位的integer</div>2020-04-14</li><br/><li><span>Geek_7de969</span> 👍（0） 💬（0）<div>@JsonFormat(pattern = &quot;yyyy-MM-dd&quot;)
 private Date signDate;
-这是一个对象的某个字段是日期类型 redis用的上边的序列化存进去发现和数据库中日期相差一天  是怎么回事呢</div>2022-06-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/b6/15/e2cfd10d.jpg" width="30px"><span>ImYours°</span> 👍（0） 💬（0）<div>请问开启类型作为属性保存到 Value 中，有范型擦除问题嘛？</div>2021-06-01</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJcxSpNMqwqyicMvdOSr9ic0p1ABiauHnv7g7YQVSJuoHPoQbYDu3YzdpgmSAk2KricUBQ5yibWBWIq75w/132" width="30px"><span>桂城老托尼</span> 👍（0） 💬（0）<div>这一节里很多用法都是反例，真实工程项目大多还是用基本类型。</div>2021-04-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/67/ab/fcf0cec4.jpg" width="30px"><span>寒光</span> 👍（0） 💬（0）<div>我就习惯直接操作byte来用redis，简单直接，想怎么玩就怎么玩，完全透明。</div>2021-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/89/46/ff27e90f.jpg" width="30px"><span>Geek_gthxw2</span> 👍（0） 💬（0）<div> RedisTemplate&lt;String, User&gt; userRedisTemplate;
-不同的类型要注入对应的对象，感觉也麻烦</div>2020-09-01</li><br/>
+这是一个对象的某个字段是日期类型 redis用的上边的序列化存进去发现和数据库中日期相差一天  是怎么回事呢</div>2022-06-02</li><br/>
 </ul>
 
 

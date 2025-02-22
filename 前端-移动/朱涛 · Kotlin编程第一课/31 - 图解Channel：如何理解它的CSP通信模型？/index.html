@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#channel" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -3693,6 +3698,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    31   图解Channel：如何理解它的CSP通信模型？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -3702,6 +3718,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#channel" class="md-nav__link">
+    <span class="md-ellipsis">
+      Channel背后的数据结构
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      发送和接收的流程
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -5227,6 +5296,50 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#channel" class="md-nav__link">
+    <span class="md-ellipsis">
+      Channel背后的数据结构
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      发送和接收的流程
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -5256,10 +5369,312 @@
 <p>不过你可能会觉得，CSP太抽象了不好理解，但其实，这个通信模型我们在第22讲里就接触过了。当时我们虽然是通过Actor来实现的，但却是把它当作CSP在用，它们两者的差异其实很小。</p>
 <p>关于<a href="https://en.wikipedia.org/wiki/Communicating_sequential_processes">CSP的理论</a>，它的精确定义其实比较复杂，不过它的核心理念用一句话就可以概括：<strong>不要共享内存来通信；而是要用通信来共享内存</strong>（Don’t communicate by sharing memory; share memory by communicating）。</p>
 <p>可是，我们为什么可以通过Channel实现CSP通信模型呢？这背后的技术细节，则需要我们通过源码来发掘了。</p>
+<h2 id="channel">Channel背后的数据结构</h2>
+<p>为了研究Channel的源代码，我们仍然是以一个简单的Demo为例，来跟踪它的代码执行流程。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>// 代码段1
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>fun main()  {
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    val scope = CoroutineScope(Job() + mySingleDispatcher)
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    // 1，创建管道
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    val channel = Channel&lt;Int&gt;()
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    scope.launch {
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        // 2，在一个单独的协程当中发送管道消息
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        repeat(3)  {
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>            channel.send(it)
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>            println(&quot;Send: $it&quot;)
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        }
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        channel.close()
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    }
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    scope.launch {
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>        // 3，在一个单独的协程当中接收管道消息
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>        repeat(3) {
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>            val result = channel.receive()
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>            println(&quot;Receive ${result}&quot;)
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>        }
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    }
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    println(&quot;end&quot;)
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>    Thread.sleep(2000000L)
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>}
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>/*
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>输出结果：
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>end
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>Receive 0
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>Send: 0
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>Send: 1
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>Receive 1
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>Receive 2
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>Send: 2
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>*/
+</code></pre></div>
+<p>以上代码主要分为三个部分，分别是：Channel创建、发送数据、接收数据。</p>
+<p>我们先来分析注释1处的Channel创建逻辑。我们都知道Channel其实是一个接口，它是通过组合SendChannel、ReceiveChannel得来的。而注释1处调用的Channel()，其实是一个普通的顶层函数，只是<strong>它发挥的作用是构造函数，因此它的首字母是大写的</strong>，这跟我们上节课分析的CoroutineScope、Job也是类似的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>// 代码段2
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>public interface Channel&lt;E&gt; : SendChannel&lt;E&gt;, ReceiveChannel&lt;E&gt; {
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>public fun &lt;E&gt; Channel(
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    capacity: Int = RENDEZVOUS,
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    onBufferOverflow: BufferOverflow = BufferOverflow.SUSPEND,
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    onUndeliveredElement: ((E) -&gt; Unit)? = null
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>): Channel&lt;E&gt; =
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    when (capacity) {
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        RENDEZVOUS -&gt; {
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>            if (onBufferOverflow == BufferOverflow.SUSPEND)
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>                RendezvousChannel(onUndeliveredElement) 
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>            else
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>                ArrayChannel(1, onBufferOverflow, onUndeliveredElement) 
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>        }
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>        CONFLATED -&gt; {
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>            ConflatedChannel(onUndeliveredElement)
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>        }
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>        UNLIMITED -&gt; LinkedListChannel(onUndeliveredElement) 
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>        BUFFERED -&gt; ArrayChannel( 
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>            if (onBufferOverflow == BufferOverflow.SUSPEND) CHANNEL_DEFAULT_CAPACITY else 1,
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>            onBufferOverflow, onUndeliveredElement
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>        )
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>        else -&gt; {
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>            if (capacity == 1 &amp;&amp; onBufferOverflow == BufferOverflow.DROP_OLDEST)
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>                ConflatedChannel(onUndeliveredElement) 
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>            else
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>                ArrayChannel(capacity, onBufferOverflow, onUndeliveredElement)
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>        }
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>    }
+</code></pre></div>
+<p>然后，从上面的代码里，我们可以看到，<strong>Channel()方法的核心逻辑就是一个when表达式</strong>，它根据传入的参数，会创建不同类型的Channel实例，包括了：RendezvousChannel、ArrayChannel、ConflatedChannel、LinkedListChannel。而这些实现类都有一个共同的父类：<strong>AbstractChannel</strong>。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>// 代码段3
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>internal abstract class AbstractSendChannel&lt;E&gt;(
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    @JvmField protected val onUndeliveredElement: OnUndeliveredElement&lt;E&gt;?
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>) : SendChannel&lt;E&gt; {
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    protected val queue = LockFreeLinkedListHead()
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    // 省略
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    internal abstract class AbstractChannel&lt;E&gt;(
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    onUndeliveredElement: OnUndeliveredElement&lt;E&gt;?
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>) : AbstractSendChannel&lt;E&gt;(onUndeliveredElement), Channel&lt;E&gt; {}
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>}
+</code></pre></div>
+<p>可以看到，AbstractChannel其实是AbstractSendChannel的内部类，同时它也是AbstractSendChannel的子类。而Channel当中的核心逻辑，都是依靠AbstractSendChannel当中的 <strong>LockFreeLinkedListHead</strong> 实现的。我们接着来看下它的源代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>// 代码段4
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>public actual open class LockFreeLinkedListHead : LockFreeLinkedListNode() {
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    public actual val isEmpty: Boolean get() = next === this
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>}
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>public actual open class LockFreeLinkedListNode {
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    // 1
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    private val _next = atomic&lt;Any&gt;(this)
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    private val _prev = atomic(this)
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    private val _removedRef = atomic&lt;Removed?&gt;(null)
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>}
+</code></pre></div>
+<p>可见，LockFreeLinkedListHead其实继承自 <strong>LockFreeLinkedListNode</strong>，而LockFreeLinkedListNode则是实现Channel核心功能的关键数据结构。整个数据结构的核心思想，来自于2004年的一篇论文：<a href="https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.140.4693&amp;rep=rep1&amp;type=pdf">《Lock-Free and Practical Doubly Linked List-Based Deques Using Single-Word Compare-and-Swap》</a>。如果你对其中的原理感兴趣，可以去看看这篇论文。这里，为了不偏离主题，我们只分析它的核心思想。</p>
+<p>LockFreeLinkedListNode，我们可以将其区分开来看待，即LockFree和LinkedList。</p>
+<p>第一个部分：<strong>LockFree</strong>，它是通过<a href="https://zh.wikipedia.org/wiki/%E6%AF%94%E8%BE%83%E5%B9%B6%E4%BA%A4%E6%8D%A2">CAS</a>（Compare And Swap）的思想来实现的，比如JDK提供的java.util.concurrent.atomic。这一点，我们从上面注释1的atomic也可以看出来。</p>
+<p>第二个部分：<strong>LinkedList</strong>，这说明LockFreeLinkedList本质上还是一个<strong>链表</strong>。简单来说，它其实是一个循环双向链表，而LockFreeLinkedListHead其实是一个<strong>哨兵节点</strong>，如果你熟悉链表这个数据结构，也可以将其看作是链表当中的<a href="https://stackoverflow.com/questions/37324972/what-is-a-dummy-head">虚拟头结点</a>，这个节点本身不会用于存储任何数据，它的next指针会指向整个链表的<strong>头节点</strong>，而它的prev指针会指向整个链表的<strong>尾节点</strong>。</p>
+<p>为了方便你理解，我画了一张图描述这个链表的结构：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/b0/ef/b040356bb5e6e6eab4b4fb4bcdbb74ef.jpg?wh=2000x713" /></p>
+<p>请看图片左边的部分，<strong>当链表为空的时候</strong>，LockFreeLinkedListHead的next指针和prev指针，都是指向自身的。这也就意味着，这个Head节点是不会存储数据，同时，也是不会被删除的。</p>
+<p>然后再看图片右边的部分，<strong>当链表有2个元素的时候</strong>，这时LockFreeLinkedListHead节点的next指针才是第一个节点，而Head的prev指针则是指向尾结点。</p>
+<p>实际上，寻常的循环双向链表是可以在首尾添加元素的，同时也支持“正向遍历、逆向遍历”的。但Channel内部的这个数据结构只能在末尾添加，而它遍历的顺序则是从队首开始的。这样的设计，就让它的行为在变成了先进先出<strong>单向队列</strong>的同时，还实现了队尾添加操作，只需要O(1)的时间复杂度。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/47/c4/479f6fcb5cf2a9eb2f56951546eefdc4.jpg?wh=2000x683" /></p>
+<p>可以说，正是因为LockFreeLinkedList这个数据结构，我们才能使用Channel实现CSP通信模型。</p>
+<p>好，在弄清楚LockFreeLinkedList这个数据结构以后，Channel后续的源码分析就很简单了。让我们来分别分析一下Channel的send()、receive()的流程。</p>
+<h2 id="_1">发送和接收的流程</h2>
+<p>我们回过头来看代码段1当中的逻辑，我们分别启动了两个协程，在这两个协程中，我们分别发送了三次数据，也接收了三次数据。程序首先会执行send()，由于Channel在默认情况下容量是0，所以，send()首先会被挂起。让我们来看看这部分的逻辑：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>// 代码段5
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>public final override suspend fun send(element: E) {
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    // 1
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    if (offerInternal(element) === OFFER_SUCCESS) return
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    // 2
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    return sendSuspend(element)
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>}
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>protected open fun offerInternal(element: E): Any {
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    while (true) {
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>        // 3
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>        val receive = takeFirstReceiveOrPeekClosed() ?: return OFFER_FAILE
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>        // 省略
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    }
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>}
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>private suspend fun sendSuspend(element: E): Unit = suspendCancellableCoroutineReusable sc@ { cont -&gt;
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    loop@ while (true) {
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>        if (isFullImpl) {
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>            // 4
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>            val send = if (onUndeliveredElement == null)
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>                SendElement(element, cont) else
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>                SendElementWithUndeliveredHandler(element, cont, onUndeliveredElement)
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>            val enqueueResult = enqueueSend(send)
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>            when {
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>                enqueueResult == null -&gt; {
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>                    // 5
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>                    cont.removeOnCancellation(send)
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>                    return@sc
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>                }
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>                enqueueResult is Closed&lt;*&gt; -&gt; {
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>                }
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>                enqueueResult === ENQUEUE_FAILED -&gt; {} 
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>                enqueueResult is Receive&lt;*&gt; -&gt; {} 
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>                else -&gt; error(&quot;enqueueSend returned $enqueueResult&quot;)
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>            }
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>        }
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>        // 省略
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>    }
+<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>}
+</code></pre></div>
+<p>上面的挂起函数send()分为两个部分：</p>
+<ul>
+<li>注释1，尝试向Channel发送数据，如果这时候Channel已经有了消费者，那么if就会为true，send()方法就会return。不过，按照代码段1的逻辑，首次调用send()的时候，Channel还不存在消费者，因此在注释3处，尝试从LockFreeLinkedList取出消费者是不可能的。所以，程序会继续执行注释2处的逻辑。</li>
+<li>注释2，会调用挂起函数sendSuspend()，它是由高阶函数suspendCancellableCoroutineReusable{} 实现的。我们看它的名字就能知道，它跟suspendCancellableCoroutine{} 是类似的（如果你有些忘了，可以回过头去看看<a href="https://time.geekbang.org/column/article/497868">加餐五</a>）。另外，请留意下这个方法的注释4，它会将发送的元素封装成SendElement对象，然后调用enqueueSend()方法，将其添加到LockFreeLinkedList这个队列的末尾。如果enqueueSend()执行成功了，就会执行注释5，注册一个回调，用于将SendElement从队列中移除掉。</li>
+</ul>
+<p>如果你足够细心的话，你会发现这整个流程并没有涉及到resume的调用，因此，这也意味着sendSuspend()会一直被挂起，而这就意味着send()会一直被挂起！那么，问题来了，<strong>send()会在什么时候被恢复</strong>？</p>
+<p>答案当然是：<strong>receive()被调用的时候</strong>！</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>// 代码段6
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>public final override suspend fun receive(): E {
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    // 1
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    val result = pollInternal()
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    @Suppress(&quot;UNCHECKED_CAST&quot;)
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    if (result !== POLL_FAILED &amp;&amp; result !is Closed&lt;*&gt;) return result as E
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    // 2
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    return receiveSuspend(RECEIVE_THROWS_ON_CLOSE)
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>}
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>protected open fun pollInternal(): Any? {
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    while (true) {
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>        // 3
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>        val send = takeFirstSendOrPeekClosed() ?: return POLL_FAILED
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>        val token = send.tryResumeSend(null)
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>        if (token != null) {
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>            assert { token === RESUME_TOKEN }
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>            //4
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>            send.completeResumeSend()
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>            return send.pollResult
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>        }
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>        send.undeliveredElement()
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>    }
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>}
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>// CancellableContinuationImpl
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>private fun dispatchResume(mode: Int) {
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>    if (tryResume()) return 
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>    // 5
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>    dispatch(mode)
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>}
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>internal fun &lt;T&gt; DispatchedTask&lt;T&gt;.dispatch(mode: Int) {
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>    // 省略
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>    if (!undispatched &amp;&amp; delegate is DispatchedContinuation&lt;*&gt; &amp;&amp; mode.isCancellableMode == resumeMode.isCancellableMode) {
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a>
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>        val dispatcher = delegate.dispatcher
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a>        val context = delegate.context
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a>        if (dispatcher.isDispatchNeeded(context)) {
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>            // 6
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a>            dispatcher.dispatch(context, this)
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a>        } else {
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a>            resumeUnconfined()
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a>        }
+<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a>    } else {
+<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a>        // 省略
+<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a>    }
+<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a>}
+</code></pre></div>
+<p>可以看到，挂起函数receive()的逻辑，跟代码段5当中的send()是类似的。</p>
+<ul>
+<li>注释1，尝试从LockFree队列当中找出是否有正在被挂起的<strong>发送方</strong>。具体的逻辑在注释3处，它会从队首开始遍历，寻找Send节点。</li>
+<li>接着上面的代码段1的案例分析，此时我们一定是可以从队列中找到一个Send节点的，因此程序会继续执行注释4处的代码。</li>
+<li>注释4，completeResumeSend()，它最终会调用注释5处的dispatch(mode)，而dispatch(mode)其实就是DispatchedTask的dispatch()，是不是觉得很熟悉？这个DispatchedTask其实就是我们在<a href="https://time.geekbang.org/column/article/500420">第29讲</a>当中分析过的DispatchedTask，这里的dispatch()就是协程体当中的代码在线程执行的时机。最终，它会执行在Java的Executor之上。至此，我们之前被挂起的send()方法，其实就算是恢复了。</li>
+</ul>
+<p>另外，你可以再留意上面的注释2，当LockFree队列当中没有正在挂起的发送方时，它会执行receiveSuspend()，而receiveSuspend()也同样会被挂起：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>private suspend fun &lt;R&gt; receiveSuspend(receiveMode: Int): R = suspendCancellableCoroutineReusable sc@ { cont -&gt;
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    val receive = if (onUndeliveredElement == null)
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>        ReceiveElement(cont as CancellableContinuation&lt;Any?&gt;, receiveMode) else
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>        ReceiveElementWithUndeliveredHandler(cont as CancellableContinuation&lt;Any?&gt;, receiveMode, onUndeliveredElement)
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    while (true) {
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>        if (enqueueReceive(receive)) {
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>            removeReceiveOnCancel(cont, receive)
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>            return@sc
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>        }
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>        val result = pollInternal()
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        if (result is Closed&lt;*&gt;) {
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>            receive.resumeReceiveClosed(result)
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>            return@sc
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>        }
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>        if (result !== POLL_FAILED) {
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>            cont.resume(receive.resumeValue(result as E), receive.resumeOnCancellationFun(result as E))
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>            return@sc
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>        }
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>    }
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>}
+</code></pre></div>
+<p>所以，这里的逻辑其实跟之前的sendSuspend()是类似的。首先，它会封装一个ReceiveElement对象，并且将其添加到LockFree队列的末尾，如果添加成功的话，这个receiveSuspend就会继续挂起，这就意味着receive()也会被挂起。而receive()被恢复的时机，其实就对应了代码段5当中注释1的代码：offerInternal(element)。</p>
+<p>至此，Channel的发送和接收流程，我们就都已经分析完了。按照惯例，我们还是通过一个视频来回顾代码的整体执行流程：</p>
+<h2 id="_2">小结</h2>
+<p>通过这节课，我们知道，Channel其实是一个线程安全的管道。它最常见的用法，就是实现CSP通信模型。它的核心理念是：<strong>不要共享内存来通信；而是要用通信来共享内存</strong>。而Channel之所以可以用来实现CSP通信模型，主要还是因为它底层用到的数据结构：LockFreeLinkedList。</p>
+<p>LockFreeLinkedList虽然是一个循环双向链表，但在Channel的源码中，它会被当做<strong>先进先出</strong>的单向队列，它只在队列末尾插入节点，而遍历则只正向遍历。</p>
+<p>还有Channel的send()，它会分为两种情况，一种是当前的LockFree队列当中已经有被挂起的<strong>接收方</strong>，这时候，send()会恢复Receive节点的执行，并且将数据发送给对方。第二种情况是：当前队列当中没有被挂起的接收方，这时候send()就会被挂起，而被发送的数据会被封装成SendElement对象插入到队列的末尾，等待被下次的receive()恢复执行。</p>
+<p>而Channel的receive()，也是分为两种情况，一种是当前的LockFree队列当中已经存在被挂起的<strong>发送方</strong>，这时候receive()会恢复Send节点的执行，并且取出Send节点当中带过来的数据。第二种情况是：当前队列没有被挂起的发送方，这时候receive()就会被挂起，同时它也会被封装成一个ReceiveElement对象插入到队列的末尾，等待被下次的send()恢复执行。</p>
+<p>其实，Kotlin推崇CSP模型进行并发的原因还有很多，比如门槛低、可读性高、扩展性好，还有一点是会被很多人提到的：不容易发生死锁。</p>
+<p>不过，这里需要特别注意的是，CSP场景下的并发模型，并非不可能发生死锁，在一些特殊场景下，它也是可能发生死锁的，比如：通信死锁（Communication Deadlock）。因此，CSP也并不是解决所有并发问题的万能解药，我们还是要具体问题具体分析。</p>
+<h2 id="_3">思考题</h2>
+<p>在课程的开头，我们分析了Channel一共有四种实现方式：RendezvousChannel、ArrayChannel、ConflatedChannel、LinkedListChannel，请问你能结合今天学习的知识，分析LinkedListChannel的原理吗？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>internal open class LinkedListChannel&lt;E&gt;(onUndeliveredElement: OnUndeliveredElement&lt;E&gt;?) : AbstractChannel&lt;E&gt;(onUndeliveredElement) {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    protected final override val isBufferAlwaysEmpty: Boolean get() = true
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    protected final override val isBufferEmpty: Boolean get() = true
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    protected final override val isBufferAlwaysFull: Boolean get() = false
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    protected final override val isBufferFull: Boolean get() = false
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    protected override fun offerInternal(element: E): Any {
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>        while (true) {
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>            val result = super.offerInternal(element)
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>            when {
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>                result === OFFER_SUCCESS -&gt; return OFFER_SUCCESS
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>                result === OFFER_FAILED -&gt; { // try to buffer
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>                    when (val sendResult = sendBuffered(element)) {
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>                        null -&gt; return OFFER_SUCCESS
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>                        is Closed&lt;*&gt; -&gt; return sendResult
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>                    }
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>                    // otherwise there was receiver in queue, retry super.offerInternal
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>                }
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>                result is Closed&lt;*&gt; -&gt; return result
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>                else -&gt; error(&quot;Invalid offerInternal result $result&quot;)
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>            }
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>        }
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>    }
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>    protected override fun offerSelectInternal(element: E, select: SelectInstance&lt;*&gt;): Any {
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>        while (true) {
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>            val result = if (hasReceiveOrClosed)
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>                super.offerSelectInternal(element, select) else
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>                (select.performAtomicTrySelect(describeSendBuffered(element)) ?: OFFER_SUCCESS)
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>            when {
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>                result === ALREADY_SELECTED -&gt; return ALREADY_SELECTED
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>                result === OFFER_SUCCESS -&gt; return OFFER_SUCCESS
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>                result === OFFER_FAILED -&gt; {} // retry
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>                result === RETRY_ATOMIC -&gt; {} // retry
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>                result is Closed&lt;*&gt; -&gt; return result
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>                else -&gt; error(&quot;Invalid result $result&quot;)
+<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>            }
+<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a>        }
+<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a>    }
+<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a>}
+</code></pre></div>
 <div><strong>精选留言（3）</strong></div>
 <ul>
-<li><img src="" width="30px"><span>Paul Shan</span> 👍（9） 💬（1）<div>思考题：LinkedListChannel.offerInternal调用AbstractSendChannel.offerInternal 失败的时候，会把发送的内容持续放到队列中，这样即使接受方没准备好或者不存在，发送方也不会等待，而持续进入可以接收数据并发送的状态。LinkedListChannel.offerSelectInternal调用AbstractSendChannel.offerSelectInternal失败的时候，还是会继续尝试调用这个方法，因为LinkedListChannel只要内存允许，会时刻处于接受数据的状态。
-</div>2022-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/fa/9e/306a5ce7.jpg" width="30px"><span>EdisonLi</span> 👍（5） 💬（1）<div>要是能开辟一篇实际工作业务场景的使用就更好了。</div>2022-05-08</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqQVYE1EfqibdyNsnjFibHW4jee0Q3qMMeRhqqVQUn5Ix9fFl3Zfzf0xpdrGypxHUmBCyiczfyEaPoWA/132" width="30px"><span>ACE_Killer09</span> 👍（2） 💬（1）<div>java 阻塞队列 的感觉</div>2022-04-18</li><br/>
+<li><span>Paul Shan</span> 👍（9） 💬（1）<div>思考题：LinkedListChannel.offerInternal调用AbstractSendChannel.offerInternal 失败的时候，会把发送的内容持续放到队列中，这样即使接受方没准备好或者不存在，发送方也不会等待，而持续进入可以接收数据并发送的状态。LinkedListChannel.offerSelectInternal调用AbstractSendChannel.offerSelectInternal失败的时候，还是会继续尝试调用这个方法，因为LinkedListChannel只要内存允许，会时刻处于接受数据的状态。
+</div>2022-04-04</li><br/><li><span>EdisonLi</span> 👍（5） 💬（1）<div>要是能开辟一篇实际工作业务场景的使用就更好了。</div>2022-05-08</li><br/><li><span>ACE_Killer09</span> 👍（2） 💬（1）<div>java 阻塞队列 的感觉</div>2022-04-18</li><br/>
 </ul>
 
 

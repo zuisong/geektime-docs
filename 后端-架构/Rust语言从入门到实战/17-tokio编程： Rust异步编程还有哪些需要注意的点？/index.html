@@ -4256,8 +4256,77 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#async_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      async代码环境中的同步代码
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#async_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      同步代码环境中的async代码
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rust-async" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rust async实现原理
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Rust async实现原理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rust-async_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rust async的背后原理
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      其他一些要注意的问题
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
   
 </li>
       
@@ -12929,8 +12998,77 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#async_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      async代码环境中的同步代码
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#async_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      同步代码环境中的async代码
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rust-async" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rust async实现原理
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Rust async实现原理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rust-async_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rust async的背后原理
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      其他一些要注意的问题
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
   
 </li>
       
@@ -12996,9 +13134,139 @@
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>  println!(&quot;{}&quot;, num);
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>}
 </code></pre></div>
+<p>这就叫作async代码的传染性。这种传染性是由Rust的async语法带来的。</p>
+<blockquote>
+<p>注：Rust中还有一个语法具有传染性——类型参数T。</p>
+</blockquote>
+<p>但是实际工作中，我们经常会遇到异步代码与同步代码混合使用的情况。这类情况应该怎么处理呢？下面我们分情况来分析。</p>
+<h3 id="async_2">async代码环境中的同步代码</h3>
+<p>常见的同步代码分两类，一类是直接在内存里的简单操作，比如 <code>vec.push()</code> 这种API接口的调用。这类操作在std Rust里怎么使用在async Rust里就怎么使用，一样的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>async fn foo1() -&gt; u32 {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  let mut vec = Vec::new();
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  vec.push(10);
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>}
+</code></pre></div>
+<p>另外有一类操作，要么是需要执行长时间的计算，要么是需要调用第三方已经写好的同步库的代码，你没有办法去修改它。对于这类函数的调用，你当然也可以直接调用：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>async fn foo1() -&gt; u32 {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  let result = a_heavy_work();
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>}
+</code></pre></div>
+<p>这样写当然是可以运行的，但会有性能上的问题：它会阻塞当前正在跑这个异步代码的系统线程（OS Thread，由tokio来管理维护），所以当前的这个系统线程就会被卡住，而不能再跑其他异步代码了。</p>
+<p>好消息是，tokio专门给我们提供了另外的设施来处理这种情况，就是 <code>task::spawn_blocking()</code> 函数。你可以看一下它的使用方法。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>#[tokio::main]
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>async fn main() {
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    // 此任务跑在一个单独的线程中
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    let blocking_task = tokio::task::spawn_blocking(|| {
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        // 在这里面可以执行阻塞线程的代码
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    });
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    // 像下面这样用同样的方式等待这种阻塞式任务的完成
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    blocking_task.await.unwrap();
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>}
+</code></pre></div>
+<p>只需要把CPU计算密集型任务放到 <code>task::spawn_blocking()</code> 里就可以了，tokio会帮我们单独开一个新的系统线程，来专门跑这个CPU计算密集型的task。然后和普通的tokio task一样，可以通过await来获取它的结果，当然，也可以用Oneshot channel把结果返回回来。</p>
+<p>给这种CPU计算密集型任务单独开一个系统线程运行，就能保证我们当前跑异步任务的系统线程不会被这个CPU计算密集型任务占据，导致异步并发能力下降，因此我们得到了一个比较好的方案。</p>
+<p>一般来讲，主体是async代码，只有一些小部分是同步代码的时候，使用 <code>task::spawn_blocking()</code> 比较合适。</p>
+<h3 id="async_3">同步代码环境中的async代码</h3>
+<p>那如果主体代码是同步代码（或者叫 std Rust 代码），但是局部想调用一些async接口，比如db driver只提供了async封装，像这种情况下该怎么办呢？</p>
+<p>回想一下我们前面讲到的，展开 <code>#[tokio::main]</code>。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>#[tokio::main]
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>async fn main() {
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    println!(&quot;Hello world&quot;);
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>}
+</code></pre></div>
+<p>展开后，其实是下面这个样子：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>fn main() {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    tokio::runtime::Builder::new_multi_thread()
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        .enable_all()
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        .build()
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        .unwrap()
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        .block_on(async {
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>            println!(&quot;Hello world&quot;);
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        })
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>}
+</code></pre></div>
+<p>类似地，我们要在同步风格的代码中执行async代码，只需要手动 block_on 这段异步代码就可以了。除了默认的系统多线程Runtime之外，tokio专门为这种临时的（以及测试的）场景提供了另一种单系统线程的runtime，就是 <code>new_current_thread()</code>。它的意思是就在当前程序执行的线程中建立tokio Runtime，异步任务就跑在当前这个线程中。比如：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>async fn foo1() -&gt; u32 {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    10
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>}
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>fn foo() {
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    let rt = tokio::runtime::Builder::new_current_thread()
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>          .enable_all()
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>          .build().unwrap();
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    let num = rt.block_on(foo1());  // 注意这一句的 foo1()，调用了此异步函数
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    // 或者像下面这样写
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    //let num = rt.block_on(async {
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    //    foo1().await
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    //});
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    println!(&quot;{}&quot;, num);
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>}
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>fn main() {
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>    foo();
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>}
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>// 输出 
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>10
+</code></pre></div>
+<p>就通过这种方式，我们在主体为std Rust的代码中，成功地调用了局部的async Rust代码，并得到了这段局部异步代码的返回值。</p>
+<h2 id="rust-async">Rust async实现原理</h2>
+<p>Rust 的async实现实际采用的是一种无栈协程（Stackless Coroutine）方案。它的实现是非常高效的，性能在所有支持异步语法的语言中属于最高的那一级，非常厉害。</p>
+<h3 id="rust-async_1">Rust async的背后原理</h3>
+<p>Rust语言实际会把 async 语法编译成 std Rust 中的状态机，然后通过运行时底层的 poll 机制来轮询这个状态机的状态。所以本质上来讲，<code>async/.await</code> 语法只是语法糖。</p>
+<p>简单来说，Rust会把一个async函数转换成另一种东西，你可以看一下我给出的转换示例。</p>
+<p>async函数：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>async fn foo1() -&gt; u32 {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>  10
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>}
+</code></pre></div>
+<p>转换后：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>struct FutureA {
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    ...
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>}
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>impl Future for FutureA {
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    ...
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>}
+</code></pre></div>
+<p>具体的转换和实现细节我们现在不需要掌握，只需要知道，Rust的这种实现并不是像Go或Java那样，在系统级线程的基础上，单独实现了一层结合GC内存管理且具有完整屏蔽性的轻量级线程，它没有选择在OS应用之间引入一个层（layer），而是在结构体之上构建一个状态机，以零成本抽象（zero cost abstract）为原则，尽量少地引入额外的消耗，配合 <code>async/.await</code> 语法糖，来达到简化程序员开发难度的效果。</p>
+<p>这种方案成功地让Rust的异步并发能力达到业界顶尖水平。Rust异步语法从提案到稳定推出，前后经历了大量的讨论和修改，花了将近5年的时间，非常不容易，是整个Rust社区共同努力的结果，期间的故事称得上是全世界开源协作的典范。</p>
+<h3 id="_1">其他一些要注意的问题</h3>
+<p>Rust async编程也一直处于不断地发展过程中，比如目前在 trait 里，就不能定义async 方法，比如：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>trait MyTrait {
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    async fn f() {}
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>}
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>// 编译错误
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>error[E0706]: trait fns cannot be declared `async`
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a> --&gt; src/main.rs:4:5
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>  |
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>4 |     async fn f() {}
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>  |     
+</code></pre></div>
+<p>为了解决这个问题，我们可以引入 <code>async_trait crate</code> 的 <code>async_trait</code> 宏来暂时过渡。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>use async_trait::async_trait;
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>#[async_trait]    // 定义时加
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>trait MyTrait {
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    async fn f() {}
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>}
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>struct Modal;
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>#[async_trait]    // impl 时也要加
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>impl MyTrait for Modal {}
+</code></pre></div>
+<p>请注意上述代码中，在定义trait和impl trait的时候，都需要添加 <code>#[async_trait]</code> 属性宏来标注。添加了这个宏标注后，trait里的 async fn 就可以像普通的async fn 那样在异步代码中被调用了。</p>
+<p>目前使用这个宏会有一点性能上的开销，好在trait中的async fn这个特性Rust官方也快稳定下来了，估计在1.75版本正式推出，到时候就可以去掉这个宏标注了。</p>
+<h2 id="_2">小结</h2>
+<p>这节课我补充了Rust异步并发编程中剩下的一些需要注意的知识点。</p>
+<p>我们一共花了5节课的时间来讲解async Rust和tokio的使用，这是因为异步并发编程对于一个场景，也就是高性能高并发服务来说，至关重要。在后面的Web后端服务开发实战部分，我们还会继续基于tokio进行讲解。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/a0/aa/a005e69a5cfdacd5a93ae841a32c07aa.jpg?wh=1920x1172" /></p>
+<h2 id="_3">思考题</h2>
+<p>你是如何理解 “async Rust是一个独立王国”这种说法的？欢迎你分享自己的见解，我们一起讨论，如果你觉得这节课的内容对你有帮助的话，也欢迎你把这节课的内容分享给其他朋友，我们下节课再见！</p>
+<p>参考链接：<a href="https://tokio.rs/tokio/topics/bridging">https://tokio.rs/tokio/topics/bridging</a></p>
 <div><strong>精选留言（6）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/90/23/5c74e9b7.jpg" width="30px"><span>$侯</span> 👍（3） 💬（1）<div>老师，新的1.75是不是支持asnyc trait了</div>2023-12-31</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/VF71Gcf2C2bjYPFCRv0TPfwhkJmT5WhtusltuaXQM0KMDibdallNFypqWV6v2FJ4bqNwzujiaF5LEDeia7JMZTTtw/132" width="30px"><span>Geek_e72251</span> 👍（1） 💬（1）<div>期待axum的实战</div>2023-11-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/13/00/a4a2065f.jpg" width="30px"><span>Michael</span> 👍（1） 💬（2）<div>等了一个周末就7分钟的课程，而且最近几节将tokio的内容相对有点不充实，既然是进阶篇，异步这一块把 Future、Executor 的实现原理带着分析下。</div>2023-11-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/39/07/93/710c7ee2.jpg" width="30px"><span>不忘初心</span> 👍（1） 💬（1）<div>每天能更新一节就好了, 隔天更新拖的时间太长了</div>2023-11-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/5c/d7/3b92bb0d.jpg" width="30px"><span>伯阳</span> 👍（0） 💬（1）<div>期待老师的实战课程</div>2023-11-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/15/0e/a0a26779.jpg" width="30px"><span>青云</span> 👍（1） 💬（0）<div>这几个RUST专栏里面最适合入门的</div>2024-10-25</li><br/>
+<li><span>$侯</span> 👍（3） 💬（1）<div>老师，新的1.75是不是支持asnyc trait了</div>2023-12-31</li><br/><li><span>Geek_e72251</span> 👍（1） 💬（1）<div>期待axum的实战</div>2023-11-28</li><br/><li><span>Michael</span> 👍（1） 💬（2）<div>等了一个周末就7分钟的课程，而且最近几节将tokio的内容相对有点不充实，既然是进阶篇，异步这一块把 Future、Executor 的实现原理带着分析下。</div>2023-11-27</li><br/><li><span>不忘初心</span> 👍（1） 💬（1）<div>每天能更新一节就好了, 隔天更新拖的时间太长了</div>2023-11-27</li><br/><li><span>伯阳</span> 👍（0） 💬（1）<div>期待老师的实战课程</div>2023-11-27</li><br/><li><span>青云</span> 👍（1） 💬（0）<div>这几个RUST专栏里面最适合入门的</div>2024-10-25</li><br/>
 </ul>
 
 

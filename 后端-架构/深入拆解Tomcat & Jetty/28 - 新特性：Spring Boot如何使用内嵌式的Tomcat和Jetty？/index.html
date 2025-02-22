@@ -9444,6 +9444,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#web" class="md-nav__link">
+    <span class="md-ellipsis">
+      内嵌式Web容器的创建和启动
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#servlet" class="md-nav__link">
+    <span class="md-ellipsis">
+      注册Servlet的三种方式
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#web_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Web容器的定制
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13093,6 +13138,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#web" class="md-nav__link">
+    <span class="md-ellipsis">
+      内嵌式Web容器的创建和启动
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#servlet" class="md-nav__link">
+    <span class="md-ellipsis">
+      注册Servlet的三种方式
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#web_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Web容器的定制
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13130,48 +13220,198 @@
 </code></pre></div>
 <p>各种Web容器比如Tomcat和Jetty需要去实现这个接口。</p>
 <p>Spring Boot还定义了一个工厂<strong>ServletWebServerFactory</strong>来创建Web容器，返回的对象就是上面提到的WebServer。</p>
-<div><strong>精选留言（26）</strong></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>public interface ServletWebServerFactory {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    WebServer getWebServer(ServletContextInitializer... initializers);
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>}
+</code></pre></div>
+<p>可以看到getWebServer有个参数，类型是<strong>ServletContextInitializer</strong>。它表示ServletContext的初始化器，用于ServletContext中的一些配置：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>public interface ServletContextInitializer {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    void onStartup(ServletContext servletContext) throws ServletException;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>}
+</code></pre></div>
+<p>这里请注意，上面提到的getWebServer方法会调用ServletContextInitializer的onStartup方法，也就是说如果你想在Servlet容器启动时做一些事情，比如注册你自己的Servlet，可以实现一个ServletContextInitializer，在Web容器启动时，Spring Boot会把所有实现了ServletContextInitializer接口的类收集起来，统一调它们的onStartup方法。</p>
+<p>为了支持对内嵌式Web容器的定制化，Spring Boot还定义了<strong>WebServerFactoryCustomizerBeanPostProcessor</strong>接口，它是一个BeanPostProcessor，它在postProcessBeforeInitialization过程中去寻找Spring容器中WebServerFactoryCustomizer类型的Bean，并依次调用WebServerFactoryCustomizer接口的customize方法做一些定制化。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>public interface WebServerFactoryCustomizer&lt;T extends WebServerFactory&gt; {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    void customize(T factory);
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>}
+</code></pre></div>
+<h2 id="web">内嵌式Web容器的创建和启动</h2>
+<p>铺垫了这些接口，我们再来看看Spring Boot是如何实例化和启动一个Web容器的。我们知道，Spring的核心是一个ApplicationContext，它的抽象实现类AbstractApplicationContext实现了著名的<strong>refresh</strong>方法，它用来新建或者刷新一个ApplicationContext，在refresh方法中会调用onRefresh方法，AbstractApplicationContext的子类可以重写这个onRefresh方法，来实现特定Context的刷新逻辑，因此ServletWebServerApplicationContext就是通过重写onRefresh方法来创建内嵌式的Web容器，具体创建过程是这样的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>@Override
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>protected void onRefresh() {
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>     super.onRefresh();
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>     try {
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        //重写onRefresh方法，调用createWebServer创建和启动Tomcat
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        createWebServer();
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>     }
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>     catch (Throwable ex) {
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>     }
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>}
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>//createWebServer的具体实现
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>private void createWebServer() {
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    //这里WebServer是Spring Boot抽象出来的接口，具体实现类就是不同的Web容器
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    WebServer webServer = this.webServer;
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    ServletContext servletContext = this.getServletContext();
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    //如果Web容器还没创建
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    if (webServer == null &amp;&amp; servletContext == null) {
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>        //通过Web容器工厂来创建
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>        ServletWebServerFactory factory = this.getWebServerFactory();
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>        //注意传入了一个&quot;SelfInitializer&quot;
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>        this.webServer = factory.getWebServer(new ServletContextInitializer[]{this.getSelfInitializer()});
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>    } else if (servletContext != null) {
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>        try {
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>            this.getSelfInitializer().onStartup(servletContext);
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>        } catch (ServletException var4) {
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>          ...
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>        }
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>    }
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>    this.initPropertySources();
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>}
+</code></pre></div>
+<p>再来看看getWebServer具体做了什么，以Tomcat为例，主要调用Tomcat的API去创建各种组件：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>public WebServer getWebServer(ServletContextInitializer... initializers) {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    //1.实例化一个Tomcat，可以理解为Server组件。
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    Tomcat tomcat = new Tomcat();
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    //2. 创建一个临时目录
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    File baseDir = this.baseDirectory != null ? this.baseDirectory : this.createTempDir(&quot;tomcat&quot;);
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    tomcat.setBaseDir(baseDir.getAbsolutePath());
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    //3.初始化各种组件
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    Connector connector = new Connector(this.protocol);
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    tomcat.getService().addConnector(connector);
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    this.customizeConnector(connector);
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    tomcat.setConnector(connector);
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    tomcat.getHost().setAutoDeploy(false);
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    this.configureEngine(tomcat.getEngine());
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    //4. 创建定制版的&quot;Context&quot;组件。
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    this.prepareContext(tomcat.getHost(), initializers);
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>    return this.getTomcatWebServer(tomcat);
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>}
+</code></pre></div>
+<p>你可能好奇prepareContext方法是做什么的呢？这里的Context是指<strong>Tomcat中的Context组件</strong>，为了方便控制Context组件的行为，Spring Boot定义了自己的TomcatEmbeddedContext，它扩展了Tomcat的StandardContext：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>class TomcatEmbeddedContext extends StandardContext {}
+</code></pre></div>
+<h2 id="servlet">注册Servlet的三种方式</h2>
+<p><strong>1. Servlet注解</strong></p>
+<p>在Spring Boot启动类上加上@ServletComponentScan注解后，使用@WebServlet、@WebFilter、@WebListener标记的Servlet、Filter、Listener就可以自动注册到Servlet容器中，无需其他代码，我们通过下面的代码示例来理解一下。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>@SpringBootApplication
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>@ServletComponentScan
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>public class xxxApplication
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>{}
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>@WebServlet(&quot;/hello&quot;)
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>public class HelloServlet extends HttpServlet {}
+</code></pre></div>
+<p>在Web应用的入口类上加上@ServletComponentScan，并且在Servlet类上加上@WebServlet，这样Spring Boot会负责将Servlet注册到内嵌的Tomcat中。</p>
+<p><strong>2. ServletRegistrationBean</strong></p>
+<p>同时Spring Boot也提供了ServletRegistrationBean、FilterRegistrationBean和ServletListenerRegistrationBean这三个类分别用来注册Servlet、Filter、Listener。假如要注册一个Servlet，可以这样做：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>@Bean
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>public ServletRegistrationBean servletRegistrationBean() {
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    return new ServletRegistrationBean(new HelloServlet(),&quot;/hello&quot;);
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>}
+</code></pre></div>
+<p>这段代码实现的方法返回一个ServletRegistrationBean，并将它当作Bean注册到Spring中，因此你需要把这段代码放到Spring Boot自动扫描的目录中，或者放到@Configuration标识的类中。</p>
+<p><strong>3. 动态注册</strong></p>
+<p>你还可以创建一个类去实现前面提到的ServletContextInitializer接口，并把它注册为一个Bean，Spring Boot会负责调用这个接口的onStartup方法。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>@Component
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>public class MyServletRegister implements ServletContextInitializer {
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    @Override
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    public void onStartup(ServletContext servletContext) {
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>        //Servlet 3.0规范新的API
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>        ServletRegistration myServlet = servletContext
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>                .addServlet(&quot;HelloServlet&quot;, HelloServlet.class);
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>        myServlet.addMapping(&quot;/hello&quot;);
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>        myServlet.setInitParameter(&quot;name&quot;, &quot;Hello Servlet&quot;);
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    }
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>}
+</code></pre></div>
+<p>这里请注意两点：</p>
 <ul>
-<li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/eXiaOuxJ7sb9llibl0FVSZxicWXy1Ws28ONe4pbYsypZtJaFU8fjtHibjuv18nruWnAE1Eaq06libeicibcMabsP3WdtA/132" width="30px"><span>壳</span> 👍（0） 💬（0）<div>现在使用SpringMVC是不是不太这么直接使用servlet了？SpringMVC底层使用了servlet了吗？</div>2023-11-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/1b/f4b786b9.jpg" width="30px"><span>飞翔</span> 👍（13） 💬（3）<div>老师 sprongboot 不注册servlet 给tomcat 直接用@controller 就能实现servlet功能是咋回事呀</div>2019-07-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/25/87/f3a69d1b.jpg" width="30px"><span>peter</span> 👍（11） 💬（1）<div>&quot;这段代码实现的方法返回一个 ServletRegistrationBean，并将它当作Bean 注册到 Spring 中&quot;, 这句话中“注册到Spring中” 是不是错的？  怎么会注册到Spring中？  应该是注册到tomcat servlet容器中吧。</div>2019-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/78/c7/083a3a0b.jpg" width="30px"><span>新世界</span> 👍（10） 💬（1）<div>servletContextInitializer实现该接口被spring管理，而不是被servletcontainer管理，是这个意思吗？</div>2019-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/63/c5/a85ade71.jpg" width="30px"><span>刘冬</span> 👍（7） 💬（2）<div>和&quot;飞翔&quot;同问： 有@RestController，为什么还要自己去注册Servlet给Tomcat? 
+<li>ServletRegistrationBean其实也是通过ServletContextInitializer来实现的，它实现了ServletContextInitializer接口。</li>
+<li>注意到onStartup方法的参数是我们熟悉的ServletContext，可以通过调用它的addServlet方法来动态注册新的Servlet，这是Servlet 3.0以后才有的功能。</li>
+</ul>
+<h2 id="web_1">Web容器的定制</h2>
+<p>我们再来考虑一个问题，那就是如何在Spring Boot中定制Web容器。在Spring Boot 2.0中，我们可以通过两种方式来定制Web容器。</p>
+<p><strong>第一种方式</strong>是通过通用的Web容器工厂ConfigurableServletWebServerFactory，来定制一些Web容器通用的参数：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>@Component
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>public class MyGeneralCustomizer implements
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>  WebServerFactoryCustomizer&lt;ConfigurableServletWebServerFactory&gt; {
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    public void customize(ConfigurableServletWebServerFactory factory) {
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>        factory.setPort(8081);
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>        factory.setContextPath(&quot;/hello&quot;);
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>     }
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>}
+</code></pre></div>
+<p><strong>第二种方式</strong>是通过特定Web容器的工厂比如TomcatServletWebServerFactory来进一步定制。下面的例子里，我们给Tomcat增加一个Valve，这个Valve的功能是向请求头里添加traceid，用于分布式追踪。TraceValve的定义如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>class TraceValve extends ValveBase {
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    @Override
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    public void invoke(Request request, Response response) throws IOException, ServletException {
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>        request.getCoyoteRequest().getMimeHeaders().
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>        addValue(&quot;traceid&quot;).setString(&quot;1234xxxxabcd&quot;);
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>        Valve next = getNext();
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>        if (null == next) {
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>            return;
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>        }
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>        next.invoke(request, response);
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>    }
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>}
+</code></pre></div>
+<p>跟第一种方式类似，再添加一个定制器，代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>@Component
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>public class MyTomcatCustomizer implements
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>        WebServerFactoryCustomizer&lt;TomcatServletWebServerFactory&gt; {
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    @Override
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    public void customize(TomcatServletWebServerFactory factory) {
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>        factory.setPort(8081);
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>        factory.setContextPath(&quot;/hello&quot;);
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>        factory.addEngineValves(new TraceValve() );
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>    }
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>}
+</code></pre></div>
+<h2 id="_1">本期精华</h2>
+<p>今天我们学习了Spring Boot如何利用Web容器的API来启动Web容器、如何向Web容器注册Servlet，以及如何定制化Web容器，除了给Web容器配置参数，还可以增加或者修改Web容器本身的组件。</p>
+<h2 id="_2">课后思考</h2>
+<p>我在文章中提到，通过ServletContextInitializer接口可以向Web容器注册Servlet，那ServletContextInitializer跟Tomcat中的ServletContainerInitializer有什么区别和联系呢？</p>
+<p>不知道今天的内容你消化得如何？如果还有疑问，请大胆的在留言区提问，也欢迎你把你的课后思考和心得记录下来，与我和其他同学一起讨论。如果你觉得今天有所收获，欢迎你把它分享给你的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>壳</span> 👍（0） 💬（0）<div>现在使用SpringMVC是不是不太这么直接使用servlet了？SpringMVC底层使用了servlet了吗？</div>2023-11-04</li><br/><li><span>飞翔</span> 👍（13） 💬（3）<div>老师 sprongboot 不注册servlet 给tomcat 直接用@controller 就能实现servlet功能是咋回事呀</div>2019-07-13</li><br/><li><span>peter</span> 👍（11） 💬（1）<div>&quot;这段代码实现的方法返回一个 ServletRegistrationBean，并将它当作Bean 注册到 Spring 中&quot;, 这句话中“注册到Spring中” 是不是错的？  怎么会注册到Spring中？  应该是注册到tomcat servlet容器中吧。</div>2019-07-18</li><br/><li><span>新世界</span> 👍（10） 💬（1）<div>servletContextInitializer实现该接口被spring管理，而不是被servletcontainer管理，是这个意思吗？</div>2019-07-16</li><br/><li><span>刘冬</span> 👍（7） 💬（2）<div>和&quot;飞翔&quot;同问： 有@RestController，为什么还要自己去注册Servlet给Tomcat? 
 我感觉老师很善于将负责的问题、长的逻辑链讲的简洁清晰，还请老师帮忙详细说明一下。
-谢谢！</div>2019-07-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e0/40/3301e490.jpg" width="30px"><span>despacito</span> 👍（5） 💬（3）<div>老师，springboot 中 getWebServer方法的实现类不仅有tomcat，还有其他web容器，比如jetty，那为什么我们在运行启动类的时候默认都是用的tomcat容器，如果我运行启动类的时候想用jetty作为应用容器，应该怎么做？</div>2019-07-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/85/3b/cfdc8bf2.jpg" width="30px"><span>Royal</span> 👍（0） 💬（1）<div>您好，想请教下jetty的NetworkTrafficListener.Adapter机制，有什么博客可以推荐吗？谢谢</div>2019-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5a/d9/e74791a9.jpg" width="30px"><span>雪山飞狐</span> 👍（4） 💬（0）<div>通过 ServletContextInitializer 接口可以向 Web 容器注册 Servlet，实现 ServletContextInitializer 接口的Bean被speing管理，但是在什么时机触发其onStartup()方法的呢？
-谜底就是通过 Tomcat 中的 ServletContainerInitializer 接口实现者，如TomcatStarter，创建tomcat时设置了该类，在tomcat启动时会触发ServletContainerInitializer实现者的onStartup()方法，在这个方法中触发ServletContextInitializer接口的onStartup()方法，如注册DispatcherServlet。</div>2020-04-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/4a/1f/8e21395b.jpg" width="30px"><span>张凤霞在三门峡</span> 👍（2） 💬（1）<div>更多细节：
+谢谢！</div>2019-07-13</li><br/><li><span>despacito</span> 👍（5） 💬（3）<div>老师，springboot 中 getWebServer方法的实现类不仅有tomcat，还有其他web容器，比如jetty，那为什么我们在运行启动类的时候默认都是用的tomcat容器，如果我运行启动类的时候想用jetty作为应用容器，应该怎么做？</div>2019-07-13</li><br/><li><span>Royal</span> 👍（0） 💬（1）<div>您好，想请教下jetty的NetworkTrafficListener.Adapter机制，有什么博客可以推荐吗？谢谢</div>2019-07-16</li><br/><li><span>雪山飞狐</span> 👍（4） 💬（0）<div>通过 ServletContextInitializer 接口可以向 Web 容器注册 Servlet，实现 ServletContextInitializer 接口的Bean被speing管理，但是在什么时机触发其onStartup()方法的呢？
+谜底就是通过 Tomcat 中的 ServletContainerInitializer 接口实现者，如TomcatStarter，创建tomcat时设置了该类，在tomcat启动时会触发ServletContainerInitializer实现者的onStartup()方法，在这个方法中触发ServletContextInitializer接口的onStartup()方法，如注册DispatcherServlet。</div>2020-04-02</li><br/><li><span>张凤霞在三门峡</span> 👍（2） 💬（1）<div>更多细节：
 DispatcherServletRegistrationBean实现了ServletContextInitializer接口，它的作用就是向Tomcat注册DispatcherServlet，那它是在什么时候、如何被使用的呢？
 
 答案：老师提到了prepareContext方法，但没展示代码内容，它调用了另一个私有方法configureContext，这个方法就包括了往tomcat的Context添加ServletContainerInitializer对象：
 context.addServletContainerInitializer(starter, NO_CLASSES);
-其中有上面提到的DispatcherServletRegistrationBean。</div>2020-05-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/1b/4a/f9df2d06.jpg" width="30px"><span>蒙开强</span> 👍（2） 💬（0）<div>老师，你好，如果我不想使用内嵌的Tomcat，想用自己装的Tomcat，那需要怎么做呢</div>2019-08-15</li><br/><li><img src="" width="30px"><span>红颜铭心</span> 👍（1） 💬（0）<div>相同点：向ServletContext容器注册Servlet,Filter或EventListener
+其中有上面提到的DispatcherServletRegistrationBean。</div>2020-05-01</li><br/><li><span>蒙开强</span> 👍（2） 💬（0）<div>老师，你好，如果我不想使用内嵌的Tomcat，想用自己装的Tomcat，那需要怎么做呢</div>2019-08-15</li><br/><li><span>红颜铭心</span> 👍（1） 💬（0）<div>相同点：向ServletContext容器注册Servlet,Filter或EventListener
 不同点：生命周期由不同的容器托管，在不同的地方调用，最终的结果都是一样。
 内嵌容器不支持ServletContainerInitializer，因此不能通过spi方式加载ServletContainerInitializer，
-而是用TomcatStarter的onStartup，间接启动ServletContextInitializers，来达到ServletContainerInitializer的效果。</div>2020-05-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ac/62/37912d51.jpg" width="30px"><span>东方奇骥</span> 👍（1） 💬（0）<div>这篇文章让人受益匪浅，读了几遍，又对着源码看了一下，并且实验了一下。</div>2020-02-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2e/27/b4/df65c0f7.jpg" width="30px"><span>| ~浑蛋~</span> 👍（0） 💬（0）<div>怎么动态注册spring websocket的处理器</div>2022-07-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0c/86/8e52afb8.jpg" width="30px"><span>花花大脸猫</span> 👍（0） 💬（0）<div>在源码中对二者的区别已经有比较明确的阐述，在ServletContextInitializer类中的注释中，有如下说明：This interface is designed to act in a similar way to ServletContainerInitializer, but have a lifecycle that&#39;s managed by Spring and not the Servlet container.</div>2022-06-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/51/0d/fc1652fe.jpg" width="30px"><span>James</span> 👍（0） 💬（0）<div>ServletContainerInitializer调用所有实现ServletContextInitializer接口类的方法。
+而是用TomcatStarter的onStartup，间接启动ServletContextInitializers，来达到ServletContainerInitializer的效果。</div>2020-05-29</li><br/><li><span>东方奇骥</span> 👍（1） 💬（0）<div>这篇文章让人受益匪浅，读了几遍，又对着源码看了一下，并且实验了一下。</div>2020-02-17</li><br/><li><span>| ~浑蛋~</span> 👍（0） 💬（0）<div>怎么动态注册spring websocket的处理器</div>2022-07-31</li><br/><li><span>花花大脸猫</span> 👍（0） 💬（0）<div>在源码中对二者的区别已经有比较明确的阐述，在ServletContextInitializer类中的注释中，有如下说明：This interface is designed to act in a similar way to ServletContainerInitializer, but have a lifecycle that&#39;s managed by Spring and not the Servlet container.</div>2022-06-13</li><br/><li><span>James</span> 👍（0） 💬（0）<div>ServletContainerInitializer调用所有实现ServletContextInitializer接口类的方法。
 ServletContextInitializer是通过ServletContextInitializer类型依赖查找的，是Spring管理的。
 
 ServletContainerInitializer是启动的时候调用，具体看StandardContext#startInternal方法中的entry.getKey().onStartup(entry.getValue(),getServletContext());
 此方法会调用ServletContainerInitializer.onStartup，而在springboot中，是TomcatStarter来实现ServletContainerInitializer接口并调用所有实现ServletContextInitializer方法的类的onStartup方法
 
 
-</div>2021-03-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/60/14/6cb28332.jpg" width="30px"><span>罗力友</span> 👍（0） 💬（1）<div>老师，tomcat启动是靠startup.sh文件来启动jvm的，springboot是怎么启动的呢，main方法吗</div>2020-08-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ce/b8/92178ccd.jpg" width="30px"><span>ECHO</span> 👍（0） 💬（0）<div>这期内容值得细细品味</div>2020-08-20</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/OYzqUOhEXUl99HaOJtrjAVGIwmbDNlE6cYwwTnBWricEUaTubrJ9aO23qA0lrXfiaEib8SicZPM1icUKibElWZ93jRtQ/132" width="30px"><span>柠檬</span> 👍（0） 💬（0）<div>老师，springboot的tomcat怎么设置keeplive的时间啊，现在感觉默认springboot的tomcat keeplive不生效</div>2020-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/5a/6f/62c03303.jpg" width="30px"><span>前路漫漫</span> 👍（0） 💬（1）<div>老师请教个问题，springboot启动并未调用SpringServletContainerInitializer 的onStartup 方法，也就是SpringBootServletInitializer的onStartup 方法没执行，请问这个是什么原因呢？怎么整合SpringMVC的呢?</div>2020-05-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1f/09/abb7bfe3.jpg" width="30px"><span>斑斑驳驳</span> 👍（0） 💬（0）<div>老师，最后一个示例Valve 为什么是addEngineValves 而不是 addContextValves；我觉得加到Context中也是一样的，只不过是执行前后的问题。</div>2020-04-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5a/08/2bef230f.jpg" width="30px"><span>慎独</span> 👍（0） 💬（0）<div>老师讲的很棒</div>2019-12-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fc/b5/ac717737.jpg" width="30px"><span>肖臧</span> 👍（0） 💬（1）<div>Spring boot启动Tomcat的源码里面把protocal写死了，我想把SIP相关的支持挪进来，该从哪里入手呢。
-@Override
-    public WebServer getWebServer(ServletContextInitializer... initializers) {
-        Tomcat tomcat = new Tomcat();
-        File baseDir = (this.baseDirectory != null) ? this.baseDirectory : createTempDir(&quot;tomcat&quot;);
-        tomcat.setBaseDir(baseDir.getAbsolutePath());
-        Connector connector = new Connector(this.protocol);
-        tomcat.getService().addConnector(connector);
-        customizeConnector(connector);
-        tomcat.setConnector(connector);
-        tomcat.getHost().setAutoDeploy(false);
-        configureEngine(tomcat.getEngine());
-        for (Connector additionalConnector : this.additionalTomcatConnectors) {
-            tomcat.getService().addConnector(additionalConnector);
-        }
-        prepareContext(tomcat.getHost(), initializers);
-        return getTomcatWebServer(tomcat);
-    }</div>2019-08-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e8/4b/57fa0e34.jpg" width="30px"><span>brianway</span> 👍（0） 💬（0）<div>springboot 1.0版本如何定制web容器呢？</div>2019-08-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/1b/f4b786b9.jpg" width="30px"><span>飞翔</span> 👍（0） 💬（0）<div>老师 在digester 类里边的createStartDigester，方法，把enginer，host，context都实例化了，那wrapper是在哪里实例化的呢</div>2019-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/53/86/7c6476bc.jpg" width="30px"><span>大漠落木</span> 👍（0） 💬（0）<div>@FunctionalInterface
-org.springframework.boot.web.servlet.ServletContextInitializer
-This interface is primarily designed to allow ServletContextInitializers to bemanaged by Spring and not the Servlet container. 
-javax.servlet.ServletContainerInitializer
-ServletContainerInitializers (SCIs) are registered via an entry in the file META-INF&#47;services&#47;javax.servlet.ServletContainerInitializer that must beincluded in the JAR file that contains the SCI implementation. </div>2019-07-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1e/3a/5b21c01c.jpg" width="30px"><span>nightmare</span> 👍（0） 💬（0）<div>感觉还是要跟着操作一下才能懂了</div>2019-07-13</li><br/>
+</div>2021-03-21</li><br/>
 </ul>
 
 

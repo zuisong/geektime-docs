@@ -8030,6 +8030,60 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      改造代理类
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      测试
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      在方法前后拦截
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      测试
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12694,6 +12748,60 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      改造代理类
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      测试
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      在方法前后拦截
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      测试
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12732,14 +12840,331 @@
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    return null;
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>}
 </code></pre></div>
+<p>我们看到，在实际调用某个方法的时候，是用的反射直接调用method，对应在代码里也就是 <code>method.invoke(target,args);</code> 这一句。而增强的例行性代码是直接写在method.invoke()这个方法前面的，也就是上面代码里的 <code>System.out.println())</code>。这么做当然没有错，不过扩展性不好。这里我们还是使用那个老办法，<strong>不同的功能由不同的部件来做</strong>，所以这个增强逻辑我们可以考虑抽取出一个专门的部件来做，实际业务方法的调用也可以包装一下。</p>
+<p>所以这节课，我们引入以下几个概念。</p>
+<ul>
+<li>Advice：表示这是一个增强操作。</li>
+<li>Interceptor：拦截器，它实现的是真正的增强逻辑。</li>
+<li>MethodInterceptor：调用方法上的拦截器，也就是它实现在某个方法上的增强。</li>
+</ul>
+<p>通过这几个概念，我们就可以把例行性逻辑单独剥离出来了。现在我们要做一个切面，只需要实现某个Interceptor就可以了。</p>
+<p>对应地，我们定义一下Advice、Interceptor、MethodInterceptor这几个接口。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.minis.aop</span><span class="p">;</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">Advice</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.minis.aop</span><span class="p">;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">Interceptor</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">Advice</span><span class="p">{</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.minis.aop</span><span class="p">;</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">MethodInterceptor</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">Interceptor</span><span class="p">{</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="n">Object</span><span class="w"> </span><span class="nf">invoke</span><span class="p">(</span><span class="n">MethodInvocation</span><span class="w"> </span><span class="n">invocation</span><span class="p">)</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">Throwable</span><span class="p">;</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="p">}</span>
+</code></pre></div>
+<p>MethodInterceptor就是方法上的拦截器，对外就是一个invoke()方法。拦截器不仅仅会增强逻辑，它内部也会调用业务逻辑方法。因此，对外部程序而言，只需要使用这个MethodInterceptor就可以了。</p>
+<p>它需要传入一个MethodInvocation，然后调用method invocation的proceed()方法，MethodInvocation实际上就是以前通过反射方法调用业务逻辑的那一段代码的包装。。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">MethodInvocation</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">   </span><span class="n">Method</span><span class="w"> </span><span class="nf">getMethod</span><span class="p">();</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">   </span><span class="n">Object</span><span class="o">[]</span><span class="w"> </span><span class="nf">getArguments</span><span class="p">();</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">   </span><span class="n">Object</span><span class="w"> </span><span class="nf">getThis</span><span class="p">();</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">   </span><span class="n">Object</span><span class="w"> </span><span class="nf">proceed</span><span class="p">()</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">Throwable</span><span class="p">;</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="p">}</span>
+</code></pre></div>
+<p>我们再来看一下应用程序员的工作，为了插入切面，需要在invoke()中实现自己的业务增强代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>public class TracingInterceptor implements MethodInterceptor {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    public Object invoke(MethodInvocation i) throws Throwable {
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        System.out.println(&quot;method &quot;+i.getMethod()+&quot; is called on &quot;+
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>                            i.getThis()+&quot; with args &quot;+i.getArguments());
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        Object ret=i.proceed();
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        System.out.println(&quot;method &quot;+i.getMethod()+&quot; returns &quot;+ret);
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        return ret;
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>   }
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>}
+</code></pre></div>
+<p>中间的i.proceed()才是真正的目标对象的方法调用。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>public Object proceed() throws Throwable {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    return this.method.invoke(this.target, this.arguments);
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>}
+</code></pre></div>
+<h2 id="_2">改造代理类</h2>
+<p>有了上面准备好的这些部件，我们在动态代理中如何使用它们呢？这里我们再引入一个Advisor接口。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>    public interface Advisor {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>        MethodInterceptor getMethodInterceptor();
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>        void setMethodInterceptor(MethodInterceptor methodInterceptor);
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    }
+</code></pre></div>
+<p>在代理类ProxyFactoryBean里增加Advisor属性和拦截器。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>    private String interceptorName; 
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    private Advisor advisor;
+</code></pre></div>
+<p>这样，我们的代理类里就有跟拦截器关联的点了。</p>
+<p>接下来，为了在目标对象调用前进行拦截，我们就需要调整这个ProxyFactoryBean，并设置其Advisor属性，同时定义这个initializeAdvisor方法来进行关联。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.minis.aop</span><span class="p">;</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">ProxyFactoryBean</span><span class="w"> </span><span class="kd">implements</span><span class="w"> </span><span class="n">FactoryBean</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">BeanFactory</span><span class="w"> </span><span class="n">beanFactory</span><span class="p">;</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">interceptorName</span><span class="p">;</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">Advisor</span><span class="w"> </span><span class="n">advisor</span><span class="p">;</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">synchronized</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">initializeAdvisor</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">        </span><span class="n">Object</span><span class="w"> </span><span class="n">advice</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">        </span><span class="n">MethodInterceptor</span><span class="w"> </span><span class="n">mi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">        </span><span class="k">try</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">            </span><span class="n">advice</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">MethodInterceptor</span><span class="p">)</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="na">beanFactory</span><span class="p">.</span><span class="na">getBean</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="na">interceptorName</span><span class="p">);</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">BeansException</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w">            </span><span class="n">e</span><span class="p">.</span><span class="na">printStackTrace</span><span class="p">();</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="w">        </span><span class="n">advisor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">DefaultAdvisor</span><span class="p">();</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="w">        </span><span class="n">advisor</span><span class="p">.</span><span class="na">setMethodInterceptor</span><span class="p">((</span><span class="n">MethodInterceptor</span><span class="p">)</span><span class="n">advice</span><span class="p">);</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="p">}</span>
+</code></pre></div>
+<p>通过ProxyFactoryBean代码实现可以看出，里面新增了initializeAdvisor处理，将应用程序自定义的拦截器获取到Advisor里。并且，可以在IoC容器中配置这个Interceptor名字。</p>
+<p>在initializeAdvisor里，我们把Advisor初始化工作交给了DefaultAdvisor。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.minis.aop</span><span class="p">;</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">DefaultAdvisor</span><span class="w"> </span><span class="kd">implements</span><span class="w"> </span><span class="n">Advisor</span><span class="p">{</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">MethodInterceptor</span><span class="w"> </span><span class="n">methodInterceptor</span><span class="p">;</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="nf">DefaultAdvisor</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">setMethodInterceptor</span><span class="p">(</span><span class="n">MethodInterceptor</span><span class="w"> </span><span class="n">methodInterceptor</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">methodInterceptor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">methodInterceptor</span><span class="p">;</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">MethodInterceptor</span><span class="w"> </span><span class="nf">getMethodInterceptor</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="na">methodInterceptor</span><span class="p">;</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="p">}</span>
+</code></pre></div>
+<p>随后，我们修改AopProxyFactory中createAopProxy接口的方法签名，新增Advisor参数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.minis.aop</span><span class="p">;</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">AopProxyFactory</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">    </span><span class="n">AopProxy</span><span class="w"> </span><span class="nf">createAopProxy</span><span class="p">(</span><span class="n">Object</span><span class="w"> </span><span class="n">target</span><span class="p">,</span><span class="w"> </span><span class="n">Advisor</span><span class="w"> </span><span class="n">advisor</span><span class="p">);</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="p">}</span>
+</code></pre></div>
+<p>修改接口后，我们需要相应地修改其实现方法。在ProxyFactoryBean中，唯一的实现方法就是createAopProxy()。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kd">protected</span><span class="w"> </span><span class="n">AopProxy</span><span class="w"> </span><span class="nf">createAopProxy</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">getAopProxyFactory</span><span class="p">().</span><span class="na">createAopProxy</span><span class="p">(</span><span class="n">target</span><span class="p">);</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="p">}</span>
+</code></pre></div>
+<p>在这个方法中，我们对前面引入的Advisor进行了赋值。修改之后，代码变成了这样。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kd">protected</span><span class="w"> </span><span class="n">AopProxy</span><span class="w"> </span><span class="nf">createAopProxy</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">getAopProxyFactory</span><span class="p">().</span><span class="na">createAopProxy</span><span class="p">(</span><span class="n">target</span><span class="err">，</span><span class="k">this</span><span class="p">.</span><span class="na">advisor</span><span class="p">);</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="p">}</span>
+</code></pre></div>
+<p>默认实现是DefaultAopProxyFactory与JdkDynamicAopProxy，这里要一并修改。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.minis.aop</span><span class="p">;</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">DefaultAopProxyFactory</span><span class="w"> </span><span class="kd">implements</span><span class="w"> </span><span class="n">AopProxyFactory</span><span class="p">{</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">    </span><span class="nd">@Override</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">AopProxy</span><span class="w"> </span><span class="nf">createAopProxy</span><span class="p">(</span><span class="n">Object</span><span class="w"> </span><span class="n">target</span><span class="p">,</span><span class="w"> </span><span class="n">Advisor</span><span class="w"> </span><span class="n">advisor</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JdkDynamicAopProxy</span><span class="p">(</span><span class="n">target</span><span class="p">,</span><span class="w"> </span><span class="n">advisor</span><span class="p">);</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.minis.aop</span><span class="p">;</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">JdkDynamicAopProxy</span><span class="w"> </span><span class="kd">implements</span><span class="w"> </span><span class="n">AopProxy</span><span class="p">,</span><span class="w"> </span><span class="n">InvocationHandler</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">    </span><span class="n">Object</span><span class="w"> </span><span class="n">target</span><span class="p">;</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">    </span><span class="n">Advisor</span><span class="w"> </span><span class="n">advisor</span><span class="p">;</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="nf">JdkDynamicAopProxy</span><span class="p">(</span><span class="n">Object</span><span class="w"> </span><span class="n">target</span><span class="p">,</span><span class="w"> </span><span class="n">Advisor</span><span class="w"> </span><span class="n">advisor</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">target</span><span class="p">;</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">advisor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">advisor</span><span class="p">;</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="w">    </span><span class="nd">@Override</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">Object</span><span class="w"> </span><span class="nf">getProxy</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="w">        </span><span class="n">Object</span><span class="w"> </span><span class="n">obj</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Proxy</span><span class="p">.</span><span class="na">newProxyInstance</span><span class="p">(</span><span class="n">JdkDynamicAopProxy</span><span class="p">.</span><span class="na">class</span><span class="p">.</span><span class="na">getClassLoader</span><span class="p">(),</span><span class="w"> </span><span class="n">target</span><span class="p">.</span><span class="na">getClass</span><span class="p">().</span><span class="na">getInterfaces</span><span class="p">(),</span><span class="w"> </span><span class="k">this</span><span class="p">);</span>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">obj</span><span class="p">;</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a><span class="w">    </span><span class="nd">@Override</span>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">Object</span><span class="w"> </span><span class="nf">invoke</span><span class="p">(</span><span class="n">Object</span><span class="w"> </span><span class="n">proxy</span><span class="p">,</span><span class="w"> </span><span class="n">Method</span><span class="w"> </span><span class="n">method</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="o">[]</span><span class="w"> </span><span class="n">args</span><span class="p">)</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">Throwable</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">method</span><span class="p">.</span><span class="na">getName</span><span class="p">().</span><span class="na">equals</span><span class="p">(</span><span class="s">&quot;doAction&quot;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a><span class="w">            </span><span class="n">Class</span><span class="o">&lt;?&gt;</span><span class="w"> </span><span class="n">targetClass</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">target</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">target</span><span class="p">.</span><span class="na">getClass</span><span class="p">()</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">);</span>
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a><span class="w">            </span><span class="n">MethodInterceptor</span><span class="w"> </span><span class="n">interceptor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="na">advisor</span><span class="p">.</span><span class="na">getMethodInterceptor</span><span class="p">();</span>
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a><span class="w">            </span><span class="n">MethodInvocation</span><span class="w"> </span><span class="n">invocation</span><span class="w"> </span><span class="o">=</span>
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a><span class="w">                    </span><span class="k">new</span><span class="w"> </span><span class="n">ReflectiveMethodInvocation</span><span class="p">(</span><span class="n">proxy</span><span class="p">,</span><span class="w"> </span><span class="n">target</span><span class="p">,</span><span class="w"> </span><span class="n">method</span><span class="p">,</span><span class="w"> </span><span class="n">args</span><span class="p">,</span><span class="w"> </span><span class="n">targetClass</span><span class="p">);</span>
+<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">interceptor</span><span class="p">.</span><span class="na">invoke</span><span class="p">(</span><span class="n">invocation</span><span class="p">);</span>
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a><span class="p">}</span>
+</code></pre></div>
+<p>在JdkDynamicAopProxy里我们发现，invoke方法和之前相比有了不小的变化，在调用某个方法的时候，不再是直接用反射调用方法了，而是先拿到Advisor里面的Interceptor，然后把正常的method调用包装成ReflectiveMethodInvocation，最后调用interceptor.invoke(invocation)，对需要调用的方法进行了增强处理。</p>
+<p>你把这一段和之前的invoke()进行比对，可以看出，通过Interceptor这个概念，我们就把增强逻辑单独剥离出来了。</p>
+<p>你可以看一下实际的ReflectiveMethodInvocation类，其实就是对反射调用方法进行了一次包装。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.minis.aop</span><span class="p">;</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">ReflectiveMethodInvocation</span><span class="w"> </span><span class="kd">implements</span><span class="w"> </span><span class="n">MethodInvocation</span><span class="p">{</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">    </span><span class="kd">protected</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">Object</span><span class="w"> </span><span class="n">proxy</span><span class="p">;</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">    </span><span class="kd">protected</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">Object</span><span class="w"> </span><span class="n">target</span><span class="p">;</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">    </span><span class="kd">protected</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">Method</span><span class="w"> </span><span class="n">method</span><span class="p">;</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="w">    </span><span class="kd">protected</span><span class="w"> </span><span class="n">Object</span><span class="o">[]</span><span class="w"> </span><span class="n">arguments</span><span class="p">;</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">Class</span><span class="o">&lt;?&gt;</span><span class="w"> </span><span class="n">targetClass</span><span class="p">;</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="w">    </span><span class="kd">protected</span><span class="w"> </span><span class="nf">ReflectiveMethodInvocation</span><span class="p">(</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="w">            </span><span class="n">Object</span><span class="w"> </span><span class="n">proxy</span><span class="p">,</span><span class="w">  </span><span class="n">Object</span><span class="w"> </span><span class="n">target</span><span class="p">,</span><span class="w"> </span><span class="n">Method</span><span class="w"> </span><span class="n">method</span><span class="p">,</span><span class="w">  </span><span class="n">Object</span><span class="o">[]</span><span class="w"> </span><span class="n">arguments</span><span class="p">,</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="w">            </span><span class="n">Class</span><span class="o">&lt;?&gt;</span><span class="w"> </span><span class="n">targetClass</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">proxy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">proxy</span><span class="p">;</span>
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">target</span><span class="p">;</span>
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">targetClass</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">targetClass</span><span class="p">;</span>
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">method</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">method</span><span class="p">;</span>
+<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">arguments</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">arguments</span><span class="p">;</span>
+<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>
+<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a><span class="w">    </span><span class="c1">//省略getter/setter</span>
+<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>
+<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">Object</span><span class="w"> </span><span class="nf">proceed</span><span class="p">()</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">Throwable</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="na">method</span><span class="p">.</span><span class="na">invoke</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="na">target</span><span class="p">,</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="na">arguments</span><span class="p">);</span>
+<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a><span class="p">}</span>
+</code></pre></div>
+<h2 id="_3">测试</h2>
+<p>我们现在可以来编写一下测试代码，定义TracingInterceptor类模拟业务拦截代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.test.service</span><span class="p">;</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">com.minis.aop.MethodInterceptor</span><span class="p">;</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">com.minis.aop.MethodInvocation</span><span class="p">;</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">TracingInterceptor</span><span class="w"> </span><span class="kd">implements</span><span class="w"> </span><span class="n">MethodInterceptor</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="w">    </span><span class="nd">@Override</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">Object</span><span class="w"> </span><span class="nf">invoke</span><span class="p">(</span><span class="n">MethodInvocation</span><span class="w"> </span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">Throwable</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&quot;method &quot;</span><span class="o">+</span><span class="n">i</span><span class="p">.</span><span class="na">getMethod</span><span class="p">()</span><span class="o">+</span><span class="s">&quot; is called on &quot;</span><span class="o">+</span>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="w">                </span><span class="n">i</span><span class="p">.</span><span class="na">getThis</span><span class="p">()</span><span class="o">+</span><span class="s">&quot; with args &quot;</span><span class="o">+</span><span class="n">i</span><span class="p">.</span><span class="na">getArguments</span><span class="p">());</span>
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="w">        </span><span class="n">Object</span><span class="w"> </span><span class="n">ret</span><span class="o">=</span><span class="n">i</span><span class="p">.</span><span class="na">proceed</span><span class="p">();</span>
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&quot;method &quot;</span><span class="o">+</span><span class="n">i</span><span class="p">.</span><span class="na">getMethod</span><span class="p">()</span><span class="o">+</span><span class="s">&quot; returns &quot;</span><span class="o">+</span><span class="n">ret</span><span class="p">);</span>
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">ret</span><span class="p">;</span>
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a><span class="p">}</span>
+</code></pre></div>
+<p>applicationContext.xml配置文件：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="w">   </span><span class="nt">&lt;bean</span><span class="w"> </span><span class="na">id=</span><span class="s">&quot;myInterceptor&quot;</span><span class="w"> </span><span class="na">class=</span><span class="s">&quot;com.test.service.TracingInterceptor&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">   </span><span class="nt">&lt;bean</span><span class="w"> </span><span class="na">id=</span><span class="s">&quot;realaction&quot;</span><span class="w"> </span><span class="na">class=</span><span class="s">&quot;com.test.service.Action1&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">   </span><span class="nt">&lt;bean</span><span class="w"> </span><span class="na">id=</span><span class="s">&quot;action&quot;</span><span class="w"> </span><span class="na">class=</span><span class="s">&quot;com.minis.aop.ProxyFactoryBean&quot;</span><span class="w"> </span><span class="nt">&gt;</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">      </span><span class="nt">&lt;property</span><span class="w"> </span><span class="na">type=</span><span class="s">&quot;java.lang.Object&quot;</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;target&quot;</span><span class="w"> </span><span class="na">ref=</span><span class="s">&quot;realaction&quot;</span><span class="nt">/&gt;</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="w">      </span><span class="nt">&lt;property</span><span class="w"> </span><span class="na">type=</span><span class="s">&quot;String&quot;</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;interceptorName&quot;</span><span class="w"> </span><span class="na">value=</span><span class="s">&quot;myInterceptor&quot;</span><span class="nt">/&gt;</span>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="w">   </span><span class="nt">&lt;/bean&gt;</span>
+</code></pre></div>
+<p>配置文件里，除了原有的target，我们还增加了一个interceptorName属性，让程序员指定需要启用什么样的增强。</p>
+<p>到这里，我们就实现了MethodInterceptor。</p>
+<h2 id="_4">在方法前后拦截</h2>
+<p>我们现在实现的方法拦截，允许程序员自行编写invoke()方法，进行任意操作。但是在许多场景下，调用方式实际上是比较固定的，即在某个方法调用之前或之后，允许程序员插入业务上需要的增强。为了满足这种情况，我们可以提供特定的方法拦截，并允许程序员在这些拦截点之前和之后进行业务增强的操作。这种方式就大大简化了程序员的工作。</p>
+<p>所以这里我们新增两种advice：MethodBeforeAdvice和AfterReturningAdvice。根据名字也可以看出来，它们分别对应方法调用前处理和返回后的处理。你可以看一下它们的定义。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.minis.aop</span><span class="p">;</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">BeforeAdvice</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">Advice</span><span class="p">{</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.minis.aop</span><span class="p">;</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">AfterAdvice</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">Advice</span><span class="p">{</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.minis.aop</span><span class="p">;</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">java.lang.reflect.Method</span><span class="p">;</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">MethodBeforeAdvice</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">BeforeAdvice</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">before</span><span class="p">(</span><span class="n">Method</span><span class="w"> </span><span class="n">method</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="o">[]</span><span class="w"> </span><span class="n">args</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="w"> </span><span class="n">target</span><span class="p">)</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">Throwable</span><span class="p">;</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.minis.aop</span><span class="p">;</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">java.lang.reflect.Method</span><span class="p">;</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">AfterReturningAdvice</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">AfterAdvice</span><span class="p">{</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">afterReturning</span><span class="p">(</span><span class="n">Object</span><span class="w"> </span><span class="n">returnValue</span><span class="p">,</span><span class="w"> </span><span class="n">Method</span><span class="w"> </span><span class="n">method</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="o">[]</span><span class="w"> </span><span class="n">args</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="w"> </span><span class="n">target</span><span class="p">)</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">Throwable</span><span class="p">;</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="p">}</span>
+</code></pre></div>
+<p>首先我们定义通用接口BeforeAdvice与AfterAdvice，随后定义核心的MethodBeforeAdvice与AfterReturningAdvice接口，它们分别内置了before方法和afterReturning方法。由方法签名可以看出，这两者的区别在于afterReturning它内部传入了返回参数，说明是目标方法执行返回后，再调用该方法，在方法里面可以拿到返回的参数。</p>
+<p>有了新的Advice的定义，我们就可以实现新的Interceptor了。你可以看下实现的代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>package<span class="w"> </span>com.minis.aop;
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>public<span class="w"> </span>class<span class="w"> </span>MethodBeforeAdviceInterceptor<span class="w"> </span>implements<span class="w"> </span>MethodInterceptor,<span class="w"> </span>BeforeAdvice<span class="w"> </span>{
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="w">    </span>private<span class="w"> </span>final<span class="w"> </span>MethodBeforeAdvice<span class="w"> </span>advice;
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="w">    </span>public<span class="w"> </span>MethodBeforeAdviceInterceptor(MethodBeforeAdvice<span class="w"> </span>advice)<span class="w"> </span>{
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="w">        </span>this.advice<span class="w"> </span>=<span class="w"> </span>advice;
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a><span class="w">    </span>}
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a><span class="w">    </span>@Override
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="w">    </span>public<span class="w"> </span>Object<span class="w"> </span>invoke(MethodInvocation<span class="w"> </span>mi)<span class="w"> </span>throws<span class="w"> </span>Throwable<span class="w"> </span>{
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a><span class="w">        </span>this.advice.before(mi.getMethod(),<span class="w"> </span>mi.getArguments(),<span class="w"> </span>mi.getThis());
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a><span class="w">        </span>return<span class="w"> </span>mi.proceed();
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a><span class="w">    </span>}
+<a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a>}
+</code></pre></div>
+<p>在这个Interceptor里，invoke()方法的实现实际上就是限制性地使用advice.before()方法，然后执行目标方法的调用，也意味着这是在方法调用之前插入的逻辑。由于这是针对before这种行为的特定Interceptor，因此上层应用程序员无需自己再进行实现，而是可以直接使用这个Interceptor。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>package<span class="w"> </span>com.minis.aop;
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>public<span class="w"> </span>class<span class="w"> </span>AfterReturningAdviceInterceptor<span class="w"> </span>implements<span class="w"> </span>MethodInterceptor,<span class="w"> </span>AfterAdvice{
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="w">    </span>private<span class="w"> </span>final<span class="w"> </span>AfterReturningAdvice<span class="w"> </span>advice;
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="w">    </span>public<span class="w"> </span>AfterReturningAdviceInterceptor(AfterReturningAdvice<span class="w"> </span>advice)<span class="w"> </span>{
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="w">        </span>this.advice<span class="w"> </span>=<span class="w"> </span>advice;
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a><span class="w">    </span>}
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a><span class="w">    </span>@Override
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a><span class="w">    </span>public<span class="w"> </span>Object<span class="w"> </span>invoke(MethodInvocation<span class="w"> </span>mi)<span class="w"> </span>throws<span class="w"> </span>Throwable<span class="w"> </span>{
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a><span class="w">        </span>Object<span class="w"> </span>retVal<span class="w"> </span>=<span class="w"> </span>mi.proceed();
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a><span class="w">        </span>this.advice.afterReturning(retVal,<span class="w"> </span>mi.getMethod(),<span class="w"> </span>mi.getArguments(),<span class="w"> </span>mi.getThis());
+<a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a><span class="w">        </span>return<span class="w"> </span>retVal;
+<a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a><span class="w">    </span>}
+<a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a>}
+</code></pre></div>
+<p>同样，由AfterReturningAdviceInterceptor类中对invoke方法的实现可以看出，是先调用mi.proceed()方法获取到了返回值retVal，再调用afterReturning方法，实现的是方法调用之后的逻辑增强，这个时序也是固定的。所以注意了，在advice.afterReturing()方法中，是可以拿到目标方法的返回值的。</p>
+<p>在拦截器的使用中，存在一个有意思的问题，同时也是一个有着广泛争议的话题：拦截器是否应该影响业务程序的流程？比如，在before()拦截器中加入一个返回标志（true/false），当其为false时，我们就中止业务流程并且不再调用目标方法。</p>
+<p>不同的开发者对于这个问题有着不同的主张。一方面，这种机制使得开发者能够根据需要对业务逻辑进行精细控制；另一方面，过度使用这种机制也可能会导致代码难度增加、可维护性降低等问题。因此，在使用拦截器的时候，需要在开发效率和程序可维护性之间做出一个平衡，并根据实际情况做出相应的选择。</p>
+<p>现在我们手上有三种Advice类型了，普通的MethodInterceptor，还有特定的MethodBeforeAdviceInterceptor和AfterReturningAdviceInterceptor，自然在ProxyFactoryBean中也要对这个initializeAdvisor方法进行改造，分别支持三种不同类型的Advice。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.minis.aop</span><span class="p">;</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">ProxyFactoryBean</span><span class="w"> </span><span class="kd">implements</span><span class="w"> </span><span class="n">FactoryBean</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="n">BeanFactoryAware</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">synchronized</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">initializeAdvisor</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="w">        </span><span class="n">Object</span><span class="w"> </span><span class="n">advice</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="w">        </span><span class="n">MethodInterceptor</span><span class="w"> </span><span class="n">mi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a><span class="w">        </span><span class="k">try</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a><span class="w">            </span><span class="n">advice</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="na">beanFactory</span><span class="p">.</span><span class="na">getBean</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="na">interceptorName</span><span class="p">);</span>
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a><span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">BeansException</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a><span class="w">            </span><span class="n">e</span><span class="p">.</span><span class="na">printStackTrace</span><span class="p">();</span>
+<a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">advice</span><span class="w"> </span><span class="k">instanceof</span><span class="w"> </span><span class="n">BeforeAdvice</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-25-12" name="__codelineno-25-12" href="#__codelineno-25-12"></a><span class="w">            </span><span class="n">mi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MethodBeforeAdviceInterceptor</span><span class="p">((</span><span class="n">MethodBeforeAdvice</span><span class="p">)</span><span class="n">advice</span><span class="p">);</span>
+<a id="__codelineno-25-13" name="__codelineno-25-13" href="#__codelineno-25-13"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-25-14" name="__codelineno-25-14" href="#__codelineno-25-14"></a><span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">advice</span><span class="w"> </span><span class="k">instanceof</span><span class="w"> </span><span class="n">AfterAdvice</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-25-15" name="__codelineno-25-15" href="#__codelineno-25-15"></a><span class="w">            </span><span class="n">mi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AfterReturningAdviceInterceptor</span><span class="p">((</span><span class="n">AfterReturningAdvice</span><span class="p">)</span><span class="n">advice</span><span class="p">);</span>
+<a id="__codelineno-25-16" name="__codelineno-25-16" href="#__codelineno-25-16"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-25-17" name="__codelineno-25-17" href="#__codelineno-25-17"></a><span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">advice</span><span class="w"> </span><span class="k">instanceof</span><span class="w"> </span><span class="n">MethodInterceptor</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-25-18" name="__codelineno-25-18" href="#__codelineno-25-18"></a><span class="w">            </span><span class="n">mi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">MethodInterceptor</span><span class="p">)</span><span class="n">advice</span><span class="p">;</span>
+<a id="__codelineno-25-19" name="__codelineno-25-19" href="#__codelineno-25-19"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-25-20" name="__codelineno-25-20" href="#__codelineno-25-20"></a><span class="w">        </span><span class="n">advisor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">DefaultAdvisor</span><span class="p">();</span>
+<a id="__codelineno-25-21" name="__codelineno-25-21" href="#__codelineno-25-21"></a><span class="w">        </span><span class="n">advisor</span><span class="p">.</span><span class="na">setMethodInterceptor</span><span class="p">(</span><span class="n">mi</span><span class="p">);</span>
+<a id="__codelineno-25-22" name="__codelineno-25-22" href="#__codelineno-25-22"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-25-23" name="__codelineno-25-23" href="#__codelineno-25-23"></a><span class="p">}</span>
+</code></pre></div>
+<p>上述实现比较简单，根据不同的Advice类型进行判断，最后统一用MethodInterceptor来封装。</p>
+<h2 id="_5">测试</h2>
+<p>在这一步改造完毕后，我们测试一下，这里我们提供的是比较简单的实现，实际开发过程中你可以跟据自己的需求定制开发。</p>
+<p>我们先提供两个Advice。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.test.service</span><span class="p">;</span>
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">MyAfterAdvice</span><span class="w"> </span><span class="kd">implements</span><span class="w"> </span><span class="n">AfterReturningAdvice</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="w">    </span><span class="nd">@Override</span>
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">afterReturning</span><span class="p">(</span><span class="n">Object</span><span class="w"> </span><span class="n">returnValue</span><span class="p">,</span><span class="w"> </span><span class="n">Method</span><span class="w"> </span><span class="n">method</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="o">[]</span><span class="w"> </span><span class="n">args</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="w"> </span><span class="n">target</span><span class="p">)</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">Throwable</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&quot;----------my interceptor after method call----------&quot;</span><span class="p">);</span>
+<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a><span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="kn">package</span><span class="w"> </span><span class="nn">com.test.service</span><span class="p">;</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">MyBeforeAdvice</span><span class="w"> </span><span class="kd">implements</span><span class="w"> </span><span class="n">MethodBeforeAdvice</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="w">    </span><span class="nd">@Override</span>
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">before</span><span class="p">(</span><span class="n">Method</span><span class="w"> </span><span class="n">method</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="o">[]</span><span class="w"> </span><span class="n">args</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="w"> </span><span class="n">target</span><span class="p">)</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">Throwable</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&quot;----------my interceptor before method call----------&quot;</span><span class="p">);</span>
+<a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-27-7" name="__codelineno-27-7" href="#__codelineno-27-7"></a><span class="p">}</span>
+</code></pre></div>
+<p>上述的测试代码都很简单，在此不多赘述。相应的applicationContext.xml这个配置文件里面的内容也要发生变化。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a><span class="nt">&lt;beans&gt;</span>
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="w">   </span><span class="nt">&lt;bean</span><span class="w"> </span><span class="na">id=</span><span class="s">&quot;myBeforeAdvice&quot;</span><span class="w"> </span><span class="na">class=</span><span class="s">&quot;com.test.service.MyBeforeAdvice&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a><span class="w">   </span><span class="nt">&lt;bean</span><span class="w"> </span><span class="na">id=</span><span class="s">&quot;realaction&quot;</span><span class="w"> </span><span class="na">class=</span><span class="s">&quot;com.test.service.Action1&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
+<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a><span class="w">   </span><span class="nt">&lt;bean</span><span class="w"> </span><span class="na">id=</span><span class="s">&quot;action&quot;</span><span class="w"> </span><span class="na">class=</span><span class="s">&quot;com.minis.aop.ProxyFactoryBean&quot;</span><span class="w"> </span><span class="nt">&gt;</span>
+<a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a><span class="w">      </span><span class="nt">&lt;property</span><span class="w"> </span><span class="na">type=</span><span class="s">&quot;java.lang.Object&quot;</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;target&quot;</span><span class="w"> </span><span class="na">ref=</span><span class="s">&quot;realaction&quot;</span><span class="nt">/&gt;</span>
+<a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a><span class="w">      </span><span class="nt">&lt;property</span><span class="w"> </span><span class="na">type=</span><span class="s">&quot;String&quot;</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;interceptorName&quot;</span><span class="w"> </span><span class="na">value=</span><span class="s">&quot;myBeforeAdvice&quot;</span><span class="nt">/&gt;</span>
+<a id="__codelineno-28-8" name="__codelineno-28-8" href="#__codelineno-28-8"></a><span class="w">   </span><span class="nt">&lt;/bean&gt;</span>
+<a id="__codelineno-28-9" name="__codelineno-28-9" href="#__codelineno-28-9"></a><span class="nt">&lt;/beans&gt;</span>
+</code></pre></div>
+<p>将beforeAdvice或者afterAdvice放在配置文件里，除了注册的Bean类名有一些修改，其配置是没有发生任何别的变化的，但经过这样一番改造，我们就能使用上述三类Advice，来对我们的业务代码进行拦截增强处理了。</p>
+<h2 id="_6">小结</h2>
+<p>这节课我们在简单动态代理结构的基础上，<strong>将动态添加的逻辑设计得更加结构化一点，而不是全部简单地堆在invoke()一个方法中</strong>。为此，我们提出了Advice的概念，表示这是一个增强操作。然后提出Interceptor拦截器的概念，它实现了真正的增强逻辑并包装了目标方法的调用，应用程序中实际使用的就是这个Interceptor。我们实际实现的是MethodInterceptor，它表示的是调用方法上的拦截器。</p>
+<p>我们注意到大部分拦截的行为都是比较固定的，或者在方法调用之前，或者在之后，为了方便处理这些常见的场景，我们进一步分离出了beforeAdvice和afterAdvice。通过这些工作，用户希望插入的例行性逻辑现在都单独抽取成一个部件了，应用程序员只要简单地实现MethodBeforeAdvice和AfterReturningAdvice即可。整个软件结构化很好，完全解耦。</p>
+<p>完整源代码参见 <a href="https://github.com/YaleGuo/minis">https://github.com/YaleGuo/minis</a></p>
+<h2 id="_7">课后题</h2>
+<p>学完这节课的内容，我也给你留一道思考题。如果我们希望beforeAdvice能在某种情况下阻止目标方法的调用，应该从哪里下手改造？欢迎你在留言区与我交流讨论，也欢迎你把这节课分享给需要的朋友。我们下节课见！</p>
 <div><strong>精选留言（5）</strong></div>
 <ul>
-<li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKtlEYuHnR8VdQSpZcicEsrcpSQZKsthrluPjbv3cMCLF5tM3zbmQ1UnwPUfNoIKNvPer9sH1wS7aA/132" width="30px"><span>Geek_5c6106</span> 👍（1） 💬（3）<div>老师，请问一下 ProxyFactoryBean bean中的BeanFactory beanFactory属性是在什么时候的设置值的？
+<li><span>Geek_5c6106</span> 👍（1） 💬（3）<div>老师，请问一下 ProxyFactoryBean bean中的BeanFactory beanFactory属性是在什么时候的设置值的？
 这个是要在AbstractBeanFactory中设置值的吗？
 if (singleton instanceof FactoryBean) {
             return this.getObjectForBeanInstance(singleton, beanName);
         }
-getObjectForBeanInstance 方法中将this，将值设置到ProxyFactoryBean 中吗？</div>2023-05-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/8b/4b/15ab499a.jpg" width="30px"><span>风轻扬</span> 👍（0） 💬（1）<div>老师，MethodBeforeAdviceInterceptor为什么也要实现BeforeAdvice接口呢？</div>2023-06-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/83/af/1cb42cd3.jpg" width="30px"><span>马以</span> 👍（0） 💬（0）<div>思考题：因为代理对象执行的入口全部都在interceptor.invoke(invocation)这个方法中，如果想要截断，就在具体的XXXInterceptor中处理就可以了</div>2023-12-27</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83ep9YJC0GnicC7TDcrGFsfAZ6ATQLO29icXSKvntKcAcJGGJN6IibLrzHyp35Lia36fVlpSE8HsicIyOQyw/132" width="30px"><span>Geek_149cde</span> 👍（0） 💬（0）<div>这儿测试的时候调用的是 doAction() 方法，但是不太理解为什么调用 doAction() 方法会自动调用 JdkDynamicAopProxy 类中的 invoke() </div>2023-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/8b/4b/15ab499a.jpg" width="30px"><span>风轻扬</span> 👍（0） 💬（0）<div>思考题：可以在MethodBeforeAdviceInterceptor中判断是否对请求进行拦截，业务意义明确</div>2023-06-03</li><br/>
+getObjectForBeanInstance 方法中将this，将值设置到ProxyFactoryBean 中吗？</div>2023-05-19</li><br/><li><span>风轻扬</span> 👍（0） 💬（1）<div>老师，MethodBeforeAdviceInterceptor为什么也要实现BeforeAdvice接口呢？</div>2023-06-03</li><br/><li><span>马以</span> 👍（0） 💬（0）<div>思考题：因为代理对象执行的入口全部都在interceptor.invoke(invocation)这个方法中，如果想要截断，就在具体的XXXInterceptor中处理就可以了</div>2023-12-27</li><br/><li><span>Geek_149cde</span> 👍（0） 💬（0）<div>这儿测试的时候调用的是 doAction() 方法，但是不太理解为什么调用 doAction() 方法会自动调用 JdkDynamicAopProxy 类中的 invoke() </div>2023-07-19</li><br/><li><span>风轻扬</span> 👍（0） 💬（0）<div>思考题：可以在MethodBeforeAdviceInterceptor中判断是否对请求进行拦截，业务意义明确</div>2023-06-03</li><br/>
 </ul>
 
 

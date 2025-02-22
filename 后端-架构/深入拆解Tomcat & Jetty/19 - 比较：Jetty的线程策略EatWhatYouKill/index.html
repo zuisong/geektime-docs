@@ -9255,6 +9255,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#jettyselector" class="md-nav__link">
+    <span class="md-ellipsis">
+      Jetty中的Selector编程
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13093,6 +13120,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#jettyselector" class="md-nav__link">
+    <span class="md-ellipsis">
+      Jetty中的Selector编程
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13125,11 +13179,185 @@
 <h2 id="selector">Selector编程的一般思路</h2>
 <p>常规的NIO编程思路是，将I/O事件的侦测和请求的处理分别用不同的线程处理。具体过程是：</p>
 <p>启动一个线程，在一个死循环里不断地调用select方法，检测Channel的I/O状态，一旦I/O事件达到，比如数据就绪，就把该I/O事件以及一些数据包装成一个Runnable，将Runnable放到新线程中去处理。</p>
-<div><strong>精选留言（19）</strong></div>
+<p>在这个过程中按照职责划分，有两个线程在干活，一个是I/O事件检测线程，另一个是I/O事件处理线程。我们仔细思考一下这两者的关系，其实它们是生产者和消费者的关系。I/O事件侦测线程作为生产者，负责“生产”I/O事件，也就是负责接活儿的老板；I/O处理线程是消费者，它“消费”并处理I/O事件，就是干苦力的员工。把这两个工作用不同的线程来处理，好处是它们互不干扰和阻塞对方。</p>
+<h2 id="jettyselector">Jetty中的Selector编程</h2>
+<p>然而世事无绝对，将I/O事件检测和业务处理这两种工作分开的思路也有缺点。当Selector检测读就绪事件时，数据已经被拷贝到内核中的缓存了，同时CPU的缓存中也有这些数据了，我们知道CPU本身的缓存比内存快多了，这时当应用程序去读取这些数据时，如果用另一个线程去读，很有可能这个读线程使用另一个CPU核，而不是之前那个检测数据就绪的CPU核，这样CPU缓存中的数据就用不上了，并且线程切换也需要开销。</p>
+<p>因此Jetty的Connector做了一个大胆尝试，那就是用<strong>把I/O事件的生产和消费放到同一个线程来处理</strong>，如果这两个任务由同一个线程来执行，如果执行过程中线程不阻塞，操作系统会用同一个CPU核来执行这两个任务，这样就能利用CPU缓存了。那具体是如何做的呢，我们还是来详细分析一下Connector中的ManagedSelector组件。</p>
+<p><strong>ManagedSelector</strong></p>
+<p>ManagedSelector的本质就是一个Selector，负责I/O事件的检测和分发。为了方便使用，Jetty在Java原生的Selector上做了一些扩展，就变成了ManagedSelector，我们先来看看它有哪些成员变量：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>public class ManagedSelector extends ContainerLifeCycle implements Dumpable
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>{
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    //原子变量，表明当前的ManagedSelector是否已经启动
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    private final AtomicBoolean _started = new AtomicBoolean(false);
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    //表明是否阻塞在select调用上
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    private boolean _selecting = false;
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    //管理器的引用，SelectorManager管理若干ManagedSelector的生命周期
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    private final SelectorManager _selectorManager;
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    //ManagedSelector不止一个，为它们每人分配一个id
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    private final int _id;
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    //关键的执行策略，生产者和消费者是否在同一个线程处理由它决定
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    private final ExecutionStrategy _strategy;
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    //Java原生的Selector
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    private Selector _selector;
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    //&quot;Selector更新任务&quot;队列
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    private Deque&lt;SelectorUpdate&gt; _updates = new ArrayDeque&lt;&gt;();
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    private Deque&lt;SelectorUpdate&gt; _updateable = new ArrayDeque&lt;&gt;();
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    ...
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>}
+</code></pre></div>
+<p>这些成员变量中其他的都好理解，就是“Selector更新任务”队列<code>_updates</code>和执行策略<code>_strategy</code>可能不是很直观。</p>
+<p><strong>SelectorUpdate接口</strong></p>
+<p>为什么需要一个“Selector更新任务”队列呢，对于Selector的用户来说，我们对Selector的操作无非是将Channel注册到Selector或者告诉Selector我对什么I/O事件感兴趣，那么这些操作其实就是对Selector状态的更新，Jetty把这些操作抽象成SelectorUpdate接口。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>/**
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a> * A selector update to be done when the selector has been woken.
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a> */
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>public interface SelectorUpdate
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>{
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    void update(Selector selector);
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>}
+</code></pre></div>
+<p>这意味着如果你不能直接操作ManageSelector中的Selector，而是需要向ManagedSelector提交一个任务类，这个类需要实现SelectorUpdate接口update方法，在update方法里定义你想要对ManagedSelector做的操作。</p>
+<p>比如Connector中Endpoint组件对读就绪事件感兴趣，它就向ManagedSelector提交了一个内部任务类ManagedSelector.SelectorUpdate：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>_selector.submit(_updateKeyAction);
+</code></pre></div>
+<p>这个<code>_updateKeyAction</code>就是一个SelectorUpdate实例，它的update方法实现如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>private final ManagedSelector.SelectorUpdate _updateKeyAction = new ManagedSelector.SelectorUpdate()
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>{
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    @Override
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    public void update(Selector selector)
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    {
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        //这里的updateKey其实就是调用了SelectionKey.interestOps(OP_READ);
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        updateKey();
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    }
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>};
+</code></pre></div>
+<p>我们看到在update方法里，调用了SelectionKey类的interestOps方法，传入的参数是<code>OP_READ</code>，意思是现在我对这个Channel上的读就绪事件感兴趣了。</p>
+<p>那谁来负责执行这些update方法呢，答案是ManagedSelector自己，它在一个死循环里拉取这些SelectorUpdate任务类逐个执行。</p>
+<p><strong>Selectable接口</strong></p>
+<p>那I/O事件到达时，ManagedSelector怎么知道应该调哪个函数来处理呢？其实也是通过一个任务类接口，这个接口就是Selectable，它返回一个Runnable，这个Runnable其实就是I/O事件就绪时相应的处理逻辑。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>public interface Selectable
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>{
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    //当某一个Channel的I/O事件就绪后，ManagedSelector会调用的回调函数
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    Runnable onSelected();
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    //当所有事件处理完了之后ManagedSelector会调的回调函数，我们先忽略。
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    void updateKey();
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>}
+</code></pre></div>
+<p>ManagedSelector在检测到某个Channel上的I/O事件就绪时，也就是说这个Channel被选中了，ManagedSelector调用这个Channel所绑定的附件类的onSelected方法来拿到一个Runnable。</p>
+<p>这句话有点绕，其实就是ManagedSelector的使用者，比如Endpoint组件在向ManagedSelector注册读就绪事件时，同时也要告诉ManagedSelector在事件就绪时执行什么任务，具体来说就是传入一个附件类，这个附件类需要实现Selectable接口。ManagedSelector通过调用这个onSelected拿到一个Runnable，然后把Runnable扔给线程池去执行。</p>
+<p>那Endpoint的onSelected是如何实现的呢？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>@Override
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>public Runnable onSelected()
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>{
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    int readyOps = _key.readyOps();
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    boolean fillable = (readyOps &amp; SelectionKey.OP_READ) != 0;
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    boolean flushable = (readyOps &amp; SelectionKey.OP_WRITE) != 0;
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    // return task to complete the job
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    Runnable task= fillable 
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>            ? (flushable 
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>                    ? _runCompleteWriteFillable 
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>                    : _runFillable)
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>            : (flushable 
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>                    ? _runCompleteWrite 
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>                    : null);
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    return task;
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>}
+</code></pre></div>
+<p>上面的代码逻辑很简单，就是读事件到了就读，写事件到了就写。</p>
+<p><strong>ExecutionStrategy</strong></p>
+<p>铺垫了这么多，终于要上主菜了。前面我主要介绍了ManagedSelector的使用者如何跟ManagedSelector交互，也就是如何注册Channel以及I/O事件，提供什么样的处理类来处理I/O事件，接下来我们来看看ManagedSelector是如何统一管理和维护用户注册的Channel集合。再回到今天开始的讨论，ManagedSelector将I/O事件的生产和消费看作是生产者消费者模式，为了充分利用CPU缓存，生产和消费尽量放到同一个线程处理，那这是如何实现的呢？Jetty定义了ExecutionStrategy接口：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>public interface ExecutionStrategy
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>{
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    //只在HTTP2中用到，简单起见，我们先忽略这个方法。
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    public void dispatch();
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    //实现具体执行策略，任务生产出来后可能由当前线程执行，也可能由新线程来执行
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    public void produce();
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    //任务的生产委托给Producer内部接口，
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    public interface Producer
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    {
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        //生产一个Runnable(任务)
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>        Runnable produce();
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    }
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>}
+</code></pre></div>
+<p>我们看到ExecutionStrategy接口比较简单，它将具体任务的生产委托内部接口Producer，而在自己的produce方法里来实现具体执行逻辑，<strong>也就是生产出来的任务要么由当前线程执行，要么放到新线程中执行</strong>。Jetty提供了一些具体策略实现类：ProduceConsume、ProduceExecuteConsume、ExecuteProduceConsume和EatWhatYouKill。它们的区别是：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/7b/57/a9b04544.jpg" width="30px"><span>QQ怪</span> 👍（21） 💬（1）<div>课后问题就有点像分布式服务为什么爱用消息中间件一样，一切都是为了解耦，服务类比线程，服务与服务可以直接通讯，线程与线程也可以直接通讯，服务有时候会比较忙或者挂掉了，会导致该请求消息丢失，线程与线程之间的上下文切换同样会带来很大的性能消耗，如果此时的线程池没有多余的线程使用，可能会导致线程积压致使cpu飙高，使用队列能够有效平衡消费者和生产者之间的压力，达到高效率执行。</div>2019-06-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（3） 💬（1）<div>老实好!
+<li>ProduceConsume：任务生产者自己依次生产和执行任务，对应到NIO通信模型就是用一个线程来侦测和处理一个ManagedSelector上所有的I/O事件，后面的I/O事件要等待前面的I/O事件处理完，效率明显不高。通过图来理解，图中绿色表示生产一个任务，蓝色表示执行这个任务。</li>
+</ul>
+<!--THE END-->
+
+<p><img alt="" src="https://static001.geekbang.org/resource/image/23/3e/2394d237e9f7de107bfca736ffd71f3e.jpg?wh=757%2A53" /></p>
+<ul>
+<li>ProduceExecuteConsume：任务生产者开启新线程来运行任务，这是典型的I/O事件侦测和处理用不同的线程来处理，缺点是不能利用CPU缓存，并且线程切换成本高。同样我们通过一张图来理解，图中的棕色表示线程切换。</li>
+</ul>
+<!--THE END-->
+
+<p><img alt="" src="https://static001.geekbang.org/resource/image/7e/6d/7e50ce9ec1bff55bbec777e79271066d.png?wh=743%2A263" /></p>
+<ul>
+<li>ExecuteProduceConsume：任务生产者自己运行任务，但是该策略可能会新建一个新线程以继续生产和执行任务。这种策略也被称为“吃掉你杀的猎物”，它来自狩猎伦理，认为一个人不应该杀死他不吃掉的东西，对应线程来说，不应该生成自己不打算运行的任务。它的优点是能利用CPU缓存，但是潜在的问题是如果处理I/O事件的业务代码执行时间过长，会导致线程大量阻塞和线程饥饿。</li>
+</ul>
+<!--THE END-->
+
+<p><img alt="" src="https://static001.geekbang.org/resource/image/43/b4/43c2dadaf5c323edf057a90ff06a71b4.png?wh=743%2A263" /></p>
+<ul>
+<li>EatWhatYouKill：这是Jetty对ExecuteProduceConsume策略的改良，在线程池线程充足的情况下等同于ExecuteProduceConsume；当系统比较忙线程不够时，切换成ProduceExecuteConsume策略。为什么要这么做呢，原因是ExecuteProduceConsume是在同一线程执行I/O事件的生产和消费，它使用的线程来自Jetty全局的线程池，这些线程有可能被业务代码阻塞，如果阻塞得多了，全局线程池中的线程自然就不够用了，最坏的情况是连I/O事件的侦测都没有线程可用了，会导致Connector拒绝浏览器请求。于是Jetty做了一个优化，在低线程情况下，就执行ProduceExecuteConsume策略，I/O侦测用专门的线程处理，I/O事件的处理扔给线程池处理，其实就是放到线程池的队列里慢慢处理。</li>
+</ul>
+<p>分析了这几种线程策略，我们再来看看Jetty是如何实现ExecutionStrategy接口的。答案其实就是实现Produce接口生产任务，一旦任务生产出来，ExecutionStrategy会负责执行这个任务。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>private class SelectorProducer implements ExecutionStrategy.Producer
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>{
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    private Set&lt;SelectionKey&gt; _keys = Collections.emptySet();
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    private Iterator&lt;SelectionKey&gt; _cursor = Collections.emptyIterator();
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    @Override
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    public Runnable produce()
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    {
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>        while (true)
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>        {
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>            //如何Channel集合中有I/O事件就绪，调用前面提到的Selectable接口获取Runnable,直接返回给ExecutionStrategy去处理
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>            Runnable task = processSelected();
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>            if (task != null)
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>                return task;
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>           //如果没有I/O事件就绪，就干点杂活，看看有没有客户提交了更新Selector的任务，就是上面提到的SelectorUpdate任务类。
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>            processUpdates();
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>            updateKeys();
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>           //继续执行select方法，侦测I/O就绪事件
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>            if (!select())
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>                return null;
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>        }
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>    }
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a> }
+</code></pre></div>
+<p>SelectorProducer是ManagedSelector的内部类，SelectorProducer实现了ExecutionStrategy中的Producer接口中的produce方法，需要向ExecutionStrategy返回一个Runnable。在这个方法里SelectorProducer主要干了三件事情</p>
+<ol>
+<li>如果Channel集合中有I/O事件就绪，调用前面提到的Selectable接口获取Runnable，直接返回给ExecutionStrategy去处理。</li>
+<li>如果没有I/O事件就绪，就干点杂活，看看有没有客户提交了更新Selector上事件注册的任务，也就是上面提到的SelectorUpdate任务类。</li>
+<li>干完杂活继续执行select方法，侦测I/O就绪事件。</li>
+</ol>
+<h2 id="_1">本期精华</h2>
+<p>多线程虽然是提高并发的法宝，但并不是说线程越多越好，CPU缓存以及线程上下文切换的开销也是需要考虑的。Jetty巧妙设计了EatWhatYouKill的线程策略，尽量用同一个线程侦测I/O事件和处理I/O事件，充分利用了CPU缓存，并减少了线程切换的开销。</p>
+<h2 id="_2">课后思考</h2>
+<p>文章提到ManagedSelector的使用者不能直接向它注册I/O事件，而是需要向ManagedSelector提交一个SelectorUpdate事件，ManagedSelector将这些事件Queue起来由自己来统一处理，这样做有什么好处呢？</p>
+<p>不知道今天的内容你消化得如何？如果还有疑问，请大胆的在留言区提问，也欢迎你把你的课后思考和心得记录下来，与我和其他同学一起讨论。如果你觉得今天有所收获，欢迎你把它分享给你的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>QQ怪</span> 👍（21） 💬（1）<div>课后问题就有点像分布式服务为什么爱用消息中间件一样，一切都是为了解耦，服务类比线程，服务与服务可以直接通讯，线程与线程也可以直接通讯，服务有时候会比较忙或者挂掉了，会导致该请求消息丢失，线程与线程之间的上下文切换同样会带来很大的性能消耗，如果此时的线程池没有多余的线程使用，可能会导致线程积压致使cpu飙高，使用队列能够有效平衡消费者和生产者之间的压力，达到高效率执行。</div>2019-06-23</li><br/><li><span>-W.LI-</span> 👍（3） 💬（1）<div>老实好!
 检测到读就绪的时候数据已被拷贝到了内核缓存中。CPU的缓存中也有这些数据。
-这句话怎么理解啊，CPU的缓存说的是高速缓存么?然后内核缓存是什么呢？这方面的知识需要看啥书补啊(是操作系统么?)?IO模型，数据需要拷贝的次数我一点搞不懂</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d0/69/5dbdc245.jpg" width="30px"><span>张德</span> 👍（2） 💬（1）<div>李老师能否讲一下怎么调试源码   怎么搭建调试源码的环境  就比如说拿Jetty举例</div>2019-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/6d/8f/81e282e2.jpg" width="30px"><span>802.11</span> 👍（2） 💬（1）<div>老师，在NIO2中服务器端的几个概念不是很清晰，比如WindowsAsynchronousChannelProvider，Invoker等。如果需要系统了解这几个概念是怎么串起来的，怎么办呢。</div>2019-06-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（0） 💬（1）<div>老师好!我有个问题，我是先把学校教的计算机基础的书操作系统，计算机组成原理这些再看一遍补基础。还是直接上手撸源码啊？</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1e/3a/5b21c01c.jpg" width="30px"><span>nightmare</span> 👍（18） 💬（0）<div>第一selectorUpdate可以统一抽象封装注册的io事件，坐到面相抽象编程，将来如果nio的api接口有变动，也不需要改动ManangerSelector的代码 只需要新建一下selectorUpdate的子类来实现变更 第二  作为缓冲，，如果高并发的话，一下子很多channel注册到linux的epoll模型上，红黑树的层级就会很大，select的时候就比较耗时，有一个缓冲，可以均匀注册到linux的epoll模型上，既不会快速让红黑树发生过多旋转，也不会过多占用太多文件描述符</div>2019-06-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（13） 💬（2）<div>李老师好!越看越不明白了，我承认我基础差也没去看源码。不晓得别的同学看不看的懂。
+这句话怎么理解啊，CPU的缓存说的是高速缓存么?然后内核缓存是什么呢？这方面的知识需要看啥书补啊(是操作系统么?)?IO模型，数据需要拷贝的次数我一点搞不懂</div>2019-06-24</li><br/><li><span>张德</span> 👍（2） 💬（1）<div>李老师能否讲一下怎么调试源码   怎么搭建调试源码的环境  就比如说拿Jetty举例</div>2019-06-25</li><br/><li><span>802.11</span> 👍（2） 💬（1）<div>老师，在NIO2中服务器端的几个概念不是很清晰，比如WindowsAsynchronousChannelProvider，Invoker等。如果需要系统了解这几个概念是怎么串起来的，怎么办呢。</div>2019-06-23</li><br/><li><span>-W.LI-</span> 👍（0） 💬（1）<div>老师好!我有个问题，我是先把学校教的计算机基础的书操作系统，计算机组成原理这些再看一遍补基础。还是直接上手撸源码啊？</div>2019-06-24</li><br/><li><span>nightmare</span> 👍（18） 💬（0）<div>第一selectorUpdate可以统一抽象封装注册的io事件，坐到面相抽象编程，将来如果nio的api接口有变动，也不需要改动ManangerSelector的代码 只需要新建一下selectorUpdate的子类来实现变更 第二  作为缓冲，，如果高并发的话，一下子很多channel注册到linux的epoll模型上，红黑树的层级就会很大，select的时候就比较耗时，有一个缓冲，可以均匀注册到linux的epoll模型上，既不会快速让红黑树发生过多旋转，也不会过多占用太多文件描述符</div>2019-06-22</li><br/><li><span>-W.LI-</span> 👍（13） 💬（2）<div>李老师好!越看越不明白了，我承认我基础差也没去看源码。不晓得别的同学看不看的懂。
 老师能不能画点图方便理解。managedSelector怎么工作的还是不清楚。
 只看懂了四种生成消费模型
 1.单线程
@@ -13141,7 +13369,7 @@
 问题2.文中说managedselector由endpoint管理，具体怎么管理的呢?managedselector有多少个?怎么创建的?不同的managedselector之间channel共享么(个人感觉不共享会有并发冲突)?
 问题3.线程不够用的时候具体怎么切换的呢?慢慢的全部都转成2还是保留一部分线程执行3一部分执行2。
 问题4.我连channel是怎么注册到managedselector上的都没看明白。更别说销毁了。
-其实就是想知道这几个类的生命周期，然候就是直接执行交互图，纯文字我想不出。希望老师解惑不胜感激</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/78/0f/f4e012a1.jpg" width="30px"><span>掐你小77</span> 👍（3） 💬（0）<div>本章节中主要涉及的是三个组件：ManagerSelector,Producer(SelectoeProducer),ExecutionStrategy
+其实就是想知道这几个类的生命周期，然候就是直接执行交互图，纯文字我想不出。希望老师解惑不胜感激</div>2019-06-24</li><br/><li><span>掐你小77</span> 👍（3） 💬（0）<div>本章节中主要涉及的是三个组件：ManagerSelector,Producer(SelectoeProducer),ExecutionStrategy
 其中三个组件的作用如下：
 1，ManagerSelector用于其他调用者注册感兴趣事件和事件对应的处理逻辑。
    如何注册感兴趣事件和处理逻辑呢？提供了两个接口：SelectorUpdate和Selectable，
@@ -13162,7 +13390,7 @@
 
 较于理解（不准确）的执行顺序：调用者 --&gt; ManagerSelector --&gt; SelectoeProducer --&gt; ExecutionStrategy
 
-这样总结对么？老师。</div>2019-10-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/8c/48/2838ad55.jpg" width="30px"><span>sionsion</span> 👍（2） 💬（0）<div>https:&#47;&#47;webtide.com&#47;eat-what-you-kill&#47; , 这里有一篇文章也做了解释，有兴趣的可以看看。</div>2019-07-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/06/e9/a99ced9e.jpg" width="30px"><span>Gary</span> 👍（1） 💬（2）<div>老师好，在 ManagedSelector # SelectorProductor # processUpdates() 源码中看到有这么一段 
+这样总结对么？老师。</div>2019-10-13</li><br/><li><span>sionsion</span> 👍（2） 💬（0）<div>https:&#47;&#47;webtide.com&#47;eat-what-you-kill&#47; , 这里有一篇文章也做了解释，有兴趣的可以看看。</div>2019-07-14</li><br/><li><span>Gary</span> 👍（1） 💬（2）<div>老师好，在 ManagedSelector # SelectorProductor # processUpdates() 源码中看到有这么一段 
             synchronized(ManagedSelector.this)
             {
                 Deque&lt;SelectorUpdate&gt; updates = _updates;
@@ -13173,13 +13401,13 @@
            for (SelectorUpdate update : _updateable){
             ···
             }
-           这里不直接循环 _updates 的原因是防止不断有请求填充了 _updates，导致前面的请求无法返回吗，感觉这里的_updateable 用一个局部变量就可以了，为啥他要作为类的字段</div>2019-10-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/55/45/e4314bc6.jpg" width="30px"><span>magicnum</span> 👍（1） 💬（0）<div>不直接注册I&#47;O事件是为了解耦吧，而且队列平衡了生产者消费者的处理能力</div>2019-06-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7f/fa/4b8b3ece.jpg" width="30px"><span>Markss</span> 👍（0） 💬（0）<div>老师,有个地方不太理解, 利用同一个线程执行业务可以理解, 但是即使是同一个线程,用完cpu时间也会有上下文切换, 下一次执行依旧有可能被分配至其他cpu的呀, 依旧存在无法使用cpu缓存的问题呀?</div>2022-07-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4a/6f/e36b3908.jpg" width="30px"><span>xzy</span> 👍（0） 💬（0）<div>“根据 Jetty 的官方测试，这种名为“EatWhatYouKill”的线程策略将吞吐量提高了 8 倍”，jetty官方说明的链接有吗？</div>2021-12-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/be/e6/7808520d.jpg" width="30px"><span>Edward Lee</span> 👍（0） 💬（0）<div>对于课后习题，我说下自己的理解
+           这里不直接循环 _updates 的原因是防止不断有请求填充了 _updates，导致前面的请求无法返回吗，感觉这里的_updateable 用一个局部变量就可以了，为啥他要作为类的字段</div>2019-10-09</li><br/><li><span>magicnum</span> 👍（1） 💬（0）<div>不直接注册I&#47;O事件是为了解耦吧，而且队列平衡了生产者消费者的处理能力</div>2019-06-22</li><br/><li><span>Markss</span> 👍（0） 💬（0）<div>老师,有个地方不太理解, 利用同一个线程执行业务可以理解, 但是即使是同一个线程,用完cpu时间也会有上下文切换, 下一次执行依旧有可能被分配至其他cpu的呀, 依旧存在无法使用cpu缓存的问题呀?</div>2022-07-20</li><br/><li><span>xzy</span> 👍（0） 💬（0）<div>“根据 Jetty 的官方测试，这种名为“EatWhatYouKill”的线程策略将吞吐量提高了 8 倍”，jetty官方说明的链接有吗？</div>2021-12-02</li><br/><li><span>Edward Lee</span> 👍（0） 💬（0）<div>对于课后习题，我说下自己的理解
 
 ManagerSelector 管理 Queue 的好处
 1、单线程管理 IO 事件无需加锁操作
 2、从 Queue 里获取的 IO 事件可以根据策略选择更高效的处理方式
 3、屏蔽 SelectKey 繁琐的感兴趣的设置操作
-</div>2020-11-16</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTI4akcIyIOXB2OqibTe7FF90hwsBicxkjdicUNTMorGeIictdr3OoMxhc20yznmZWwAvQVThKPFWgOyMw/132" width="30px"><span>Chuan</span> 👍（0） 💬（0）<div>```
+</div>2020-11-16</li><br/><li><span>Chuan</span> 👍（0） 💬（0）<div>```
             case PRODUCE_CONSUME:
                 _pcMode.increment();
                 runTask(task);
@@ -13200,18 +13428,7 @@ ManagerSelector 管理 Queue 的好处
                 runTask(task);
 ```
 
-老师，看了EatWhatYouKill的代码，在doProduce()方法中有以上内容，来执行生产的任务，第一种是当前线程串行执行，第二种是由生产的线程非阻塞的执行？？第三种是开新线程执行，第四种好像也是当前线程执行，不过每个执行前都有个_xxxMode.increment()，好像是通过这个变量来控制的？不太明白代码里第二种的非阻塞怎么体现，以及第一种和和第四种的区别，好像和_xxxMode这个变量相关，望老师指点下，谢谢！！</div>2020-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（0） 💬（0）<div>1. 原来EatWhatYouKill是这个意思啊！ 
-
-2. 感觉jetty比tomcat更会巧妙的使用资源
-
-3. 评论区的问题和我的好像也差不多，22讲答疑应该会有。
-
-4. 操作系统的知识确实要常识化，到现在都没弄懂select poll epoll 是什么，已经三者之间的区别。
-
-5. 但是看了老师的讲解后，自己渐渐对网络编程好像有兴趣了，也更好奇了，之前从来没有过的感觉。只是现在还不知道从哪入手。</div>2019-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ad/27/5556ae50.jpg" width="30px"><span>Demter</span> 👍（0） 💬（0）<div>赞一个</div>2019-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/65/10/a543759a.jpg" width="30px"><span>kyon</span> 👍（0） 💬（1）<div>请问 Selectable 实现类是在什么时机注册到 ManagedSelector 的？是和提交 Selector 更新任务类一起吗？_selector.submit(_updateKeyAction)?
-
-另外 ManagedSelector 里为什么有两个 SelectorUpdate 队列，下面一个是不是 Selectable 队列？
-private Deque&lt;Selectable&gt; _updateable = new ArrayDeque&lt;&gt;();</div>2019-06-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（0） 💬（0）<div>李老师!SelectorUpdate接口的update方法有个入参完了。硬是没看见哪用了这个入参。泪流满面老师。</div>2019-06-24</li><br/>
+老师，看了EatWhatYouKill的代码，在doProduce()方法中有以上内容，来执行生产的任务，第一种是当前线程串行执行，第二种是由生产的线程非阻塞的执行？？第三种是开新线程执行，第四种好像也是当前线程执行，不过每个执行前都有个_xxxMode.increment()，好像是通过这个变量来控制的？不太明白代码里第二种的非阻塞怎么体现，以及第一种和和第四种的区别，好像和_xxxMode这个变量相关，望老师指点下，谢谢！！</div>2020-02-28</li><br/>
 </ul>
 
 

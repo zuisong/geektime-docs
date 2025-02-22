@@ -14626,11 +14626,239 @@
 <p>首先，我们知道，处理错误最直接的方式是通过错误码，这也是传统的方式，在过程式语言中通常都是用这样的方式处理错误的。比如C语言，基本上来说，其通过函数的返回值标识是否有错，然后通过全局的<code>errno</code>变量并配合一个 <code>errstr</code> 的数组来告诉你为什么出错。</p>
 <p>为什么是这样的设计？道理很简单，除了可以共用一些错误，更重要的是这其实是一种妥协。比如：<code>read()</code>, <code>write()</code>, <code>open()</code> 这些函数的返回值其实是返回有业务逻辑的值。也就是说，这些函数的返回值有两种语义，一种是成功的值，比如 <code>open()</code> 返回的文件句柄指针 <code>FILE*</code> ，或是错误 <code>NULL</code>。这样会导致调用者并不知道是什么原因出错了，需要去检查 <code>errno</code> 来获得出错的原因，从而可以正确地处理错误。</p>
 <p>一般而言，这样的错误处理方式在大多数情况下是没什么问题的。但是也有例外的情况，我们来看一下下面这个C语言的函数：</p>
-<div><strong>精选留言（30）</strong></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>int atoi(const char *str)
+</code></pre></div>
+<p>这个函数是把一个字符串转成整型。但是问题来了，如果一个要传的字符串是非法的（不是数字的格式），如"ABC"或者整型溢出了，那么这个函数应该返回什么呢？出错返回，返回什么数都不合理，因为这会和正常的结果混淆在一起。比如，返回 <code>0</code>，那么会和正常的对 “0” 字符的返回值完全混淆在一起。这样就无法判断出错的情况。你可能会说，是不是要检查一下 <code>errno</code>，按道理说应该是要去检查的，但是，我们在C99的规格说明书中可以看到这样的描述：</p>
+<blockquote>
+<p>7.20.1</p>
+<p>The functions atof, atoi, atol, and atoll need not affect the value of the integer expression errno on an error. If the value of the result cannot be represented, the behavior is undeﬁned.</p>
+</blockquote>
+<p>像<code>atoi()</code>, <code>atof()</code>, <code>atol()</code> 或是 <code>atoll()</code> 这样的函数是不会设置 <code>errno</code>的，而且，还说了，如果结果无法计算的话，行为是<code>undefined</code>。所以，后来，libc又给出了一个新的函数<code>strtol()</code>，这个函数在出错时会设置全局变量<code>errno</code> ：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>long strtol(const char *restrict str, char **restrict endptr, int base);
+</code></pre></div>
+<p>于是，我们就可以这样使用：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>long val = strtol(in_str, &amp;endptr, 10);  //10的意思是10进制
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>//如果无法转换
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>if (endptr == str) {
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    fprintf(stderr, &quot;No digits were found\n&quot;);
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    exit(EXIT_FAILURE);
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>}
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>//如果整型溢出了
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>if ((errno == ERANGE &amp;&amp; (val == LONG_MAX || val == LONG_MIN)) {
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    fprintf(stderr, &quot;ERROR: number out of range for LONG\n&quot;);
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    exit(EXIT_FAILURE);
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a> }
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>//如果是其它错误
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>if (errno != 0 &amp;&amp; val == 0) {
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    perror(&quot;strtol&quot;);
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    exit(EXIT_FAILURE);
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>}
+</code></pre></div>
+<p>虽然，<code>strtol()</code> 函数解决了 <code>atoi()</code> 函数的问题，但是我们还是能感觉到不是很舒服和自然。</p>
+<p>因为，这种用 <code>返回值</code> + <code>errno</code> 的错误检查方式会有一些问题：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/42/41/75cb08b6.jpg" width="30px"><span>精卫鸟</span> 👍（159） 💬（7）<div>隐式异常也不要显示的忽略吧，至少记录一条日志，不然会造成异常黑洞。之前帮同事找一个线上小概率问题，所有的日志和异常检测都抓不到，最后对全部进程一起strace，才发现是他catch了异常，啥都没做就return了...
+<li>程序员一不小心就会忘记返回值的检查，从而造成代码的Bug；</li>
+<li>函数接口非常不纯洁，正常值和错误值混淆在一起，导致语义有问题。</li>
+</ul>
+<p>所以，后来，有一些类库就开始区分这样的事情。比如，Windows的系统调用开始使用 <code>HRESULT</code> 的返回来统一错误的返回值，这样可以明确函数调用时的返回值是成功还是错误。但这样一来，函数的input和output只能通过函数的参数来完成，于是出现了所谓的 <code>入参</code> 和 <code>出参</code> 这样的区别。</p>
+<p>然而，这又使得函数接入中参数的语义变得复杂，一些参数是入参，一些参数是出参，函数接口变得复杂了一些。而且，依然没有解决函数的成功或失败可以被人为忽略的问题。</p>
+<h1 id="_2">多返回值</h1>
+<p>于是，有一些语言通过多返回值来解决这个问题，比如Go语言。Go语言的很多函数都会返回 <code>result, err</code> 两个值，于是：</p>
+<ul>
+<li>参数上基本上就是入参，而返回接口把结果和错误分离，这样使得函数的接口语义清晰；</li>
+<li>而且，Go语言中的错误参数如果要忽略，需要显式地忽略，用 <code>_</code> 这样的变量来忽略；</li>
+<li>另外，因为返回的 <code>error</code> 是个接口（其中只有一个方法 <code>Error()</code>，返回一个 <code>string</code> ），所以你可以扩展自定义的错误处理。</li>
+</ul>
+<p>比如下面这个JSON语法的错误：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>type SyntaxError struct {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    msg    string // description of error
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    Offset int64  // error occurred after reading Offset bytes
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>}
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>func (e *SyntaxError) Error() string { return e.msg }
+</code></pre></div>
+<p>在使用上会是这个样子：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>if err := dec.Decode(&amp;val); err != nil {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    if serr, ok := err.(*json.SyntaxError); ok {
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        line, col := findLine(f, serr.Offset)
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        return fmt.Errorf(&quot;%s:%d:%d: %v&quot;, f.Name(), line, col, err)
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    }
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    return err
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>}
+</code></pre></div>
+<p>上面这个示例来自Go的官方文档 《<a href="https://blog.golang.org/error-handling-and-go">Error Handling and Go</a>》，如果你有时间，可以点进去链接细看。</p>
+<p>多说一句，如果一个函数返回了多个不同类型的 <code>error</code>，你也可以使用下面这样的方式：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>if err != nil {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    switch err.(type) {
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        case *json.SyntaxError:
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>            ...
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        case *ZeroDivisionError:
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>            ...
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        case *NullPointerError:
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>            ...
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        default:
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>            ...
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    }
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>}
+</code></pre></div>
+<p>但即便像Go这样的语言能让错误处理语义更清楚，而且还有可扩展性，也有其问题。如果写过一段时间的Go语言，你就会明白其中的痛苦—— <code>if err != nil</code> 这样的语句简直是写到吐，只能在IDE中定义一个自动写这段代码的快捷键……而且，正常的逻辑代码会被大量的错误处理打得比较凌乱。</p>
+<h1 id="_3">资源清理</h1>
+<p>程序出错时需要对已分配的一些资源做清理，在传统的玩法下，每一步的错误都要去清理前面已分配好的资源。于是就出现了 <code>goto fail</code> 这样的错误处理模式。如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="cp">#define FREE(p) if(p) { \</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="cp">                    free(p); \</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="cp">                    p = NULL; \</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="cp">                 }</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">main</span><span class="p">()</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="p">{</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">    </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">fname</span><span class="o">=</span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">lname</span><span class="o">=</span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">mname</span><span class="o">=</span><span class="nb">NULL</span><span class="p">;</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">    </span><span class="n">fname</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="p">)</span><span class="w"> </span><span class="n">calloc</span><span class="w"> </span><span class="p">(</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="p">)</span><span class="w"> </span><span class="p">);</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="w"> </span><span class="n">fname</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">NULL</span><span class="w"> </span><span class="p">){</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">fail</span><span class="p">;</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="w">    </span><span class="n">lname</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="p">)</span><span class="w"> </span><span class="n">calloc</span><span class="w"> </span><span class="p">(</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="p">)</span><span class="w"> </span><span class="p">);</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="w"> </span><span class="n">lname</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">NULL</span><span class="w"> </span><span class="p">){</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">fail</span><span class="p">;</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w">    </span><span class="n">mname</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="p">)</span><span class="w"> </span><span class="n">calloc</span><span class="w"> </span><span class="p">(</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="p">)</span><span class="w"> </span><span class="p">);</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="w"> </span><span class="n">mname</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">NULL</span><span class="w"> </span><span class="p">){</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">fail</span><span class="p">;</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="w">    </span><span class="p">......</span>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a><span class="nl">fail</span><span class="p">:</span>
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a><span class="w">    </span><span class="n">FREE</span><span class="p">(</span><span class="n">fname</span><span class="p">);</span>
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a><span class="w">    </span><span class="n">FREE</span><span class="p">(</span><span class="n">lname</span><span class="p">);</span>
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a><span class="w">    </span><span class="n">FREE</span><span class="p">(</span><span class="n">mname</span><span class="p">);</span>
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a><span class="w">    </span><span class="n">ReportError</span><span class="p">(</span><span class="n">ERR_NO_MEMORY</span><span class="p">);</span>
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a><span class="p">}</span><span class="w"> </span>
+</code></pre></div>
+<p>这样的处理方式虽然可以，但是会有潜在的问题。最主要的一个问题就是你不能在中间的代码中有 <code>return</code> 语句，因为你需要清理资源。在维护这样的代码时需要格外小心，因为一不注意就会导致代码有资源泄漏的问题。</p>
+<p>于是，C++的RAII（Resource Acquisition Is Initialization）机制使用面向对象的特性可以容易地处理这个事情。RAII其实使用C++类的机制，在构造函数中分配资源，在析构函数中释放资源。下面看个例子。</p>
+<p>我们先看一个不好的示例：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="w"> </span><span class="n">m</span><span class="p">;</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="kt">void</span><span class="w"> </span><span class="nf">bad</span><span class="p">()</span><span class="w"> </span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="p">{</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span><span class="n">m</span><span class="p">.</span><span class="n">lock</span><span class="p">();</span><span class="w">                    </span><span class="c1">// 请求互斥</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">    </span><span class="n">f</span><span class="p">();</span><span class="w">                         </span><span class="c1">// 若f()抛异常，则互斥绝不被释放</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">    </span><span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">everything_ok</span><span class="p">())</span><span class="w"> </span><span class="k">return</span><span class="p">;</span><span class="w"> </span><span class="c1">// 提早返回，互斥绝不被释放</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">    </span><span class="n">m</span><span class="p">.</span><span class="n">unlock</span><span class="p">();</span><span class="w">                  </span><span class="c1">// 若bad()抵达此语句，互斥才被释放</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="p">}</span>
+</code></pre></div>
+<p>上面这个例子，在函数的第三条语句提前返回了，直接导致 <code>m.unlock()</code> 没有被调用，这样会引起死锁问题。我们来看一下用RAII的方式是怎样解决这个问题的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">//首先，先声明一个RAII类，注意其中的构造函数和析构函数</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">LockGuard</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="k">public</span><span class="o">:</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">    </span><span class="n">LockGuard</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="w"> </span><span class="o">&amp;</span><span class="n">m</span><span class="p">)</span><span class="o">:</span><span class="n">_m</span><span class="p">(</span><span class="n">m</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">lock</span><span class="p">();</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">    </span><span class="o">~</span><span class="n">LockGuard</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="w"> </span><span class="n">unlock</span><span class="p">();</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="k">private</span><span class="o">:</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&amp;</span><span class="w"> </span><span class="n">_m</span><span class="p">;</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="p">}</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="c1">//然后，我们来看一下，怎样使用的</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="kt">void</span><span class="w"> </span><span class="n">good</span><span class="p">()</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="p">{</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="w">    </span><span class="n">LockGuard</span><span class="w"> </span><span class="nf">lg</span><span class="p">(</span><span class="n">m</span><span class="p">);</span><span class="w">                </span><span class="c1">// RAII类：构造时，互斥量请求加锁</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="w">    </span><span class="n">f</span><span class="p">();</span><span class="w">                             </span><span class="c1">// 若f()抛异常，则释放互斥</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="w">    </span><span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">everything_ok</span><span class="p">())</span><span class="w"> </span><span class="k">return</span><span class="p">;</span><span class="w">     </span><span class="c1">// 提早返回，LockGuard析构时，互斥量被释放</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="p">}</span><span class="w">                                    </span><span class="c1">// 若good()正常返回，则释放互斥</span>
+</code></pre></div>
+<p>在Go语言中，使用<code>defer</code>关键字也可以做到这样的效果。参看下面的示例：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kd">func</span><span class="w"> </span><span class="nx">Close</span><span class="p">(</span><span class="nx">c</span><span class="w"> </span><span class="nx">io</span><span class="p">.</span><span class="nx">Closer</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">        </span><span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="p">}</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="kd">func</span><span class="w"> </span><span class="nx">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">    </span><span class="nx">r</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">Open</span><span class="p">(</span><span class="s">&quot;a&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">        </span><span class="nx">log</span><span class="p">.</span><span class="nx">Fatalf</span><span class="p">(</span><span class="s">&quot;error opening &#39;a&#39;\n&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w">    </span><span class="k">defer</span><span class="w"> </span><span class="nx">Close</span><span class="p">(</span><span class="nx">r</span><span class="p">)</span><span class="w"> </span><span class="c1">// 使用defer关键字在函数退出时关闭文件。</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="w">    </span><span class="nx">r</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">Open</span><span class="p">(</span><span class="s">&quot;b&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="w">        </span><span class="nx">log</span><span class="p">.</span><span class="nx">Fatalf</span><span class="p">(</span><span class="s">&quot;error opening &#39;b&#39;\n&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="w">    </span><span class="k">defer</span><span class="w"> </span><span class="nx">Close</span><span class="p">(</span><span class="nx">r</span><span class="p">)</span><span class="w"> </span><span class="c1">// 使用defer关键字在函数退出时关闭文件。</span>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="p">}</span>
+</code></pre></div>
+<p>不知道从上面这三个例子来看，不同语言的错误处理，你自己更喜欢哪个呢？就代码的易读和干净而言，我更喜欢C++的RAII模式，然后是Go的defer模式，最后才是C语言的goto fail模式。</p>
+<h1 id="_4">异常捕捉处理</h1>
+<p>上面，我们讲了错误检查和程序出错后对资源的清理这两个事。能把这个事做得比较好的其实是 <code>try - catch - finally</code> 这个编程模式。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>try {
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    ... // 正常的业务代码
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>} catch (Exception1 e) {
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    ... // 处理异常 Exception1 的代码
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>} catch (Exception2 e) {
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    ... // 处理异常 Exception2 的代码
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>} finally {
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    ... // 资源清理的代码
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>}
+</code></pre></div>
+<p>把正常的代码、错误处理的代码、资源清理的代码分门别类，看上去非常干净。</p>
+<p>有一些人明确表示不喜欢 <code>try - catch</code> 这种错误处理方式，比如著名的 软件工程师<a href="https://www.joelonsoftware.com/2005/05/11/making-wrong-code-look-wrong/">Joel Spolsky</a>。</p>
+<p>但是，我想说一下，<code>try - catch - finally</code> 这样的异常处理方式有如下一些好处。</p>
+<ul>
+<li>函数接口在input（参数）和output（返回值）以及错误处理的语义是比较清楚的。</li>
+<li>正常逻辑的代码可以与错误处理和资源清理的代码分开，提高了代码的可读性。</li>
+<li>异常不能被忽略（如果要忽略也需要catch住，这是显式忽略）。</li>
+<li>在面向对象的语言中（如Java），异常是个对象，所以，可以实现多态式的catch。</li>
+</ul>
+<p>与状态返回码相比，异常捕捉有一个显著的好处是，函数可以嵌套调用，或是链式调用，比如<code>int x = add(a, div(b,c));</code> 或 <code>Pizza p = PizzaBuilder().SetSize(sz) .SetPrice(p)...;</code>。</p>
+<p>当然，你可能会觉得异常捕捉对程序的性能是有影响的，这句话也对也不对。原因是这样的。</p>
+<ul>
+<li>异常捕捉的确是对性能有影响的，那是因为一旦异常被抛出，函数也就跟着return了。而程序在执行时需要处理函数栈的上下文，这会导致性能变得很慢，尤其是函数栈比较深的时候。</li>
+<li>但从另一方面来说，异常的抛出基本上表明程序的错误。程序在绝大多数情况下，应该是在没有异常的情况下运行的，所以，有异常的情况应该是少数的情况，不会影响正常处理的性能问题。</li>
+</ul>
+<p>总体而言，我还是觉得 <code>try - catch - finally</code> 这样的方式是很不错的。而且这个方式比返回错误码在诸多方面都更好。</p>
+<p>但是，<code>try - catch - finally</code> 有个致命的问题，那就是在异步运行的世界里的问题。try语句块里的函数运行在另外一个线程中，其中抛出的异常无法在调用者的这个线程中被捕捉。这个问题就比较大了。</p>
+<h1 id="vs">错误返回码 vs 异常捕捉</h1>
+<p>是返回错误状态，还是用异常捕捉的方式处理错误，可能是一个很容易引发争论的问题。有人说，对于一些偏底层的错误，比如：空指针、内存不足等，可以使用返回错误状态码的方式，而对于一些上层的业务逻辑方面的错误，可以使用异常捕捉。这么说有一定道理，因为偏底层的函数可能用得更多一些。但是我并不这么认为。</p>
+<p><strong>前面也比较过两者的优缺点，总体而言，似乎异常捕捉的优势更多一些。但是，我觉得应该从场景上来讨论这个事才是正确的姿势</strong>。</p>
+<p>要讨论场景，我们需要先把要处理的错误分好类别，这样有利于简化问题。</p>
+<p>因为，错误其实是很多的，不同的错误需要有不同的处理方式。但错误处理是有一些通用规则的。为了讲清楚这个事，我们需要把错误来分个类。我个人觉得错误可以分为三个大类。</p>
+<ul>
+<li><strong>资源的错误</strong>。当我们的代码去请求一些资源时导致的错误，比如打开一个没有权限的文件，写文件时出现的写错误，发送文件到网络端发现网络故障的错误，等等。<strong>这一类错误属于程序运行环境的问题。对于这类错误，有的我们可以处理，有的我们则无法处理。比如，内存耗尽、栈溢出或是一些程序运行时关键性资源不能满足等等这些情况，我们只能停止运行，甚至退出整个程序。</strong></li>
+<li><strong>程序的错误</strong>。比如：空指针、非法参数等。<strong>这类是我们自己程序的错误，我们要记录下来，写入日志，最好触发监控系统报警</strong>。</li>
+<li><strong>用户的错误</strong>。比如：Bad Request、Bad Format等这类由用户不合法输入带来的错误。<strong>这类错误基本上是在用户的API层上出现的问题</strong>。比如，解析一个XML或JSON文件，或是用户输入的字段不合法之类的。</li>
+</ul>
+<p><strong>对于这类问题，我们需要向用户端报错，让用户自己处理修正他们的输入或操作。然后，我们正常执行，但是需要做统计，统计相应的错误率，这样有利于我们改善软件或是侦测是否有恶意的用户请求。</strong></p>
+<p>我们可以看到，这三类错误中，有些是我们希望杜绝发生的，比如程序的Bug，有些则是我们杜绝不了的，比如用户的输入。而对于程序运行环境中的一些错误，则是我们希望可以恢复的。也就是说，我们希望可以通过重试或是妥协的方式来解决这些环境的问题，比如重建网络连接，重新打开一个新的文件。</p>
+<p>所以，是不是我们可以这样来在逻辑上分类：</p>
+<ul>
+<li>对于我们并不期望会发生的事，我们可以使用异常捕捉；</li>
+<li>对于我们觉得可能会发生的事，使用返回码。</li>
+</ul>
+<p>比如，如果你的函数参数传入的对象不应该是一个null对象，那么，一旦传入null对象后，函数就可以抛异常，因为我们并不期望总是会发生这样的事。</p>
+<p>而对于一个需要检查用户输入信息是否正确的事，比如：电子邮箱的格式，我们用返回码可能会好一些。所以，对于上面三种错误的类型来说，程序中的错误，可能用异常捕捉会比较合适；用户的错误，用返回码比较合适；而资源类的错误，要分情况，是用异常捕捉还是用返回值，要看这事是不应该出现的，还是经常出现的。</p>
+<p>当然，这只是一个大致的实践原则，并不代表所有的事都需要符合这个原则。</p>
+<p>除了用错误的分类来判断用返回码还是用异常捕捉之外，我们还要从程序设计的角度来考虑哪种情况下使用异常捕捉更好，哪种情况下使用返回码更好。</p>
+<p>因为异常捕捉在编程上的好处比函数返回值好很多，所以很多使用异常捕捉的代码会更易读也更健壮一些。而返回码容易被忽略，所以，使用返回码的代码需要做好测试才能得到更好的软件质量。</p>
+<p>不过，我们也要知道，在某些情况下，你只能使用其中的一个，比如：</p>
+<ul>
+<li>在C++重载操作符的情况下，你就很难使用错误返回码，只能抛异常；</li>
+<li>异常捕捉只能在同步的情况下使用，在异步模式下，抛异常这事就不行了，需要通过检查子进程退出码或是回调函数来解决；</li>
+<li>在分布式的情况下，调用远程服务只能看错误返回码，比如HTTP的返回码。</li>
+</ul>
+<p>所以，在大多数情况下，我们会混用这两种报错的方式，有时候，我们还会把异常转成错误码（比如HTTP的RESTful API），也会把错误码转成异常（比如对系统调用的错误）。</p>
+<p>总之，“报错的类型”和 “错误处理”是紧密相关的，错误处理方法多种多样，而且会在不同的层面上处理错误。有些底层错误就需要自己处理掉（比如：底层模块会自动重建网络连接），而有一些错误需要更上层的业务逻辑来处理（比如：重建网络连接不成功后只能让上层业务来处理怎么办？降级使用本地缓存还是直接报错给用户？）。</p>
+<p>所以，不同的错误类型再加上不同的错误处理会导致我们代码组织层面上的不同，从而会让我们使用不同的方式。也就是说，<strong>使用错误码还是异常捕捉主要还是看我们的错误处理流程以及代码组织怎么写会更清楚</strong>。</p>
+<p>通过学习今天的内容，你是不是已经对如何处理程序中的错误，以及在不同情况下怎样选择错误处理方法，有了一定的认知和理解呢？然而，这些知识和经验仅在同步编程世界中适用。因为在异步编程世界里，被调用的函数是被放到另外一个线程里运行的，所以本文中的两位主角，不管是错误返回码，还是异常捕捉，都难以发挥其威力。</p>
+<p>那么异步编程世界中是如何做错误处理的呢？我们将在下节课中讨论。同时，还会给你讲讲我在实战中总结出来的错误处理最佳实践。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>精卫鸟</span> 👍（159） 💬（7）<div>隐式异常也不要显示的忽略吧，至少记录一条日志，不然会造成异常黑洞。之前帮同事找一个线上小概率问题，所有的日志和异常检测都抓不到，最后对全部进程一起strace，才发现是他catch了异常，啥都没做就return了...
 
-我们后来揍了丫的</div>2017-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/47/35/89726f5f.jpg" width="30px"><span>左耳朵</span> 👍（56） 💬（1）<div>@ stone扎西华丹，是我给极客时间出难题了，我的好些文章里有好多代码，有的会有好些图片，有的会有好些数学公式，这类文章不但都非常难配上语音，而且可能在手机端的排版都会很有问题，难为极客时间的编辑、产品和技术了，这个还望能理解了（后面的文章这样的事你会看到很多）</div>2017-11-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6c/ec/dcd555be.jpg" width="30px"><span>majun</span> 👍（40） 💬（0）<div>期望听您对进程、线程、多进程、多线程的讲解，谢谢！</div>2017-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/6b/6d/65e3b779.jpg" width="30px"><span>大石头</span> 👍（35） 💬（3）<div>“错误处理”真的是一个在实践中既简单又不简单的事情。说他简单呢，是因为，每个人在学写代码的时候都会学到一些错误处理的方法：
+我们后来揍了丫的</div>2017-11-07</li><br/><li><span>左耳朵</span> 👍（56） 💬（1）<div>@ stone扎西华丹，是我给极客时间出难题了，我的好些文章里有好多代码，有的会有好些图片，有的会有好些数学公式，这类文章不但都非常难配上语音，而且可能在手机端的排版都会很有问题，难为极客时间的编辑、产品和技术了，这个还望能理解了（后面的文章这样的事你会看到很多）</div>2017-11-21</li><br/><li><span>majun</span> 👍（40） 💬（0）<div>期望听您对进程、线程、多进程、多线程的讲解，谢谢！</div>2017-11-07</li><br/><li><span>大石头</span> 👍（35） 💬（3）<div>“错误处理”真的是一个在实践中既简单又不简单的事情。说他简单呢，是因为，每个人在学写代码的时候都会学到一些错误处理的方法：
 
 * 检查一个系统提供给你的错误码，这种我只在 C Bash里碰到过
 * 返回码，各种语言都可以
@@ -14653,38 +14881,15 @@
 
 * 交给代码处理的，可以用异常，也可以用错误码，取决于团队文化
 * 交给微服务的，只能用错误码。如果是RPC的话，可以用异常，但是调用者要能识别你抛出的异常就要经常更新异常的定义，这个在实践中很低效
-* 交给用户处理的，要讲的是用户体验好。用户看不见的log你打了就可以了</div>2020-02-10</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q3auHgzwzM4JMC0xCTtze8l3hPTAqCoTSoVOQ0ozHycibiaUv1ojIbhl0NqBnC4amVIKrbcDZyYR0Ciba3z7EYMZA/132" width="30px"><span>xfly</span> 👍（17） 💬（1）<div>对于上面三种错误的种类来说，程序中的错误，可能用异常捕捉会比较合适；用户的错误，用返回码比较合适；而资源类的错误，要分情况，是用异常捕捉还是用返回值，要看这事是不应该出现的，还是经常出现的。
+* 交给用户处理的，要讲的是用户体验好。用户看不见的log你打了就可以了</div>2020-02-10</li><br/><li><span>xfly</span> 👍（17） 💬（1）<div>对于上面三种错误的种类来说，程序中的错误，可能用异常捕捉会比较合适；用户的错误，用返回码比较合适；而资源类的错误，要分情况，是用异常捕捉还是用返回值，要看这事是不应该出现的，还是经常出现的。
 — —
 这三种分类和处置方式比较赞同。
-但实际在多人协作项目，或大型项目中多方技术人员要在这个层面理解达成一致不是那么容易的事情。如果依赖于解决架构负债，架构升级来优化，驱动力又似乎不足。</div>2017-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/18/ba/fb86482f.jpg" width="30px"><span>yun</span> 👍（9） 💬（3）<div>&gt;异常捕捉的确是对性能有影响的，那是因为一旦异常被抛出，函数也就跟着 return 了。而程序在执行需要处理函数栈上的上下文，这会导致性能变得很慢，尤其是函数栈比较深的时候
+但实际在多人协作项目，或大型项目中多方技术人员要在这个层面理解达成一致不是那么容易的事情。如果依赖于解决架构负债，架构升级来优化，驱动力又似乎不足。</div>2017-11-07</li><br/><li><span>yun</span> 👍（9） 💬（3）<div>&gt;异常捕捉的确是对性能有影响的，那是因为一旦异常被抛出，函数也就跟着 return 了。而程序在执行需要处理函数栈上的上下文，这会导致性能变得很慢，尤其是函数栈比较深的时候
 
-异常抛出和不抛出，函数栈的深度应该差不多吧？函数栈的上下文会有啥不同？</div>2018-03-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0e/f8/309dcba5.jpg" width="30px"><span>LEI</span> 👍（6） 💬（1）<div>不是java的示例哦，java没有指针一说，看是能看明白意思，示例看着有点感觉自己门外汉，像是自己在学英语，然后讲解的人用另一门类似的语言在解释英语的意思一样，买课程只看了目录，作者简介写了骨灰级程序员，我以为是自己熟悉的java的讲解呢，因为自己是个半路出家的程序员，所以对c还是不太了解，今天只是选了这篇学习，不知道其他的文章是不是也都是C代码做示例讲解的哦，如果都是C的话，学起来就别扭了</div>2018-12-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ef/ab/b1bf664c.jpg" width="30px"><span>阿仁🇨🇳</span> 👍（5） 💬（0）<div>我是个零基础学员，我表示可以看完一遍，但是啥懂不懂 目前就知道以后遇到类似错误纠正的事，那我就再来这里重新查看，寻找答案。哈哈，这算是收获吗？</div>2019-01-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/bb/1deafcbf.jpg" width="30px"><span>徐超军</span> 👍（5） 💬（0）<div>我们大不部分都是定义自己的异常处理类，然后各种异常都定义好错误码，返回给调用者，这样很清晰的就知道什么问题了</div>2018-11-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/7c/80/825fd9c0.jpg" width="30px"><span>呆呆</span> 👍（4） 💬（0）<div>错误码、异常处理都是在不同场景下的结果，同步可直接获得，异步不能</div>2018-11-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/85/49/585c69c4.jpg" width="30px"><span>皮特尔</span> 👍（4） 💬（0）<div>赞！迫不及待要看下一篇了。</div>2017-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f8/99/b9978b44.jpg" width="30px"><span>卫什么</span> 👍（3） 💬（0）<div>1. 通常而言，我们对于在程序中，自己可以预计到自己不期望出现的问题，而且能在问题出现后有替代解决方案的时候，我们就用异常。 
+异常抛出和不抛出，函数栈的深度应该差不多吧？函数栈的上下文会有啥不同？</div>2018-03-27</li><br/><li><span>LEI</span> 👍（6） 💬（1）<div>不是java的示例哦，java没有指针一说，看是能看明白意思，示例看着有点感觉自己门外汉，像是自己在学英语，然后讲解的人用另一门类似的语言在解释英语的意思一样，买课程只看了目录，作者简介写了骨灰级程序员，我以为是自己熟悉的java的讲解呢，因为自己是个半路出家的程序员，所以对c还是不太了解，今天只是选了这篇学习，不知道其他的文章是不是也都是C代码做示例讲解的哦，如果都是C的话，学起来就别扭了</div>2018-12-15</li><br/><li><span>阿仁🇨🇳</span> 👍（5） 💬（0）<div>我是个零基础学员，我表示可以看完一遍，但是啥懂不懂 目前就知道以后遇到类似错误纠正的事，那我就再来这里重新查看，寻找答案。哈哈，这算是收获吗？</div>2019-01-18</li><br/><li><span>徐超军</span> 👍（5） 💬（0）<div>我们大不部分都是定义自己的异常处理类，然后各种异常都定义好错误码，返回给调用者，这样很清晰的就知道什么问题了</div>2018-11-06</li><br/><li><span>呆呆</span> 👍（4） 💬（0）<div>错误码、异常处理都是在不同场景下的结果，同步可直接获得，异步不能</div>2018-11-15</li><br/><li><span>皮特尔</span> 👍（4） 💬（0）<div>赞！迫不及待要看下一篇了。</div>2017-11-07</li><br/><li><span>卫什么</span> 👍（3） 💬（0）<div>1. 通常而言，我们对于在程序中，自己可以预计到自己不期望出现的问题，而且能在问题出现后有替代解决方案的时候，我们就用异常。 
 比如当我们处理图片时，我们希望图片的处理是成功的，但是不希望图片处理是失败的。当出现失败时，我们直接在程序中指定重新处理图片的程序，再次运行。
 
-2. 对于无法修复，无法提供解决方案的问题， 应该使用错误码。 比如用户输入信息的处理，无法修复网络资源的失败</div>2019-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/60/73/deb6a944.jpg" width="30px"><span>stone扎西华丹</span> 👍（3） 💬（1）<div>货不对板，我们订的时候，看到的可是一个音频产品。</div>2017-11-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/61/36/343a8ef8.jpg" width="30px"><span>郎哲</span> 👍（3） 💬（0）<div>不用的语言不同的方式处理错误。Elang 虽有catch，几乎用不到，直接返回值。假设传进来的一定正确，霸道一点不正确请修改正确再传，错误非常容易定位用了catch反而多余隐藏bug，勿隐藏应今早发现今早解决。Go 返回error嵌套多了确实蛋疼不得多写好多if，Java 离了try catch 活不下去。</div>2017-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5a/77/abb7bfe3.jpg" width="30px"><span>李帅龙</span> 👍（3） 💬（0）<div>还有一种rust的方式</div>2017-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/14/c980c239.jpg" width="30px"><span>chenssy</span> 👍（2） 💬（0）<div>作为 Java 程序员我一直都不是很赞同利用返回码来处理程序异常，比如0000是成功，0001是***异常，0002是***异常，这样实在是太难控制了，而且项目是多人维护，如果某天有个小伙伴返回了另外一种编码，而你又忘记处理了，那不是很尴尬。 
-我还是很赞同将异常分为楼主将异常分为三种：事实上我们项目组也在这样做。对于检验类的异常，我们区分更加细致，比如该异常是否需要打印日志？因为我们系统里面所有的error级别日志都会告警，所以会尽量控制系统里面的错误日志输出。</div>2021-06-22</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/CibnyMEyuo4aKCjEzq3t8CRLbiatiaNCmSsTGlhdHaMseBibB2CK2Dyu4TSa7AVREseibicWUnSicp78kWP2gb66u7ajw/132" width="30px"><span>weiguozhihui</span> 👍（2） 💬（0）<div>抛出异常之所以比较慢，有一部分的原因：异常也是一个对象，当产生一个异常时，需要生成一个异常对象（这个生成的异常对象肯定不是存放在栈上，应该可能是存放在堆上），并且将这个异常对象层层往上传递。并且在异常的产生与传递过程中至少需要一次拷贝构造，所以抛出异常要比返回错误码要低效一些。</div>2018-10-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/72/c0/b09911a0.jpg" width="30px"><span>meijing0114</span> 👍（2） 💬（0）<div>请问所谓对于异常的多态性的catch是指什么呢？是指代码catch Exception对象，实际抛出的可能是ioexception这类吗？</div>2018-09-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f5/0a/077b9922.jpg" width="30px"><span>krugle</span> 👍（2） 💬（0）<div>之前网上查这方面的资料，这次在这里看到，太实用了</div>2018-07-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4e/04/68eb84d0.jpg" width="30px"><span>琚致远</span> 👍（2） 💬（0）<div>早上好～</div>2017-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/30/18/f866a1fd.jpg" width="30px"><span>iii_Orzd</span> 👍（1） 💬（0）<div>老师一路走好，RIP</div>2023-05-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/92/6d/becd841a.jpg" width="30px"><span>escray</span> 👍（1） 💬（0）<div>在错误检查部分，明显 Go 语言的多返回值方式更为漂亮，如果在 IDE 的帮助下，自动补全 if err != nil 部分，那么可能是最好的方案。
-
-在资源清理部分，我也更倾向于 Go 语言的方式，主要是感觉比较清爽；C++ 的 RAII 方式可能更为清晰，能够看到底层的细节。
-
-不期望发生的事情（程序、资源、环境）使用异常捕捉
-可能发生的事情（用户）使用返回码
-
-重载操作符情况下，只能抛异常；
-异步模式下，只能检查子进程退出码或者回调函数；
-分布式情况下，调用远程服务只能看错误返回码；
-
-曾经看到有人讲，程序写的好与不好，主要是看错误处理部分。</div>2023-05-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/c4/98/9c7a1a23.jpg" width="30px"><span>罗杰.菲の樂</span> 👍（1） 💬（0）<div>文中提到的在异步编程世界里，被调用的函数是被放到另外一个线程里运行的，所以本文中的两位主角，不管是错误返回码，还是异常捕捉，都难以发挥其威力。
-
-笔者认为C#的 async await pattern 就解决了异常抛出和捕获的问题，可以直接使用try catch，不知我的想法是否正确？</div>2020-06-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/83/67/ca364a3c.jpg" width="30px"><span>null.shaw</span> 👍（1） 💬（0）<div>《代码大全2》里有部分是专门讲这个的，很详细。</div>2020-04-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/85/c7/5347b551.jpg" width="30px"><span>free</span> 👍（1） 💬（1）<div>C# await异步函数可以捕获其中的异常</div>2020-04-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/d0/75/3e034f71.jpg" width="30px"><span>hex</span> 👍（1） 💬（0）<div>我是一个java程序员,我工作中的做法是一般在业务层将错误向上抛,对于可以预见的错误会给用户固定的提示或者自己做一些处理,其他就在controller中做try,catch处理并向用户返回相应的错误信息,在后台打印日志,记录错误入库.只有一些未知的处理会在业务层进行try,catch,比如发送短信,做推送.这种做法不知道是否合适</div>2020-03-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/8d/c5/898b13b4.jpg" width="30px"><span>亢（知行合一的路上）</span> 👍（1） 💬（0）<div>异常处理，从最初做开发的时候就用到，到现在也没什么长进，为什么呢？
-
-异常处理在开发中是必需的，算是很基础的东西，但我为什么就总结不出来呢？
-
-1. 好奇心不足，满足工作需要就 ok 了，没有进一步钻研；（现在好点了）
-2. 对自己要求太低，工作的质量自己满意吗？还能如何提升？
-3. 平时总结的太少，学的东西都是迷迷糊糊，没有系统。
-
-陈老师一直强调基础的重要性，现在越来越认同了，赶紧补课中。
-</div>2020-03-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e3/74/34917b7d.jpg" width="30px"><span>恋空</span> 👍（1） 💬（2）<div>strtol()函数处理错误的那段代码没看懂是什么意思，能仔细说说吗</div>2019-03-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ac/0c/f3e37765.jpg" width="30px"><span>夏</span> 👍（1） 💬（2）<div>这些代码例子错漏百出</div>2019-01-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/34/8a/08a79d38.jpg" width="30px"><span>周孟</span> 👍（1） 💬（0）<div>对于返回错误码的方式是否定义结构体或是类同时包含错误码和错误消息会更好一些，特别是一些业务验证或输入问题上</div>2018-06-19</li><br/>
+2. 对于无法修复，无法提供解决方案的问题， 应该使用错误码。 比如用户输入信息的处理，无法修复网络资源的失败</div>2019-04-04</li><br/><li><span>stone扎西华丹</span> 👍（3） 💬（1）<div>货不对板，我们订的时候，看到的可是一个音频产品。</div>2017-11-13</li><br/><li><span>郎哲</span> 👍（3） 💬（0）<div>不用的语言不同的方式处理错误。Elang 虽有catch，几乎用不到，直接返回值。假设传进来的一定正确，霸道一点不正确请修改正确再传，错误非常容易定位用了catch反而多余隐藏bug，勿隐藏应今早发现今早解决。Go 返回error嵌套多了确实蛋疼不得多写好多if，Java 离了try catch 活不下去。</div>2017-11-07</li><br/><li><span>李帅龙</span> 👍（3） 💬（0）<div>还有一种rust的方式</div>2017-11-07</li><br/>
 </ul>
 
 

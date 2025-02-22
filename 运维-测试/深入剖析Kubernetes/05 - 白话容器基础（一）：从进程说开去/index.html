@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -3578,6 +3583,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    05   白话容器基础（一）：从进程说开去
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -3587,6 +3603,41 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -5827,6 +5878,32 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -5867,38 +5944,85 @@
 <p>容器，到底是怎么一回事儿？</p>
 </blockquote>
 <p>在第一篇预习文章<a href="https://time.geekbang.org/column/article/14254">《小鲸鱼大事记（一）：初出茅庐》</a>中，我已经提到过，容器其实是一种沙盒技术。顾名思义，沙盒就是能够像一个集装箱一样，把你的应用“装”起来的技术。这样，应用与应用之间，就因为有了边界而不至于相互干扰；而被装进集装箱的应用，也可以被方便地搬来搬去，这不就是PaaS最理想的状态嘛。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>不过，这两个能力说起来简单，但要用技术手段去实现它们，可能大多数人就无从下手了。</p>
+<p><strong>所以，我就先来跟你说说这个“边界”的实现手段。</strong></p>
+<p>假如，现在你要写一个计算加法的小程序，这个程序需要的输入来自于一个文件，计算完成后的结果则输出到另一个文件中。</p>
+<p>由于计算机只认识0和1，所以无论用哪种语言编写这段代码，最后都需要通过某种方式翻译成二进制文件，才能在计算机操作系统中运行起来。</p>
+<p>而为了能够让这些代码正常运行，我们往往还要给它提供数据，比如我们这个加法程序所需要的输入文件。这些数据加上代码本身的二进制文件，放在磁盘上，就是我们平常所说的一个“程序”，也叫代码的可执行镜像（executable image）。</p>
+<p>然后，我们就可以在计算机上运行这个“程序”了。</p>
+<p>首先，操作系统从“程序”中发现输入数据保存在一个文件中，所以这些数据就会被加载到内存中待命。同时，操作系统又读取到了计算加法的指令，这时，它就需要指示CPU完成加法操作。而CPU与内存协作进行加法计算，又会使用寄存器存放数值、内存堆栈保存执行的命令和变量。同时，计算机里还有被打开的文件，以及各种各样的I/O设备在不断地调用中修改自己的状态。</p>
+<p>就这样，一旦“程序”被执行起来，它就从磁盘上的二进制文件，变成了计算机内存中的数据、寄存器里的值、堆栈中的指令、被打开的文件，以及各种设备的状态信息的一个集合。<strong>像这样一个程序运行起来后的计算机执行环境的总和，就是我们今天的主角：进程。</strong></p>
+<p>所以，对于进程来说，它的静态表现就是程序，平常都安安静静地待在磁盘上；而一旦运行起来，它就变成了计算机里的数据和状态的总和，这就是它的动态表现。</p>
+<p>而<strong>容器技术的核心功能，就是通过约束和修改进程的动态表现，从而为其创造出一个“边界”。</strong></p>
+<p>对于Docker等大多数Linux容器来说，<strong>Cgroups技术</strong>是用来制造约束的主要手段，而<strong>Namespace技术</strong>则是用来修改进程视图的主要方法。</p>
+<p>你可能会觉得Cgroups和Namespace这两个概念很抽象，别担心，接下来我们一起动手实践一下，你就很容易理解这两项技术了。</p>
+<p>假设你已经有了一个Linux操作系统上的Docker项目在运行，比如我的环境是Ubuntu 16.04和Docker CE 18.05。</p>
+<p>接下来，让我们首先创建一个容器来试试。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$ docker run -it busybox /bin/sh
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>/ #
+</code></pre></div>
+<p>这个命令是Docker项目最重要的一个操作，即大名鼎鼎的docker run。</p>
+<p>而-it参数告诉了Docker项目在启动容器后，需要给我们分配一个文本输入/输出环境，也就是TTY，跟容器的标准输入相关联，这样我们就可以和这个Docker容器进行交互了。而/bin/sh就是我们要在Docker容器里运行的程序。</p>
+<p>所以，上面这条指令翻译成人类的语言就是：请帮我启动一个容器，在容器里执行/bin/sh，并且给我分配一个命令行终端跟这个容器交互。</p>
+<p>这样，我的Ubuntu 16.04机器就变成了一个宿主机，而一个运行着/bin/sh的容器，就跑在了这个宿主机里面。</p>
+<p>上面的例子和原理，如果你已经玩过Docker，一定不会感到陌生。此时，如果我们在容器里执行一下ps指令，就会发现一些更有趣的事情：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>/ # ps
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>PID  USER   TIME COMMAND
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  1 root   0:00 /bin/sh
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  10 root   0:00 ps
+</code></pre></div>
+<p>可以看到，我们在Docker里最开始执行的/bin/sh，就是这个容器内部的第1号进程（PID=1），而这个容器里一共只有两个进程在运行。这就意味着，前面执行的/bin/sh，以及我们刚刚执行的ps，已经被Docker隔离在了一个跟宿主机完全不同的世界当中。</p>
+<p>这究竟是怎么做到的呢？</p>
+<p>本来，每当我们在宿主机上运行了一个/bin/sh程序，操作系统都会给它分配一个进程编号，比如PID=100。这个编号是进程的唯一标识，就像员工的工牌一样。所以PID=100，可以粗略地理解为这个/bin/sh是我们公司里的第100号员工，而第1号员工就自然是比尔 · 盖茨这样统领全局的人物。</p>
+<p>而现在，我们要通过Docker把这个/bin/sh程序运行在一个容器当中。这时候，Docker就会在这个第100号员工入职时给他施一个“障眼法”，让他永远看不到前面的其他99个员工，更看不到比尔 · 盖茨。这样，他就会错误地以为自己就是公司里的第1号员工。</p>
+<p>这种机制，其实就是对被隔离应用的进程空间做了手脚，使得这些进程只能看到重新计算过的进程编号，比如PID=1。可实际上，他们在宿主机的操作系统里，还是原来的第100号进程。</p>
+<p><strong>这种技术，就是Linux里面的Namespace机制</strong>。而Namespace的使用方式也非常有意思：它其实只是Linux创建新进程的一个可选参数。我们知道，在Linux系统中创建进程的系统调用是clone()，比如：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>int pid = clone(main_function, stack_size, SIGCHLD, NULL); 
+</code></pre></div>
+<p>这个系统调用就会为我们创建一个新的进程，并且返回它的进程号pid。</p>
+<p>而当我们用clone()系统调用创建一个新进程时，就可以在参数中指定CLONE_NEWPID参数，比如：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>int pid = clone(main_function, stack_size, CLONE_NEWPID | SIGCHLD, NULL); 
+</code></pre></div>
+<p>这时，新创建的这个进程将会“看到”一个全新的进程空间，在这个进程空间里，它的PID是1。之所以说“看到”，是因为这只是一个“障眼法”，在宿主机真实的进程空间里，这个进程的PID还是真实的数值，比如100。</p>
+<p>当然，我们还可以多次执行上面的clone()调用，这样就会创建多个PID Namespace，而每个Namespace里的应用进程，都会认为自己是当前容器里的第1号进程，它们既看不到宿主机里真正的进程空间，也看不到其他PID Namespace里的具体情况。</p>
+<p>而<strong>除了我们刚刚用到的PID Namespace，Linux操作系统还提供了Mount、UTS、IPC、Network和User这些Namespace，用来对各种不同的进程上下文进行“障眼法”操作。</strong></p>
+<p>比如，Mount Namespace，用于让被隔离进程只看到当前Namespace里的挂载点信息；Network Namespace，用于让被隔离进程看到当前Namespace里的网络设备和配置。</p>
+<p><strong>这，就是Linux容器最基本的实现原理了。</strong></p>
+<p>所以，Docker容器这个听起来玄而又玄的概念，实际上是在创建容器进程时，指定了这个进程所需要启用的一组Namespace参数。这样，容器就只能“看”到当前Namespace所限定的资源、文件、设备、状态，或者配置。而对于宿主机以及其他不相关的程序，它就完全看不到了。</p>
+<p><strong>所以说，容器，其实是一种特殊的进程而已。</strong></p>
+<h2 id="_1">总结</h2>
+<p>谈到为“进程划分一个独立空间”的思想，相信你一定会联想到虚拟机。而且，你应该还看过一张虚拟机和容器的对比图。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/d1/96/d1bb34cda8744514ba4c233435bf4e96.jpg?wh=2242%2A1163" /></p>
+<p>这幅图的左边，画出了虚拟机的工作原理。其中，名为Hypervisor的软件是虚拟机最主要的部分。它通过硬件虚拟化功能，模拟出了运行一个操作系统需要的各种硬件，比如CPU、内存、I/O设备等等。然后，它在这些虚拟的硬件上安装了一个新的操作系统，即Guest OS。</p>
+<p>这样，用户的应用进程就可以运行在这个虚拟的机器中，它能看到的自然也只有Guest OS的文件和目录，以及这个机器里的虚拟设备。这就是为什么虚拟机也能起到将不同的应用进程相互隔离的作用。</p>
+<p>而这幅图的右边，则用一个名为Docker Engine的软件替换了Hypervisor。这也是为什么，很多人会把Docker项目称为“轻量级”虚拟化技术的原因，实际上就是把虚拟机的概念套在了容器上。</p>
+<p><strong>可是这样的说法，却并不严谨。</strong></p>
+<p>在理解了Namespace的工作方式之后，你就会明白，跟真实存在的虚拟机不同，在使用Docker的时候，并没有一个真正的“Docker容器”运行在宿主机里面。Docker项目帮助用户启动的，还是原来的应用进程，只不过在创建这些进程时，Docker为它们加上了各种各样的Namespace参数。</p>
+<p>这时，这些进程就会觉得自己是各自PID Namespace里的第1号进程，只能看到各自Mount Namespace里挂载的目录和文件，只能访问到各自Network Namespace里的网络设备，就仿佛运行在一个个“容器”里面，与世隔绝。</p>
+<p>不过，相信你此刻已经会心一笑：这些不过都是“障眼法”罢了。</p>
+<h2 id="_2">思考题</h2>
+<ol>
+<li>鉴于我对容器本质的讲解，你觉得上面这张容器和虚拟机对比图右侧关于容器的部分，怎么画才更精确？</li>
+<li>你是否知道最新的Docker项目默认会为容器启用哪些Namespace吗？</li>
+</ol>
+<p>感谢你的收听，欢迎你给我留言，也欢迎分享给更多的朋友一起阅读。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/7f/97/5acd3276.jpg" width="30px"><span>atompi</span> 👍（51） 💬（0）<div>下一讲：隔离与限制，会介绍Cgroups的</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/09/42/1f762b72.jpg" width="30px"><span>Hurt</span> 👍（192） 💬（18）<div>为什么clone()时 还有线程呢 是写错了吗 还是有线程的启动啊</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/9f/41/82306dfe.jpg" width="30px"><span>包子</span> 👍（287） 💬（17）<div>老师有个问题一直困扰，容器是一个单进程，那比如我有一个镜像里面集成了jdk, netstat, ping等，虽然这个容器启动时里面是一个java进程，但是我可以进到容器里面执行各种命令，比如netstat等，那这些命令在容器的运行过程中是在运行的吗？</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c2/e0/7188aa0a.jpg" width="30px"><span>blackpiglet</span> 👍（177） 💬（9）<div>1 用 namespace 框住app。
+<li><span>atompi</span> 👍（51） 💬（0）<div>下一讲：隔离与限制，会介绍Cgroups的</div>2018-09-03</li><br/><li><span>Hurt</span> 👍（192） 💬（18）<div>为什么clone()时 还有线程呢 是写错了吗 还是有线程的启动啊</div>2018-09-03</li><br/><li><span>包子</span> 👍（287） 💬（17）<div>老师有个问题一直困扰，容器是一个单进程，那比如我有一个镜像里面集成了jdk, netstat, ping等，虽然这个容器启动时里面是一个java进程，但是我可以进到容器里面执行各种命令，比如netstat等，那这些命令在容器的运行过程中是在运行的吗？</div>2018-09-03</li><br/><li><span>blackpiglet</span> 👍（177） 💬（9）<div>1 用 namespace 框住app。
 2 PID, UTS, network, user, mount, IPC, cgroup
 
 虽然本质上理解，namespace 和 cgroup 是内核特性，容器本质上就是一个加了限定参数的进程，效果上看，图画的也没毛病。
-这么看，是不是说容器的安全性，也就是隔离性，就是没办法达到虚拟机的级别呢？</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/38/3faa8377.jpg" width="30px"><span>登高</span> 👍（99） 💬（7）<div>👍docker是没有上过历史课的进程</div>2018-09-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5a/56/115c6433.jpg" width="30px"><span>jssfy</span> 👍（94） 💬（10）<div>进一步，1. 如果容器镜像os支持某硬件的驱动，但是宿主机os如果不支持该硬件驱动的话，是否也白搭
+这么看，是不是说容器的安全性，也就是隔离性，就是没办法达到虚拟机的级别呢？</div>2018-09-03</li><br/><li><span>登高</span> 👍（99） 💬（7）<div>👍docker是没有上过历史课的进程</div>2018-09-04</li><br/><li><span>jssfy</span> 👍（94） 💬（10）<div>进一步，1. 如果容器镜像os支持某硬件的驱动，但是宿主机os如果不支持该硬件驱动的话，是否也白搭
 2. 是否可以理解为 镜像只是提供了一套镜像文件系统中的各种文件，而各种内核相关的模块或者特性支持，完全依赖于宿主机？
-</div>2018-09-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/72/3e/534db55d.jpg" width="30px"><span>huan</span> 👍（88） 💬（1）<div>第一个问题，我感觉docker engine 最好虚线标识，表示他只是一种启动时用，运行时并不需要，真实进程是直接run在host os上</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/dc/3e/abb7bfe3.jpg" width="30px"><span>小崔</span> 👍（64） 💬（9）<div>在容器内，除了pid=1的进程，其他进程是不受docker控制的。
-这个控制具体指什么呢？其他进程和pid=1的进程关系又是什么呢？</div>2018-09-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/7b/9e/37d69ff0.jpg" width="30px"><span>balancer</span> 👍（52） 💬（2）<div>如果运行的容器是一个os ubuntu，那么在这ubuntu里面运行的进程，和这个ubuntu是什么关系 和主机OS是什么关系？谢谢</div>2018-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/53/3e/234726f9.jpg" width="30px"><span>Yuk亮</span> 👍（42） 💬（1）<div>镜像的运行对host os有要求吗？ 比如打包的镜像原来的kernel和运行时的kernel不一致，又或者镜像的发行版是centos，能运行在host为ubuntu的机器上吗</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/9f/41/82306dfe.jpg" width="30px"><span>包子</span> 👍（36） 💬（1）<div>老师有个问题一直困扰，容器是一个单进程，那比如我有一个镜像里面集成了jdk, netstat, ping等，虽然这个容器启动时里面是一个java进程，但是我可以进到容器里面执行各种命令，比如netstat等，那这些命令在容器的运行过程中是在运行的吗？
+</div>2018-09-08</li><br/><li><span>huan</span> 👍（88） 💬（1）<div>第一个问题，我感觉docker engine 最好虚线标识，表示他只是一种启动时用，运行时并不需要，真实进程是直接run在host os上</div>2018-09-03</li><br/><li><span>小崔</span> 👍（64） 💬（9）<div>在容器内，除了pid=1的进程，其他进程是不受docker控制的。
+这个控制具体指什么呢？其他进程和pid=1的进程关系又是什么呢？</div>2018-09-04</li><br/><li><span>balancer</span> 👍（52） 💬（2）<div>如果运行的容器是一个os ubuntu，那么在这ubuntu里面运行的进程，和这个ubuntu是什么关系 和主机OS是什么关系？谢谢</div>2018-09-07</li><br/><li><span>Yuk亮</span> 👍（42） 💬（1）<div>镜像的运行对host os有要求吗？ 比如打包的镜像原来的kernel和运行时的kernel不一致，又或者镜像的发行版是centos，能运行在host为ubuntu的机器上吗</div>2018-09-03</li><br/><li><span>包子</span> 👍（36） 💬（1）<div>老师有个问题一直困扰，容器是一个单进程，那比如我有一个镜像里面集成了jdk, netstat, ping等，虽然这个容器启动时里面是一个java进程，但是我可以进到容器里面执行各种命令，比如netstat等，那这些命令在容器的运行过程中是在运行的吗？
 ---------
 作者回复
 是在运行的。但它们不受docker的控制，就像野孩子。所以单进程意思不是只能运行一个进程，而是只有一个进程是可控的。
 
 老师接着这个问题有几个问题
 1. 这些不被docker管理的进程在哪里能看得到？这些进程是否会很占用硬件资源？比如netstat 
-2. 关于mac上运行的docker，比如容器进程依赖linux内核的版本4.2才能正确运行（镜像的内核版本是4.2的），那么既然docker只是用资源隔离的形式运行的。那我在mac起的这个容器时是否能正确运行？他会加载完整的linux操作系统吗？</div>2018-09-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5f/cc/56940167.jpg" width="30px"><span>芷兮</span> 👍（36） 💬（3）<div>有一个问题 所以通过pid 可以判断自己是在docker里面还是在宿主机上。怎么通过命令行知道自己现在是在container里面还是在外面？</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ab/2a/f3207127.jpg" width="30px"><span>贾鹏</span> 👍（28） 💬（1）<div>ipc pid mnt net uts user cgroup</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fd/d6/71e1cc29.jpg" width="30px"><span>Kaer</span> 👍（22） 💬（1）<div>虚拟化和容器的最大区别可以理解这个吗：1:虚拟化是同一台物理机不同的操作系统隔离应用进程2:但是容器是同一个操作系统的不同进程隔离。  简单来说就是：一个是操作系统级别隔离，一个是进程间隔离。</div>2018-09-03</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/GDYkD2X7pXSKUSaUFC8u3TBPaakaibnOBV2NYDc2TNfb8Su9icFMwSod6iaQX5iaGU2gT6xkPuhXeWvY8KaVEZAYzg/132" width="30px"><span>extraterrestrial！！</span> 👍（18） 💬（2）<div>能再推荐点扩展阅读材料就更好了，比如有一些不同资源使用namespace的程序例子，从内核的视角用没用namespace有啥区别，以及namespace的实现之类的～</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ab/2a/f3207127.jpg" width="30px"><span>贾鹏</span> 👍（15） 💬（1）<div>user  ns这块我理解的不太清楚，默认情况下容器里的root和宿主机root感觉是一样的（通过&#47;proc&#47;pid&#47;uid_map看映射关系是把容器uid 0映射到宿主机0了），而且在容器中能把主机cpu下线。感觉userns-remap特性好像也解决不了这个cpu下线的问题。希望得到老师的解惑，谢谢。或者如果方便的话能不能加下微信呢: jp6439</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/48/fc/f46062b6.jpg" width="30px"><span>abc</span> 👍（14） 💬（5）<div>张老师我再追问一问题：在容器内，除了pid=1的进程，其他进程是不受docker控制的。那么如果在一个pod（容器，单pod单容器场景）中以CMD方式启动脚本（该脚本封装了多个启动程序，实测脚本自身的pid=1）。并且还配置了pod的prestop，poststart（是为了执行类似注册的脚本，一次执行而已，不是后台进程）。想请问这种方式下pod的prestop，poststart是如何控制的？实测是生效的，想知道其中的缘由？
-</div>2018-09-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/69/15/1e94f455.jpg" width="30px"><span>Tony</span> 👍（11） 💬（3）<div>可以理解为虚拟机虚拟的是硬件，docker虚拟的是操作系统吗？</div>2018-11-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ed/1a/269eb3d6.jpg" width="30px"><span>cfanbo</span> 👍（11） 💬（2）<div>老师提到win mac docker上跑其实都是个虚拟机，可以运行不同平台的容器，如mac上运行ubuntu的容器。那么容器所需要的内核在哪里？是虚拟机的内核吗？还有这个虚拟机是不是这个正在运行的docker软件，也就是使用docker的虚拟机的内核？
-</div>2018-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fe/c5/3467cf94.jpg" width="30px"><span>正是那朵玫瑰</span> 👍（11） 💬（2）<div>老师想问个问题，既然容器只是在linux启动进程的时候添加一些参数进行隔离和限制，那么docker启动的守护进程是做什么用的呢？</div>2018-09-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/99/f9/528a73db.jpg" width="30px"><span>终身学习</span> 👍（10） 💬（3）<div>在docker出来之前是怎么用容器的，有想到把操作系统包进去吗？容器技术又是基于什么原因出现的呢？</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/01/5d/6586c756.jpg" width="30px"><span>Sen</span> 👍（8） 💬（1）<div>老师，如何监控容器内jvm的使用情况，在k8s中我希望用一个sidecar容器来监控主容器内tomcat的jmx，并将其数据转换成prometheus拉取的格式？</div>2018-09-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4d/dd/912b52ed.jpg" width="30px"><span>李奋斗</span> 👍（7） 💬（1）<div>Docker的理念，感觉有点类似北京的房屋租赁市场，以间为单位，而不是以套为单位。轻量级应用（单身人士，白天上班晚上加班，就来过个夜)节省资源（租插间)的好方式。😂</div>2018-09-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（7） 💬（1）<div>在一个namespace启动的进程，在宿主机中是否可以进行控制呢？比如关闭，重启什么的......
-放到docker中，就是宿主机能不能直接控制启动的docker容器中的进程呢？</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/23/5b/983408b9.jpg" width="30px"><span>悟空聊架构</span> 👍（7） 💬（1）<div>老师，Cgroups是不是没有细讲？</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5a/56/115c6433.jpg" width="30px"><span>jssfy</span> 👍（6） 💬（3）<div>如果容器中跑的是4.x的虚拟kernel环境，宿主机真实是3.x的内核，那么是否有些4.x的内核新功能如果要用到的话是不可行的？</div>2018-09-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a1/e6/50da1b2d.jpg" width="30px"><span>旭东(Frank)</span> 👍（6） 💬（2）<div>作者回复
-ps同样可以看到。win mac docker上跑其实都是个虚拟机
-____
-这么说的话只有linux才能算是在真实物理机上的Docker，win mac都需要一个底层的虚拟机才能跑Docker?
-
-那虚拟机和Docker的对比图中是不是应该有个前提是linux下的对比?
-
-单进程受控，是不是Docker中运行的其他进程都需要通过这个受控进程去访问硬件资源（host的系统资源）？</div>2018-09-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a6/cd/f078c005.jpg" width="30px"><span>路人甲</span> 👍（6） 💬（2）<div>docker是一个基于内核提供的资源隔离机制而开发实现的客户端管理工具，这样理解没错吧？</div>2018-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/bd/23/969c6c6d.jpg" width="30px"><span>谷晓铭</span> 👍（5） 💬（4）<div>有两个关于cgroups和namespace的问题：
-  1）这两种技术在其他OS（FreeBSD&#47;Solaris&#47;Windows&#47;MacOS）上是否存在？
-  2）Linux上是什么时候支持这两种技术的？如果很早就有的话，为什么容器技术最近几年才火起来？
-
-有一个引申问题：容器时代还需要虚拟机吗？</div>2018-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/48/fc/f46062b6.jpg" width="30px"><span>abc</span> 👍（5） 💬（1）<div>
-在容器内，除了pid=1的进程，其他进程是不受docker控制的，如果这样的话，请问pod生命周期中poststart,prestop这些钩子还能用吗？</div>2018-09-13</li><br/>
+2. 关于mac上运行的docker，比如容器进程依赖linux内核的版本4.2才能正确运行（镜像的内核版本是4.2的），那么既然docker只是用资源隔离的形式运行的。那我在mac起的这个容器时是否能正确运行？他会加载完整的linux操作系统吗？</div>2018-09-04</li><br/><li><span>芷兮</span> 👍（36） 💬（3）<div>有一个问题 所以通过pid 可以判断自己是在docker里面还是在宿主机上。怎么通过命令行知道自己现在是在container里面还是在外面？</div>2018-09-03</li><br/><li><span>贾鹏</span> 👍（28） 💬（1）<div>ipc pid mnt net uts user cgroup</div>2018-09-03</li><br/><li><span>Kaer</span> 👍（22） 💬（1）<div>虚拟化和容器的最大区别可以理解这个吗：1:虚拟化是同一台物理机不同的操作系统隔离应用进程2:但是容器是同一个操作系统的不同进程隔离。  简单来说就是：一个是操作系统级别隔离，一个是进程间隔离。</div>2018-09-03</li><br/><li><span>extraterrestrial！！</span> 👍（18） 💬（2）<div>能再推荐点扩展阅读材料就更好了，比如有一些不同资源使用namespace的程序例子，从内核的视角用没用namespace有啥区别，以及namespace的实现之类的～</div>2018-09-03</li><br/>
 </ul>
 
 

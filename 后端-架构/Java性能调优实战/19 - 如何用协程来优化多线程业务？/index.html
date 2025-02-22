@@ -2744,8 +2744,71 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#n1" class="md-nav__link">
+    <span class="md-ellipsis">
+      N:1线程模型
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nm" class="md-nav__link">
+    <span class="md-ellipsis">
+      N:M线程模型
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      协程的实现原理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kilim" class="md-nav__link">
+    <span class="md-ellipsis">
+      Kilim协程框架
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      协程与线程的性能比较
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
   
 </li>
       
@@ -13202,8 +13265,71 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#n1" class="md-nav__link">
+    <span class="md-ellipsis">
+      N:1线程模型
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nm" class="md-nav__link">
+    <span class="md-ellipsis">
+      N:M线程模型
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      协程的实现原理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kilim" class="md-nav__link">
+    <span class="md-ellipsis">
+      Kilim协程框架
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      协程与线程的性能比较
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
   
 </li>
       
@@ -13241,9 +13367,218 @@
 <p>以上我提到的内核线程（Kernel-Level Thread, KLT）是由操作系统内核支持的线程，内核通过调度器对线程进行调度，并负责完成线程的切换。</p>
 <p>我们知道在Linux操作系统编程中，往往都是通过fork()函数创建一个子进程来代表一个内核中的线程。一个进程调用fork()函数后，系统会先给新的进程分配资源，例如，存储数据和代码的空间。然后把原来进程的所有值都复制到新的进程中，只有少数值与原来进程的值（比如PID）不同，这相当于复制了一个主进程。</p>
 <p>采用fork()创建子进程的方式来实现并行运行，会产生大量冗余数据，即占用大量内存空间，又消耗大量CPU时间用来初始化内存空间以及复制数据。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>如果是一份一样的数据，为什么不共享主进程的这一份数据呢？这时候轻量级进程（Light Weight Process，即LWP）出现了。</p>
+<p>相对于fork()系统调用创建的线程来说，LWP使用clone()系统调用创建线程，该函数是将部分父进程的资源的数据结构进行复制，复制内容可选，且没有被复制的资源可以通过指针共享给子进程。因此，轻量级进程的运行单元更小，运行速度更快。LWP是跟内核线程一对一映射的，每个LWP都是由一个内核线程支持。</p>
+<h3 id="n1">N:1线程模型</h3>
+<p>1:1线程模型由于跟内核是一对一映射，所以在线程创建、切换上都存在用户态和内核态的切换，性能开销比较大。除此之外，它还存在局限性，主要就是指系统的资源有限，不能支持创建大量的LWP。</p>
+<p>N:1线程模型就可以很好地解决1:1线程模型的这两个问题。</p>
+<p>该线程模型是在用户空间完成了线程的创建、同步、销毁和调度，已经不需要内核的帮助了，也就是说在线程创建、同步、销毁的过程中不会产生用户态和内核态的空间切换，因此线程的操作非常快速且低消耗。</p>
+<h3 id="nm">N:M线程模型</h3>
+<p>N:1线程模型的缺点在于操作系统不能感知用户态的线程，因此容易造成某一个线程进行系统调用内核线程时被阻塞，从而导致整个进程被阻塞。</p>
+<p>N:M线程模型是基于上述两种线程模型实现的一种混合线程管理模型，即支持用户态线程通过LWP与内核线程连接，用户态的线程数量和内核态的LWP数量是N:M的映射关系。</p>
+<p><strong>了解完这三个线程模型，你就可以清楚地了解到Go协程的实现与Java线程的实现有什么区别了。</strong></p>
+<p>JDK 1.8 Thread.java 中 Thread#start 方法的实现，实际上是通过Native调用start0方法实现的；在Linux下， JVM Thread的实现是基于pthread_create实现的，而pthread_create实际上是调用了clone()完成系统调用创建线程的。</p>
+<p>所以，目前Java在Linux操作系统下采用的是用户线程加轻量级线程，一个用户线程映射到一个内核线程，即1:1线程模型。由于线程是通过内核调度，从一个线程切换到另一个线程就涉及到了上下文切换。</p>
+<p>而Go语言是使用了N:M线程模型实现了自己的调度器，它在N个内核线程上多路复用（或调度）M个协程，协程的上下文切换是在用户态由协程调度器完成的，因此不需要陷入内核，相比之下，这个代价就很小了。</p>
+<h2 id="_2">协程的实现原理</h2>
+<p>协程不只在Go语言中实现了，其实目前大部分语言都实现了自己的一套协程，包括C#、erlang、python、lua、javascript、ruby等。</p>
+<p>相对于协程，你可能对进程和线程更为熟悉。进程一般代表一个应用服务，在一个应用服务中可以创建多个线程，而协程与进程、线程的概念不一样，我们可以将协程看作是一个类函数或者一块函数中的代码，我们可以在一个主线程里面轻松创建多个协程。</p>
+<p>程序调用协程与调用函数不一样的是，协程可以通过暂停或者阻塞的方式将协程的执行挂起，而其它协程可以继续执行。这里的挂起只是在程序中（用户态）的挂起，同时将代码执行权转让给其它协程使用，待获取执行权的协程执行完成之后，将从挂起点唤醒挂起的协程。 协程的挂起和唤醒是通过一个调度器来完成的。</p>
+<p>结合下图，你可以更清楚地了解到基于N:M线程模型实现的协程是如何工作的。</p>
+<p>假设程序中默认创建两个线程为协程使用，在主线程中创建协程ABCD…，分别存储在就绪队列中，调度器首先会分配一个工作线程A执行协程A，另外一个工作线程B执行协程B，其它创建的协程将会放在队列中进行排队等待。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/9b/72/9b0a301337fa868eab1b9d32e6fcbd72.jpg?wh=666%2A870" /></p>
+<p>当协程A调用暂停方法或被阻塞时，协程A会进入到挂起队列，调度器会调用等待队列中的其它协程抢占线程A执行。当协程A被唤醒时，它需要重新进入到就绪队列中，通过调度器抢占线程，如果抢占成功，就继续执行协程A，失败则继续等待抢占线程。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/be/94/bebdfb057a9243e640515900eec4ed94.jpg?wh=656%2A874" /></p>
+<p>相比线程，协程少了由于同步资源竞争带来的CPU上下文切换，I/O密集型的应用比较适合使用，特别是在网络请求中，有较多的时间在等待后端响应，协程可以保证线程不会阻塞在等待网络响应中，充分利用了多核多线程的能力。而对于CPU密集型的应用，由于在多数情况下CPU都比较繁忙，协程的优势就不是特别明显了。</p>
+<h2 id="kilim">Kilim协程框架</h2>
+<p>虽然这么多的语言都实现了协程，但目前Java原生语言暂时还不支持协程。不过你也不用泄气，我们可以通过协程框架在Java中使用协程。</p>
+<p>目前Kilim协程框架在Java中应用得比较多，通过这个框架，开发人员就可以低成本地在Java中使用协程了。</p>
+<p>在Java中引入 <a href="https://github.com/kilim/kilim">Kilim</a> ，和我们平时引入第三方组件不太一样，除了引入jar包之外，还需要通过Kilim提供的织入（Weaver）工具对Java代码编译生成的字节码进行增强处理，比如，识别哪些方式是可暂停的，对相关的方法添加上下文处理。通常有以下四种方式可以实现这种织入操作：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/b2/b3/798a4bb2.jpg" width="30px"><span>帽子丨影</span> 👍（15） 💬（1）<div>文中提到协程有个队列，最终还是需要主线程来调度执行。那是不是有点类似线程池。主线程是Worker线程，每一个协程就是一个Task。只不过主线程执行到的某个Task阻塞时会去执行下一个Task。</div>2019-08-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/18/cb/edb5a0a0.jpg" width="30px"><span>小橙橙</span> 👍（14） 💬（2）<div>老师，以后的JAVA版本是不是也会自带协程功能？</div>2019-07-05</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/fy6KTCIk6JPGdOYbvsXJ4h1zq8a6P6sHiau0t2hBxxZfSeE2ymJmWsnb7YzxUO3byr1n30UoYD2XrXDwlrQa6lQ/132" width="30px"><span>Ericens</span> 👍（3） 💬（2）<div>老师，请教个关于协程与线程的疑问。比如，a协程调用socket. read(),此时数据没有准备好，则继续调度b协程。
+<li>在编译时使用maven插件；</li>
+<li>在运行时调用kilim.tools.Weaver工具；</li>
+<li>在运行时使用kilim.tools.Kilim invoking调用Kilim的类文件；</li>
+<li>在main函数添加 if (kilim.tools.Kilim.trampoline(false,args)) return。</li>
+</ul>
+<p>Kilim框架包含了四个核心组件，分别为：任务载体（Task）、任务上下文（Fiber）、任务调度器（Scheduler）以及通信载体（Mailbox）。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/20/13/20e81165d99c5fc1a55424156e15ff13.jpg?wh=880%2A690" /></p>
+<p>Task对象主要用来执行业务逻辑，我们可以把这个比作多线程的Thread，与Thread类似，Task中也有一个run方法，不过在Task中方法名为execute，我们可以将协程里面要做的业务逻辑操作写在execute方法中。</p>
+<p>与Thread实现的线程一样，Task实现的协程也有状态，包括：Ready、Running、Pausing、Paused以及Done总共五种。Task对象被创建后，处于Ready状态，在调用execute()方法后，协程处于Running状态，在运行期间，协程可以被暂停，暂停中的状态为Pausing，暂停后的状态为Paused，暂停后的协程可以被再次唤醒。协程正常结束后的状态为Done。</p>
+<p>Fiber对象与Java的线程栈类似，主要用来维护Task的执行堆栈，Fiber是实现N:M线程映射的关键。</p>
+<p>Scheduler是Kilim实现协程的核心调度器，Scheduler负责分派Task给指定的工作者线程WorkerThread执行，工作者线程WorkerThread默认初始化个数为机器的CPU个数。</p>
+<p>Mailbox对象类似一个邮箱，协程之间可以依靠邮箱来进行通信和数据共享。协程与线程最大的不同就是，线程是通过共享内存来实现数据共享，而协程是使用了通信的方式来实现了数据共享，主要就是为了避免内存共享数据而带来的线程安全问题。</p>
+<h2 id="_3">协程与线程的性能比较</h2>
+<p>接下来，我们通过一个简单的生产者和消费者的案例，来对比下协程和线程的性能。可通过 <a href="https://github.com/nickliuchao/coroutine">Github</a> 下载本地运行代码。</p>
+<p>Java多线程实现源码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>public class MyThread {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    private static Integer count = 0;//
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    private static final Integer FULL = 10; //最大生产数量
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    private static String LOCK = &quot;lock&quot;; //资源锁
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    public static void main(String[] args) {
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        MyThread test1 = new MyThread();
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        long start = System.currentTimeMillis();
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        List&lt;Thread&gt; list = new ArrayList&lt;Thread&gt;();
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        for (int i = 0; i &lt; 1000; i++) {//创建五个生产者线程
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>            Thread thread = new Thread(test1.new Producer());
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>            thread.start();
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>            list.add(thread);
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        }
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        for (int i = 0; i &lt; 1000; i++) {//创建五个消费者线程
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>            Thread thread = new Thread(test1.new Consumer());
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>            thread.start();
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>            list.add(thread);
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>        }
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>        try {
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>            for (Thread thread : list) {
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>                thread.join();//等待所有线程执行完
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>            }
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>        } catch (InterruptedException e) {
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>            e.printStackTrace();
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>        }
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>        long end = System.currentTimeMillis();
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>        System.out.println(&quot;子线程执行时长：&quot; + (end - start));
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>    }
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>    //生产者
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>    class Producer implements Runnable {
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>        public void run() {
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>            for (int i = 0; i &lt; 10; i++) {
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>                synchronized (LOCK) {
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>                    while (count == FULL) {//当数量满了时
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>                        try {
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>                            LOCK.wait();
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>                        } catch (Exception e) {
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>                            e.printStackTrace();
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>                        }
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>                    }
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>                    count++;
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>                    System.out.println(Thread.currentThread().getName() + &quot;生产者生产，目前总共有&quot; + count);
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>                    LOCK.notifyAll();
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>                }
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>            }
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>        }
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>    }
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>    //消费者
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>    class Consumer implements Runnable {
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>        public void run() {
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>            for (int i = 0; i &lt; 10; i++) {
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a>                synchronized (LOCK) {
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a>                    while (count == 0) {//当数量为零时   
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>                        try {
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a>                            LOCK.wait();
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a>                        } catch (Exception e) {
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a>                        }
+<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a>                    }
+<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a>                    count--;
+<a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a>                    System.out.println(Thread.currentThread().getName() + &quot;消费者消费，目前总共有&quot; + count);
+<a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a>                    LOCK.notifyAll();
+<a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a>                }
+<a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a>            }
+<a id="__codelineno-0-70" name="__codelineno-0-70" href="#__codelineno-0-70"></a>        }
+<a id="__codelineno-0-71" name="__codelineno-0-71" href="#__codelineno-0-71"></a>    }
+<a id="__codelineno-0-72" name="__codelineno-0-72" href="#__codelineno-0-72"></a>}
+</code></pre></div>
+<p>Kilim协程框架实现源码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>public class Coroutine  {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>        static Map&lt;Integer, Mailbox&lt;Integer&gt;&gt; mailMap = new HashMap&lt;Integer, Mailbox&lt;Integer&gt;&gt;();//为每个协程创建一个信箱，由于协程中不能多个消费者共用一个信箱，需要为每个消费者提供一个信箱，这也是协程通过通信来保证共享变量的线程安全的一种方式
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    public static void main(String[] args) {
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        if (kilim.tools.Kilim.trampoline(false,args)) return;
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        Properties propes = new Properties();
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        propes.setProperty(&quot;kilim.Scheduler.numThreads&quot;, &quot;1&quot;);//设置一个线程
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>        System.setProperties(propes);
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        long startTime = System.currentTimeMillis();
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>        for (int i = 0; i &lt; 1000; i++) {//创建一千生产者
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>            Mailbox&lt;Integer&gt; mb = new Mailbox&lt;Integer&gt;(1, 10);
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>            new Producer(i, mb).start();
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>            mailMap.put(i, mb);
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>        }
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>        for (int i = 0; i &lt; 1000; i++) {//创建一千个消费者
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>            new Consumer(mailMap.get(i)).start();
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>        }
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>        Task.idledown();//开始运行
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>         long endTime = System.currentTimeMillis();
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>         System.out.println( Thread.currentThread().getName()  + &quot;总计花费时长：&quot; + (endTime- startTime));
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>    }
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>}
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>//生产者
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>public class Producer extends Task&lt;Object&gt; {
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    Integer count = null;
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    Mailbox&lt;Integer&gt; mb = null;
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    public Producer(Integer count, Mailbox&lt;Integer&gt; mb) {
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        this.count = count;
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        this.mb = mb;
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    }
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    public void execute() throws Pausable {
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        count = count*10;
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        for (int i = 0; i &lt; 10; i++) {
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>            mb.put(count);//当空间不足时，阻塞协程线程
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>            System.out.println(Thread.currentThread().getName() + &quot;生产者生产，目前总共有&quot; + mb.size() + &quot;生产了：&quot; + count);
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>            count++;
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>        }
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>    }
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>}
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>//消费者
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>public class Consumer extends Task&lt;Object&gt; {
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    Mailbox&lt;Integer&gt; mb = null;
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    public Consumer(Mailbox&lt;Integer&gt; mb) {
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        this.mb = mb;
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    }
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    /**
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>     * 执行
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>     */
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    public void execute() throws Pausable {
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>        Integer c = null;
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>        for (int i = 0; i &lt; 10000; i++)  {
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>            c = mb.get();//获取消息，阻塞协程线程
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>            if (c == null) {
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>                System.out.println(&quot;计数&quot;);
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>            }else {
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>                System.out.println(Thread.currentThread().getName() + &quot;消费者消费，目前总共有&quot; + mb.size() + &quot;消费了：&quot; + c);
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>                c = null;
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>            }
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>        }
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    }
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>}
+</code></pre></div>
+<p>在这个案例中，我创建了1000个生产者和1000个消费者，每个生产者生产10个产品，1000个消费者同时消费产品。我们可以看到两个例子运行的结果如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>多线程执行时长：2761
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>协程执行时长：1050
+</code></pre></div>
+<p>通过上述性能对比，我们可以发现：在有严重阻塞的场景下，协程的性能更胜一筹。其实，I/O阻塞型场景也就是协程在Java中的主要应用。</p>
+<h2 id="_4">总结</h2>
+<p>协程和线程密切相关，协程可以认为是运行在线程上的代码块，协程提供的挂起操作会使协程暂停执行，而不会导致线程阻塞。</p>
+<p>协程又是一种轻量级资源，即使创建了上千个协程，对于系统来说也不是很大的负担，但如果在程序中创建上千个线程，那系统可真就压力山大了。可以说，协程的设计方式极大地提高了线程的使用率。</p>
+<p>通过今天的学习，当其他人侃侃而谈Go语言在网络编程中的优势时，相信你不会一头雾水。学习Java的我们也不要觉得，协程离我们很遥远了。协程是一种设计思想，不仅仅局限于某一门语言，况且Java已经可以借助协程框架实现协程了。</p>
+<p>但话说回来，协程还是在Go语言中的应用较为成熟，在Java中的协程目前还不是很稳定，重点是缺乏大型项目的验证，可以说Java的协程设计还有很长的路要走。</p>
+<h2 id="_5">思考题</h2>
+<p>在Java中，除了Kilim框架，你知道还有其它协程框架也可以帮助Java实现协程吗？你使用过吗？</p>
+<p>期待在留言区看到你的见解。也欢迎你点击“请朋友读”，把今天的内容分享给身边的朋友，邀请他一起讨论。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>帽子丨影</span> 👍（15） 💬（1）<div>文中提到协程有个队列，最终还是需要主线程来调度执行。那是不是有点类似线程池。主线程是Worker线程，每一个协程就是一个Task。只不过主线程执行到的某个Task阻塞时会去执行下一个Task。</div>2019-08-16</li><br/><li><span>小橙橙</span> 👍（14） 💬（2）<div>老师，以后的JAVA版本是不是也会自带协程功能？</div>2019-07-05</li><br/><li><span>Ericens</span> 👍（3） 💬（2）<div>老师，请教个关于协程与线程的疑问。比如，a协程调用socket. read(),此时数据没有准备好，则继续调度b协程。
 
 把协程换成线程，上面这个过程哪个更加轻量？协程还是线程？
 我理解这个过程涉及的过程如下，都一样。
@@ -13251,7 +13586,7 @@
 2.都有上下文切换。(不同协程的寄存器，和不同线程的寄存器)
 3. 都要执行任务调度。协程调度或者线程调度。
 
-那协程到底轻量在哪？</div>2019-10-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（3） 💬（2）<div>课前思考及问题
+那协程到底轻量在哪？</div>2019-10-11</li><br/><li><span>钱</span> 👍（3） 💬（2）<div>课前思考及问题
 1：协程是啥？
 2：协程更轻量怎么体现，它轻量在哪里？
 3：为什么多协程没有高并发的问题？
@@ -13263,22 +13598,16 @@
 这里的通信方式具体指什么？它比共享内存通信的方式还要快嘛？每个协程间都需要建立这种通信方式不耗资源不影响性能嘛？
 
 2：而 Go 语言是使用了 N:M 线程模型实现了自己的调度器，它在 N 个内核线程上多路复用（或调度）M 个协程，协程的上下文切换是在用户态由协程调度器完成的，因此不需要陷入内核，相比之下，这个代价就很小了。
-协程的执行不需要CPU？若需要，就会存在切入切出，协程的上下文切换怎么能在用户态全部完成，这个没有理解？</div>2019-09-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/24/5d/65e61dcb.jpg" width="30px"><span>学无涯</span> 👍（3） 💬（1）<div>老师，读了今天的内容，我理解的意思是：
+协程的执行不需要CPU？若需要，就会存在切入切出，协程的上下文切换怎么能在用户态全部完成，这个没有理解？</div>2019-09-10</li><br/><li><span>学无涯</span> 👍（3） 💬（1）<div>老师，读了今天的内容，我理解的意思是：
 1.因为每个轻量级线程都有一个内核线程支持，而java中，每个用户线程对应一个轻量级线程，可以看作用户线程和支持轻量级线程的内核线程是一对一的，所以就说java线程模型是用户线程和内核线程一对一。
 2.那这里轻量级线程属于内核线程吗，我看文中说的是由内核线程clone而来的，那它算内核线程吗？
-请老师解答一下！</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/8f/b1/7b697ed4.jpg" width="30px"><span>晓晨同学</span> 👍（2） 💬（1）<div>请问老师，上面说N:1这种线程模型是当某个用户线程使用内核线程阻塞的时候会使整个进程下的所有用户线程阻塞，那我想为什么不能像N:M线程模型一样当某个用户线程阻塞时就挂起来从而去调度其他的用户线程呢</div>2019-11-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/3d/ae/5eede757.jpg" width="30px"><span>葛阳</span> 👍（1） 💬（1）<div>&quot;相对于 fork() 系统调用创建的线程来说，LWP 使用 clone() 系统调用创建线程，该函数是将部分父进程的资源的数据结构进行复制，复制内容可选，且没有被复制的资源可以通过指针共享给子进程。因此，轻量级进程的运行单元更小，运行速度更快。LWP 是跟内核线程一对一映射的，每个 LWP 都是由一个内核线程支持。&quot;  -- 这句话是不是有毛病，一会儿&quot;进程&quot;一会儿&quot;线程&quot;</div>2020-04-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5a/08/2bef230f.jpg" width="30px"><span>慎独</span> 👍（1） 💬（1）<div>老师，协程在高并发系统中使用过吗？</div>2019-12-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ec/13/49e98289.jpg" width="30px"><span>neohope</span> 👍（1） 💬（1）<div>1. Java框架的话，Kilim有一段时间没有更新了，最近Quasar好像流行一些。
+请老师解答一下！</div>2019-07-02</li><br/><li><span>晓晨同学</span> 👍（2） 💬（1）<div>请问老师，上面说N:1这种线程模型是当某个用户线程使用内核线程阻塞的时候会使整个进程下的所有用户线程阻塞，那我想为什么不能像N:M线程模型一样当某个用户线程阻塞时就挂起来从而去调度其他的用户线程呢</div>2019-11-13</li><br/><li><span>葛阳</span> 👍（1） 💬（1）<div>&quot;相对于 fork() 系统调用创建的线程来说，LWP 使用 clone() 系统调用创建线程，该函数是将部分父进程的资源的数据结构进行复制，复制内容可选，且没有被复制的资源可以通过指针共享给子进程。因此，轻量级进程的运行单元更小，运行速度更快。LWP 是跟内核线程一对一映射的，每个 LWP 都是由一个内核线程支持。&quot;  -- 这句话是不是有毛病，一会儿&quot;进程&quot;一会儿&quot;线程&quot;</div>2020-04-27</li><br/><li><span>慎独</span> 👍（1） 💬（1）<div>老师，协程在高并发系统中使用过吗？</div>2019-12-04</li><br/><li><span>neohope</span> 👍（1） 💬（1）<div>1. Java框架的话，Kilim有一段时间没有更新了，最近Quasar好像流行一些。
 2. JVM里，可以混用Kotlin；或者是混用Scala+akka。
 3. 未来版本的JDK也会逐步支持协程，但现在的实验版本好像只是在Linux下支持的比较好。
-4 .不过说实话，现在的netty框架，在一定意义上工作原理和协程也有一些相似之处。</div>2019-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/f5/28/898a6947.jpg" width="30px"><span>瓶子</span> 👍（0） 💬（1）<div>协程被暂停,那下次再执行怎么知道执行到哪里了呢？是程序计数器记录了吗？
+4 .不过说实话，现在的netty框架，在一定意义上工作原理和协程也有一些相似之处。</div>2019-11-22</li><br/><li><span>瓶子</span> 👍（0） 💬（1）<div>协程被暂停,那下次再执行怎么知道执行到哪里了呢？是程序计数器记录了吗？
 
-追求高吞吐量的系统，协程是不是就不能帮上忙了？</div>2020-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3b/36/2d61e080.jpg" width="30px"><span>行者</span> 👍（0） 💬（1）<div>从前，操作系统调度线程运行；现在，有了协程，进程自己调度协程如何运行，避免不必要的上下文切换，且协程相比线程占用内存空间更少。
-协程主要来解决网络IO问题。</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/77/3e/702c8782.jpg" width="30px"><span>玉哥</span> 👍（0） 💬（1）<div>有没有具体场景的实战优化呢？</div>2019-07-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b3/c5/7fc124e2.jpg" width="30px"><span>Liam</span> 👍（0） 💬（1）<div>消费者从mailbox拿数据为空时，或生产者往mailbox写数据没有可用空间时，不会阻塞吗？类似于队列</div>2019-07-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7a/4b/1a7b36ab.jpg" width="30px"><span>欧星星</span> 👍（0） 💬（1）<div>有个疑问，线程的切换是由系统来保证的，那协程之间的切换也能跟线程那样由调度器保证，还是说协程必须要手动调用或io</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9b/a7/440aff07.jpg" width="30px"><span>风翱</span> 👍（0） 💬（1）<div>一核的CPU是否有使用协程的必要？ 按目前cpu的调度是采用时间片的方式，一核的CPU也存在上下文切换。一核的CPU也可以应用到协程带来的好处。 不知道这个理解是否正确？</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ac/ef/494f56c3.jpg" width="30px"><span>crazypokerk</span> 👍（0） 💬（2）<div>老师，不是建议不要使用String对象作为锁对象吗？为什么上面的代码private static String LOCK = &quot;lock&quot;，要这么写呢？</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/17/27/ec30d30a.jpg" width="30px"><span>Jxin</span> 👍（0） 💬（1）<div>loom项目也可以让javaer玩玩协程，不过仅限于玩玩。总归没有大项目验证，而且都非官方版本，而是以框架的形式引用。不建议在真实项目中去使用。另外erland的并发编程并不弱于go。就目前来看，感觉还是java比较适合写web项目。虽然go写并发编程很爽，但web开发组件不健全，很多东西得自己实现，而自己实现意味着成本和风险。能有现有，经过大项目和时间验证的组件终是比较让人舒心的。</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b3/c5/7fc124e2.jpg" width="30px"><span>Liam</span> 👍（0） 💬（1）<div>请问mailbox是如何实现阻塞的呢？</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/29/8e/bdd22627.jpg" width="30px"><span>沧颜</span> 👍（0） 💬（2）<div>kotlin的协程设计应该和这个框架差不多吧</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/20/45/3c5548bb.jpg" width="30px"><span>~Wade</span> 👍（12） 💬（0）<div>有一个java库叫Quasar Fiber ，通过javaagent技术可以实现轻量级线程 
-官网：http:&#47;&#47;www.paralleluniverse.co&#47;quasar&#47;</div>2019-07-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7a/4b/1a7b36ab.jpg" width="30px"><span>欧星星</span> 👍（4） 💬（0）<div>老师有几个疑问
-1. 协程必须手动调用等待或阻塞才能被安排到等待队列去吗？还是说协程也可以跟线程一样会被随机丢到等待队列去每个协程也有个运行时间片？如果可以随机一般是如何实现的？
-2. 协程之间的争抢基于什么实现的？我想的话可以使用CAS来实现没有抢到的再次被丢到等待队列不知道对不对。
-3. 我看例子上邮箱里面没有数据时消费者协程没有类似线程的等待机制，这个要如何写呢？</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7b/57/a9b04544.jpg" width="30px"><span>QQ怪</span> 👍（3） 💬（0）<div>老师讲协程讲的最深最易懂的一个，赞赞赞</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（1） 💬（0）<div>老师好!1:1,N:1，N:M的线程模型。总感觉上学的时候有讲可是又想不起来。谢谢老师的讲解。不过还是有些不明白的地方。
-Java是采用1:1的映射方式。一个Java线程就对应一个内核线程。用户态和内核态的切换和这个映射模型有关系么(用户态和内核态，和用户线程内核线程是否有关系)?
-从用户态切换为内核态的时候具体做了哪些操作?之前讲IO模型时老师讲了，用户空间和内核空间，多次数据拷贝。和用户线程内核线程有什么联系么?后面会讲么?</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1e/3a/5b21c01c.jpg" width="30px"><span>nightmare</span> 👍（1） 💬（0）<div>终于弄懂协程和线程的区别了，协程基于N：M的线程模型实现，M个协程被调度器调度，实际上也是被内核线程执行，不过由于需要的内核线程少，一个内核线程可以执行多个协程，占用资源少，而且上下文切换也更加少，而基于线程的1：1模型只有有阻塞就会有上下文切换</div>2019-07-02</li><br/><li><img src="" width="30px"><span>Geek_b71aed</span> 👍（0） 💬（0）<div>I&#47;O 阻塞型场景也就是协程在 Java 中的主要应用，这句话不对吧，协程遇到阻塞性IO的时候，宿主线程都会阻塞，因为操作系统对于协程是无感知的，只能一刀切线程。</div>2023-05-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2e/27/b4/df65c0f7.jpg" width="30px"><span>| ~浑蛋~</span> 👍（0） 💬（0）<div>协程的上下文怎么维护呢</div>2022-12-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/d8/5d/07dfb3b5.jpg" width="30px"><span>杯莫停</span> 👍（0） 💬（0）<div>协程其实还是要利用线程来实现多路复用的，因为操作系统只认线程。其实跟netty的多线程模型有些类似，只是协程干了阻塞IO的事，少了上下文切换。</div>2022-07-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/5a/c1/6df65e0a.jpg" width="30px"><span>190coder</span> 👍（0） 💬（0）<div>java 里的协程就是玩具，在线程资源足够多的时候，性能和效率根本比不过线程</div>2021-09-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/f3/69/7039d03f.jpg" width="30px"><span>渔村蓝</span> 👍（0） 💬（0）<div>每个协程都有自己的mailbox，为啥还能共享变量？如果不能共享变量，这两个测试程序根本体现不出啥。</div>2021-07-05</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/x86UN2kFbJGGwiaw7yeVtyaf05y5eZmdOciaAF09WEBRVicbPGsej1b62UAH3icjeJqvibVc6aqB0EuFwDicicKKcF47w/132" width="30px"><span>Eco</span> 👍（0） 💬（0）<div>好像有个叫akka的框架不知道是不是协程的思想。还有老师在上面讲协程调度哪里，感觉有点像线程池呢。就指定数量的线程去执行远远大于线程数的Task，只不过这里的Task有状态还能阻塞。</div>2021-03-08</li><br/>
+追求高吞吐量的系统，协程是不是就不能帮上忙了？</div>2020-02-24</li><br/><li><span>行者</span> 👍（0） 💬（1）<div>从前，操作系统调度线程运行；现在，有了协程，进程自己调度协程如何运行，避免不必要的上下文切换，且协程相比线程占用内存空间更少。
+协程主要来解决网络IO问题。</div>2019-07-19</li><br/><li><span>玉哥</span> 👍（0） 💬（1）<div>有没有具体场景的实战优化呢？</div>2019-07-06</li><br/><li><span>Liam</span> 👍（0） 💬（1）<div>消费者从mailbox拿数据为空时，或生产者往mailbox写数据没有可用空间时，不会阻塞吗？类似于队列</div>2019-07-03</li><br/><li><span>欧星星</span> 👍（0） 💬（1）<div>有个疑问，线程的切换是由系统来保证的，那协程之间的切换也能跟线程那样由调度器保证，还是说协程必须要手动调用或io</div>2019-07-02</li><br/><li><span>风翱</span> 👍（0） 💬（1）<div>一核的CPU是否有使用协程的必要？ 按目前cpu的调度是采用时间片的方式，一核的CPU也存在上下文切换。一核的CPU也可以应用到协程带来的好处。 不知道这个理解是否正确？</div>2019-07-02</li><br/>
 </ul>
 
 

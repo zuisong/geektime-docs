@@ -3955,6 +3955,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      交易所 API 简介
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      手把手教你使用 API 下单
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13135,6 +13171,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      交易所 API 简介
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      手把手教你使用 API 下单
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13172,12 +13244,164 @@
 <p>现在，我假设你对网络编程只有很基本的了解。所以接下来，我将先从 REST 的定义讲起，然后过渡到具体的交互方式——如何通过 Python 和交易所进行交互，从而执行下单、撤单、查询订单等网络交互方式。</p>
 <h2 id="rest">REST 简介</h2>
 <p>什么是 REST API？什么是 Socket？有过网络编程经验的同学，一定对这两个词汇不陌生。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>REST的全称是表征层状态转移（REpresentational State Transfer），本意是指一种操作资源方法。不过，你不用纠结于这个绕口的名字。换种方式来说，REST的实质可以理解为：通过URL定位资源，用GET、POST、PUT、DELETE等动词来描述操作。而满足REST要求的接口，就被称为RESTful的接口。</p>
+<p>为了方便你更容易理解这些概念，这里我举个例子来类比。小明同学不是很聪明但很懂事，每天会在他的妈妈下班回来后给妈妈泡茶。刚开始，他的妈妈会发出这样的要求：</p>
+<blockquote>
+<p>用红色杯子，去厨房泡一杯放了糖的37.5度的普洱茶。</p>
+</blockquote>
+<p>可是小明同学不够聪明，很难理解这个定语很多的句子。于是，他妈妈为了让他更简单明白需要做的事情，把这个指令设计成了更简洁的样子：</p>
+<blockquote>
+<p>泡厨房的茶，要求如下：</p>
+<ol>
+<li>类型=普洱；</li>
+<li>杯子=红色；</li>
+<li>放糖=True；</li>
+<li>温度=37.5度。</li>
+</ol>
+</blockquote>
+<p>这里的“茶”就是资源，“<strong>厨房的茶</strong>”就是资源的地址（URI）；“<strong>泡</strong>”是动词；后面的要求，都是接口参数。这样的一个接口，就是小明提供的一个REST接口。</p>
+<p>如果小明是一台机器，那么解析这个请求就会非常容易；而我们作为维护者，查看小明的代码也很简单。当小明把这个接口暴露到网上时，这就是一个RESTful的接口。</p>
+<p>总的来说，RESTful接口通常以HTTP GET和POST形式出现。但并非所有的GET、POST请求接口，都是RESTful的接口。</p>
+<p>这话可能有些拗口，我们举个例子来看。上节课中，我们获取了Gemini交易所中，BTC对USD价格的ticker接口：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>GET https://api.gemini.com/v1/pubticker/btcusd
+</code></pre></div>
+<p>这里的“GET”是动词，后边的URI是“Ticker”这个资源的地址。所以，这是一个RESTful的接口。</p>
+<p>但下面这样的接口，就不是一个严格的RESTful接口：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>POST https://api.restful.cn/accounts/delete/:username
+</code></pre></div>
+<p>因为URI中包含动词“delete”（删除），所以这个URI并不是<strong>指向一个资源</strong>。如果要修改成严格的RESTful接口，我们可以把它改成下面这样：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>DELETE https://api.rest.cn/accounts/:username
+</code></pre></div>
+<p>然后，我们带着这个观念去看Gemini的取消订单接口：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>POST https://api.gemini.com/v1/order/cancel
+</code></pre></div>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c6/8f/c6851d2560b5f67f29c750cyy018738f.png?wh=1132x614" /></p>
+<p>你会发现，这个接口不够“RESTful”的地方有：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/14/8a/bc/cb39ed38.jpg" width="30px"><span>自由民</span> 👍（10） 💬（10）<div>为注册sandbox的账号折腾了半天，停在创建账号那里就不动了。不知道是不是墙的原因，挂了梯子终于注册好了，但是却要验证手机号码，开始我瞎填的美国加州，用网上的美国手机号接收验证码也不行。最后用另一个邮箱注册了，可以选中国的，手机也能接收到验证码。
+<li>动词设计不准确，接口使用“POST”而不是重用HTTP动词“DELETE”；</li>
+<li>URI里包含动词cancel；</li>
+<li>ID代表的订单是<strong>资源</strong>，但订单ID是放在<strong>参数列表</strong>而不是<strong>URI</strong>里的，因此URI并没有指向资源。</li>
+</ul>
+<p>所以严格来说，这不是一个RESTful的接口。</p>
+<p>此外，如果我们去检查Gemini的其他私有接口（Private，私有接口是指需要附加身份验证信息才能访问的接口），我们会发现，那些接口的设计都不是严格RESTful的。不仅如此，大部分的交易所，比如Bitmex、Bitfinex、OKCoin等等，它们提供的“REST接口”，也都不是严格RESTful的。这些接口之所以还能被称为“REST接口”，是因为他们大部分满足了REST接口的另一个重要要求：<strong>无状态</strong>。</p>
+<p>无状态的意思是，每个REST请求都是独立的，不需要服务器在会话（Session）中缓存中间状态来完成这个请求。简单来说，如果服务器A接收到请求的时候宕机了，而此时把这个请求发送给交易所的服务器B，也能继续完成，那么这个接口就是无状态的。</p>
+<p>这里，我再给你举一个简单的有状态的接口的例子。服务器要求，在客户端请求取消订单的时候，必须发送两次不一样的HTTP请求。并且，第一次发送让服务器“等待取消”；第二次发送“确认取消”。那么，就算这个接口满足了RESTful的动词、资源分离原则，也不是一个REST接口。</p>
+<p>当然，对于交易所的REST接口，你并不需要过于纠结“RESTful”这个概念，否则很容易就被这些名词给绕晕了。你只需要把握住最核心的一点：<strong>一个HTTP请求完成一次完整操作</strong>。</p>
+<h2 id="api">交易所 API 简介</h2>
+<p>现在，你对 REST 和 Web Socket 应该有一个大致了解了吧。接下来，我们就开始做点有意思的事情。</p>
+<p>首先，我来介绍一下交易所是什么。区块链交易所是个撮合交易平台： 它兼容了传统撮合规则撮合引擎，将资金托管和交割方式替换为区块链。数字资产交易所，则是一个中心化的平台，通过 Web 页面或 PC、手机客户端的形式，让用户将数字资产充值到指定钱包地址（交易所创建的钱包），然后在平台挂买单、卖单以实现数字资产之间的兑换。</p>
+<p>通俗来说，交易所就是一个买和卖的菜市场。有人在摊位上大声喊着：“二斤羊肉啊，二斤羊肉，四斤牛肉来换！”这种人被称为 maker（挂单者）。有的人则游走于不同摊位，不动声色地掏出两斤牛肉，顺手拿走一斤羊肉。这种人被称为 taker（吃单者）。</p>
+<p>交易所存在的意义，一方面是为 maker 和 taker 提供足够的空间活动；另一方面，让一个名叫撮合引擎的玩意儿，尽可能地把单子撮合在一起，然后收取一定比例的保护费…啊不对，是手续费，从而保障游戏继续进行下去。</p>
+<p>市场显然是个很伟大的发明，这里我们就不进行更深入的哲学讨论了。</p>
+<p>然后，我再来介绍一个叫作 Gemini 的交易所。Gemini，双子星交易所，全球首个获得合法经营许可的、首个推出期货合约的、专注于撮合大宗交易的数字货币交易所。Gemini 位于纽约，是一家数字货币交易所和托管机构，允许客户交易和存储数字资产，并直接受纽约州金融服务部门（NYDFS）的监管。</p>
+<p>Gemini 的界面清晰，API 完整而易用，更重要的是，还提供了完整的测试网络，也就是说，功能和正常的 Gemini 完全一样。但是他家的交易采用虚拟币，非常方便从业者在平台上进行对接测试。</p>
+<p>另一个做得很好的交易所，是 Bitmex，他家的 API UI 界面和测试网络也是币圈一流。不过，鉴于这家是期货交易所，对于量化初学者来说有一定的门槛，我们还是选择 Gemini 更方便一些。</p>
+<p>在进入正题之前，我们最后再以比特币和美元之间的交易为例，介绍四个基本概念（orderbook 的概念这里就不介绍了，你也不用深究，你只需要知道比特币的价格是什么就行了）。</p>
+<ul>
+<li>买（buy）：用美元买入比特币的行为。</li>
+<li>卖（sell）：用比特币换取美元的行为。</li>
+<li>市价单（market order）：给交易所一个方向（买或者卖）和一个数量，交易所把给定数量的美元（或者比特币）换成比特币（或者美元）的单子。</li>
+<li>限价单（limit order）：给交易所一个价格、一个方向（买或者卖）和一个数量，交易所在价格达到给定价格的时候，把给定数量的美元（或者比特币）换成比特币（或者美元）的单子。</li>
+</ul>
+<p>这几个概念都不难懂。其中，市价单和限价单，最大的区别在于，限价单多了一个给定价格。如何理解这一点呢？我们可以来看下面这个例子。</p>
+<p>小明在某一天中午12:00:00，告诉交易所，我要用1000美元买比特币。交易所收到消息，在 12:00:01 回复小明，现在你的账户多了 0.099 个比特币，少了 1000 美元，交易成功。这是一个市价买单。</p>
+<p>而小强在某一天中午 11:59:00，告诉交易所，我要挂一个单子，数量为 0.1 比特币，1个比特币的价格为 10000 美元，低于这个价格不卖。交易所收到消息，在11:59:01 告诉小强，挂单成功，你的账户余额中 0.1 比特币的资金被冻结。又过了一分钟，交易所告诉小强，你的单子被完全执行了（fully executed），现在你的账户多了 1000 美元，少了 0.1 个比特币。这就是一个限价卖单。</p>
+<p>（这里肯定有人发现不对了：貌似少了一部分比特币，到底去哪儿了呢？嘿嘿，你不妨自己猜猜看。）</p>
+<p>显然，市价单，在交给交易所后，会立刻得到执行，当然执行价格也并不受你的控制。它很快，但是也非常不安全。而限价单，则限定了交易价格和数量，安全性相对高很多。缺点呢，自然就是如果市场朝相反方向走，你挂的单子可能没有任何人去接，也就变成了干吆喝却没人买。因为我没有讲解 orderbook，所以这里的说辞不完全严谨，但是对于初学者理解今天的内容，已经够用了。</p>
+<p>储备了这么久的基础知识，想必你已经跃跃欲试了吧？下面，我们正式进入正题，手把手教你使用API下单。</p>
+<h2 id="api_1">手把手教你使用 API 下单</h2>
+<p>手动挂单显然太慢，也不符合量化交易的初衷。我们就来看看如何用代码实现自动化下单吧。</p>
+<p>第一步，你需要做的是，注册一个 Gemini Sandbox 账号。请放心，这个测试账号不需要你充值任何金额，注册后即送大量虚拟现金。这口吻是不是听着特像网游宣传语，接下来就是“快来贪玩蓝月里找我吧”？哈哈，不过这个设定确实如此，所以赶紧来注册一个吧。</p>
+<p>注册后，为了满足好奇，你可以先尝试着使用 Web 界面自行下单。不过，事实上，未解锁的情况下是无法正常下单的，因此这样尝试并没啥太大意义。</p>
+<p>所以第二步，我们需要来配置 API Key。菜单栏User Settings-&gt;API Settings，然后点 GENERATE A NEW ACCOUNT API KEY，记下 Key 和 Secret 这两串字符。因为窗口一旦消失，这两个信息就再也找不到了，需要你重新生成。</p>
+<p>配置到此结束。接下来，我们来看具体实现。</p>
+<p>先强调一点，在量化系统开发的时候，你的心中一定要有清晰的数据流图。下单逻辑是一个很简单的 RESTful 的过程，和你在网页操作的一样，构造你的请求订单、加密请求，然后 POST 给 gemini 交易所即可。</p>
+<p>不过，因为涉及到的知识点较多，带你一步一步从零来写代码显然不太现实。所以，我们采用“先读懂后记忆并使用”的方法来学，下面即为这段代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>import requests
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>import json
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>import base64
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>import hmac
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>import hashlib
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>import datetime
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>import time
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>base_url = &quot;https://api.sandbox.gemini.com&quot;
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>endpoint = &quot;/v1/order/new&quot;
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>url = base_url + endpoint
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>gemini_api_key = &quot;account-zmidXEwP72yLSSybXVvn&quot;
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>gemini_api_secret = &quot;375b97HfE7E4tL8YaP3SJ239Pky9&quot;.encode()
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>t = datetime.datetime.now()
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>payload_nonce = str(int(time.mktime(t.timetuple())*1000))
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>payload = {
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>   &quot;request&quot;: &quot;/v1/order/new&quot;,
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>   &quot;nonce&quot;: payload_nonce,
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>   &quot;symbol&quot;: &quot;btcusd&quot;,
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>   &quot;amount&quot;: &quot;5&quot;,
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>   &quot;price&quot;: &quot;3633.00&quot;,
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>   &quot;side&quot;: &quot;buy&quot;,
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>   &quot;type&quot;: &quot;exchange limit&quot;,
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>   &quot;options&quot;: [&quot;maker-or-cancel&quot;]
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>}
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>encoded_payload = json.dumps(payload).encode()
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>b64 = base64.b64encode(encoded_payload)
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>signature = hmac.new(gemini_api_secret, b64, hashlib.sha384).hexdigest()
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>request_headers = {
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>    &#39;Content-Type&#39;: &quot;text/plain&quot;,
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>    &#39;Content-Length&#39;: &quot;0&quot;,
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>    &#39;X-GEMINI-APIKEY&#39;: gemini_api_key,
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>    &#39;X-GEMINI-PAYLOAD&#39;: b64,
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>    &#39;X-GEMINI-SIGNATURE&#39;: signature,
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>    &#39;Cache-Control&#39;: &quot;no-cache&quot;
+<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>}
+<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>
+<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>response = requests.post(url,
+<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>                         data=None,
+<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a>                         headers=request_headers)
+<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a>
+<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a>new_order = response.json()
+<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a>print(new_order)
+<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a>
+<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a>
+<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a>########## 输出 ##########
+<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a>
+<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a>{&#39;order_id&#39;: &#39;239088767&#39;, &#39;id&#39;: &#39;239088767&#39;, &#39;symbol&#39;: &#39;btcusd&#39;, &#39;exchange&#39;: &#39;gemini&#39;, &#39;avg_execution_price&#39;: &#39;0.00&#39;, &#39;side&#39;: &#39;buy&#39;, &#39;type&#39;: &#39;exchange limit&#39;, &#39;timestamp&#39;: &#39;1561956976&#39;, &#39;timestampms&#39;: 1561956976535, &#39;is_live&#39;: True, &#39;is_cancelled&#39;: False, &#39;is_hidden&#39;: False, &#39;was_forced&#39;: False, &#39;executed_amount&#39;: &#39;0&#39;, &#39;remaining_amount&#39;: &#39;5&#39;, &#39;options&#39;: [&#39;maker-or-cancel&#39;], &#39;price&#39;: &#39;3633.00&#39;, &#39;original_amount&#39;: &#39;5&#39;}
+</code></pre></div>
+<p>我们来深入看一下这段代码。</p>
+<p>RESTful 的 POST 请求，通过 <code>requests.post</code> 来实现。post 接受三个参数，url、data 和 headers。</p>
+<p>这里的 url 等价于 <code>https://api.sandbox.gemini.com/v1/order/new</code>，但是在代码中分两部分写。第一部分是交易所 API 地址；第二部分，以斜杠开头，用来表示统一的 API endpoint。我们也可以在其他交易所的 API 中看到类似的写法，两者连接在一起，就构成了最终的 url。</p>
+<p>而接下来大段命令的目的，是为了构造 request_headers。</p>
+<p>这里我简单说一下 HTTP request，这是互联网中基于 TCP 的基础协议。HTTP 协议是 Hyper Text Transfer Protocol（超文本传输协议）的缩写，用于从万维网（WWW:World Wide Web）服务器传输超文本到本地浏览器的传送协议。而 TCP（Transmission Control Protocol）则是面向连接的、可靠的、基于字节流的传输层通信协议。</p>
+<p>多提一句，如果你开发网络程序，建议利用闲暇时间认真读一读《计算机网络：自顶向下方法》这本书，它也是国内外计算机专业必修课中广泛采用的课本之一。一边学习，一边应用，对于初学者的能力提升是全面而充分的。</p>
+<p>回到 HTTP，它的主要特点是，连接简单、灵活，可以使用“简单请求，收到回复，然后断开连接”的方式，也是一种无状态的协议，因此充分符合 RESTful 的思想。</p>
+<p>HTTP 发送需要一个请求头（request header），也就是代码中的 request_headers，用 Python 的语言表示，就是一个 str 对 str 的字典。</p>
+<p>这个字典里，有一些字段有特殊用途， <code>'Content-Type': "text/plain"</code> 和 <code>'Content-Length': "0"</code> 描述 Content 的类型和长度，这里的 Content 对应于参数 data。但是 Gemini 这里的 request 的 data 没有任何用处，因此长度为 0。</p>
+<p>还有一些其他字段，例如 <code>'keep-alive'</code> 来表示连接是否可持续化等，你也可以适当注意一下。要知道，网络编程很多 bug 都会出现在不起眼的细节之处。</p>
+<p>继续往下走看代码。payload 是一个很重要的字典，它用来存储下单操作需要的所有的信息，也就是业务逻辑信息。这里我们可以下一个 limit buy，限价买单，价格为 3633 刀。</p>
+<p>另外，请注意 nonce，这是个很关键并且在网络通信中很常见的字段。</p>
+<p>因为网络通信是不可靠的，一个信息包有可能会丢失，也有可能重复发送，在金融操作中，这两者都会造成很严重的后果。丢包的话，我们重新发送就行了；但是重复的包，我们需要去重。虽然 TCP 在某种程度上可以保证，但为了在应用层面进一步减少错误发生的机会，Gemini 交易所要求所有的通信 payload 必须带有 nonce。</p>
+<p>nonce 是个单调递增的整数。当某个后来的请求的 nonce，比上一个成功收到的请求的 nouce 小或者相等的时候，Gemini 便会拒绝这次请求。这样一来，重复的包就不会被执行两次了。另一方面，这样也可以在一定程度上防止中间人攻击：</p>
+<ul>
+<li>一则是因为 nonce 的加入，使得加密后的同样订单的加密文本完全混乱；</li>
+<li>二则是因为，这会使得中间人无法通过“发送同样的包来构造重复订单”进行攻击。</li>
+</ul>
+<p>这样的设计思路是不是很巧妙呢？这就相当于每个包都增加了一个身份识别，可以极大地提高安全性。希望你也可以多注意，多思考一下这些巧妙的用法。</p>
+<p>接下来的代码就很清晰了。我们要对 payload 进行 base64 和 sha384 算法非对称加密，其中 gemini_api_secret 为私钥；而交易所存储着公钥，可以对你发送的请求进行解密。最后，代码再将加密后的请求封装到 request_headers 中，发送给交易所，并收到 response，这个订单就完成了。</p>
+<h2 id="_1">总结</h2>
+<p>这节课我们介绍了什么是 RESTful API，带你了解了交易所的 RESTful API 是如何工作的，以及如何通过 RESTful API 来下单。同时，我简单讲述了网络编程中的一些技巧操作，希望你在网络编程中要注意思考每一个细节，尽可能在写代码之前，对业务逻辑和具体的技术细节有足够清晰的认识。</p>
+<p>下一节，我们同样将从 Web Socket 的定义开始，讲解量化交易中数据模块的具体实现。</p>
+<h2 id="_2">思考题</h2>
+<p>最后留一个思考题。今天的内容里，能不能使用 timestamp 代替 nonce？为什么？欢迎留言写下你的思考，也欢迎你把这篇文章分享出去。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>自由民</span> 👍（10） 💬（10）<div>为注册sandbox的账号折腾了半天，停在创建账号那里就不动了。不知道是不是墙的原因，挂了梯子终于注册好了，但是却要验证手机号码，开始我瞎填的美国加州，用网上的美国手机号接收验证码也不行。最后用另一个邮箱注册了，可以选中国的，手机也能接收到验证码。
 思考题:应该不行，对并发程序，先运行的未必时间戳在前，而用递增序列则可以确保先开始的顺序一定在前。
-课程的练习代码: https:&#47;&#47;github.com&#47;zwdnet&#47;PythonPractice</div>2019-10-24</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJJOlibibPFEWOib8ib7RtfAtxND5FUqCxxoeTuLAbBI9ic23xuwdXT4IyiaWq3Fic9RgEAYI0lBTbEp2rcg/132" width="30px"><span>Jingxiao</span> 👍（50） 💬（5）<div>思考题答案：事实上，在要求不是很严格的低频交易中，timestamp 是可以作为 nonce 存在的，它满足单调递增不重复的特性，比如一小时只会发送几个交易请求的波段策略中，timestamp 完全没问题。但是，在频率较高的交易中，timestamp 可能就不是那么适合。如果你使用协程来编程，或者使用类似 node.js 这样的异步编程工具或语言，那么你的代码很可能在发送的时候，并不是按照你想要的顺序发送给服务器，就会出现 timestamp 更大的请求反而更早发送。其次，在网络传输中，不同的包也可能有完全不同的抵达顺序，虽然你可以通过一些编程技巧来实现按顺序传输，但是如果你需要多台机器进行较为高频的交易。而且需要对同一个仓位（同一个 API Key）进行操作，就可能会变得比较麻烦。
-</div>2019-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/30/29/d6816ebf.jpg" width="30px"><span>小侠龙旋风</span> 👍（18） 💬（1）<div>知识点很多，整理一下。
+课程的练习代码: https:&#47;&#47;github.com&#47;zwdnet&#47;PythonPractice</div>2019-10-24</li><br/><li><span>Jingxiao</span> 👍（50） 💬（5）<div>思考题答案：事实上，在要求不是很严格的低频交易中，timestamp 是可以作为 nonce 存在的，它满足单调递增不重复的特性，比如一小时只会发送几个交易请求的波段策略中，timestamp 完全没问题。但是，在频率较高的交易中，timestamp 可能就不是那么适合。如果你使用协程来编程，或者使用类似 node.js 这样的异步编程工具或语言，那么你的代码很可能在发送的时候，并不是按照你想要的顺序发送给服务器，就会出现 timestamp 更大的请求反而更早发送。其次，在网络传输中，不同的包也可能有完全不同的抵达顺序，虽然你可以通过一些编程技巧来实现按顺序传输，但是如果你需要多台机器进行较为高频的交易。而且需要对同一个仓位（同一个 API Key）进行操作，就可能会变得比较麻烦。
+</div>2019-08-01</li><br/><li><span>小侠龙旋风</span> 👍（18） 💬（1）<div>知识点很多，整理一下。
 1. 非对称加密：
     加密：公钥加密，私钥解密；
     签名：私钥签名，公钥验签。
@@ -13207,49 +13431,22 @@ print(int(time.mktime(current_time.timetuple())*1000))
     &quot;result&quot;: &quot;error&quot;,
     &quot;reason&quot;: &quot;InsufficientFunds&quot;,
     &quot;message&quot;: &quot;Failed to place buy order on symbol &#39;BTCUSD&#39; for price $3,633.00 and quantity 5 BTC due to insufficient funds&quot;
-}</div>2019-07-27</li><br/><li><img src="" width="30px"><span>瞳梦</span> 👍（3） 💬（4）<div>请问gemini sandbox账号怎么注册呢？我在官网只找到了Open a Personal Account和I Represent an Institution</div>2019-07-26</li><br/><li><img src="" width="30px"><span>Xg huang</span> 👍（1） 💬（1）<div>哈哈，深入浅出，赞一个
+}</div>2019-07-27</li><br/><li><span>瞳梦</span> 👍（3） 💬（4）<div>请问gemini sandbox账号怎么注册呢？我在官网只找到了Open a Personal Account和I Represent an Institution</div>2019-07-26</li><br/><li><span>Xg huang</span> 👍（1） 💬（1）<div>哈哈，深入浅出，赞一个
 
 不过有个地方是否写错？&quot;而小宝在某一天中午 11:59:00，告诉交易所，我要挂一个单子，数量为 0.1 比特币，价格为 10000 美元，低于这个价格不卖。&quot;
 
-是不是1000才对？</div>2019-07-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/4b/bf/d714f592.jpg" width="30px"><span>王帅帅</span> 👍（0） 💬（1）<div>我跑了一遍，提示gemini 交易所正在维护，怎么回事。</div>2020-01-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/bc/29/022905e6.jpg" width="30px"><span>SCAR</span> 👍（13） 💬（0）<div>思考题：
+是不是1000才对？</div>2019-07-26</li><br/><li><span>王帅帅</span> 👍（0） 💬（1）<div>我跑了一遍，提示gemini 交易所正在维护，怎么回事。</div>2020-01-13</li><br/><li><span>SCAR</span> 👍（13） 💬（0）<div>思考题：
 1. 纯粹使用timestamp应该不行，虽然timestamp也是递增的，但是在python里timestamp是float而不是int。
 2.但如果基于timestamp抽取出部分应该是可以，比如老师例子中的：
    payload_nonce = str(int(time.mktime(t.timetuple())*1000))
    改成：
    payload_nonce = str(int(t.timestamp())*1000)
-   结果应该是一致的。</div>2019-07-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/92/7b/8c7e3e61.jpg" width="30px"><span>Monroe  He</span> 👍（7） 💬（2）<div>我想问一下老师，有针对国内股票的虚拟交易平台吗
-可以提供一下相关方面的书籍资料吗</div>2019-07-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7a/88/b787338a.jpg" width="30px"><span>devna</span> 👍（6） 💬（0）<div>前段时间刚看完《计算机网络：自顶自下方法》，确实不错，能很快提升对网络的认识，强烈推荐</div>2020-01-19</li><br/><li><img src="" width="30px"><span>karofsky</span> 👍（4） 💬（0）<div>今天再看这篇文章的感受就是，BTC真的涨了好多啊...</div>2021-01-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/d5/ca/488c0688.jpg" width="30px"><span>kang</span> 👍（3） 💬（6）<div>請問大家都是怎麼註冊Genimi 的? 我的註冊國家都被阻擋</div>2019-08-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/18/b6/f3f68a39.jpg" width="30px"><span>马建华</span> 👍（2） 💬（3）<div>我是报错：
+   结果应该是一致的。</div>2019-07-26</li><br/><li><span>Monroe  He</span> 👍（7） 💬（2）<div>我想问一下老师，有针对国内股票的虚拟交易平台吗
+可以提供一下相关方面的书籍资料吗</div>2019-07-26</li><br/><li><span>devna</span> 👍（6） 💬（0）<div>前段时间刚看完《计算机网络：自顶自下方法》，确实不错，能很快提升对网络的认识，强烈推荐</div>2020-01-19</li><br/><li><span>karofsky</span> 👍（4） 💬（0）<div>今天再看这篇文章的感受就是，BTC真的涨了好多啊...</div>2021-01-12</li><br/><li><span>kang</span> 👍（3） 💬（6）<div>請問大家都是怎麼註冊Genimi 的? 我的註冊國家都被阻擋</div>2019-08-23</li><br/><li><span>马建华</span> 👍（2） 💬（3）<div>我是报错：
 {&#39;result&#39;: &#39;error&#39;, &#39;reason&#39;: &#39;MissingAccounts&#39;, &#39;message&#39;: &#39;Expected a JSON payload with accounts&#39;}
-有谁碰到吗？</div>2020-07-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/ec/4b/442dd5f1.jpg" width="30px"><span>及時行樂</span> 👍（2） 💬（0）<div>现在程序跑起来都报错了，这是交易所把API地址改了吗？
-{&#39;result&#39;: &#39;error&#39;, &#39;reason&#39;: &#39;EndpointMismatch&#39;, &#39;message&#39;: &#39;EndpointMismatch&#39;}</div>2020-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/d9/8d/78dd472a.jpg" width="30px"><span>知止。</span> 👍（1） 💬（2）<div>老师，是不是该针对运行可能出现的一些问题给出解答呢？如果网站变更过信息，那么课件相应也得更新一下吧，不然后来订阅学习的人没办法完整学习啊。比如我按照课件内容运行，提示{&#39;result&#39;: &#39;error&#39;, &#39;reason&#39;: &#39;InvalidSignature&#39;, &#39;message&#39;: &#39;InvalidSignature&#39;}，网上都找不到原因，想自己排查错误都不懂如何着手
-</div>2020-09-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/50/26/b0a0b6b5.jpg" width="30px"><span>SuperXiong</span> 👍（1） 💬（7）<div>第一部：注册sandbox没有成功，选了中国区，提交注册表之后，返回一个未知问题。</div>2020-01-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/3d/e1/5279ea2f.jpg" width="30px"><span>鱼鱼鱼培填</span> 👍（1） 💬（1）<div>请教老师一个问题：在Gemini注册账号之后用生成key和secret实现代码，结果一直出现InvalidSignature
-试了两种方式：
-1、一开始以为是key setting的问题，结果三种都试过还是一样的结果
-2、重新生成key和secret，也还是一样的结果
-Google查找后发现有人也是一样的结果，但是没有找到解决方案</div>2019-08-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4d/fd/0aa0e39f.jpg" width="30px"><span>许童童</span> 👍（1） 💬（0）<div>老师讲得好啊，妙啊！</div>2019-07-26</li><br/><li><img src="" width="30px"><span>Geek_adeba6</span> 👍（1） 💬（1）<div>想请问如果想实现秒级别的市场行情获取，生产环境下的最佳实践是什么？</div>2019-07-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fe/44/3e3040ac.jpg" width="30px"><span>程序员人生</span> 👍（1） 💬（0）<div>timestamp应该不能代替nonce。
-当某个后请求的nonce，比上一个成功收到请求的nonce小或者等于时候，服务器会拒绝接收。
-但timestamp不行，因为后请求的timestamp，可能会由于各种原因先到服务器，先请求的可能会晚到，并不能体现先后次序。
-不知道我理解是否正确？</div>2019-07-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/ab/a8/eb9f186e.jpg" width="30px"><span>SuQiu</span> 👍（1） 💬（1）<div>timestamp也属于自增长，猜测是由于他的可预见性，所以不能代替nonce</div>2019-07-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0a/a4/828a431f.jpg" width="30px"><span>张申傲</span> 👍（0） 💬（0）<div>第34讲打卡~</div>2024-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/10/78/29bd3f1e.jpg" width="30px"><span>王子瑞Aliloke有事电联</span> 👍（0） 💬（0）<div>网站挂了，我尝试了开梯子与不开梯子，网站都是 500
-
-Request URL:
-https:&#47;&#47;exchange.sandbox.gemini.com&#47;register&#47;new-user
-Request Method:
-POST
-Status Code:
-500 Internal Server Error
-Remote Address:
-127.0.0.1:17890
-Referrer Policy:
-strict-origin-when-cross-origin</div>2023-10-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/83/8d/03cac826.jpg" width="30px"><span>徐李</span> 👍（0） 💬（0）<div>时间错不能完全保证唯一性</div>2022-04-27</li><br/><li><img src="" width="30px"><span>Geek_56b863</span> 👍（0） 💬（0）<div>老师，requests.post(url,data=None,headers=request_headers) 执行后，等待一会儿会报错：ConnectionError: HTTPSConnectionPool(host=&#39;api.sandbox.gemini.com&#39;, port=443): Max retries exceeded with url: &#47;v1&#47;order&#47;new (Caused by NewConnectionError(&#39;&lt;urllib3.connection.HTTPSConnection object at 0x00000141BA65CAC0&gt;: Failed to establish a new connection: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。&#39;))
-
-科学上网也无法解决，会报出另一个错误：ValueError: check_hostname requires server_hostname
-
-请问老师，这个REQUEST.POST问题，应该如何解决呢？谢谢解答</div>2021-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/58/3e/77c9b529.jpg" width="30px"><span>Sanhong</span> 👍（0） 💬（0）<div>如果报{&#39;result&#39;: &#39;error&#39;, &#39;reason&#39;: &#39;InvalidSignature&#39;, &#39;message&#39;: &#39;InvalidSignature&#39;} ，就检查一下key和secret是否正确；
-如果报{&#39;result&#39;: &#39;error&#39;, &#39;reason&#39;: &#39;MissingAccounts&#39;, &#39;message&#39;: &#39;Expected a JSON payload with accounts&#39;}，就检查一下scope是否为Primary，并且Permissions是否有交易权限。</div>2020-09-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/33/a2/6c0ffc15.jpg" width="30px"><span>皮皮侠</span> 👍（0） 💬（0）<div>谢谢老师教我方法✌️</div>2020-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/17/96/a10524f5.jpg" width="30px"><span>蓬蒿</span> 👍（0） 💬（0）<div>还有一点就是timestamp在nat网络中会有问题，难以保证单调递增，虽然这种极端情况基本不可能发生</div>2020-04-14</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/8P1a8D3WButrPQicebnKkrAiaI1lWUfZicWPtWfXHbm9Xv7qb1tkJ7eiaxVG2JfO8mLJt7AzmPXjn0MsgjKBWujFfQ/132" width="30px"><span>余皇南</span> 👍（0） 💬（0）<div>nonce 并不幂等啊？ 因为网络原因会造成 重复下单（首次成功但延迟）的可能；</div>2020-04-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3a/84/70340e87.jpg" width="30px"><span>向南</span> 👍（0） 💬（0）<div>区别在于生成nonce及执行交易的顺讯，会不会出现后生成nonce的交易请求抢先一步提交交易所执行交易，导致先前生成nonce的请求不得已被延后执行时，被交易所拒绝。
-若能保证 先一步 生成nonce的交易请求 先执行交易，则二者没啥区别（时间戳是float的不考虑，肯定会转换的）；若不能保证，则nonce更安全些。
-但是文中的nonce本质上不也是时间戳吗？
-看了Gemini REST API 的文档，文中的例子和Gemini给的例子一毛一样。
-还有就是创建master API账户无法进行交易，必须是Primary账户。</div>2020-03-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/51/86/b5fd8dd8.jpg" width="30px"><span>建强</span> 👍（0） 💬（0）<div>网络编程没有接触过，对这道思考题的个人初步理解：用timestamp代替nonce可能会有隐患，第一，timestamp是时间戳，而nonce要求是整数，可能需要做转换；第二，timestamp需要根据发送方服务器时间来生成，一旦发送方的服务器时间设置错误，有可能造成接收方拒收；第三，用timestamp容易被破解，可能会受第三方的攻击。</div>2020-02-19</li><br/>
+有谁碰到吗？</div>2020-07-20</li><br/><li><span>及時行樂</span> 👍（2） 💬（0）<div>现在程序跑起来都报错了，这是交易所把API地址改了吗？
+{&#39;result&#39;: &#39;error&#39;, &#39;reason&#39;: &#39;EndpointMismatch&#39;, &#39;message&#39;: &#39;EndpointMismatch&#39;}</div>2020-05-13</li><br/><li><span>知止。</span> 👍（1） 💬（2）<div>老师，是不是该针对运行可能出现的一些问题给出解答呢？如果网站变更过信息，那么课件相应也得更新一下吧，不然后来订阅学习的人没办法完整学习啊。比如我按照课件内容运行，提示{&#39;result&#39;: &#39;error&#39;, &#39;reason&#39;: &#39;InvalidSignature&#39;, &#39;message&#39;: &#39;InvalidSignature&#39;}，网上都找不到原因，想自己排查错误都不懂如何着手
+</div>2020-09-05</li><br/><li><span>SuperXiong</span> 👍（1） 💬（7）<div>第一部：注册sandbox没有成功，选了中国区，提交注册表之后，返回一个未知问题。</div>2020-01-12</li><br/>
 </ul>
 
 

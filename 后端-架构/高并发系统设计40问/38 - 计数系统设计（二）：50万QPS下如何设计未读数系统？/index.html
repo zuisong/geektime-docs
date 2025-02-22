@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -12595,6 +12600,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    38   计数系统设计（二）：50万QPS下如何设计未读数系统？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -12604,6 +12620,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      系统通知的未读数要如何设计
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何为信息流的未读数设计方案
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      课程小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      一课一思
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -13120,6 +13189,50 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      系统通知的未读数要如何设计
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何为信息流的未读数设计方案
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      课程小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      一课一思
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -13153,39 +13266,69 @@
 </ul>
 <p>那当你遇到第一个需求时，要如何记录未读数呢？其实，这个需求可以用上节课提到的通用计数系统来实现，因为二者的场景非常相似。</p>
 <p>你可以在计数系统中增加一块儿内存区域，以用户ID为Key存储多个未读数，当有人@ 你时，增加你的未读@的计数；当有人评论你时，增加你的未读评论的计数，以此类推。当你点击了未读数字进入通知页面，查看@ 你或者评论你的消息时，重置这些未读计数为零。相信通过上一节课的学习，你已经非常熟悉这一类系统的设计了，所以我不再赘述。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>那么系统通知的未读数是如何实现的呢？我们能用通用计数系统实现吗？答案是不能的，因为会出现一些问题。</p>
+<h2 id="_1">系统通知的未读数要如何设计</h2>
+<p>来看具体的例子。假如你的系统中只有A、B、C三个用户，那么你可以在通用计数系统中增加一块儿内存区域，并且以用户ID为Key来存储这三个用户的未读通知数据，当系统发送一个新的通知时，我们会循环给每一个用户的未读数加1，这个处理逻辑的伪代码就像下面这样：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>List&lt;Long&gt; userIds = getAllUserIds();
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>for(Long id : userIds) {
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  incrUnreadCount(id);
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>}
+</code></pre></div>
+<p>这样看来，似乎简单可行，但随着系统中的用户越来越多，这个方案存在两个致命的问题。</p>
+<p>首先，获取全量用户就是一个比较耗时的操作，相当于对用户库做一次全表的扫描，这不仅会对数据库造成很大的压力，而且查询全量用户数据的响应时间是很长的，对于在线业务来说是难以接受的。如果你的用户库已经做了分库分表，那么就要扫描所有的库表，响应时间就更长了。<strong>不过有一个折中的方法，</strong> 那就是在发送系统通知之前，先从线下的数据仓库中获取全量的用户ID，并且存储在一个本地的文件中，然后再轮询所有的用户ID，给这些用户增加未读计数。</p>
+<p>这似乎是一个可行的技术方案，然而它给所有人增加未读计数，会消耗非常长的时间。你计算一下，假如你的系统中有一个亿的用户，给一个用户增加未读数需要消耗1ms，那么给所有人都增加未读计数就需要100000000 * 1 /1000 = 100000秒，也就是超过一天的时间；即使你启动100个线程并发的设置，也需要十几分钟的时间才能完成，而用户很难接受这么长的延迟时间。</p>
+<p>另外，使用这种方式需要给系统中的每一个用户都记一个未读数的值，而在系统中，活跃用户只是很少的一部分，大部分的用户是不活跃的，甚至从来没有打开过系统通知，为这些用户记录未读数显然是一种浪费。</p>
+<p>通过上面的内容，你可以知道为什么我们不能用通用计数系统实现系统通知未读数了吧？那正确的做法是什么呢？</p>
+<p>要知道，系统通知实际上是存储在一个大的列表中的，这个列表对所有用户共享，也就是所有人看到的都是同一份系统通知的数据。不过不同的人最近看到的消息不同，所以每个人会有不同的未读数。因此，你可以记录一下在这个列表中每个人看过最后一条消息的ID，然后统计这个ID之后有多少条消息，这就是未读数了。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/a5/10/a5f0b6776246dc6b4c7e96c72d74a210.jpg?wh=1142%2A850" /></p>
+<p>这个方案在实现时有这样几个关键点：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/5c/8f/551b5624.jpg" width="30px"><span>小可</span> 👍（9） 💬（1）<div>这三个方案都很“硬核”，不过最最重要的，不要照搬硬套，还是要根据实际场景分析问题的难点，找准关键点，制定应对方案，谢谢老师。
-</div>2019-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0d/2b/4814d3db.jpg" width="30px"><span>阿土</span> 👍（9） 💬（5）<div>考试你好，我有两个问题
-第一:关注的人删除了博文，记录的博文数要不要相应减少？快照里面的数据要不要减少？
-第二:如果一个人关注的人很多，比如有一千个，那么它每次过去未读数就就要读取1001次缓存，能够支持50w并发，性能上是如何优化的？</div>2019-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/e7/13/6f76ada6.jpg" width="30px"><span>大龄程序员在线治掉发</span> 👍（7） 💬（2）<div>统计这个 ID 之后有多少条消息，这就是未读数了
-我这里有个疑问,如果用户有10条未读,他直接读第五条消息,那么10-5 = 5 , 就是5个未读,实际上是9条,这样未读就不对了?</div>2020-01-07</li><br/><li><img src="" width="30px"><span>Geek_219216</span> 👍（4） 💬（1）<div>老师 未读数还会落地到数据库吗</div>2020-01-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/7b/c5/35f92dad.jpg" width="30px"><span>Jone_乔泓恺</span> 👍（3） 💬（1）<div>总是担心 redis 这种内存型数据库会因为服务器故障导致数据的丢失</div>2020-03-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d0/4d/2116c1a4.jpg" width="30px"><span>Bravery168</span> 👍（3） 💬（1）<div>我之前在实现红点消息和未读数也采用的是时间戳偏移计算的思路，当然数据规模没有微博这么大。这里用到通用计数器和快照比较得出未读数的思路挺好，任何实现方案还是要紧密结合应用场景来做精心设计，在存储，读写性能等维度上达到一个平衡。</div>2020-03-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/5e/82/438c8534.jpg" width="30px"><span>longslee</span> 👍（3） 💬（1）<div>打卡。感谢老师实战经验，眼界开阔了许多。  有一个疑问，这些方案，是老师你们独特想到的，还是业界通用做法呢，如果是业界通用的，业界都是从哪里最先开始获取到理论支持的呢？</div>2020-01-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0f/40/e838871e.jpg" width="30px"><span>zk_207</span> 👍（2） 💬（2）<div>扬哥你好，请教个问题，如果接口QPS到达20w甚至是50w级别，只靠缓存能承受得了吗？Redis并发到了10w级好像性能就不行了，请求解答，谢谢</div>2020-03-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ea/3b/5e1e7b6c.jpg" width="30px"><span>陈琪</span> 👍（1） 💬（2）<div>是否可以按大V和非大V结合处理的方式： 推拉结合
-1.  发文的时候，如果这个人粉丝数少，直接推送到他每个粉丝数的 &quot;普通未读数计数&quot;，
-2. 如果这个人是大V，就不推。   
-3. 用户获取未读数 = (他关注的大V里总数-快照数)  +  “普通未读数计数”
-需要考虑的就是一个用户从普通V变成了大V。
-这种总体读写性能都能比较好平衡，老师觉得呢</div>2020-04-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/6b/55/2b0f219b.jpg" width="30px"><span>Geek_42f729</span> 👍（1） 💬（1）<div>如果有多个组件需要展示红点，是不是需要根据不同的组件给用户创建多个不同的时间戳来进行比较呢？</div>2020-01-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/b1/33/8993eae0.jpg" width="30px"><span>黄展志</span> 👍（1） 💬（1）<div>谢谢唐老师，受益良多，加油，等你更新最后三讲</div>2019-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/ab/fc/38ccd186.jpg" width="30px"><span>123456</span> 👍（0） 💬（1）<div>感觉有点小疑问:杨幂发了一条微博， 然后删了一条两年前的微博， 粉丝们的未读数可能就不会有变化了</div>2020-03-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/a0/4d/8e78fb88.jpg" width="30px"><span>亚马逊森林</span> 👍（0） 💬（4）<div>老师你好，redis的bitmap 存储系统未读书也是可行的吧，整串表示某条系统消息，字串的索引存储用户id，值存储用户是否未读</div>2020-03-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/71/05/db554eba.jpg" width="30px"><span>👽</span> 👍（0） 💬（1）<div>影响系统设计的最主要因素还是业务的并发量，
-并发量低的时候，耗时长的业务，也不是问题。
-并发量高的时候，耗时再短的业务，也是问题。
-
-这一节，主要的解决问题的思路，还是用缓存来处理这种高频请求的问题；当一个请求需要被大量访问，就需要考虑缓存来代替关系型数据库。
-
-进一步处理就是，用空间换时间。消息未读数这种，即时性极高的业务，需要这种空间换时间的处理方式。
-</div>2020-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d0/69/5dbdc245.jpg" width="30px"><span>张德</span> 👍（0） 💬（1）<div>这一讲通俗易懂  很棒</div>2020-01-02</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/ibcRNslcyp7dwIR3TIwvloCibMd7Ew2TB3MU0wISFXEolyuHRtfIriagm6PMX5zQHicmc78BrBcxA6vQ5qnTPCev9A/132" width="30px"><span>jiangjing</span> 👍（0） 💬（1）<div>硬核👍</div>2019-12-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/47/65/cce8eb34.jpg" width="30px"><span>nimil</span> 👍（0） 💬（1）<div>谢谢老师，实战篇受益良多</div>2019-12-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/36/2c/8bd4be3a.jpg" width="30px"><span>小喵喵</span> 👍（0） 💬（1）<div>1.先从线下的数据仓库中获取全量的用户 ID，并且存储在一个本地的文件中。是把全量ID写到cache里面吗？比如redis。还是写到本地磁盘文件中，比如txt文件中呢？
-2.你可以记录一下在这个列表中每个人看过最后一条消息的 ID？如果先看最近的消息，然后最后看消息久远的消息ID，这样统计不准确了吧。因为ID是系统按照时间从小到大生成的。</div>2019-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/13/92/0b4c8e30.jpg" width="30px"><span>飞翔</span> 👍（0） 💬（1）<div>如果只记录数量，有删除的话，一减成负数了，这种情况怎么办</div>2019-12-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/35/79/21647da2.jpg" width="30px"><span>Keith</span> 👍（0） 💬（1）<div>关于信息流未读数方案, 快照记录是用户A最近一次查看消息时记录的, 在用户A下次查看消息之前这一段时间, 如果某个关注的人删了几条微博, 然后又发了几条, 总数不变, 这种方案是不是会认为用户A的消息未读数不变? (不过即使是, 鉴于用户对未读数的准确度要求没那么高, 也是可以接受)</div>2019-12-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4e/60/0d5aa340.jpg" width="30px"><span>gogo</span> 👍（0） 💬（2）<div>用户微博数快照是指该用户所有微博的数量吗？</div>2019-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/37/4e/5c3153b2.jpg" width="30px"><span>知行合一</span> 👍（0） 💬（3）<div>push消息的未读数是主动通知的，这种的话应该是怎么设计的呢？同时也很好奇微博是怎么把海量的消息瞬间发送出去的</div>2019-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（34） 💬（1）<div>未读数这种需求目前还没做过，不过也做过70WTPS的接口服务，其他组在大促时也百万级千万级也有，主要思路是类似的缓存＋集群，缓存可以多级缓存，集群数量可以成百上千。
-缓存——本质是专业的人做专业的事情的思想，它的内部结构决定了他就是快
-
-集群——本质是分而治之的思想，人多力量大，当然需要劲往一处使才行
-
-取巧——本质是发现她的规律，选择合适的数据结构和算法，也能极大的加快运行的速度
-
-场景——本质看有无必要万无一失，万无一失不好实现的，不过和钱不强相关，不万无一失也可以，如果用户本身也不同在乎，那就更容易了，统计错误也不打紧的
-</div>2020-05-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/6e/01/a0df95a2.jpg" width="30px"><span>rumly</span> 👍（8） 💬（1）<div>仅仅用 16 台普通的服务器就支撑了每秒接近 50 万次的请求   相当于每台机器能够承担的QPS是 31250。这个单机QPS已经非常高了，如果带REIDS访问的服务就更难了，想问下具体的细节，单机的QPS是如何达到这么高的？谢谢。</div>2020-07-11</li><br/><li><img src="" width="30px"><span>Geek_2b64f5</span> 👍（3） 💬（0）<div>如果一个人关注的明星或者好友非常多的时候，快照的数据结构怎么设计？怎么保证redis读取全量快照的延时？</div>2020-08-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/cc/de/e28c01e1.jpg" width="30px"><span>剑八</span> 👍（2） 💬（0）<div>3个解决方案模型：
-1个存储业务实体对1个用户直接计数就好
-1对多，用户纬度记录最新访问时间或id
-多对多，用户纬度记录每个关注对象的已读记录数</div>2022-04-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/29/39/be9d2e88.jpg" width="30px"><span>边际革命</span> 👍（1） 💬（0）<div>感谢老师，给我开阔了眼界</div>2020-11-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/fe/04/bb427e47.jpg" width="30px"><span>码哥字节</span> 👍（0） 💬（1）<div>列表的每个消息绑定一个 redis bitmap，这条消息已读就把这条消息对应的 bitmap自己的 userid set成1，最后统计所有的 bitmap 在 userid为1的个数就是已读数</div>2022-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/8a/12/95d6e8d5.jpg" width="30px"><span>∷鹰击长空</span> 👍（0） 💬（0）<div>以前接触过类似的系统设计:
-通用计数器中记录每一个用户发布的博文数, 很妙! Redis 内存几万个数字相加也还是很快的(毫秒级). </div>2021-12-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9d/0c/abb7bfe3.jpg" width="30px"><span>飞鸟在途</span> 👍（0） 💬（0）<div>免流量和微博运动那个打点是针对一个个uid的精准打点，不能用全量打点的方式实现。</div>2020-10-12</li><br/>
+<li>用户访问系统通知页面需要设置未读数为0，我们需要将用户最近看过的通知ID设置为最新的一条系统通知ID；</li>
+<li>如果最近看过的通知ID为空，则认为是一个新的用户，返回未读数为0；</li>
+<li>对于非活跃用户，比如最近一个月都没有登录和使用过系统的用户，可以把用户最近看过的通知ID清空，节省内存空间。</li>
 </ul>
+<p><strong>这是一种比较通用的方案，既节省内存，又能尽量减少获取未读数的延迟。</strong> 这个方案适用的另一个业务场景是全量用户打点的场景，比如像下面这张微博截图中的红点。<br />
+<img alt="" src="https://static001.geekbang.org/resource/image/ae/3f/ae6a5e9e04be08d18c493729458d543f.jpg?wh=1142%2A771" /></p>
+<p>这个红点和系统通知类似，也是一种通知全量用户的手段，如果逐个通知用户，延迟也是无法接受的。<strong>因此你可以采用和系统通知类似的方案。</strong></p>
+<p>首先，我们为每一个用户存储一个时间戳，代表最近点过这个红点的时间，用户点了红点，就把这个时间戳设置为当前时间；然后，我们也记录一个全局的时间戳，这个时间戳标识最新的一次打点时间，如果你在后台操作给全体用户打点，就更新这个时间戳为当前时间。而我们在判断是否需要展示红点时，只需要判断用户的时间戳和全局时间戳的大小，如果用户时间戳小于全局时间戳，代表在用户最后一次点击红点之后又有新的红点推送，那么就要展示红点，反之，就不展示红点了。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/55/98/553e7da158a7eca56369e23c9b672898.jpg?wh=1142%2A560" /></p>
+<p>这两个场景的共性是全部用户共享一份有限的存储数据，每个人只记录自己在这份存储中的偏移量，就可以得到未读数了。</p>
+<p>你可以看到，系统消息未读的实现方案不是很复杂，它通过设计避免了操作全量数据未读数，如果你的系统中有这种打红点的需求，那我建议你可以结合实际工作灵活使用上述方案。</p>
+<p>最后一个需求关注的是微博信息流的未读数，在现在的社交系统中，关注关系已经成为标配的功能，而基于关注关系的信息流也是一种非常重要的信息聚合方式，因此，如何设计信息流的未读数系统就成了你必须面对的一个问题。</p>
+<h2 id="_2">如何为信息流的未读数设计方案</h2>
+<p>信息流的未读数之所以复杂主要有这样几点原因。</p>
+<ul>
+<li>首先，微博的信息流是基于关注关系的，未读数也是基于关注关系的，就是说，你关注的人发布了新的微博，那么你作为粉丝未读数就要增加1。如果微博用户都是像我这样只有几百粉丝的“小透明”就简单了，你发微博的时候系统给你粉丝的未读数增加1不是什么难事儿。但是对于一些动辄几千万甚至上亿粉丝的微博大V就麻烦了，增加未读数可能需要几个小时。假设你是杨幂的粉丝，想了解她实时发布的博文，那么如果当她发布博文几个小时之后，你才收到提醒，这显然是不能接受的。所以未读数的延迟是你在设计方案时首先要考虑的内容。</li>
+<li>其次，信息流未读数请求量极大、并发极高，这是因为接口是客户端轮询请求的，不是用户触发的。也就是说，用户即使打开微博客户端什么都不做，这个接口也会被请求到。在几年前，请求未读数接口的量级就已经接近每秒50万次，这几年随着微博量级的增长，请求量也变得更高。而作为微博的非核心接口，我们不太可能使用大量的机器来抗未读数请求，因此，如何使用有限的资源来支撑如此高的流量是这个方案的难点。</li>
+<li>最后，它不像系统通知那样有共享的存储，因为每个人关注的人不同，信息流的列表也就不同，所以也就没办法采用系统通知未读数的方案。</li>
+</ul>
+<p>那要如何设计能够承接每秒几十万次请求的信息流未读数系统呢？你可以这样做：</p>
+<ul>
+<li>首先，在通用计数器中记录每一个用户发布的博文数；</li>
+<li>然后在Redis或者Memcached中记录一个人所有关注人的博文数快照，当用户点击未读消息重置未读数为0时，将他关注所有人的博文数刷新到快照中；</li>
+<li>这样，他关注所有人的博文总数减去快照中的博文总数就是他的信息流未读数。</li>
+</ul>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/a5/8a/a563b121ae1147a2d877a7bb14c9658a.jpg?wh=1142%2A546" /></p>
+<p>假如用户A，像上图这样关注了用户B、C、D，其中B发布的博文数是10，C发布的博文数是8，D发布的博文数是14，而在用户A最近一次查看未读消息时，记录在快照中的这三个用户的博文数分别是6、7、12，因此用户A的未读数就是（10-6）+（8-7）+（14-12）=7。</p>
+<p>这个方案设计简单，并且是全内存操作，性能足够好，能够支撑比较高的并发，事实上微博团队仅仅用16台普通的服务器就支撑了每秒接近50万次的请求，这就足以证明这个方案的性能有多出色，因此，它完全能够满足信息流未读数的需求。</p>
+<p>当然了这个方案也有一些缺陷，比如说快照中需要存储关注关系，如果关注关系变更的时候更新不及时，那么就会造成未读数不准确；快照采用的是全缓存存储，如果缓存满了就会剔除一些数据，那么被剔除用户的未读数就变为0了。但是好在用户对于未读数的准确度要求不高（未读10条还是11条，其实用户有时候看不出来），因此，这些缺陷也是可以接受的。</p>
+<p>通过分享未读数系统设计这个案例，我想给你一些建议：</p>
+<ol>
+<li>缓存是提升系统性能和抵抗大并发量的神器，像是微博信息流未读数这么大的量级我们仅仅使用十几台服务器就可以支撑，这全都是缓存的功劳；</li>
+<li>要围绕系统设计的关键困难点想解决办法，就像我们解决系统通知未读数的延迟问题一样；</li>
+<li>合理分析业务场景，明确哪些是可以权衡的，哪些是不行的，会对你的系统设计增益良多，比如对于长久不登录用户，我们就会记录未读数为0，通过这样的权衡，可以极大地减少内存的占用，减少成本。</li>
+</ol>
+<h2 id="_3">课程小结</h2>
+<p>以上就是本节课的全部内容了，本节课我带你了解了未读数系统的设计，这里你需要了解的重点是：</p>
+<ol>
+<li>评论未读、@未读、赞未读等一对一关系的未读数可以使用上节课讲到的通用计数方案来解决；</li>
+<li>在系统通知未读、全量用户打点等存在有限的共享存储的场景下，可以通过记录用户上次操作的时间或者偏移量，来实现未读方案；</li>
+<li>最后，信息流未读方案最为复杂，采用的是记录用户博文数快照的方式。</li>
+</ol>
+<p>这里你可以看到，这三类需求虽然都和未读数有关，但是需求场景不同、对于量级的要求不同，设计出来的方案也就不同。因此，就像我刚刚提到的样子，你在做方案设计的时候，要分析需求的场景，比如说数据的量级是怎样的，请求的量级是怎样的，有没有一些可以利用的特点（比如系统通知未读场景下的有限共享存储、信息流未读场景下关注人数是有限的等等），然后再制定针对性的方案，切忌盲目使用之前的经验套用不同的场景，否则就可能造成性能的下降，甚至危害系统的稳定性。</p>
+<h2 id="_4">一课一思</h2>
+<p>结合实际项目聊一聊在你的系统中有哪些未读计数的场景呢？你是如何设计方案来实现未读计数的呢？欢迎在留言区与我分享你的经验。</p>
+<p>最后，感谢你的阅读，如果这篇文章让你有所收获，也欢迎你将它分享给更多的朋友。</p>
 
 
 

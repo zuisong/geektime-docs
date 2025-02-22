@@ -10756,6 +10756,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#aio_readaio_write" class="md-nav__link">
+    <span class="md-ellipsis">
+      aio_read和aio_write的用法
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#linuxsocket" class="md-nav__link">
+    <span class="md-ellipsis">
+      Linux下socket套接字的异步支持
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#windowsiocpproactor" class="md-nav__link">
+    <span class="md-ellipsis">
+      Windows下的IOCP和Proactor模式
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12988,6 +13033,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#aio_readaio_write" class="md-nav__link">
+    <span class="md-ellipsis">
+      aio_read和aio_write的用法
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#linuxsocket" class="md-nav__link">
+    <span class="md-ellipsis">
+      Linux下socket套接字的异步支持
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#windowsiocpproactor" class="md-nav__link">
+    <span class="md-ellipsis">
+      Windows下的IOCP和Proactor模式
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13020,9 +13110,189 @@
 <p>第一种是阻塞I/O。阻塞I/O发起的read请求，线程会被挂起，一直等到内核数据准备好，并把数据从内核区域拷贝到应用程序的缓冲区中，当拷贝过程完成，read请求调用才返回。接下来，应用程序就可以对缓冲区的数据进行数据解析。</p>
 <p><img alt="" src="https://static001.geekbang.org/resource/image/e7/9a/e7f477d5c2e902de5a23b0e90cf9339a.png?wh=730%2A480" /><br />
 第二种是非阻塞I/O。非阻塞的read请求在数据未准备好的情况下立即返回，应用程序可以不断轮询内核，直到数据准备好，内核将数据拷贝到应用程序缓冲，并完成这次read调用。注意，这里最后一次read调用，获取数据的过程，<strong>是一个同步的过程。这里的同步指的是内核区域的数据拷贝到缓冲区的这个过程。</strong></p>
-<div><strong>精选留言（30）</strong></div>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/4f/0c/4f93d6e13fb78be2a937f962175c5b0c.png?wh=718%2A602" /><br />
+每次让应用程序去轮询内核的I/O是否准备好，是一个不经济的做法，因为在轮询的过程中应用进程啥也不能干。于是，像select、poll这样的I/O多路复用技术就隆重登场了。通过I/O事件分发，当内核数据准备好时，再通知应用程序进行操作。这个做法大大改善了应用进程对CPU的利用率，在没有被通知的情况下，应用进程可以使用CPU做其他的事情。</p>
+<p>注意，这里read调用，获取数据的过程，<strong>也是一个同步的过程。</strong></p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ea/dc/ea8552f28b0b630af702a9e7434f03dc.png?wh=756%2A446" /><br />
+第一种阻塞I/O我想你已经比较了解了，在阻塞I/O的情况下，应用程序会被挂起，直到获取数据。第二种非阻塞I/O和第三种基于非阻塞I/O的多路复用技术，获取数据的操作不会被阻塞。</p>
+<p>无论是第一种阻塞I/O，还是第二种非阻塞I/O，第三种基于非阻塞I/O的多路复用都是<strong>同步调用技术。为什么这么说呢？因为同步调用、异步调用的说法，是对于获取数据的过程而言的，前面几种最后获取数据的read操作调用，都是同步的，在read调用时，内核将数据从内核空间拷贝到应用程序空间，这个过程是在read函数中同步进行的，如果内核实现的拷贝效率很差，read调用就会在这个同步过程中消耗比较长的时间。</strong></p>
+<p>而真正的异步调用则不用担心这个问题，我们接下来就来介绍第四种I/O技术，当我们发起aio_read之后，就立即返回，内核自动将数据从内核空间拷贝到应用程序空间，这个拷贝过程是异步的，内核自动完成的，和前面的同步操作不一样，应用程序并不需要主动发起拷贝动作。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/de/71/de97e727087775971f83c70c38d6f771.png?wh=732%2A462" /><br />
+还记得<a href="https://time.geekbang.org/column/article/141573">第22</a><a href="https://time.geekbang.org/column/article/141573">讲</a>中讲到的去书店买书的例子吗? 基于这个例子，针对以上的场景，我们可以这么理解。</p>
+<p>第一种阻塞I/O就是你去了书店，告诉老板你想要某本书，然后你就一直在那里等着，直到书店老板翻箱倒柜找到你想要的书。</p>
+<p>第二种非阻塞I/O类似于你去了书店，问老板有没有一本书，老板告诉你没有，你就离开了。一周以后，你又来这个书店，再问这个老板，老板一查，有了，于是你买了这本书。</p>
+<p>第三种基于非阻塞的I/O多路复用，你来到书店告诉老板：“老板，到货给我打电话吧，我再来付钱取书。”</p>
+<p>第四种异步I/O就是你连去书店取书的过程也想省了，你留下地址，付了书费，让老板到货时寄给你，你直接在家里拿到就可以看了。</p>
+<p>这里放置了一张表格，总结了以上几种I/O模型。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/17/32/17191523d4dc62acf48915b7e601e832.png?wh=1056%2A127" /></p>
+<h2 id="aio_readaio_write">aio_read和aio_write的用法</h2>
+<p>听起来，异步I/O有一种高大上的感觉。其实，异步I/O用起来倒是挺简单的。下面我们看一下一个具体的例子：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>#include &quot;lib/common.h&quot;
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>#include &lt;aio.h&gt;
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>const int BUF_SIZE = 512;
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>int main() {
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    int err;
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    int result_size;
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    // 创建一个临时文件
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    char tmpname[256];
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    snprintf(tmpname, sizeof(tmpname), &quot;/tmp/aio_test_%d&quot;, getpid());
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    unlink(tmpname);
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    int fd = open(tmpname, O_CREAT | O_RDWR | O_EXCL, S_IRUSR | S_IWUSR);
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    if (fd == -1) {
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        error(1, errno, &quot;open file failed &quot;);
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    }
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    char buf[BUF_SIZE];
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    struct aiocb aiocb;
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    //初始化buf缓冲，写入的数据应该为0xfafa这样的,
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    memset(buf, 0xfa, BUF_SIZE);
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    memset(&amp;aiocb, 0, sizeof(struct aiocb));
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    aiocb.aio_fildes = fd;
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    aiocb.aio_buf = buf;
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>    aiocb.aio_nbytes = BUF_SIZE;
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    //开始写
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    if (aio_write(&amp;aiocb) == -1) {
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>        printf(&quot; Error at aio_write(): %s\n&quot;, strerror(errno));
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>        close(fd);
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>        exit(1);
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>    }
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>    //因为是异步的，需要判断什么时候写完
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>    while (aio_error(&amp;aiocb) == EINPROGRESS) {
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>        printf(&quot;writing... \n&quot;);
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>    }
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>    //判断写入的是否正确
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>    err = aio_error(&amp;aiocb);
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>    result_size = aio_return(&amp;aiocb);
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>    if (err != 0 || result_size != BUF_SIZE) {
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>        printf(&quot; aio_write failed() : %s\n&quot;, strerror(err));
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>        close(fd);
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>        exit(1);
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>    }
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>    //下面准备开始读数据
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>    char buffer[BUF_SIZE];
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>    struct aiocb cb;
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>    cb.aio_nbytes = BUF_SIZE;
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>    cb.aio_fildes = fd;
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>    cb.aio_offset = 0;
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>    cb.aio_buf = buffer;
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a>    // 开始读数据
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a>    if (aio_read(&amp;cb) == -1) {
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>        printf(&quot; air_read failed() : %s\n&quot;, strerror(err));
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a>        close(fd);
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a>    }
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a>
+<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a>    //因为是异步的，需要判断什么时候读完
+<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a>    while (aio_error(&amp;cb) == EINPROGRESS) {
+<a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a>        printf(&quot;Reading... \n&quot;);
+<a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a>    }
+<a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a>
+<a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a>    // 判断读是否成功
+<a id="__codelineno-0-70" name="__codelineno-0-70" href="#__codelineno-0-70"></a>    int numBytes = aio_return(&amp;cb);
+<a id="__codelineno-0-71" name="__codelineno-0-71" href="#__codelineno-0-71"></a>    if (numBytes != -1) {
+<a id="__codelineno-0-72" name="__codelineno-0-72" href="#__codelineno-0-72"></a>        printf(&quot;Success.\n&quot;);
+<a id="__codelineno-0-73" name="__codelineno-0-73" href="#__codelineno-0-73"></a>    } else {
+<a id="__codelineno-0-74" name="__codelineno-0-74" href="#__codelineno-0-74"></a>        printf(&quot;Error.\n&quot;);
+<a id="__codelineno-0-75" name="__codelineno-0-75" href="#__codelineno-0-75"></a>    }
+<a id="__codelineno-0-76" name="__codelineno-0-76" href="#__codelineno-0-76"></a>
+<a id="__codelineno-0-77" name="__codelineno-0-77" href="#__codelineno-0-77"></a>    // 清理文件句柄
+<a id="__codelineno-0-78" name="__codelineno-0-78" href="#__codelineno-0-78"></a>    close(fd);
+<a id="__codelineno-0-79" name="__codelineno-0-79" href="#__codelineno-0-79"></a>    return 0;
+<a id="__codelineno-0-80" name="__codelineno-0-80" href="#__codelineno-0-80"></a>}
+</code></pre></div>
+<p>这个程序展示了如何使用aio系列函数来完成异步读写。主要用到的函数有:</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/85/d3/abb7bfe3.jpg" width="30px"><span>fackgc17</span> 👍（34） 💬（1）<div>Linux 的 AIO 机制可能后面逐渐不用了，可以关注 5.1 的 io_uring 机制，大杀器</div>2019-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/cf/10/9fa2e5ba.jpg" width="30px"><span>进击的巨人</span> 👍（9） 💬（1）<div>非常好的总结：Reactor 模式是基于待完成的 I&#47;O 事件，而 Proactor 模式则是基于已完成的 I&#47;O 事件。</div>2020-11-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/b8/c8/950fb2c9.jpg" width="30px"><span>马不停蹄</span> 👍（7） 💬（1）<div>异步I&#47;O就相当于当数据真正到达或者说应用程序读取完数据了通过注册的回调函数通知你去处理，用 netty 是这样的，但是老师有个问题一直不明白：netty 并没有用异步I&#47;O，而是基于（多路复用+非阻塞I&#47;O）+ Future 实现了异步非阻塞吗？</div>2019-11-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaELZPnUAiajaR5C25EDLWeJURggyiaOP5GGPe2qlwpQcm5e3ybib8OsP4tvddFDLVRSNNGL5I3SFPJHsA/132" width="30px"><span>null</span> 👍（6） 💬（4）<div>还是没太理解阻塞和同步之间的区别
+<li>aio_write：用来向内核提交异步写操作；</li>
+<li>aio_read：用来向内核提交异步读操作；</li>
+<li>aio_error：获取当前异步操作的状态；</li>
+<li>aio_return：获取异步操作读、写的字节数。</li>
+</ul>
+<p>这个程序一开始使用aio_write方法向内核提交了一个异步写文件的操作。第23-27行是这个异步写操作的结构体。结构体aiocb是应用程序和操作系统内核传递的异步申请数据结构，这里我们使用了文件描述符、缓冲区指针aio_buf以及需要写入的字节数aio_nbytes。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>struct aiocb {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>   int       aio_fildes;       /* File descriptor */
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>   off_t     aio_offset;       /* File offset */
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>   volatile void  *aio_buf;     /* Location of buffer */
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>   size_t    aio_nbytes;       /* Length of transfer */
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>   int       aio_reqprio;      /* Request priority offset */
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>   struct sigevent    aio_sigevent;     /* Signal number and value */
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>   int       aio_lio_opcode;       /* Operation to be performed */
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>};
+</code></pre></div>
+<p>这里我们用了一个0xfa的缓冲区，这在后面的演示中可以看到结果。</p>
+<p>30-34行向系统内核申请了这个异步写操作，并且在37-39行查询异步动作的结果，当其结束时在42-48行判断写入的结果是否正确。</p>
+<p>紧接着，我们使用了aio_read从文件中读取这些数据。为此，我们准备了一个新的aiocb结构体，告诉内核需要把数据拷贝到buffer这个缓冲区中，和异步写一样，发起异步读之后在第65-67行一直查询异步读动作的结果。</p>
+<p>接下来运行这个程序，我们看到屏幕上打印出一系列的字符，显示了这个操作是有内核在后台帮我们完成的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>./aio01
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>writing... 
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>writing... 
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>writing... 
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>writing... 
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>writing... 
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>writing... 
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>writing... 
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>writing... 
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>writing... 
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>writing... 
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>writing... 
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>writing... 
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>writing... 
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>writing... 
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>Reading... 
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>Reading... 
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>Reading... 
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>Reading... 
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>Reading... 
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>Reading... 
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>Reading... 
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>Reading... 
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>Reading... 
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>Success.
+</code></pre></div>
+<p>打开/tmp目录下的aio_test_xxxx文件，可以看到，这个文件成功写入了我们期望的数据。<br />
+<img alt="" src="https://static001.geekbang.org/resource/image/27/90/2759999db41b8b4e7c493f7513c75890.png?wh=1158%2A310" /><br />
+请注意，以上的读写，都不需要我们在应用程序里再发起调用，系统内核直接帮我们做好了。</p>
+<h2 id="linuxsocket">Linux下socket套接字的异步支持</h2>
+<p>aio系列函数是由POSIX定义的异步操作接口，可惜的是，Linux下的aio操作，不是真正的操作系统级别支持的，它只是由GNU libc库函数在用户空间借由pthread方式实现的，而且仅仅针对磁盘类I/O，套接字I/O不支持。</p>
+<p>也有很多Linux的开发者尝试在操作系统内核中直接支持aio，例如一个叫做Ben LaHaise的人，就将aio实现成功merge到2.5.32中，这部分能力是作为patch存在的，但是，它依旧不支持套接字。</p>
+<p>Solaris倒是有真正的系统系别的aio，不过还不是很确定它在套接字上的性能表现，特别是和磁盘I/O相比效果如何。</p>
+<p>综合以上结论就是，Linux下对异步操作的支持非常有限，这也是为什么使用epoll等多路分发技术加上非阻塞I/O来解决Linux下高并发高性能网络I/O问题的根本原因。</p>
+<h2 id="windowsiocpproactor">Windows下的IOCP和Proactor模式</h2>
+<p>和Linux不同，Windows下实现了一套完整的支持套接字的异步编程接口，这套接口一般被叫做IOCompletetionPort(IOCP)。</p>
+<p>这样，就产生了基于IOCP的所谓Proactor模式。</p>
+<p>和Reactor模式一样，Proactor模式也存在一个无限循环运行的event loop线程，但是不同于Reactor模式，这个线程并不负责处理I/O调用，它只是负责在对应的read、write操作完成的情况下，分发完成事件到不同的处理函数。</p>
+<p>这里举一个HTTP服务请求的例子来说明：</p>
+<ol>
+<li>客户端发起一个GET请求；</li>
+<li>这个GET请求对应的字节流被内核读取完成，内核将这个完成事件放置到一个队列中；</li>
+<li>event loop线程，也就是Poractor从这个队列里获取事件，根据事件类型，分发到不同的处理函数上，比如一个http handle的onMessage解析函数；</li>
+<li>HTTP request解析函数完成报文解析；</li>
+<li>业务逻辑处理，比如读取数据库的记录；</li>
+<li>业务逻辑处理完成，开始encode，完成之后，发起一个异步写操作；</li>
+<li>这个异步写操作被内核执行，完成之后这个异步写操作被放置到内核的队列中；</li>
+<li>Proactor线程获取这个完成事件，分发到HTTP handler的onWriteCompled方法执行。</li>
+</ol>
+<p>从这个例子可以看出，由于系统内核提供了真正的“异步”操作，Proactor不会再像Reactor一样，每次感知事件后再调用read、write方法完成数据的读写，它只负责感知事件完成，并由对应的handler发起异步读写请求，I/O读写操作本身是由系统内核完成的。和前面看到的aio的例子一样，这里需要传入数据缓冲区的地址等信息，这样，系统内核才可以自动帮我们把数据的读写工作完成。</p>
+<p>无论是Reactor模式，还是Proactor模式，都是一种基于事件分发的网络编程模式。<strong>Reactor模式是基于待完成的I/O事件，而Proactor模式则是基于已完成的I/O事件</strong>，两者的本质，都是借由事件分发的思想，设计出可兼容、可扩展、接口友好的一套程序框架。</p>
+<h2 id="_1">总结</h2>
+<p>和同步I/O相比，异步I/O的读写动作由内核自动完成，不过，在Linux下目前仅仅支持简单的基于本地文件的aio异步操作，这也使得我们在编写高性能网络程序时，首选Reactor模式，借助epoll这样的I/O分发技术完成开发；而Windows下的IOCP则是一种异步I/O的技术，并由此产生了和Reactor齐名的Proactor模式，借助这种模式，可以完成Windows下高性能网络程序设计。</p>
+<h2 id="_2">思考题</h2>
+<p>和往常一样，给你布置两道思考题：</p>
+<ol>
+<li>你可以查一查Linux的资料，看看为了在内核层面支持完全的异步I/O，Linux的世界里都发生了什么？</li>
+<li>在例子程序里，aio_error一直处于占用CPU轮询异步操作的状态，有没有别的方法可以改进一下，比如挂起调用者、设置超时时间等？</li>
+</ol>
+<p>欢迎你在评论区写下你的思考，也欢迎把这篇文章分享给你的朋友或者同事，一起交流进步一下。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>fackgc17</span> 👍（34） 💬（1）<div>Linux 的 AIO 机制可能后面逐渐不用了，可以关注 5.1 的 io_uring 机制，大杀器</div>2019-10-16</li><br/><li><span>进击的巨人</span> 👍（9） 💬（1）<div>非常好的总结：Reactor 模式是基于待完成的 I&#47;O 事件，而 Proactor 模式则是基于已完成的 I&#47;O 事件。</div>2020-11-15</li><br/><li><span>马不停蹄</span> 👍（7） 💬（1）<div>异步I&#47;O就相当于当数据真正到达或者说应用程序读取完数据了通过注册的回调函数通知你去处理，用 netty 是这样的，但是老师有个问题一直不明白：netty 并没有用异步I&#47;O，而是基于（多路复用+非阻塞I&#47;O）+ Future 实现了异步非阻塞吗？</div>2019-11-13</li><br/><li><span>null</span> 👍（6） 💬（4）<div>还是没太理解阻塞和同步之间的区别
 
 1. 阻塞：只是针对线程挂起这一场景，线程无法获取 cpu 时间片，无法处理其他逻辑。
 2. 非阻塞：线程正常获取 cpu 时间片，正常运行，可以不断轮询 read 函数，快速返回，同时也可以处理其他逻辑。
@@ -13035,8 +13305,8 @@
 
 自己一直混淆阻塞和同步的概念，应该都是被“线程无法处理其他逻辑”所迷惑，感觉两者的表现都是一样的，都是无法处理其他逻辑，因此将这两个概念混为一谈。
 
-老师，请问一下，我对阻塞&#47;非阻塞和同步&#47;异步的理解，并且相关的结论，是否正确？谢谢老师！！</div>2021-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/20/9d/4a/09a5041e.jpg" width="30px"><span>TinyCalf</span> 👍（6） 💬（1）<div>老师我有些想法不知道正不正确：
-其实我用非阻塞IO，自己写代码把数据拷贝过程和业务处理过程分离到多个线程，也能实现代码层面的异步，而操作系统提供的异步IO只不过是把这个过程转到内核态去完成；可能内核处理这些逻辑比我们自己写的代码效率要高些，但是绝对不会像多路复用接口一样带来巨大的效率提升；nodejs好像就是这样，用非阻塞IO+libuv实现的eventloop来实现代码层面的异步，但并没有使用异步IO接口</div>2020-11-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/df/1e/cea897e8.jpg" width="30px"><span>传说中的成大大</span> 👍（4） 💬（1）<div>看第二遍理解了reactor和proactor的区别前者是同步 有消息到达时调用应用程序的回调,应用程序自己调用read 同步取得数据,而后者是内核异步数据读取完成之后才调用应用程序的回调</div>2019-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/df/1e/cea897e8.jpg" width="30px"><span>传说中的成大大</span> 👍（4） 💬（1）<div>而突然又理解到了同步i&#47;o和异步i&#47;o的问题  比如我调用read函数 在read函数返回之前数据被拷贝到缓冲区这个过程就是同步i&#47;o的操作 像后面的aio系列函数 是在函数调用后  内核把数据拷贝到应用层缓冲区 这个就叫异步</div>2019-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/b4/c3/ce3a18c6.jpg" width="30px"><span>土豆牛肉</span> 👍（3） 💬（1）<div>既然Windows有iocp,是不是可以说Windows更适合运行网络服务器呢</div>2019-11-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/12/13/e103a6e3.jpg" width="30px"><span>扩散性百万咸面包</span> 👍（2） 💬（2）<div>老师，不太明白为什么，要把Non-Blocking和多路复用I&#47;O技术(select, poll, epoll)一起说？还说多路复用是基于Non-Blocking的呢？select明明可以通过参数设置为阻塞等待，或者不等待，或者等待相应时间后超时呀。我理解的是为了降低轮询的复杂度，多路I&#47;O在Non-blocking的基础上加入了阻塞等候，减少轮询次数？</div>2020-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/df/1e/cea897e8.jpg" width="30px"><span>传说中的成大大</span> 👍（2） 💬（1）<div>issue和mr是啥意思啊，没接触到过呢！</div>2019-10-19</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqyicZYyW7ahaXgXUD8ZAS8x0t8jx5rYLhwbUCJiawRepKIZfsLdkxdQ9XQMo99c1UDibmNVfFnAqwPg/132" width="30px"><span>程序水果宝</span> 👍（2） 💬（2）<div>看了最近几篇文章以后个人感觉应该把反应堆、epoll、异步和同步的函数列出来配合着它们的功能讲，很有可能不懂的地方都在那些封装的函数里面，像main函数里面的内容反而给出链接加注释就可以了，这样可能会让人的理解更加深刻一些。还有实验结果也不用列这么多，这些完全可以由自己去实验。</div>2019-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/46/12/965a6cc9.jpg" width="30px"><span>菠萝power</span> 👍（1） 💬（1）<div>老师好。同步read的时候，内核把数据拷贝到应用程序这个时间段消耗的是应用程序的时间片吗？</div>2021-03-21</li><br/><li><img src="" width="30px"><span>ray</span> 👍（1） 💬（2）<div>老师好，
+老师，请问一下，我对阻塞&#47;非阻塞和同步&#47;异步的理解，并且相关的结论，是否正确？谢谢老师！！</div>2021-04-14</li><br/><li><span>TinyCalf</span> 👍（6） 💬（1）<div>老师我有些想法不知道正不正确：
+其实我用非阻塞IO，自己写代码把数据拷贝过程和业务处理过程分离到多个线程，也能实现代码层面的异步，而操作系统提供的异步IO只不过是把这个过程转到内核态去完成；可能内核处理这些逻辑比我们自己写的代码效率要高些，但是绝对不会像多路复用接口一样带来巨大的效率提升；nodejs好像就是这样，用非阻塞IO+libuv实现的eventloop来实现代码层面的异步，但并没有使用异步IO接口</div>2020-11-10</li><br/><li><span>传说中的成大大</span> 👍（4） 💬（1）<div>看第二遍理解了reactor和proactor的区别前者是同步 有消息到达时调用应用程序的回调,应用程序自己调用read 同步取得数据,而后者是内核异步数据读取完成之后才调用应用程序的回调</div>2019-10-16</li><br/><li><span>传说中的成大大</span> 👍（4） 💬（1）<div>而突然又理解到了同步i&#47;o和异步i&#47;o的问题  比如我调用read函数 在read函数返回之前数据被拷贝到缓冲区这个过程就是同步i&#47;o的操作 像后面的aio系列函数 是在函数调用后  内核把数据拷贝到应用层缓冲区 这个就叫异步</div>2019-10-16</li><br/><li><span>土豆牛肉</span> 👍（3） 💬（1）<div>既然Windows有iocp,是不是可以说Windows更适合运行网络服务器呢</div>2019-11-20</li><br/><li><span>扩散性百万咸面包</span> 👍（2） 💬（2）<div>老师，不太明白为什么，要把Non-Blocking和多路复用I&#47;O技术(select, poll, epoll)一起说？还说多路复用是基于Non-Blocking的呢？select明明可以通过参数设置为阻塞等待，或者不等待，或者等待相应时间后超时呀。我理解的是为了降低轮询的复杂度，多路I&#47;O在Non-blocking的基础上加入了阻塞等候，减少轮询次数？</div>2020-06-01</li><br/><li><span>传说中的成大大</span> 👍（2） 💬（1）<div>issue和mr是啥意思啊，没接触到过呢！</div>2019-10-19</li><br/><li><span>程序水果宝</span> 👍（2） 💬（2）<div>看了最近几篇文章以后个人感觉应该把反应堆、epoll、异步和同步的函数列出来配合着它们的功能讲，很有可能不懂的地方都在那些封装的函数里面，像main函数里面的内容反而给出链接加注释就可以了，这样可能会让人的理解更加深刻一些。还有实验结果也不用列这么多，这些完全可以由自己去实验。</div>2019-10-16</li><br/><li><span>菠萝power</span> 👍（1） 💬（1）<div>老师好。同步read的时候，内核把数据拷贝到应用程序这个时间段消耗的是应用程序的时间片吗？</div>2021-03-21</li><br/><li><span>ray</span> 👍（1） 💬（2）<div>老师好，
 这边重新梳理了一下，阻塞多路复用I&#47;O，和非阻塞多路复用I&#47;O，还请老师点评。
 
 阻塞多路复用I&#47;O：
@@ -13050,71 +13320,7 @@
 
 不知道我的理解是否到位？
 
-谢谢老师！</div>2020-04-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/17/96/a10524f5.jpg" width="30px"><span>蓬蒿</span> 👍（1） 💬（1）<div>针对老师提出的第二个问题也是我一直思考的:异步io的应用场景。像老师给的例子代码发出读写后依然循环等待结果，这断然不是异步io的使用场景，还不如用同步io来节省CPU呢，所以异步io的使用场景有哪些？</div>2020-03-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/81/4e/d71092f4.jpg" width="30px"><span>夏目</span> 👍（1） 💬（1）<div>老师，可以把阻塞非阻塞对应数据准备过程，同步异步对应数据从内核到应用程序缓冲区过程吗？</div>2019-11-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/df/1e/cea897e8.jpg" width="30px"><span>传说中的成大大</span> 👍（1） 💬（2）<div>在poll-server-onethread程序中 onMessage回调里面调用 char *run_cmd(char *cmd) {
-    char *data = malloc(16384);
-    bzero(data, sizeof(data));
-    FILE *fdp;
-    const int max_buffer = 256;
-    char buffer[max_buffer];
-    fdp = popen(cmd, &quot;r&quot;);
-    char *data_index = data;
-    if (fdp) {
-        while (!feof(fdp)) {
-            if (fgets(buffer, max_buffer, fdp) != NULL) {
-                int len = strlen(buffer);
-                memcpy(data_index, buffer, len);
-                data_index += len;
-            }
-        }
-        pclose(fdp);
-    }
-    return data;
-}
-总是提示 get message from tcp connection connection-7
-ls
-: not found
-这就让我很蛋疼了,百度了半天没解决到</div>2019-10-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/47/e0/1ff26e99.jpg" width="30px"><span>gecko</span> 👍（0） 💬（1）<div>请教老师，编译这个报错怎么解决。
-git clone https:&#47;&#47;github.com&#47;froghui&#47;yolanda.git
-cd yolanda
-mkdir  build
-cd build&#47;
-cmake ..&#47;
-make
-
-
-
-如下输出
-
-[ 97%] Linking C executable ..&#47;bin&#47;aio01
-CMakeFiles&#47;aio01.dir&#47;aio01.c.o: In function `main&#39;:
-aio01.c:(.text+0x19b): undefined reference to `aio_write&#39;
-aio01.c:(.text+0x1f4): undefined reference to `aio_error&#39;
-aio01.c:(.text+0x208): undefined reference to `aio_error&#39;
-aio01.c:(.text+0x21d): undefined reference to `aio_return&#39;
-aio01.c:(.text+0x329): undefined reference to `aio_read&#39;
-aio01.c:(.text+0x379): undefined reference to `aio_error&#39;
-aio01.c:(.text+0x38d): undefined reference to `aio_return&#39;
-collect2: error: ld returned 1 exit status
-chap-30&#47;CMakeFiles&#47;aio01.dir&#47;build.make:95: recipe for target &#39;bin&#47;aio01&#39; failed
-make[2]: *** [bin&#47;aio01] Error 1
-CMakeFiles&#47;Makefile2:2286: recipe for target &#39;chap-30&#47;CMakeFiles&#47;aio01.dir&#47;all&#39; failed
-make[1]: *** [chap-30&#47;CMakeFiles&#47;aio01.dir&#47;all] Error 2
-Makefile:129: recipe for target &#39;all&#39; failed
-make: *** [all] Error 2
-root@ubuntu-192-168-1-182:&#47;tmp&#47;yolanda&#47;build# </div>2021-12-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/27/99/51c51cf1.jpg" width="30px"><span>schbxg</span> 👍（0） 💬（1）<div>如果使用g++编译，52行的cb结构需要初始化一下，不然下边aio_read的时候会报无效参数的错误。</div>2021-08-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/b9/7c/afe6f1eb.jpg" width="30px"><span>vv_test</span> 👍（0） 💬（2）<div>老师您好，为什么异步io有好处，linux 也迟迟没有内核级别的支持套接字异步io。是说c10k已经可以使用前面的知道方案解决了，即使内核级别支持(我理解内核级别也是要消耗资源)，想要再高的并发，瓶颈不在这了吗?</div>2021-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/5f/c8/13aa8aa9.jpg" width="30px"><span>night</span> 👍（0） 💬（1）<div>Reactor 模式是基于待完成的 I&#47;O 事件，而 Proactor 模式则是基于已完成的 I&#47;O 事件。在买书的例子下，就是 
-Reactor: 书店通知你书到店里了，可以来书店取了
-Proactor：书店把书寄到了你之前留的地址上了，可以直接签收
-</div>2021-02-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/23/0e/36/29b8cb90.jpg" width="30px"><span>梁✨飞</span> 👍（0） 💬（1）<div>老师你好，假如用堵塞的方式执行 read 操作，缓冲区可以有足够的数据，read 方法马上返回，那么线程的状态还会变为堵塞状态吗？这种立即返回read的情况线程会丢失 CPU 控制权吗？</div>2021-01-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5f/e5/54325854.jpg" width="30px"><span>范闲</span> 👍（0） 💬（1）<div>老师这里的异步IO实际上是不完整的。如果要把业务逻辑也设计成异步模式，我理解就只能用多线程+回调了 </div>2020-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/4b/22/09540b7c.jpg" width="30px"><span>天之草</span> 👍（0） 💬（1）<div>弱弱问一句，应用程序缓冲区是指的应用程序里的内存么，不是内核级别的吧，怎么那些图还显示是在内核</div>2020-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/c1/39/11904266.jpg" width="30px"><span>Steiner</span> 👍（0） 💬（2）<div>应该这么说吧，同步和异步是指数据准备过程，阻塞非阻塞是数据获取过程</div>2019-10-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/df/1e/cea897e8.jpg" width="30px"><span>传说中的成大大</span> 👍（0） 💬（1）<div>我把github上的代码进行了改进,收到消息时执行run_cmd 用来实现ls pwd ...的shell命令,但是总是提示: not found 原谅我抄的代码,只是对代码进行了逻辑修改 ,百度了半天都解决不了这个问题</div>2019-10-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f6/e3/e4bcd69e.jpg" width="30px"><span>沉淀的梦想</span> 👍（0） 💬（1）<div>Proactor中所谓的队列，我的理解是一个Block Queue，给aio注册一个回调函数，回调函数的内容是往BlockQueue中放置一个通知，然后event loop线程苏醒，获取到这个通知后进行分发，不知道理解的对不对？
-
-还有一个疑问POSIX的aio库要怎么注册回调？Java里面的aio有这个功能，感觉linux也应该提供吧</div>2019-10-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/99/27/47aa9dea.jpg" width="30px"><span>阿卡牛</span> 👍（0） 💬（1）<div>还有比异步IO更好的吗？</div>2019-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/df/1e/cea897e8.jpg" width="30px"><span>传说中的成大大</span> 👍（0） 💬（1）<div>老师 你好 我要怎么样才能像你一样设计一个服务器框架呢？我需要哪些知识储备呢？</div>2019-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/df/1e/cea897e8.jpg" width="30px"><span>传说中的成大大</span> 👍（0） 💬（2）<div>再第二遍读的时候 我突然理清了 阻塞&#47;非阻塞 io 和同步&#47;异步io  这里提到的都是跟i&#47;o操作相关 我又想起了线程的同步和异步 跟阻塞和阻塞 没有半毛钱的关系啊。。。。。</div>2019-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（12） 💬（1）<div>记一下自己对阻塞&#47;非阻塞&#47;同步&#47;异步的理解
-1：阻塞&#47;非阻塞——是站在调用者（客户端或请求方）的角度来说的，如果调用者要数据，此时服务者没准备好，调用者不用傻等，那就是非阻塞的，否则就是阻塞的
-
-2：同步&#47;异步——是站在服务者（服务端或响应端）的角度来说的，如果服务者不会主动给请求者它想要的数据，那就是同步的，否则就是异步的
-
-3：两个位置每个位置有两种状态，总共四种状态——同步阻塞&#47;同步非阻塞&#47;异步阻塞（不搭）&#47;异步非阻塞
-，其中同步阻塞和异步非阻塞是很搭的相互成就，异步阻塞是非常不搭的相互矛盾，同步非阻塞有一点怪，它通常就是靠不断的轮询来实现的，服务者不会主动把准备好的数据发给调用者，调用者也不会等着服务者把数据准备好再返回。
-
-4：导致出现这种现象的根本原因，我觉得是数据的读取是一个慢动作，数据不管从磁盘中拿出来还是放入到磁盘中，相对内存操作相对CPU执行命令的操作速度是非常慢的，这种速度差必然导致要么等一等，要么不断的来瞧瞧，要么准备好了送过去，这三种解决此问题的思路。</div>2019-12-01</li><br/>
+谢谢老师！</div>2020-04-12</li><br/><li><span>蓬蒿</span> 👍（1） 💬（1）<div>针对老师提出的第二个问题也是我一直思考的:异步io的应用场景。像老师给的例子代码发出读写后依然循环等待结果，这断然不是异步io的使用场景，还不如用同步io来节省CPU呢，所以异步io的使用场景有哪些？</div>2020-03-16</li><br/><li><span>夏目</span> 👍（1） 💬（1）<div>老师，可以把阻塞非阻塞对应数据准备过程，同步异步对应数据从内核到应用程序缓冲区过程吗？</div>2019-11-18</li><br/>
 </ul>
 
 

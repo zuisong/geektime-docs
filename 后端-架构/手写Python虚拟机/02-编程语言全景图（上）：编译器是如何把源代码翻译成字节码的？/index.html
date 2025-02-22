@@ -7658,6 +7658,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      文法分析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      抽象语法树
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      生成字节码
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12883,6 +12928,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      文法分析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      抽象语法树
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      生成字节码
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12916,9 +13006,393 @@
 <h2 id="_1">词法分析</h2>
 <p>第一个步骤就是要从文本文件中逐个字符地去读取内容，然后把字符识别成数字或者是运算符。这些数字和运算符是组成程序的基本元素，它有一个专用的名字，叫做token。把文本文件中的一串字符，识别成一串token，这就是我们要解决的第一个问题。</p>
 <p>比如，我们创建一个文本文件，命名为 test_token.txt，其中只包含一行表达式。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>12 * 48 + 59
+</code></pre></div>
+<p>这个表达式其实是由5个token组成的，分别是数字12、乘号、数字48、加号和数字59。这些 token 可以分为两大类：数字和操作符。我们可以使用正则表达式来描述这两类 token。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>NUM = [0-9]+
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>OP = [&quot;+-*/&quot;]
+</code></pre></div>
+<p>其中，NUM 代表整数，它的定义是至少包含一个0到9之间的一个数字。OP 代表操作符，是加减乘除四个字符中的一个。在字符串中识别正则表达式，最常用的一个办法就是使用<strong>有限自动机</strong>。你可以看一下包含了这两条简单规则的自动机示意图。<br />
+<img alt="图片" src="https://static001.geekbang.org/resource/image/5e/83/5ea648a5d7cd6fc5eca7640d57897c83.png?wh=2112x1126" /></p>
+<p>注：这里我补充一个有限自动机的讲解视频，你可以了解它是如何定义以及如何转换成相应的代码。</p>
+<p>将这个有限自动机转换成程序代码是一种固定化的模式。程序不断地读入字符，并把其中的token识别出来。你可以看一下相应的代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdio.h&gt;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="cp">#define INIT 0</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="cp">#define NUM 1</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="kt">FILE</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">fp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fopen</span><span class="p">(</span><span class="s">&quot;test_token.txt&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;r&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="kt">char</span><span class="w"> </span><span class="n">ch</span><span class="p">;</span><span class="w"> </span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">state</span><span class="p">,</span><span class="w"> </span><span class="n">num</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">((</span><span class="n">ch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">getc</span><span class="p">(</span><span class="n">fp</span><span class="p">))</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">EOF</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ch</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="sc">&#39; &#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">ch</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="sc">&#39;\n&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">state</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">NUM</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">                </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;token NUM : %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">num</span><span class="p">);</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">                </span><span class="n">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">INIT</span><span class="p">;</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">                </span><span class="n">num</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">            </span><span class="p">}</span><span class="w">   </span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">        </span><span class="p">}</span><span class="w">   </span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ch</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="sc">&#39;0&#39;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">ch</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="sc">&#39;9&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="w">            </span><span class="n">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">NUM</span><span class="p">;</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w">            </span><span class="n">num</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">num</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">ch</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="sc">&#39;0&#39;</span><span class="p">;</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="w">        </span><span class="p">}</span><span class="w">   </span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ch</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="sc">&#39;+&#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">ch</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="sc">&#39;-&#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">ch</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="sc">&#39;*&#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">ch</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="sc">&#39;/&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">state</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">NUM</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="w">                </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;token NUM : %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">num</span><span class="p">);</span>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="w">                </span><span class="n">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">INIT</span><span class="p">;</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="w">                </span><span class="n">num</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="w">            </span><span class="p">}</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="w">            </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;token operator : %c</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">ch</span><span class="p">);</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="w">            </span><span class="n">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">INIT</span><span class="p">;</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="w">    </span><span class="n">fclose</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="p">}</span>
+</code></pre></div>
+<p>当程序遇到加减乘除操作符的时候，就可以直接打印出这是一个操作符。需要注意的是当遇到数字的时候要进行转换，将字符变成数字（20至23行）。在数字字符结束的时候要将数字的值打印出来（第13至17行，第26至30行）。</p>
+<p>程序使用state变量来标识数字字符是否结束。当state的值为NUM时，就表示程序正在接收一个数字。</p>
+<p>编译并执行的结果如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">token</span><span class="w"> </span><span class="n">NUM</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">12</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">token</span><span class="w"> </span><span class="k">operator</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="o">*</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">token</span><span class="w"> </span><span class="n">NUM</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">48</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">token</span><span class="w"> </span><span class="k">operator</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="o">+</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">token</span><span class="w"> </span><span class="n">NUM</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">59</span>
+</code></pre></div>
+<p>可见，这个程序正确地将表达式中的各个 token 分析出来了。</p>
+<h2 id="_2">文法分析</h2>
+<p>从文本文件中分析出程序的基本元素——token以后，编译器就要尝试着去理解这些 token 之间的关系了。</p>
+<p>token 之间是有其内在的逻辑关系的，比如，加法符号的前后都必须是一个可以执行加法操作的目标，它可以是一个数字，也可以是一个变量，但加号后面却一定不能紧跟一个乘号，否则就是一个不合法的表达式。</p>
+<p>编译器要分析这些 token 组成的序列是否有意义，这个工作就是由文法分析完成的。</p>
+<p>文法分析主要有两大类算法，一种是自顶向下的分析方法，一种是自底向上的分析方法。其中，自顶向下的分析方法算法简单直接，易于理解和编写。而 yacc 等文法分析工具则以自底向上的算法为主，它的特点是性能好，表达能力强，但是难以调试。所以这里我们就以自顶向下的分析方法为主，来介绍文法分析器是如何工作的。</p>
+<p>自顶向下的分析方法也被称为递归下降的分析方法。</p>
+<p>所谓软件设计，不过是把一个大的问题化解为一个个小的问题。比如说，我们设计一个网站服务器，也是把它分成不同的模块，然后每个模块下面再设计各个不同的组件，组件下面再进行更细粒度的划分。这就是一种从上到下的任务分解。在文法分析中，本质上也采用了同样的分析思路。</p>
+<p>以表达式求值为例，最顶部的任务，计算一个表达式（expression）的值。一个表达式，也就是多项式，它是由每个项求和（差与和的原理一样，这里为了描述方便只说和的情况）得到的。所以，一个expression就可以定义为：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nl">expression</span><span class="w"> </span><span class="p">:</span><span class="o">=</span><span class="w"> </span><span class="n">term</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">term</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">term</span>
+</code></pre></div>
+<p>等式右边的 term 是一个求和式中的各个加数。例如，对于多项式 2 + 3 * 4 + 5，我们可以把这个式子看成 2 与 3 * 4 与 5 的求和。其中，2 是一个term，3 * 4 也是一个term，5 也是一个 term。</p>
+<p>同样的方法也可以用来拆分 term。term 可以看成是多个因子的积。所以term 就可以定义为：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nl">term</span><span class="w"> </span><span class="p">:</span><span class="o">=</span><span class="w"> </span><span class="n">factor</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">factor</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">factor</span>
+</code></pre></div>
+<p>左边的 term 是一个规模比较大的积，而右边的一个 factor 则代表了一个因子。这样，我们就把 term 这个结构拆成了规模更小的因子了。接下来，我们继续定义 factor。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nl">facotr</span><span class="w"> </span><span class="p">:</span><span class="o">=</span><span class="w"> </span><span class="n">NUMBER</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="p">(</span><span class="n">expression</span><span class="p">)</span>
+</code></pre></div>
+<p>等式右边的中间竖线表示“或”的关系，也就是说，一个 factor 可以是一个整数（NUMBER），也可以是一个包在一对括号里的表达式。反过来说，当遇到一个整数，就可以认为它是一个 factor。或者用括号括起来的表达式，也是一个 factor。</p>
+<p>这里需要注意的是，表达式的文法需要先使用 term 去解构 expression，再使用 factor 去解构 term，最后 factor 还要 expression 去解构，绕了一圈又回来了。<strong>这种用自己的定义来定义自己的情况就是递归。</strong></p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/cc/d2/ccfa870a1eb9a2bdd1c9ed5d0cf222d2.png?wh=2002x1020" /></p>
+<p>但是递归不能没有终点，要使递归的定义变得完整，就必须满足两个条件。</p>
+<ol>
+<li>子问题必须和原始问题是同样性质的，而且规模要更小、更简单。</li>
+<li>不能无限制地调用本身，必须有个出口，化简为非递归状况处理。</li>
+</ol>
+<p>在上述例子中，子问题的规模是不断缩小的，这一点没有问题。第2点，必须有个出口，这个出口是什么呢？其实就是<strong>factor的定义</strong>，当问题拆到只有一个整数的时候，递归就会终止，也就是条件2中所说的出口。</p>
+<p>这几条规则一起组成了表达式求值的<strong>文法</strong>，接下来，我们就把这个文法转换成程序（节选自parser.cpp）。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>// 这里只要对照 expression 的定义实现就可以了
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>// expression := term （+|- term)*
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>int Parser::expression() {
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    // 对应第一个 term
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    int a = term();
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    Token* op = get_token();
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    // 多个 term 可以对应 while 语句
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    while (op != NULL &amp;&amp;
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>        (op-&gt;_tt == T_PLUS || op-&gt;_tt == T_MINUS)) {
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>        consume();
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>        int b = term();
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>        if (op-&gt;_tt == T_PLUS) {
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>            a = a + b;
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>        } else {
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>            a = a - b;
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>        }
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>        op = get_token();
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>    }
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>    return a;
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>}
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>// term := factor ((*|/) factor) *
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>int Parser::term() {
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>    int a = factor();
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>    Token* op = get_token();
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>    while (op != NULL &amp;&amp;
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>        (op-&gt;_tt == T_MULT || op-&gt;_tt == T_DIV)) {
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>        consume();
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>        int b = factor();
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>        if (op-&gt;_tt == T_MULT) {
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>            a = a * b;
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>        } else {
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>            a = a / b;
+<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>        }
+<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a>
+<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a>        op = get_token();
+<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a>    }
+<a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a>
+<a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a>    return a;
+<a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a>}
+<a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a>
+<a id="__codelineno-7-45" name="__codelineno-7-45" href="#__codelineno-7-45"></a>// factor := INT | (expression)
+<a id="__codelineno-7-46" name="__codelineno-7-46" href="#__codelineno-7-46"></a>int Parser::factor() {
+<a id="__codelineno-7-47" name="__codelineno-7-47" href="#__codelineno-7-47"></a>    Token* data = get_token();
+<a id="__codelineno-7-48" name="__codelineno-7-48" href="#__codelineno-7-48"></a>    if (data-&gt;_tt == T_INT) {
+<a id="__codelineno-7-49" name="__codelineno-7-49" href="#__codelineno-7-49"></a>        consume();
+<a id="__codelineno-7-50" name="__codelineno-7-50" href="#__codelineno-7-50"></a>        return stoi(data);
+<a id="__codelineno-7-51" name="__codelineno-7-51" href="#__codelineno-7-51"></a>    }
+<a id="__codelineno-7-52" name="__codelineno-7-52" href="#__codelineno-7-52"></a>    else if (data-&gt;_tt == T_LEFT_PAR) {
+<a id="__codelineno-7-53" name="__codelineno-7-53" href="#__codelineno-7-53"></a>        match(T_LEFT_PAR);
+<a id="__codelineno-7-54" name="__codelineno-7-54" href="#__codelineno-7-54"></a>        int a = expression();
+<a id="__codelineno-7-55" name="__codelineno-7-55" href="#__codelineno-7-55"></a>        match(T_RIGHT_PAR);
+<a id="__codelineno-7-56" name="__codelineno-7-56" href="#__codelineno-7-56"></a>
+<a id="__codelineno-7-57" name="__codelineno-7-57" href="#__codelineno-7-57"></a>        return a;
+<a id="__codelineno-7-58" name="__codelineno-7-58" href="#__codelineno-7-58"></a>    }
+<a id="__codelineno-7-59" name="__codelineno-7-59" href="#__codelineno-7-59"></a>    return -1;
+<a id="__codelineno-7-60" name="__codelineno-7-60" href="#__codelineno-7-60"></a>}
+<a id="__codelineno-7-61" name="__codelineno-7-61" href="#__codelineno-7-61"></a>
+<a id="__codelineno-7-62" name="__codelineno-7-62" href="#__codelineno-7-62"></a>// 将字符串转换成数字
+<a id="__codelineno-7-63" name="__codelineno-7-63" href="#__codelineno-7-63"></a>int Parser::stoi(Token* data) {
+<a id="__codelineno-7-64" name="__codelineno-7-64" href="#__codelineno-7-64"></a>    int value = 0;
+<a id="__codelineno-7-65" name="__codelineno-7-65" href="#__codelineno-7-65"></a>    for (int i = 0; i &lt; data-&gt;_length; i++) {
+<a id="__codelineno-7-66" name="__codelineno-7-66" href="#__codelineno-7-66"></a>        value = value * 10 + data-&gt;_value[i] - &#39;0&#39;;
+<a id="__codelineno-7-67" name="__codelineno-7-67" href="#__codelineno-7-67"></a>    }
+<a id="__codelineno-7-68" name="__codelineno-7-68" href="#__codelineno-7-68"></a>
+<a id="__codelineno-7-69" name="__codelineno-7-69" href="#__codelineno-7-69"></a>    return value;
+<a id="__codelineno-7-70" name="__codelineno-7-70" href="#__codelineno-7-70"></a>}
+<a id="__codelineno-7-71" name="__codelineno-7-71" href="#__codelineno-7-71"></a>
+<a id="__codelineno-7-72" name="__codelineno-7-72" href="#__codelineno-7-72"></a>int Parser::eval() {
+<a id="__codelineno-7-73" name="__codelineno-7-73" href="#__codelineno-7-73"></a>    printf(&quot;%d\n&quot;, expression());
+<a id="__codelineno-7-74" name="__codelineno-7-74" href="#__codelineno-7-74"></a>
+<a id="__codelineno-7-75" name="__codelineno-7-75" href="#__codelineno-7-75"></a>    return 0;
+<a id="__codelineno-7-76" name="__codelineno-7-76" href="#__codelineno-7-76"></a>}
+</code></pre></div>
+<p>代码里定义这样三个函数：expression、term、factor。expression表示对表达式求值，term表示对表达式中的某一项求值，factor表示对某一个因子求值。</p>
+<p>expression 函数里的主要结构就是 while 循环，用于处理多个加号和减号的情况。遇到一个加号以后，就会调用 term 函数去处理多项式中的某一项。term 函数的结构与 expression 函数的结构是相同的。factor 函数则使用了分支结构来区分数字（第48行）和小括号（第52行）两种情况。</p>
+<p>在这个过程中，从 expression 下降到 term，再下降到 factor，有明显的自上而下的解析过程。所以这种方式就被称为自上而下的递归下降式文法分析。</p>
+<p>上述代码与三条文法规则的对应关系十分明显，所以这里我就不再过多地分析代码的实现了。这段代码在执行的时候就直接把表达式的值求出来，并且打印在屏幕上了。一个真实的编译器在工作的时候是不会执行源代码的，它只负责将源代码转换成抽象语法树（Abstract Syntax Tree，AST）。下面我们就来介绍一下抽象语法树的结构和工作原理。</p>
+<h2 id="_3">抽象语法树</h2>
+<p>抽象语法树对编译器有非同寻常的意义，大多数编译器都会实现抽象语法树这个数据结构。这是因为语法树在表达程序结构方面有非常直观的形式。例如，12 * 48 + 59 的抽象语法树如下图所示。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/1e/3c/1ea8133850ebb83f94bf8bcf0877633c.png?wh=1630x984" /></p>
+<p>抽象语法树有很多作用，我们可以直接后序遍历语法树来对表达式进行求值，也可以在语法树上做很多性能优化的工作，还可以通过抽象语法树来生成字节码。接下来的例子将会展示如何通过语法树产生字节码。</p>
+<p>在文法分析的过程中，如果不直接计算表达式的值，而是将每一个分析结果转化成一个语法树内部节点，就可以在文法分析过程中构建语法树了。</p>
+<p>首先，定义好抽象语法树的各个结点的结构。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Node</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="k">public</span><span class="o">:</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">accept</span><span class="p">(</span><span class="n">Visitor</span><span class="o">*</span><span class="w"> </span><span class="n">v</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="p">};</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="k">enum</span><span class="w"> </span><span class="nc">OpType</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">    </span><span class="n">AST_OP_ADD</span><span class="p">,</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">    </span><span class="n">AST_OP_SUB</span><span class="p">,</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">    </span><span class="n">AST_OP_MUL</span><span class="p">,</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">    </span><span class="n">AST_OP_DIV</span><span class="p">,</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">    </span><span class="n">AST_OP_MOD</span><span class="p">,</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="p">};</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="k">class</span><span class="w"> </span><span class="nc">BinaryOp</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">Node</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="k">protected</span><span class="o">:</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="w">    </span><span class="n">OpType</span><span class="w"> </span><span class="n">_op_type</span><span class="p">;</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="w">    </span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="n">_left</span><span class="p">;</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="w">    </span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="n">_right</span><span class="p">;</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="k">public</span><span class="o">:</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="w">    </span><span class="n">BinaryOp</span><span class="p">(</span><span class="n">OpType</span><span class="w"> </span><span class="n">op_type</span><span class="p">,</span><span class="w"> </span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="n">left</span><span class="p">,</span><span class="w"> </span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="n">right</span><span class="p">)</span><span class="w"> </span><span class="o">:</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="w">        </span><span class="n">_op_type</span><span class="p">(</span><span class="n">op_type</span><span class="p">),</span><span class="w"> </span><span class="n">_left</span><span class="p">(</span><span class="n">left</span><span class="p">),</span><span class="w"> </span><span class="n">_right</span><span class="p">(</span><span class="n">right</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">accept</span><span class="p">(</span><span class="n">Visitor</span><span class="o">*</span><span class="w"> </span><span class="n">v</span><span class="p">);</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">set_left</span><span class="p">(</span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="n">left</span><span class="p">);</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">set_right</span><span class="p">(</span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="n">right</span><span class="p">);</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="w">    </span><span class="n">OpType</span><span class="w"> </span><span class="nf">op_type</span><span class="p">()</span><span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">_op_type</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a><span class="w">    </span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="nf">left</span><span class="p">()</span><span class="w">        </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">_left</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a><span class="w">    </span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="nf">right</span><span class="p">()</span><span class="w">       </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">_right</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a><span class="p">};</span>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a><span class="k">class</span><span class="w"> </span><span class="nc">ConstInt</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">Node</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a><span class="k">public</span><span class="o">:</span>
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">_value</span><span class="p">;</span>
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a>
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a><span class="w">    </span><span class="n">ConstInt</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">v</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a>
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a><span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">accept</span><span class="p">(</span><span class="n">Visitor</span><span class="o">*</span><span class="w"> </span><span class="n">v</span><span class="p">);</span>
+<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a><span class="p">};</span>
+</code></pre></div>
+<p>抽象语法树结点类中的 accept 方法是为了实现访问者模式而定义的。同时，修改文法分析的实现，让文法分析的结果返回语法树结点。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="nf">Parser::expression</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">term</span><span class="p">();</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="n">Token</span><span class="o">*</span><span class="w"> </span><span class="n">op</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">get_token</span><span class="p">();</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">op</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nb">NULL</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">        </span><span class="p">(</span><span class="n">op</span><span class="o">-&gt;</span><span class="n">_tt</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">T_PLUS</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">op</span><span class="o">-&gt;</span><span class="n">_tt</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">T_MINUS</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">        </span><span class="n">consume</span><span class="p">();</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">        </span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">term</span><span class="p">();</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">op</span><span class="o">-&gt;</span><span class="n">_tt</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">T_PLUS</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">            </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">BinaryOp</span><span class="p">(</span><span class="n">AST_OP_ADD</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">);</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">            </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">BinaryOp</span><span class="p">(</span><span class="n">AST_OP_SUB</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">);</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="w">        </span><span class="n">op</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">get_token</span><span class="p">();</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">;</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="p">}</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="nf">Parser::term</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a><span class="w">    </span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">factor</span><span class="p">();</span>
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a><span class="w">    </span><span class="n">Token</span><span class="o">*</span><span class="w"> </span><span class="n">op</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">get_token</span><span class="p">();</span>
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a><span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">op</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nb">NULL</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a><span class="w">        </span><span class="p">(</span><span class="n">op</span><span class="o">-&gt;</span><span class="n">_tt</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">T_MULT</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">op</span><span class="o">-&gt;</span><span class="n">_tt</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">T_DIV</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a><span class="w">        </span><span class="n">consume</span><span class="p">();</span>
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a><span class="w">        </span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">factor</span><span class="p">();</span>
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">op</span><span class="o">-&gt;</span><span class="n">_tt</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">T_MULT</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a><span class="w">            </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">BinaryOp</span><span class="p">(</span><span class="n">AST_OP_MUL</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">);</span>
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a><span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a><span class="w">            </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">BinaryOp</span><span class="p">(</span><span class="n">AST_OP_DIV</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">);</span>
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>
+<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a><span class="w">        </span><span class="n">op</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">get_token</span><span class="p">();</span>
+<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>
+<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">;</span>
+<a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a><span class="p">}</span>
+<a id="__codelineno-9-38" name="__codelineno-9-38" href="#__codelineno-9-38"></a>
+<a id="__codelineno-9-39" name="__codelineno-9-39" href="#__codelineno-9-39"></a><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="nf">Parser::factor</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-40" name="__codelineno-9-40" href="#__codelineno-9-40"></a><span class="w">    </span><span class="n">Token</span><span class="o">*</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">get_token</span><span class="p">();</span>
+<a id="__codelineno-9-41" name="__codelineno-9-41" href="#__codelineno-9-41"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">data</span><span class="o">-&gt;</span><span class="n">_tt</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">T_INT</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-42" name="__codelineno-9-42" href="#__codelineno-9-42"></a><span class="w">        </span><span class="n">consume</span><span class="p">();</span>
+<a id="__codelineno-9-43" name="__codelineno-9-43" href="#__codelineno-9-43"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ConstInt</span><span class="p">(</span><span class="n">stoi</span><span class="p">(</span><span class="n">data</span><span class="p">));</span>
+<a id="__codelineno-9-44" name="__codelineno-9-44" href="#__codelineno-9-44"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-9-45" name="__codelineno-9-45" href="#__codelineno-9-45"></a><span class="w">    </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">data</span><span class="o">-&gt;</span><span class="n">_tt</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">T_LEFT_PAR</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-46" name="__codelineno-9-46" href="#__codelineno-9-46"></a><span class="w">        </span><span class="n">match</span><span class="p">(</span><span class="n">T_LEFT_PAR</span><span class="p">);</span>
+<a id="__codelineno-9-47" name="__codelineno-9-47" href="#__codelineno-9-47"></a><span class="w">        </span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">expression</span><span class="p">();</span>
+<a id="__codelineno-9-48" name="__codelineno-9-48" href="#__codelineno-9-48"></a><span class="w">        </span><span class="n">match</span><span class="p">(</span><span class="n">T_RIGHT_PAR</span><span class="p">);</span>
+<a id="__codelineno-9-49" name="__codelineno-9-49" href="#__codelineno-9-49"></a>
+<a id="__codelineno-9-50" name="__codelineno-9-50" href="#__codelineno-9-50"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">;</span>
+<a id="__codelineno-9-51" name="__codelineno-9-51" href="#__codelineno-9-51"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-9-52" name="__codelineno-9-52" href="#__codelineno-9-52"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span>
+<a id="__codelineno-9-53" name="__codelineno-9-53" href="#__codelineno-9-53"></a><span class="p">}</span>
+</code></pre></div>
+<p>到此为止，重新编译运行整个项目，就可以正确地得到抽象语法树了。我们课程所附带的代码仓里提供了一个使用访问者模式实现的Dumper工具，可以使用树形结构打印一个表达式的抽象语法树，你可以自己看一看。</p>
+<h2 id="_4">生成字节码</h2>
+<p>对抽象语法树进行一次后序遍历就可以生成基于栈的字节码。如果你对二叉树的遍历比较了解的话，这个过程就是显而易见的。</p>
+<p>第一节课我们已经介绍过了，<strong>字节码的本质是一个虚拟指令集</strong>，它里面的每条指令代表一种操作。一般来说，虚拟机的虚拟指令集包含的指令数不会超过 256，一个字节就足够编码全部的指令了，所以人们把这种虚拟指令集叫做字节码。</p>
+<p>作为示例，虚拟指令的编码可以任意定义，例如：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="cp">#define BINARY_MUL      20</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="cp">#define BINARY_DIV      21</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="cp">#define BINARY_ADD      23</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="cp">#define BINARY_SUB      24</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="cp">#define LOAD_CONST  100</span>
+</code></pre></div>
+<p>就像第一节课展示的基于栈的虚拟机的计算过程，BINARY_ADD这四个二元操作符的操作数都在栈上。执行BINARY_ADD时，虚拟机会从操作数栈顶上取两个数字，求和，然后将和再送入栈顶。而LOAD_CONST的作用则是将数字加载到栈顶。</p>
+<p>接下来，再引入一个新的访问者PrintVisitor，用于打印字节码助记符。这里使用字符串将字节码的助记符打印出来，并不是直接将虚拟机可以执行的虚拟指令打印出来。我们可以这样定义：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1">// visitor.hpp</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">PrintVisitor</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">Visitor</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="k">public</span><span class="o">:</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">    </span><span class="n">PrintVisitor</span><span class="p">()</span><span class="w"> </span><span class="p">{}</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">visit</span><span class="p">(</span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="n">n</span><span class="p">);</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">visit</span><span class="p">(</span><span class="n">BinaryOp</span><span class="o">*</span><span class="w"> </span><span class="n">n</span><span class="p">);</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">visit</span><span class="p">(</span><span class="n">ConstInt</span><span class="o">*</span><span class="w"> </span><span class="n">n</span><span class="p">);</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="p">};</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="c1">// visitor.cpp</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="kt">void</span><span class="w"> </span><span class="nf">PrintVisitor::visit</span><span class="p">(</span><span class="n">Node</span><span class="o">*</span><span class="w"> </span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="w">    </span><span class="n">n</span><span class="o">-&gt;</span><span class="n">accept</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a><span class="p">}</span>
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a><span class="kt">void</span><span class="w"> </span><span class="nf">PrintVisitor::visit</span><span class="p">(</span><span class="n">BinaryOp</span><span class="o">*</span><span class="w"> </span><span class="n">op</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a><span class="w">    </span><span class="n">visit</span><span class="p">(</span><span class="n">op</span><span class="o">-&gt;</span><span class="n">left</span><span class="p">());</span>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a><span class="w">    </span><span class="n">visit</span><span class="p">(</span><span class="n">op</span><span class="o">-&gt;</span><span class="n">right</span><span class="p">());</span>
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a><span class="w">    </span><span class="k">switch</span><span class="p">(</span><span class="n">op</span><span class="o">-&gt;</span><span class="n">op_type</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="no">AST_OP_ADD</span><span class="p">:</span>
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;BINARY_ADD</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a><span class="w">        </span><span class="k">break</span><span class="p">;</span>
+<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="no">AST_OP_SUB</span><span class="p">:</span>
+<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;BINARY_SUB</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a><span class="w">        </span><span class="k">break</span><span class="p">;</span>
+<a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="no">AST_OP_MUL</span><span class="p">:</span>
+<a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;BINARY_MUL</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a><span class="w">        </span><span class="k">break</span><span class="p">;</span>
+<a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="no">AST_OP_DIV</span><span class="p">:</span>
+<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;BINARY_DIV</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a><span class="w">        </span><span class="k">break</span><span class="p">;</span>
+<a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a><span class="w">    </span><span class="k">default</span><span class="o">:</span>
+<a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Unknown binary op %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">op</span><span class="o">-&gt;</span><span class="n">op_type</span><span class="p">());</span>
+<a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a><span class="w">        </span><span class="k">return</span><span class="p">;</span>
+<a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-11-38" name="__codelineno-11-38" href="#__codelineno-11-38"></a>
+<a id="__codelineno-11-39" name="__codelineno-11-39" href="#__codelineno-11-39"></a><span class="p">}</span>
+<a id="__codelineno-11-40" name="__codelineno-11-40" href="#__codelineno-11-40"></a>
+<a id="__codelineno-11-41" name="__codelineno-11-41" href="#__codelineno-11-41"></a><span class="kt">void</span><span class="w"> </span><span class="nf">PrintVisitor::visit</span><span class="p">(</span><span class="n">ConstInt</span><span class="o">*</span><span class="w"> </span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-11-42" name="__codelineno-11-42" href="#__codelineno-11-42"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;LOAD_CONST</span><span class="se">\t</span><span class="s">%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">n</span><span class="o">-&gt;</span><span class="n">_value</span><span class="p">);</span>
+<a id="__codelineno-11-43" name="__codelineno-11-43" href="#__codelineno-11-43"></a><span class="p">}</span>
+</code></pre></div>
+<p>使用 PrintVisitor 来访问抽象语法树时，就可以使用字符串的方式将字节码展示出来。编译运行的结果如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">LOAD_CONST</span><span class="w">      </span><span class="mi">12</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="n">LOAD_CONST</span><span class="w">      </span><span class="mi">48</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">BINARY_MUL</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="n">LOAD_CONST</span><span class="w">      </span><span class="mi">59</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="n">BINARY_ADD</span>
+</code></pre></div>
+<p>如果想真正地生成字节码，就把字符串的方式改成字节码的方式即可。这里引入一个新的访问者 CodeGen，用于在内存中生成一段真正的可供虚拟机执行的虚拟指令串，也就是字节码。你可以看一下它的核心代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">CodeGen::add_op</span><span class="p">(</span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">op_code</span><span class="p">,</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">param</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">    </span><span class="n">_insts</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">op_code</span><span class="p">);</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">op_code</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">HAVE_ARGUMENT</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">        </span><span class="n">_insts</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">param</span><span class="p">);</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="p">}</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="kt">void</span><span class="w"> </span><span class="nf">CodeGen::visit</span><span class="p">(</span><span class="n">BinaryOp</span><span class="o">*</span><span class="w"> </span><span class="n">op</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="w">    </span><span class="n">visit</span><span class="p">(</span><span class="n">op</span><span class="o">-&gt;</span><span class="n">left</span><span class="p">());</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="w">    </span><span class="n">visit</span><span class="p">(</span><span class="n">op</span><span class="o">-&gt;</span><span class="n">right</span><span class="p">());</span>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="w">    </span><span class="k">switch</span><span class="p">(</span><span class="n">op</span><span class="o">-&gt;</span><span class="n">op_type</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="no">AST_OP_ADD</span><span class="p">:</span>
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a><span class="w">        </span><span class="n">add_op</span><span class="p">(</span><span class="n">BINARY_ADD</span><span class="p">);</span>
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a><span class="w">        </span><span class="k">break</span><span class="p">;</span>
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="no">AST_OP_SUB</span><span class="p">:</span>
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a><span class="w">        </span><span class="n">add_op</span><span class="p">(</span><span class="n">BINARY_SUB</span><span class="p">);</span>
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a><span class="w">        </span><span class="k">break</span><span class="p">;</span>
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="no">AST_OP_MUL</span><span class="p">:</span>
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a><span class="w">        </span><span class="n">add_op</span><span class="p">(</span><span class="n">BINARY_MUL</span><span class="p">);</span>
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a><span class="w">        </span><span class="k">break</span><span class="p">;</span>
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="no">AST_OP_DIV</span><span class="p">:</span>
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a><span class="w">        </span><span class="n">add_op</span><span class="p">(</span><span class="n">BINARY_DIV</span><span class="p">);</span>
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a><span class="w">        </span><span class="k">break</span><span class="p">;</span>
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a><span class="w">    </span><span class="k">default</span><span class="o">:</span>
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Unknown binary op %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">op</span><span class="o">-&gt;</span><span class="n">op_type</span><span class="p">());</span>
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a><span class="w">        </span><span class="k">return</span><span class="p">;</span>
+<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a><span class="p">}</span>
+<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a>
+<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a><span class="kt">void</span><span class="w"> </span><span class="nf">CodeGen::visit</span><span class="p">(</span><span class="n">ConstInt</span><span class="o">*</span><span class="w"> </span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a><span class="w">    </span><span class="n">add_op</span><span class="p">(</span><span class="n">LOAD_CONST</span><span class="p">,</span><span class="w"> </span><span class="n">n</span><span class="o">-&gt;</span><span class="n">_value</span><span class="p">);</span>
+<a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a><span class="p">}</span>
+</code></pre></div>
+<p>CodeGen类的作用是记录字节码，_inst是一个 char 类型的 vector。add_op 方法是将一个指令添加到字节码向量里。</p>
+<p>HAVE_ARGUMENT 是一个预定义的宏（第3行），它的值是 90，如果指令编号小于 90，就代表这个指令没有参数，否则这个指令就带有参数。</p>
+<p>两个核心的 visit 方法（第 8 行和第 31 行），基本逻辑和 PrintVisitor 相同，都是对语法树进行后序遍历。</p>
+<p>到此为止，我们就使用 C++ 语言成功实现了一个简单的表达式的编译器，包含了词法分析、文法分析、字节码生成等步骤，麻雀虽小，五脏俱全。后面不断地新增各种语法特性，实际上也不过是在这个大框架上添砖加瓦。理解了这个过程，就掌握了编译器的基本工作原理。</p>
+<h2 id="_5">总结</h2>
+<p>源代码是由人编写，供人阅读和维护的，计算机并不认识它。计算机能理解的是机器指令，把源代码翻译成机器指令就是编译器的核心功能。一个由语言虚拟机支持的动态语言的编译器，其主要的工作流程包含了词法分析、文法分析、生成抽象语法树、生成字节码以及执行字节码等过程。</p>
+<p>词法分析的主要作用是将字符划分成一个个有意义的单词，这些单词统称为 token，词法分析经常使用<strong>有限自动机</strong>作为主要的实现手段。文法分析的作用是分析 token 之间的有机联系，进而识别出抽象语法树结构。它有两大类重要的分析手段，分别是自顶向下的递归下降分析法和自底向上的分析法。自顶向下的分析法简单直观，所以是我们这节课重点介绍的内容。</p>
+<p>使用<strong>访问者模式</strong>操作抽象语法树是一种常用的手段，对抽象语法树的后序遍历可以产生字节码，在生成字节码以后，虚拟机就可以执行这些字节码了。下一节课我们就会通过实现一个简单的虚拟机来说明字节码是如何被执行的。</p>
+<p>注：点击链接查看<a href="https://gitee.com/hinus/pythonvm/tree/geektime/">课程代码地址</a></p>
+<h2 id="_6">思考题</h2>
+<p>如果为这节课的文法引入变量的话，应该怎么做呢？只需要考虑变量出现在表达式即可，不用考虑变量是如何定义和赋初值的。欢迎你把你的答案分享到评论区，也欢迎你把这节课的内容分享给需要的朋友，我们下节课再见！</p>
 <div><strong>精选留言（6）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/31/48/e7/958b7e6c.jpg" width="30px"><span>高并发</span> 👍（4） 💬（1）<div>我觉得pratt算法是parse二元表达式最好的算法，特别好用😄</div>2024-05-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/6b/9a/786b1ed8.jpg" width="30px"><span>果粒橙</span> 👍（1） 💬（1）<div>gitee里面怎么找每一课对应的代码，最好能按照课时分类。</div>2024-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/3b/59/6a/ac154bfe.jpg" width="30px"><span>Triple tree</span> 👍（0） 💬（2）<div>词法分析parser.cpp代码中，如果文件中末尾以数字结束并且没有空格或换行符，最后一个数字无法打印，在fclose前需要判断一下state是否为NUM，是的话打印num</div>2024-05-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/43/cf/118c4ef5.jpg" width="30px"><span>lunar</span> 👍（0） 💬（1）<div>antlr 还没研究完 又来看这个了，我还真是冲动</div>2024-05-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/da/d9/f051962f.jpg" width="30px"><span>浩仔是程序员</span> 👍（0） 💬（1）<div>首发！！有交流群吗？</div>2024-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2024-10-17</li><br/>
+<li><span>高并发</span> 👍（4） 💬（1）<div>我觉得pratt算法是parse二元表达式最好的算法，特别好用😄</div>2024-05-10</li><br/><li><span>果粒橙</span> 👍（1） 💬（1）<div>gitee里面怎么找每一课对应的代码，最好能按照课时分类。</div>2024-05-13</li><br/><li><span>Triple tree</span> 👍（0） 💬（2）<div>词法分析parser.cpp代码中，如果文件中末尾以数字结束并且没有空格或换行符，最后一个数字无法打印，在fclose前需要判断一下state是否为NUM，是的话打印num</div>2024-05-12</li><br/><li><span>lunar</span> 👍（0） 💬（1）<div>antlr 还没研究完 又来看这个了，我还真是冲动</div>2024-05-11</li><br/><li><span>浩仔是程序员</span> 👍（0） 💬（1）<div>首发！！有交流群吗？</div>2024-05-08</li><br/><li><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2024-10-17</li><br/>
 </ul>
 
 

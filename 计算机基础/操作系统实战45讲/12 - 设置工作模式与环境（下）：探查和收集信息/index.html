@@ -2554,8 +2554,98 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      获取内存布局
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      初始化内核栈
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      放置内核文件与字库文件
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mmu" class="md-nav__link">
+    <span class="md-ellipsis">
+      建立MMU页表数据
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      设置图形模式
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      串联
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#logo" class="md-nav__link">
+    <span class="md-ellipsis">
+      显示Logo
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cosmos" class="md-nav__link">
+    <span class="md-ellipsis">
+      进入Cosmos
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
   
 </li>
       
@@ -5763,8 +5853,98 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      获取内存布局
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      初始化内核栈
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      放置内核文件与字库文件
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mmu" class="md-nav__link">
+    <span class="md-ellipsis">
+      建立MMU页表数据
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      设置图形模式
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      串联
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#logo" class="md-nav__link">
+    <span class="md-ellipsis">
+      显示Logo
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cosmos" class="md-nav__link">
+    <span class="md-ellipsis">
+      进入Cosmos
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
   
 </li>
       
@@ -5817,9 +5997,463 @@
 </code></pre></div>
 <p>目前我们的经理init_bstartparm()函数只是调用了一个machbstart_t_init()函数，在1MB内存地址处初始化了一个机器信息结构machbstart_t，后面随着干活越来越多，还会调用更多的函数的。</p>
 <h3 id="cpu">检查CPU</h3>
-<div><strong>精选留言（30）</strong></div>
+<p>首先要检查我们的CPU，因为它是执行程序的关键。我们要搞清楚它能执行什么形式的代码，支持64位长模式吗？</p>
+<p>这个工作我们交给init_chkcpu()函数来干，由于我们要CPUID指令来检查CPU是否支持64位长模式，所以这个函数中需要找两个帮工：<strong>chk_cpuid、chk_cpu_longmode</strong>来干两件事，一个是检查CPU否支持CPUID指令，然后另一个用CPUID指令检查CPU支持64位长模式。</p>
+<p>下面我们去写好它们，如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>//通过改写Eflags寄存器的第21位，观察其位的变化判断是否支持CPUID
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>int chk_cpuid()
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>{
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    int rets = 0;
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    __asm__ __volatile__(
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        &quot;pushfl \n\t&quot;
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        &quot;popl %%eax \n\t&quot;
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        &quot;movl %%eax,%%ebx \n\t&quot;
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        &quot;xorl $0x0200000,%%eax \n\t&quot;
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>        &quot;pushl %%eax \n\t&quot;
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        &quot;popfl \n\t&quot;
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>        &quot;pushfl \n\t&quot;
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        &quot;popl %%eax \n\t&quot;
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        &quot;xorl %%ebx,%%eax \n\t&quot;
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>        &quot;jz 1f \n\t&quot;
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>        &quot;movl $1,%0 \n\t&quot;
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>        &quot;jmp 2f \n\t&quot;
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>        &quot;1: movl $0,%0 \n\t&quot;
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>        &quot;2: \n\t&quot;
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>        : &quot;=c&quot;(rets)
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>        :
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>        :);
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    return rets;
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>}
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>//检查CPU是否支持长模式
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>int chk_cpu_longmode()
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>{
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    int rets = 0;
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>    __asm__ __volatile__(
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>        &quot;movl $0x80000000,%%eax \n\t&quot;
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>        &quot;cpuid \n\t&quot; //把eax中放入0x80000000调用CPUID指令
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>        &quot;cmpl $0x80000001,%%eax \n\t&quot;//看eax中返回结果
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>        &quot;setnb %%al \n\t&quot; //不为0x80000001,则不支持0x80000001号功能
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>        &quot;jb 1f \n\t&quot;
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>        &quot;movl $0x80000001,%%eax \n\t&quot;
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>        &quot;cpuid \n\t&quot;//把eax中放入0x800000001调用CPUID指令，检查edx中的返回数据
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>        &quot;bt $29,%%edx  \n\t&quot; //长模式 支持位  是否为1
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>        &quot;setcb %%al \n\t&quot;
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>        &quot;1: \n\t&quot;
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a>        &quot;movzx %%al,%%eax \n\t&quot;
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>        : &quot;=a&quot;(rets)
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a>        :
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>        :);
+<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a>    return rets;
+<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a>}
+<a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a>//检查CPU主函数
+<a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a>void init_chkcpu(machbstart_t *mbsp)
+<a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a>{
+<a id="__codelineno-1-49" name="__codelineno-1-49" href="#__codelineno-1-49"></a>    if (!chk_cpuid())
+<a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a>    {
+<a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a>        kerror(&quot;Your CPU is not support CPUID sys is die!&quot;);
+<a id="__codelineno-1-52" name="__codelineno-1-52" href="#__codelineno-1-52"></a>        CLI_HALT();
+<a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a>    }
+<a id="__codelineno-1-54" name="__codelineno-1-54" href="#__codelineno-1-54"></a>    if (!chk_cpu_longmode())
+<a id="__codelineno-1-55" name="__codelineno-1-55" href="#__codelineno-1-55"></a>    {
+<a id="__codelineno-1-56" name="__codelineno-1-56" href="#__codelineno-1-56"></a>        kerror(&quot;Your CPU is not support 64bits mode sys is die!&quot;);
+<a id="__codelineno-1-57" name="__codelineno-1-57" href="#__codelineno-1-57"></a>        CLI_HALT();
+<a id="__codelineno-1-58" name="__codelineno-1-58" href="#__codelineno-1-58"></a>    }
+<a id="__codelineno-1-59" name="__codelineno-1-59" href="#__codelineno-1-59"></a>    mbsp-&gt;mb_cpumode = 0x40;//如果成功则设置机器信息结构的cpu模式为64位
+<a id="__codelineno-1-60" name="__codelineno-1-60" href="#__codelineno-1-60"></a>    return;
+<a id="__codelineno-1-61" name="__codelineno-1-61" href="#__codelineno-1-61"></a>}
+</code></pre></div>
+<p>上述代码中，检查CPU是否支持CPUID指令和检查CPU是否支持长模式，只要其中一步检查失败，我们就打印一条相应的提示信息，然后主动死机。<strong>这里需要你留意的是，最后设置机器信息结构中的mb_cpumode字段为64,mbsp正是传递进来的机器信息machbstart_t结构体的指针。</strong></p>
+<h3 id="_2">获取内存布局</h3>
+<p>好了，CPU已经检查完成 ，合乎我们的要求。下面就要获取内存布局信息了，物理内存在物理地址空间中是一段一段的，描述一段内存有一个数据结构，如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>#define RAM_USABLE 1 //可用内存
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>#define RAM_RESERV 2 //保留内存不可使用
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>#define RAM_ACPIREC 3 //ACPI表相关的
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>#define RAM_ACPINVS 4 //ACPI NVS空间
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>#define RAM_AREACON 5 //包含坏内存
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>typedef struct s_e820{
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    u64_t saddr;    /* 内存开始地址 */
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    u64_t lsize;    /* 内存大小 */
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    u32_t type;    /* 内存类型 */
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>}e820map_t;
+</code></pre></div>
+<p>获取内存布局信息就是获取这个结构体的数组，这个工作我们交给init_mem函数来干，这个函数需要完成两件事：一是获取上述这个结构体数组，二是检查内存大小，因为我们的内核对内存容量有要求，不能太小。</p>
+<p>下面我们来动手实现这个init_mem函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>#define ETYBAK_ADR 0x2000
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>#define PM32_EIP_OFF (ETYBAK_ADR)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>#define PM32_ESP_OFF (ETYBAK_ADR+4)
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>#define E80MAP_NR (ETYBAK_ADR+64)//保存e820map_t结构数组元素个数的地址
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>#define E80MAP_ADRADR (ETYBAK_ADR+68) //保存e820map_t结构数组的开始地址
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>void init_mem(machbstart_t *mbsp)
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>{
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    e820map_t *retemp;
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    u32_t retemnr = 0;
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    mmap(&amp;retemp, &amp;retemnr);
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    if (retemnr == 0)
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    {
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>        kerror(&quot;no e820map\n&quot;);
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    }
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    //根据e820map_t结构数据检查内存大小
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    if (chk_memsize(retemp, retemnr, 0x100000, 0x8000000) == NULL)
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    {
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>        kerror(&quot;Your computer is low on memory, the memory cannot be less than 128MB!&quot;);
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    }
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    mbsp-&gt;mb_e820padr = (u64_t)((u32_t)(retemp));//把e820map_t结构数组的首地址传给mbsp-&gt;mb_e820padr 
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    mbsp-&gt;mb_e820nr = (u64_t)retemnr;//把e820map_t结构数组元素个数传给mbsp-&gt;mb_e820nr 
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>    mbsp-&gt;mb_e820sz = retemnr * (sizeof(e820map_t));//把e820map_t结构数组大小传给mbsp-&gt;mb_e820sz 
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>    mbsp-&gt;mb_memsz = get_memsize(retemp, retemnr);//根据e820map_t结构数据计算内存大小。
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>    return;
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>}
+</code></pre></div>
+<p>上面最难写的是mmap函数。不过，我们还是有办法破解的。如果你理解了前面调用BIOS的机制，就会发现，<strong>只要调用了BIOS中断，就能获取e820map结构数组</strong>。</p>
+<p>为了验证这个结论，我们来看一下mmap的函数调用关系：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>void mmap(e820map_t **retemp, u32_t *retemnr)
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>{
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    realadr_call_entry(RLINTNR(0), 0, 0);
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    *retemnr = *((u32_t *)(E80MAP_NR));
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    *retemp = (e820map_t *)(*((u32_t *)(E80MAP_ADRADR)));
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    return;
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>}
+</code></pre></div>
+<p>可以看到，mmap函数正是通过前面讲的<strong>realadr_call_entry函数</strong>，来调用实模式下的_getmmap函数的，并且在_getmmap函数中调用BIOS中断的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>_getmmap:
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    push ds
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    push es
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    push ss
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    mov esi,0
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    mov dword[E80MAP_NR],esi
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    mov dword[E80MAP_ADRADR],E80MAP_ADR ;e820map结构体开始地址
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    xor ebx,ebx
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    mov edi,E80MAP_ADR
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>loop:
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    mov eax,0e820h ;获取e820map结构参数
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    mov ecx,20    ;e820map结构大小
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    mov edx,0534d4150h ;获取e820map结构参数必须是这个数据
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    int 15h  ;BIOS的15h中断
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    jc .1
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    add edi,20
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    cmp edi,E80MAP_ADR+0x1000
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    jg .1
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>    inc esi
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>    cmp ebx,0
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>    jne loop ;循环获取e820map结构
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    jmp .2
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>.1:
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>    mov esi,0    ;出错处理，e820map结构数组元素个数为0
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>.2:
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>    mov dword[E80MAP_NR],esi ;e820map结构数组元素个数
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>    pop ss
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>    pop es
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>    pop ds
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>    ret
+</code></pre></div>
+<p>如果你不明白上面代码的原理，请回到“Cache与内存：程序放在哪儿”<a href="https://time.geekbang.org/column/article/376711">那节课</a>，看一下获取内存视图相关的知识点。</p>
+<p>init_mem函数在调用mmap函数后，就会得到e820map结构数组，其首地址和数组元素个数由retemp，retemnr两个变量分别提供。</p>
+<h3 id="_3">初始化内核栈</h3>
+<p>因为我们的操作系统是C语言写的，所以需要有栈，下面我们就来给即将运行的内核初始化一个栈。这个操作非常简单，就是在机器信息结构machbstart_t中，记录一下栈地址和栈大小，供内核在启动时使用。</p>
+<p>不过，就算操作再简单，我们也要封装成函数来使用。让我们动手来写出这个函数吧，如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>#define IKSTACK_PHYADR (0x90000-0x10)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>#define IKSTACK_SIZE 0x1000
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>//初始化内核栈
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>void init_krlinitstack(machbstart_t *mbsp)
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>{
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    if (1 &gt; move_krlimg(mbsp, (u64_t)(0x8f000), 0x1001))
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    {
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        kerror(&quot;iks_moveimg err&quot;);
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    }
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    mbsp-&gt;mb_krlinitstack = IKSTACK_PHYADR;//栈顶地址
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    mbsp-&gt;mb_krlitstacksz = IKSTACK_SIZE; //栈大小是4KB
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    return;
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>}
+</code></pre></div>
+<p>init_krlinitstack函数非常简单，但是其中调用了一个move_krlimg函数你要注意，这个我已经帮你写好啦，它主要负责判断一个地址空间是否和内存中存放的内容有冲突。</p>
+<p>因为我们的内存中已经放置了机器信息结构、内存视图结构数组、二级引导器、内核映像文件，所以在处理内存空间时不能和内存中已经存在的他们冲突，否则就要覆盖他们的数据。0x8f000～（0x8f000+0x1001），正是我们的内核栈空间，我们需要检测它是否和其它空间有冲突。</p>
+<h3 id="_4">放置内核文件与字库文件</h3>
+<p>放置内核文件和字库文件这一步，也非常简单，甚至放置其它文件也一样。</p>
+<p>因为我们的内核已经编译成了一个独立的二进制程序，和其它文件一起被打包到映像文件中了。所以我们必须要从映像中把它解包出来，将其放在特定的物理内存空间中才可以，放置字库文件和放置内核文件的原理一样，所以我们来一起实现。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>//放置内核文件
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>void init_krlfile(machbstart_t *mbsp)
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>{
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>//在映像中查找相应的文件，并复制到对应的地址，并返回文件的大小，这里是查找kernel.bin文件
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    u64_t sz = r_file_to_padr(mbsp, IMGKRNL_PHYADR, &quot;kernel.bin&quot;);
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    if (0 == sz)
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    {
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>        kerror(&quot;r_file_to_padr err&quot;);
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    }
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    //放置完成后更新机器信息结构中的数据
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    mbsp-&gt;mb_krlimgpadr = IMGKRNL_PHYADR;
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    mbsp-&gt;mb_krlsz = sz;
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    //mbsp-&gt;mb_nextwtpadr始终要保持指向下一段空闲内存的首地址 
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    mbsp-&gt;mb_nextwtpadr = P4K_ALIGN(mbsp-&gt;mb_krlimgpadr + mbsp-&gt;mb_krlsz);
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    mbsp-&gt;mb_kalldendpadr = mbsp-&gt;mb_krlimgpadr + mbsp-&gt;mb_krlsz;
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    return;
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>}
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>//放置字库文件
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>void init_defutfont(machbstart_t *mbsp)
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>{
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>    u64_t sz = 0;
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>    //获取下一段空闲内存空间的首地址 
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>    u32_t dfadr = (u32_t)mbsp-&gt;mb_nextwtpadr;
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>//在映像中查找相应的文件，并复制到对应的地址，并返回文件的大小，这里是查找font.fnt文件
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>    sz = r_file_to_padr(mbsp, dfadr, &quot;font.fnt&quot;);
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>    if (0 == sz)
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>    {
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>        kerror(&quot;r_file_to_padr err&quot;);
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>    }
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>    //放置完成后更新机器信息结构中的数据
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>    mbsp-&gt;mb_bfontpadr = (u64_t)(dfadr);
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>    mbsp-&gt;mb_bfontsz = sz;
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>    //更新机器信息结构中下一段空闲内存的首地址  
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>    mbsp-&gt;mb_nextwtpadr = P4K_ALIGN((u32_t)(dfadr) + sz);
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>    mbsp-&gt;mb_kalldendpadr = mbsp-&gt;mb_bfontpadr + mbsp-&gt;mb_bfontsz;
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>    return;
+<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>}
+</code></pre></div>
+<p>以上代码的注释已经很清楚了，都是调用r_file_to_padr函数在映像中查找kernel.bin和font.fnt文件，并复制到对应的空闲内存空间中。</p>
+<p>请注意，由于内核是代码数据，所以必须要复制到指定的内存空间中。r_file_to_padr函数我已经帮你写好了，其中的原理在前面的内容里已经做了说明，这里不再展开。</p>
+<h3 id="mmu">建立MMU页表数据</h3>
+<p>前面解决了文件放置问题，我们还要解决另一个问题——建立MMU页表。</p>
+<p>我们在二级引导器中建立MMU页表数据，目的就是要在内核加载运行之初开启长模式时，MMU需要的页表数据已经准备好了。</p>
+<p>由于我们的内核虚拟地址空间从0xffff800000000000开始，所以我们这个虚拟地址映射到从物理地址0开始，大小都是0x400000000即16GB，也就是说我们要虚拟地址空间：0xffff800000000000～0xffff800400000000 映射到物理地址空间0～0x400000000。</p>
+<p>我们为了简化编程，使用<strong>长模式下的2MB分页方式</strong>，下面我们用代码实现它，如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>#define KINITPAGE_PHYADR 0x1000000
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>void init_bstartpages(machbstart_t *mbsp)
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>{
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    //顶级页目录
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    u64_t *p = (u64_t *)(KINITPAGE_PHYADR);//16MB地址处
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    //页目录指针
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    u64_t *pdpte = (u64_t *)(KINITPAGE_PHYADR + 0x1000);
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    //页目录
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    u64_t *pde = (u64_t *)(KINITPAGE_PHYADR + 0x2000);
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    //物理地址从0开始
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    u64_t adr = 0;
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    if (1 &gt; move_krlimg(mbsp, (u64_t)(KINITPAGE_PHYADR), (0x1000 * 16 + 0x2000)))
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    {
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>        kerror(&quot;move_krlimg err&quot;);
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    }
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    //将顶级页目录、页目录指针的空间清0
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>    for (uint_t mi = 0; mi &lt; PGENTY_SIZE; mi++)
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>    {
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>        p[mi] = 0;
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>        pdpte[mi] = 0;
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>    }
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>    //映射
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>    for (uint_t pdei = 0; pdei &lt; 16; pdei++)
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>    {
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>        pdpte[pdei] = (u64_t)((u32_t)pde | KPDPTE_RW | KPDPTE_P);
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>        for (uint_t pdeii = 0; pdeii &lt; PGENTY_SIZE; pdeii++)
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>        {//大页KPDE_PS 2MB，可读写KPDE_RW，存在KPDE_P
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>            pde[pdeii] = 0 | adr | KPDE_PS | KPDE_RW | KPDE_P;
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>            adr += 0x200000;
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>        }
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>        pde = (u64_t *)((u32_t)pde + 0x1000);
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>    }
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>    //让顶级页目录中第0项和第((KRNL_VIRTUAL_ADDRESS_START) &gt;&gt; KPML4_SHIFT) &amp; 0x1ff项，指向同一个页目录指针页  
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>    p[((KRNL_VIRTUAL_ADDRESS_START) &gt;&gt; KPML4_SHIFT) &amp; 0x1ff] = (u64_t)((u32_t)pdpte | KPML4_RW | KPML4_P);
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a>    p[0] = (u64_t)((u32_t)pdpte | KPML4_RW | KPML4_P);
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>    //把页表首地址保存在机器信息结构中
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a>    mbsp-&gt;mb_pml4padr = (u64_t)(KINITPAGE_PHYADR);
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a>    mbsp-&gt;mb_subpageslen = (u64_t)(0x1000 * 16 + 0x2000);
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a>    mbsp-&gt;mb_kpmapphymemsz = (u64_t)(0x400000000);
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a>    return;
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a>}
+</code></pre></div>
+<p>这个函数的代码写得非常简单，<strong>映射的核心逻辑由两重循环控制</strong>，外层循环控制页目录指针顶，只有16项，其中每一项都指向一个页目录，每个页目录中有512个物理页地址。</p>
+<p>物理地址每次增加2MB，这是由26～30行的内层循环控制，每执行一次外层循环就要执行512次内层循环。</p>
+<p>最后，顶级页目录中第0项和第((KRNL_VIRTUAL_ADDRESS_START) &gt;&gt; KPML4_SHIFT) &amp; 0x1ff项，指向同一个页目录指针页，这样的话就能让虚拟地址：0xffff800000000000～0xffff800400000000和虚拟地址：0～0x400000000，访问到同一个物理地址空间0～0x400000000，这样做是有目的，<strong>内核在启动初期，虚拟地址和物理地址要保持相同。</strong></p>
+<h3 id="_5">设置图形模式</h3>
+<p>在计算机加电启动时，计算机上显卡会自动进入文本模式，文本模式只能显示ASCII字符，不能显示汉字和图形，所以我们要让显卡切换到图形模式。</p>
+<p>切换显卡模式依然要用BIOS中断，这个调用原理我们前面已经了如指掌。在实模式切换显卡模式的汇编代码，我已经帮你写好了，下面我们只要写个C函数调用它们就好了，代码如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>void init_graph(machbstart_t* mbsp)
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>{
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    //初始化图形数据结构
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    graph_t_init(&amp;mbsp-&gt;mb_ghparm);
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    //获取VBE模式，通过BIOS中断
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    get_vbemode(mbsp);
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    //获取一个具体VBE模式的信息，通过BIOS中断
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    get_vbemodeinfo(mbsp);
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    //设置VBE模式，通过BIOS中断
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    set_vbemodeinfo();
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    return;
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>}
+</code></pre></div>
+<p>上面init_graph函数中的这些处理VBE模式的代码，我已经帮你写好，你可以自己在graph.c文件查看。</p>
+<p>什么？你不懂VBE，其实我开始也不懂，后来通过搜寻资料才知道。</p>
+<p>其实VBE是显卡的一个图形规范标准，它定义了显卡的几种图形模式，每个模式包括屏幕分辨率，像素格式与大小，显存大小。调用BIOS 10h中断可以返回这些数据结构。<a href="https://vesa.org/">如果你实在对VBE感兴趣，可以自行阅读其规范</a> 。</p>
+<p>这里我们选择使用了VBE的118h模式，该模式下屏幕分辨率为1024x768，显存大小是16.8MB。显存开始地址一般为0xe0000000。</p>
+<p>屏幕分辨率为1024x768，即把屏幕分成768行，每行1024个像素点，但每个像素点占用显存的32位数据（4字节，红、绿、蓝、透明各占8位）。我们只要往对应的显存地址写入相应的像素数据，屏幕对应的位置就能显示了。</p>
+<p>每个像素点，我们可以用如下数据结构表示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>typedef struct s_PIXCL
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>{
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    u8_t cl_b; //蓝
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    u8_t cl_g; //绿
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    u8_t cl_r; //红
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    u8_t cl_a; //透明
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>}__attribute__((packed)) pixcl_t;
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>#define BGRA(r,g,b) ((0|(r&lt;&lt;16)|(g&lt;&lt;8)|b))
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>//通常情况下用pixl_t 和 BGRA宏
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>typedef u32_t pixl_t;
+</code></pre></div>
+<p>我们再来看看屏幕像素点和显存位置对应的计算方式：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>u32_t* dispmem = (u32_t*)mbsp-&gt;mb_ghparm.gh_framphyadr;
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>dispmem[x + (y * 1024)] = pix;
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>//x，y是像素的位置
+</code></pre></div>
+<h3 id="_6">串联</h3>
+<p>好了，所有的实施工作的函数已经完成了，现在我们需要在init_bstartparm()函数中把它们串联起来，即按照事情的先后顺序，依次调用它们完成相应的工作，实现检查、收集机器信息，设置工作环境。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>void init_bstartparm()
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>{
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    machbstart_t *mbsp = MBSPADR;
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    machbstart_t_init(mbsp);
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    //检查CPU
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    init_chkcpu(mbsp);
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    //获取内存布局
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    init_mem(mbsp);
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>    //初始化内核栈
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>    init_krlinitstack(mbsp);
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>    //放置内核文件
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>    init_krlfile(mbsp);
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>    //放置字库文件
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>    init_defutfont(mbsp);
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>    init_meme820(mbsp);
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>    //建立MMU页表
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>    init_bstartpages(mbsp);
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>    //设置图形模式
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>    init_graph(mbsp);
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>    return;
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>}
+</code></pre></div>
+<p>到这里，init_bstartparm()函数就成功完成了它的使命。</p>
+<h2 id="logo">显示Logo</h2>
+<p>前面我们已经设置了图形模式，也应该要展示一下了，检查一下工作成果。</p>
+<p>我们来显示一下我们内核的logo。其实在二级引导器中，我已经帮你写好了显示logo函数，而logo文件是个<strong>24位的位图文件</strong>，目前为了简单起见，我们<strong>只支持这种格式的图片文件</strong>。下面我们去调用这个函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>void logo(machbstart_t* mbsp)
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>{
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    u32_t retadr=0,sz=0;
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    //在映像文件中获取logo.bmp文件
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    get_file_rpadrandsz(&quot;logo.bmp&quot;,mbsp,&amp;retadr,&amp;sz);
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    if(0==retadr)
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    {
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>        kerror(&quot;logo getfilerpadrsz err&quot;);
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    }
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    //显示logo文件中的图像数据
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>    bmp_print((void*)retadr,mbsp);
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    return;
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>}
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>void init_graph(machbstart_t* mbsp)
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>{    
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>    //……前面代码省略
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>    //显示
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>    logo(mbsp);
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>    return;
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>}
+</code></pre></div>
+<p>在图格式的文件中，除了文件头的数据就是图形像素点的数据，只不过24位的位图每个像素占用3字节，并且位置是倒排的，即第一个像素的数据是在文件的最后，依次类推。我们只要依次将位图文件的数据，按照倒排次序写入显存中，这样就可以显示了。</p>
+<p>我们需要把二级引导器的文件和logo文件打包成映像文件，然后放在虚拟硬盘中。</p>
+<p>复制文件到虚拟硬盘中得先mount，然后复制，最后转换成VDI格式的虚拟硬盘，再挂载到虚拟机上启动就行了。这也是为什么要手动建立硬盘的原因，打包命令如下。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>lmoskrlimg -m k -lhf initldrimh.bin -o Cosmos.eki -f initldrsve.bin initldrkrl.bin font.fnt logo.bmp
+</code></pre></div>
+<p>如果手动打命令对你来说还是比较难，也别担心，我已经帮你写好了make脚本，你只需要进入代码目录中make vboxtest 就行了，运行结果如下 。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c3/y0/c3d4f0b072b837f208fbd52749913yy0.jpg?wh=1054%2A931" title="代码运行结果示意图" /></p>
+<p>啊哈！终于显示了logo。是不是挺有成就感的？这至少证明我们辛苦写的代码是正确的。</p>
+<p>但是目前我们的代码执行流还在二级引导器中，我们的目的是开发自己的操作系统，不，我们是要开发Cosmos。</p>
+<p><strong>后面，我们正式用Cosmos命名我们的操作系统。</strong>Cosmos可以翻译成宇宙，尽管它刚刚诞生，但我对它充满期待，所以用了这样一个能够“包括万物，包罗万象”的名字。</p>
+<h2 id="cosmos">进入Cosmos</h2>
+<p>我们在调用Cosmos第一个C函数之前，我们依然要写一小段汇编代码，切换CPU到长模式，初始化CPU寄存器和C语言要用的栈。因为目前代码执行流在二级引导器中，进入到Cosmos中这样在二级引导器中初始过的东西都不能用了。</p>
+<p>因为CPU进入了长模式，寄存器的位宽都变了，所以需要重新初始化。让我们一起来写这段汇编代码吧，我们先在Cosmos/hal/x86/下建立一个init_entry.asm文件，写上后面这段代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>[section .start.text]
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>[BITS 32]
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>_start:
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    cli
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    mov ax,0x10
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    mov ds,ax
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    mov es,ax
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    mov ss,ax
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    mov fs,ax
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>    mov gs,ax
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    lgdt [eGdtPtr]        
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>    ;开启 PAE
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>    mov eax, cr4
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>    bts eax, 5                      ; CR4.PAE = 1
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>    mov cr4, eax
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>    mov eax, PML4T_BADR             ;加载MMU顶级页目录
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>    mov cr3, eax    
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>    ;开启 64bits long-mode
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>    mov ecx, IA32_EFER
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>    rdmsr
+<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>    bts eax, 8                      ; IA32_EFER.LME =1
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>    wrmsr
+<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a>    ;开启 PE 和 paging
+<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a>    mov eax, cr0
+<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a>    bts eax, 0                      ; CR0.PE =1
+<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a>    bts eax, 31
+<a id="__codelineno-15-27" name="__codelineno-15-27" href="#__codelineno-15-27"></a>    ;开启 CACHE       
+<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a>    btr eax,29                      ; CR0.NW=0
+<a id="__codelineno-15-29" name="__codelineno-15-29" href="#__codelineno-15-29"></a>    btr eax,30                      ; CR0.CD=0  CACHE
+<a id="__codelineno-15-30" name="__codelineno-15-30" href="#__codelineno-15-30"></a>    mov cr0, eax                    ; IA32_EFER.LMA = 1
+<a id="__codelineno-15-31" name="__codelineno-15-31" href="#__codelineno-15-31"></a>    jmp 08:entry64
+<a id="__codelineno-15-32" name="__codelineno-15-32" href="#__codelineno-15-32"></a>[BITS 64]
+<a id="__codelineno-15-33" name="__codelineno-15-33" href="#__codelineno-15-33"></a>entry64:
+<a id="__codelineno-15-34" name="__codelineno-15-34" href="#__codelineno-15-34"></a>    mov ax,0x10
+<a id="__codelineno-15-35" name="__codelineno-15-35" href="#__codelineno-15-35"></a>    mov ds,ax
+<a id="__codelineno-15-36" name="__codelineno-15-36" href="#__codelineno-15-36"></a>    mov es,ax
+<a id="__codelineno-15-37" name="__codelineno-15-37" href="#__codelineno-15-37"></a>    mov ss,ax
+<a id="__codelineno-15-38" name="__codelineno-15-38" href="#__codelineno-15-38"></a>    mov fs,ax
+<a id="__codelineno-15-39" name="__codelineno-15-39" href="#__codelineno-15-39"></a>    mov gs,ax
+<a id="__codelineno-15-40" name="__codelineno-15-40" href="#__codelineno-15-40"></a>    xor rax,rax
+<a id="__codelineno-15-41" name="__codelineno-15-41" href="#__codelineno-15-41"></a>    xor rbx,rbx
+<a id="__codelineno-15-42" name="__codelineno-15-42" href="#__codelineno-15-42"></a>    xor rbp,rbp
+<a id="__codelineno-15-43" name="__codelineno-15-43" href="#__codelineno-15-43"></a>    xor rcx,rcx
+<a id="__codelineno-15-44" name="__codelineno-15-44" href="#__codelineno-15-44"></a>    xor rdx,rdx
+<a id="__codelineno-15-45" name="__codelineno-15-45" href="#__codelineno-15-45"></a>    xor rdi,rdi
+<a id="__codelineno-15-46" name="__codelineno-15-46" href="#__codelineno-15-46"></a>    xor rsi,rsi
+<a id="__codelineno-15-47" name="__codelineno-15-47" href="#__codelineno-15-47"></a>    xor r8,r8
+<a id="__codelineno-15-48" name="__codelineno-15-48" href="#__codelineno-15-48"></a>    xor r9,r9
+<a id="__codelineno-15-49" name="__codelineno-15-49" href="#__codelineno-15-49"></a>    xor r10,r10
+<a id="__codelineno-15-50" name="__codelineno-15-50" href="#__codelineno-15-50"></a>    xor r11,r11
+<a id="__codelineno-15-51" name="__codelineno-15-51" href="#__codelineno-15-51"></a>    xor r12,r12
+<a id="__codelineno-15-52" name="__codelineno-15-52" href="#__codelineno-15-52"></a>    xor r13,r13
+<a id="__codelineno-15-53" name="__codelineno-15-53" href="#__codelineno-15-53"></a>    xor r14,r14
+<a id="__codelineno-15-54" name="__codelineno-15-54" href="#__codelineno-15-54"></a>    xor r15,r15
+<a id="__codelineno-15-55" name="__codelineno-15-55" href="#__codelineno-15-55"></a>    mov rbx,MBSP_ADR
+<a id="__codelineno-15-56" name="__codelineno-15-56" href="#__codelineno-15-56"></a>    mov rax,KRLVIRADR
+<a id="__codelineno-15-57" name="__codelineno-15-57" href="#__codelineno-15-57"></a>    mov rcx,[rbx+KINITSTACK_OFF]
+<a id="__codelineno-15-58" name="__codelineno-15-58" href="#__codelineno-15-58"></a>    add rax,rcx
+<a id="__codelineno-15-59" name="__codelineno-15-59" href="#__codelineno-15-59"></a>    xor rcx,rcx
+<a id="__codelineno-15-60" name="__codelineno-15-60" href="#__codelineno-15-60"></a>    xor rbx,rbx
+<a id="__codelineno-15-61" name="__codelineno-15-61" href="#__codelineno-15-61"></a>    mov rsp,rax
+<a id="__codelineno-15-62" name="__codelineno-15-62" href="#__codelineno-15-62"></a>    push 0
+<a id="__codelineno-15-63" name="__codelineno-15-63" href="#__codelineno-15-63"></a>    push 0x8
+<a id="__codelineno-15-64" name="__codelineno-15-64" href="#__codelineno-15-64"></a>    mov rax,hal_start                 ;调用内核主函数
+<a id="__codelineno-15-65" name="__codelineno-15-65" href="#__codelineno-15-65"></a>    push rax
+<a id="__codelineno-15-66" name="__codelineno-15-66" href="#__codelineno-15-66"></a>    dw 0xcb48
+<a id="__codelineno-15-67" name="__codelineno-15-67" href="#__codelineno-15-67"></a>    jmp $
+<a id="__codelineno-15-68" name="__codelineno-15-68" href="#__codelineno-15-68"></a>[section .start.data]
+<a id="__codelineno-15-69" name="__codelineno-15-69" href="#__codelineno-15-69"></a>[BITS 32]
+<a id="__codelineno-15-70" name="__codelineno-15-70" href="#__codelineno-15-70"></a>x64_GDT:
+<a id="__codelineno-15-71" name="__codelineno-15-71" href="#__codelineno-15-71"></a>enull_x64_dsc:  dq 0    
+<a id="__codelineno-15-72" name="__codelineno-15-72" href="#__codelineno-15-72"></a>ekrnl_c64_dsc:  dq 0x0020980000000000   ; 64-bit 内核代码段
+<a id="__codelineno-15-73" name="__codelineno-15-73" href="#__codelineno-15-73"></a>ekrnl_d64_dsc:  dq 0x0000920000000000   ; 64-bit 内核数据段
+<a id="__codelineno-15-74" name="__codelineno-15-74" href="#__codelineno-15-74"></a>euser_c64_dsc:  dq 0x0020f80000000000   ; 64-bit 用户代码段
+<a id="__codelineno-15-75" name="__codelineno-15-75" href="#__codelineno-15-75"></a>euser_d64_dsc:  dq 0x0000f20000000000   ; 64-bit 用户数据段
+<a id="__codelineno-15-76" name="__codelineno-15-76" href="#__codelineno-15-76"></a>eGdtLen         equ $ - enull_x64_dsc   ; GDT长度
+<a id="__codelineno-15-77" name="__codelineno-15-77" href="#__codelineno-15-77"></a>eGdtPtr:        dw eGdtLen - 1          ; GDT界限
+<a id="__codelineno-15-78" name="__codelineno-15-78" href="#__codelineno-15-78"></a>                dq ex64_GDT
+</code></pre></div>
+<p>上述代码中，1～11行表示加载70～75行的GDT，13～17行是设置MMU并加载在二级引导器中准备好的MMU页表，19～30行是开启长模式并打开Cache，34～54行则是初始化长模式下的寄存器，55～61行是读取二级引导器准备的机器信息结构中的栈地址，并用这个数据设置RSP寄存器。</p>
+<p>最关键的是63～66行，它开始把8和hal_start函数的地址压入栈中。dw 0xcb48是直接写一条指令的机器码——0xcb48，这是一条返回指令。这个返回指令有点特殊，它会把栈中的数据分别弹出到RIP，CS寄存器，这正是为了调用我们Cosmos的<strong>第一个C函数hal_start</strong>。</p>
+<h2 id="_7">重点回顾</h2>
+<p>这是我们设置工作模式与环境的最后一课，到此为止我们的二级引导器已经建立起来了，成功从 GRUB手中接过了权柄，开始了它自己的一系列工作，二级引导器完成的工作不算少，我来帮你梳理一下，重点如下。</p>
+<p>1.二级引导器彻底摆脱了GRUB的控制之后，就开始检查CPU，获取内存布局信息，确认是不是我们要求的CPU和内存大小，接着初始化内核栈、放置好内核文件和字库文件，建立MMU页表数据和设置好图形模式，为后面运行内核做好准备。</p>
+<p>2.当二级引导器完成了上述功能后，就会显示我们操作系统的logo，这标志着二级引导器所有的工作一切正常。</p>
+<p>3.进入Cosmos，我们的二级引导器通过跳转到Cosmos的入口，结束了自己光荣使命，Cosmos的入口是一小段汇编代码，主要是开启CPU的长模式，最后调用了Cosmos的第一个C函数hal_start。</p>
+<p>你想过吗？我们的二级引导器还可以做更多的事情，其实还可以在二级引导器中获取ACPI表，进而获取CPU数量和其它设备信息，期待你的实现。</p>
+<h2 id="_8">思考题</h2>
+<p>请你想一下，init_bstartparm()函数中的init_mem820()函数，这个函数到底干了什么？</p>
+<p>欢迎你在留言区跟我互动。如果你身边有朋友对手写操作系统有热情，也欢迎你把这节课转发给他。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/24/dd/cc/9c926552.jpg" width="30px"><span>言C</span> 👍（10） 💬（3）<div>经过一段时间的摸索，今天终于成功显示了Cosmos的logo界面了，遇到了几个坑，特此来给大家填坑了：
+<li><span>言C</span> 👍（10） 💬（3）<div>经过一段时间的摸索，今天终于成功显示了Cosmos的logo界面了，遇到了几个坑，特此来给大家填坑了：
 1、出现无法找到Cosmos的错误提示，如下：
 正在生成Cosmos内核映像文件，请稍后……
 文件数：6
@@ -5856,7 +6490,7 @@ VirtualBox安装64位的系统需要满足以下条件：
 然后在打开该虚拟机，去virtualbox中建立虚拟机时，就会发现有 64bit 的选项了
 
 
-</div>2021-10-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ec/13/49e98289.jpg" width="30px"><span>neohope</span> 👍（20） 💬（2）<div>大体上整理了一下，有几处没弄清楚【下半部分】：
+</div>2021-10-17</li><br/><li><span>neohope</span> 👍（20） 💬（2）<div>大体上整理了一下，有几处没弄清楚【下半部分】：
 11、返回到bstartparm.c
 调用了chkcpmm.c的init_bstartpages
 
@@ -5900,7 +6534,7 @@ E、进行logo显示
 再往下是jmp 0x2000000
 这个地址就是IMGKRNL_PHYADR，就是刚才放Cosmos.eki的位置
 
-15、然后就接上了本节最后一部分内容了，不容易啊！哈哈哈！</div>2021-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ec/13/49e98289.jpg" width="30px"><span>neohope</span> 👍（17） 💬（6）<div>大体上整理了一下，有几处没弄清楚【上半部分】：
+15、然后就接上了本节最后一部分内容了，不容易啊！哈哈哈！</div>2021-06-05</li><br/><li><span>neohope</span> 👍（17） 💬（6）<div>大体上整理了一下，有几处没弄清楚【上半部分】：
 
 1、bstartparm.c从init_bstartparm函数开始
 A、初始化machbstart_t
@@ -5958,47 +6592,47 @@ L、然后调用了init_acpi
 10、返回到bstartparm.c
 调用了chkcpmm.c的init_meme820函数
 然后调用到了fs.c的move_krlimg函数申请了内存，拷贝了一份e820map_t到Cosmos.eki之后的地址，并修正mbsp指向新地址
-感觉和内存保护 或 物理地址与虚拟地址之间转换有一定关系</div>2021-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/52/40/e57a736e.jpg" width="30px"><span>pedro</span> 👍（19） 💬（1）<div>思考题还是挺麻烦的，主要是没有注释啊，很多字段的含义都是靠猜，文章也没有介绍到这些。
+感觉和内存保护 或 物理地址与虚拟地址之间转换有一定关系</div>2021-06-05</li><br/><li><span>pedro</span> 👍（19） 💬（1）<div>思考题还是挺麻烦的，主要是没有注释啊，很多字段的含义都是靠猜，文章也没有介绍到这些。
 首先是 init_mem820 这个函数本身：
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">init_meme820</span><span class="p">(</span><span class="n">machbstart_t</span><span class="w"> </span><span class="o">*</span><span class="n">mbsp</span><span class="p">)</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="p">{</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="n">e820map_t</span><span class="w"> </span><span class="o">*</span><span class="n">semp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">e820map_t</span><span class="w"> </span><span class="o">*</span><span class="p">)((</span><span class="n">u32_t</span><span class="p">)(</span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_e820padr</span><span class="p">));</span><span class="w"> </span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="w">  </span><span class="n">e820数组地址</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="n">u64_t</span><span class="w"> </span><span class="n">senr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_e820nr</span><span class="p">;</span><span class="w"> </span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="w"> </span><span class="n">个数</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="n">e820map_t</span><span class="w"> </span><span class="o">*</span><span class="n">demp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">e820map_t</span><span class="w"> </span><span class="o">*</span><span class="p">)((</span><span class="n">u32_t</span><span class="p">)(</span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_nextwtpadr</span><span class="p">));</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="w"> </span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="w"> </span><span class="n">move_krlimg</span><span class="p">(</span><span class="n">mbsp</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">u64_t</span><span class="p">)((</span><span class="n">u32_t</span><span class="p">)</span><span class="n">demp</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="n">senr</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">e820map_t</span><span class="p">)))))</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="p">{</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">        </span><span class="n">kerror</span><span class="p">(</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;</span><span class="n">move_krlimg</span><span class="w"> </span><span class="n">err</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;);</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="n">m2mcopy</span><span class="p">(</span><span class="n">semp</span><span class="p">,</span><span class="w"> </span><span class="n">demp</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">sint_t</span><span class="p">)(</span><span class="n">senr</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">e820map_t</span><span class="p">))));</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_e820padr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">u64_t</span><span class="p">)((</span><span class="n">u32_t</span><span class="p">)(</span><span class="n">demp</span><span class="p">));</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_e820sz</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">senr</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">e820map_t</span><span class="p">));</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_nextwtpadr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">P4K_ALIGN</span><span class="p">((</span><span class="n">u32_t</span><span class="p">)(</span><span class="n">demp</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">u32_t</span><span class="p">)(</span><span class="n">senr</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">e820map_t</span><span class="p">))));</span>
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_kalldendpadr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_e820padr</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_e820sz</span><span class="p">;</span>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">    </span><span class="k">return</span><span class="p">;</span>
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">init_meme820</span><span class="p">(</span><span class="n">machbstart_t</span><span class="w"> </span><span class="o">*</span><span class="n">mbsp</span><span class="p">)</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="p">{</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">    </span><span class="n">e820map_t</span><span class="w"> </span><span class="o">*</span><span class="n">semp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">e820map_t</span><span class="w"> </span><span class="o">*</span><span class="p">)((</span><span class="n">u32_t</span><span class="p">)(</span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_e820padr</span><span class="p">));</span><span class="w"> </span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="w">  </span><span class="n">e820数组地址</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">    </span><span class="n">u64_t</span><span class="w"> </span><span class="n">senr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_e820nr</span><span class="p">;</span><span class="w"> </span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="w"> </span><span class="n">个数</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">    </span><span class="n">e820map_t</span><span class="w"> </span><span class="o">*</span><span class="n">demp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">e820map_t</span><span class="w"> </span><span class="o">*</span><span class="p">)((</span><span class="n">u32_t</span><span class="p">)(</span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_nextwtpadr</span><span class="p">));</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="w"> </span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="w"> </span><span class="n">move_krlimg</span><span class="p">(</span><span class="n">mbsp</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">u64_t</span><span class="p">)((</span><span class="n">u32_t</span><span class="p">)</span><span class="n">demp</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="n">senr</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">e820map_t</span><span class="p">)))))</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="w">        </span><span class="n">kerror</span><span class="p">(</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;</span><span class="n">move_krlimg</span><span class="w"> </span><span class="n">err</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;);</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="w">    </span><span class="n">m2mcopy</span><span class="p">(</span><span class="n">semp</span><span class="p">,</span><span class="w"> </span><span class="n">demp</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">sint_t</span><span class="p">)(</span><span class="n">senr</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">e820map_t</span><span class="p">))));</span>
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_e820padr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">u64_t</span><span class="p">)((</span><span class="n">u32_t</span><span class="p">)(</span><span class="n">demp</span><span class="p">));</span>
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_e820sz</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">senr</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">e820map_t</span><span class="p">));</span>
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_nextwtpadr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">P4K_ALIGN</span><span class="p">((</span><span class="n">u32_t</span><span class="p">)(</span><span class="n">demp</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">u32_t</span><span class="p">)(</span><span class="n">senr</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">e820map_t</span><span class="p">))));</span>
+<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_kalldendpadr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_e820padr</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_e820sz</span><span class="p">;</span>
+<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a><span class="w">    </span><span class="k">return</span><span class="p">;</span>
+<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a><span class="p">}</span>
 </code></pre></div>
 我们发现这个函数实际上在拷贝内存，即将 semp 指针处的 senr * (sizeof(e820map_t) 内存大小拷贝到
 demp 处，而 demp 的地址正是 mb_nextwtpadr，那么这个 mb_nextwtpadr 是怎么来的呢？在init_krlfile函数中可以大致猜测：
 
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">init_krlfile</span><span class="p">(</span><span class="n">machbstart_t</span><span class="w"> </span><span class="o">*</span><span class="n">mbsp</span><span class="p">)</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="p">{</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="n">u64_t</span><span class="w"> </span><span class="n">sz</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r_file_to_padr</span><span class="p">(</span><span class="n">mbsp</span><span class="p">,</span><span class="w"> </span><span class="n">IMGKRNL_PHYADR</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;</span><span class="n">kernel</span><span class="p">.</span><span class="n">bin</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;);</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">sz</span><span class="p">)</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="p">{</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">        </span><span class="n">kerror</span><span class="p">(</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;</span><span class="n">r_file_to_padr</span><span class="w"> </span><span class="n">err</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;);</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_krlimgpadr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">IMGKRNL_PHYADR</span><span class="p">;</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_krlsz</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sz</span><span class="p">;</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="w"> </span><span class="n">页对齐</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_nextwtpadr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">P4K_ALIGN</span><span class="p">(</span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_krlimgpadr</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_krlsz</span><span class="p">);</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_kalldendpadr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_krlimgpadr</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_krlsz</span><span class="p">;</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">    </span><span class="k">return</span><span class="p">;</span>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">init_krlfile</span><span class="p">(</span><span class="n">machbstart_t</span><span class="w"> </span><span class="o">*</span><span class="n">mbsp</span><span class="p">)</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="p">{</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">    </span><span class="n">u64_t</span><span class="w"> </span><span class="n">sz</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r_file_to_padr</span><span class="p">(</span><span class="n">mbsp</span><span class="p">,</span><span class="w"> </span><span class="n">IMGKRNL_PHYADR</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;</span><span class="n">kernel</span><span class="p">.</span><span class="n">bin</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;);</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">sz</span><span class="p">)</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="w">        </span><span class="n">kerror</span><span class="p">(</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;</span><span class="n">r_file_to_padr</span><span class="w"> </span><span class="n">err</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;);</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_krlimgpadr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">IMGKRNL_PHYADR</span><span class="p">;</span>
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_krlsz</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sz</span><span class="p">;</span>
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="w">    </span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="w"> </span><span class="n">页对齐</span>
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_nextwtpadr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">P4K_ALIGN</span><span class="p">(</span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_krlimgpadr</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_krlsz</span><span class="p">);</span>
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a><span class="w">    </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_kalldendpadr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_krlimgpadr</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">mbsp</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">mb_krlsz</span><span class="p">;</span>
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a><span class="w">    </span><span class="k">return</span><span class="p">;</span>
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a><span class="p">}</span>
 </code></pre></div>
 没错，mb_nextwtpadr 正是跳过内核起始地址+内核大小后的第一个页地址，注意需要4k对齐。
 那么刚才内存拷贝的意图也很明显，对于初始化后的内存，内核本身的内存映射是不可访问的，必须保护充分内核，所以 init_mem820 函数的作用是跳过内核初始化内存。
-由于代码无注释，文中篇幅有限，如有错误，多多指正，望海涵~</div>2021-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3e/e7/261711a5.jpg" width="30px"><span>blentle</span> 👍（13） 💬（7）<div>首先，这个函数为啥这么命名，没整明白</div>2021-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ec/13/49e98289.jpg" width="30px"><span>neohope</span> 👍（7） 💬（1）<div>大体上整理了一下，有几处没弄清楚【补充最后一段，发漏了】
+由于代码无注释，文中篇幅有限，如有错误，多多指正，望海涵~</div>2021-06-04</li><br/><li><span>blentle</span> 👍（13） 💬（7）<div>首先，这个函数为啥这么命名，没整明白</div>2021-06-04</li><br/><li><span>neohope</span> 👍（7） 💬（1）<div>大体上整理了一下，有几处没弄清楚【补充最后一段，发漏了】
 15、然后就接上了本节最后一部分内容了，不容易啊！哈哈哈！
 Cosmos.bin中【前面写错为Cosmos.eki了】，ld设置的程序入口为init_entry.asm的_start:
 
@@ -6016,7 +6650,7 @@ I、调用机器指令“0xcb48”，做一个“返回”操作，同时从栈�
 CS中为0x8，对应到ekrnl_c64_dsc，对应到内核代码段，可以执行，CPU继续冲RIP地址执行
 
 17、hal_start.c
-A、执行hal_start函数</div>2021-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8d/c6/e648d118.jpg" width="30px"><span>嗣树</span> 👍（7） 💬（3）<div>回答下思考题，init_mem820() 的作用？
+A、执行hal_start函数</div>2021-06-05</li><br/><li><span>嗣树</span> 👍（7） 💬（3）<div>回答下思考题，init_mem820() 的作用？
 
 先说结论，init_mem820 函数的作用是将 init_mem() 中获取到的内存信息转存到字体文件之后，其实就是为它找一个安稳的地方存放。
 
@@ -6027,9 +6661,9 @@ init_mem() -&gt; mmap() -&gt; realadr_call_entry()
 #define E80MAP_ADRADR (ETYBAK_ADR+68)
 
 接下来在把内核文件加载到指定内存地址，字体文件紧随其后，然后就是我们收集到的信息，我们还要把放在临时位置的信息复制出来。
-</div>2021-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1b/b1/26955fb4.jpg" width="30px"><span>scutgj2010</span> 👍（5） 💬（6）<div>我是vmware虚拟机，不支持VBE的118模式，一直在报错vbe mode not 118，手动改成117或者120，还是继续报错，这个怎么解决呀？</div>2021-08-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/ae/64/98ef557d.jpg" width="30px"><span>然</span> 👍（5） 💬（4）<div>init_mem820()函数作用是把e820map结构数组从低地址处（0x2068）搬到高地址处（0x2000000之上）。
+</div>2021-06-04</li><br/><li><span>scutgj2010</span> 👍（5） 💬（6）<div>我是vmware虚拟机，不支持VBE的118模式，一直在报错vbe mode not 118，手动改成117或者120，还是继续报错，这个怎么解决呀？</div>2021-08-15</li><br/><li><span>然</span> 👍（5） 💬（4）<div>init_mem820()函数作用是把e820map结构数组从低地址处（0x2068）搬到高地址处（0x2000000之上）。
 
-问什么要搬？在实模式下能用的地址空间有限，只能访问低地址。所以e820map结构数组不能一直存在低地址处。</div>2021-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/c4/4d/85014aab.jpg" width="30px"><span>一叉树</span> 👍（4） 💬（1）<div>Mac 主机 + VBox。卡在了文中“你只需要进入代码目录中 make vboxtest 就行了，运行结果如下 。”这一步很久很久。
+问什么要搬？在实模式下能用的地址空间有限，只能访问低地址。所以e820map结构数组不能一直存在低地址处。</div>2021-06-05</li><br/><li><span>一叉树</span> 👍（4） 💬（1）<div>Mac 主机 + VBox。卡在了文中“你只需要进入代码目录中 make vboxtest 就行了，运行结果如下 。”这一步很久很久。
 
 我是在 Ubuntu 虚拟机中执行 make vboxtest 的，会生成一个 hd.img，同时会有如下报错
 
@@ -6050,7 +6684,7 @@ VBoxManage convertfromraw .&#47;hd.img --format VDI .&#47;hd.vdi
 3. 新建一个虚拟机，将这个生成的 hd.vdi 当硬盘挂上去
 4. 成功运行 ^_^
 
-曾经郁闷这一步怎么这么跳跃，文中省了这么多步骤。但仔细观察 cosmos&#47;lesson12&#47;Cosmos&#47;build&#47;vbox.mkf 这个文件你会发现，这一切老师早帮你写好了，只是我使用 mac主机 + Ubuntu虚拟机学习 + 另一虚拟机运行结果，用了两个虚拟机而非套娃，所以在 Ubuntu 中报错 VBoxManage: Command not found。老师写的自动拉起虚拟机运行的脚本没能自动运行。</div>2022-02-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/02/2a/2b0018d3.jpg" width="30px"><span>XF-薛峰</span> 👍（4） 💬（7）<div>这一讲的实验，我的配置是Win10+Virtualbox+Ubuntu用来做make编译，使用make vboxtest命令编译，有关Vbox的报错不用理会（我没在虚拟机下的虚拟机里安装），只要找到hd.vdi文件就好了，退出Ubuntu，另新建虚拟机使用这个hd.vdi就行了。如果只使用make，没有转换成hd.vdi</div>2021-06-20</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/CN4AD6J2Kcgc4ywz1SSXXvVG2XBmdJQ1RC1mhVjyanmbyOOfWFo5vvIiaIXzVicrVgJ8pvBQC1YZkk6rYdZ9utVA/132" width="30px"><span>野欲</span> 👍（3） 💬（1）<div>跟着写完了代码也不知道cosmos是怎么跑起来的,迷惑</div>2021-09-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/90/4e/0da9d4d2.jpg" width="30px"><span>孙孙孙</span> 👍（3） 💬（1）<div>正在生成Cosmos内核映像文件，请稍后……
+曾经郁闷这一步怎么这么跳跃，文中省了这么多步骤。但仔细观察 cosmos&#47;lesson12&#47;Cosmos&#47;build&#47;vbox.mkf 这个文件你会发现，这一切老师早帮你写好了，只是我使用 mac主机 + Ubuntu虚拟机学习 + 另一虚拟机运行结果，用了两个虚拟机而非套娃，所以在 Ubuntu 中报错 VBoxManage: Command not found。老师写的自动拉起虚拟机运行的脚本没能自动运行。</div>2022-02-21</li><br/><li><span>XF-薛峰</span> 👍（4） 💬（7）<div>这一讲的实验，我的配置是Win10+Virtualbox+Ubuntu用来做make编译，使用make vboxtest命令编译，有关Vbox的报错不用理会（我没在虚拟机下的虚拟机里安装），只要找到hd.vdi文件就好了，退出Ubuntu，另新建虚拟机使用这个hd.vdi就行了。如果只使用make，没有转换成hd.vdi</div>2021-06-20</li><br/><li><span>野欲</span> 👍（3） 💬（1）<div>跟着写完了代码也不知道cosmos是怎么跑起来的,迷惑</div>2021-09-26</li><br/><li><span>孙孙孙</span> 👍（3） 💬（1）<div>正在生成Cosmos内核映像文件，请稍后……
 文件数：6
 映像文件大小：4911104
 Converting from raw image file=&quot;..&#47;hd.img&quot; to file=&quot;..&#47;exckrnl&#47;hd.vdi&quot;...
@@ -6060,50 +6694,7 @@ VBoxManage: error: Details: code VBOX_E_OBJECT_NOT_FOUND (0x80bb0001), component
 VBoxManage: error: Context: &quot;FindMachine(Bstr(a-&gt;argv[0]).raw(), machine.asOutParam())&quot; at line 1044 of file VBoxManageStorageController.cpp
 make[1]: *** [vbox.mkf:13：idectrnul] 错误 1
 make: *** [Makefile:101：VBOXRUN] 错误 2
- 有人知道这个是为什么吗?</div>2021-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/9c/6f/f96bd546.jpg" width="30px"><span>zhanghj</span> 👍（2） 💬（3）<div>各种数据结构放的位置，比如内存视图，内核文件保存的位置，栈顶指针的地址，这些地址值是如何规划的？</div>2021-06-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/27/f1/24/07ce02a0.jpg" width="30px"><span>熊光红</span> 👍（2） 💬（3）<div>用lession12的hd.img制作了个hd.vdi，加载到虚拟机，运行出现out of memory错误，请问如何建立调试环境调试一下，看看哪儿出错了</div>2021-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/37/e4/56/e3a24fbd.jpg" width="30px"><span>温酒斩潘凤</span> 👍（1） 💬（1）<div>10-12课结合前面5-7课反反复复看了五天，突然豁然开朗。也提示一下后来的朋友，第一遍看一头乱麻是十分正常的。沉下心来啃完，前后多对照，是可以搞懂的。作者真是写的一手好书。</div>2023-09-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/fc/7a/f4dec0b9.jpg" width="30px"><span>didi迪迪</span> 👍（1） 💬（1）<div>作者，您好，想请您解释下下面这段话：
-顶级页目录中第 0 项和第 ((KRNL_VIRTUAL_ADDRESS_START) &gt;&gt; KPML4_SHIFT) &amp; 0x1ff 项，指向同一个页目录指针页，这样的话就能让虚拟地址：0xffff800000000000～0xffff800400000000 和虚拟地址：0～0x400000000，访问到同一个物理地址空间 0～0x400000000
-通过计算，发现 ((KRNL_VIRTUAL_ADDRESS_START) &gt;&gt; KPML4_SHIFT) &amp; 0x1ff为100000000，也就是256，但是为什么第0项和第256项指向一个页目录指针页就可以实现访问同一个物理地址空间呢？</div>2022-09-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4b/5f/791d0f5e.jpg" width="30px"><span>刘昊</span> 👍（1） 💬（1）<div>彭东老师，看完您的10-12讲受益匪浅，首先讲的是非常清楚，整个流程在ubuntu没有任何阻碍地运行起来。但我发现我看完之后对现在内存的布局很模糊，步骤一多就不知道现在内存长啥样子了，可不可以在关键步骤后简单绘制一下当前内存的全局布局，例如什么东西在哪一块，这样也好帮助最后大家在自己做ACPI表获取的时候的布局规划</div>2022-09-04</li><br/><li><img src="" width="30px"><span>Geek_504185</span> 👍（1） 💬（1）<div>7. 然后回到12课代码的根目录有Makefile的目录，利用命令make vboxtest，虚拟机启动了一直提示VT-x不支持。
-8.查了资料，从BIOS里查看了已经开启虚拟化了，不知道为啥原因，有说Win10从10月后多Hyper-v需要关闭；
-9.关闭了Hyper-V，再次实验还是提示不支持。
-10.考虑是否是Virtualbox里没开启VT-x，查了虚拟机Cosmos，设置的system里确实没开启；
-11.使用命令开启，开启后还是不行，完全懵了。
-12.使用手工创建Cosmos虚拟机，发现Virtualbox就是没有64位系统的选项。
-13.这时考虑到Virtualbox的宿主机是VMWare，所以VMWare也开启VT-x！！！！
-14.再次运行，需修改Cosmos虚拟机内存，默认128M，改为1024M，实验成功。</div>2021-11-18</li><br/><li><img src="" width="30px"><span>Geek_504185</span> 👍（1） 💬（1）<div>先说步骤吧：
-第一步：开启硬件BIOS里的VT-x；
-第二步： 如果和我一样有虚拟机开启虚拟机的VT-x；
-第三步：检查Virtualbox创建虚拟机时出现了可以选择创建64位系统的选项就可以了；
-第四步：lesson12代码，
-    cd build,
-    make createvm -f vbox.mkf
-    make crtidectr -f vbox.mkf
-     cd ..
-    make vboxtest
-
-其中这几天实验过程记录一下：
-我的开始用的环境是：Win10+VMware12 （Ubuntu20.4 64位）
-
-1. 开始从Ubuntu里创建hd.img，安装grub和编译Cosmos.eki放到&#47;boot&#47;目录下；
-2. 然后利用StarWindConverter.exe转换成VMware识别的硬盘格式，运行；
-3.运行程序提示INITKRL DIE ERROR：not find file ；
-4.开始以为是VMWare虚拟机的问题（目前来看应该不是），转战使用Ubuntu20.4 里安装Virtualbox，开启套娃模式。
-5.Ubuntu64位操作系统里使用sudo apt-get install virtualbox-6.1提示Package &#39;virtualbox-6.1&#39; has no installation candidate，
-  就去官网下载64位virtualbox手动安装，最后提示安装失败，不支持，最后利用Ubuntu自带的App Store安装了Virtualbox6.1；
-6.开始利用12课代码做实验，仔细看来makefi</div>2021-11-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/f2/79/b2012f53.jpg" width="30px"><span>余生</span> 👍（1） 💬（6）<div>起动提示INITKLDR DIE ERROR:S ，建虚机时选64位，入坑了很久才爬出来</div>2021-09-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fa/f0/241294cd.jpg" width="30px"><span>李城</span> 👍（1） 💬（1）<div>将Cosmos.eki 更名为HelloOS.eki, 放在.&#47;hdisk&#47;boot 目录下，打开虚拟机，报错 not find file, 不知如何下手</div>2021-09-02</li><br/><li><img src="" width="30px"><span>springXu</span> 👍（1） 💬（1）<div>还很奇怪mem820这个函数怎么没有细讲。原来是思考题。</div>2021-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/3b/46/f7/1439435a.jpg" width="30px"><span>bwb</span> 👍（0） 💬（3）<div>win11 VBox + wsl, 启动后报错: INITKLDR DIE ERROR:Your CPU is not support 64bits mode sys is die!, 虚拟机配置是一样的, 电脑的虚拟化和Hyper-V也打开了(关闭也试过), 还是不行, 网上没有找到解决方法, 有谁遇到同样的问题了吗</div>2024-08-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/30/74/ab/86e685fd.jpg" width="30px"><span>倒影(￢_￢)</span> 👍（0） 💬（1）<div>Centos8 安装 virtualbox 7， 因为Centos8支持grub2, 所以制作grub引导的时候使用grub2_install,引导没有问题，但是一旦启动运行内核就会崩溃。
-00:00:01.356173 ERROR [COM]: aRC=VBOX_E_IPRT_ERROR (0x80bb0005) aIID={6ac83d89-6ee7-4e33-8ae6-b257b2e81be8} aComponent={ConsoleWrap} aText={The VBoxGuestPropSvc service call failed with the error VERR_HGCM_SERVICE_NOT_FOUND}, preserve=false aResultDetail=-2900</div>2022-11-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/e6/f6/a8ff4e0c.jpg" width="30px"><span>新新</span> 👍（0） 💬（1）<div>上述执行lmoskrlimg生成eki文件，我直接抄了，结果发现eki文件大小怎么都对不上。一看makefile才发现少了Cosmos.bin</div>2022-11-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/f3/24/9fdbb5e6.jpg" width="30px"><span>Lcz</span> 👍（0） 💬（1）<div>makefile文件中有执行sudo cp ..&#47;release&#47;Cosmos.eki  ..&#47;hdisk&#47;boot&#47;指令后，为什么..&#47;hdisk&#47;boot&#47;下不会有Cosmos.eki,但virtualbox启动成功？？？？</div>2022-10-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/25/6f/a7/565214bc.jpg" width="30px"><span>│．Sk</span> 👍（0） 💬（1）<div>老师好，请教一个问题：
-
-1. hal&#47;x86&#47;init_entry.asm 中把 PML4T_BADR（0x20000）加载到 cr3 作为顶级页目录的基地址
-
-2. 但是在 initldr&#47;ldrkrl&#47;chkcpmm.c 中 顶级页目录的基地址初始化为 KINITPAGE_PHYADR（0x1000000）
-
-3. 感觉 hal&#47;x86&#47;init_entry.asm 是不是应该把 KINITPAGE_PHYADR 赋值给 cr3 才对
-
-</div>2022-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/30/7d/f1/ed792520.jpg" width="30px"><span>鹿 平平</span> 👍（0） 💬（3）<div>请问作者出现
-error:no mutliboot header found
-error:you need to load kernel frist
-这个是哪出现的问题，我是按照作者的思路写的。</div>2022-09-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/30/37/90/3dca97ce.jpg" width="30px"><span>滑稽主教</span> 👍（0） 💬（1）<div>使用了make vboxtest后生成了hd.vdi，结果从虚拟机拷贝出来后显示
-FATAL:No bootable medium found! system halted
-怎么办？</div>2022-08-27</li><br/>
+ 有人知道这个是为什么吗?</div>2021-06-06</li><br/><li><span>zhanghj</span> 👍（2） 💬（3）<div>各种数据结构放的位置，比如内存视图，内核文件保存的位置，栈顶指针的地址，这些地址值是如何规划的？</div>2021-06-13</li><br/><li><span>熊光红</span> 👍（2） 💬（3）<div>用lession12的hd.img制作了个hd.vdi，加载到虚拟机，运行出现out of memory错误，请问如何建立调试环境调试一下，看看哪儿出错了</div>2021-06-06</li><br/>
 </ul>
 
 

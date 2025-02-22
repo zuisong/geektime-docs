@@ -4255,6 +4255,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      设备分类
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      创造一个设备
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5675,6 +5711,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      设备分类
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      创造一个设备
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5711,11 +5783,208 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>&quot;/dev/input/event3&quot;
 </code></pre></div>
 <p>看了路径名，我们知道enent3文件在根目录下dev目录的input目录之下。从名称上看，这好像与设备、输入、事件有关系，我这里先卖个关子，看完后面的讲解，你自然就知道答案了。</p>
-<div><strong>精选留言（3）</strong></div>
-<ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/2c/c7/89/16437396.jpg" width="30px"><span>极客酱酱</span> 👍（0） 💬（2）<div>读写一个设备文件，运行不起来，一直阻塞在这行：ret = read(fd, &amp;in, sizeof(struct input_event));</div>2022-10-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/25/87/f3a69d1b.jpg" width="30px"><span>peter</span> 👍（0） 💬（1）<div>请问：对于一个驱动程序，Linux是在&#47;dev目录下面创建一个文件来与之对应吗？</div>2022-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/a6/ad/e65aec4c.jpg" width="30px"><span>苏流郁宓</span> 👍（0） 💬（1）<div>dev下面有net文件夹和network_latency和network_throughput字符设备
-预估网络文件信息存储在内存上，上述文件构成设备登记函数！</div>2022-10-15</li><br/>
-</ul>
+<p>我们先来搞清楚读取这个文件能得到什么数据，读取该文件得到的不是一个字符流，而是由时间、类型、码值以及状态数据封装成的一个结构。每读取一次，就能得到一个这样的结构，该结构如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>struct input_event {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    struct timeval time; //时间
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    __u16 type;
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    __u16 code;
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    __s32 value;
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>};
+</code></pre></div>
+<p>这个结构看上去好像是某个事件的信息，或者产生的数据。<br />
+现在我们知道了读什么文件，也知道了读取该文件能得到什么样的内容，接下来我们立刻编写代码练练手。让我们写代码来实现读写"/dev/input/event3"文件，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>#define KB_DEVICE_FILE &quot;/dev/input/event3&quot;
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>int main(int argc, char *argv[])
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>{
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    int fd = -1, ret = -1;
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    struct input_event in;
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    char *kbstatestr[] = {&quot;弹起&quot;, &quot;按下&quot;};
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    char *kbsyn[] = {&quot;开始&quot;, &quot;键盘&quot;, &quot;结束&quot;};
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    //第一步：打开文件
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    fd = open(KB_DEVICE_FILE, O_RDONLY);
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    if (fd &lt; 0)
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    {
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        perror(&quot;打开文件失败&quot;);
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        return -1;
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    }
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    while (1)
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    {
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>        //第二步：读取一个event事件包
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>        ret = read(fd, &amp;in, sizeof(struct input_event));
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>        if (ret != sizeof(struct input_event))
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>        {
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>            perror(&quot;读取文件失败&quot;);
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>            break;
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>        }
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>        //第三步：解析event包
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>        if (in.type == 1)
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>        {
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>            printf(&quot;------------------------------------\n&quot;);
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>            printf(&quot;状态:%s 类型:%s 码:%d 时间:%ld\n&quot;, kbstatestr[in.value], kbsyn[in.type], in.code, in.time.tv_usec);
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>            if (in.code == 46)
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>            {
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>                break;
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>            }
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>        }
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>    }
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>    //第四步：关闭文件
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>    close(fd);
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>    return 0;
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>}
+</code></pre></div>
+<p>上述代码逻辑很简单，首先打开了/dev/input/event3这个文件，然后在一个循环中反复读取该文件并打印出数据，读取错误和码值等于46时，就跳出循环，最后关闭该文件，程序退出。</p>
+<p>接下来就是测试环节。我们用VSCode打开对应的工程目录，编译一下，然后运行。效果如下所示：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/fc/25/fc499d518a5987fab2a73fa187ddcb25.jpg?wh=1920x1040" /></p>
+<p>你按下键盘上一个键，终端中它就会输出一行，松开键又会输出一行，输出“按下”或“弹起”的状态、键盘码以及按下弹起所花费的时间，这些数据精确地反映了键盘按键动作。</p>
+<p>一个文件就能反映键盘的动作和数据，难道不奇怪吗？你是不是猛然醒悟了，原来/dev/input/event3这个文件就代表键盘，这个文件是特殊的设备文件，访问这种文件就是访问IO硬件设备。其实，dev目录下全部的文件都是设备文件，不知道你的脑海中是不是浮现出了熟悉的Linux设计哲学——一切都是文件。</p>
+<p>你可以在dev目录下找到系统的所有设备，它们都是以文件的形式存在的。从这种角度看，这里的文件是抽象的，是一种资源对象的标识。从上面的例子，我们也可以看出，设备的操作完全符合文件的操作方式。设备输入、输出数据的操作对应了文件的读写，设备的启动或者停止则对应文件的打开或关闭。</p>
+<p>说到这，你可能要反对我了：设备的操作不只是输入输出数据，还有设置设备功能、配置设备电源等操作么？例如设置声卡音量、设置处理器进入待机状态以减少功耗等等。</p>
+<p>可是你别忘了，文件还有一个操作——ioctrl，通过它来给设备发送命令或者设置相关功能。这样一个设备的所有操作就和文件对上了。不过可不要想着用这种方案干坏事哦，比如获取别人输入的敏感信息。</p>
+<h3 id="_2">设备分类</h3>
+<p>设想一下，你需要管理你家里的日常用品，你通常会怎么做？你是不是首先会对这些物品进行分类。你可能会按物品的功能用途分类，也可能按物品归属于哪位家庭成员来分类。</p>
+<p>对于Linux这个计算机大总管也是如此，什么设备有什么功能、是用来做什么的、有多少个这种类型的设备、它们接入系统的方式是什么……这些信息，Linux都需要了解得非常清楚才可以。</p>
+<p>在了解Linux如何对设备进行分类之前，我们应该先了解一下常规情况下系统中都有哪些设备。我为你画了一幅图，如下所示：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/03/9d/03f5114061236420faba2f7e2b4cd49d.jpg?wh=1920x1285" /></p>
+<p>上图是一个典型的计算机系统，你先不管物理机器的结构和形式，逻辑上就是这样的。实际情况可能比图中有更多或者更少的总线和设备。</p>
+<p>各种设备通过总线相连。这里我们只需要记住，计算机中有很多的设备，Linux 会把这些设备分成几类，分别是：网络设备、块设备、字符设备、杂项设备以及伪设备。具体情况你可以参考我后面梳理的示意图：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/fb/87/fb52cf3110e0d5cbe5c6e8b2d2a44887.jpg?wh=1920x1426" /></p>
+<p>我们先来看看网络设备。网络设备在Linux上被抽象成一个接口设备，相当于网线插口，任何网络通信都要经过网络接口。接口就是能与其他主机交换数据的设备，像是电子信号从网口流到另一个网口一样。</p>
+<p>Linux使用一套传输数据包的函数来与网络设备驱动程序通信，它们与字符设备和块设备或者文件的read()和write()接口不同，所以网络设备在Linux中是一个独特的存在。</p>
+<p>一般情况下，接口对应于物理网卡，但也可能是纯软件实现的，比如输入ifconfig命令查看网口时，会输出一个eth0、一个lo等信息，lo就是网络回环（loopback）接口。Linux会给每个网络接口分配一个唯一的名字，比如eth0、eth1等，方便其它软件访问这些接口，但这个名字在文件系统中并没有对应的文件名。</p>
+<p>然后，我们来看看<strong>块设备</strong>，块设备这种设备类型也是Linux下的一个大类。块设备的特点是能按一块一块的方式传输数据，而且能随机访问设备中的任一地址，具体是通过/dev目录下的文件系统节点来访问。常见的块设备包括硬盘、flash、ssd、U盘、SD卡等。</p>
+<p>块设备上通常能够安装文件系统，即能被格式化。比如你的机器上有一块硬盘，硬盘上有4个分区。那么在Linux系统中的表现就是这样的：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/af/c1/afae2dd6e864f6d5476952a4ab49eac1.jpg?wh=1920x972" /></p>
+<p>这些设备文件可以像访问普通文件一样使用，你只要计算好硬盘地址，就能把数据写入到硬盘扇区中。比方说，我们可以用cat /dev/sda1 &gt; sda1.bk 命令，对硬盘的分区一进行备份。</p>
+<p>然后我们来看看<strong>字符设备</strong>。字符设备也是Linux下的一个基础类设备，比如键盘、鼠标，串口，声卡等都属于字符设备。字符设备是顺序访问的，不能随机访问，它只能像是访问字符数据字节流一样被访问，只有在设备响应后才能读到相应信息，这些功能由设备驱动程序保证和维护。</p>
+<p>字符设备的驱动程序通常要实现打开、关闭、读取和写入回调函数，供Linux使用。Linux会将应用程序中的调用，转发给设备驱动程序的回调函数。字符设备的对应的文件名都在/dev目录下，每一个文件对应一个字符设备或者块设备。</p>
+<p>我们在/dev目录下可以使用ls -l命令查看详细信息，第一个字母为“c”的即为字符设备文件，第一个字母为“b”的即为块设备文件。</p>
+<p>最后我们说说杂项设备和伪设备，它们都是基于字符设备实现的，本质上是属于字符设备。而伪设备则与其它设备不同，它不对应物理硬件，只是通过软件实现了一些功能：比如读取random设备能产生一个随机数；再比如把数据写入null设备，数据会有去无回，直接被丢弃；还有通过读取kmsg设备，获取内核输出的信息。</p>
+<p>现在我们已经搞清楚了：Linux是根据<strong>设备传输数据大小和传输方式</strong>来对设备进行分类的，下面我们就可以亲手去创造一个设备了。</p>
+<h3 id="_3">创造一个设备</h3>
+<p>一个再普通不过的计算机系统中，也有种类繁多的设备。每种设备都有自己的编程控制方式，所以Linux内核才用分而治之的方法，把控制设备代码独立出来，形成内核驱动程序模块。</p>
+<p>这些驱动程序模块由驱动开发人员或设备厂商开发，会按照Linux内核的规则来编写，并提供相应接口供Linux内核调用。这些模块既能和Linux内核静态链接在一起，也能动态加载到Linux内核，这样就实现了Linux内核和众多的设备驱动的解耦。</p>
+<p>你可能已经想到了，<strong>一个驱动程序既可以是Linux内核的一个功能模块，也能代表或者表示一个设备是否存在。</strong></p>
+<p>我们不妨再思考一个问题：Linux内核所感知的设备，一定要与物理设备一一对应吗？</p>
+<p>我们拿储存设备来举例，其实不管它是机械硬盘，还是 TF 卡，或者是一个设备驱动程序，它都可以向Linux内核表明它是储存设备。但是，它完全有可能申请一块内存空间来储存数据，不必访问真正的储存设备。所以，Linux内核所感知的设备，并不需要和物理设备对应，这取决于驱动程序自身的行为。</p>
+<p>现在我们就知道了，创造一个设备，等同于编写一个对应驱动程序。Linux内核只是和驱动程序交互，而不需要系统中有真实存在的物理设备，只要驱动程序告诉Linux内核是什么设备就行。</p>
+<p>明白了驱动程序的原理，我们这就来写一个驱动程序。先从Linux内核模块框架开始吧，代码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>#include &lt;linux/module.h&gt;
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>#include &lt;linux/init.h&gt;
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>//开始初始化函数
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>static int __init miscdrv_init(void)
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>{
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    printk(KERN_EMERG &quot;INIT misc dev\n&quot;);
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    return 0;
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>}
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>//退出函数
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>static void  __exit miscdrv_exit(void)
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>{
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    printk(KERN_EMERG &quot;EXIT,misc\n&quot;);
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>}
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>module_init(miscdrv_init);
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>module_exit(miscdrv_exit);
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>//版权信息和作者 
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>MODULE_LICENSE(&quot;GPL&quot;);
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>MODULE_AUTHOR(&quot;LMOS&quot;);
+</code></pre></div>
+<p>你看，不到20行代码，就构成了一个Linux内核模块。</p>
+<p>从这个例子我们可以发现，一个内核模块必须要具备两个函数：一个是开始初始化函数，在内核模块加载到Linux内核之后。首先就会调用该函数，它的作用通常是创造设备；另一个是退出函数，内核模块退出到Linux内核之前，首先就会调用该函数，用于释放系统资源。</p>
+<p>有了Linux内核模块之后，我们现在还不能调用它，这是因为我们没有创造设备，对应用程序而言是无法使用的。那么怎么创建一个设备呢？</p>
+<p>Linux内核的驱动框架为我们提供了接口和方法，只需要按照接口标准调用它就行了。这里我们需要创造一个杂项设备，就需要调用misc_register函数。我们只要给这个函数提供一个杂项设备结构体作为参数，就能在Linux内核中创造并注册一个杂项设备。</p>
+<p>代码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>#define DEV_NAME  &quot;miscdevtest&quot;
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>//文件操作方法结构体
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>static const  struct file_operations misc_fops = {
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    .read     = misc_read,  //读回调函数
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    .write    = misc_write, //写回调函数
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    .release  = misc_release, //关闭回调函数
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    .open     = misc_open,   //打开回调函数
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>};
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>//杂项设备结构体
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>static struct miscdevice  misc_dev =  {
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    .fops  =  &amp;misc_fops,         //设备文件操作方法
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    .minor =  255,                //次设备号
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    .name  =  DEV_NAME,           //设备名/dev/下的设备节点名
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>};
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>static int __init miscdrv_init(void)
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>{
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    misc_register(&amp;misc_dev);//创造杂项设备
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    printk(KERN_EMERG &quot;INIT misc dev\n&quot;);
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    return 0;
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>}
+</code></pre></div>
+<p>对照这段代码，我们看到，Linux用一个miscdevice结构体表示一个杂项设备，其实它内部包含了用于表示字符设备的cdev结构体，所以杂项设备就是字符设备。</p>
+<p>其实miscdevice结构体还有很多成员，不过那些我们不用处理，只需要设置以下三个成员就行了：一是设备文件操作方法结构，它是一些函数指针；二是次设备号，我们设置成最大值，即255，让系统自动处理；三是设备名称，就是在dev目录下的文件名。</p>
+<p>完成上述操作，最后只要在Linux内核模块的初始化miscdrv_init函数中，调用misc_register函数就行了。</p>
+<p>这里比较重要的是文件操作方法结构体中的<strong>回调函数</strong>，它们是完成设备功能的主要函数，应用程序对设备文件的打开、关闭、读、写等操作，都会被Linux内核分发调用到这些函数。</p>
+<p>举例来说，在打开函数中，你可以让设备加电工作起来；而在读、写函数中，你可以向设备传输数据。Linux内核并不在意你在这些函数做了什么，也不在乎这些操作是不是直接作用于物理设备，Linux内核只在乎是否有这些函数或者这些函数的执行状态是什么。</p>
+<p>下面我们就来写好这些函数，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>//读回调函数
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>static ssize_t misc_read (struct file *pfile, char __user *buff, size_t size, loff_t *off)
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>{
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    printk(KERN_EMERG &quot;line:%d,%s is call\n&quot;, __LINE__, __FUNCTION__);
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    return 0;
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>}
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>//写回调函数 
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>static ssize_t misc_write(struct file *pfile, const char __user *buff, size_t size, loff_t *off)
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>{
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    printk(KERN_EMERG &quot;line:%d,%s is call\n&quot;, __LINE__, __FUNCTION__);
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    return 0;
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>}
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>//打开回调函数
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>static int  misc_open(struct inode *pinode, struct file *pfile)
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>{
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    printk(KERN_EMERG &quot;line:%d,%s is call\n&quot;, __LINE__, __FUNCTION__);
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    return 0;
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>}
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>//关闭回调函数
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>static int misc_release(struct inode *pinode, struct file *pfile)
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>{
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    printk(KERN_EMERG &quot;line:%d,%s is call\n&quot;, __LINE__, __FUNCTION__);
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>    return 0;
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>}
+</code></pre></div>
+<p>上述各种操作的回调函数非常简单，都只调用了printk函数打印内核log，这些log信息可以在/dev/kmsg设备文件中读取。</p>
+<p>为了测试这个设备能否正常工作，我们还要写个应用程序对其访问，即对其进行打开、读、写、关闭这些操作，代码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>#define DEV_NAME &quot;/dev/miscdevtest&quot;
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>int main(void)
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>{
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    char buf[] = {0, 0, 0, 0};
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    int i = 0;
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    int fd;
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    //打开设备文件 O_RDWR,  O_RDONLY, O_WRONLY,
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    fd = open(DEV_NAME, O_RDWR);
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    if (fd &lt; 0)
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    {
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>        printf(&quot;打开 :%s 失败!\n&quot;, DEV_NAME);
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    }
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    //写数据到设备
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    write(fd, buf, 4);
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    //从设备读取数据
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    read(fd, buf, 4);
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>    //关闭设备 可以不调用，程序关闭时系统自动调用
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>    close(fd);
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>    return 0;
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>}
+</code></pre></div>
+<p>我替你把所有的代码都准备好了（可以从课程配套代码获取），我们在工程目录下make一下就可以编译好了。成功编译后，你会得到一个miscdrv.ko，这是编译好的Linux内核模块文件；还有一个是App文件，这个是应用程序。</p>
+<p>我们在测试之前，先打开一个终端，在其中输入sudo cat /dev/kmsg，以便观察结果。然后再打开一个终端，在其中输入sudo insmod miscdrv.ko，把miscdrv.ko这个Linux内核模块安装加载到系统中。加载好了我们输入sudo app，就可以看结果了，如下图所示：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/30/3b/30fef1f7d94c5750c6fd8d05eb9e883b.jpg?wh=1920x1040" /></p>
+<p>通过截图，我们看到右边终端通过读取/dev/kmsg设备输出了正确的结果，这说明我们的设备工作正常。只不过我们这个设备没有完成任何功能，也没有对应真正的物理设备，但是却真实地反映了设备的工作流程。</p>
+<p>到这里我们已经理解了Linux管理设备的核心机制：贯彻一切皆文件的思想，Linux内核会在相应目录下，建立特殊的文件节点，用文件的形式表示一个设备。而内核操控设备的方式，实质上就是把文件操作转发给对应的设备驱动程序回调函数来处理。</p>
+<h3 id="_4">重点回顾</h3>
+<p>今天的课程就要结束了，现在我们一起来回顾一下今天的重点。</p>
+<p>首先我们从一个例子开始，写下了一个读取文件的应用程序。运行之后，我们一按下键盘，应用程序就能获取键盘数据，这证明了我们读取的文件是一个设备，间接地证明了Linux以文件的方式管理设备，操作设备与操作文件相同。</p>
+<p>然后，我们一起探讨了Linux设备类型，还分析了不同设备的特性。Linux按照设备的工作方式和数据传输类型，对市面上的各种设备做了分类，分成了字符设备、块设备、网络设备、杂项设备和伪设备。</p>
+<p>最后，我们创造了一个杂项设备，了解了Linux如何感知设备、又是如何让应用程序访问到设备的。我们发现Linux用文件节点关联了Linux内核驱动程序模块，为了操控设备，内核会转发应用程序对文件的操作，以此来调用驱动程序中的回调函数。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/6b/a7/6b38a4008a85e97f86e93d8d8b785da7.jpg?wh=1920x1453" /></p>
+<p>这就是Linux管理多个IO设备的方式，但是Linux驱动模型远比今天课程所介绍的复杂得多，其中还有支持总线和支持设备热拔插的机制。如果你想详细了解Linux驱动模型的实现，可以阅读我的上一季课程《操作系统实战 45 讲》中的第二十八节课到三十一节课。</p>
+<h3 id="_5">思考题</h3>
+<p>请问Linux网络通信的接口是什么？</p>
+<p>期待你在留言区聊聊你的学习收获或者提出疑问，如果觉得这节课还不错，别忘了分享给身边更多的朋友。</p>
 
 
 

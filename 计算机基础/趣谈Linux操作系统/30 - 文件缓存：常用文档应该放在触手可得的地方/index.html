@@ -4308,6 +4308,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      带缓存的写入操作
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      带缓存的读操作
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6008,6 +6044,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      带缓存的写入操作
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      带缓存的读操作
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6084,10 +6156,309 @@
 </code></pre></div>
 <p>上一节，我们讲了，每一个打开的文件，都有一个struct file结构。这里面有一个struct file_operations f_op，用于定义对这个文件做的操作。__vfs_read会调用相应文件系统的file_operations里面的read操作，__vfs_write会调用相应文件系统file_operations里的write操作。</p>
 <h2 id="ext4">ext4文件系统层</h2>
-<div><strong>精选留言（24）</strong></div>
+<p>对于ext4文件系统来讲，内核定义了一个ext4_file_operations。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>const struct file_operations ext4_file_operations = {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>......
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    .read_iter  = ext4_file_read_iter,
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    .write_iter = ext4_file_write_iter,
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>......
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>}
+</code></pre></div>
+<p>由于ext4没有定义read和write函数，于是会调用ext4_file_read_iter和ext4_file_write_iter。</p>
+<p>ext4_file_read_iter会调用generic_file_read_iter，ext4_file_write_iter会调用__generic_file_write_iter。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ssize_t
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>generic_file_read_iter(struct kiocb *iocb, struct iov_iter *iter)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>{
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>......
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    if (iocb-&gt;ki_flags &amp; IOCB_DIRECT) {
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>......
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        struct address_space *mapping = file-&gt;f_mapping;
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>......
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        retval = mapping-&gt;a_ops-&gt;direct_IO(iocb, iter);
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    }
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>......
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    retval = generic_file_buffered_read(iocb, iter, retval);
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>}
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>ssize_t __generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>{
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>......
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    if (iocb-&gt;ki_flags &amp; IOCB_DIRECT) {
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>......
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>        written = generic_file_direct_write(iocb, from);
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>......
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>    } else {
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>......
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>        written = generic_perform_write(file, from, iocb-&gt;ki_pos);
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>......
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>    }
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>}
+</code></pre></div>
+<p>generic_file_read_iter和__generic_file_write_iter有相似的逻辑，就是要区分是否用缓存。</p>
+<p>缓存其实就是内存中的一块空间。因为内存比硬盘快得多，Linux为了改进性能，有时候会选择不直接操作硬盘，而是读写都在内存中，然后批量读取或者写入硬盘。一旦能够命中内存，读写效率就会大幅度提高。</p>
+<p>因此，根据是否使用内存做缓存，我们可以把文件的I/O操作分为两种类型。</p>
+<p>第一种类型是<strong>缓存I/O</strong>。大多数文件系统的默认I/O操作都是缓存I/O。对于读操作来讲，操作系统会先检查，内核的缓冲区有没有需要的数据。如果已经缓存了，那就直接从缓存中返回；否则从磁盘中读取，然后缓存在操作系统的缓存中。对于写操作来讲，操作系统会先将数据从用户空间复制到内核空间的缓存中。这时对用户程序来说，写操作就已经完成。至于什么时候再写到磁盘中由操作系统决定，除非显式地调用了sync同步命令。</p>
+<p>第二种类型是<strong>直接IO</strong>，就是应用程序直接访问磁盘数据，而不经过内核缓冲区，从而减少了在内核缓存和用户程序之间数据复制。</p>
+<p>如果在读的逻辑generic_file_read_iter里面，发现设置了IOCB_DIRECT，则会调用address_space的direct_IO的函数，将数据直接读取硬盘。我们在mmap映射文件到内存的时候讲过address_space，它主要用于在内存映射的时候将文件和内存页产生关联。</p>
+<p>同样，对于缓存来讲，也需要文件和内存页进行关联，这就要用到address_space。address_space的相关操作定义在struct address_space_operations结构中。对于ext4文件系统来讲， address_space的操作定义在ext4_aops，direct_IO对应的函数是ext4_direct_IO。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>static const struct address_space_operations ext4_aops = {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>......
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    .direct_IO      = ext4_direct_IO,
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>......
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>};
+</code></pre></div>
+<p>如果在写的逻辑__generic_file_write_iter里面，发现设置了IOCB_DIRECT，则调用generic_file_direct_write，里面同样会调用address_space的direct_IO的函数，将数据直接写入硬盘。</p>
+<p>ext4_direct_IO最终会调用到__blockdev_direct_IO-&gt;do_blockdev_direct_IO，这就跨过了缓存层，到了通用块层，最终到了文件系统的设备驱动层。由于文件系统是块设备，所以这个调用的是blockdev相关的函数，有关块设备驱动程序的原理我们下一章详细讲，这一节我们就讲到文件系统到块设备的分界线部分。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>/*
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a> * This is a library function for use by filesystem drivers.
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a> */
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>static inline ssize_t
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>do_blockdev_direct_IO(struct kiocb *iocb, struct inode *inode,
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>              struct block_device *bdev, struct iov_iter *iter,
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>              get_block_t get_block, dio_iodone_t end_io,
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>              dio_submit_t submit_io, int flags)
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>{......}
+</code></pre></div>
+<p>接下来，我们重点看带缓存的部分如果进行读写。</p>
+<h2 id="_2">带缓存的写入操作</h2>
+<p>我们先来看带缓存写入的函数generic_perform_write。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>ssize_t generic_perform_write(struct file *file,
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>                struct iov_iter *i, loff_t pos)
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>{
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    struct address_space *mapping = file-&gt;f_mapping;
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    const struct address_space_operations *a_ops = mapping-&gt;a_ops;
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    do {
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        struct page *page;
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        unsigned long offset;   /* Offset into pagecache page */
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>        unsigned long bytes;    /* Bytes to write to page */
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>        status = a_ops-&gt;write_begin(file, mapping, pos, bytes, flags,
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>                        &amp;page, &amp;fsdata);
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        copied = iov_iter_copy_from_user_atomic(page, i, offset, bytes);
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>        flush_dcache_page(page);
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>        status = a_ops-&gt;write_end(file, mapping, pos, bytes, copied,
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>                        page, fsdata);
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>        pos += copied;
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>        written += copied;
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>        balance_dirty_pages_ratelimited(mapping);
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>    } while (iov_iter_count(i));
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>}
+</code></pre></div>
+<p>这个函数里，是一个while循环。我们需要找出这次写入影响的所有的页，然后依次写入。对于每一个循环，主要做四件事情：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/4a/2c/f8451d77.jpg" width="30px"><span>石维康</span> 👍（40） 💬（1）<div>查看文件缓存:通过free命令中的buff&#47;cache一栏的信息即可看到文件缓存的用量。
-清除缓存：sync; echo 1 &gt; &#47;proc&#47;sys&#47;vm&#47;drop_caches</div>2019-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5e/96/a03175bc.jpg" width="30px"><span>莫名</span> 👍（17） 💬（1）<div>“ext4_direct_IO 最终会调用到 __blockdev_direct_IO-&gt;do_blockdev_direct_IO，这就跨过了缓存层，直接到了文件系统的设备驱动层。” 觉得这个说法并不准确，绕过缓存，但并没有直接到达设备驱动层，而是通用块层，主要用于io合并之类操作，然后才是设备驱动层。</div>2019-07-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a0/3f/06b690ba.jpg" width="30px"><span>刘桢</span> 👍（12） 💬（3）<div>打卡，今年12月冲北邮！</div>2019-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/63/9d/a5c2fe8c.jpg" width="30px"><span>马媛媛</span> 👍（10） 💬（1）<div>请问 ext4的Journal 模式有什么优势呢，有日志逐条落盘的这个开销，为啥write不直接落盘呢？</div>2019-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/44/a7/171c1e86.jpg" width="30px"><span>啦啦啦</span> 👍（7） 💬（3）<div>老师，我想问下，在学习mysql实战45讲这个课程里面，讲了数据库也有脏页和干净页，以及如何将脏页刷回磁盘的几个时机，请问这个机制是和本节课讲的操作系统的机制是一回事吗？谢谢老师</div>2019-07-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/86/fa/4bcd7365.jpg" width="30px"><span>玉剑冰锋</span> 👍（4） 💬（1）<div>请教老师个问题1.系统默认脏页多长时间或者数量是多少的时候触发事件？2.如果脏页在回写过程中出现故障如何保证数据完整性？3.这里只是提到ext4，其他文件系统跟ext4相比原理一样吗？比如xfs？</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a5/98/a65ff31a.jpg" width="30px"><span>djfhchdh</span> 👍（1） 💬（1）<div>free命令查看缓存</div>2019-06-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0b/6f/68cd0614.jpg" width="30px"><span>brian</span> 👍（0） 💬（1）<div>缓存I&#47;O 内核缓存区 等于 内核缓冲区么 ？ 缓存，缓冲含义不是不同的吗？</div>2020-05-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/74/c9/d3439ca4.jpg" width="30px"><span>why</span> 👍（21） 💬（2）<div>- 系统调用层和虚拟文件系统层
+<li>对于每一页，先调用address_space的write_begin做一些准备；</li>
+<li>调用iov_iter_copy_from_user_atomic，将写入的内容从用户态拷贝到内核态的页中；</li>
+<li>调用address_space的write_end完成写操作；</li>
+<li>调用balance_dirty_pages_ratelimited，看脏页是否太多，需要写回硬盘。所谓脏页，就是写入到缓存，但是还没有写入到硬盘的页面。</li>
+</ul>
+<p>我们依次来看这四个步骤。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>static const struct address_space_operations ext4_aops = {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>......
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    .write_begin        = ext4_write_begin,
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    .write_end      = ext4_write_end,
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>......
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>}
+</code></pre></div>
+<p>第一步，对于ext4来讲，调用的是ext4_write_begin。</p>
+<p>ext4是一种日志文件系统，是为了防止突然断电的时候的数据丢失，引入了<strong>日志</strong>**（<strong>Journal</strong>）**<strong>模式</strong>。日志文件系统比非日志文件系统多了一个Journal区域。文件在ext4中分两部分存储，一部分是文件的元数据，另一部分是数据。元数据和数据的操作日志Journal也是分开管理的。你可以在挂载ext4的时候，选择Journal模式。这种模式在将数据写入文件系统前，必须等待元数据和数据的日志已经落盘才能发挥作用。这样性能比较差，但是最安全。</p>
+<p>另一种模式是<strong>order模式</strong>。这个模式不记录数据的日志，只记录元数据的日志，但是在写元数据的日志前，必须先确保数据已经落盘。这个折中，是默认模式。</p>
+<p>还有一种模式是<strong>writeback</strong>，不记录数据的日志，仅记录元数据的日志，并且不保证数据比元数据先落盘。这个性能最好，但是最不安全。</p>
+<p>在ext4_write_begin，我们能看到对于ext4_journal_start的调用，就是在做日志相关的工作。</p>
+<p>在ext4_write_begin中，还做了另外一件重要的事情，就是调用grab_cache_page_write_begin，来得到应该写入的缓存页。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>struct page *grab_cache_page_write_begin(struct address_space *mapping,
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>                    pgoff_t index, unsigned flags)
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>{
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    struct page *page;
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    int fgp_flags = FGP_LOCK|FGP_WRITE|FGP_CREAT;
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    page = pagecache_get_page(mapping, index, fgp_flags,
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>            mapping_gfp_mask(mapping));
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    if (page)
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        wait_for_stable_page(page);
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    return page;
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>}
+</code></pre></div>
+<p>在内核中，缓存以页为单位放在内存里面，那我们如何知道，一个文件的哪些数据已经被放到缓存中了呢？每一个打开的文件都有一个struct file结构，每个struct file结构都有一个struct address_space用于关联文件和内存，就是在这个结构里面，有一棵树，用于保存所有与这个文件相关的的缓存页。</p>
+<p>我们查找的时候，往往需要根据文件中的偏移量找出相应的页面，而基数树radix tree这种数据结构能够快速根据一个长整型查找到其相应的对象，因而这里缓存页就放在radix基数树里面。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>struct address_space {
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    struct inode        *host;      /* owner: inode, block_device */
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    struct radix_tree_root  page_tree;  /* radix tree of all pages */
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    spinlock_t      tree_lock;  /* and lock protecting it */
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>......
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>}
+</code></pre></div>
+<p>pagecache_get_page就是根据pgoff_t index这个长整型，在这棵树里面查找缓存页，如果找不到就会创建一个缓存页。</p>
+<p>第二步，调用iov_iter_copy_from_user_atomic。先将分配好的页面调用kmap_atomic映射到内核里面的一个虚拟地址，然后将用户态的数据拷贝到内核态的页面的虚拟地址中，调用kunmap_atomic把内核里面的映射删除。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>size_t iov_iter_copy_from_user_atomic(struct page *page,
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>        struct iov_iter *i, unsigned long offset, size_t bytes)
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>{
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    char *kaddr = kmap_atomic(page), *p = kaddr + offset;
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    iterate_all_kinds(i, bytes, v,
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>        copyin((p += v.iov_len) - v.iov_len, v.iov_base, v.iov_len),
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>        memcpy_from_page((p += v.bv_len) - v.bv_len, v.bv_page,
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>                 v.bv_offset, v.bv_len),
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>        memcpy((p += v.iov_len) - v.iov_len, v.iov_base, v.iov_len)
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    )
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    kunmap_atomic(kaddr);
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    return bytes;
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>}
+</code></pre></div>
+<p>第三步，调用ext4_write_end完成写入。这里面会调用ext4_journal_stop完成日志的写入，会调用block_write_end-&gt;__block_commit_write-&gt;mark_buffer_dirty，将修改过的缓存标记为脏页。可以看出，其实所谓的完成写入，并没有真正写入硬盘，仅仅是写入缓存后，标记为脏页。</p>
+<p>但是这里有一个问题，数据很危险，一旦宕机就没有了，所以需要一种机制，将写入的页面真正写到硬盘中，我们称为回写（Write Back）。</p>
+<p>第四步，调用 balance_dirty_pages_ratelimited，是回写脏页的一个很好的时机。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>/**
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a> * balance_dirty_pages_ratelimited - balance dirty memory state
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a> * @mapping: address_space which was dirtied
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a> *
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a> * Processes which are dirtying memory should call in here once for each page
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a> * which was newly dirtied.  The function will periodically check the system&#39;s
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a> * dirty state and will initiate writeback if needed.
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>  */
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>void balance_dirty_pages_ratelimited(struct address_space *mapping)
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>{
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    struct inode *inode = mapping-&gt;host;
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>    struct backing_dev_info *bdi = inode_to_bdi(inode);
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>    struct bdi_writeback *wb = NULL;
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>    int ratelimit;
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>......
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    if (unlikely(current-&gt;nr_dirtied &gt;= ratelimit))
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>        balance_dirty_pages(mapping, wb, current-&gt;nr_dirtied);
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>......
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>}
+</code></pre></div>
+<p>在balance_dirty_pages_ratelimited里面，发现脏页的数目超过了规定的数目，就调用balance_dirty_pages-&gt;wb_start_background_writeback，启动一个背后线程开始回写。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>void wb_start_background_writeback(struct bdi_writeback *wb)
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>{
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    /*
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>     * We just wake up the flusher thread. It will perform background
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>     * writeback as soon as there is no other work to do.
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>     */
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    wb_wakeup(wb);
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>}
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>static void wb_wakeup(struct bdi_writeback *wb)
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>{
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>    spin_lock_bh(&amp;wb-&gt;work_lock);
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>    if (test_bit(WB_registered, &amp;wb-&gt;state))
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>        mod_delayed_work(bdi_wq, &amp;wb-&gt;dwork, 0);
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>    spin_unlock_bh(&amp;wb-&gt;work_lock);
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>}
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>  (_tflags) | TIMER_IRQSAFE);       \
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>    } while (0)
+<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a>
+<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a>
+<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a>/* bdi_wq serves all asynchronous writeback tasks */
+<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a>struct workqueue_struct *bdi_wq;
+<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a>
+<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a>
+<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a>/**
+<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a> * mod_delayed_work - modify delay of or queue a delayed work
+<a id="__codelineno-12-30" name="__codelineno-12-30" href="#__codelineno-12-30"></a> * @wq: workqueue to use
+<a id="__codelineno-12-31" name="__codelineno-12-31" href="#__codelineno-12-31"></a> * @dwork: work to queue
+<a id="__codelineno-12-32" name="__codelineno-12-32" href="#__codelineno-12-32"></a> * @delay: number of jiffies to wait before queueing
+<a id="__codelineno-12-33" name="__codelineno-12-33" href="#__codelineno-12-33"></a> *
+<a id="__codelineno-12-34" name="__codelineno-12-34" href="#__codelineno-12-34"></a> * mod_delayed_work_on() on local CPU.
+<a id="__codelineno-12-35" name="__codelineno-12-35" href="#__codelineno-12-35"></a> */
+<a id="__codelineno-12-36" name="__codelineno-12-36" href="#__codelineno-12-36"></a>static inline bool mod_delayed_work(struct workqueue_struct *wq,
+<a id="__codelineno-12-37" name="__codelineno-12-37" href="#__codelineno-12-37"></a>                    struct delayed_work *dwork,
+<a id="__codelineno-12-38" name="__codelineno-12-38" href="#__codelineno-12-38"></a>                    unsigned long delay)
+<a id="__codelineno-12-39" name="__codelineno-12-39" href="#__codelineno-12-39"></a>{....
+</code></pre></div>
+<p>通过上面的代码，我们可以看出，bdi_wq是一个全局变量，所有回写的任务都挂在这个队列上。mod_delayed_work函数负责将一个回写任务bdi_writeback挂在这个队列上。bdi_writeback有个成员变量struct delayed_work dwork，bdi_writeback就是以delayed_work的身份挂到队列上的，并且把delay设置为0，意思就是一刻不等，马上执行。</p>
+<p>那具体这个任务由谁来执行呢？这里的bdi的意思是backing device info，用于描述后端存储相关的信息。每个块设备都会有这样一个结构，并且在初始化块设备的时候，调用bdi_init初始化这个结构，在初始化bdi的时候，也会调用wb_init初始化bdi_writeback。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>static int wb_init(struct bdi_writeback *wb, struct backing_dev_info *bdi,
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>           int blkcg_id, gfp_t gfp)
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>{
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    wb-&gt;bdi = bdi;
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    wb-&gt;last_old_flush = jiffies;
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    INIT_LIST_HEAD(&amp;wb-&gt;b_dirty);
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    INIT_LIST_HEAD(&amp;wb-&gt;b_io);
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    INIT_LIST_HEAD(&amp;wb-&gt;b_more_io);
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    INIT_LIST_HEAD(&amp;wb-&gt;b_dirty_time);
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    wb-&gt;bw_time_stamp = jiffies;
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>    wb-&gt;balanced_dirty_ratelimit = INIT_BW;
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    wb-&gt;dirty_ratelimit = INIT_BW;
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    wb-&gt;write_bandwidth = INIT_BW;
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>    wb-&gt;avg_write_bandwidth = INIT_BW;
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>    spin_lock_init(&amp;wb-&gt;work_lock);
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>    INIT_LIST_HEAD(&amp;wb-&gt;work_list);
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>    INIT_DELAYED_WORK(&amp;wb-&gt;dwork, wb_workfn);
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>    wb-&gt;dirty_sleep = jiffies;
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>......
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>}
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>#define __INIT_DELAYED_WORK(_work, _func, _tflags)          \
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>    do {                                \
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>        INIT_WORK(&amp;(_work)-&gt;work, (_func));         \
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>        __setup_timer(&amp;(_work)-&gt;timer, delayed_work_timer_fn,   \
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>                  (unsigned long)(_work),           \
+</code></pre></div>
+<p>这里面最重要的是INIT_DELAYED_WORK。其实就是初始化一个timer，也即定时器，到时候我们就执行wb_workfn这个函数。</p>
+<p>接下来的调用链为：wb_workfn-&gt;wb_do_writeback-&gt;wb_writeback-&gt;writeback_sb_inodes-&gt;__writeback_single_inode-&gt;do_writepages，写入页面到硬盘。</p>
+<p>在调用write的最后，当发现缓存的数据太多的时候，会触发回写，这仅仅是回写的一种场景。另外还有几种场景也会触发回写：</p>
+<ul>
+<li>用户主动调用sync，将缓存刷到硬盘上去，最终会调用wakeup_flusher_threads，同步脏页；</li>
+<li>当内存十分紧张，以至于无法分配页面的时候，会调用free_more_memory，最终会调用wakeup_flusher_threads，释放脏页；</li>
+<li>脏页已经更新了较长时间，时间上超过了timer，需要及时回写，保持内存和磁盘上数据一致性。</li>
+</ul>
+<h2 id="_3">带缓存的读操作</h2>
+<p>带缓存的写分析完了，接下来，我们看带缓存的读，对应的是函数generic_file_buffered_read。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>static ssize_t generic_file_buffered_read(struct kiocb *iocb,
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>        struct iov_iter *iter, ssize_t written)
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>{
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    struct file *filp = iocb-&gt;ki_filp;
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    struct address_space *mapping = filp-&gt;f_mapping;
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    struct inode *inode = mapping-&gt;host;
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    for (;;) {
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>        struct page *page;
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>        pgoff_t end_index;
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>        loff_t isize;
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>        page = find_get_page(mapping, index);
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>        if (!page) {
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>            if (iocb-&gt;ki_flags &amp; IOCB_NOWAIT)
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>                goto would_block;
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>            page_cache_sync_readahead(mapping,
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>                    ra, filp,
+<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>                    index, last_index - index);
+<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>            page = find_get_page(mapping, index);
+<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>            if (unlikely(page == NULL))
+<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a>                goto no_cached_page;
+<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a>        }
+<a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a>        if (PageReadahead(page)) {
+<a id="__codelineno-14-23" name="__codelineno-14-23" href="#__codelineno-14-23"></a>            page_cache_async_readahead(mapping,
+<a id="__codelineno-14-24" name="__codelineno-14-24" href="#__codelineno-14-24"></a>                    ra, filp, page,
+<a id="__codelineno-14-25" name="__codelineno-14-25" href="#__codelineno-14-25"></a>                    index, last_index - index);
+<a id="__codelineno-14-26" name="__codelineno-14-26" href="#__codelineno-14-26"></a>        }
+<a id="__codelineno-14-27" name="__codelineno-14-27" href="#__codelineno-14-27"></a>        /*
+<a id="__codelineno-14-28" name="__codelineno-14-28" href="#__codelineno-14-28"></a>         * Ok, we have the page, and it&#39;s up-to-date, so
+<a id="__codelineno-14-29" name="__codelineno-14-29" href="#__codelineno-14-29"></a>         * now we can copy it to user space...
+<a id="__codelineno-14-30" name="__codelineno-14-30" href="#__codelineno-14-30"></a>         */
+<a id="__codelineno-14-31" name="__codelineno-14-31" href="#__codelineno-14-31"></a>        ret = copy_page_to_iter(page, offset, nr, iter);
+<a id="__codelineno-14-32" name="__codelineno-14-32" href="#__codelineno-14-32"></a>    }
+<a id="__codelineno-14-33" name="__codelineno-14-33" href="#__codelineno-14-33"></a>}
+</code></pre></div>
+<p>读取比写入总体而言简单一些，主要涉及预读的问题。</p>
+<p>在generic_file_buffered_read函数中，我们需要先找到page cache里面是否有缓存页。如果没有找到，不但读取这一页，还要进行预读，这需要在page_cache_sync_readahead函数中实现。预读完了以后，再试一把查找缓存页，应该能找到了。</p>
+<p>如果第一次找缓存页就找到了，我们还是要判断，是不是应该继续预读；如果需要，就调用page_cache_async_readahead发起一个异步预读。</p>
+<p>最后，copy_page_to_iter会将内容从内核缓存页拷贝到用户内存空间。</p>
+<h2 id="_4">总结时刻</h2>
+<p>这一节对于读取和写入的分析就到这里了。我们发现这个过程还是很复杂的，我这里画了一张调用图，你可以看到调用过程。</p>
+<p>在系统调用层我们需要仔细学习read和write。在VFS层调用的是vfs_read和vfs_write并且调用file_operation。在ext4层调用的是ext4_file_read_iter和ext4_file_write_iter。</p>
+<p>接下来就是分叉。你需要知道缓存I/O和直接I/O。直接I/O读写的流程是一样的，调用ext4_direct_IO，再往下就调用块设备层了。缓存I/O读写的流程不一样。对于读，从块设备读取到缓存中，然后从缓存中拷贝到用户态。对于写，从用户态拷贝到缓存，设置缓存页为脏，然后启动一个线程写入块设备。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/0c/65/0c49a870b9e6441381fec8d9bf3dee65.png?wh=2683%2A2323" /></p>
+<h2 id="_5">课堂练习</h2>
+<p>你知道如何查询和清除文件系统缓存吗？</p>
+<p>欢迎留言和我分享你的疑惑和见解 ，也欢迎可以收藏本节内容，反复研读。你也可以把今天的内容分享给你的朋友，和他一起学习和进步。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/8c/37/8c0a95fa07a8b9a1abfd394479bdd637.jpg?wh=1110%2A659" /></p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>石维康</span> 👍（40） 💬（1）<div>查看文件缓存:通过free命令中的buff&#47;cache一栏的信息即可看到文件缓存的用量。
+清除缓存：sync; echo 1 &gt; &#47;proc&#47;sys&#47;vm&#47;drop_caches</div>2019-06-05</li><br/><li><span>莫名</span> 👍（17） 💬（1）<div>“ext4_direct_IO 最终会调用到 __blockdev_direct_IO-&gt;do_blockdev_direct_IO，这就跨过了缓存层，直接到了文件系统的设备驱动层。” 觉得这个说法并不准确，绕过缓存，但并没有直接到达设备驱动层，而是通用块层，主要用于io合并之类操作，然后才是设备驱动层。</div>2019-07-22</li><br/><li><span>刘桢</span> 👍（12） 💬（3）<div>打卡，今年12月冲北邮！</div>2019-06-05</li><br/><li><span>马媛媛</span> 👍（10） 💬（1）<div>请问 ext4的Journal 模式有什么优势呢，有日志逐条落盘的这个开销，为啥write不直接落盘呢？</div>2019-06-06</li><br/><li><span>啦啦啦</span> 👍（7） 💬（3）<div>老师，我想问下，在学习mysql实战45讲这个课程里面，讲了数据库也有脏页和干净页，以及如何将脏页刷回磁盘的几个时机，请问这个机制是和本节课讲的操作系统的机制是一回事吗？谢谢老师</div>2019-07-25</li><br/><li><span>玉剑冰锋</span> 👍（4） 💬（1）<div>请教老师个问题1.系统默认脏页多长时间或者数量是多少的时候触发事件？2.如果脏页在回写过程中出现故障如何保证数据完整性？3.这里只是提到ext4，其他文件系统跟ext4相比原理一样吗？比如xfs？</div>2019-06-12</li><br/><li><span>djfhchdh</span> 👍（1） 💬（1）<div>free命令查看缓存</div>2019-06-20</li><br/><li><span>brian</span> 👍（0） 💬（1）<div>缓存I&#47;O 内核缓存区 等于 内核缓冲区么 ？ 缓存，缓冲含义不是不同的吗？</div>2020-05-28</li><br/><li><span>why</span> 👍（21） 💬（2）<div>- 系统调用层和虚拟文件系统层
     - 调用 read&#47;write 进行读写 → vfs_read&#47;write → __vfs_read&#47;write
     - 打开文件时创建 struct file, 其中有 file_operations, 虚拟文件系统调用 operations 中的 read&#47;write
 - ext4 文件系统层
@@ -6124,20 +6495,9 @@
         - generic_file_buffered_read 从 page cache 中判断是否由缓存页
             - 若没则从文件系统读取并预读并缓存, 再次查找缓存页
             - 若有, 还需判断是否需要预读, 若需要调用 page_cache_async_readahead
-            - 最后调用 copy_page_to_user 从内核拷贝到用户空间</div>2019-06-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ce/c6/958212b5.jpg" width="30px"><span>sugar</span> 👍（4） 💬（1）<div>看完了老师讲的文件系统的几节，收获颇丰。但如果想要自己去实践一下，很想知道有没有像wireshark那样的网络抓包工具一样底层的 可以针对文件系统，磁盘物理结构进行监控 分析的工具呢？google了一番没找到...</div>2019-06-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8e/bb/c039dc11.jpg" width="30px"><span>garlic</span> 👍（3） 💬（0）<div>free 查看Cache分配使用情况，其中 page cache是针对 file systems ， buffer是针对 block devices 两者是在不同时期不同场景下涉及的缓存机制，kernel2.4版本之前是分开的，并存的。之后版本进行了融合， 清除缓存可以操作 &#47;proc&#47;sys&#47;vm&#47;drop_caches， 学习笔记https:&#47;&#47;garlicspace.com&#47;2021&#47;03&#47;30&#47;%e6%9f%a5%e8%af%a2%e5%92%8c%e6%b8%85%e9%99%a4%e6%96%87%e4%bb%b6%e7%b3%bb%e7%bb%9f%e7%bc%93%e5%ad%98&#47;</div>2021-04-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/39/fa/a7edbc72.jpg" width="30px"><span>安排</span> 👍（3） 💬（0）<div>打卡，每天课程发出后及时看完</div>2019-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/22/89/73397ccb.jpg" width="30px"><span>响雨</span> 👍（2） 💬（0）<div>缓存利用局部性原理提高数据的读写速度，同时日志系统能够使随机读写变为顺序读写，也能提高速度。</div>2020-12-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/51/b8/f76b15a1.jpg" width="30px"><span>sundy</span> 👍（1） 💬（0）<div>这一大段大段的代码真的没有太大意义</div>2024-08-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/22/f4/9fd6f8f0.jpg" width="30px"><span>核桃</span> 👍（1） 💬（0）<div>这里建议作者明确说一下bio的概念，不管是直接io还是走缓存，最后都是会封装成一个bio请求到block层的。
+            - 最后调用 copy_page_to_user 从内核拷贝到用户空间</div>2019-06-07</li><br/><li><span>sugar</span> 👍（4） 💬（1）<div>看完了老师讲的文件系统的几节，收获颇丰。但如果想要自己去实践一下，很想知道有没有像wireshark那样的网络抓包工具一样底层的 可以针对文件系统，磁盘物理结构进行监控 分析的工具呢？google了一番没找到...</div>2019-06-14</li><br/><li><span>garlic</span> 👍（3） 💬（0）<div>free 查看Cache分配使用情况，其中 page cache是针对 file systems ， buffer是针对 block devices 两者是在不同时期不同场景下涉及的缓存机制，kernel2.4版本之前是分开的，并存的。之后版本进行了融合， 清除缓存可以操作 &#47;proc&#47;sys&#47;vm&#47;drop_caches， 学习笔记https:&#47;&#47;garlicspace.com&#47;2021&#47;03&#47;30&#47;%e6%9f%a5%e8%af%a2%e5%92%8c%e6%b8%85%e9%99%a4%e6%96%87%e4%bb%b6%e7%b3%bb%e7%bb%9f%e7%bc%93%e5%ad%98&#47;</div>2021-04-13</li><br/><li><span>安排</span> 👍（3） 💬（0）<div>打卡，每天课程发出后及时看完</div>2019-06-05</li><br/><li><span>响雨</span> 👍（2） 💬（0）<div>缓存利用局部性原理提高数据的读写速度，同时日志系统能够使随机读写变为顺序读写，也能提高速度。</div>2020-12-03</li><br/><li><span>sundy</span> 👍（1） 💬（0）<div>这一大段大段的代码真的没有太大意义</div>2024-08-12</li><br/><li><span>核桃</span> 👍（1） 💬（0）<div>这里建议作者明确说一下bio的概念，不管是直接io还是走缓存，最后都是会封装成一个bio请求到block层的。
 
-另外，这里有一句说法，所有的异步IO 都是直接IO，这点可以关联起来看</div>2021-05-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/aa/21/6c3ba9af.jpg" width="30px"><span>lfn</span> 👍（1） 💬（0）<div>2019-12-14，打卡。</div>2019-12-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fd/80/52763d62.jpg" width="30px"><span>周平</span> 👍（1） 💬（0）<div>老师讲的很清晰，方便以后查看和复习</div>2019-06-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/0f/ab/9748f40b.jpg" width="30px"><span>微秒</span> 👍（1） 💬（0）<div>打卡，慢慢看，虽然不是很懂。</div>2019-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fd/08/c039f840.jpg" width="30px"><span>小鳄鱼</span> 👍（0） 💬（0）<div>第二遍： 与CPU的回写（高速缓存）策略不同的是，CPU是第二次使用脏Cache Line时立即回写。而这里，要达到一定数量的脏页才回写。为此，还需要配合更多的触发回写：长时间未回写，缓存空间紧张，用户主动sync
-此外，回写采用的是异步线程，也可能导致数据丢失。因此还提供了日志。默认策略是：order。
-这一切都是为了性能服务的。但这个日志策略，还考虑了数据安全跟机制性能，没有把路封死。让用户自行选择！在开发基础设施的过程中，就应该同时考虑多种场景，不帮用户选择，让他自己选择？</div>2022-05-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/14/50/c23cf47d.jpg" width="30px"><span>李</span> 👍（0） 💬（0）<div>不知道老师还会解答不？我有个疑问
-
-mmap 和write 写的区别，按原理，mmap少了一次用户到内核的数据拷贝，应该快一些。
-但我发现写数据比较大的情况下， mmap比write反而慢了。
-不知道这个是什么原因？
-
-
-</div>2020-10-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/58/62/346dd248.jpg" width="30px"><span>Q罗</span> 👍（0） 💬（0）<div>元数据和数据有什么区别？</div>2020-06-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/11/e7/044a9a6c.jpg" width="30px"><span>book尾汁</span> 👍（0） 💬（0）<div>跟前面讲的映射文件到内存弄混了，
-映射文件到内存是 先把用户态虚拟地址跟file关联，缺页时从缓存中或者新建页，然后加入页表，然后用kmap_atomic将物理页映射到内核虚拟地址，在将文件内容写入虚拟地址， 
-这篇文章里的写的系统调用里，写入到文件的缓存中去，跟文件映射时候的缓存是一类缓存吗，都是address_space里的吗</div>2020-04-19</li><br/><li><img src="" width="30px"><span>201200986</span> 👍（0） 💬（0）<div>free命令可以查看，echo 3 &gt; &#47;proc&#47;sys&#47;vm&#47;drop_caches可以清除</div>2020-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ac/96/46b13896.jpg" width="30px"><span>williamcai</span> 👍（0） 💬（3）<div>脏页在缓存中，如果掉电了，怎么保证回写到硬盘</div>2019-10-14</li><br/>
+另外，这里有一句说法，所有的异步IO 都是直接IO，这点可以关联起来看</div>2021-05-03</li><br/>
 </ul>
 
 

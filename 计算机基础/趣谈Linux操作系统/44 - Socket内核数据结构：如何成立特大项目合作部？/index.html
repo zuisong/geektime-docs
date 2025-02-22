@@ -4614,6 +4614,60 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#bind" class="md-nav__link">
+    <span class="md-ellipsis">
+      解析bind函数
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#listen" class="md-nav__link">
+    <span class="md-ellipsis">
+      解析listen函数
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#accept" class="md-nav__link">
+    <span class="md-ellipsis">
+      解析accept函数
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connect" class="md-nav__link">
+    <span class="md-ellipsis">
+      解析connect函数
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5990,6 +6044,60 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#bind" class="md-nav__link">
+    <span class="md-ellipsis">
+      解析bind函数
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#listen" class="md-nav__link">
+    <span class="md-ellipsis">
+      解析listen函数
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#accept" class="md-nav__link">
+    <span class="md-ellipsis">
+      解析accept函数
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connect" class="md-nav__link">
+    <span class="md-ellipsis">
+      解析connect函数
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6051,20 +6159,722 @@
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>}
 </code></pre></div>
 <p>SOCK_STREAM是面向数据流的，协议IPPROTO_TCP属于这种类型。SOCK_DGRAM是面向数据报的，协议IPPROTO_UDP属于这种类型。如果在内核里面看的话，IPPROTO_ICMP也属于这种类型。SOCK_RAW是原始的IP包，IPPROTO_IP属于这种类型。</p>
+<p><strong>这一节，我们重点看SOCK_STREAM类型和IPPROTO_TCP协议。</strong></p>
+<p>为了管理family、type、protocol这三个分类层次，内核会创建对应的数据结构。</p>
+<p>接下来，我们打开sock_create函数看一下。它会调用__sock_create。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>int __sock_create(struct net *net, int family, int type, int protocol,
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>             struct socket **res, int kern)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>{
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    int err;
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    struct socket *sock;
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    const struct net_proto_family *pf;
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>......
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    sock = sock_alloc();
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>......
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    sock-&gt;type = type;
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>......
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    pf = rcu_dereference(net_families[family]);
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>......
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    err = pf-&gt;create(net, sock, protocol, kern);
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>......
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    *res = sock;
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    return 0;
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>}
+</code></pre></div>
+<p>这里先是分配了一个struct socket结构。接下来我们要用到family参数。这里有一个net_families数组，我们可以以family参数为下标，找到对应的struct net_proto_family。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>/* Supported address families. */
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>#define AF_UNSPEC   0
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>#define AF_UNIX     1   /* Unix domain sockets      */
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>#define AF_LOCAL    1   /* POSIX name for AF_UNIX   */
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>#define AF_INET     2   /* Internet IP Protocol     */
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>......
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>#define AF_INET6    10  /* IP version 6         */
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>......
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>#define AF_MPLS     28  /* MPLS */
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>......
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>#define AF_MAX      44  /* For now.. */
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>#define NPROTO      AF_MAX
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>struct net_proto_family __rcu *net_families[NPROTO] __read_mostly;
+</code></pre></div>
+<p>我们可以找到net_families的定义。每一个地址族在这个数组里面都有一项，里面的内容是net_proto_family。每一种地址族都有自己的net_proto_family，IP地址族的net_proto_family定义如下，里面最重要的就是，create函数指向inet_create。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>//net/ipv4/af_inet.c
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>static const struct net_proto_family inet_family_ops = {
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    .family = PF_INET,
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    .create = inet_create,//这个用于socket系统调用创建
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>......
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>}
+</code></pre></div>
+<p>我们回到函数__sock_create。接下来，在这里面，这个inet_create会被调用。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>static int inet_create(struct net *net, struct socket *sock, int protocol, int kern)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>{
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    struct sock *sk;
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    struct inet_protosw *answer;
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    struct inet_sock *inet;
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    struct proto *answer_prot;
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    unsigned char answer_flags;
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    int try_loading_module = 0;
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    int err;
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    /* Look for the requested type/protocol pair. */
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>lookup_protocol:
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    list_for_each_entry_rcu(answer, &amp;inetsw[sock-&gt;type], list) {
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>        err = 0;
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>        /* Check the non-wild match. */
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>        if (protocol == answer-&gt;protocol) {
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>            if (protocol != IPPROTO_IP)
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>                break;
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>        } else {
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>            /* Check for the two wild cases. */
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>            if (IPPROTO_IP == protocol) {
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>                protocol = answer-&gt;protocol;
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>                break;
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>            }
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>            if (IPPROTO_IP == answer-&gt;protocol)
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>                break;
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>        }
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>        err = -EPROTONOSUPPORT;
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>    }
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>......
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>    sock-&gt;ops = answer-&gt;ops;
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>    answer_prot = answer-&gt;prot;
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>    answer_flags = answer-&gt;flags;
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a>......
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a>    sk = sk_alloc(net, PF_INET, GFP_KERNEL, answer_prot, kern);
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a>......
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a>    inet = inet_sk(sk);
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>    inet-&gt;nodefrag = 0;
+<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a>    if (SOCK_RAW == sock-&gt;type) {
+<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>        inet-&gt;inet_num = protocol;
+<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a>        if (IPPROTO_RAW == protocol)
+<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a>            inet-&gt;hdrincl = 1;
+<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a>    }
+<a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a>    inet-&gt;inet_id = 0;
+<a id="__codelineno-6-45" name="__codelineno-6-45" href="#__codelineno-6-45"></a>    sock_init_data(sock, sk);
+<a id="__codelineno-6-46" name="__codelineno-6-46" href="#__codelineno-6-46"></a>
+<a id="__codelineno-6-47" name="__codelineno-6-47" href="#__codelineno-6-47"></a>    sk-&gt;sk_destruct    = inet_sock_destruct;
+<a id="__codelineno-6-48" name="__codelineno-6-48" href="#__codelineno-6-48"></a>    sk-&gt;sk_protocol    = protocol;
+<a id="__codelineno-6-49" name="__codelineno-6-49" href="#__codelineno-6-49"></a>    sk-&gt;sk_backlog_rcv = sk-&gt;sk_prot-&gt;backlog_rcv;
+<a id="__codelineno-6-50" name="__codelineno-6-50" href="#__codelineno-6-50"></a>
+<a id="__codelineno-6-51" name="__codelineno-6-51" href="#__codelineno-6-51"></a>    inet-&gt;uc_ttl    = -1;
+<a id="__codelineno-6-52" name="__codelineno-6-52" href="#__codelineno-6-52"></a>    inet-&gt;mc_loop   = 1;
+<a id="__codelineno-6-53" name="__codelineno-6-53" href="#__codelineno-6-53"></a>    inet-&gt;mc_ttl    = 1;
+<a id="__codelineno-6-54" name="__codelineno-6-54" href="#__codelineno-6-54"></a>    inet-&gt;mc_all    = 1;
+<a id="__codelineno-6-55" name="__codelineno-6-55" href="#__codelineno-6-55"></a>    inet-&gt;mc_index  = 0;
+<a id="__codelineno-6-56" name="__codelineno-6-56" href="#__codelineno-6-56"></a>    inet-&gt;mc_list   = NULL;
+<a id="__codelineno-6-57" name="__codelineno-6-57" href="#__codelineno-6-57"></a>    inet-&gt;rcv_tos   = 0;
+<a id="__codelineno-6-58" name="__codelineno-6-58" href="#__codelineno-6-58"></a>
+<a id="__codelineno-6-59" name="__codelineno-6-59" href="#__codelineno-6-59"></a>    if (inet-&gt;inet_num) {
+<a id="__codelineno-6-60" name="__codelineno-6-60" href="#__codelineno-6-60"></a>        inet-&gt;inet_sport = htons(inet-&gt;inet_num);
+<a id="__codelineno-6-61" name="__codelineno-6-61" href="#__codelineno-6-61"></a>        /* Add to protocol hash chains. */
+<a id="__codelineno-6-62" name="__codelineno-6-62" href="#__codelineno-6-62"></a>        err = sk-&gt;sk_prot-&gt;hash(sk);
+<a id="__codelineno-6-63" name="__codelineno-6-63" href="#__codelineno-6-63"></a>    }
+<a id="__codelineno-6-64" name="__codelineno-6-64" href="#__codelineno-6-64"></a>
+<a id="__codelineno-6-65" name="__codelineno-6-65" href="#__codelineno-6-65"></a>    if (sk-&gt;sk_prot-&gt;init) {
+<a id="__codelineno-6-66" name="__codelineno-6-66" href="#__codelineno-6-66"></a>        err = sk-&gt;sk_prot-&gt;init(sk);
+<a id="__codelineno-6-67" name="__codelineno-6-67" href="#__codelineno-6-67"></a>    }
+<a id="__codelineno-6-68" name="__codelineno-6-68" href="#__codelineno-6-68"></a>......
+<a id="__codelineno-6-69" name="__codelineno-6-69" href="#__codelineno-6-69"></a>}
+</code></pre></div>
+<p>在inet_create中，我们先会看到一个循环list_for_each_entry_rcu。在这里，第二个参数type开始起作用。因为循环查看的是inetsw[sock-&gt;type]。</p>
+<p>这里的inetsw也是一个数组，type作为下标，里面的内容是struct inet_protosw，是协议，也即inetsw数组对于每个类型有一项，这一项里面是属于这个类型的协议。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>static struct list_head inetsw[SOCK_MAX];
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>static int __init inet_init(void)
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>{
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>......
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    /* Register the socket-side information for inet_create. */
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    for (r = &amp;inetsw[0]; r &lt; &amp;inetsw[SOCK_MAX]; ++r)
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>        INIT_LIST_HEAD(r);
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    for (q = inetsw_array; q &lt; &amp;inetsw_array[INETSW_ARRAY_LEN]; ++q)
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>        inet_register_protosw(q);
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>......
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>}
+</code></pre></div>
+<p>inetsw数组是在系统初始化的时候初始化的，就像下面代码里面实现的一样。</p>
+<p>首先，一个循环会将inetsw数组的每一项，都初始化为一个链表。咱们前面说了，一个type类型会包含多个protocol，因而我们需要一个链表。接下来一个循环，是将inetsw_array注册到inetsw数组里面去。inetsw_array的定义如下，这个数组里面的内容很重要，后面会用到它们。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>static struct inet_protosw inetsw_array[] =
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>{
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    {
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>        .type =       SOCK_STREAM,
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>        .protocol =   IPPROTO_TCP,
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>        .prot =       &amp;tcp_prot,
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        .ops =        &amp;inet_stream_ops,
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        .flags =      INET_PROTOSW_PERMANENT |
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>                  INET_PROTOSW_ICSK,
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    },
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    {
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>        .type =       SOCK_DGRAM,
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>        .protocol =   IPPROTO_UDP,
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>        .prot =       &amp;udp_prot,
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>        .ops =        &amp;inet_dgram_ops,
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>        .flags =      INET_PROTOSW_PERMANENT,
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>     },
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>     {
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>        .type =       SOCK_DGRAM,
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>        .protocol =   IPPROTO_ICMP,
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>        .prot =       &amp;ping_prot,
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>        .ops =        &amp;inet_sockraw_ops,
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>        .flags =      INET_PROTOSW_REUSE,
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>     },
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>     {
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>        .type =       SOCK_RAW,
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>        .protocol =   IPPROTO_IP,   /* wild card */
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>        .prot =       &amp;raw_prot,
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>        .ops =        &amp;inet_sockraw_ops,
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>        .flags =      INET_PROTOSW_REUSE,
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>     }
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>}
+</code></pre></div>
+<p>我们回到inet_create的list_for_each_entry_rcu循环中。到这里就好理解了，这是在inetsw数组中，根据type找到属于这个类型的列表，然后依次比较列表中的struct inet_protosw的protocol是不是用户指定的protocol；如果是，就得到了符合用户指定的family-&gt;type-&gt;protocol的struct inet_protosw *answer对象。</p>
+<p>接下来，struct socket *sock的ops成员变量，被赋值为answer的ops。对于TCP来讲，就是inet_stream_ops。后面任何用户对于这个socket的操作，都是通过inet_stream_ops进行的。</p>
+<p>接下来，我们创建一个struct sock *sk对象。这里比较让人困惑。socket和sock看起来几乎一样，容易让人混淆，这里需要说明一下，socket是用于负责对上给用户提供接口，并且和文件系统关联。而sock，负责向下对接内核网络协议栈。</p>
+<p>在sk_alloc函数中，struct inet_protosw *answer结构的tcp_prot赋值给了struct sock *sk的sk_prot成员。tcp_prot的定义如下，里面定义了很多的函数，都是sock之下内核协议栈的动作。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>struct proto tcp_prot = {
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    .name           = &quot;TCP&quot;,
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    .owner          = THIS_MODULE,
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    .close          = tcp_close,
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    .connect        = tcp_v4_connect,
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    .disconnect     = tcp_disconnect,
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    .accept         = inet_csk_accept,
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    .ioctl          = tcp_ioctl,
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    .init           = tcp_v4_init_sock,
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    .destroy        = tcp_v4_destroy_sock,
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    .shutdown       = tcp_shutdown,
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    .setsockopt     = tcp_setsockopt,
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    .getsockopt     = tcp_getsockopt,
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    .keepalive      = tcp_set_keepalive,
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    .recvmsg        = tcp_recvmsg,
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>    .sendmsg        = tcp_sendmsg,
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>    .sendpage       = tcp_sendpage,
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>    .backlog_rcv        = tcp_v4_do_rcv,
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>    .release_cb     = tcp_release_cb,
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>    .hash           = inet_hash,
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>    .get_port       = inet_csk_get_port,
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>......
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>}
+</code></pre></div>
+<p>在inet_create函数中，接下来创建一个struct inet_sock结构，这个结构一开始就是struct sock，然后扩展了一些其他的信息，剩下的代码就填充这些信息。这一幕我们会经常看到，将一个结构放在另一个结构的开始位置，然后扩展一些成员，通过对于指针的强制类型转换，来访问这些成员。</p>
+<p>socket的创建至此结束。</p>
+<h2 id="bind">解析bind函数</h2>
+<p>接下来，我们来看bind。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>SYSCALL_DEFINE3(bind, int, fd, struct sockaddr __user *, umyaddr, int, addrlen)
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>{
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    struct socket *sock;
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    struct sockaddr_storage address;
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    int err, fput_needed;
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    sock = sockfd_lookup_light(fd, &amp;err, &amp;fput_needed);
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    if (sock) {
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>        err = move_addr_to_kernel(umyaddr, addrlen, &amp;address);
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>        if (err &gt;= 0) {
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>            err = sock-&gt;ops-&gt;bind(sock,
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>                              (struct sockaddr *)
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>                              &amp;address, addrlen);
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>        }
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>        fput_light(sock-&gt;file, fput_needed);
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>    }
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    return err;
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>}
+</code></pre></div>
+<p>在bind中，sockfd_lookup_light会根据fd文件描述符，找到struct socket结构。然后将sockaddr从用户态拷贝到内核态，然后调用struct socket结构里面ops的bind函数。根据前面创建socket的时候的设定，调用的是inet_stream_ops的bind函数，也即调用inet_bind。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>{
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    struct sockaddr_in *addr = (struct sockaddr_in *)uaddr;
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    struct sock *sk = sock-&gt;sk;
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    struct inet_sock *inet = inet_sk(sk);
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    struct net *net = sock_net(sk);
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    unsigned short snum;
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>......
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    snum = ntohs(addr-&gt;sin_port);
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>......
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    inet-&gt;inet_rcv_saddr = inet-&gt;inet_saddr = addr-&gt;sin_addr.s_addr;
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>    /* Make sure we are allowed to bind here. */
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>    if ((snum || !inet-&gt;bind_address_no_port) &amp;&amp;
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>        sk-&gt;sk_prot-&gt;get_port(sk, snum)) {
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>......
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    }
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>    inet-&gt;inet_sport = htons(inet-&gt;inet_num);
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>    inet-&gt;inet_daddr = 0;
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>    inet-&gt;inet_dport = 0;
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>    sk_dst_reset(sk);
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>}
+</code></pre></div>
+<p>bind里面会调用sk_prot的get_port函数，也即inet_csk_get_port来检查端口是否冲突，是否可以绑定。如果允许，则会设置struct inet_sock的本方的地址inet_saddr和本方的端口inet_sport，对方的地址inet_daddr和对方的端口inet_dport都初始化为0。</p>
+<p>bind的逻辑相对比较简单，就到这里了。</p>
+<h2 id="listen">解析listen函数</h2>
+<p>接下来我们来看listen。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>SYSCALL_DEFINE2(listen, int, fd, int, backlog)
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>{
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    struct socket *sock;
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    int err, fput_needed;
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    int somaxconn;
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    sock = sockfd_lookup_light(fd, &amp;err, &amp;fput_needed);
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    if (sock) {
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>        somaxconn = sock_net(sock-&gt;sk)-&gt;core.sysctl_somaxconn;
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>        if ((unsigned int)backlog &gt; somaxconn)
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>            backlog = somaxconn;
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>        err = sock-&gt;ops-&gt;listen(sock, backlog);
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>        fput_light(sock-&gt;file, fput_needed);
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>    }
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>    return err;
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>}
+</code></pre></div>
+<p>在listen中，我们还是通过sockfd_lookup_light，根据fd文件描述符，找到struct socket结构。接着，我们调用struct socket结构里面ops的listen函数。根据前面创建socket的时候的设定，调用的是inet_stream_ops的listen函数，也即调用inet_listen。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>int inet_listen(struct socket *sock, int backlog)
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>{
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    struct sock *sk = sock-&gt;sk;
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    unsigned char old_state;
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    int err;
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    old_state = sk-&gt;sk_state;
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    /* Really, if the socket is already in listen state
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>     * we can only allow the backlog to be adjusted.
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>     */
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    if (old_state != TCP_LISTEN) {
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>        err = inet_csk_listen_start(sk, backlog);
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    }
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    sk-&gt;sk_max_ack_backlog = backlog;
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>}
+</code></pre></div>
+<p>如果这个socket还不在TCP_LISTEN状态，会调用inet_csk_listen_start进入监听状态。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>int inet_csk_listen_start(struct sock *sk, int backlog)
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>{
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    struct inet_connection_sock *icsk = inet_csk(sk);
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    struct inet_sock *inet = inet_sk(sk);
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    int err = -EADDRINUSE;
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    reqsk_queue_alloc(&amp;icsk-&gt;icsk_accept_queue);
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>    sk-&gt;sk_max_ack_backlog = backlog;
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>    sk-&gt;sk_ack_backlog = 0;
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>    inet_csk_delack_init(sk);
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>    sk_state_store(sk, TCP_LISTEN);
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>    if (!sk-&gt;sk_prot-&gt;get_port(sk, inet-&gt;inet_num)) {
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>......
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>    }
+<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>......
+<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>}
+</code></pre></div>
+<p>这里面建立了一个新的结构inet_connection_sock，这个结构一开始是struct inet_sock，inet_csk其实做了一次强制类型转换，扩大了结构，看到了吧，又是这个套路。</p>
+<p>struct inet_connection_sock结构比较复杂。如果打开它，你能看到处于各种状态的队列，各种超时时间、拥塞控制等字眼。我们说TCP是面向连接的，就是客户端和服务端都是有一个结构维护连接的状态，就是指这个结构。我们这里先不详细分析里面的变量，因为太多了，后面我们遇到一个分析一个。</p>
+<p>首先，我们遇到的是icsk_accept_queue。它是干什么的呢？</p>
+<p>在TCP的状态里面，有一个listen状态，当调用listen函数之后，就会进入这个状态，虽然我们写程序的时候，一般要等待服务端调用accept后，等待在哪里的时候，让客户端就发起连接。其实服务端一旦处于listen状态，不用accept，客户端也能发起连接。其实TCP的状态中，没有一个是否被accept的状态，那accept函数的作用是什么呢？</p>
+<p>在内核中，为每个Socket维护两个队列。一个是已经建立了连接的队列，这时候连接三次握手已经完毕，处于established状态；一个是还没有完全建立连接的队列，这个时候三次握手还没完成，处于syn_rcvd的状态。</p>
+<p>服务端调用accept函数，其实是在第一个队列中拿出一个已经完成的连接进行处理。如果还没有完成就阻塞等待。这里的icsk_accept_queue就是第一个队列。</p>
+<p>初始化完之后，将TCP的状态设置为TCP_LISTEN，再次调用get_port判断端口是否冲突。</p>
+<p>至此，listen的逻辑就结束了。</p>
+<h2 id="accept">解析accept函数</h2>
+<p>接下来，我们解析服务端调用accept。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>SYSCALL_DEFINE3(accept, int, fd, struct sockaddr __user *, upeer_sockaddr,
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>        int __user *, upeer_addrlen)
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>{
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    return sys_accept4(fd, upeer_sockaddr, upeer_addrlen, 0);
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>}
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>SYSCALL_DEFINE4(accept4, int, fd, struct sockaddr __user *, upeer_sockaddr,
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>        int __user *, upeer_addrlen, int, flags)
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>{
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>    struct socket *sock, *newsock;
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    struct file *newfile;
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>    int err, len, newfd, fput_needed;
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>    struct sockaddr_storage address;
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>......
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>    sock = sockfd_lookup_light(fd, &amp;err, &amp;fput_needed);
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>    newsock = sock_alloc();
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>    newsock-&gt;type = sock-&gt;type;
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>    newsock-&gt;ops = sock-&gt;ops;
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>    newfd = get_unused_fd_flags(flags);
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>    newfile = sock_alloc_file(newsock, flags, sock-&gt;sk-&gt;sk_prot_creator-&gt;name);
+<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>    err = sock-&gt;ops-&gt;accept(sock, newsock, sock-&gt;file-&gt;f_flags, false);
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>    if (upeer_sockaddr) {
+<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a>        if (newsock-&gt;ops-&gt;getname(newsock, (struct sockaddr *)&amp;address, &amp;len, 2) &lt; 0) {
+<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a>        }
+<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a>        err = move_addr_to_user(&amp;address,
+<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a>                    len, upeer_sockaddr, upeer_addrlen);
+<a id="__codelineno-15-27" name="__codelineno-15-27" href="#__codelineno-15-27"></a>    }
+<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a>    fd_install(newfd, newfile);
+<a id="__codelineno-15-29" name="__codelineno-15-29" href="#__codelineno-15-29"></a>......
+<a id="__codelineno-15-30" name="__codelineno-15-30" href="#__codelineno-15-30"></a>}
+</code></pre></div>
+<p>accept函数的实现，印证了socket的原理中说的那样，原来的socket是监听socket，这里我们会找到原来的struct socket，并基于它去创建一个新的newsock。这才是连接socket。除此之外，我们还会创建一个新的struct file和fd，并关联到socket。</p>
+<p>这里面还会调用struct socket的sock-&gt;ops-&gt;accept，也即会调用inet_stream_ops的accept函数，也即inet_accept。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>int inet_accept(struct socket *sock, struct socket *newsock, int flags, bool kern)
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>{
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    struct sock *sk1 = sock-&gt;sk;
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>    int err = -EINVAL;
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    struct sock *sk2 = sk1-&gt;sk_prot-&gt;accept(sk1, flags, &amp;err, kern);
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    sock_rps_record_flow(sk2);
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>    sock_graft(sk2, newsock);
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>    newsock-&gt;state = SS_CONNECTED;
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>}
+</code></pre></div>
+<p>inet_accept会调用struct sock的sk1-&gt;sk_prot-&gt;accept，也即tcp_prot的accept函数，inet_csk_accept函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>/*
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a> * This will accept the next outstanding connection.
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a> */
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>struct sock *inet_csk_accept(struct sock *sk, int flags, int *err, bool kern)
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>{
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    struct inet_connection_sock *icsk = inet_csk(sk);
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    struct request_sock_queue *queue = &amp;icsk-&gt;icsk_accept_queue;
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>    struct request_sock *req;
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>    struct sock *newsk;
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>    int error;
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>    if (sk-&gt;sk_state != TCP_LISTEN)
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>        goto out_err;
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>
+<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>    /* Find already established connection */
+<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>    if (reqsk_queue_empty(queue)) {
+<a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a>        long timeo = sock_rcvtimeo(sk, flags &amp; O_NONBLOCK);
+<a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a>        error = inet_csk_wait_for_connect(sk, timeo);
+<a id="__codelineno-17-19" name="__codelineno-17-19" href="#__codelineno-17-19"></a>    }
+<a id="__codelineno-17-20" name="__codelineno-17-20" href="#__codelineno-17-20"></a>    req = reqsk_queue_remove(queue, sk);
+<a id="__codelineno-17-21" name="__codelineno-17-21" href="#__codelineno-17-21"></a>    newsk = req-&gt;sk;
+<a id="__codelineno-17-22" name="__codelineno-17-22" href="#__codelineno-17-22"></a>......
+<a id="__codelineno-17-23" name="__codelineno-17-23" href="#__codelineno-17-23"></a>}
+<a id="__codelineno-17-24" name="__codelineno-17-24" href="#__codelineno-17-24"></a>
+<a id="__codelineno-17-25" name="__codelineno-17-25" href="#__codelineno-17-25"></a>/*
+<a id="__codelineno-17-26" name="__codelineno-17-26" href="#__codelineno-17-26"></a> * Wait for an incoming connection, avoid race conditions. This must be called
+<a id="__codelineno-17-27" name="__codelineno-17-27" href="#__codelineno-17-27"></a> * with the socket locked.
+<a id="__codelineno-17-28" name="__codelineno-17-28" href="#__codelineno-17-28"></a> */
+<a id="__codelineno-17-29" name="__codelineno-17-29" href="#__codelineno-17-29"></a>static int inet_csk_wait_for_connect(struct sock *sk, long timeo)
+<a id="__codelineno-17-30" name="__codelineno-17-30" href="#__codelineno-17-30"></a>{
+<a id="__codelineno-17-31" name="__codelineno-17-31" href="#__codelineno-17-31"></a>    struct inet_connection_sock *icsk = inet_csk(sk);
+<a id="__codelineno-17-32" name="__codelineno-17-32" href="#__codelineno-17-32"></a>    DEFINE_WAIT(wait);
+<a id="__codelineno-17-33" name="__codelineno-17-33" href="#__codelineno-17-33"></a>    int err;
+<a id="__codelineno-17-34" name="__codelineno-17-34" href="#__codelineno-17-34"></a>    for (;;) {
+<a id="__codelineno-17-35" name="__codelineno-17-35" href="#__codelineno-17-35"></a>        prepare_to_wait_exclusive(sk_sleep(sk), &amp;wait,
+<a id="__codelineno-17-36" name="__codelineno-17-36" href="#__codelineno-17-36"></a>                      TASK_INTERRUPTIBLE);
+<a id="__codelineno-17-37" name="__codelineno-17-37" href="#__codelineno-17-37"></a>        release_sock(sk);
+<a id="__codelineno-17-38" name="__codelineno-17-38" href="#__codelineno-17-38"></a>        if (reqsk_queue_empty(&amp;icsk-&gt;icsk_accept_queue))
+<a id="__codelineno-17-39" name="__codelineno-17-39" href="#__codelineno-17-39"></a>            timeo = schedule_timeout(timeo);
+<a id="__codelineno-17-40" name="__codelineno-17-40" href="#__codelineno-17-40"></a>        sched_annotate_sleep();
+<a id="__codelineno-17-41" name="__codelineno-17-41" href="#__codelineno-17-41"></a>        lock_sock(sk);
+<a id="__codelineno-17-42" name="__codelineno-17-42" href="#__codelineno-17-42"></a>        err = 0;
+<a id="__codelineno-17-43" name="__codelineno-17-43" href="#__codelineno-17-43"></a>        if (!reqsk_queue_empty(&amp;icsk-&gt;icsk_accept_queue))
+<a id="__codelineno-17-44" name="__codelineno-17-44" href="#__codelineno-17-44"></a>            break;
+<a id="__codelineno-17-45" name="__codelineno-17-45" href="#__codelineno-17-45"></a>        err = -EINVAL;
+<a id="__codelineno-17-46" name="__codelineno-17-46" href="#__codelineno-17-46"></a>        if (sk-&gt;sk_state != TCP_LISTEN)
+<a id="__codelineno-17-47" name="__codelineno-17-47" href="#__codelineno-17-47"></a>            break;
+<a id="__codelineno-17-48" name="__codelineno-17-48" href="#__codelineno-17-48"></a>        err = sock_intr_errno(timeo);
+<a id="__codelineno-17-49" name="__codelineno-17-49" href="#__codelineno-17-49"></a>        if (signal_pending(current))
+<a id="__codelineno-17-50" name="__codelineno-17-50" href="#__codelineno-17-50"></a>            break;
+<a id="__codelineno-17-51" name="__codelineno-17-51" href="#__codelineno-17-51"></a>        err = -EAGAIN;
+<a id="__codelineno-17-52" name="__codelineno-17-52" href="#__codelineno-17-52"></a>        if (!timeo)
+<a id="__codelineno-17-53" name="__codelineno-17-53" href="#__codelineno-17-53"></a>            break;
+<a id="__codelineno-17-54" name="__codelineno-17-54" href="#__codelineno-17-54"></a>    }
+<a id="__codelineno-17-55" name="__codelineno-17-55" href="#__codelineno-17-55"></a>    finish_wait(sk_sleep(sk), &amp;wait);
+<a id="__codelineno-17-56" name="__codelineno-17-56" href="#__codelineno-17-56"></a>    return err;
+<a id="__codelineno-17-57" name="__codelineno-17-57" href="#__codelineno-17-57"></a>}
+</code></pre></div>
+<p>inet_csk_accept的实现，印证了上面我们讲的两个队列的逻辑。如果icsk_accept_queue为空，则调用inet_csk_wait_for_connect进行等待；等待的时候，调用schedule_timeout，让出CPU，并且将进程状态设置为TASK_INTERRUPTIBLE。</p>
+<p>如果再次CPU醒来，我们会接着判断icsk_accept_queue是否为空，同时也会调用signal_pending看有没有信号可以处理。一旦icsk_accept_queue不为空，就从inet_csk_wait_for_connect中返回，在队列中取出一个struct sock对象赋值给newsk。</p>
+<h2 id="connect">解析connect函数</h2>
+<p>什么情况下，icsk_accept_queue才不为空呢？当然是三次握手结束才可以。接下来我们来分析三次握手的过程。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ab/df/ab92c2afb4aafb53143c471293ccb2df.png?wh=3223%2A3178" /></p>
+<p>三次握手一般是由客户端调用connect发起。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>SYSCALL_DEFINE3(connect, int, fd, struct sockaddr __user *, uservaddr,
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>        int, addrlen)
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>{
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>    struct socket *sock;
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    struct sockaddr_storage address;
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>    int err, fput_needed;
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>    sock = sockfd_lookup_light(fd, &amp;err, &amp;fput_needed);
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>    err = move_addr_to_kernel(uservaddr, addrlen, &amp;address);
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>    err = sock-&gt;ops-&gt;connect(sock, (struct sockaddr *)&amp;address, addrlen, sock-&gt;file-&gt;f_flags);
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>}
+</code></pre></div>
+<p>connect函数的实现一开始你应该很眼熟，还是通过sockfd_lookup_light，根据fd文件描述符，找到struct socket结构。接着，我们会调用struct socket结构里面ops的connect函数，根据前面创建socket的时候的设定，调用inet_stream_ops的connect函数，也即调用inet_stream_connect。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>/*
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a> *  Connect to a remote host. There is regrettably still a little
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a> *  TCP &#39;magic&#39; in here.
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a> */
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>int __inet_stream_connect(struct socket *sock, struct sockaddr *uaddr,
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>              int addr_len, int flags, int is_sendmsg)
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>{
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>    struct sock *sk = sock-&gt;sk;
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>    int err;
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>    long timeo;
+<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>
+<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>    switch (sock-&gt;state) {
+<a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a>......
+<a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a>    case SS_UNCONNECTED:
+<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>        err = -EISCONN;
+<a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a>        if (sk-&gt;sk_state != TCP_CLOSE)
+<a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a>            goto out;
+<a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a>
+<a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a>        err = sk-&gt;sk_prot-&gt;connect(sk, uaddr, addr_len);
+<a id="__codelineno-19-20" name="__codelineno-19-20" href="#__codelineno-19-20"></a>        sock-&gt;state = SS_CONNECTING;
+<a id="__codelineno-19-21" name="__codelineno-19-21" href="#__codelineno-19-21"></a>        break;
+<a id="__codelineno-19-22" name="__codelineno-19-22" href="#__codelineno-19-22"></a>    }
+<a id="__codelineno-19-23" name="__codelineno-19-23" href="#__codelineno-19-23"></a>
+<a id="__codelineno-19-24" name="__codelineno-19-24" href="#__codelineno-19-24"></a>    timeo = sock_sndtimeo(sk, flags &amp; O_NONBLOCK);
+<a id="__codelineno-19-25" name="__codelineno-19-25" href="#__codelineno-19-25"></a>
+<a id="__codelineno-19-26" name="__codelineno-19-26" href="#__codelineno-19-26"></a>    if ((1 &lt;&lt; sk-&gt;sk_state) &amp; (TCPF_SYN_SENT | TCPF_SYN_RECV)) {
+<a id="__codelineno-19-27" name="__codelineno-19-27" href="#__codelineno-19-27"></a>......
+<a id="__codelineno-19-28" name="__codelineno-19-28" href="#__codelineno-19-28"></a>        if (!timeo || !inet_wait_for_connect(sk, timeo, writebias))
+<a id="__codelineno-19-29" name="__codelineno-19-29" href="#__codelineno-19-29"></a>            goto out;
+<a id="__codelineno-19-30" name="__codelineno-19-30" href="#__codelineno-19-30"></a>
+<a id="__codelineno-19-31" name="__codelineno-19-31" href="#__codelineno-19-31"></a>        err = sock_intr_errno(timeo);
+<a id="__codelineno-19-32" name="__codelineno-19-32" href="#__codelineno-19-32"></a>        if (signal_pending(current))
+<a id="__codelineno-19-33" name="__codelineno-19-33" href="#__codelineno-19-33"></a>            goto out;
+<a id="__codelineno-19-34" name="__codelineno-19-34" href="#__codelineno-19-34"></a>    }
+<a id="__codelineno-19-35" name="__codelineno-19-35" href="#__codelineno-19-35"></a>    sock-&gt;state = SS_CONNECTED;
+<a id="__codelineno-19-36" name="__codelineno-19-36" href="#__codelineno-19-36"></a>}
+</code></pre></div>
+<p>在__inet_stream_connect里面，我们发现，如果socket处于SS_UNCONNECTED状态，那就调用struct sock的sk-&gt;sk_prot-&gt;connect，也即tcp_prot的connect函数——tcp_v4_connect函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>int tcp_v4_connect(struct sock *sk, struct sockaddr *uaddr, int addr_len)
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>{
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>    struct sockaddr_in *usin = (struct sockaddr_in *)uaddr;
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>    struct inet_sock *inet = inet_sk(sk);
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>    struct tcp_sock *tp = tcp_sk(sk);
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>    __be16 orig_sport, orig_dport;
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>    __be32 daddr, nexthop;
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>    struct flowi4 *fl4;
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>    struct rtable *rt;
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>......
+<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a>    orig_sport = inet-&gt;inet_sport;
+<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>    orig_dport = usin-&gt;sin_port;
+<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a>    rt = ip_route_connect(fl4, nexthop, inet-&gt;inet_saddr,
+<a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a>                  RT_CONN_FLAGS(sk), sk-&gt;sk_bound_dev_if,
+<a id="__codelineno-20-15" name="__codelineno-20-15" href="#__codelineno-20-15"></a>                  IPPROTO_TCP,
+<a id="__codelineno-20-16" name="__codelineno-20-16" href="#__codelineno-20-16"></a>                  orig_sport, orig_dport, sk);
+<a id="__codelineno-20-17" name="__codelineno-20-17" href="#__codelineno-20-17"></a>......
+<a id="__codelineno-20-18" name="__codelineno-20-18" href="#__codelineno-20-18"></a>    tcp_set_state(sk, TCP_SYN_SENT);
+<a id="__codelineno-20-19" name="__codelineno-20-19" href="#__codelineno-20-19"></a>    err = inet_hash_connect(tcp_death_row, sk);
+<a id="__codelineno-20-20" name="__codelineno-20-20" href="#__codelineno-20-20"></a>    sk_set_txhash(sk);
+<a id="__codelineno-20-21" name="__codelineno-20-21" href="#__codelineno-20-21"></a>    rt = ip_route_newports(fl4, rt, orig_sport, orig_dport,
+<a id="__codelineno-20-22" name="__codelineno-20-22" href="#__codelineno-20-22"></a>                   inet-&gt;inet_sport, inet-&gt;inet_dport, sk);
+<a id="__codelineno-20-23" name="__codelineno-20-23" href="#__codelineno-20-23"></a>    /* OK, now commit destination to socket.  */
+<a id="__codelineno-20-24" name="__codelineno-20-24" href="#__codelineno-20-24"></a>    sk-&gt;sk_gso_type = SKB_GSO_TCPV4;
+<a id="__codelineno-20-25" name="__codelineno-20-25" href="#__codelineno-20-25"></a>    sk_setup_caps(sk, &amp;rt-&gt;dst);
+<a id="__codelineno-20-26" name="__codelineno-20-26" href="#__codelineno-20-26"></a>    if (likely(!tp-&gt;repair)) {
+<a id="__codelineno-20-27" name="__codelineno-20-27" href="#__codelineno-20-27"></a>        if (!tp-&gt;write_seq)
+<a id="__codelineno-20-28" name="__codelineno-20-28" href="#__codelineno-20-28"></a>            tp-&gt;write_seq = secure_tcp_seq(inet-&gt;inet_saddr,
+<a id="__codelineno-20-29" name="__codelineno-20-29" href="#__codelineno-20-29"></a>                               inet-&gt;inet_daddr,
+<a id="__codelineno-20-30" name="__codelineno-20-30" href="#__codelineno-20-30"></a>                               inet-&gt;inet_sport,
+<a id="__codelineno-20-31" name="__codelineno-20-31" href="#__codelineno-20-31"></a>                               usin-&gt;sin_port);
+<a id="__codelineno-20-32" name="__codelineno-20-32" href="#__codelineno-20-32"></a>        tp-&gt;tsoffset = secure_tcp_ts_off(sock_net(sk),
+<a id="__codelineno-20-33" name="__codelineno-20-33" href="#__codelineno-20-33"></a>                         inet-&gt;inet_saddr,
+<a id="__codelineno-20-34" name="__codelineno-20-34" href="#__codelineno-20-34"></a>                         inet-&gt;inet_daddr);
+<a id="__codelineno-20-35" name="__codelineno-20-35" href="#__codelineno-20-35"></a>    }
+<a id="__codelineno-20-36" name="__codelineno-20-36" href="#__codelineno-20-36"></a>    rt = NULL;
+<a id="__codelineno-20-37" name="__codelineno-20-37" href="#__codelineno-20-37"></a>......
+<a id="__codelineno-20-38" name="__codelineno-20-38" href="#__codelineno-20-38"></a>    err = tcp_connect(sk);
+<a id="__codelineno-20-39" name="__codelineno-20-39" href="#__codelineno-20-39"></a>......
+<a id="__codelineno-20-40" name="__codelineno-20-40" href="#__codelineno-20-40"></a>}
+</code></pre></div>
+<p>在tcp_v4_connect函数中，ip_route_connect其实是做一个路由的选择。为什么呢？因为三次握手马上就要发送一个SYN包了，这就要凑齐源地址、源端口、目标地址、目标端口。目标地址和目标端口是服务端的，已经知道源端口是客户端随机分配的，源地址应该用哪一个呢？这时候要选择一条路由，看从哪个网卡出去，就应该填写哪个网卡的IP地址。</p>
+<p>接下来，在发送SYN之前，我们先将客户端socket的状态设置为TCP_SYN_SENT。然后初始化TCP的seq num，也即write_seq，然后调用tcp_connect进行发送。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>/* Build a SYN and send it off. */
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>int tcp_connect(struct sock *sk)
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>{
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    struct tcp_sock *tp = tcp_sk(sk);
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>    struct sk_buff *buff;
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>    int err;
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>......
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>    tcp_connect_init(sk);
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>......
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>    buff = sk_stream_alloc_skb(sk, 0, sk-&gt;sk_allocation, true);
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>......
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>    tcp_init_nondata_skb(buff, tp-&gt;write_seq++, TCPHDR_SYN);
+<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>    tcp_mstamp_refresh(tp);
+<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>    tp-&gt;retrans_stamp = tcp_time_stamp(tp);
+<a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a>    tcp_connect_queue_skb(sk, buff);
+<a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a>    tcp_ecn_send_syn(sk, buff);
+<a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a>
+<a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>    /* Send off SYN; include data in Fast Open. */
+<a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a>    err = tp-&gt;fastopen_req ? tcp_send_syn_data(sk, buff) :
+<a id="__codelineno-21-20" name="__codelineno-21-20" href="#__codelineno-21-20"></a>          tcp_transmit_skb(sk, buff, 1, sk-&gt;sk_allocation);
+<a id="__codelineno-21-21" name="__codelineno-21-21" href="#__codelineno-21-21"></a>......
+<a id="__codelineno-21-22" name="__codelineno-21-22" href="#__codelineno-21-22"></a>    tp-&gt;snd_nxt = tp-&gt;write_seq;
+<a id="__codelineno-21-23" name="__codelineno-21-23" href="#__codelineno-21-23"></a>    tp-&gt;pushed_seq = tp-&gt;write_seq;
+<a id="__codelineno-21-24" name="__codelineno-21-24" href="#__codelineno-21-24"></a>    buff = tcp_send_head(sk);
+<a id="__codelineno-21-25" name="__codelineno-21-25" href="#__codelineno-21-25"></a>    if (unlikely(buff)) {
+<a id="__codelineno-21-26" name="__codelineno-21-26" href="#__codelineno-21-26"></a>        tp-&gt;snd_nxt = TCP_SKB_CB(buff)-&gt;seq;
+<a id="__codelineno-21-27" name="__codelineno-21-27" href="#__codelineno-21-27"></a>        tp-&gt;pushed_seq  = TCP_SKB_CB(buff)-&gt;seq;
+<a id="__codelineno-21-28" name="__codelineno-21-28" href="#__codelineno-21-28"></a>    }
+<a id="__codelineno-21-29" name="__codelineno-21-29" href="#__codelineno-21-29"></a>......
+<a id="__codelineno-21-30" name="__codelineno-21-30" href="#__codelineno-21-30"></a>    /* Timer for repeating the SYN until an answer. */
+<a id="__codelineno-21-31" name="__codelineno-21-31" href="#__codelineno-21-31"></a>    inet_csk_reset_xmit_timer(sk, ICSK_TIME_RETRANS,
+<a id="__codelineno-21-32" name="__codelineno-21-32" href="#__codelineno-21-32"></a>                  inet_csk(sk)-&gt;icsk_rto, TCP_RTO_MAX);
+<a id="__codelineno-21-33" name="__codelineno-21-33" href="#__codelineno-21-33"></a>    return 0;
+<a id="__codelineno-21-34" name="__codelineno-21-34" href="#__codelineno-21-34"></a>}
+</code></pre></div>
+<p>在tcp_connect中，有一个新的结构struct tcp_sock，如果打开他，你会发现他是struct inet_connection_sock的一个扩展，struct inet_connection_sock在struct tcp_sock开头的位置，通过强制类型转换访问，故伎重演又一次。</p>
+<p>struct tcp_sock里面维护了更多的TCP的状态，咱们同样是遇到了再分析。</p>
+<p>接下来tcp_init_nondata_skb初始化一个SYN包，tcp_transmit_skb将SYN包发送出去，inet_csk_reset_xmit_timer设置了一个timer，如果SYN发送不成功，则再次发送。</p>
+<p>发送网络包的过程，我们放到下一节讲解。这里我们姑且认为SYN已经发送出去了。</p>
+<p>我们回到__inet_stream_connect函数，在调用sk-&gt;sk_prot-&gt;connect之后，inet_wait_for_connect会一直等待客户端收到服务端的ACK。而我们知道，服务端在accept之后，也是在等待中。</p>
+<p>网络包是如何接收的呢？对于解析的详细过程，我们会在下下节讲解，这里为了解析三次握手，我们简单的看网络包接收到TCP层做的部分事情。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>static struct net_protocol tcp_protocol = {
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>    .early_demux    =   tcp_v4_early_demux,
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>    .early_demux_handler =  tcp_v4_early_demux,
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>    .handler    =   tcp_v4_rcv,
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>    .err_handler    =   tcp_v4_err,
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>    .no_policy  =   1,
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>    .netns_ok   =   1,
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>    .icmp_strict_tag_validation = 1,
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>}
+</code></pre></div>
+<p>我们通过struct net_protocol结构中的handler进行接收，调用的函数是tcp_v4_rcv。接下来的调用链为tcp_v4_rcv-&gt;tcp_v4_do_rcv-&gt;tcp_rcv_state_process。tcp_rcv_state_process，顾名思义，是用来处理接收一个网络包后引起状态变化的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb)
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>{
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>    struct tcp_sock *tp = tcp_sk(sk);
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>    struct inet_connection_sock *icsk = inet_csk(sk);
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>    const struct tcphdr *th = tcp_hdr(skb);
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>    struct request_sock *req;
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>    int queued = 0;
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>    bool acceptable;
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a>    switch (sk-&gt;sk_state) {
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>......
+<a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a>    case TCP_LISTEN:
+<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a>......
+<a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a>        if (th-&gt;syn) {
+<a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a>            acceptable = icsk-&gt;icsk_af_ops-&gt;conn_request(sk, skb) &gt;= 0;
+<a id="__codelineno-23-16" name="__codelineno-23-16" href="#__codelineno-23-16"></a>            if (!acceptable)
+<a id="__codelineno-23-17" name="__codelineno-23-17" href="#__codelineno-23-17"></a>                return 1;
+<a id="__codelineno-23-18" name="__codelineno-23-18" href="#__codelineno-23-18"></a>            consume_skb(skb);
+<a id="__codelineno-23-19" name="__codelineno-23-19" href="#__codelineno-23-19"></a>            return 0;
+<a id="__codelineno-23-20" name="__codelineno-23-20" href="#__codelineno-23-20"></a>        }
+<a id="__codelineno-23-21" name="__codelineno-23-21" href="#__codelineno-23-21"></a>......
+<a id="__codelineno-23-22" name="__codelineno-23-22" href="#__codelineno-23-22"></a>}
+</code></pre></div>
+<p>目前服务端是处于TCP_LISTEN状态的，而且发过来的包是SYN，因而就有了上面的代码，调用icsk-&gt;icsk_af_ops-&gt;conn_request函数。struct inet_connection_sock对应的操作是inet_connection_sock_af_ops，按照下面的定义，其实调用的是tcp_v4_conn_request。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>const struct inet_connection_sock_af_ops ipv4_specific = {
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>        .queue_xmit        = ip_queue_xmit,
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>        .send_check        = tcp_v4_send_check,
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>        .rebuild_header    = inet_sk_rebuild_header,
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>        .sk_rx_dst_set     = inet_sk_rx_dst_set,
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>        .conn_request      = tcp_v4_conn_request,
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>        .syn_recv_sock     = tcp_v4_syn_recv_sock,
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>        .net_header_len    = sizeof(struct iphdr),
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>        .setsockopt        = ip_setsockopt,
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a>        .getsockopt        = ip_getsockopt,
+<a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a>        .addr2sockaddr     = inet_csk_addr2sockaddr,
+<a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a>        .sockaddr_len      = sizeof(struct sockaddr_in),
+<a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a>        .mtu_reduced       = tcp_v4_mtu_reduced,
+<a id="__codelineno-24-14" name="__codelineno-24-14" href="#__codelineno-24-14"></a>};
+</code></pre></div>
+<p>tcp_v4_conn_request会调用tcp_conn_request，这个函数也比较长，里面调用了send_synack，但实际调用的是tcp_v4_send_synack。具体发送的过程我们不去管它，看注释我们能知道，这是收到了SYN后，回复一个SYN-ACK，回复完毕后，服务端处于TCP_SYN_RECV。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>int tcp_conn_request(struct request_sock_ops *rsk_ops,
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>             const struct tcp_request_sock_ops *af_ops,
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>             struct sock *sk, struct sk_buff *skb)
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>{
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>......
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>af_ops-&gt;send_synack(sk, dst, &amp;fl, req, &amp;foc,
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>                    !want_cookie ? TCP_SYNACK_NORMAL :
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a>                           TCP_SYNACK_COOKIE);
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a>......
+<a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a>}
+<a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a>
+<a id="__codelineno-25-12" name="__codelineno-25-12" href="#__codelineno-25-12"></a>/*
+<a id="__codelineno-25-13" name="__codelineno-25-13" href="#__codelineno-25-13"></a> *  Send a SYN-ACK after having received a SYN.
+<a id="__codelineno-25-14" name="__codelineno-25-14" href="#__codelineno-25-14"></a> */
+<a id="__codelineno-25-15" name="__codelineno-25-15" href="#__codelineno-25-15"></a>static int tcp_v4_send_synack(const struct sock *sk, struct dst_entry *dst,
+<a id="__codelineno-25-16" name="__codelineno-25-16" href="#__codelineno-25-16"></a>                  struct flowi *fl,
+<a id="__codelineno-25-17" name="__codelineno-25-17" href="#__codelineno-25-17"></a>                  struct request_sock *req,
+<a id="__codelineno-25-18" name="__codelineno-25-18" href="#__codelineno-25-18"></a>                  struct tcp_fastopen_cookie *foc,
+<a id="__codelineno-25-19" name="__codelineno-25-19" href="#__codelineno-25-19"></a>                  enum tcp_synack_type synack_type)
+<a id="__codelineno-25-20" name="__codelineno-25-20" href="#__codelineno-25-20"></a>{......}
+</code></pre></div>
+<p>这个时候，轮到客户端接收网络包了。都是TCP协议栈，所以过程和服务端没有太多区别，还是会走到tcp_rcv_state_process函数的，只不过由于客户端目前处于TCP_SYN_SENT状态，就进入了下面的代码分支。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb)
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>{
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>    struct tcp_sock *tp = tcp_sk(sk);
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>    struct inet_connection_sock *icsk = inet_csk(sk);
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>    const struct tcphdr *th = tcp_hdr(skb);
+<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>    struct request_sock *req;
+<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>    int queued = 0;
+<a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a>    bool acceptable;
+<a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a>
+<a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a>    switch (sk-&gt;sk_state) {
+<a id="__codelineno-26-11" name="__codelineno-26-11" href="#__codelineno-26-11"></a>......
+<a id="__codelineno-26-12" name="__codelineno-26-12" href="#__codelineno-26-12"></a>    case TCP_SYN_SENT:
+<a id="__codelineno-26-13" name="__codelineno-26-13" href="#__codelineno-26-13"></a>        tp-&gt;rx_opt.saw_tstamp = 0;
+<a id="__codelineno-26-14" name="__codelineno-26-14" href="#__codelineno-26-14"></a>        tcp_mstamp_refresh(tp);
+<a id="__codelineno-26-15" name="__codelineno-26-15" href="#__codelineno-26-15"></a>        queued = tcp_rcv_synsent_state_process(sk, skb, th);
+<a id="__codelineno-26-16" name="__codelineno-26-16" href="#__codelineno-26-16"></a>        if (queued &gt;= 0)
+<a id="__codelineno-26-17" name="__codelineno-26-17" href="#__codelineno-26-17"></a>            return queued;
+<a id="__codelineno-26-18" name="__codelineno-26-18" href="#__codelineno-26-18"></a>        /* Do step6 onward by hand. */
+<a id="__codelineno-26-19" name="__codelineno-26-19" href="#__codelineno-26-19"></a>        tcp_urg(sk, skb, th);
+<a id="__codelineno-26-20" name="__codelineno-26-20" href="#__codelineno-26-20"></a>        __kfree_skb(skb);
+<a id="__codelineno-26-21" name="__codelineno-26-21" href="#__codelineno-26-21"></a>        tcp_data_snd_check(sk);
+<a id="__codelineno-26-22" name="__codelineno-26-22" href="#__codelineno-26-22"></a>        return 0;
+<a id="__codelineno-26-23" name="__codelineno-26-23" href="#__codelineno-26-23"></a>    }
+<a id="__codelineno-26-24" name="__codelineno-26-24" href="#__codelineno-26-24"></a>......
+<a id="__codelineno-26-25" name="__codelineno-26-25" href="#__codelineno-26-25"></a>}
+</code></pre></div>
+<p>tcp_rcv_synsent_state_process会调用tcp_send_ack，发送一个ACK-ACK，发送后客户端处于TCP_ESTABLISHED状态。</p>
+<p>又轮到服务端接收网络包了，我们还是归tcp_rcv_state_process函数处理。由于服务端目前处于状态TCP_SYN_RECV状态，因而又走了另外的分支。当收到这个网络包的时候，服务端也处于TCP_ESTABLISHED状态，三次握手结束。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb)
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>{
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>    struct tcp_sock *tp = tcp_sk(sk);
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a>    struct inet_connection_sock *icsk = inet_csk(sk);
+<a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a>    const struct tcphdr *th = tcp_hdr(skb);
+<a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a>    struct request_sock *req;
+<a id="__codelineno-27-7" name="__codelineno-27-7" href="#__codelineno-27-7"></a>    int queued = 0;
+<a id="__codelineno-27-8" name="__codelineno-27-8" href="#__codelineno-27-8"></a>    bool acceptable;
+<a id="__codelineno-27-9" name="__codelineno-27-9" href="#__codelineno-27-9"></a>......
+<a id="__codelineno-27-10" name="__codelineno-27-10" href="#__codelineno-27-10"></a>    switch (sk-&gt;sk_state) {
+<a id="__codelineno-27-11" name="__codelineno-27-11" href="#__codelineno-27-11"></a>    case TCP_SYN_RECV:
+<a id="__codelineno-27-12" name="__codelineno-27-12" href="#__codelineno-27-12"></a>        if (req) {
+<a id="__codelineno-27-13" name="__codelineno-27-13" href="#__codelineno-27-13"></a>            inet_csk(sk)-&gt;icsk_retransmits = 0;
+<a id="__codelineno-27-14" name="__codelineno-27-14" href="#__codelineno-27-14"></a>            reqsk_fastopen_remove(sk, req, false);
+<a id="__codelineno-27-15" name="__codelineno-27-15" href="#__codelineno-27-15"></a>        } else {
+<a id="__codelineno-27-16" name="__codelineno-27-16" href="#__codelineno-27-16"></a>            /* Make sure socket is routed, for correct metrics. */
+<a id="__codelineno-27-17" name="__codelineno-27-17" href="#__codelineno-27-17"></a>            icsk-&gt;icsk_af_ops-&gt;rebuild_header(sk);
+<a id="__codelineno-27-18" name="__codelineno-27-18" href="#__codelineno-27-18"></a>            tcp_call_bpf(sk, BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB);
+<a id="__codelineno-27-19" name="__codelineno-27-19" href="#__codelineno-27-19"></a>            tcp_init_congestion_control(sk);
+<a id="__codelineno-27-20" name="__codelineno-27-20" href="#__codelineno-27-20"></a>
+<a id="__codelineno-27-21" name="__codelineno-27-21" href="#__codelineno-27-21"></a>            tcp_mtup_init(sk);
+<a id="__codelineno-27-22" name="__codelineno-27-22" href="#__codelineno-27-22"></a>            tp-&gt;copied_seq = tp-&gt;rcv_nxt;
+<a id="__codelineno-27-23" name="__codelineno-27-23" href="#__codelineno-27-23"></a>            tcp_init_buffer_space(sk);
+<a id="__codelineno-27-24" name="__codelineno-27-24" href="#__codelineno-27-24"></a>        }
+<a id="__codelineno-27-25" name="__codelineno-27-25" href="#__codelineno-27-25"></a>        smp_mb();
+<a id="__codelineno-27-26" name="__codelineno-27-26" href="#__codelineno-27-26"></a>        tcp_set_state(sk, TCP_ESTABLISHED);
+<a id="__codelineno-27-27" name="__codelineno-27-27" href="#__codelineno-27-27"></a>        sk-&gt;sk_state_change(sk);
+<a id="__codelineno-27-28" name="__codelineno-27-28" href="#__codelineno-27-28"></a>        if (sk-&gt;sk_socket)
+<a id="__codelineno-27-29" name="__codelineno-27-29" href="#__codelineno-27-29"></a>            sk_wake_async(sk, SOCK_WAKE_IO, POLL_OUT);
+<a id="__codelineno-27-30" name="__codelineno-27-30" href="#__codelineno-27-30"></a>        tp-&gt;snd_una = TCP_SKB_CB(skb)-&gt;ack_seq;
+<a id="__codelineno-27-31" name="__codelineno-27-31" href="#__codelineno-27-31"></a>        tp-&gt;snd_wnd = ntohs(th-&gt;window) &lt;&lt; tp-&gt;rx_opt.snd_wscale;
+<a id="__codelineno-27-32" name="__codelineno-27-32" href="#__codelineno-27-32"></a>        tcp_init_wl(tp, TCP_SKB_CB(skb)-&gt;seq);
+<a id="__codelineno-27-33" name="__codelineno-27-33" href="#__codelineno-27-33"></a>        break;
+<a id="__codelineno-27-34" name="__codelineno-27-34" href="#__codelineno-27-34"></a>......
+<a id="__codelineno-27-35" name="__codelineno-27-35" href="#__codelineno-27-35"></a>}
+</code></pre></div>
+<h2 id="_1">总结时刻</h2>
+<p>这一节除了网络包的接收和发送，其他的系统调用我们都分析到了。可以看出来，它们有一个统一的数据结构和流程。具体如下图所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c0/d8/c028381cf45d65d3f148e57408d26bd8.png?wh=4903%2A2503" /></p>
+<p>首先，Socket系统调用会有三级参数family、type、protocal，通过这三级参数，分别在net_proto_family表中找到type链表，在type链表中找到protocal对应的操作。这个操作分为两层，对于TCP协议来讲，第一层是inet_stream_ops层，第二层是tcp_prot层。</p>
+<p>于是，接下来的系统调用规律就都一样了：</p>
+<ul>
+<li>bind第一层调用inet_stream_ops的inet_bind函数，第二层调用tcp_prot的inet_csk_get_port函数；</li>
+<li>listen第一层调用inet_stream_ops的inet_listen函数，第二层调用tcp_prot的inet_csk_get_port函数；</li>
+<li>accept第一层调用inet_stream_ops的inet_accept函数，第二层调用tcp_prot的inet_csk_accept函数；</li>
+<li>connect第一层调用inet_stream_ops的inet_stream_connect函数，第二层调用tcp_prot的tcp_v4_connect函数。</li>
+</ul>
+<h2 id="_2">课堂练习</h2>
+<p>TCP的三次握手协议非常重要，请你务必跟着代码走读一遍。另外我们这里重点关注了TCP的场景，请走读代码的时候，也看一下UDP是如何实现各层的函数的。</p>
+<p>欢迎留言和我分享你的疑惑和见解 ，也欢迎可以收藏本节内容，反复研读。你也可以把今天的内容分享给你的朋友，和他一起学习和进步。</p>
 <div><strong>精选留言（13）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/5e/96/a03175bc.jpg" width="30px"><span>莫名</span> 👍（13） 💬（1）<div>看了一遍，然后花了一天把源码又过了一遍，很有收货，对socket的理解不再浮于表面。</div>2019-08-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b2/e0/bf56878a.jpg" width="30px"><span>kkxue</span> 👍（5） 💬（1）<div>原来得先看总结图，再看内容。。</div>2019-07-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/b4/f6/735673f7.jpg" width="30px"><span>W.jyao</span> 👍（3） 💬（1）<div>老师，能解释下listenfd和acceptfd的端口为什么一样吗？</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/4f/4f/f8868b94.jpg" width="30px"><span>无心之福</span> 👍（1） 💬（2）<div>开头的那个代码的 逗号加的不对吧？</div>2019-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/11/e7/044a9a6c.jpg" width="30px"><span>book尾汁</span> 👍（0） 💬（2）<div>调用accept的时候,会新建一个socket,以及其对应的struct file,然后会从icsk_accept_queue 取出一个req,将其sk赋值给新建的socket-&gt;sk,这样就可以读取到请求的数据了,不理解的是后面讲到接收数据包时tcp层有三个队列,会根据内核低延时 高吞吐量的等策略以及socket当时的状态来决定放入哪个队列,这里的socket是怎么选出来的啊,数据包是先发送到处于监听队列的socket然后由其将数据分发到其通过accept生成的sokcet上吗,如果是直接由通过accept生成的socket来处理,怎么分辨出来到底该给哪个socket呢,根据数据包的源地址与端口吗?</div>2020-05-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/1b/f4b786b9.jpg" width="30px"><span>飞翔</span> 👍（0） 💬（3）<div>syn到底是个什么东西呀？是个integer还是char类型</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f6/00/2a248fd8.jpg" width="30px"><span>二星球</span> 👍（0） 💬（2）<div>老师好，同一个TCP链接上先后发送2次rpc请求，后发送的请求其结果先返回，先发送的请求结果后返回，这样有没有问题呢，系统能区分各自的返回结果么，靠什么机制保证的呢？一直没有想明白</div>2019-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/90/8f/9c691a5f.jpg" width="30px"><span>奔跑的码仔</span> 👍（16） 💬（0）<div>struct tcp_sock继承自struct inet_connection_sock inet_conn，inet_connection_sock继承自struct inet_sock，struct inet_sock继承自struct sock；
+<li><span>莫名</span> 👍（13） 💬（1）<div>看了一遍，然后花了一天把源码又过了一遍，很有收货，对socket的理解不再浮于表面。</div>2019-08-09</li><br/><li><span>kkxue</span> 👍（5） 💬（1）<div>原来得先看总结图，再看内容。。</div>2019-07-14</li><br/><li><span>W.jyao</span> 👍（3） 💬（1）<div>老师，能解释下listenfd和acceptfd的端口为什么一样吗？</div>2019-07-08</li><br/><li><span>无心之福</span> 👍（1） 💬（2）<div>开头的那个代码的 逗号加的不对吧？</div>2019-08-19</li><br/><li><span>book尾汁</span> 👍（0） 💬（2）<div>调用accept的时候,会新建一个socket,以及其对应的struct file,然后会从icsk_accept_queue 取出一个req,将其sk赋值给新建的socket-&gt;sk,这样就可以读取到请求的数据了,不理解的是后面讲到接收数据包时tcp层有三个队列,会根据内核低延时 高吞吐量的等策略以及socket当时的状态来决定放入哪个队列,这里的socket是怎么选出来的啊,数据包是先发送到处于监听队列的socket然后由其将数据分发到其通过accept生成的sokcet上吗,如果是直接由通过accept生成的socket来处理,怎么分辨出来到底该给哪个socket呢,根据数据包的源地址与端口吗?</div>2020-05-03</li><br/><li><span>飞翔</span> 👍（0） 💬（3）<div>syn到底是个什么东西呀？是个integer还是char类型</div>2019-07-08</li><br/><li><span>二星球</span> 👍（0） 💬（2）<div>老师好，同一个TCP链接上先后发送2次rpc请求，后发送的请求其结果先返回，先发送的请求结果后返回，这样有没有问题呢，系统能区分各自的返回结果么，靠什么机制保证的呢？一直没有想明白</div>2019-07-08</li><br/><li><span>奔跑的码仔</span> 👍（16） 💬（0）<div>struct tcp_sock继承自struct inet_connection_sock inet_conn，inet_connection_sock继承自struct inet_sock，struct inet_sock继承自struct sock；
 
 1.上述四个结构的关系具有十足的面向对象的特征，struct是基类，通过层层继承，实现了类的复用；
 2.内核中网络相关的很多函数，参数往往都是struct sock，函数内部依照不同的业务逻辑，将struct sock转换为不同的业务结构；
 这样做的好处：
 1.简化接口的设计复杂度；
-2.使用基类作为参数，十分类似于面向对象中的多态特性，能够有效的增强接口的稳定性、提升扩展性。</div>2019-10-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/bf/8f/51f044dc.jpg" width="30px"><span>谛听</span> 👍（6） 💬（0）<div>socket: 根据参数创建相应socket
+2.使用基类作为参数，十分类似于面向对象中的多态特性，能够有效的增强接口的稳定性、提升扩展性。</div>2019-10-11</li><br/><li><span>谛听</span> 👍（6） 💬（0）<div>socket: 根据参数创建相应socket
 bind: 绑定IP、端口
 listen: 建立两个队列，改变状态为TCP_LISTEN
 accept: 从完成三次握手的队列中取出一个socket，没有的话让出cpu
 connect: 三次握手
-</div>2019-11-24</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epZhOmpZpicOzalVU7kibd59dMJc25N9cfGu9icBAIUPzYNYDedtzlYHZBiazaYiadgqvlotrjM4CA6KOQ/132" width="30px"><span>Geek_ty</span> 👍（1） 💬（0）<div>老师您好，我在认真阅读了文章和代码后还是存在一个疑惑：icsk_accept_queue是全连接队列当然没有问题，但是服务端LISTEN状态下，调用tcp_v4_conn_request()时inet_csk_reqsk_queue_hash_add()函数也是增加了该队列的长度。但是实际上应该修改的时半连接队列才对。我反复看了几遍源码，没有发现在什么地方有保存syn队列，也没有syn队列的相关操作，都是对icsk_accept_queue的操作，这让我十分困惑，还请老师帮忙解答。</div>2020-08-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a6/43/cb6ab349.jpg" width="30px"><span>Spring</span> 👍（1） 💬（0）<div>老师，请问服务端维护的未完全建立链接队列的元素sock是什么时候创建的呢？是每次收到客户端的SYN包后创建？还是listen时会初始化几个sock？</div>2019-10-02</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/uG2kliaKAroGkNaXSwFNEmVz8xM6srw7OEHBMSBbPibuXQMctibLyuQEpRVmOth8sdojb3u5VUEjWm2D2lzRGuMDA/132" width="30px"><span>Geek_ae11ce</span> 👍（0） 💬（0）<div>一篇过于简单了，可能是函数较多的原因。实际更好的是一个函数或两个函数放在一章中</div>2024-05-31</li><br/><li><img src="" width="30px"><span>Geek_a9a743</span> 👍（0） 💬（0）<div>太复杂了……</div>2023-11-26</li><br/>
+</div>2019-11-24</li><br/><li><span>Geek_ty</span> 👍（1） 💬（0）<div>老师您好，我在认真阅读了文章和代码后还是存在一个疑惑：icsk_accept_queue是全连接队列当然没有问题，但是服务端LISTEN状态下，调用tcp_v4_conn_request()时inet_csk_reqsk_queue_hash_add()函数也是增加了该队列的长度。但是实际上应该修改的时半连接队列才对。我反复看了几遍源码，没有发现在什么地方有保存syn队列，也没有syn队列的相关操作，都是对icsk_accept_queue的操作，这让我十分困惑，还请老师帮忙解答。</div>2020-08-08</li><br/><li><span>Spring</span> 👍（1） 💬（0）<div>老师，请问服务端维护的未完全建立链接队列的元素sock是什么时候创建的呢？是每次收到客户端的SYN包后创建？还是listen时会初始化几个sock？</div>2019-10-02</li><br/><li><span>Geek_ae11ce</span> 👍（0） 💬（0）<div>一篇过于简单了，可能是函数较多的原因。实际更好的是一个函数或两个函数放在一章中</div>2024-05-31</li><br/><li><span>Geek_a9a743</span> 👍（0） 💬（0）<div>太复杂了……</div>2023-11-26</li><br/>
 </ul>
 
 

@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#servlet" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -9354,6 +9359,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    26   Context容器（下）：Tomcat如何实现Servlet规范？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -9363,6 +9379,68 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#servlet" class="md-nav__link">
+    <span class="md-ellipsis">
+      Servlet管理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      Filter管理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#listener" class="md-nav__link">
+    <span class="md-ellipsis">
+      Listener管理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -13036,6 +13114,59 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#servlet" class="md-nav__link">
+    <span class="md-ellipsis">
+      Servlet管理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      Filter管理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#listener" class="md-nav__link">
+    <span class="md-ellipsis">
+      Listener管理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -13063,16 +13194,160 @@
 <p>一个Web应用里往往有多个Servlet，而在Tomcat中一个Web应用对应一个Context容器，也就是说一个Context容器需要管理多个Servlet实例。但Context容器并不直接持有Servlet实例，而是通过子容器Wrapper来管理Servlet，你可以把Wrapper容器看作是Servlet的包装。</p>
 <p>那为什么需要Wrapper呢？Context容器直接维护一个Servlet数组不就行了吗？这是因为Servlet不仅仅是一个类实例，它还有相关的配置信息，比如它的URL映射、它的初始化参数，因此设计出了一个包装器，把Servlet本身和它相关的数据包起来，没错，这就是面向对象的思想。</p>
 <p>那管理好Servlet就完事大吉了吗？别忘了Servlet还有两个兄弟：Listener和Filter，它们也是Servlet规范中的重要成员，因此Tomcat也需要创建它们的实例，也需要在合适的时机去调用它们的方法。</p>
-<div><strong>精选留言（19）</strong></div>
+<p>说了那么多，下面我们就来聊一聊Tomcat是如何做到上面这些事的。</p>
+<h2 id="servlet">Servlet管理</h2>
+<p>前面提到，Tomcat是用Wrapper容器来管理Servlet的，那Wrapper容器具体长什么样子呢？我们先来看看它里面有哪些关键的成员变量：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>protected volatile Servlet instance = null;
+</code></pre></div>
+<p>毫无悬念，它拥有一个Servlet实例，并且Wrapper通过loadServlet方法来实例化Servlet。为了方便你阅读，我简化了代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>public synchronized Servlet loadServlet() throws ServletException {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    Servlet servlet;
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    //1. 创建一个Servlet实例
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    servlet = (Servlet) instanceManager.newInstance(servletClass);    
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    //2.调用了Servlet的init方法，这是Servlet规范要求的
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    initServlet(servlet);
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    return servlet;
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>}
+</code></pre></div>
+<p>其实loadServlet主要做了两件事：创建Servlet的实例，并且调用Servlet的init方法，因为这是Servlet规范要求的。</p>
+<p>那接下来的问题是，什么时候会调到这个loadServlet方法呢？为了加快系统的启动速度，我们往往会采取资源延迟加载的策略，Tomcat也不例外，默认情况下Tomcat在启动时不会加载你的Servlet，除非你把Servlet的<code>loadOnStartup</code>参数设置为<code>true</code>。</p>
+<p>这里还需要你注意的是，虽然Tomcat在启动时不会创建Servlet实例，但是会创建Wrapper容器，就好比尽管枪里面还没有子弹，先把枪造出来。那子弹什么时候造呢？是真正需要开枪的时候，也就是说有请求来访问某个Servlet时，这个Servlet的实例才会被创建。</p>
+<p>那Servlet是被谁调用的呢？我们回忆一下专栏前面提到过Tomcat的Pipeline-Valve机制，每个容器组件都有自己的Pipeline，每个Pipeline中有一个Valve链，并且每个容器组件有一个BasicValve（基础阀）。Wrapper作为一个容器组件，它也有自己的Pipeline和BasicValve，Wrapper的BasicValve叫<strong>StandardWrapperValve</strong>。</p>
+<p>你可以想到，当请求到来时，Context容器的BasicValve会调用Wrapper容器中Pipeline中的第一个Valve，然后会调用到StandardWrapperValve。我们先来看看它的invoke方法是如何实现的，同样为了方便你阅读，我简化了代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>public final void invoke(Request request, Response response) {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    //1.实例化Servlet
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    servlet = wrapper.allocate();
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    //2.给当前请求创建一个Filter链
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    ApplicationFilterChain filterChain =
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        ApplicationFilterFactory.createFilterChain(request, wrapper, servlet);
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>   //3. 调用这个Filter链，Filter链中的最后一个Filter会调用Servlet
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>   filterChain.doFilter(request.getRequest(), response.getResponse());
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>}
+</code></pre></div>
+<p>StandardWrapperValve的invoke方法比较复杂，去掉其他异常处理的一些细节，本质上就是三步：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（32） 💬（2）<div>属性值变化listener能动态配置，所以用CopyOnWriteArray。生命周期事件listener，不能动态改变没有线程安全问题?
-</div>2019-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（9） 💬（3）<div>啊啊啊 老师再写一个深入拆解spring 或者springboot 的专栏吧 和tomcat形成兄弟专栏 定价比这个贵2～3倍 您负责写 我们和极客时间的平台负责大卖</div>2019-08-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/1b/f4b786b9.jpg" width="30px"><span>飞翔</span> 👍（6） 💬（1）<div>老师我需要手动加一个filter，不能用annotation或是xml、我是不是需要调用standardcontext里边的addfilterdef和addfiltermap这两个函数就行了？</div>2019-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/f7/ee/6eeb58a3.jpg" width="30px"><span>calljson</span> 👍（5） 💬（1）<div>请教下老师，serverlet的service方法作用是什么？仅仅是分发请求吗？</div>2019-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f8/ca/1a1e190a.jpg" width="30px"><span>Nu11PointerEx</span> 👍（4） 💬（1）<div>老师我想问一下，对应的filter是怎么注册到servlet中去的</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/68/d5/567bf8ad.jpg" width="30px"><span>非想</span> 👍（4） 💬（5）<div>老师您好，看你的文章servlet容器中的三个组件servlet，filter，linstener都是由context容器管理的对吗？</div>2019-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/1b/f4b786b9.jpg" width="30px"><span>飞翔</span> 👍（2） 💬（1）<div>private Map&lt;String, FilterDef&gt; filterDefs = new HashMap&lt;&gt;();
-老师 您说 filter放在map里边，由context管理，然后我看 您后边永硕 filter是wrapper管理的 这个不是矛盾嘛</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/1b/f4b786b9.jpg" width="30px"><span>飞翔</span> 👍（2） 💬（1）<div>话说 host engine 和context 都有pipline实现的责任链，wrapper没有pipline 而是用filter 实现的责任链是吧</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/5b/83a35681.jpg" width="30px"><span>Monday</span> 👍（3） 💬（0）<div>思考题两种数据结构我能区分开来，但是还是回答不上来。。。</div>2019-07-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1e/3a/5b21c01c.jpg" width="30px"><span>nightmare</span> 👍（2） 💬（0）<div>生命周期相关的类比如session一个用户分配一个，用完了就会销毁，用对象数组，可以适应增删改操作，而属性变化，写不会那么频繁，读取比较频繁</div>2019-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/7b/a0/791d0f5e.jpg" width="30px"><span>翁文彬</span> 👍（1） 💬（0）<div>最后一个问题, 一开始两种Listener都是使用Object[]装着的,
+<li>第一步，创建Servlet实例；</li>
+<li>第二步，给当前请求创建一个Filter链；</li>
+<li>第三步，调用这个Filter链。</li>
+</ul>
+<p>你可能会问，为什么需要给每个请求创建一个Filter链？这是因为每个请求的请求路径都不一样，而Filter都有相应的路径映射，因此不是所有的Filter都需要来处理当前的请求，我们需要根据请求的路径来选择特定的一些Filter来处理。</p>
+<p>第二个问题是，为什么没有看到调到Servlet的service方法？这是因为Filter链的doFilter方法会负责调用Servlet，具体来说就是Filter链中的最后一个Filter会负责调用Servlet。</p>
+<p>接下来我们来看Filter的实现原理。</p>
+<h2 id="filter">Filter管理</h2>
+<p>我们知道，跟Servlet一样，Filter也可以在<code>web.xml</code>文件里进行配置，不同的是，Filter的作用域是整个Web应用，因此Filter的实例是在Context容器中进行管理的，Context容器用Map集合来保存Filter。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>private Map&lt;String, FilterDef&gt; filterDefs = new HashMap&lt;&gt;();
+</code></pre></div>
+<p>那上面提到的Filter链又是什么呢？Filter链的存活期很短，它是跟每个请求对应的。一个新的请求来了，就动态创建一个Filter链，请求处理完了，Filter链也就被回收了。理解它的原理也非常关键，我们还是来看看源码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>public final class ApplicationFilterChain implements FilterChain {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  //Filter链中有Filter数组，这个好理解
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  private ApplicationFilterConfig[] filters = new ApplicationFilterConfig[0];
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>  //Filter链中的当前的调用位置
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>  private int pos = 0;
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>  //总共有多少了Filter
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>  private int n = 0;
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>  //每个Filter链对应一个Servlet，也就是它要调用的Servlet
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>  private Servlet servlet = null;
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>  public void doFilter(ServletRequest req, ServletResponse res) {
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>        internalDoFilter(request,response);
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>  }
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>  private void internalDoFilter(ServletRequest req,
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>                                ServletResponse res){
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    // 每个Filter链在内部维护了一个Filter数组
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    if (pos &lt; n) {
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>        ApplicationFilterConfig filterConfig = filters[pos++];
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>        Filter filter = filterConfig.getFilter();
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>        filter.doFilter(request, response, this);
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>        return;
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>    }
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>    servlet.service(request, response);
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>}
+</code></pre></div>
+<p>从ApplicationFilterChain的源码我们可以看到几个关键信息：</p>
+<ol>
+<li>Filter链中除了有Filter对象的数组，还有一个整数变量pos，这个变量用来记录当前被调用的Filter在数组中的位置。</li>
+<li>Filter链中有个Servlet实例，这个好理解，因为上面提到了，每个Filter链最后都会调到一个Servlet。</li>
+<li>Filter链本身也实现了doFilter方法，直接调用了一个内部方法internalDoFilter。</li>
+<li>internalDoFilter方法的实现比较有意思，它做了一个判断，如果当前Filter的位置小于Filter数组的长度，也就是说Filter还没调完，就从Filter数组拿下一个Filter，调用它的doFilter方法。否则，意味着所有Filter都调到了，就调用Servlet的service方法。</li>
+</ol>
+<p>但问题是，方法体里没看到循环，谁在不停地调用Filter链的doFilter方法呢？Filter是怎么依次调到的呢？</p>
+<p>答案是<strong>Filter本身的doFilter方法会调用Filter链的doFilter方法</strong>，我们还是来看看代码就明白了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>public void doFilter(ServletRequest request, ServletResponse response,
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>        FilterChain chain){
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>          ...
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>          //调用Filter的方法
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>          chain.doFilter(request, response);
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>      }
+</code></pre></div>
+<p>注意Filter的doFilter方法有个关键参数FilterChain，就是Filter链。并且每个Filter在实现doFilter时，必须要调用Filter链的doFilter方法，而Filter链中保存当前Filter的位置，会调用下一个Filter的doFilter方法，这样链式调用就完成了。</p>
+<p>Filter链跟Tomcat的Pipeline-Valve本质都是责任链模式，但是在具体实现上稍有不同，你可以细细体会一下。</p>
+<h2 id="listener">Listener管理</h2>
+<p>我们接着聊Servlet规范里Listener。跟Filter一样，Listener也是一种扩展机制，你可以监听容器内部发生的事件，主要有两类事件：</p>
+<ul>
+<li>第一类是生命状态的变化，比如Context容器启动和停止、Session的创建和销毁。</li>
+<li>第二类是属性的变化，比如Context容器某个属性值变了、Session的某个属性值变了以及新的请求来了等。</li>
+</ul>
+<p>我们可以在<code>web.xml</code>配置或者通过注解的方式来添加监听器，在监听器里实现我们的业务逻辑。对于Tomcat来说，它需要读取配置文件，拿到监听器类的名字，实例化这些类，并且在合适的时机调用这些监听器的方法。</p>
+<p>Tomcat是通过Context容器来管理这些监听器的。Context容器将两类事件分开来管理，分别用不同的集合来存放不同类型事件的监听器：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>//监听属性值变化的监听器
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>private List&lt;Object&gt; applicationEventListenersList = new CopyOnWriteArrayList&lt;&gt;();
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>//监听生命事件的监听器
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>private Object applicationLifecycleListenersObjects[] = new Object[0];
+</code></pre></div>
+<p>剩下的事情就是触发监听器了，比如在Context容器的启动方法里，就触发了所有的ServletContextListener：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>//1.拿到所有的生命周期监听器
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>Object instances[] = getApplicationLifecycleListeners();
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>for (int i = 0; i &lt; instances.length; i++) {
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>   //2. 判断Listener的类型是不是ServletContextListener
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>   if (!(instances[i] instanceof ServletContextListener))
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>      continue;
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>   //3.触发Listener的方法
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>   ServletContextListener lr = (ServletContextListener) instances[i];
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>   lr.contextInitialized(event);
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>}
+</code></pre></div>
+<p>需要注意的是，这里的ServletContextListener接口是一种留给用户的扩展机制，用户可以实现这个接口来定义自己的监听器，监听Context容器的启停事件。Spring就是这么做的。ServletContextListener跟Tomcat自己的生命周期事件LifecycleListener是不同的。LifecycleListener定义在生命周期管理组件中，由基类LifecycleBase统一管理。</p>
+<h2 id="_1">本期精华</h2>
+<p>Servlet规范中最重要的就是Servlet、Filter和Listener“三兄弟”。Web容器最重要的职能就是把它们创建出来，并在适当的时候调用它们的方法。</p>
+<p>Tomcat通过Wrapper容器来管理Servlet，Wrapper包装了Servlet本身以及相应的参数，这体现了面向对象中“封装”的设计原则。</p>
+<p>Tomcat会给<strong>每个请求生成一个Filter链</strong>，Filter链中的最后一个Filter会负责调用Servlet的service方法。</p>
+<p>对于Listener来说，我们可以定制自己的监听器来监听Tomcat内部发生的各种事件：包括Web应用级别的、Session级别的和请求级别的。Tomcat中的Context容器统一维护了这些监听器，并负责触发。</p>
+<p>最后小结一下这3期内容，Context组件通过自定义类加载器来加载Web应用，并实现了Servlet规范，直接跟Web应用打交道，是一个核心的容器组件。也因此我用了很重的篇幅去讲解它，也非常建议你花点时间阅读一下它的源码。</p>
+<h2 id="_2">课后思考</h2>
+<p>Context容器分别用了CopyOnWriteArrayList和对象数组来存储两种不同的监听器，为什么要这样设计，你可以思考一下背后的原因。</p>
+<p>不知道今天的内容你消化得如何？如果还有疑问，请大胆的在留言区提问，也欢迎你把你的课后思考和心得记录下来，与我和其他同学一起讨论。如果你觉得今天有所收获，欢迎你把它分享给你的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>-W.LI-</span> 👍（32） 💬（2）<div>属性值变化listener能动态配置，所以用CopyOnWriteArray。生命周期事件listener，不能动态改变没有线程安全问题?
+</div>2019-07-09</li><br/><li><span>yang</span> 👍（9） 💬（3）<div>啊啊啊 老师再写一个深入拆解spring 或者springboot 的专栏吧 和tomcat形成兄弟专栏 定价比这个贵2～3倍 您负责写 我们和极客时间的平台负责大卖</div>2019-08-21</li><br/><li><span>飞翔</span> 👍（6） 💬（1）<div>老师我需要手动加一个filter，不能用annotation或是xml、我是不是需要调用standardcontext里边的addfilterdef和addfiltermap这两个函数就行了？</div>2019-07-09</li><br/><li><span>calljson</span> 👍（5） 💬（1）<div>请教下老师，serverlet的service方法作用是什么？仅仅是分发请求吗？</div>2019-07-16</li><br/><li><span>Nu11PointerEx</span> 👍（4） 💬（1）<div>老师我想问一下，对应的filter是怎么注册到servlet中去的</div>2019-07-19</li><br/><li><span>非想</span> 👍（4） 💬（5）<div>老师您好，看你的文章servlet容器中的三个组件servlet，filter，linstener都是由context容器管理的对吗？</div>2019-07-09</li><br/><li><span>飞翔</span> 👍（2） 💬（1）<div>private Map&lt;String, FilterDef&gt; filterDefs = new HashMap&lt;&gt;();
+老师 您说 filter放在map里边，由context管理，然后我看 您后边永硕 filter是wrapper管理的 这个不是矛盾嘛</div>2019-07-23</li><br/><li><span>飞翔</span> 👍（2） 💬（1）<div>话说 host engine 和context 都有pipline实现的责任链，wrapper没有pipline 而是用filter 实现的责任链是吧</div>2019-07-23</li><br/><li><span>Monday</span> 👍（3） 💬（0）<div>思考题两种数据结构我能区分开来，但是还是回答不上来。。。</div>2019-07-11</li><br/><li><span>nightmare</span> 👍（2） 💬（0）<div>生命周期相关的类比如session一个用户分配一个，用完了就会销毁，用对象数组，可以适应增删改操作，而属性变化，写不会那么频繁，读取比较频繁</div>2019-07-09</li><br/><li><span>翁文彬</span> 👍（1） 💬（0）<div>最后一个问题, 一开始两种Listener都是使用Object[]装着的,
 我去翻了一下github的提交记录, Sep 15, 2015, @markt-asf提交了一次修改, 将applicationEventListenersList改成了CopyOnWriteArrayList
 
 原因是下面这个Bug, https:&#47;&#47;bz.apache.org&#47;bugzilla&#47;show_bug.cgi?id=58373, 贴上来以供大家参考
 
-ApplicationContext#addListener方法中也有修改applicationLifecycleListenersObjects的代码, 所以我认为&quot;生命周期事件listener不能动态改变&quot;是错误的, 这里修改成CopyOnWriteArrayList或许更好?</div>2023-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/05/7f/a7df049a.jpg" width="30px"><span>Standly</span> 👍（1） 💬（0）<div>反向推导猜下，生命状态变化都在单线程中，没有并发问题。属性变化有线程安全问题，但又不频繁。</div>2019-07-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/51/0d/fc1652fe.jpg" width="30px"><span>James</span> 👍（0） 💬（0）<div>问答题的数据结构能区分。。但是最终答案是什么？</div>2021-03-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/99/d7/dd21d6e4.jpg" width="30px"><span>pj</span> 👍（0） 💬（3）<div>FilterChain执行完毕，所有的filter执行完以后才执行service方法，而真正的response在service返回后才能拿到。filter没有起到过滤response的作用啊。没有想明白。</div>2020-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/db/26/54f2c164.jpg" width="30px"><span>靠人品去赢</span> 👍（0） 💬（0）<div>想问一下Tomcat会给每一个请求都生成一个Filter链，比如说很多请求的Filter链都差不多，Tomcat会不会对这些一样的链有一个处理，还是一个请求一条链调用完Servlet就把这个链上的Filter都释放掉？</div>2019-11-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c5/f2/fccf87bb.jpg" width="30px"><span>石妖</span> 👍（0） 💬（1）<div>李老师好，有个问题不太明白：每个Filter的doFilter调用Filter链的doFilter方法，那么这个调用是如何保证调用按照Filter链的顺序调用的？</div>2019-10-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/24/5d/65e61dcb.jpg" width="30px"><span>学无涯</span> 👍（0） 💬（1）<div>这里感觉Filter是递归调用呀，网上为什么说是基于函数回调呢</div>2019-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ee/ea/c8136dfd.jpg" width="30px"><span>草戊</span> 👍（0） 💬（1）<div>filter是有wrapper管理的？servlet吧，是不是手误回答错了？</div>2019-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b3/c5/7fc124e2.jpg" width="30px"><span>Liam</span> 👍（0） 💬（0）<div>我记得pip-val是用单向链表实现的，filters chain是用数组实现的；另外，pipe节点自己负责调用下一个节点，而filter则是委派chain来调度</div>2019-07-09</li><br/>
+ApplicationContext#addListener方法中也有修改applicationLifecycleListenersObjects的代码, 所以我认为&quot;生命周期事件listener不能动态改变&quot;是错误的, 这里修改成CopyOnWriteArrayList或许更好?</div>2023-02-24</li><br/><li><span>Standly</span> 👍（1） 💬（0）<div>反向推导猜下，生命状态变化都在单线程中，没有并发问题。属性变化有线程安全问题，但又不频繁。</div>2019-07-12</li><br/><li><span>James</span> 👍（0） 💬（0）<div>问答题的数据结构能区分。。但是最终答案是什么？</div>2021-03-21</li><br/><li><span>pj</span> 👍（0） 💬（3）<div>FilterChain执行完毕，所有的filter执行完以后才执行service方法，而真正的response在service返回后才能拿到。filter没有起到过滤response的作用啊。没有想明白。</div>2020-06-11</li><br/><li><span>靠人品去赢</span> 👍（0） 💬（0）<div>想问一下Tomcat会给每一个请求都生成一个Filter链，比如说很多请求的Filter链都差不多，Tomcat会不会对这些一样的链有一个处理，还是一个请求一条链调用完Servlet就把这个链上的Filter都释放掉？</div>2019-11-05</li><br/>
 </ul>
 
 

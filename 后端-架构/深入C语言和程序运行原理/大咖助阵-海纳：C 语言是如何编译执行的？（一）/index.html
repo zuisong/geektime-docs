@@ -9468,6 +9468,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      预处理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      词法分析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      完善词法分析器
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13177,6 +13213,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      预处理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      词法分析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      完善词法分析器
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13211,9 +13283,430 @@
 <p>接下来，我们就先从对 C 编译器基本步骤的整体了解开始吧。</p>
 <h2 id="_1">编译的基本步骤</h2>
 <p>一个 C 语言的源代码文件，一般要经过编译和链接两个大的步骤才能变成可执行程序。其中，编译的过程是将单个C源码文件翻译成中间文件。而链接器主要用于符号解析，它负责将中间文件中的符号进行跨文件解析，进而把中间文件组成一个二进制文件。关于链接的知识，于航老师已经在这个专栏的第 27~28 讲中深入地介绍过了，所以在这里我就不赘述了。</p>
+<p>我们只聚焦于编译的过程，编译主要可以分为以下几个步骤：</p>
+<ol>
+<li>预处理，主要是处理宏定义，将宏定义展开，这一步所使用的技术一般只涉及字符串替换；</li>
+<li>词法分析，将文本转成 token 序列；</li>
+<li>文法分析，将 token 序列转成抽象语法树；</li>
+<li>语义分析，文法只能检查局部的信息，有一些语义信息需要在这一步检查，例如非 void 的函数漏写 return 语句；</li>
+<li>平台无关优化，与具体的平台（体系结构）无关的结构优化，往往与语义相关；</li>
+<li>平台相关优化，与具体的体系结构相关的优化，例如考虑平台的缓存和流水线设计而做出的优化；</li>
+<li>指令选择，调度和寄存器分配，主要是为目标平台生成代码；</li>
+<li>中间文件生成，编译过程结束，一个编译单元会生成一个中间文件。</li>
+</ol>
+<p>接下来的几节课，我们就按照先后顺序依次介绍编译的每一个步骤。这节课我主要介绍预处理和词法分析。下面来看第一个步骤，预处理。</p>
+<h2 id="_2">预处理</h2>
+<p>预处理最重要的工作步骤是对宏进行处理。宏的概念比较简单，但想要精通却很难，所以大多数时候，我们需要依赖 gcc 的预处理命令对宏进行展开，以观察它的效果。这个命令如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$ gcc -E file.c
+</code></pre></div>
+<p>接下来，我用一个具体的例子来说明预处理的工作原理，例子代码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>#include &lt;stdio.h&gt;
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>#ifdef USE_MACRO
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>#define square(x) (x)*(x)
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>#else
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>inline int square(int x) {
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    return x * x;
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>}
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>#endif
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>int main() {
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    int a = 3;
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    int b = square(++a);
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    printf(&quot;%d\n&quot;, b);
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    return 0;
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>}
+</code></pre></div>
+<p>在这个例子中，对 square 的调用（第13行）究竟是一个宏，还是一个内联函数调用，取决于“USE_MACRO”这个宏是否被定义。</p>
+<p>我们分别使用“gcc -E -DUSE_MACRO”命令和“gcc -E”命令处理这个文件，就会得到不同的结果。先来看定义了“USE_MACRO”的情况：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>// gcc -E macro_def.c -DUSE_MACRO 
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>int main() {
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    int a = 3;
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    int b = (++a)*(++a);
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    printf(&quot;%d\n&quot;, b);
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    return 0;
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>}
+</code></pre></div>
+<p>从以上代码中可以看到，square 是一个宏，而这个宏的定义已经消失了，而对 square 的调用也被替换为一个乘法（第4行）。</p>
+<p>不知道这个结果有没有让你感到吃惊。因为我们的本意是想让变量 a 自增 1，然后再求变量 a 的平方，但从宏展开的结果来看，显然是做了两次自增运算，所以最终的运行结果是20，而不是16。从这个例子中，我们也可以看出，宏的替换本质上是字符串替换。也就是说，这里在宏展开的过程中，预处理器仅仅是把字符串“x”简单地替换成了“++a”而已。</p>
+<p>如果没有定义“USE_MACRO”，那么预处理的结果就是这样的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>// gcc -E macro_def.c
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>inline int square(int x) {
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    return x * x;
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>}
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>int main() {
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    int a = 3;
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    int b = square(++a);
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    printf(&quot;%d\n&quot;, b);
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    return 0;
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>}
+</code></pre></div>
+<p>这一次的结果显然就是16了。这个结果是比较简单而且直观的，所以我就不再过多解释了，你可以自己动手试验并解释它的执行结果。</p>
+<p>这里再留一个小练习：请你自己动手，使用“gcc -E”命令对以下程序进行预处理，并解释预处理的结果，以此来掌握井号和双井号在宏定义中的作用。如果这个过程中遇到什么问题，欢迎在评论区交流讨论。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>#include &lt;stdio.h&gt;
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>#define TYPE_Apple 1
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>#define TYPE_Pear  2
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>struct Fruit {
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    int _type;
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    char* _name;
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>};
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>#define DECLARE(x) \
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>struct Fruit x = {      \
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    TYPE_##x,           \
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    #x,                 \
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>};
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>DECLARE(Apple)
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>DECLARE(Pear)
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>int main() {
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>    printf(&quot;%d, %s\n&quot;, Apple._type, Apple._name);
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    printf(&quot;%d, %s\n&quot;, Pear._type, Pear._name);
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    return 0;
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>}
+</code></pre></div>
+<p>预处理的核心工作就是对宏定义进行展开，展开的时候主要是进行字符串的直接替换，尤其是对于宏函数，不能把它真的当成函数进行处理。在理解了预处理器的工作原理之后，我们再来看下一个步骤，那就是词法分析。</p>
+<h2 id="_3">词法分析</h2>
+<p>词法分析的作用是把字符进行分组，将有意义关联的字符分到同一个组里，每个组就是一个词。词法分析主要由词法分析器来完成。</p>
+<p>例如，“double PI = 3.1415926”这句 C 语言的代码包含了多个字符，但人们在理解它的时候是先把它分成了这四个小组：（“double”，类型声明）、（“PI”，变量名）、（“=”，赋值操作符）、（“3.1415926”，浮点立即数）。</p>
+<p>而词法分析的过程和人的理解过程是一致的，也是把字符串进行同样的分组。在编译的过程中，这种分组有一个专门的名称叫做 Token。Token 这个术语在计算机学科中经常出现，在不同的场景中代表不同的含义。例如在网络中，它被翻译成“令牌”，在客户端和服务端通信的场景中，token 又被作为授权验证的加速手段。所以，为了避免歧义，我们这里把 Token 称为词法单元，就代表一个词的意思。</p>
+<p>词法分析的主要手段有两种，分别是正则表达式和<strong>有限状态自动机，简称为自动机</strong>。在这一讲中，我主要介绍自动机的方法，这是因为这种方法比较灵活，易于编写和理解。那什么是有限状态自动机呢？</p>
+<p>有限状态自动机由一个有限的内部状态集合和一组控制规则组成，这些规则是用来控制在当前状态下可以接受什么输入，以及接受这些输入以后应转向什么状态。例如下图中的有限状态机就包含了3个状态：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/fc/85/fcef0406f873a0702e7a01c121150a85.jpg?wh=2284x1040" /></p>
+<p>在这张图片中，状态 0 是自动机的初始状态，从状态 0 出发的箭头号标上了字母 a，表示这个状态可以接受字母 a，进入状态 1 。</p>
+<p>从状态 1 出发的箭头有两条，分别是指回自己的箭头 a，和指向状态 2 的箭头 b。也就是说，状态 1 接受字母 a，仍然回到了状态 1，这就意味着自动机可以在状态 1 的情况下，接受无穷多个字母 a。而箭头 b 则意味着状态 1 还可以接受字母 b，变成状态 2。</p>
+<p>状态 2 是比较特殊的一个状态，我们使用两个圈来绘制它，这代表它是一个终态。如果自动机进入到终态以后，就表示自动机完成了一次匹配。</p>
+<p>实际上，这个自动机代表了这样一种模式：“a+b”，其中的加号表示，至少包含一个a，并且以b结尾的字符串。例如“aab”、“ab”，都符合“a+b”这个模式。这里你可以自己练习一下，当输入是这两个字符的时候，自动机的状态是如何变化的。</p>
+<p>在理解了自动机的概念以后，我们再来看如何通过代码实现一个自动机。我们可以使用一个整型变量state来代表自动机的状态，然后根据输入，不断地改变这个变量。</p>
+<p>我先举一个处理变量名的例子。C语言中的变量名可以使用字母和下划线开头，后面可以跟着数字、字母和下划线。所以变量名的正则表达式可以表示为“[a-zA-Z_][a-zA-Z_0-9]*”，其中，中括号表示待匹配的字符范围。这个规则表达成自动机，可以用下面的图片表示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c7/bc/c7c5a929a888yy7496545106f8f38dbc.jpg?wh=2284x1111" /></p>
+<p>将这个自动机转换成代码是比较容易的，请你跟着下面的四个步骤来实现它。</p>
+<p>第一步，先创建代码所需要的数据结构：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>#include &lt;stdio.h&gt;
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>#include &lt;stdlib.h&gt;
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>#include &lt;string.h&gt;
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>enum State {
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    STATE_INIT,   /* 有限状态自动机的初始状态 */
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    STATE_VAR,    /* 接受字符的状态 */
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>};
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>enum TokenType {
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    TT_VAR,       /* 标示Token类型是变量 */
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    TT_INTEGER,   /* token类型是整数 */
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    TT_STRING,    /* token类型是字符串 */
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>};
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>union TokenValue {
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    char* _str;   /* 这里使用了一个union，即可以用于指向字符串，*/
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    int   _int;   /* 也可以是一个整数值。 */
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>};
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>struct Token {
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    enum TokenType _type;
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>    union TokenValue _value;
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>};
+</code></pre></div>
+<p>这段代码中，分别声明了代表自动机状态的枚举值State（第5行），代表token类型的枚举值TokenType（第10行），代表token的结构体Token（第16行至第21行）。这些类型的声明是比较直接的，我就不再多花篇幅一一介绍了，请你阅读代码进行理解，可以参考我加的注释。</p>
+<p>第二步，实现创建token和销毁token的函数：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>enum State state = STATE_INIT;
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>char* cur;
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>struct Token* create_token(enum TokenType tt, char* begin, char* cur) {
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    struct Token* nt = (struct Token*)malloc(sizeof(struct Token));
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    nt-&gt;_type = tt;
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    /* 这里只需要对变量进行处理，等号、分号等符号只需要类型就够了。 */
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    if (tt == TT_VAR) {
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>        nt-&gt;_value._str = (char*)malloc(cur - begin + 1);
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>        strncpy(nt-&gt;_value._str, begin, cur - begin);
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        nt-&gt;_value._str[cur-begin] = 0;
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    }
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    return nt;
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>}
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>void destroy_token(struct Token* t) {
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>    /* 释放空间是和malloc对应的，也在变量的情况下才需要。 */
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>    if (t-&gt;_type == TT_VAR) {
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>        free(t-&gt;_value._str);
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>        t-&gt;_value._str = NULL;
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>    }
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>    free(t);
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>}
+</code></pre></div>
+<p>这段代码先定义了两个全局变量，state 代表自动机的内部状态（第1行），指针 cur 代表词法分析器当前的输入字符（第2行）。然后又定义了两个辅助函数，分别用于创建token（第4行至第16行），以及销毁过期的token（第18行至26行）。这里需要注意，create_token中的malloc和destroy_token中的free是成对出现的，否则就容易造成内存泄漏。</p>
+<p>接下来的第三步，我们就可以实现next_token函数，用于从字符串中逐个分割单词，每调用一次next_token就会得到一个token：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>struct Token* next_token() {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    state = STATE_INIT;
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    char* begin = 0;
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    while (*cur) {
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>        char c = *cur;
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>        if (state == STATE_INIT) {
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>            /* 在初态下，遇到空白字符都可以跳过。 */
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>            if (c == &#39; &#39; || c == &#39;\n&#39; || c == &#39;\t&#39;) {
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>                cur++;
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>                continue;
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>            }
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>            /* 遇到字符则认为是一个变量的开始。 */
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>            if ((c &lt;= &#39;Z&#39; &amp;&amp; c &gt;= &#39;A&#39;) ||
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>                (c &lt;= &#39;z&#39; &amp;&amp; c &gt;= &#39;a&#39;) || c == &#39;_&#39;) {
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>                begin = cur;
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>                state = STATE_VAR;
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>                cur++;
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>            }
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>        }
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>        else if (state == STATE_VAR) {
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>            /* 当前状态机处于分析变量的阶段，所以可以继续接受字母和数字。 */
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>            if ((c &lt;= &#39;Z&#39; &amp;&amp; c &gt;= &#39;A&#39;) ||
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>                (c &lt;= &#39;z&#39; &amp;&amp; c &gt;= &#39;a&#39;) ||
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>                (c &lt;= &#39;9&#39; &amp;&amp; c &gt;= &#39;0&#39;) || c == &#39;_&#39;) {
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>                cur++;
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>            }
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>            else { /* 否则的话，就说明这个变量已经分析完了。 */
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>                return create_token(TT_VAR, begin, cur);
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>            }
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>        }
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>    }
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>    return NULL;
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>}
+</code></pre></div>
+<p>上述代码就是一个自动机的典型实现：一开始，自动机的状态是INIT（第2行）；在初始状态下，如果遇到空格，制表符和换行符就可以自动忽略（第8行至第12行）；如果遇到字母，自动机的状态就转换为STATE_VAR，代表自动机当前正在分析的是一个变量名（第14行至第20行）。</p>
+<p>如果自动机的状态是VAR，那么当前输入如果是字母或者数字，则状态不变，将字符直接移进即可（第23行至第28行）；否则就说明当前token已经结束了，可以把这个token直接返回出去了（第30行）。</p>
+<p>如果分析到了整个字符串的最后，那控制流就跳出了while循环，通过第35行返回空值。</p>
+<p>最后一步，我们在main函数中添加测试程序：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>int main() {
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    cur = &quot;int val1 = 1;&quot;;
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    struct Token* t = next_token();
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    printf(&quot;%d, %s\n&quot;, t-&gt;_type, t-&gt;_value._str);
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    destroy_token(t);
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    t = next_token();
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    printf(&quot;%d, %s\n&quot;, t-&gt;_type, t-&gt;_value._str);
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    destroy_token(t);
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    return 0;
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>}
+</code></pre></div>
+<p>编译并执行这个程序，我们就会发现程序正确地打印了前两个token的类型和值。</p>
+<p>通过这个例子，相信你已经掌握如何使用自动机进行词法分析了，这里我再总体概括一下：我们先根据词法规则写出token的正则表达式，然后将正则表达式手绘成由圆圈和箭头组成的图形化的状态机，最后将这个状态机翻译成代码即可。从自动机的图形到代码，这个翻译过程是直接而简明的。</p>
+<p>不过，当前的这个词法分析器只能处理变量名，而main函数中提供的例子，还要处理等号和整数，以及行尾的分号。接下来，我们就来一起完善它。</p>
+<h2 id="_4">完善词法分析器</h2>
+<p>首先，我们在程序中增加对等号的处理。在C语言中，自动机遇到一个等号时，还不知道它是一个赋值操作，还是一个判断相等的操作，而前者是一个等号，后者是两个等号。所以我们只能继续向后看一个字符，把这个过程转化为代码，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>struct Token* next_token() {
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    state = STATE_INIT;
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    char* begin = 0;
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    while (*cur) {
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        char c = *cur;
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>        if (state == STATE_INIT) {
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>            // ....
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>            else if (c == &#39;=&#39;) {
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>                /* 在初始状态下遇到等号，并不能立即确定这就是一个赋值操作，
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>                 * 还需要再往后看一个字符。如果后面的字符也是等号，说明这
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>                 * 是一个&quot;==&quot;操作符。如果不是等号，才说明当前的等号是赋值。*/
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>                begin = cur;
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>                state = STATE_EQU;
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>                cur++;
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>            }
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>        }
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>        //....
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>        else if (state == STATE_EQU) {
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>            if (c == &#39;=&#39;) { /* &quot;==&quot; 操作符，先不处理 */
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>            }
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>            else { /* 赋值操作符 */
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>                return create_token(TT_ASSIGN, begin, cur);
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>            }
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>        }
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>    }
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>    return NULL;
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>}
+</code></pre></div>
+<p>如果只有一个等号，我们就可以判定当前token是一个赋值。如果有两个等号，就是“==”操作符，这段程序中先不支持（第19、20行），所以这个分支，可以先不实现。这样一来，赋值操作就可以支持了。</p>
+<p>接下来，我们再来支持识别整数类型的token。作为练习，请你自己动手画出整数的自动机，然后再将它转换成代码。因为想鼓励你动手操作，我就不再给出中间步骤了，这里只把最终代码展示给你。你可以将这份代码与自己的代码进行对比，以检查自己的学习效果，也欢迎你在评论区分享自己的操作步骤和实践经验。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>#include &lt;stdio.h&gt;
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>#include &lt;stdlib.h&gt;
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>#include &lt;string.h&gt;
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>enum State {
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    STATE_INIT,  /* 初始状态 */
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    STATE_VAR,   /* 判定变量 */
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    STATE_EQU,   /* 判定等号 */
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    STATE_NUM,   /* 判定整数 */
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>};
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>enum TokenType {
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>    TT_VAR,      /* token类型为变量 */
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    TT_INTEGER,  /* 整数 */
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>    TT_STRING,   /* 字符串 */
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>    TT_ASSIGN,   /* 赋值操作符 */
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    TT_SEMICON,  /* 行尾分号 */
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>};
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>union TokenValue {
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>    char* _str;
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>    int   _int;
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>};
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>
+<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>struct Token {
+<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a>    enum TokenType _type;
+<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a>    union TokenValue _value;
+<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a>};
+<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a>
+<a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a>enum State state = STATE_INIT;
+<a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a>char* cur;
+<a id="__codelineno-10-32" name="__codelineno-10-32" href="#__codelineno-10-32"></a>
+<a id="__codelineno-10-33" name="__codelineno-10-33" href="#__codelineno-10-33"></a>/*
+<a id="__codelineno-10-34" name="__codelineno-10-34" href="#__codelineno-10-34"></a> * 创建一个 token。token类型由 tt 指定，它的值由 begin 到 cur 的这一段
+<a id="__codelineno-10-35" name="__codelineno-10-35" href="#__codelineno-10-35"></a> * 字符串决定。如果类型是整型，还要把它的值从字符串转换成整数。
+<a id="__codelineno-10-36" name="__codelineno-10-36" href="#__codelineno-10-36"></a> */
+<a id="__codelineno-10-37" name="__codelineno-10-37" href="#__codelineno-10-37"></a>struct Token* create_token(enum TokenType tt, char* begin, char* cur) {
+<a id="__codelineno-10-38" name="__codelineno-10-38" href="#__codelineno-10-38"></a>    struct Token* nt = (struct Token*)malloc(sizeof(struct Token));
+<a id="__codelineno-10-39" name="__codelineno-10-39" href="#__codelineno-10-39"></a>    nt-&gt;_type = tt;
+<a id="__codelineno-10-40" name="__codelineno-10-40" href="#__codelineno-10-40"></a>
+<a id="__codelineno-10-41" name="__codelineno-10-41" href="#__codelineno-10-41"></a>    if (tt == TT_VAR) {
+<a id="__codelineno-10-42" name="__codelineno-10-42" href="#__codelineno-10-42"></a>        nt-&gt;_value._str = (char*)malloc(cur - begin + 1);
+<a id="__codelineno-10-43" name="__codelineno-10-43" href="#__codelineno-10-43"></a>        strncpy(nt-&gt;_value._str, begin, cur - begin);
+<a id="__codelineno-10-44" name="__codelineno-10-44" href="#__codelineno-10-44"></a>        nt-&gt;_value._str[cur-begin] = 0;
+<a id="__codelineno-10-45" name="__codelineno-10-45" href="#__codelineno-10-45"></a>    }
+<a id="__codelineno-10-46" name="__codelineno-10-46" href="#__codelineno-10-46"></a>    else if (tt == TT_INTEGER) {
+<a id="__codelineno-10-47" name="__codelineno-10-47" href="#__codelineno-10-47"></a>        int sum = 0;
+<a id="__codelineno-10-48" name="__codelineno-10-48" href="#__codelineno-10-48"></a>        for (char* p = begin; p &lt; cur; p++) {
+<a id="__codelineno-10-49" name="__codelineno-10-49" href="#__codelineno-10-49"></a>            sum *= 10;
+<a id="__codelineno-10-50" name="__codelineno-10-50" href="#__codelineno-10-50"></a>            sum += (*p - &#39;0&#39;);
+<a id="__codelineno-10-51" name="__codelineno-10-51" href="#__codelineno-10-51"></a>        }
+<a id="__codelineno-10-52" name="__codelineno-10-52" href="#__codelineno-10-52"></a>        nt-&gt;_value._int = sum;
+<a id="__codelineno-10-53" name="__codelineno-10-53" href="#__codelineno-10-53"></a>    }
+<a id="__codelineno-10-54" name="__codelineno-10-54" href="#__codelineno-10-54"></a>
+<a id="__codelineno-10-55" name="__codelineno-10-55" href="#__codelineno-10-55"></a>    return nt;
+<a id="__codelineno-10-56" name="__codelineno-10-56" href="#__codelineno-10-56"></a>}
+<a id="__codelineno-10-57" name="__codelineno-10-57" href="#__codelineno-10-57"></a>
+<a id="__codelineno-10-58" name="__codelineno-10-58" href="#__codelineno-10-58"></a>void destroy_token(struct Token* t) {
+<a id="__codelineno-10-59" name="__codelineno-10-59" href="#__codelineno-10-59"></a>    if (t-&gt;_type == TT_VAR) {
+<a id="__codelineno-10-60" name="__codelineno-10-60" href="#__codelineno-10-60"></a>        free(t-&gt;_value._str);
+<a id="__codelineno-10-61" name="__codelineno-10-61" href="#__codelineno-10-61"></a>        t-&gt;_value._str = NULL;
+<a id="__codelineno-10-62" name="__codelineno-10-62" href="#__codelineno-10-62"></a>    }
+<a id="__codelineno-10-63" name="__codelineno-10-63" href="#__codelineno-10-63"></a>
+<a id="__codelineno-10-64" name="__codelineno-10-64" href="#__codelineno-10-64"></a>    free(t);
+<a id="__codelineno-10-65" name="__codelineno-10-65" href="#__codelineno-10-65"></a>}
+<a id="__codelineno-10-66" name="__codelineno-10-66" href="#__codelineno-10-66"></a>
+<a id="__codelineno-10-67" name="__codelineno-10-67" href="#__codelineno-10-67"></a>void log_token(struct Token* t) {
+<a id="__codelineno-10-68" name="__codelineno-10-68" href="#__codelineno-10-68"></a>    printf(&quot;%d&quot;, t-&gt;_type);
+<a id="__codelineno-10-69" name="__codelineno-10-69" href="#__codelineno-10-69"></a>
+<a id="__codelineno-10-70" name="__codelineno-10-70" href="#__codelineno-10-70"></a>    if (t-&gt;_type == TT_VAR) {
+<a id="__codelineno-10-71" name="__codelineno-10-71" href="#__codelineno-10-71"></a>        printf(&quot;, %s\n&quot;, t-&gt;_value._str);
+<a id="__codelineno-10-72" name="__codelineno-10-72" href="#__codelineno-10-72"></a>    }
+<a id="__codelineno-10-73" name="__codelineno-10-73" href="#__codelineno-10-73"></a>    else if (t-&gt;_type == TT_INTEGER) {
+<a id="__codelineno-10-74" name="__codelineno-10-74" href="#__codelineno-10-74"></a>        printf(&quot;, %d\n&quot;, t-&gt;_value._int);
+<a id="__codelineno-10-75" name="__codelineno-10-75" href="#__codelineno-10-75"></a>    }
+<a id="__codelineno-10-76" name="__codelineno-10-76" href="#__codelineno-10-76"></a>    else {
+<a id="__codelineno-10-77" name="__codelineno-10-77" href="#__codelineno-10-77"></a>        printf(&quot;\n&quot;);
+<a id="__codelineno-10-78" name="__codelineno-10-78" href="#__codelineno-10-78"></a>    }
+<a id="__codelineno-10-79" name="__codelineno-10-79" href="#__codelineno-10-79"></a>}
+<a id="__codelineno-10-80" name="__codelineno-10-80" href="#__codelineno-10-80"></a>
+<a id="__codelineno-10-81" name="__codelineno-10-81" href="#__codelineno-10-81"></a>char is_alpha(char c) {
+<a id="__codelineno-10-82" name="__codelineno-10-82" href="#__codelineno-10-82"></a>    return (c &lt;= &#39;Z&#39; &amp;&amp; c &gt;= &#39;A&#39;) || (c &lt;= &#39;z&#39; &amp;&amp; c &gt;= &#39;a&#39;) || c == &#39;_&#39;;
+<a id="__codelineno-10-83" name="__codelineno-10-83" href="#__codelineno-10-83"></a>}
+<a id="__codelineno-10-84" name="__codelineno-10-84" href="#__codelineno-10-84"></a>
+<a id="__codelineno-10-85" name="__codelineno-10-85" href="#__codelineno-10-85"></a>char is_num(char c) {
+<a id="__codelineno-10-86" name="__codelineno-10-86" href="#__codelineno-10-86"></a>    return c &lt;= &#39;9&#39; &amp;&amp; c &gt;= &#39;0&#39;;
+<a id="__codelineno-10-87" name="__codelineno-10-87" href="#__codelineno-10-87"></a>}
+<a id="__codelineno-10-88" name="__codelineno-10-88" href="#__codelineno-10-88"></a>
+<a id="__codelineno-10-89" name="__codelineno-10-89" href="#__codelineno-10-89"></a>struct Token* next_token() {
+<a id="__codelineno-10-90" name="__codelineno-10-90" href="#__codelineno-10-90"></a>    state = STATE_INIT;
+<a id="__codelineno-10-91" name="__codelineno-10-91" href="#__codelineno-10-91"></a>    char* begin = 0;
+<a id="__codelineno-10-92" name="__codelineno-10-92" href="#__codelineno-10-92"></a>
+<a id="__codelineno-10-93" name="__codelineno-10-93" href="#__codelineno-10-93"></a>    while (*cur) {
+<a id="__codelineno-10-94" name="__codelineno-10-94" href="#__codelineno-10-94"></a>        char c = *cur;
+<a id="__codelineno-10-95" name="__codelineno-10-95" href="#__codelineno-10-95"></a>        if (state == STATE_INIT) {
+<a id="__codelineno-10-96" name="__codelineno-10-96" href="#__codelineno-10-96"></a>            if (c == &#39; &#39; || c == &#39;\n&#39; || c == &#39;\t&#39;) {
+<a id="__codelineno-10-97" name="__codelineno-10-97" href="#__codelineno-10-97"></a>                cur++;
+<a id="__codelineno-10-98" name="__codelineno-10-98" href="#__codelineno-10-98"></a>                continue;
+<a id="__codelineno-10-99" name="__codelineno-10-99" href="#__codelineno-10-99"></a>            }
+<a id="__codelineno-10-100" name="__codelineno-10-100" href="#__codelineno-10-100"></a>
+<a id="__codelineno-10-101" name="__codelineno-10-101" href="#__codelineno-10-101"></a>            if (is_alpha(c)) { /* 初始状态下遇到字符 */
+<a id="__codelineno-10-102" name="__codelineno-10-102" href="#__codelineno-10-102"></a>                begin = cur;
+<a id="__codelineno-10-103" name="__codelineno-10-103" href="#__codelineno-10-103"></a>                state = STATE_VAR;
+<a id="__codelineno-10-104" name="__codelineno-10-104" href="#__codelineno-10-104"></a>                cur++;
+<a id="__codelineno-10-105" name="__codelineno-10-105" href="#__codelineno-10-105"></a>            }
+<a id="__codelineno-10-106" name="__codelineno-10-106" href="#__codelineno-10-106"></a>            else if (is_num(c)) { /* 初始状态下遇到数字 */
+<a id="__codelineno-10-107" name="__codelineno-10-107" href="#__codelineno-10-107"></a>                begin = cur;
+<a id="__codelineno-10-108" name="__codelineno-10-108" href="#__codelineno-10-108"></a>                state = STATE_NUM;
+<a id="__codelineno-10-109" name="__codelineno-10-109" href="#__codelineno-10-109"></a>                cur++;
+<a id="__codelineno-10-110" name="__codelineno-10-110" href="#__codelineno-10-110"></a>            }
+<a id="__codelineno-10-111" name="__codelineno-10-111" href="#__codelineno-10-111"></a>            else if (c == &#39;=&#39;) { /* 初始状态下遇到等号，需要向后再看一位 */
+<a id="__codelineno-10-112" name="__codelineno-10-112" href="#__codelineno-10-112"></a>                begin = cur;
+<a id="__codelineno-10-113" name="__codelineno-10-113" href="#__codelineno-10-113"></a>                state = STATE_EQU;
+<a id="__codelineno-10-114" name="__codelineno-10-114" href="#__codelineno-10-114"></a>                cur++;
+<a id="__codelineno-10-115" name="__codelineno-10-115" href="#__codelineno-10-115"></a>            }
+<a id="__codelineno-10-116" name="__codelineno-10-116" href="#__codelineno-10-116"></a>            else if (c == &#39;;&#39;) { /* 遇到分号则可以直接返回 */
+<a id="__codelineno-10-117" name="__codelineno-10-117" href="#__codelineno-10-117"></a>                begin = cur;
+<a id="__codelineno-10-118" name="__codelineno-10-118" href="#__codelineno-10-118"></a>                cur++;
+<a id="__codelineno-10-119" name="__codelineno-10-119" href="#__codelineno-10-119"></a>                return create_token(TT_SEMICON, begin, cur);
+<a id="__codelineno-10-120" name="__codelineno-10-120" href="#__codelineno-10-120"></a>            }
+<a id="__codelineno-10-121" name="__codelineno-10-121" href="#__codelineno-10-121"></a>        }
+<a id="__codelineno-10-122" name="__codelineno-10-122" href="#__codelineno-10-122"></a>        else if (state == STATE_VAR) {
+<a id="__codelineno-10-123" name="__codelineno-10-123" href="#__codelineno-10-123"></a>            if (is_alpha(c) || is_num(c)) {
+<a id="__codelineno-10-124" name="__codelineno-10-124" href="#__codelineno-10-124"></a>                cur++;
+<a id="__codelineno-10-125" name="__codelineno-10-125" href="#__codelineno-10-125"></a>            }
+<a id="__codelineno-10-126" name="__codelineno-10-126" href="#__codelineno-10-126"></a>            else {
+<a id="__codelineno-10-127" name="__codelineno-10-127" href="#__codelineno-10-127"></a>                return create_token(TT_VAR, begin, cur);
+<a id="__codelineno-10-128" name="__codelineno-10-128" href="#__codelineno-10-128"></a>            }
+<a id="__codelineno-10-129" name="__codelineno-10-129" href="#__codelineno-10-129"></a>        }
+<a id="__codelineno-10-130" name="__codelineno-10-130" href="#__codelineno-10-130"></a>        else if (state == STATE_NUM) {
+<a id="__codelineno-10-131" name="__codelineno-10-131" href="#__codelineno-10-131"></a>            if (is_num(c)) {
+<a id="__codelineno-10-132" name="__codelineno-10-132" href="#__codelineno-10-132"></a>                cur++;
+<a id="__codelineno-10-133" name="__codelineno-10-133" href="#__codelineno-10-133"></a>            }
+<a id="__codelineno-10-134" name="__codelineno-10-134" href="#__codelineno-10-134"></a>            else {
+<a id="__codelineno-10-135" name="__codelineno-10-135" href="#__codelineno-10-135"></a>                return create_token(TT_INTEGER, begin, cur);
+<a id="__codelineno-10-136" name="__codelineno-10-136" href="#__codelineno-10-136"></a>            }
+<a id="__codelineno-10-137" name="__codelineno-10-137" href="#__codelineno-10-137"></a>        }
+<a id="__codelineno-10-138" name="__codelineno-10-138" href="#__codelineno-10-138"></a>        else if (state == STATE_EQU) {
+<a id="__codelineno-10-139" name="__codelineno-10-139" href="#__codelineno-10-139"></a>            if (c == &#39;=&#39;) { /* &quot;==&quot; 操作符 */
+<a id="__codelineno-10-140" name="__codelineno-10-140" href="#__codelineno-10-140"></a>            }
+<a id="__codelineno-10-141" name="__codelineno-10-141" href="#__codelineno-10-141"></a>            else { /* 赋值操作符 */
+<a id="__codelineno-10-142" name="__codelineno-10-142" href="#__codelineno-10-142"></a>                return create_token(TT_ASSIGN, begin, cur);
+<a id="__codelineno-10-143" name="__codelineno-10-143" href="#__codelineno-10-143"></a>            }
+<a id="__codelineno-10-144" name="__codelineno-10-144" href="#__codelineno-10-144"></a>        }
+<a id="__codelineno-10-145" name="__codelineno-10-145" href="#__codelineno-10-145"></a>    }
+<a id="__codelineno-10-146" name="__codelineno-10-146" href="#__codelineno-10-146"></a>
+<a id="__codelineno-10-147" name="__codelineno-10-147" href="#__codelineno-10-147"></a>    return NULL;
+<a id="__codelineno-10-148" name="__codelineno-10-148" href="#__codelineno-10-148"></a>}
+<a id="__codelineno-10-149" name="__codelineno-10-149" href="#__codelineno-10-149"></a>
+<a id="__codelineno-10-150" name="__codelineno-10-150" href="#__codelineno-10-150"></a>int main() {
+<a id="__codelineno-10-151" name="__codelineno-10-151" href="#__codelineno-10-151"></a>    cur = &quot;int val1 = 12;&quot;;
+<a id="__codelineno-10-152" name="__codelineno-10-152" href="#__codelineno-10-152"></a>
+<a id="__codelineno-10-153" name="__codelineno-10-153" href="#__codelineno-10-153"></a>    struct Token* t = next_token();
+<a id="__codelineno-10-154" name="__codelineno-10-154" href="#__codelineno-10-154"></a>    while (t) {
+<a id="__codelineno-10-155" name="__codelineno-10-155" href="#__codelineno-10-155"></a>        log_token(t);
+<a id="__codelineno-10-156" name="__codelineno-10-156" href="#__codelineno-10-156"></a>        destroy_token(t);
+<a id="__codelineno-10-157" name="__codelineno-10-157" href="#__codelineno-10-157"></a>        t = next_token();
+<a id="__codelineno-10-158" name="__codelineno-10-158" href="#__codelineno-10-158"></a>    }
+<a id="__codelineno-10-159" name="__codelineno-10-159" href="#__codelineno-10-159"></a>
+<a id="__codelineno-10-160" name="__codelineno-10-160" href="#__codelineno-10-160"></a>    return 0;
+<a id="__codelineno-10-161" name="__codelineno-10-161" href="#__codelineno-10-161"></a>}
+</code></pre></div>
+<p>到这里，我们就对上述代码中第 151 行所展示的那一行 C 代码进行了正确的词法分析。那么下一节课，我们就把注意力放到文法分析上了。</p>
+<h2 id="_5">总结</h2>
+<p>在这节课里，我先介绍了C语言编译的基本过程。把一个C语言源文件编译成可执行程序，最基本的步骤包括编译和链接两部分。而编译又可以细分为预处理、词法分析、文法分析、语义分析、中间代码生成、平台无关优化、平台相关优化、指令选择与调度、寄存器分配等等。</p>
+<p>按照顺序，我在这节课里先展示了预处理和词法分析是如何工作的。</p>
+<p>预处理的核心任务是进行宏展开，而宏展开的主要手段就是使用字符串替换，这一点在宏函数定义展开时往往会带来意想不到的问题，所以在使用宏的时候一定要非常慎重。如果自己对宏展开的结果没有把握，我们可以通过“gcc -E”命令来查看预处理的结果。</p>
+<p>而词法分析任务主要是把输入的源代码字符串进行合理的分组，将字符串分割成一个个的token，每一种token有自己的类型和值。而词法分析的主要手段有正则表达式和有限状态自动机两种，这节课里我重点介绍了有限自动机的生成方式。</p>
+<p>有限自动机是一种包括了状态和转换规则的数据结构，它的状态可以根据输入而不断地发生变化。如果有一种输入序列可以使得自动机从初态转移到终状，我们就称这种输入被自动机所接受。而词法分析的过程，就是不断地令自动机接受输入字符串并且识别token的过程。</p>
+<p>最后，我通过一个实际的例子，向你展示了词法分析器如何正确地识别变量名和数字，以及赋值操作符、分号等等。</p>
+<p>这节课就到这里了，如果今天的内容让你有所收获，欢迎把它分享给你的朋友。下一次的加餐，我将继续讲解 C 语言程序编译的下一个步骤，文法分析。我们到时候见！</p>
 <div><strong>精选留言（1）</strong></div>
 <ul>
-<li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/MpF5Hia4Qwibdice7Qibk3iamUVZY3KglCymK67n5YEvZjX8GbFY1J2f1RGTbNibpnvicxYZGoJL7oicfbpBIfWTCe7Gbw/132" width="30px"><span>李慧文</span> 👍（4） 💬（0）<div>居然在这里见到了海纳老师，凡代码存在处，皆可学“海”课~太棒了~</div>2022-03-14</li><br/>
+<li><span>李慧文</span> 👍（4） 💬（0）<div>居然在这里见到了海纳老师，凡代码存在处，皆可学“海”课~太棒了~</div>2022-03-14</li><br/>
 </ul>
 
 

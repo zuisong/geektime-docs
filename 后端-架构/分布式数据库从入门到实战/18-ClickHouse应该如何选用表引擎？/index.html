@@ -6176,6 +6176,69 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#replacingmergetree" class="md-nav__link">
+    <span class="md-ellipsis">
+      ReplacingMergeTree
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summingmergetree" class="md-nav__link">
+    <span class="md-ellipsis">
+      SummingMergeTree
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aggregatingmergetree" class="md-nav__link">
+    <span class="md-ellipsis">
+      AggregatingMergeTree
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#collapsingmergetree" class="md-nav__link">
+    <span class="md-ellipsis">
+      CollapsingMergeTree
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versionedcollapsingmergetree" class="md-nav__link">
+    <span class="md-ellipsis">
+      VersionedCollapsingMergeTree
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12757,6 +12820,69 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#replacingmergetree" class="md-nav__link">
+    <span class="md-ellipsis">
+      ReplacingMergeTree
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summingmergetree" class="md-nav__link">
+    <span class="md-ellipsis">
+      SummingMergeTree
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aggregatingmergetree" class="md-nav__link">
+    <span class="md-ellipsis">
+      AggregatingMergeTree
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#collapsingmergetree" class="md-nav__link">
+    <span class="md-ellipsis">
+      CollapsingMergeTree
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versionedcollapsingmergetree" class="md-nav__link">
+    <span class="md-ellipsis">
+      VersionedCollapsingMergeTree
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12803,6 +12929,253 @@
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>PRIMARY<span class="w"> </span>KEY<span class="w"> </span>unique_user_id
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>ORDER<span class="w"> </span>BY<span class="w"> </span>unique_user_id<span class="p">;</span>
 </code></pre></div>
+<p>你可以看到，建表DDL相比关系型数据库来说，多了一个表引擎的声明以及指定表的分区键、主键、排序键的语句。</p>
+<p>主键由关键字PRIMARY KEY指定，如果没有使用PRIMARY KEY显式指定的主键，ClickHouse 会使用排序键ORDER BY指定的列作为主键。</p>
+<p>需要注意的是，如果同时指定了主键与排序键，那么排序键必须包含主键的所有列，比如主键为（a,b），排序键就必须为(a,b,**)。</p>
+<p>和关系型数据库的主键具备唯一性不同，<strong>ClickHouse可以存在相同主键的数据行。</strong>这也是ClickHouse为了性能而做出的考量。</p>
+<p>因为强制执行主键唯一性约束会增加数据插入的复杂性和额外的性能开销。所以，你在数据模型设计或者查询操作中需要进行适当地处理，确保数据的准确性和完整性。比如增加自增ID字段，查询的时候使用主键去重等。</p>
+<p>MergeTree表引擎在数据写入的时候，会以数据片段的形式写入磁盘。比如一个批量insert的数据形成一个数据片段，数据片段写入后不可修改。类似LSM树，ClickHouse会在后台定期合并这些数据片段，避免片段过多，影响性能。</p>
+<p>ClickHouse会为主键创建一个稀疏索引来加快数据检索，稀疏索引会选择性地记录某些记录的索引信息，从而减少索引的大小，提高查询效率。</p>
+<p>那与稀疏索引相对应的是什么呢？就是稠密索引。传统关系型数据库一般使用稠密索引，也就是每一行数据，都会创建一条对应的索引记录。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/e2/39/e2b8ac425e245fe512bf4fdb334a4039.png?wh=1478x632" /></p>
+<p>显然，稀疏索引更适合批量数据的处理与查询，而稠密索引更适合单行或者少数行数据的查询。</p>
+<p>ClickHouse的稀疏索引默认每8192行数据创建一个索引标记，你也可以通过建表参数index_granularity修改这个默认值。</p>
+<h2 id="replacingmergetree">ReplacingMergeTree</h2>
+<p>前面提到MergeTree的主键没有唯一性约束。所以即使多行数据的主键相同，它们还是能够正常写入。</p>
+<p>不过，在我们CDP的数据模型中，用户表cdp_user的unique_user_id需要是唯一的，该怎么办呢？这时候就需要合并树家族的ReplacingMergeTree引擎出马了。</p>
+<p>ReplacingMergeTree建表语句与MergeTree相同，只需要替换掉表引擎就好，不过需要指定一个列作为版本列。</p>
+<p>当排序键相同的数据行插入时，它会删除重复行，保留版本列值最大的一行。如果没有指定版本列，则会保留最后插入的一行。</p>
+<p>通常来说，ReplacingMergeTree删除重复行，是因为两种情况。</p>
+<ul>
+<li>一起批量插入的数据，属于同一个数据片段的数据，所以会在插入时候按排序键去重。</li>
+<li>分批插入的数据，属于不同的数据片段，需要依托后台数据片段合并的时候才进行。</li>
+</ul>
+<p>所以即使你用了ReplacingMergeTree表引擎，在查询表数据的时候，仍然可能会查询到重复数据，不过只要使用final关键字去重即可。或者你也可以使用如下命令强制合并分区，这样数据片段就会合并。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>optimize<span class="w"> </span>TABLE<span class="w"> </span>cdp_user_metrics<span class="w"> </span>FINAL<span class="p">;</span>
+</code></pre></div>
+<p>以我们的cdp_user为例，下面是一个使用last_login_time作为版本列的建表语句。分两次INSERT插入数据，也就是将数据行拆分成了两个数据片段。你可以观察一下它删除重复行的表现。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>drop<span class="w"> </span>table<span class="w"> </span>cdp_user_p_rmt<span class="p">;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>CREATE<span class="w"> </span>TABLE<span class="w"> </span>cdp_user_p_rmt<span class="w"> </span><span class="o">(</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span>unique_user_id<span class="w"> </span>UInt64<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;用户全局唯一ID，ONE-ID&#39;</span>,
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span>name<span class="w"> </span>String<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;用户姓名&#39;</span>,
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span>nickname<span class="w"> </span>String<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;用户昵称&#39;</span>,
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span>gender<span class="w"> </span>Int8<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;性别：1-男；2-女；3-未知&#39;</span>,
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span>birthday<span class="w"> </span>String<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;用户生日：yyyyMMdd&#39;</span>,
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span>user_level<span class="w"> </span>Int8<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;用户等级：1-5&#39;</span>,
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span>register_date<span class="w"> </span>DateTime64<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;注册日期&#39;</span>,
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span>last_login_time<span class="w"> </span>DateTime64<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;最后一次登录时间&#39;</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="o">)</span><span class="w"> </span><span class="nv">ENGINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ReplacingMergeTree<span class="o">(</span>last_login_time<span class="o">)</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>PARTITION<span class="w"> </span>BY<span class="w"> </span>register_date
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>PRIMARY<span class="w"> </span>KEY<span class="w"> </span>unique_user_id
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>ORDER<span class="w"> </span>BY<span class="w"> </span>unique_user_id<span class="p">;</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>INSERT<span class="w"> </span>INTO<span class="w"> </span>cdp_user_p_rmt<span class="w"> </span><span class="o">(</span>unique_user_id,<span class="w"> </span>name,<span class="w"> </span>nickname,<span class="w"> </span>gender,<span class="w"> </span>birthday,<span class="w"> </span>user_level,<span class="w"> </span>register_date,<span class="w"> </span>last_login_time<span class="o">)</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>VALUES<span class="w"> </span><span class="o">(</span><span class="m">1</span>,<span class="w"> </span><span class="s1">&#39;Alice&#39;</span>,<span class="w"> </span><span class="s1">&#39;Ali&#39;</span>,<span class="w"> </span><span class="m">2</span>,<span class="w"> </span><span class="s1">&#39;19900101&#39;</span>,<span class="w"> </span><span class="m">3</span>,<span class="w"> </span><span class="s1">&#39;2022-09-15 10:30:00&#39;</span>,<span class="w"> </span><span class="s1">&#39;2024-09-15 10:33:00&#39;</span><span class="o">)</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>,<span class="w"> </span><span class="o">(</span><span class="m">2</span>,<span class="w"> </span><span class="s1">&#39;Bob&#39;</span>,<span class="w"> </span><span class="s1">&#39;Bob&#39;</span>,<span class="w"> </span><span class="m">1</span>,<span class="w"> </span><span class="s1">&#39;19900101&#39;</span>,<span class="w"> </span><span class="m">3</span>,<span class="w"> </span><span class="s1">&#39;2023-10-15 10:30:00&#39;</span>,<span class="w"> </span><span class="s1">&#39;2024-09-15 10:33:00&#39;</span><span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>INSERT<span class="w"> </span>INTO<span class="w"> </span>cdp_user_p_rmt<span class="w"> </span><span class="o">(</span>unique_user_id,<span class="w"> </span>name,<span class="w"> </span>nickname,<span class="w"> </span>gender,<span class="w"> </span>birthday,<span class="w"> </span>user_level,<span class="w"> </span>register_date,<span class="w"> </span>last_login_time<span class="o">)</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>VALUES<span class="w"> </span><span class="o">(</span><span class="m">1</span>,<span class="w"> </span><span class="s1">&#39;Alice&#39;</span>,<span class="w"> </span><span class="s1">&#39;Ali&#39;</span>,<span class="w"> </span><span class="m">2</span>,<span class="w"> </span><span class="s1">&#39;19900101&#39;</span>,<span class="w"> </span><span class="m">3</span>,<span class="w"> </span><span class="s1">&#39;2023-09-15 10:30:00&#39;</span>,<span class="w"> </span><span class="s1">&#39;2024-09-16 10:33:00&#39;</span><span class="o">)</span>,
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w">       </span><span class="o">(</span><span class="m">3</span>,<span class="w"> </span><span class="s1">&#39;Tracy&#39;</span>,<span class="w"> </span><span class="s1">&#39;MT&#39;</span>,<span class="w"> </span><span class="m">2</span>,<span class="w"> </span><span class="s1">&#39;19891101&#39;</span>,<span class="w"> </span><span class="m">4</span>,<span class="w"> </span><span class="s1">&#39;2023-09-15 10:30:00&#39;</span>,<span class="w"> </span><span class="s1">&#39;2024-09-16 10:33:00&#39;</span><span class="o">)</span>,
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="w">       </span><span class="o">(</span><span class="m">3</span>,<span class="w"> </span><span class="s1">&#39;Tracy&#39;</span>,<span class="w"> </span><span class="s1">&#39;MT&#39;</span>,<span class="w"> </span><span class="m">2</span>,<span class="w"> </span><span class="s1">&#39;19891101&#39;</span>,<span class="w"> </span><span class="m">4</span>,<span class="w"> </span><span class="s1">&#39;2023-09-15 10:30:00&#39;</span>,<span class="w"> </span><span class="s1">&#39;2024-09-17 10:33:00&#39;</span><span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="k">select</span><span class="w"> </span>*<span class="w"> </span>from<span class="w"> </span>cdp_user_p_rmt<span class="p">;</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="k">select</span><span class="w"> </span>*<span class="w"> </span>from<span class="w"> </span>cdp_user_p_rmt<span class="w"> </span>final<span class="p">;</span>
+</code></pre></div>
+<p>最后两条SELECT语句的查询结果如下。可以看到使用final关键字后，unique_user_id=1的两条记录，只保留了最后插入的一条。</p>
+<p>注意，unique_user_id=3的两行数据，由于是同一个INSERT语句插入，也就是属于同一个数据片段，所以插入时就已经去重。虽然插入了两条相同记录，但是查询时，不用final关键字就能去重。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/a7/a1/a70d66e5fee71fc897e88171ca9600a1.png?wh=1367x834" /></p>
+<p>这里提一下，有很多资料说，ReplacingMergeTree是以数据分区为单位删除重复数据。当分区合并时，同一分区内的重复数据会被删除；不同分区之间的重复数据不会被删除。</p>
+<p>事实上， 我在ClickHouse 24.3.2.23 这个版本的使用过程中，发现不同分区的重复数据也会被删除，其实在我上面的测试SQL中，插入的第1条与第3条数据就属于排序键相同，分区不同，最终结果仍然可以依赖final关键字去重。</p>
+<h2 id="summingmergetree">SummingMergeTree</h2>
+<p>回到我们CDP需求里面，用户指标属性表cdp_user_metrics存储的是一些消费总金额、30天总登录次数等统计值，在StarRocks里面我们使用聚合模型来存储以节省空间，加快汇聚查询。</p>
+<p>在ClickHouse里面同样有两种聚合模型的表引擎：SummingMergeTree和AggregatingMergeTree。</p>
+<p>SummingMergeTree 的建表语句同样与MergeTree相同，只需要替换掉表引擎，不过可以指定多个汇聚列。SummingMergeTree会按排序键分组，将重复行的数值字段做汇总计算。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">ENGINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>SummingMergeTree<span class="o">((</span>sum_pay,sum_pay_num<span class="o">))</span>
+</code></pre></div>
+<p>如果没有指定汇聚列，ClickHouse 会把所有不在排序键中的数值类型的列都进行汇总。</p>
+<p>与ReplacingMergeTree删除重复行的逻辑一样，SummingMergeTree会汇总同一个数据片段的重复行。不同数据片段的重复行，也需要依托后台数据片段合并的时候才进行。</p>
+<p>好，我们总结一下所有汇总规则。</p>
+<ul>
+<li>数据行按照排序键对数值类型列做汇总。</li>
+<li>如果用于汇总的所有列中的值均为0，则该行会被删除。</li>
+<li>如果列不在排序键中，并且无法被汇总，查询结果会在现有值任选一行。</li>
+<li>同一个数据片段，也就是一起插入的数据，会直接汇总。</li>
+<li>不同数据片段的数据，汇总时间不可控，所以查询时，仍然需要使用sum与group by。</li>
+</ul>
+<p>同样，我也准备了一段测试脚本，你可以用来观察SummingMergeTree的表现。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>drop<span class="w"> </span>table<span class="w"> </span>cdp_user_metrics<span class="p">;</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>CREATE<span class="w"> </span>TABLE<span class="w"> </span>cdp_user_metrics
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="o">(</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span>unique_user_id<span class="w"> </span>UInt64<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;用户全局唯一ID，ONE-ID&#39;</span>,
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span>sum_pay<span class="w">        </span>DECIMAL<span class="o">(</span><span class="m">20</span>,<span class="w"> </span><span class="m">10</span><span class="o">)</span><span class="w">  </span>COMMENT<span class="w"> </span><span class="s1">&#39;总计消费金额&#39;</span>,
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span>sum_pay_num<span class="w">    </span>UInt16<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;总计消费次数&#39;</span>,
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span>sum_30d_login<span class="w">  </span>UInt16<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;30天登录次数&#39;</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="o">)</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="nv">ENGINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>SummingMergeTree<span class="o">()</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>ORDER<span class="w"> </span>BY<span class="w"> </span>unique_user_id<span class="p">;</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>INSERT<span class="w"> </span>INTO<span class="w"> </span>cdp_user_metrics<span class="w"> </span>Values<span class="o">(</span><span class="m">1</span>,19.8,1,1<span class="o">)</span>,<span class="o">(</span><span class="m">1</span>,10,1,1<span class="o">)</span>,<span class="o">(</span><span class="m">2</span>,9.9,1,2<span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="k">select</span><span class="w"> </span>*<span class="w"> </span>from<span class="w"> </span>cdp_user_metrics<span class="p">;</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>INSERT<span class="w"> </span>INTO<span class="w"> </span>cdp_user_metrics<span class="w"> </span>Values<span class="o">(</span><span class="m">1</span>,20,1,1<span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="k">select</span><span class="w"> </span>*<span class="w"> </span>from<span class="w"> </span>cdp_user_metrics<span class="p">;</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="k">select</span><span class="w"> </span>unique_user_id,sum<span class="o">(</span>sum_pay<span class="o">)</span>,sum<span class="o">(</span>sum_pay_num<span class="o">)</span>,sum<span class="o">(</span>sum_30d_login<span class="o">)</span><span class="w"> </span>from<span class="w"> </span>cdp_user_metrics<span class="w"> </span>group<span class="w"> </span>by<span class="w"> </span>unique_user_id<span class="p">;</span>
+</code></pre></div>
+<p>最后两条SELECT语句的输出如下。</p>
+<p>你可以看到，不同数据片段的数据其实也没有被合并，需要最后手动 GROUP BY 才被合并。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/d4/17/d465f7985feb9bc287912690c03a6d17.png?wh=1598x743" /></p>
+<h2 id="aggregatingmergetree">AggregatingMergeTree</h2>
+<p>AggregatingMergeTree可以说是SummingMergeTree的升级版，它支持sum之外的其他聚集函数，但是它的定义与MergeTree家族的其他表都不一样。</p>
+<p>这里有个示例。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>DROP<span class="w"> </span>TABLE<span class="w"> </span>cdp_user_metrics<span class="p">;</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>CREATE<span class="w"> </span>TABLE<span class="w"> </span>cdp_user_metrics
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="o">(</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span>unique_user_id<span class="w"> </span>UInt64<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;用户全局唯一ID，ONE-ID&#39;</span>,
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span>sum_pay<span class="w">        </span>DECIMAL<span class="o">(</span><span class="m">20</span>,<span class="w"> </span><span class="m">10</span><span class="o">)</span><span class="w">  </span>COMMENT<span class="w"> </span><span class="s1">&#39;总计消费金额&#39;</span>,
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span>sum_pay_num<span class="w">    </span>AggregateFunction<span class="o">(</span>sum,<span class="w"> </span>UInt16<span class="o">)</span><span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;总计消费次数&#39;</span>,
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span>sum_30d_login<span class="w">  </span>AggregateFunction<span class="o">(</span>quantiles<span class="o">(</span><span class="m">0</span>.5,<span class="w"> </span><span class="m">0</span>.9<span class="o">)</span>,<span class="w"> </span>UInt16<span class="o">)</span><span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;30天登录次数&#39;</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="o">)</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="nv">ENGINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>AggregatingMergeTree<span class="o">()</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>ORDER<span class="w"> </span>BY<span class="w"> </span>unique_user_id<span class="p">;</span>
+</code></pre></div>
+<p>你可以看到，AggregatingMergeTree没有任何额外的设置参数。但是可以为每个列，单独使用一个用AggregateFunction包装的聚合函数。</p>
+<p>比如示例中，我们定义sum_pay_num为一个sum的聚合函数，sum_30d_login为一个计算列数据5分位与9分位值的聚合函数。</p>
+<p>AggregateFunction是ClickHouse提供的一种特殊的数据类型，它能够以二进制的形式存储中间状态结果。它的使用也比较特殊。</p>
+<p>在写入数据时，需要使用<em>State函数；而在查询数据时，则需要使用相应的</em>Merge函数。其中，<code>*</code> 表示定义时使用的聚合函数。</p>
+<p>比如我们前面定义的表cdp_user_metrics数据写入时，就需要用到与sum、quantiles对应的sumState、quantilesState函数，并使用INSERT SELECT语法。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>INSERT<span class="w"> </span>INTO<span class="w"> </span>cdp_user_metrics
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>SELECT
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="m">1</span>,<span class="w"> </span><span class="m">100</span>.50,<span class="w"> </span>sumState<span class="o">(</span>toUInt16<span class="o">(</span><span class="m">1</span><span class="o">))</span>,<span class="w"> </span>quantilesState<span class="o">(</span><span class="m">0</span>.5,<span class="w"> </span><span class="m">0</span>.9<span class="o">)(</span>toUInt16<span class="o">(</span><span class="m">4</span><span class="o">))</span><span class="p">;</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>INSERT<span class="w"> </span>INTO<span class="w"> </span>cdp_user_metrics
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>SELECT
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="m">1</span>,<span class="w"> </span><span class="m">101</span>,<span class="w"> </span>sumState<span class="o">(</span>toUInt16<span class="o">(</span><span class="m">2</span><span class="o">))</span>,<span class="w"> </span>quantilesState<span class="o">(</span><span class="m">0</span>.5,<span class="w"> </span><span class="m">0</span>.9<span class="o">)(</span>toUInt16<span class="o">(</span><span class="m">5</span><span class="o">))</span><span class="p">;</span>
+</code></pre></div>
+<p>查询的时候，同样需要用到与sum、quantiles对应的sumMerge、quantilesMerge函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>SELECT<span class="w"> </span>unique_user_id,sumMerge<span class="o">(</span>sum_pay_num<span class="o">)</span>,quantilesMerge<span class="o">(</span><span class="m">0</span>.5,<span class="w"> </span><span class="m">0</span>.9<span class="o">)(</span>sum_30d_login<span class="o">)</span><span class="w"> </span>FROM<span class="w"> </span>cdp_user_metrics<span class="w"> </span>group<span class="w"> </span>by<span class="w"> </span>unique_user_id<span class="p">;</span>
+</code></pre></div>
+<p>查询结果如图所示。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/10/7b/10d457451f5f23yy9f36e6b0de39d47b.png?wh=947x79" /></p>
+<p>看到这里，你是不是会觉得AggregatingMergeTree使用起来太复杂了，数据插入与查询都感觉不正常了？</p>
+<p>事实上，确实麻烦。不过AggregatingMergeTree更多的使用场景是在物化视图中，将它作为物化视图的表引擎。比如我们可以以cdp_user_event表为底表，将cdp_user_metrics作为一个基于AggregatingMergeTree表引擎的物化视图。</p>
+<p>假设cdp_user_event表定义为一个MergeTree引擎表，建表语句如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>drop<span class="w"> </span>table<span class="w"> </span>cdp_user_event<span class="p">;</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>CREATE<span class="w"> </span>TABLE<span class="w"> </span>cdp_user_event<span class="w"> </span><span class="o">(</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span>event_time<span class="w"> </span>DateTime64<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;事件发生时间&#39;</span>,
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">    </span>event_type<span class="w"> </span>String<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;事件类型，pay,add_shop_cat,browse,recharge等&#39;</span>,
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">    </span>unique_user_id<span class="w"> </span>UInt64<span class="w"> </span>NOT<span class="w"> </span>NULL<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;用户全局唯一ID，ONE-ID&#39;</span>,
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">    </span>order_no<span class="w"> </span>String<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;订单唯一编号&#39;</span>,
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">    </span>page_id<span class="w"> </span>UInt64<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;浏览事件页面ID&#39;</span>,
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">    </span>item_id<span class="w"> </span>Array<span class="o">(</span>UInt64<span class="o">)</span><span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;浏览、加购、下单事件中商品ID&#39;</span>,
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">    </span>total_amount<span class="w"> </span>DECIMAL<span class="o">(</span><span class="m">18</span>,<span class="w"> </span><span class="m">2</span><span class="o">)</span><span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;订单金额&#39;</span>,
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">    </span>device_type<span class="w"> </span>String<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;设备类型&#39;</span>,
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">    </span>event_param<span class="w"> </span>String<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;事件相关参数，比如购买事件商品ID、支付金额等&#39;</span>,
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="w">    </span>location<span class="w"> </span>VARCHAR<span class="o">(</span><span class="m">100</span><span class="o">)</span><span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;发生地点，如城市、门店等&#39;</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="o">)</span><span class="w"> </span><span class="nv">ENGINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>MergeTree<span class="o">()</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>PARTITION<span class="w"> </span>BY<span class="w"> </span>date_trunc<span class="o">(</span><span class="s1">&#39;day&#39;</span>,<span class="w"> </span>event_time<span class="o">)</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>ORDER<span class="w"> </span>BY<span class="w"> </span><span class="o">(</span>event_time,event_type<span class="o">)</span><span class="p">;</span>
+</code></pre></div>
+<p>那么可以用如下语句建立一个叫做cdp_user_metrics_mv的物化视图。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>CREATE<span class="w"> </span>MATERIALIZED<span class="w"> </span>VIEW<span class="w"> </span>cdp_user_metrics_mv
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">            </span><span class="nv">ENGINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>AggregatingMergeTree<span class="o">()</span><span class="w"> </span>PARTITION<span class="w"> </span>BY<span class="w"> </span><span class="o">(</span>unique_user_id<span class="o">)</span><span class="w"> </span>ORDER<span class="w"> </span>BY<span class="w"> </span><span class="o">(</span>unique_user_id<span class="o">)</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>AS
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>SELECT<span class="w"> </span>a.unique_user_id,
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">       </span>sumState<span class="o">(</span>a.sum_pay<span class="o">)</span><span class="w"> </span>as<span class="w"> </span>sum_pay,
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">       </span>sumState<span class="o">(</span>a.sum_pay_num<span class="o">)</span><span class="w"> </span>as<span class="w"> </span>sum_pay_num,
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">       </span>quantilesState<span class="o">(</span><span class="m">0</span>.5,<span class="w"> </span><span class="m">0</span>.9<span class="o">)(</span>a.sum_30d_login<span class="o">)</span><span class="w"> </span>as<span class="w"> </span>sum_30d_login
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>from<span class="w"> </span><span class="o">(</span>SELECT<span class="w"> </span>unique_user_id<span class="w"> </span>as<span class="w"> </span>unique_user_id,
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">             </span>sum<span class="o">(</span>total_amount<span class="o">)</span><span class="w">                                                              </span>AS<span class="w"> </span>sum_pay,
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">             </span>countIf<span class="o">(</span><span class="nv">event_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;pay&#39;</span><span class="o">)</span><span class="w">                                                    </span>AS<span class="w"> </span>sum_pay_num,
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">             </span>countIf<span class="o">(</span><span class="nv">event_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;login&#39;</span><span class="w"> </span>AND<span class="w"> </span>event_time<span class="w"> </span>&gt;<span class="o">=</span><span class="w"> </span>toDate<span class="o">(</span>toDateTime<span class="o">(</span>now<span class="o">())</span><span class="w"> </span>-<span class="w"> </span><span class="m">30</span><span class="o">))</span><span class="w"> </span>AS<span class="w"> </span>sum_30d_login
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">      </span>FROM<span class="w"> </span>cdp_user_event
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w">      </span>GROUP<span class="w"> </span>BY<span class="w"> </span>unique_user_id<span class="o">)</span><span class="w"> </span>a
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>group<span class="w"> </span>by<span class="w"> </span>a.unique_user_id<span class="p">;</span>
+</code></pre></div>
+<p>当你插入数据到底表cdp_user_event后，物化视图的数据即会实时刷新，这样可以大大提升聚合查询的性能。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>INSERT<span class="w"> </span>INTO<span class="w"> </span>cdp_user_event
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>VALUES
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="o">(</span><span class="s1">&#39;2024-10-01 08:00:00&#39;</span>,<span class="w"> </span><span class="s1">&#39;pay&#39;</span>,<span class="w"> </span><span class="m">1</span>,<span class="w"> </span><span class="s1">&#39;order1&#39;</span>,<span class="w"> </span><span class="m">1001</span>,<span class="w"> </span><span class="o">[</span><span class="m">101</span>,<span class="w"> </span><span class="m">102</span>,<span class="w"> </span><span class="m">103</span><span class="o">]</span>,<span class="w"> </span><span class="m">50</span>.25,<span class="w"> </span><span class="s1">&#39;mobile&#39;</span>,<span class="w"> </span><span class="s1">&#39;payment_id_123&#39;</span>,<span class="w"> </span><span class="s1">&#39;Shanghai&#39;</span><span class="o">)</span>,
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="o">(</span><span class="s1">&#39;2024-10-02 10:30:00&#39;</span>,<span class="w"> </span><span class="s1">&#39;login&#39;</span>,<span class="w"> </span><span class="m">2</span>,<span class="w"> </span>NULL,<span class="w"> </span><span class="m">2002</span>,<span class="w"> </span><span class="o">[</span><span class="m">201</span>,<span class="w"> </span><span class="m">202</span><span class="o">]</span>,<span class="w"> </span>NULL,<span class="w"> </span><span class="s1">&#39;desktop&#39;</span>,<span class="w"> </span>NULL,<span class="w"> </span><span class="s1">&#39;Beijing&#39;</span><span class="o">)</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="o">(</span><span class="s1">&#39;2024-10-03 10:30:00&#39;</span>,<span class="w"> </span><span class="s1">&#39;login&#39;</span>,<span class="w"> </span><span class="m">2</span>,<span class="w"> </span>NULL,<span class="w"> </span><span class="m">2002</span>,<span class="w"> </span><span class="o">[</span><span class="m">201</span>,<span class="w"> </span><span class="m">202</span><span class="o">]</span>,<span class="w"> </span>NULL,<span class="w"> </span><span class="s1">&#39;desktop&#39;</span>,<span class="w"> </span>NULL,<span class="w"> </span><span class="s1">&#39;Beijing&#39;</span><span class="o">)</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="o">(</span><span class="s1">&#39;2024-10-04 10:30:00&#39;</span>,<span class="w"> </span><span class="s1">&#39;pay&#39;</span>,<span class="w"> </span><span class="m">2</span>,<span class="w"> </span><span class="s1">&#39;order2&#39;</span>,<span class="w"> </span><span class="m">2002</span>,<span class="w"> </span><span class="o">[</span><span class="m">201</span>,<span class="w"> </span><span class="m">202</span><span class="o">]</span>,<span class="w"> </span><span class="m">100</span>,<span class="s1">&#39;desktop&#39;</span>,<span class="w"> </span>NULL,<span class="w"> </span><span class="s1">&#39;Beijing&#39;</span><span class="o">)</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="o">(</span><span class="s1">&#39;2024-10-04 10:30:00&#39;</span>,<span class="w"> </span><span class="s1">&#39;pay&#39;</span>,<span class="w"> </span><span class="m">2</span>,<span class="w"> </span><span class="s1">&#39;order3&#39;</span>,<span class="w"> </span><span class="m">2002</span>,<span class="w"> </span><span class="o">[</span><span class="m">201</span>,<span class="w"> </span><span class="m">202</span><span class="o">]</span>,<span class="w"> </span><span class="m">50</span>,<span class="s1">&#39;desktop&#39;</span>,<span class="w"> </span>NULL,<span class="w"> </span><span class="s1">&#39;Beijing&#39;</span><span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>SELECT<span class="w"> </span>unique_user_id,sumMerge<span class="o">(</span>sum_pay<span class="o">)</span>,sumMerge<span class="o">(</span>sum_pay_num<span class="o">)</span>,quantilesMerge<span class="o">(</span><span class="m">0</span>.5,<span class="w"> </span><span class="m">0</span>.9<span class="o">)(</span>sum_30d_login<span class="o">)</span><span class="w"> </span>FROM<span class="w"> </span>cdp_user_metrics_mv<span class="w"> </span>group<span class="w"> </span>by<span class="w"> </span>unique_user_id<span class="p">;</span>
+</code></pre></div>
+<p>下图是最后一个SELECT的结果，注意到查询结果里面5分位与9分位的值都相同，因为同一个unique_user_id只有1个30天登录次数的值，所以5分位与9分位都取这个值了。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/1b/ac/1b6a8bd78aa0ce5c6e5c2f298a3651ac.png?wh=1189x132" /></p>
+<p>SummingMergeTree的汇总规则基本也同样适合AggregatingMergeTree，这里我也总结一下AggregatingMergeTree的汇总规则与注意点。</p>
+<ul>
+<li>数据行同样按照排序键对数值类型列做汇总。</li>
+<li>同一个数据片段，也就是一起插入的数据，会直接汇总。</li>
+<li>不同数据片段的数据，汇总时间不可控，所以查询时，仍然需要使用sum与group by。</li>
+<li>在聚合数据时，同一数据片段内，相同聚合Key的多行数据会合并成一行。对于非主键、非AggregateFunetion类型字段，则会使用第一行数据的取值。</li>
+<li>AggregateFunetion类型的字段会使用二进制存储，在写入数据时，需要调用State函数；而在查询数据时，则需要调用相应的Merge函数。</li>
+<li>AggregatingMergeTree通常作为物化视图的表引擎，与MergeTree引擎底表配合使用提升聚合查询性能。</li>
+</ul>
+<h2 id="collapsingmergetree">CollapsingMergeTree</h2>
+<p>前面提到过ClickHouse最初是设计用来存储用户的埋点数据的。比如记录用户在某个站点访问的页面数以及他们在那里停留的时间，统计停留时间的时候，需要前端埋点不停地上报当前已经浏览的时长。这个时候就需要对旧的记录不停地更新。</p>
+<p>我们知道，ClickHouse MergeTree参考了LSM的设计，数据写入后就不可变，而且ClickHouse的稀疏索引，导致查找单行或者少数行数据，频繁更新的成本较高。所以ClickHouse采取了一种以增代删、以增代更新的思路，这就是CollapsingMergeTree的作用。</p>
+<p>它可以指定某一列为sign标记位，记录数据行的状态。</p>
+<ul>
+<li>当sign标记为1时，表示这是一行有效的数据。</li>
+<li>当sign标记为-1时，则表示这行数据需要被删除。</li>
+</ul>
+<p>举个例子，我们将CDP的浏览记录单独从事件表里拆出来，用CollapsingMergeTree表引擎创建表，下面列出了这个简化版的建表语句。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>drop<span class="w"> </span>table<span class="w"> </span>cdp_user_browser_event<span class="p">;</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>CREATE<span class="w"> </span>TABLE<span class="w"> </span>cdp_user_browser_event
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="o">(</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">    </span>event_time<span class="w"> </span>DateTime64<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;事件发生时间&#39;</span>,
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">    </span>unique_user_id<span class="w"> </span>UInt64<span class="w"> </span>NOT<span class="w"> </span>NULL<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;用户全局唯一ID，ONE-ID&#39;</span>,
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">    </span>page_id<span class="w"> </span>UInt64<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;浏览事件页面ID&#39;</span>,
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="w">    </span>duration<span class="w"> </span>UInt64<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;浏览事件页面ID&#39;</span>,
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="w">    </span>device_type<span class="w"> </span>String<span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;设备类型&#39;</span>,
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="w">    </span>location<span class="w"> </span>VARCHAR<span class="o">(</span><span class="m">100</span><span class="o">)</span><span class="w"> </span>COMMENT<span class="w"> </span><span class="s1">&#39;发生地点，如城市、门店等&#39;</span>,
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="w">    </span>sign<span class="w"> </span>Int8
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="o">)</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="nv">ENGINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>CollapsingMergeTree<span class="o">(</span>sign<span class="o">)</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>PARTITION<span class="w"> </span>BY<span class="w"> </span>event_time
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>ORDER<span class="w"> </span>BY<span class="w"> </span>event_time<span class="p">;</span>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>INSERT<span class="w"> </span>INTO<span class="w"> </span>cdp_user_browser_event<span class="w"> </span>VALUES<span class="w"> </span><span class="o">(</span><span class="s1">&#39;2023-09-15 10:30:00&#39;</span>,<span class="w"> </span><span class="m">1</span>,<span class="w"> </span><span class="m">5101</span>,<span class="w"> </span><span class="m">13</span>,<span class="w"> </span><span class="s1">&#39;mobile&#39;</span>,<span class="s1">&#39;ZhuHai&#39;</span>,1<span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>INSERT<span class="w"> </span>INTO<span class="w"> </span>cdp_user_browser_event<span class="w"> </span>VALUES<span class="w"> </span><span class="o">(</span><span class="s1">&#39;2023-09-15 10:30:00&#39;</span>,<span class="w"> </span><span class="m">1</span>,<span class="w"> </span><span class="m">5101</span>,<span class="w"> </span><span class="m">13</span>,<span class="w"> </span><span class="s1">&#39;mobile&#39;</span>,<span class="s1">&#39;ZhuHai&#39;</span>,-1<span class="o">)</span>,<span class="o">(</span><span class="s1">&#39;2023-09-15 10:30:00&#39;</span>,<span class="w"> </span><span class="m">1</span>,<span class="w"> </span><span class="m">5101</span>,<span class="w"> </span><span class="m">23</span>,<span class="w"> </span><span class="s1">&#39;mobile&#39;</span>,<span class="s1">&#39;ZhuHai&#39;</span>,1<span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a><span class="k">select</span><span class="w"> </span>*<span class="w"> </span>from<span class="w"> </span>cdp_user_browser_event<span class="p">;</span>
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a><span class="k">select</span><span class="w"> </span>*<span class="w"> </span>from<span class="w"> </span>cdp_user_browser_event<span class="w"> </span>final<span class="p">;</span>
+</code></pre></div>
+<p>可以看到，假设两行数据所有列值相同，但是sign标记分别为1和-1，那么这两行数据就会被抵消删除。这种1和-1相互抵消的操作，这就是Collapsing“折叠”的由来。</p>
+<p>需要注意的是，同其他MergeTree数据删除、合并的逻辑一样，同一个数据片段的数据行（也就是一起插入的数据），会实时“折叠”。不同数据片段的数据行，也依赖后台合并动作的执行。所以你同样需要使用final关键字或者强制合并分区来查看最终的结果。</p>
+<p>根据数据插入顺序的不同，CollapsingMergeTree的“折叠”规则不同，这里我整理了一下“折叠”的规则。</p>
+<ul>
+<li>如果sign=1和sign=-1的数据行一样多，并且最后一行是sign=1，则保留第一行sign=-1和最后一行sign=1的数据，这时候数据不会被“折叠”，sign=1的数据行能够被查询。</li>
+<li>如果sign=1和sign=-1的数据行一样多，并且最后一行是sign=-1，则数据被“折叠”。</li>
+<li>如果sign=1比sign=-1的数据多一行或以上，则保留最后一行sign=1的数据。</li>
+<li>如果sign=-1比sign=1的数据多一行或以上，则保留最后一行sign=-1的数据。</li>
+<li>其余情况，ClickHouse会打印警告日志，但不会报错，在这种情形下，查询结果不可预知。</li>
+</ul>
+<p>这个规则还是挺复杂的。由于ClickHouse用多线程来处理SELECT请求，所以它不能预测结果中行的顺序。因此，如果要从CollapsingMergeTree表中获取完全“折叠”后的数据，建议你使用Group By语句来聚合统计数据。聚合统计时同样需要把sign值考虑进去。</p>
+<ul>
+<li>统计数量，可以使用sum(Sign)。注意不能用count()，因为需要取sign=1和-1相互抵消后的值。</li>
+<li>统计总和，可以使用 sum(Sign * x) ，并添加 HAVING sum(Sign) &gt; 0 子句。注意不能用 sum(x)，同样因为需要取sign=1和-1相互抵消后的值。</li>
+</ul>
+<p>CollapsingMergeTree的数据顺序问题，导致结果“不可控”，于是ClickHouse提供了一个与顺序无关的折叠树表引擎VersionedCollapsingMergeTree。</p>
+<h2 id="versionedcollapsingmergetree">VersionedCollapsingMergeTree</h2>
+<p>因为CollapsingMergeTree的数据顺序问题，很可能导致结果“不可控”，于是ClickHouse提供了一个与顺序无关的折叠树表引擎VersionedCollapsingMergeTree。</p>
+<p>VersionedCollapsingMergeTree的作用与CollapsingMergeTree完全相同，不过VersionedCollapsingMergeTree又引入了一个version的版本列，只要版本列匹配，无论sign=1和sign=-1的数据行顺序如何，都能“折叠”。</p>
+<p>VersionedCollapsingMergeTree的建表语句只需要更换一下表引擎，下面是一个示例。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nv">ENGINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>CollapsingMergeTree<span class="o">(</span>sign,version<span class="o">)</span>
+</code></pre></div>
+<h2 id="_1">小结</h2>
+<p>除了合并树（MergeTree）家族系列表引擎外，ClickHouse还支持日志引擎系列、集成表引擎、其他特殊表引擎4大类几十种，目不暇接。不过最强大，用得最多的仍然还是MergeTree表引擎。</p>
+<p>MergeTree系列表引擎还包括用来对Graphite数据进行瘦身及汇总的GraphiteMergeTree，支持数据副本的ReplicatedMergeTree系列，以及ReplicatedMergeTree系列云原生的替代版本SharedMergeTree。在下一节课介绍并行计算的时候，我会详细介绍ReplicatedMergeTree与分布式表。</p>
+<p>最后，我们总结一下这节课介绍的MergeTree家族各个表引擎的特点。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/48/e6/489033fb95a1e2507215edeb8e224ce6.png?wh=3696x2180" /></p>
+<h2 id="_2">思考题</h2>
+<p>我们知道稀疏索引会每隔index_granularity行数据建立一个索引标记，那么有可能在稀疏索引里面找不到数据，或者找到多个索引标记，这时候分别该如何处理？</p>
+<p>欢迎你在留言区和我交流。如果觉得有所收获，也可以把课程分享给更多的朋友一起学习。欢迎你加入我们的<a href="http://jinshuju.net/f/QX5mGO">读者交流群</a>，我们下节课见！</p>
 
 
 

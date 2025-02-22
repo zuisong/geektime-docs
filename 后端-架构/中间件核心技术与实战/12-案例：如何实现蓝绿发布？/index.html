@@ -5036,6 +5036,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      实现原理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12859,6 +12886,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      实现原理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12898,11 +12952,258 @@
 <p>蓝绿发布指的是在蓝、绿两套环境中分别运行项目的两个版本的代码。但是在进行版本发布时只更新其中一个环境，这样方便另一个环境快速回滚。</p>
 <p>接下来我们看一下蓝绿发布的基本流程。</p>
 <p>如果系统采取蓝绿发布，在下一个版本（base-service v1.2.0）发布之前，会这样部署架构：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/98/e4/9843fea4aaff7e639fefe7edfed9fde4.jpg?wh=1896x1178" /></p>
+<p>当前订单域调用流量进入基础服务域 GREEN环境。团队计划在12:00发布新版本（base-service v1.2.0），这时我们通常会执行下面几个操作。</p>
+<ul>
+<li>将新版本1.2.0全部发布在BLUE环境上。因为此时BLUE环境没有任何流量，对运行中的系统无任何影响。</li>
+<li>在请求入口对<strong>流量进行切分</strong>。通常可以按照百分比分配流量，待系统运行良好后，再逐步将流量全部切换到新版本。</li>
+<li>如果发现新版本存在严重问题，可以将流量全部切换到原来的环境，实现版本<strong>快速回滚</strong>。</li>
+</ul>
+<p>这个过程可以用下面这张图表示：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/8c/cb/8cc85447f6a749f2f363fd74df3dfacb.jpg?wh=1920x1012" /></p>
+<p>这个思路听起来很简单，但是怎么实现呢？</p>
+<p>这就不得不提到上节课专门提到的<strong>路由选择（Router）</strong>了，它是Dubbo服务调用中非常重要的一步。路由选择的核心思想是在客户端进行负载均衡之前，通过一定的过滤规则，只在服务提供者列表中选择符合条件的提供者。</p>
+<p>我们再看上面的实例图，从订单域消费者的视角，服务提供者列表大概是下面这个样子：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/8b/a8/8b1496a03cae53c6ca6ca96038134ba8.jpg?wh=1920x633" /></p>
+<p>然后呢，我们按照比例对入口流量进行分流。例如，80%的请求颜色为BLUE，20%的请求颜色为GREEN。那些颜色为BLUE的请求，在真正执行RPC服务调用时，只从服务提供者列表中选择“color=BLUE”的服务提供者。同样，颜色为GREEN的请求只选择“color=GREEN”的服务提供者，这就实现了流量切分。</p>
+<p>具体的操作是，在Dubbo中为这个场景引入Tag路由机制。</p>
+<p><strong>首先，服务提供者在启动时需要通过“-Dubbo.provider.tag”系统参数来设置服务提供者所属的标签。</strong></p>
+<p>例如，在192.168.3.100和192.168.3.101这两台机器上启动base-service程序时，需要添加“-Dubbo.provider.tag=BLUE”系统参数；而在192.168.4.100和192.168.4.101这两台机器上启动base-service程序时，则要添加“-Dubbo.provider.tag=GREEN”系统参数，通过这个操作完成对服务提供者的打标。服务提供者启动后，生成的服务提供者URL连接如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>dubbo://192.168.3.100:20880/net.codingw.demo.BaseUser?dubbo.tag=BLUE
+</code></pre></div>
+<p><strong>下一步，在服务入口对流量进行染色，从而实现流量切分。</strong></p>
+<p>蓝绿发布的流量通常是在流量入口处进行染色的。例如，我们可以使用随机加权来实现流量切分算法，用它对流量进行染色，具体示范代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>  public static String selectColor(String[] colorArr, int[] weightArr) {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>        int length = colorArr.length;
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>        boolean sameWeight = true;
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        int totalWeight = 0;
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        for (int i = 0; i &lt; length; i++) {
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>            int weight = weightArr[i];
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>            totalWeight += weight;
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>            if (sameWeight &amp;&amp; totalWeight != weight * (i + 1)) {
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>                sameWeight = false;
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>            }
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        }
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>        if (totalWeight &gt; 0 &amp;&amp; !sameWeight) {
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>            int offset = ThreadLocalRandom.current().nextInt(totalWeight);
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>            System.out.println(&quot;offset:&quot; + offset);
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>            for (int i = 0; i &lt; length; i++) {
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>                if (offset &lt; weightArr[i]) {
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>                    return colorArr[i];
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>                }
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>            }
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>        }
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>        return colorArr[ThreadLocalRandom.current().nextInt(length)];
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    }
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>​
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    //测试代码
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    public static void main(String[] args) {
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>        String[] colorArr = new String[]{&quot;GREEN&quot;,&quot;BLUE&quot;};
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>        int[] weightArr = new int[] {100,50};
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>        for(int i = 0; i &lt; 20; i ++) {
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>            System.out.println(selectColor(colorArr, weightArr));
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>        }
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>    }
+</code></pre></div>
+<p>根据流量切分算法计算得到流量标识后，怎么在消费端跟进流量标识从而进行路由选择呢？我们通常会将染色标记放在ThreadLocal中，然后再编写Filter，获取或者传递路由标签。</p>
+<p>但这个只是一个流量的切分算法，那如何动态设置蓝绿的比例或者说权重呢？其实，我们可以为发布系统提供一个设置权重的页面，用户设置完权重后写入到配置中心(ZooKeeper、Apollo)，然后应用程序动态感知到变化，利用最新的权重进行流量切分。</p>
+<p>通过流量切分算法计算出一个请求的流量标识后，通常会存储在ThreadLocal中，实现代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>public class ThreadLocalContext {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    private static final ThreadLocal&lt;String&gt; tagContext  = new ThreadLocal&lt;&gt;();
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>​
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    public static void setTag(String tag) {
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>        tagContext.set(tag);
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    }
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>​
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    public static String getTag() {
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        return tagContext.get();
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    }
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>​
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    public static void resetTag() {
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        tagContext.remove();
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    }
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>}
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>​
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>​
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>//在整个请求的入口
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>String color = selectColor(colorArr, weightArr);
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>try {
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>  ThreadLocalContext.setTag(color);
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>  
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>  //执行第一个远程调用
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>  invokeRpc1();
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>  
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>  //执行另外一个远程调用
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>  invokeRpc2();
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>  
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>} finally {
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>  ThreadLocalContext.reset();
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>}
+</code></pre></div>
+<p>将请求的流量标识存储到线程本地变量之后，还需要将流量标识附加到RPC请求调用中，这样才能触发正确的路由选择，具体代码示例如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>import org.apache.commons.lang3.StringUtils;
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>import org.apache.dubbo.common.extension.Activate;
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>import org.apache.dubbo.common.logger.Logger;
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>import org.apache.dubbo.common.logger.LoggerFactory;
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>import org.apache.dubbo.rpc.*;
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>import org.apache.dubbo.rpc.cluster.router.tag.TagRouter;
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>​
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>import static org.apache.dubbo.common.constants.CommonConstants.CONSUMER;
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>import static org.apache.dubbo.rpc.Constants.ACCESS_LOG_KEY;
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>​
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>@Activate(group = CONSUMER, value = &quot;tagConsumerFilter&quot;)
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>public class TagConsumerContextFilter implements Filter {
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>​
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    private static final Logger logger = LoggerFactory.getLogger(TagConsumerContextFilter.class);
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>​
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    @Override
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    public Result invoke(Invoker&lt;?&gt; invoker, Invocation invocation) throws RpcException {
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>        try {
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>            String tag = ThreadLocalContext.getTag();
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>            if(StringUtils.isNotEmpty(tag)) {
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>                invocation.setAttachment(TagRouter.NAME, tag );
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>            }
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>        } catch (Throwable t) {
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>            logger.warn(&quot;Exception in TagConsumerContextFilter of service(&quot; + invoker + &quot; -&gt; &quot; + invocation + &quot;)&quot;, t);
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>        }
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>​
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>        // 调用链传递
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>        return invoker.invoke(invocation);
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>    }
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>}
+</code></pre></div>
+<p>这样在RPC调用的过程中，服务调用者就能根据本地线程变量中存储的流量标记，选择不同机房的服务提供者，从而实现蓝绿发布了。</p>
+<p>同时，在实际生产环境中，一个调用链条中往往会存在多个RPC调用，那第一个RPC中的路由标签能自动传递到第二个RPC调用吗？</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/cd/c1/cdyyb82bedb597a12dedb57a77f868c1.jpg?wh=1906x629" /></p>
+<p>答案是不可以，我们需要再写一个服务端生效的Filter，示例代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>import org.apache.commons.lang3.StringUtils;
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>import org.apache.dubbo.common.logger.Logger;
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>import org.apache.dubbo.common.logger.LoggerFactory;
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>import org.apache.dubbo.common.extension.Activate;
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>import org.apache.dubbo.rpc.*;
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>import org.apache.dubbo.rpc.cluster.router.tag.TagRouter;
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>​
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>import static org.apache.dubbo.common.constants.CommonConstants.PROVIDER;
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>​
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>@Activate(group = PROVIDER, value = &quot;tagProviderFilter&quot;)
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>public class TagProviderContextFilter implements Filter {
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>​
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    private static final Logger logger = LoggerFactory.getLogger(TagProviderContextFilter.class);
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>​
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    @Override
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    public Result invoke(Invoker&lt;?&gt; invoker, Invocation invocation) throws RpcException {
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>        try {
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>            String tag = invocation.getAttachment(TagRouter.NAME);
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>            if(StringUtils.isNotEmpty(tag)) {
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>                ThreadLocalContext.setTag(tag);
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>            }
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>        } catch (Throwable t) {
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>            logger.warn(&quot;Exception in TagProviderContextFilter of service(&quot; + invoker + &quot; -&gt; &quot; + invocation + &quot;)&quot;, t);
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>        }
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>        // 调用链传递
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>        return invoker.invoke(invocation);
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>    }
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>}
+</code></pre></div>
+<p>也就是将调用链中的tag存储到服务端的线程本地上下文环境中，当服务端调用其他服务时，可以继续将tag传递到下一个RPC调用链中。</p>
+<p>这样，我们的蓝绿发布就基本完成了。但这里还有一个问题。规模较大的公司的生产环境往往会运行很多微服务，我们无法将蓝绿机制一下引入到所有微服务当中，<strong>必然会存在一部分应用使用蓝绿发布，但其他应用没有使用蓝绿的情况。怎么做到兼容呢？</strong></p>
+<p>比方说，我们公司目前核心业务域的蓝绿部署情况如下：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/c7/12/c7eb8b78c052bdf9588cae897f7a6012.jpg?wh=1920x738" /></p>
+<p>这里，订单域接入了蓝绿发布；C端应用需要调用订单域相关接口，因此也接入了蓝绿发布；但运单中心并未接入蓝绿发布。这时候，运单中心能调用订单域的服务吗？</p>
+<p>要回答这个问题，我们要先看看Dubbo官方的降级策略。</p>
+<ul>
+<li>如果消费者侧设置了标签，那么如果集群中没有对应标签的服务提供者，默认可以选择不带任何标签的服务提供者进行服务调用。该行为可以通过设置request.tag.force=true来禁止，这就是说如果request.tag.force为true，一旦没有对应标签的服务提供者，就会跑出“No Provider”异常。</li>
+<li>如果消费者侧没有设置标签，那就只能向集群中没有设置标签的服务提供者发起请求，如果不存在没有标签的服务提供者，则报“No Provider”异常。</li>
+</ul>
+<p>回到上面的问题，运单中心由于未接入蓝绿发布，所以不带任何标签，它无法调用订单域的服务。为了解决这个问题，订单域还需要部署一些不带标签的服务。订单域最终的部署大概如下图所示：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/21/e2/213580a7e1c1917517b3f6b74270d2e2.jpg?wh=1920x593" /></p>
+<p>也就是说，订单域为了兼容那些还没接入蓝绿发布的应用需要部署3套环境，一套为不设置标签的服务提供者，一套为蓝颜色的服务提供者，另一套为绿颜色的服务提供者。</p>
+<p>蓝绿发布实践就介绍到这里了，在这节课的最后，我们再来学习一下蓝绿发布底层依托的原理。</p>
+<h2 id="_3">实现原理</h2>
+<p>先来看一下Dubbo服务调用的基本时序图：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/55/28/55d82c1eeb04d7107fc57f794083e128.jpg?wh=1920x1104" /></p>
+<p>我建议你按照这张时序图跟踪一下源码，更加详细地了解Dubbo服务调用的核心流程与实现关键点，我在这里总结了几个要点：</p>
+<ul>
+<li>Dubbo的服务调用支持容错，对应的抽象类为AbstractClusterInvoker，它封装了服务调用的基本流程。Dubbo内置了failover、failfast、failsafe、failback、forking等失败容错策略，每一个策略对应AbstractClusterInvoker的一个实现；</li>
+<li>在调用AbstractClusterInvoker服务的时候，首先需要获取所有的服务提供者列表，这个过程我们称之为服务动态发现（具体实现类为DynamicDirectory）。在获取路由信息之前，需要调用RouterChain的route方法，执行路由选择策略，筛选出服务动态发现的服务提供者列表。我们这一课的重点，标签路由的具体实现类TagRouter就是在这里发挥作用的。</li>
+</ul>
+<p>我们也详细拆解一下TagRouter的route方法。因为这个方法的实现代码比较多，我们还是分步讲解。</p>
+<p><strong>第一步，</strong>执行静态路由过滤机制，代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>final TagRouterRule tagRouterRuleCopy = tagRouterRule;
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>if (tagRouterRuleCopy == null || !tagRouterRuleCopy.isValid() || !tagRouterRuleCopy.isEnabled()) {
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    return filterUsingStaticTag(invokers, url, invocation);
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>}
+</code></pre></div>
+<p>如果路由规则为空，则根据tag进行过滤。我们顺便也看一下基于tag的静态过滤机制是如何实现的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>private &lt;T&gt; List&lt;Invoker&lt;T&gt;&gt; filterUsingStaticTag(List&lt;Invoker&lt;T&gt;&gt; invokers, URL url, Invocation invocation) {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>   List&lt;Invoker&lt;T&gt;&gt; result;
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>   String tag = StringUtils.isEmpty(invocation.getAttachment(TAG_KEY)) ? url.getParameter(TAG_KEY) 
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>            :invocation.getAttachment(TAG_KEY)
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>   if (!StringUtils.isEmpty(tag)) {
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>        result = filterInvoker(invokers, invoker -&gt; tag.equals(invoker.getUrl().getParameter(TAG_KEY)));
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        if (CollectionUtils.isEmpty(result) &amp;&amp; !isForceUseTag(invocation)) {
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>                result = filterInvoker(invokers, invoker -&gt;     
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>                                       StringUtils.isEmpty(invoker.getUrl().getParameter(TAG_KEY)));
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>        }
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>   } else {
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        result = filterInvoker(invokers, invoker -&gt; 
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>                               StringUtils.isEmpty(invoker.getUrl().getParameter(TAG_KEY)));
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>   }
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>   return result;
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>}
+</code></pre></div>
+<p>尝试从Invocation（服务调用上下文）中或者从URL中获取tag的值，根据tag是否为空，执行两种不同的策略：</p>
+<ul>
+<li>如果tag不为空，首先按照tag找到服务提供者列表中打了同样标签的服务提供者列表，如果dubbo.force.tag的设置为false，则查找服务提供者列表，筛查出没有打标签的服务提供者列表。</li>
+<li>如果tag为空，则直接查找没有打标签的服务提供者列表。</li>
+</ul>
+<p>我们继续回到TagRouter的route方法。第二步操作是，按照路由规则进行筛选，具体代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>// if we are requesting for a Provider with a specific tag
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>if (StringUtils.isNotEmpty(tag)) {
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>   List&lt;String&gt; addresses = tagRouterRuleCopy.getTagnameToAddresses().get(tag);
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>   if (CollectionUtils.isNotEmpty(addresses)) {
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>      result = filterInvoker(invokers, invoker -&gt; addressMatches(invoker.getUrl(), addresses));
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>      if (CollectionUtils.isNotEmpty(result) || tagRouterRuleCopy.isForce()) {
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>           return result;
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>      }
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>   } else {
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>     result = filterInvoker(invokers, invoker -&gt; tag.equals(invoker.getUrl().getParameter(TAG_KEY)));
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>   }
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>   if (CollectionUtils.isNotEmpty(result) || isForceUseTag(invocation)) {
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>      return result;
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>   } else {
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>      List&lt;Invoker&lt;T&gt;&gt; tmp = filterInvoker(invokers, invoker -&gt; addressNotMatches(invoker.getUrl(),
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>                        tagRouterRuleCopy.getAddresses()));
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>      return filterInvoker(tmp, invoker -&gt; StringUtils.isEmpty(invoker.getUrl().getParameter(TAG_KEY)));
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>   }
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>} 
+</code></pre></div>
+<p>上面这段代码比较简单，它的过滤思路和静态tag过滤是相似的。不同点是，这里可以通过YAML格式配置单个服务的路由规则。具体的配置格式如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>force: true
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>enabled: true
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a> priority: 1
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a> key: demo-provider(服务名称)
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a> tags:
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>  - name: tag1
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    addresses: [ip1, ip2]
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>  - name: tag2
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    addresses: [ip3, ip4]
+</code></pre></div>
+<p>这些数据都会记录在注册中心，并在发生变化后实时通知TagRouter，从而实现路由规则的动态配置。</p>
+<h2 id="_4">总结</h2>
+<p>好了，这节课就讲到这里。刚才，我们从微服务不停机发布这个需求谈起，引出了蓝绿发布机制。</p>
+<p>蓝绿发布的实现要点是对应用分别部署蓝、绿两套环境，在版本稳定后由一套环境对外提供服务，当需要发布新版本时，将新版本一次性部署到没有流量的环境，待部署成功后再逐步将流量切换到新版本。如果新版本在验证阶段遇到严重的问题，可以直接将流量切回老版本，实现应用发布的快速回滚。</p>
+<p>然后，我们借助蓝绿发布的指导思想，一步一步实现了基于Dubbo的蓝绿发布。</p>
+<p>蓝绿发布的底层原理是借助Dubbo内置的标签路由功能，其核心思路是，当服务发起调用时，经过服务发现得到一个服务提供者列表，但是并不直接使用这些服务提供者进行负载均衡，而是在进行负载均衡之前，先按照路由规则对这些提供者进行过滤，挑选符合路由规则的服务提供者列表进行服务调用，从而实现服务的动态分组。</p>
+<h2 id="_5">课后题</h2>
+<p>最后，我还是照例给你留一道思考题。</p>
+<p>你认为蓝绿发布和灰度发布的共同点是什么，这两者又有什么区别？</p>
+<p>欢迎你在留言区与我交流讨论，我们下节课再见！</p>
 <div><strong>精选留言（8）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/19/b1/ef/2356b51e.jpg" width="30px"><span>dudu-benny</span> 👍（3） 💬（1）<div>听完蓝绿发布模式  有点像spring cloud gateway 的动态路由策略   结合nacos的动态配置策略  进行 配置分类进行路由分发  也能达到蓝绿发布的效果    不知道这样理解对不对</div>2022-07-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/5f/e7/318ce10e.jpg" width="30px"><span>算法成瘾者</span> 👍（2） 💬（1）<div>蓝绿发布时，也要保留default 默认版本的服务，让没接入考虑的服务使用该服务。
-  服务入口处蓝绿染色，层层传递 tag的过程和调用链传递traceId有点像</div>2022-08-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/b7/00/12149f4e.jpg" width="30px"><span>郭刚</span> 👍（0） 💬（1）<div>如果只是java代码的发布，我觉得是可以这么做，如果数据库上有加字段，加表的操作，这种是不是就不适用了？</div>2022-09-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/49/bc/3ea23054.jpg" width="30px"><span>胡淘尘</span> 👍（0） 💬（3）<div>如果升级服务时有修改定时调度的代码逻辑，如何在蓝绿发布的过程中保证兼容性？对定时任务的服务还有哪些注意事项呢？</div>2022-07-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/89/14/71bcd25e.jpg" width="30px"><span>风</span> 👍（0） 💬（1）<div>蓝绿需要多套环境成本较高</div>2022-07-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/c6/36/70f2083c.jpg" width="30px"><span>open！？</span> 👍（0） 💬（0）<div>蓝绿发布 如果流量走蓝绿两套会有不一样的结果 那就不能蓝绿发布了吧 。 
-想问一下    上面写着RPC会带上标签依次调用 比如 链路是A1 B1 C1 如果只升级了B1 切换为B2 但RPC标签会导致调用链为A1 B2 C2吧 ？C如果没升级岂不是会调用到老的。。</div>2022-11-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/77/b3/991f3f9b.jpg" width="30px"><span>公号-技术夜未眠</span> 👍（0） 💬（3）<div>采用蓝绿发布策略，数据库升级发布需要注意些什么？</div>2022-07-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/6b/e9/7620ae7e.jpg" width="30px"><span>雨落～紫竹</span> 👍（0） 💬（2）<div>为什么不通过nginx 代理的方式 对新旧版本所在容器的流量进行限制和切换呢 运维层可以做到 不需要代码层去干 增加开发量</div>2022-07-11</li><br/>
+<li><span>dudu-benny</span> 👍（3） 💬（1）<div>听完蓝绿发布模式  有点像spring cloud gateway 的动态路由策略   结合nacos的动态配置策略  进行 配置分类进行路由分发  也能达到蓝绿发布的效果    不知道这样理解对不对</div>2022-07-30</li><br/><li><span>算法成瘾者</span> 👍（2） 💬（1）<div>蓝绿发布时，也要保留default 默认版本的服务，让没接入考虑的服务使用该服务。
+  服务入口处蓝绿染色，层层传递 tag的过程和调用链传递traceId有点像</div>2022-08-29</li><br/><li><span>郭刚</span> 👍（0） 💬（1）<div>如果只是java代码的发布，我觉得是可以这么做，如果数据库上有加字段，加表的操作，这种是不是就不适用了？</div>2022-09-08</li><br/><li><span>胡淘尘</span> 👍（0） 💬（3）<div>如果升级服务时有修改定时调度的代码逻辑，如何在蓝绿发布的过程中保证兼容性？对定时任务的服务还有哪些注意事项呢？</div>2022-07-25</li><br/><li><span>风</span> 👍（0） 💬（1）<div>蓝绿需要多套环境成本较高</div>2022-07-14</li><br/><li><span>open！？</span> 👍（0） 💬（0）<div>蓝绿发布 如果流量走蓝绿两套会有不一样的结果 那就不能蓝绿发布了吧 。 
+想问一下    上面写着RPC会带上标签依次调用 比如 链路是A1 B1 C1 如果只升级了B1 切换为B2 但RPC标签会导致调用链为A1 B2 C2吧 ？C如果没升级岂不是会调用到老的。。</div>2022-11-29</li><br/><li><span>公号-技术夜未眠</span> 👍（0） 💬（3）<div>采用蓝绿发布策略，数据库升级发布需要注意些什么？</div>2022-07-11</li><br/><li><span>雨落～紫竹</span> 👍（0） 💬（2）<div>为什么不通过nginx 代理的方式 对新旧版本所在容器的流量进行限制和切换呢 运维层可以做到 不需要代码层去干 增加开发量</div>2022-07-11</li><br/>
 </ul>
 
 

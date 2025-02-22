@@ -3180,6 +3180,57 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      知识详解
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="知识详解">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#xfs-quota" class="md-nav__link">
+    <span class="md-ellipsis">
+      XFS Quota
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      解决问题
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5338,6 +5389,57 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      知识详解
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="知识详解">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#xfs-quota" class="md-nav__link">
+    <span class="md-ellipsis">
+      XFS Quota
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      解决问题
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5373,11 +5475,138 @@
 <h2 id="_1">问题再现</h2>
 <p>我们可以自己先启动一个容器，一起试试不断地往容器文件系统中写入数据，看看是一个什么样的情况。</p>
 <p>用Docker启动一个容器后，我们看到容器的根目录(/)也就是容器文件系统OverlayFS，它的大小是160G，已经使用了100G。其实这个大小也是宿主机上的磁盘空间和使用情况。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/d3/3e/d32c83e404a81b301fbf8bdfd7a9c23e.png?wh=1264%2A586" /></p>
+<p>这时候，我们可以回到宿主机上验证一下，就会发现宿主机的根目录(/)的大小也是160G，同样是使用了100G。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/b5/0b/b54deb08e46ff1155303581e9d1c8f0b.png?wh=1242%2A366" /></p>
+<p>好，那现在我们再往容器的根目录里写入10GB的数据。</p>
+<p>这里我们可以看到容器的根目录使用的大小增加了，从刚才的100G变成现在的110G。而多写入的10G大小的数据，对应的是test.log这个文件。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c0/46/c04dcff3aa4773302495113dd2a8d546.png?wh=1704%2A472" /></p>
+<p>接下来，我们再回到宿主机上，可以看到宿主机上的根目录(/)里使用的大小也是110G了。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/15/9d/155d30bc20b72c0678d1948f25cbe29d.png?wh=1220%2A366" /></p>
+<p>我们还是继续看宿主机，看看OverlayFS里upperdir目录中有什么文件？</p>
+<p>这里我们仍然可以通过/proc/mounts这个路径，找到容器OverlayFS对应的lowerdir和upperdir。因为写入的数据都在upperdir里，我们就只要看upperdir对应的那个目录就行了。果然，里面存放着容器写入的文件test.log，它的大小是10GB。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/4d/7d/4d32334dc0f1ba69881c686037f6577d.png?wh=1920%2A461" /></p>
+<p>通过这个例子，我们已经验证了在容器中对于OverlayFS中写入数据，<strong>其实就是往宿主机的一个目录（upperdir）里写数据。</strong>我们现在已经写了10GB的数据，如果继续在容器中写入数据，结果估计你也知道了，就是会写满宿主机的磁盘。</p>
+<p>那遇到这种情况，我们该怎么办呢？</p>
+<h2 id="_2">知识详解</h2>
+<p>容器写自己的OverlayFS根目录，结果把宿主机的磁盘写满了。发生这个问题，我们首先就会想到需要对容器做限制，限制它写入自己OverlayFS的数据量，比如只允许一个容器写100MB的数据。</p>
+<p>不过我们实际查看OverlayFS文件系统的特性，就会发现没有直接限制文件写入量的特性。别担心，在没有现成工具的情况下，我们只要搞懂了原理，就能想出解决办法。</p>
+<p>所以我们再来分析一下OverlayFS，它是通过lowerdir和upperdir两层目录联合挂载来实现的，lowerdir是只读的，数据只会写在upperdir中。</p>
+<p>那我们是不是可以通过限制upperdir目录容量的方式，来限制一个容器OverlayFS根目录的写入数据量呢？</p>
+<p>沿着这个思路继续往下想，因为upperdir在宿主机上也是一个普通的目录，这样就要看<strong>宿主机上的文件系统是否可以支持对一个目录限制容量了。</strong></p>
+<p>对于Linux上最常用的两个文件系统XFS和ext4，它们有一个特性Quota，那我们就以XFS文件系统为例，学习一下这个Quota概念，然后看看这个特性能不能限制一个目录的使用量。</p>
+<h3 id="xfs-quota">XFS Quota</h3>
+<p>在Linux系统里的XFS文件系统缺省都有Quota的特性，这个特性可以为Linux系统里的一个用户（user），一个用户组（group）或者一个项目（project）来限制它们使用文件系统的额度（quota），也就是限制它们可以写入文件系统的文件总量。</p>
+<p>因为我们的目标是要限制一个目录中总体的写入文件数据量，那么显然给用户和用户组限制文件系统的写入数据量的模式，并不适合我们的这个需求。</p>
+<p>因为同一个用户或者用户组可以操作多个目录，多个用户或者用户组也可以操作同一个目录，这样对一个用户或者用户组的限制，就很难用来限制一个目录。</p>
+<p>那排除了限制用户或用户组的模式，我们再来看看Project模式。Project模式是怎么工作的呢？</p>
+<p>我举一个例子你会更好理解，对Linux熟悉的同学可以一边操作，一边体会一下它的工作方式。不熟悉的同学也没关系，可以重点关注我后面的讲解思路。</p>
+<p>首先我们要使用XFS Quota特性，必须在文件系统挂载的时候加上对应的Quota选项，比如我们目前需要配置Project Quota，那么这个挂载参数就是"pquota"。</p>
+<p>对于根目录来说，<strong>这个参数必须作为一个内核启动的参数"rootflags=pquota"，这样设置就可以保证根目录在启动挂载的时候，带上XFS Quota的特性并且支持Project模式。</strong></p>
+<p>我们可以从/proc/mounts信息里，看看根目录是不是带"prjquota"字段。如果里面有这个字段，就可以确保文件系统已经带上了支持project模式的XFS quota特性。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/72/3d/72d653f67717fe047c98fce37156da3d.png?wh=1230%2A112" /></p>
+<p>下一步，我们还需要给一个指定的目录打上一个Project ID。这个步骤我们可以使用XFS文件系统自带的工具 <a href="https://linux.die.net/man/8/xfs_quota">xfs_quota</a> 来完成，然后执行下面的这个命令就可以了。</p>
+<p>执行命令之前，我先对下面的命令和输出做两点解释，让你理解这个命令的含义。</p>
+<p>第一点，新建的目录/tmp/xfs_prjquota，我们想对它做Quota限制。所以在这里要对它打上一个Project ID。</p>
+<p>第二点，通过xfs_quota这条命令，我们给/tmp/xfs_prjquota打上Project ID值101，这个101是我随便选的一个数字，就是个ID标识，你先有个印象。在后面针对Project进行Quota限制的时候，我们还会用到这个ID。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># mkdir -p  /tmp/xfs_prjquota</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># xfs_quota -x -c &#39;project -s -p /tmp/xfs_prjquota 101&#39; /</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Setting<span class="w"> </span>up<span class="w"> </span>project<span class="w"> </span><span class="m">101</span><span class="w"> </span><span class="o">(</span>path<span class="w"> </span>/tmp/xfs_prjquota<span class="o">)</span>...
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Processed<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">(</span>/etc/projects<span class="w"> </span>and<span class="w"> </span>cmdline<span class="o">)</span><span class="w"> </span>paths<span class="w"> </span><span class="k">for</span><span class="w"> </span>project<span class="w"> </span><span class="m">101</span><span class="w"> </span>with<span class="w"> </span>recursion<span class="w"> </span>depth<span class="w"> </span>infinite<span class="w"> </span><span class="o">(</span>-1<span class="o">)</span>.
+</code></pre></div>
+<p>最后，我们还是使用xfs_quota命令，对101（我们刚才建立的这个Project ID）做Quota限制。</p>
+<p>你可以执行下面这条命令，里面的"-p bhard=10m 101"就代表限制101这个project ID，限制它的数据块写入量不能超过10MB。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a># xfs_quota -x -c &#39;limit -p bhard=10m 101&#39; /
+</code></pre></div>
+<p>做好限制之后，我们可以尝试往/tmp/xfs_prjquota写数据，看看是否可以超过10MB。比如说，我们尝试写入20MB的数据到/tmp/xfs_prjquota里。</p>
+<p>我们可以看到，执行dd写入命令，就会有个出错返回信息"No space left on device"。这表示已经不能再往这个目录下写入数据了，而最后写入数据的文件test.file大小也停留在了10MB。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># dd if=/dev/zero of=/tmp/xfs_prjquota/test.file bs=1024 count=20000</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>dd:<span class="w"> </span>error<span class="w"> </span>writing<span class="w"> </span><span class="s1">&#39;/tmp/xfs_prjquota/test.file&#39;</span>:<span class="w"> </span>No<span class="w"> </span>space<span class="w"> </span>left<span class="w"> </span>on<span class="w"> </span>device
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="m">10241</span>+0<span class="w"> </span>records<span class="w"> </span><span class="k">in</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="m">10240</span>+0<span class="w"> </span>records<span class="w"> </span>out
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="m">10485760</span><span class="w"> </span>bytes<span class="w"> </span><span class="o">(</span><span class="m">10</span><span class="w"> </span>MB,<span class="w"> </span><span class="m">10</span><span class="w"> </span>MiB<span class="o">)</span><span class="w"> </span>copied,<span class="w"> </span><span class="m">0</span>.0357122<span class="w"> </span>s,<span class="w"> </span><span class="m">294</span><span class="w"> </span>MB/s
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># ls -l /tmp/xfs_prjquota/test.file</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>-rw-r--r--<span class="w"> </span><span class="m">1</span><span class="w"> </span>root<span class="w"> </span>root<span class="w"> </span><span class="m">10485760</span><span class="w"> </span>Oct<span class="w"> </span><span class="m">31</span><span class="w"> </span><span class="m">10</span>:00<span class="w"> </span>/tmp/xfs_prjquota/test.file
+</code></pre></div>
+<p>好了，做到这里，我们发现使用XFS Quota的Project模式，确实可以限制一个目录里的写入数据量，它实现的方式其实也不难，就是下面这两步。</p>
+<p>第一步，给目标目录打上一个Project ID，这个ID最终是写到目录对应的inode上。</p>
+<p>这里我解释一下，inode是文件系统中用来描述一个文件或者一个目录的元数据，里面包含文件大小，数据块的位置，文件所属用户/组，文件读写属性以及其他一些属性。</p>
+<p>那么一旦目录打上这个ID之后，在这个目录下的新建的文件和目录也都会继承这个ID。</p>
+<p>第二步，在XFS文件系统中，我们需要给这个project ID设置一个写入数据块的限制。</p>
+<p>有了ID和限制值之后，文件系统就可以统计所有带这个ID文件的数据块大小总和，并且与限制值进行比较。一旦所有文件大小的总和达到限制值，文件系统就不再允许更多的数据写入了。</p>
+<p>用一句话概括，XFS Quota就是通过前面这两步限制了一个目录里写入的数据量。</p>
+<h2 id="_3">解决问题</h2>
+<p>我们理解了XFS Quota对目录限流的机制之后，再回到我们最开始的问题，如何确保容器不会写满宿主机上的磁盘。</p>
+<p>你应该已经想到了，方法就是<strong>对OverlayFS的upperdir目录做XFS Quota的限流</strong>，没错，就是这个解决办法！</p>
+<p>其实Docker也已经实现了限流功能，也就是用XFS Quota来限制容器的OverlayFS大小。</p>
+<p>我们在用 <code>docker run</code> 启动容器的时候，加上一个参数 <code>--storage-opt size= &lt;SIZE&gt;</code> ，就能限制住容器OverlayFS文件系统可写入的最大数据量了。</p>
+<p>我们可以一起试一下，这里我们限制的size是10MB。</p>
+<p>进入容器之后，先运行 <code>df -h</code> 命令，这时候你可以看到根目录(/)overlayfs文件系统的大小就10MB，而不是我们之前看到的160GB的大小了。这样容器在它的根目录下，最多只能写10MB数据，就不会把宿主机的磁盘给写满了。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/a7/8a/a7906f56d9d107f0a290e610b8cd6f8a.png?wh=1194%2A210" /></p>
+<p>完成了上面这个小试验之后，我们可以再看一下Docker的代码，看看它的实现是不是和我们想的一样。</p>
+<p>Docker里<a href="https://github.com/moby/moby/blob/19.03/daemon/graphdriver/quota/projectquota.go#L155">SetQuota()</a>函数就是用来实现XFS Quota 限制的，我们可以看到它里面最重要的两步，分别是 <code>setProjectID</code> 和 <code>setProjectQuota</code> 。</p>
+<p>其实，这两步做的就是我们在基本概念中提到的那两步：</p>
+<p>第一步，给目标目录打上一个Project ID；第二步，为这个Project ID在XFS文件系统中，设置一个写入数据块的限制。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>//<span class="w"> </span>SetQuota<span class="w"> </span>-<span class="w"> </span>assign<span class="w"> </span>a<span class="w"> </span>unique<span class="w"> </span>project<span class="w"> </span>id<span class="w"> </span>to<span class="w"> </span>directory<span class="w"> </span>and<span class="w"> </span><span class="nb">set</span><span class="w"> </span>the<span class="w"> </span>quota<span class="w"> </span>limits
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>//<span class="w"> </span><span class="k">for</span><span class="w"> </span>that<span class="w"> </span>project<span class="w"> </span>id
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>func<span class="w"> </span><span class="o">(</span>q<span class="w"> </span>*Control<span class="o">)</span><span class="w"> </span>SetQuota<span class="o">(</span>targetPath<span class="w"> </span>string,<span class="w"> </span>quota<span class="w"> </span>Quota<span class="o">)</span><span class="w"> </span>error<span class="w"> </span><span class="o">{</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">        </span>q.RLock<span class="o">()</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">        </span>projectID,<span class="w"> </span>ok<span class="w"> </span>:<span class="o">=</span><span class="w"> </span>q.quotas<span class="o">[</span>targetPath<span class="o">]</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">        </span>q.RUnlock<span class="o">()</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span>!ok<span class="w"> </span><span class="o">{</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">                </span>q.Lock<span class="o">()</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">                </span><span class="nv">projectID</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>q.nextProjectID
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">                </span>//
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="w">                </span>//<span class="w"> </span>assign<span class="w"> </span>project<span class="w"> </span>id<span class="w"> </span>to<span class="w"> </span>new<span class="w"> </span>container<span class="w"> </span>directory
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="w">                </span>//
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="w">                </span>err<span class="w"> </span>:<span class="o">=</span><span class="w"> </span>setProjectID<span class="o">(</span>targetPath,<span class="w"> </span>projectID<span class="o">)</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="w">                </span><span class="k">if</span><span class="w"> </span>err<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>nil<span class="w"> </span><span class="o">{</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="w">                        </span>q.Unlock<span class="o">()</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="w">                        </span><span class="k">return</span><span class="w"> </span>err
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="w">                </span><span class="o">}</span>
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="w">                </span>q.quotas<span class="o">[</span>targetPath<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>projectID
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a><span class="w">                </span>q.nextProjectID++
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a><span class="w">                </span>q.Unlock<span class="o">()</span>
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a><span class="w">        </span><span class="o">}</span>
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a><span class="w">        </span>//
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a><span class="w">        </span>//<span class="w"> </span><span class="nb">set</span><span class="w"> </span>the<span class="w"> </span>quota<span class="w"> </span>limit<span class="w"> </span><span class="k">for</span><span class="w"> </span>the<span class="w"> </span>container<span class="err">&#39;</span>s<span class="w"> </span>project<span class="w"> </span>id
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a><span class="w">        </span>//
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a><span class="w">        </span>logrus.Debugf<span class="o">(</span><span class="s2">&quot;SetQuota(%s, %d): projectID=%d&quot;</span>,<span class="w"> </span>targetPath,<span class="w"> </span>quota.Size,<span class="w"> </span>projectID<span class="o">)</span>
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span>setProjectQuota<span class="o">(</span>q.backingFsBlockDev,<span class="w"> </span>projectID,<span class="w"> </span>quota<span class="o">)</span>
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a><span class="o">}</span>
+</code></pre></div>
+<p>那 <code>setProjectID</code> 和 <code>setProjectQuota</code> 是如何实现的呢？</p>
+<p>你可以进入到这两个函数里看一下，<strong>它们分别调用了ioctl()和quotactl()这两个系统调用来修改内核中XFS的数据结构，从而完成project ID的设置和Quota值的设置。</strong>具体的细节，我不在这里展开了，如果你有兴趣，可以继续去查看内核中对应的代码。</p>
+<p>好了，Docker里XFS Quota操作的步骤完全和我们先前设想的一样，那么还有最后一个问题要解决，XFS Quota限制的目录是哪一个？</p>
+<p>这个我们可以根据/proc/mounts中容器的OverlayFS Mount信息，再结合Docker的<a href="https://github.com/moby/moby/blob/19.03/daemon/graphdriver/overlay2/overlay.go#L335">代码</a>，就可以知道限制的目录是"/var/lib/docker/overlay2/&lt;docker_id&gt;"。那这个目录下有什么呢？果然upperdir目录中有对应的"diff"目录，就在里面！</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/4d/9f/4d4d995f052c9a8e3ff3e413c0e1199f.png?wh=1920%2A646" /></p>
+<p>讲到这里，我想你已经清楚了对于使用OverlayFS的容器，我们应该如何去防止它把宿主机的磁盘给写满了吧？<strong>方法就是对OverlayFS的upperdir目录做XFS Quota的限流。</strong></p>
+<h2 id="_4">重点总结</h2>
+<p>我们这一讲的问题是，容器写了大量数据到OverlayFS文件系统的根目录，在这个情况下，就会把宿主机的磁盘写满。</p>
+<p>由于OverlayFS自己没有专门的特性，可以限制文件数据写入量。这时我们通过实际试验找到了解决思路：依靠底层文件系统的Quota特性来限制OverlayFS的upperdir目录的大小，这样就能实现限制容器写磁盘的目的。</p>
+<p>底层文件系统XFS Quota的Project模式，能够限制一个目录的文件写入量，这个功能具体是通过这两个步骤实现：</p>
+<p>第一步，给目标目录打上一个Project ID。</p>
+<p>第二步，给这个Project ID在XFS文件系统中设置一个写入数据块的限制。</p>
+<p>Docker正是使用了这个方法，也就是<strong>用XFS Quota来限制OverlayFS的upperdir目录</strong>，通过这个方式控制容器OverlayFS的根目录大小。</p>
+<p>当我们理解了这个方法后，对于不是用Docker启动的容器，比如直接由containerd启动起来的容器，也可以自己实现XFS Quota限制upperdir目录。这样就能有效控制容器对OverlayFS的写数据操作，避免宿主机的磁盘被写满。</p>
+<h2 id="_5">思考题</h2>
+<p>在正文知识详解的部分，我们使用"xfs_quota"给目录打了project ID并且限制了文件写入的数据量。那在做完这样的限制之后，我们是否能用xfs_quota命令，查询到被限制目录的project ID和限制的数据量呢？</p>
+<p>欢迎你在留言区分享你的思考或疑问。如果这篇文章让你有所收获，也欢迎转发给你的同事、朋友，一起交流和学习。</p>
 <div><strong>精选留言（13）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/5e/96/a03175bc.jpg" width="30px"><span>莫名</span> 👍（21） 💬（3）<div>容器 quota 的局限性：容器通常采用 overlay2 driver，仅支持在宿主文件系统 xfs 上开启 quota 功能。意味着 overlay over ext4 不支持 quota 功能，而实际生产环境上 ext4 的使用远多于 xfs。</div>2020-12-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/f5/9d/104bb8ea.jpg" width="30px"><span>Geek2014</span> 👍（13） 💬（2）<div>上篇的评论中提到：“我们在2019年初就不用docker了。”
-这篇中，老师提到了containerd，是说你们已经用containerd替换了docker吗？有机会对containerd和docker之间的使用对比做个介绍吗？</div>2020-12-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/77/86/4ff2a872.jpg" width="30px"><span>Sun</span> 👍（12） 💬（2）<div>老师，我觉得可以补充下 现在k8s 1.14 开始，默认开启 LocalStorageCapacityIsolation， 可以通过限制resources.limits.ephemeral-storage 和resources.requests.ephemeral-storage 来保护宿主机 rootfs了。</div>2020-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/7c/bb/635a2710.jpg" width="30px"><span>徐少文</span> 👍（4） 💬（1）<div>老师，CGroup子系统中没有对硬盘使用量进行限制的功能模块吗？除了通过文件系统的quota去限制还有其他的方法吗？</div>2021-07-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKJrOl63enWXCRxN0SoucliclBme0qrRb19ATrWIOIvibKIz8UAuVgicBMibIVUznerHnjotI4dm6ibODA/132" width="30px"><span>Helios</span> 👍（4） 💬（2）<div>老师能说下你们应用容器Quota的场景么。对于无状态服务一般就是日志会写文件了，离线任务比如机器学习的模型也不敢给人家限制呀😂
-</div>2020-12-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/93/38/71615300.jpg" width="30px"><span>DayDayUp</span> 👍（1） 💬（1）<div>老师讲的太好了，不知道面试贵司会不会有机会呢？老师在eBay哪个team啊？应届生要吗？？？</div>2021-11-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e8/c2/77a413a7.jpg" width="30px"><span>Action</span> 👍（1） 💬（1）<div>老师 为什么overlayFS 并不是docker_id 呢？
+<li><span>莫名</span> 👍（21） 💬（3）<div>容器 quota 的局限性：容器通常采用 overlay2 driver，仅支持在宿主文件系统 xfs 上开启 quota 功能。意味着 overlay over ext4 不支持 quota 功能，而实际生产环境上 ext4 的使用远多于 xfs。</div>2020-12-11</li><br/><li><span>Geek2014</span> 👍（13） 💬（2）<div>上篇的评论中提到：“我们在2019年初就不用docker了。”
+这篇中，老师提到了containerd，是说你们已经用containerd替换了docker吗？有机会对containerd和docker之间的使用对比做个介绍吗？</div>2020-12-11</li><br/><li><span>Sun</span> 👍（12） 💬（2）<div>老师，我觉得可以补充下 现在k8s 1.14 开始，默认开启 LocalStorageCapacityIsolation， 可以通过限制resources.limits.ephemeral-storage 和resources.requests.ephemeral-storage 来保护宿主机 rootfs了。</div>2020-12-22</li><br/><li><span>徐少文</span> 👍（4） 💬（1）<div>老师，CGroup子系统中没有对硬盘使用量进行限制的功能模块吗？除了通过文件系统的quota去限制还有其他的方法吗？</div>2021-07-13</li><br/><li><span>Helios</span> 👍（4） 💬（2）<div>老师能说下你们应用容器Quota的场景么。对于无状态服务一般就是日志会写文件了，离线任务比如机器学习的模型也不敢给人家限制呀😂
+</div>2020-12-13</li><br/><li><span>DayDayUp</span> 👍（1） 💬（1）<div>老师讲的太好了，不知道面试贵司会不会有机会呢？老师在eBay哪个team啊？应届生要吗？？？</div>2021-11-28</li><br/><li><span>Action</span> 👍（1） 💬（1）<div>老师 为什么overlayFS 并不是docker_id 呢？
 [root@localhost overlay2]# docker inspect 5440662c8db
 [
     {
@@ -5397,7 +5626,7 @@
 
     }
 ]
-</div>2020-12-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/76/f5/e3f5bd8d.jpg" width="30px"><span>宝仔</span> 👍（1） 💬（1）<div>这个是一定要基于xfs文件系统吗？如果是ext4文件系统呢？</div>2020-12-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/23/81/60/71ed6ac7.jpg" width="30px"><span>谢哈哈</span> 👍（6） 💬（0）<div>可以通过xfs_quota -x -c &quot;report -pbih &quot; 目录名称查询projectid</div>2020-12-11</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIz9dKN1C8rKQoaVtmEGdzObhlia6zAfTsPYOm4ibz39VjTbu7Aia1LyeedHR26b6nxUtcCufpichcYgw/132" width="30px"><span>上邪忘川</span> 👍（3） 💬（0）<div>[root@localhost ~]# xfs_quota -x -c &#39;report -h &#47;tmp&#47;xfs_prjquota&#39;
+</div>2020-12-16</li><br/><li><span>宝仔</span> 👍（1） 💬（1）<div>这个是一定要基于xfs文件系统吗？如果是ext4文件系统呢？</div>2020-12-11</li><br/><li><span>谢哈哈</span> 👍（6） 💬（0）<div>可以通过xfs_quota -x -c &quot;report -pbih &quot; 目录名称查询projectid</div>2020-12-11</li><br/><li><span>上邪忘川</span> 👍（3） 💬（0）<div>[root@localhost ~]# xfs_quota -x -c &#39;report -h &#47;tmp&#47;xfs_prjquota&#39;
 Project quota on &#47; (&#47;dev&#47;mapper&#47;centos-root)
                         Blocks              
 Project ID   Used   Soft   Hard Warn&#47;Grace   
@@ -5406,8 +5635,8 @@ Project ID   Used   Soft   Hard Warn&#47;Grace
 #2             8K   100M   100M  00 [------]
 #3           100M   100M   100M  00 [------]
 #101          10M      0    10M  00 [------]
-</div>2020-12-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/6c/95/bb237f51.jpg" width="30px"><span>李梦嘉</span> 👍（0） 💬（0）<div>老师好，通过xfs quota设置了容器容量后，怎么扩容呢？
-</div>2024-07-18</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKzqiaZnBw2myRWY802u48Rw3W2zDtKoFQ6vN63m4FdyjibM21FfaOYe8MbMpemUdxXJeQH6fRdVbZA/132" width="30px"><span>kissingers</span> 👍（0） 💬（1）<div>k8s 中readonlyrootfs 也是同样的场景吧</div>2021-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/64/05/6989dce6.jpg" width="30px"><span>我来也</span> 👍（0） 💬（0）<div>之前工作中就经常因为es错误日志把宿主机的磁盘撑满。但还从未往这个方向想，还可以限制某个项目的磁盘使用量。😂</div>2021-01-03</li><br/>
+</div>2020-12-11</li><br/><li><span>李梦嘉</span> 👍（0） 💬（0）<div>老师好，通过xfs quota设置了容器容量后，怎么扩容呢？
+</div>2024-07-18</li><br/><li><span>kissingers</span> 👍（0） 💬（1）<div>k8s 中readonlyrootfs 也是同样的场景吧</div>2021-06-12</li><br/><li><span>我来也</span> 👍（0） 💬（0）<div>之前工作中就经常因为es错误日志把宿主机的磁盘撑满。但还从未往这个方向想，还可以限制某个项目的磁盘使用量。😂</div>2021-01-03</li><br/>
 </ul>
 
 

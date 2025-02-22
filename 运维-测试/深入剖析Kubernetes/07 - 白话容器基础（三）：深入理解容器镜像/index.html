@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -3620,6 +3625,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    07   白话容器基础（三）：深入理解容器镜像
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -3629,6 +3645,41 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -5827,6 +5878,32 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -5858,26 +5935,284 @@
 <p>可能你立刻就能想到，这一定是一个关于Mount Namespace的问题：容器里的应用进程，理应看到一份完全独立的文件系统。这样，它就可以在自己的容器目录（比如/tmp）下进行操作，而完全不会受宿主机以及其他容器的影响。</p>
 <p>那么，真实情况是这样吗？</p>
 <p>“左耳朵耗子”叔在多年前写的一篇<a href="https://coolshell.cn/articles/17010.html">关于Docker基础知识的博客</a>里，曾经介绍过一段小程序。这段小程序的作用是，在创建子进程时开启指定的Namespace。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>下面，我们不妨使用它来验证一下刚刚提到的问题。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>#define _GNU_SOURCE
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>#include &lt;sys/mount.h&gt; 
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>#include &lt;sys/types.h&gt;
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>#include &lt;sys/wait.h&gt;
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>#include &lt;stdio.h&gt;
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>#include &lt;sched.h&gt;
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>#include &lt;signal.h&gt;
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>#include &lt;unistd.h&gt;
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>#define STACK_SIZE (1024 * 1024)
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>static char container_stack[STACK_SIZE];
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>char* const container_args[] = {
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>  &quot;/bin/bash&quot;,
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>  NULL
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>};
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>int container_main(void* arg)
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>{  
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>  printf(&quot;Container - inside the container!\n&quot;);
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>  execv(container_args[0], container_args);
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>  printf(&quot;Something&#39;s wrong!\n&quot;);
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>  return 1;
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>}
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>int main()
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>{
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>  printf(&quot;Parent - start a container!\n&quot;);
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>  int container_pid = clone(container_main, container_stack+STACK_SIZE, CLONE_NEWNS | SIGCHLD , NULL);
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>  waitpid(container_pid, NULL, 0);
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>  printf(&quot;Parent - container stopped!\n&quot;);
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>  return 0;
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>}
+</code></pre></div>
+<p>这段代码的功能非常简单：在main函数里，我们通过clone()系统调用创建了一个新的子进程container_main，并且声明要为它启用Mount Namespace（即：CLONE_NEWNS标志）。</p>
+<p>而这个子进程执行的，是一个“/bin/bash”程序，也就是一个shell。所以这个shell就运行在了Mount Namespace的隔离环境中。</p>
+<p>我们来一起编译一下这个程序：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ gcc -o ns ns.c
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>$ ./ns
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>Parent - start a container!
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>Container - inside the container!
+</code></pre></div>
+<p>这样，我们就进入了这个“容器”当中。可是，如果在“容器”里执行一下ls指令的话，我们就会发现一个有趣的现象： /tmp目录下的内容跟宿主机的内容是一样的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ ls /tmp
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a># 你会看到好多宿主机的文件
+</code></pre></div>
+<p>也就是说：</p>
+<blockquote>
+<p>即使开启了Mount Namespace，容器进程看到的文件系统也跟宿主机完全一样。</p>
+</blockquote>
+<p>这是怎么回事呢？</p>
+<p>仔细思考一下，你会发现这其实并不难理解：<strong>Mount Namespace修改的，是容器进程对文件系统“挂载点”的认知</strong>。但是，这也就意味着，只有在“挂载”这个操作发生之后，进程的视图才会被改变。而在此之前，新创建的容器会直接继承宿主机的各个挂载点。</p>
+<p>这时，你可能已经想到了一个解决办法：创建新进程时，除了声明要启用Mount Namespace之外，我们还可以告诉容器进程，有哪些目录需要重新挂载，就比如这个/tmp目录。于是，我们在容器进程执行前可以添加一步重新挂载 /tmp目录的操作：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>int container_main(void* arg)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>{
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  printf(&quot;Container - inside the container!\n&quot;);
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  // 如果你的机器的根目录的挂载类型是shared，那必须先重新挂载根目录
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  // mount(&quot;&quot;, &quot;/&quot;, NULL, MS_PRIVATE, &quot;&quot;);
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>  mount(&quot;none&quot;, &quot;/tmp&quot;, &quot;tmpfs&quot;, 0, &quot;&quot;);
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>  execv(container_args[0], container_args);
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>  printf(&quot;Something&#39;s wrong!\n&quot;);
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>  return 1;
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>}
+</code></pre></div>
+<p>可以看到，在修改后的代码里，我在容器进程启动之前，加上了一句mount(“none”, “/tmp”, “tmpfs”, 0, “”)语句。就这样，我告诉了容器以tmpfs（内存盘）格式，重新挂载了/tmp目录。</p>
+<p>这段修改后的代码，编译执行后的结果又如何呢？我们可以试验一下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ gcc -o ns ns.c
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>$ ./ns
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>Parent - start a container!
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>Container - inside the container!
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>$ ls /tmp
+</code></pre></div>
+<p>可以看到，这次/tmp变成了一个空目录，这意味着重新挂载生效了。我们可以用mount -l检查一下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$ mount -l | grep tmpfs
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>none on /tmp type tmpfs (rw,relatime)
+</code></pre></div>
+<p>可以看到，容器里的/tmp目录是以tmpfs方式单独挂载的。</p>
+<p>更重要的是，因为我们创建的新进程启用了Mount Namespace，所以这次重新挂载的操作，只在容器进程的Mount Namespace中有效。如果在宿主机上用mount -l来检查一下这个挂载，你会发现它是不存在的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a># 在宿主机上
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>$ mount -l | grep tmpfs
+</code></pre></div>
+<p><strong>这就是Mount Namespace跟其他Namespace的使用略有不同的地方：它对容器进程视图的改变，一定是伴随着挂载操作（mount）才能生效。</strong></p>
+<p>可是，作为一个普通用户，我们希望的是一个更友好的情况：每当创建一个新容器时，我希望容器进程看到的文件系统就是一个独立的隔离环境，而不是继承自宿主机的文件系统。怎么才能做到这一点呢？</p>
+<p>不难想到，我们可以在容器进程启动之前重新挂载它的整个根目录“/”。而由于Mount Namespace的存在，这个挂载对宿主机不可见，所以容器进程就可以在里面随便折腾了。</p>
+<p>在Linux操作系统里，有一个名为chroot的命令可以帮助你在shell中方便地完成这个工作。顾名思义，它的作用就是帮你“change root file system”，即改变进程的根目录到你指定的位置。它的用法也非常简单。</p>
+<p>假设，我们现在有一个$HOME/test目录，想要把它作为一个/bin/bash进程的根目录。</p>
+<p>首先，创建一个test目录和几个lib文件夹：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$ mkdir -p $HOME/test
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>$ mkdir -p $HOME/test/{bin,lib64,lib}
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>$ cd $T
+</code></pre></div>
+<p>然后，把bash命令拷贝到test目录对应的bin路径下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$ cp -v /bin/{bash,ls} $HOME/test/bin
+</code></pre></div>
+<p>接下来，把bash命令需要的所有so文件，也拷贝到test目录对应的lib路径下。找到so文件可以用ldd 命令：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$ T=$HOME/test
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>$ list=&quot;$(ldd /bin/ls | egrep -o &#39;/lib.*\.[0-9]&#39;)&quot;
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>$ for i in $list; do cp -v &quot;$i&quot; &quot;${T}${i}&quot;; done
+</code></pre></div>
+<p>最后，执行chroot命令，告诉操作系统，我们将使用$HOME/test目录作为/bin/bash进程的根目录：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$ chroot $HOME/test /bin/bash
+</code></pre></div>
+<p>这时，你如果执行"ls /"，就会看到，它返回的都是$HOME/test目录下面的内容，而不是宿主机的内容。</p>
+<p>更重要的是，对于被chroot的进程来说，它并不会感受到自己的根目录已经被“修改”成$HOME/test了。</p>
+<p>这种视图被修改的原理，是不是跟我之前介绍的Linux Namespace很类似呢？</p>
+<p>没错！</p>
+<p><strong>实际上，Mount Namespace正是基于对chroot的不断改良才被发明出来的，它也是Linux操作系统里的第一个Namespace。</strong></p>
+<p>当然，为了能够让容器的这个根目录看起来更“真实”，我们一般会在这个容器的根目录下挂载一个完整操作系统的文件系统，比如Ubuntu16.04的ISO。这样，在容器启动之后，我们在容器里通过执行"ls /"查看根目录下的内容，就是Ubuntu 16.04的所有目录和文件。</p>
+<p><strong>而这个挂载在容器根目录上、用来为容器进程提供隔离后执行环境的文件系统，就是所谓的“容器镜像”。它还有一个更为专业的名字，叫作：rootfs（根文件系统）。</strong></p>
+<p>所以，一个最常见的rootfs，或者说容器镜像，会包括如下所示的一些目录和文件，比如/bin，/etc，/proc等等：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>$ ls /
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>bin dev etc home lib lib64 mnt opt proc root run sbin sys tmp usr var
+</code></pre></div>
+<p>而你进入容器之后执行的/bin/bash，就是/bin目录下的可执行文件，与宿主机的/bin/bash完全不同。</p>
+<p>现在，你应该可以理解，对Docker项目来说，它最核心的原理实际上就是为待创建的用户进程：</p>
+<ol>
+<li>启用Linux Namespace配置；</li>
+<li>设置指定的Cgroups参数；</li>
+<li>切换进程的根目录（Change Root）。</li>
+</ol>
+<p>这样，一个完整的容器就诞生了。不过，Docker项目在最后一步的切换上会优先使用pivot_root系统调用，如果系统不支持，才会使用chroot。这两个系统调用虽然功能类似，但是也有细微的区别，这一部分小知识就交给你课后去探索了。</p>
+<p>另外，<strong>需要明确的是，rootfs只是一个操作系统所包含的文件、配置和目录，并不包括操作系统内核。在Linux操作系统中，这两部分是分开存放的，操作系统只有在开机启动时才会加载指定版本的内核镜像。</strong></p>
+<p>所以说，rootfs只包括了操作系统的“躯壳”，并没有包括操作系统的“灵魂”。</p>
+<p>那么，对于容器来说，这个操作系统的“灵魂”又在哪里呢？</p>
+<p>实际上，同一台机器上的所有容器，都共享宿主机操作系统的内核。</p>
+<p>这就意味着，如果你的应用程序需要配置内核参数、加载额外的内核模块，以及跟内核进行直接的交互，你就需要注意了：这些操作和依赖的对象，都是宿主机操作系统的内核，它对于该机器上的所有容器来说是一个“全局变量”，牵一发而动全身。</p>
+<p>这也是容器相比于虚拟机的主要缺陷之一：毕竟后者不仅有模拟出来的硬件机器充当沙盒，而且每个沙盒里还运行着一个完整的Guest OS给应用随便折腾。</p>
+<p>不过，<strong>正是由于rootfs的存在，容器才有了一个被反复宣传至今的重要特性：一致性。</strong></p>
+<p>什么是容器的“一致性”呢？</p>
+<p>我在专栏的第一篇文章<a href="https://time.geekbang.org/column/article/14254">《小鲸鱼大事记（一）：初出茅庐》</a>中曾经提到过：由于云端与本地服务器环境不同，应用的打包过程，一直是使用PaaS时最“痛苦”的一个步骤。</p>
+<p>但有了容器之后，更准确地说，有了容器镜像（即rootfs）之后，这个问题被非常优雅地解决了。</p>
+<p><strong>由于rootfs里打包的不只是应用，而是整个操作系统的文件和目录，也就意味着，应用以及它运行所需要的所有依赖，都被封装在了一起。</strong></p>
+<p>事实上，对于大多数开发者而言，他们对应用依赖的理解，一直局限在编程语言层面。比如Golang的Godeps.json。但实际上，一个一直以来很容易被忽视的事实是，<strong>对一个应用来说，操作系统本身才是它运行所需要的最完整的“依赖库”。</strong></p>
+<p>有了容器镜像“打包操作系统”的能力，这个最基础的依赖环境也终于变成了应用沙盒的一部分。这就赋予了容器所谓的一致性：无论在本地、云端，还是在一台任何地方的机器上，用户只需要解压打包好的容器镜像，那么这个应用运行所需要的完整的执行环境就被重现出来了。</p>
+<p><strong>这种深入到操作系统级别的运行环境一致性，打通了应用在本地开发和远端执行环境之间难以逾越的鸿沟。</strong></p>
+<p>不过，这时你可能已经发现了另一个非常棘手的问题：难道我每开发一个应用，或者升级一下现有的应用，都要重复制作一次rootfs吗？</p>
+<p>比如，我现在用Ubuntu操作系统的ISO做了一个rootfs，然后又在里面安装了Java环境，用来部署我的Java应用。那么，我的另一个同事在发布他的Java应用时，显然希望能够直接使用我安装过Java环境的rootfs，而不是重复这个流程。</p>
+<p>一种比较直观的解决办法是，我在制作rootfs的时候，每做一步“有意义”的操作，就保存一个rootfs出来，这样其他同事就可以按需求去用他需要的rootfs了。</p>
+<p>但是，这个解决办法并不具备推广性。原因在于，一旦你的同事们修改了这个rootfs，新旧两个rootfs之间就没有任何关系了。这样做的结果就是极度的碎片化。</p>
+<p>那么，既然这些修改都基于一个旧的rootfs，我们能不能以增量的方式去做这些修改呢？这样做的好处是，所有人都只需要维护相对于base rootfs修改的增量内容，而不是每次修改都制造一个“fork”。</p>
+<p>答案当然是肯定的。</p>
+<p>这也正是为何，Docker公司在实现Docker镜像时并没有沿用以前制作rootfs的标准流程，而是做了一个小小的创新：</p>
+<blockquote>
+<p>Docker在镜像的设计中，引入了层（layer）的概念。也就是说，用户制作镜像的每一步操作，都会生成一个层，也就是一个增量rootfs。</p>
+</blockquote>
+<p>当然，这个想法不是凭空臆造出来的，而是用到了一种叫作联合文件系统（Union File System）的能力。</p>
+<p>Union File System也叫UnionFS，最主要的功能是将多个不同位置的目录联合挂载（union mount）到同一个目录下。比如，我现在有两个目录A和B，它们分别有两个文件：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$ tree
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>.
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>├── A
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>│  ├── a
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>│  └── x
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>└── B
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>  ├── b
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>  └── x
+</code></pre></div>
+<p>然后，我使用联合挂载的方式，将这两个目录挂载到一个公共的目录C上：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>$ mkdir C
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>$ mount -t aufs -o dirs=./A:./B none ./C
+</code></pre></div>
+<p>这时，我再查看目录C的内容，就能看到目录A和B下的文件被合并到了一起：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>$ tree ./C
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>./C
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>├── a
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>├── b
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>└── x
+</code></pre></div>
+<p>可以看到，在这个合并后的目录C里，有a、b、x三个文件，并且x文件只有一份。这，就是“合并”的含义。此外，如果你在目录C里对a、b、x文件做修改，这些修改也会在对应的目录A、B中生效。</p>
+<p>那么，在Docker项目中，又是如何使用这种Union File System的呢？</p>
+<p>我的环境是Ubuntu 16.04和Docker CE 18.05，这对组合默认使用的是AuFS这个联合文件系统的实现。你可以通过docker info命令，查看到这个信息。</p>
+<p>AuFS的全称是Another UnionFS，后改名为Alternative UnionFS，再后来干脆改名叫作Advance UnionFS，从这些名字中你应该能看出这样两个事实：</p>
+<ol>
+<li>它是对Linux原生UnionFS的重写和改进；</li>
+<li>它的作者怨气好像很大。我猜是Linus Torvalds（Linux之父）一直不让AuFS进入Linux内核主干的缘故，所以我们只能在Ubuntu和Debian这些发行版上使用它。</li>
+</ol>
+<p>对于AuFS来说，它最关键的目录结构在/var/lib/docker路径下的diff目录：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>/var/lib/docker/aufs/diff/&lt;layer_id&gt;
+</code></pre></div>
+<p><strong>而这个目录的作用，我们不妨通过一个具体例子来看一下。</strong></p>
+<p>现在，我们启动一个容器，比如：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>$ docker run -d ubuntu:latest sleep 3600
+</code></pre></div>
+<p>这时候，Docker就会从Docker Hub上拉取一个Ubuntu镜像到本地。</p>
+<p>这个所谓的“镜像”，实际上就是一个Ubuntu操作系统的rootfs，它的内容是Ubuntu操作系统的所有文件和目录。不过，与之前我们讲述的rootfs稍微不同的是，Docker镜像使用的rootfs，往往由多个“层”组成：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>$ docker image inspect ubuntu:latest
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>...
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>     &quot;RootFS&quot;: {
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>      &quot;Type&quot;: &quot;layers&quot;,
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>      &quot;Layers&quot;: [
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>        &quot;sha256:f49017d4d5ce9c0f544c...&quot;,
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>        &quot;sha256:8f2b771487e9d6354080...&quot;,
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>        &quot;sha256:ccd4d61916aaa2159429...&quot;,
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>        &quot;sha256:c01d74f99de40e097c73...&quot;,
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>        &quot;sha256:268a067217b5fe78e000...&quot;
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>      ]
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>    }
+</code></pre></div>
+<p>可以看到，这个Ubuntu镜像，实际上由五个层组成。这五个层就是五个增量rootfs，每一层都是Ubuntu操作系统文件与目录的一部分；而在使用镜像时，Docker会把这些增量联合挂载在一个统一的挂载点上（等价于前面例子里的“/C”目录）。</p>
+<p>这个挂载点就是/var/lib/docker/aufs/mnt/，比如：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>/var/lib/docker/aufs/mnt/6e3be5d2ecccae7cc0fcfa2a2f5c89dc21ee30e166be823ceaeba15dce645b3e
+</code></pre></div>
+<p>不出意外的，这个目录里面正是一个完整的Ubuntu操作系统：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>$ ls /var/lib/docker/aufs/mnt/6e3be5d2ecccae7cc0fcfa2a2f5c89dc21ee30e166be823ceaeba15dce645b3e
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>bin boot dev etc home lib lib64 media mnt opt proc root run sbin srv sys tmp usr var
+</code></pre></div>
+<p>那么，前面提到的五个镜像层，又是如何被联合挂载成这样一个完整的Ubuntu文件系统的呢？</p>
+<p>这个信息记录在AuFS的系统目录/sys/fs/aufs下面。</p>
+<p>首先，通过查看AuFS的挂载信息，我们可以找到这个目录对应的AuFS的内部ID（也叫：si）：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>$ cat /proc/mounts| grep aufs
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>none /var/lib/docker/aufs/mnt/6e3be5d2ecccae7cc0fc... aufs rw,relatime,si=972c6d361e6b32ba,dio,dirperm1 0 0
+</code></pre></div>
+<p>即，si=972c6d361e6b32ba。</p>
+<p>然后使用这个ID，你就可以在/sys/fs/aufs下查看被联合挂载在一起的各个层的信息：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>$ cat /sys/fs/aufs/si_972c6d361e6b32ba/br[0-9]*
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>/var/lib/docker/aufs/diff/6e3be5d2ecccae7cc...=rw
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>/var/lib/docker/aufs/diff/6e3be5d2ecccae7cc...-init=ro+wh
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>/var/lib/docker/aufs/diff/32e8e20064858c0f2...=ro+wh
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>/var/lib/docker/aufs/diff/2b8858809bce62e62...=ro+wh
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>/var/lib/docker/aufs/diff/20707dce8efc0d267...=ro+wh
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>/var/lib/docker/aufs/diff/72b0744e06247c7d0...=ro+wh
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>/var/lib/docker/aufs/diff/a524a729adadedb90...=ro+wh
+</code></pre></div>
+<p>从这些信息里，我们可以看到，镜像的层都放置在/var/lib/docker/aufs/diff目录下，然后被联合挂载在/var/lib/docker/aufs/mnt里面。</p>
+<p><strong>而且，从这个结构可以看出来，这个容器的rootfs由如下图所示的三部分组成：</strong></p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/8a/5f/8a7b5cfabaab2d877a1d4566961edd5f.png?wh=1350%2A1002" /></p>
+<p><strong>第一部分，只读层。</strong></p>
+<p>它是这个容器的rootfs最下面的五层，对应的正是ubuntu:latest镜像的五层。可以看到，它们的挂载方式都是只读的（ro+wh，即readonly+whiteout，至于什么是whiteout，我下面马上会讲到）。</p>
+<p>这时，我们可以分别查看一下这些层的内容：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>$ ls /var/lib/docker/aufs/diff/72b0744e06247c7d0...
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>etc sbin usr var
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>$ ls /var/lib/docker/aufs/diff/32e8e20064858c0f2...
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>run
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>$ ls /var/lib/docker/aufs/diff/a524a729adadedb900...
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>bin boot dev etc home lib lib64 media mnt opt proc root run sbin srv sys tmp usr var
+</code></pre></div>
+<p>可以看到，这些层，都以增量的方式分别包含了Ubuntu操作系统的一部分。</p>
+<p><strong>第二部分，可读写层。</strong></p>
+<p>它是这个容器的rootfs最上面的一层（6e3be5d2ecccae7cc），它的挂载方式为：rw，即read write。在没有写入文件之前，这个目录是空的。而一旦在容器里做了写操作，你修改产生的内容就会以增量的方式出现在这个层中。</p>
+<p>可是，你有没有想到这样一个问题：如果我现在要做的，是删除只读层里的一个文件呢？</p>
+<p>为了实现这样的删除操作，AuFS会在可读写层创建一个whiteout文件，把只读层里的文件“遮挡”起来。</p>
+<p>比如，你要删除只读层里一个名叫foo的文件，那么这个删除操作实际上是在可读写层创建了一个名叫.wh.foo的文件。这样，当这两个层被联合挂载之后，foo文件就会被.wh.foo文件“遮挡”起来，“消失”了。这个功能，就是“ro+wh”的挂载方式，即只读+whiteout的含义。我喜欢把whiteout形象地翻译为：“白障”。</p>
+<p>所以，最上面这个可读写层的作用，就是专门用来存放你修改rootfs后产生的增量，无论是增、删、改，都发生在这里。而当我们使用完了这个被修改过的容器之后，还可以使用docker commit和push指令，保存这个被修改过的可读写层，并上传到Docker Hub上，供其他人使用；而与此同时，原先的只读层里的内容则不会有任何变化。这，就是增量rootfs的好处。</p>
+<p><strong>第三部分，Init层。</strong></p>
+<p>它是一个以“-init”结尾的层，夹在只读层和读写层之间。Init层是Docker项目单独生成的一个内部层，专门用来存放/etc/hosts、/etc/resolv.conf等信息。</p>
+<p>需要这样一层的原因是，这些文件本来属于只读的Ubuntu镜像的一部分，但是用户往往需要在启动容器时写入一些指定的值比如hostname，所以就需要在可读写层对它们进行修改。</p>
+<p>可是，这些修改往往只对当前的容器有效，我们并不希望执行docker commit时，把这些信息连同可读写层一起提交掉。</p>
+<p>所以，Docker做法是，在修改了这些文件之后，以一个单独的层挂载了出来。而用户执行docker commit只会提交可读写层，所以是不包含这些内容的。</p>
+<p>最终，这7个层都被联合挂载到/var/lib/docker/aufs/mnt目录下，表现为一个完整的Ubuntu操作系统供容器使用。</p>
+<h2 id="_1">总结</h2>
+<p>在今天的分享中，我着重介绍了Linux容器文件系统的实现方式。而这种机制，正是我们经常提到的容器镜像，也叫作：rootfs。它只是一个操作系统的所有文件和目录，并不包含内核，最多也就几百兆。而相比之下，传统虚拟机的镜像大多是一个磁盘的“快照”，磁盘有多大，镜像就至少有多大。</p>
+<p>通过结合使用Mount Namespace和rootfs，容器就能够为进程构建出一个完善的文件系统隔离环境。当然，这个功能的实现还必须感谢chroot和pivot_root这两个系统调用切换进程根目录的能力。</p>
+<p>而在rootfs的基础上，Docker公司创新性地提出了使用多个增量rootfs联合挂载一个完整rootfs的方案，这就是容器镜像中“层”的概念。</p>
+<p>通过“分层镜像”的设计，以Docker镜像为核心，来自不同公司、不同团队的技术人员被紧密地联系在了一起。而且，由于容器镜像的操作是增量式的，这样每次镜像拉取、推送的内容，比原本多个完整的操作系统的大小要小得多；而共享层的存在，可以使得所有这些容器镜像需要的总空间，也比每个镜像的总和要小。这样就使得基于容器镜像的团队协作，要比基于动则几个GB的虚拟机磁盘镜像的协作要敏捷得多。</p>
+<p>更重要的是，一旦这个镜像被发布，那么你在全世界的任何一个地方下载这个镜像，得到的内容都完全一致，可以完全复现这个镜像制作者当初的完整环境。这，就是容器技术“强一致性”的重要体现。</p>
+<p>而这种价值正是支撑Docker公司在2014~2016年间迅猛发展的核心动力。容器镜像的发明，不仅打通了“开发-测试-部署”流程的每一个环节，更重要的是：</p>
+<blockquote>
+<p>容器镜像将会成为未来软件的主流发布方式。</p>
+</blockquote>
+<h2 id="_2">思考题</h2>
+<ol>
+<li>既然容器的rootfs（比如，Ubuntu镜像），是以只读方式挂载的，那么又如何在容器里修改Ubuntu镜像的内容呢？（提示：Copy-on-Write）</li>
+<li>除了AuFS，你知道Docker项目还支持哪些UnionFS实现吗？你能说出不同宿主机环境下推荐使用哪种实现吗？</li>
+</ol>
+<p>感谢你的收听，欢迎你给我留言，也欢迎分享给更多的朋友一起阅读。<br />
+<img alt="" src="https://static001.geekbang.org/resource/image/0d/cb/0da944e5bac4fe1d00d3f01a747e86cb.jpg?wh=6803%2A11220" /></p>
+<p>点击<a href="https://time.geekbang.org/column/article/17841">这里</a>查看大图。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/96/2f/876085fa.jpg" width="30px"><span>张磊 Kubernetes</span> 👍（238） 💬（5）<div>有读者反映，咱们重新挂载&#47;tmp目录的实验执行完成后，在宿主机上居然可以看到这个挂载信息。。这是怎么回事呢？实际上，大家自己装的虚拟机，或者云上的虚拟机的根目录，很多都是以share方式的挂载的。这时候，你在容器里做mount也会继承share方式。这样就会把容器内挂载传播到宿主机上。解决这个问题，你可以在重新挂载&#47;tmp之前，在容器内先执行一句：mount(“”, “&#47;“, NULL, MS_PRIVATE, “”) 这样，容器内的根目录就是private挂载的了。</div>2018-09-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ff/ce/73ee54bf.jpg" width="30px"><span>Linux云计算网络</span> 👍（553） 💬（8）<div>1. 上面的读写层通常也称为容器层，下面的只读层称为镜像层，所有的增删查改操作都只会作用在容器层，相同的文件上层会覆盖掉下层。知道这一点，就不难理解镜像文件的修改，比如修改一个文件的时候，首先会从上到下查找有没有这个文件，找到，就复制到容器层中，修改，修改的结果就会作用到下层的文件，这种方式也被称为copy-on-write。
+<li><span>张磊 Kubernetes</span> 👍（238） 💬（5）<div>有读者反映，咱们重新挂载&#47;tmp目录的实验执行完成后，在宿主机上居然可以看到这个挂载信息。。这是怎么回事呢？实际上，大家自己装的虚拟机，或者云上的虚拟机的根目录，很多都是以share方式的挂载的。这时候，你在容器里做mount也会继承share方式。这样就会把容器内挂载传播到宿主机上。解决这个问题，你可以在重新挂载&#47;tmp之前，在容器内先执行一句：mount(“”, “&#47;“, NULL, MS_PRIVATE, “”) 这样，容器内的根目录就是private挂载的了。</div>2018-09-08</li><br/><li><span>Linux云计算网络</span> 👍（553） 💬（8）<div>1. 上面的读写层通常也称为容器层，下面的只读层称为镜像层，所有的增删查改操作都只会作用在容器层，相同的文件上层会覆盖掉下层。知道这一点，就不难理解镜像文件的修改，比如修改一个文件的时候，首先会从上到下查找有没有这个文件，找到，就复制到容器层中，修改，修改的结果就会作用到下层的文件，这种方式也被称为copy-on-write。
 
 2. 查了一下，包括但不限于以下这几种：aufs, device mapper, btrfs, overlayfs, vfs, zfs。aufs是ubuntu 常用的，device mapper 是 centos，btrfs 是 SUSE，overlayfs ubuntu 和 centos 都会使用，现在最新的 docker 版本中默认两个系统都是使用的 overlayfs，vfs 和 zfs 常用在 solaris 系统。
 
-欢迎补充和指正。</div>2018-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/66/c4/038f9325.jpg" width="30px"><span>Jeff.W</span> 👍（379） 💬（15）<div>继Namespace构建了四周的围墙（进程隔离），Cgroups构建了受控的天空优先使用阳光雨露（资源限制），Mount namespace与rootfs构建了脚下的大地，这片土地是你熟悉和喜欢的，不管你走到哪里，都可以带着它，就好像你从未离开过家乡，没有丝毫的陌生感（容器的一致性）～</div>2018-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ed/1a/269eb3d6.jpg" width="30px"><span>cfanbo</span> 👍（125） 💬（10）<div>目录联合挂载时，如果A和B目录里的x文件内容不一样，这时如何处理？</div>2018-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d4/c2/910d231e.jpg" width="30px"><span>oddrock</span> 👍（110） 💬（5）<div>请问老师，听了您今天的课，认识到容器使用的内核是和宿主机内核一致的，但如果容器需要不同的内核怎么办？</div>2018-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/cc/c4/5ac16f31.jpg" width="30px"><span>汤尼房</span> 👍（95） 💬（8）<div>老师你好，很好奇dockerhub上关于系统镜像的制作过程，比如对于centos7.4的镜像，首先能想到的是应该依据centos官方发布的centos7.4的系统镜像，然后将此镜像中的内核给去掉，仅保留剩下的文件、配置和目录或者是保留必要的文件、配置和目录；但通过查看centos7.4的Dockerfile之后发现其依赖的base image是scratch，然后在scratch的基础上添加centos-7.4.1708-docker.tar.xz，后来查看ubuntu镜像发现其base image也是scratch，老师能简单说下scratch基础镜像吗（镜像文件的制作过程等），猜想scratch应该是包含了多个系统之间共同的东西，否则为啥多个版本的系统镜像以及不同版本的系统镜像的基础镜像都用的是scratch，所以对scratch基础镜像很好奇，望老师指点一下</div>2018-09-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3a/e1/b6b311cb.jpg" width="30px"><span>╯梦深处゛</span> 👍（83） 💬（2）<div>喜欢这种从出现到发展、由浅入深、由一小段代码讲述某种实现的讲述，既容易理解，也深入了解了原理。娓娓道来，很有条理，就像身临当时docker的实现场景！</div>2018-09-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/98/37/7f575aec.jpg" width="30px"><span>vx:jiancheng_goon</span> 👍（57） 💬（6）<div>女朋友1 3 5追电视剧，我1 3 5追k8s。</div>2018-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/bb/f6/af833125.jpg" width="30px"><span>Vinsec</span> 👍（43） 💬（13）<div>docker run -ti ubuntu &#47;bin&#47;bash
+欢迎补充和指正。</div>2018-09-07</li><br/><li><span>Jeff.W</span> 👍（379） 💬（15）<div>继Namespace构建了四周的围墙（进程隔离），Cgroups构建了受控的天空优先使用阳光雨露（资源限制），Mount namespace与rootfs构建了脚下的大地，这片土地是你熟悉和喜欢的，不管你走到哪里，都可以带着它，就好像你从未离开过家乡，没有丝毫的陌生感（容器的一致性）～</div>2018-09-13</li><br/><li><span>cfanbo</span> 👍（125） 💬（10）<div>目录联合挂载时，如果A和B目录里的x文件内容不一样，这时如何处理？</div>2018-09-07</li><br/><li><span>oddrock</span> 👍（110） 💬（5）<div>请问老师，听了您今天的课，认识到容器使用的内核是和宿主机内核一致的，但如果容器需要不同的内核怎么办？</div>2018-09-07</li><br/><li><span>汤尼房</span> 👍（95） 💬（8）<div>老师你好，很好奇dockerhub上关于系统镜像的制作过程，比如对于centos7.4的镜像，首先能想到的是应该依据centos官方发布的centos7.4的系统镜像，然后将此镜像中的内核给去掉，仅保留剩下的文件、配置和目录或者是保留必要的文件、配置和目录；但通过查看centos7.4的Dockerfile之后发现其依赖的base image是scratch，然后在scratch的基础上添加centos-7.4.1708-docker.tar.xz，后来查看ubuntu镜像发现其base image也是scratch，老师能简单说下scratch基础镜像吗（镜像文件的制作过程等），猜想scratch应该是包含了多个系统之间共同的东西，否则为啥多个版本的系统镜像以及不同版本的系统镜像的基础镜像都用的是scratch，所以对scratch基础镜像很好奇，望老师指点一下</div>2018-09-10</li><br/><li><span>╯梦深处゛</span> 👍（83） 💬（2）<div>喜欢这种从出现到发展、由浅入深、由一小段代码讲述某种实现的讲述，既容易理解，也深入了解了原理。娓娓道来，很有条理，就像身临当时docker的实现场景！</div>2018-09-27</li><br/><li><span>vx:jiancheng_goon</span> 👍（57） 💬（6）<div>女朋友1 3 5追电视剧，我1 3 5追k8s。</div>2018-09-07</li><br/><li><span>Vinsec</span> 👍（43） 💬（13）<div>docker run -ti ubuntu &#47;bin&#47;bash
 此时会有一个隐式的chroot过程
 请问这个chroot的过程是将&#47;bin&#47;bash进程的Home目录切换成了&#47;var&#47;lib&#47;docker&#47;aufs&#47;mnt&#47;[id]了么？
 
-</div>2018-10-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7a/0a/0ce5c232.jpg" width="30px"><span>吕</span> 👍（35） 💬（5）<div>请教一个低级的问题，我现在用docker部署，在多次部署以后，会导致磁盘占用空间急剧的增大，老是需要扩容，虽然对不使用的镜像定时做了删除，但还是会出现这样的问题，产生的文件也不敢在生产环境随便进行删除，只能清理镜像和容器。
-</div>2018-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/42/61/78d5d09a.jpg" width="30px"><span>long904</span> 👍（34） 💬（5）<div>请教老师，以我理解容器镜像依赖宿主机内核。那么如果镜像是基于Linux的系统制作而成（线上运行环境就是Linux），那么如果在Windows系统上它是不能运行这个镜像了，对吗？甚至目标机器如果内核跟镜像制作不同（比如centos5和centos7）如果是，请问该怎么理解容器跨平台部署一说？谢谢。</div>2018-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7d/69/21b4b5cb.jpg" width="30px"><span>王由华</span> 👍（20） 💬（1）<div>被whiteout遮挡的文件会被清除吗？用什么命令清除的？否则镜像不是就膨胀了。</div>2018-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fd/d6/71e1cc29.jpg" width="30px"><span>Kaer</span> 👍（20） 💬（1）<div>老师你好，如果依赖了内核运行的应用，必须得重新在跟宿主机相同内核下重新打包镜像才行吗？有没有完美解决方案：比如在镜像打包的时候，打一个兼容内核的补丁。</div>2018-09-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/63/5d/b523af2d.jpg" width="30px"><span>Hunsbiously</span> 👍（16） 💬（7）<div>你好，这个视频是我看到的一个很好的视频，希望老师能够找机会，详细分析下.
-https:&#47;&#47;m.youtube.com&#47;watch?v=90kZRyPcRZw#fauxfullscreen</div>2018-09-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKtS26SJpSF7JLu9pusGsy1Qln0NdQg1eV2YKOJxpX2QXaBuuyXMqZY3fm0rhzKwsqN5aa6CVNOQQ/132" width="30px"><span>陈华</span> 👍（13） 💬（1）<div>老师说没有内核所以rootfs会比较小，请问一般安装的linux系统内核文件在哪里存放呢？，</div>2018-09-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d2/79/0a432fde.jpg" width="30px"><span>凯文1985</span> 👍（12） 💬（3）<div>如果对docker原始镜像进行修改 比如在ubuntu镜像上安装Java 那么增加的层是在最下面的只读层上吗
-</div>2018-10-07</li><br/><li><img src="" width="30px"><span>shupian418</span> 👍（11） 💬（7）<div>ns.c 启动失败 
-Parent - start a container
-Parent - container stopped
-</div>2018-09-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e9/91/4219d305.jpg" width="30px"><span>初学者</span> 👍（11） 💬（2）<div>对镜像中的init层不是很理解，这一层中的文件的修改到底由谁以及什么时候触发的，如果是在容器启动阶段，修改的结果不是应该放到容器读写层吗？</div>2018-09-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/99/ed/ba309aad.jpg" width="30px"><span>droid</span> 👍（11） 💬（1）<div>代码中的&quot;container_stack+STACK_SIZE&quot;一开始没看明白，后来发现是栈，要传栈底指针。大家见笑。</div>2018-09-07</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIKkIlG1QR7odsuy5Qzu4pf7ptHPsthtFTyjMygzWibVLDLSjehJkXLFh2ZSamYsibwWLHLbv2dI64A/132" width="30px"><span>Geek_dbdb0d</span> 👍（10） 💬（3）<div>你好，既然镜像只包含了一个操作系统的文件和目录，同一个镜像怎么保证在不同内核的宿主机中都能正确的工作？</div>2018-12-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/6c/47/8da914be.jpg" width="30px"><span>Geek_1264yp</span> 👍（9） 💬（1）<div>老师好，请问，如果我在ubuntu:16.04的基础镜像上加了自己的东西，然后build新的镜像，这时候其他人用我这个新镜像的时候，是不是只读层就包含了我添加的东东？</div>2018-10-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0f/70/cdef7a3d.jpg" width="30px"><span>Joe Black</span> 👍（9） 💬（1）<div>请问所谓的“应用依赖内核”是指程序直接进行内核调用，而不是仅仅使用c运行库，可以这样理解吗？</div>2018-09-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/dd/11/04ebee55.jpg" width="30px"><span>lizhaochao</span> 👍（8） 💬（1）<div>应用程序的代码 是打包到镜像里的 还是挂载到docker里的 持续集成是打包镜像 还是cp文件到目录 持续发布涉及打包镜像吗</div>2019-05-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f1/c6/6f39a982.jpg" width="30px"><span>Yuhui</span> 👍（8） 💬（1）<div>请教一下老师，aufs等支持联合挂载的文件系统对层数有限制吗？谢谢！</div>2018-12-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ae/e0/3e636955.jpg" width="30px"><span>李博越</span> 👍（8） 💬（3）<div>既然容器里的rootfs 只是一个操作系统所包含的文件、配置和目录，那为啥我在dockerfile中配置keepalive参数‘&#47;proc&#47;sys&#47;net&#47;ipv4&#47;tcp_keepalive_time’不生效呢？为啥在容器宿主机上配置才生效？
-查询了下官方文档，是因为这个配置是kernel层面的所以必须修改宿主机吗？但是这个配置是在&#47;proc下的呀？
-参考文档：http:&#47;&#47;tldp.org&#47;HOWTO&#47;TCP-Keepalive-HOWTO&#47;usingkeepalive.html</div>2018-10-04</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/pftx8PrTibZqu39dxkicUdrXbaMe6v4rcoTzOoF9Z04OibIIDgbpRIrDS9lYBYc97QAscGp77vU6nN5uxRiceRER3Q/132" width="30px"><span>Leon廖</span> 👍（7） 💬（1）<div>image展开后是一系列目录，但push&#47;pull在网络上传送的image是tar格式的？
-就好像Java的jar其实是zip格式的</div>2018-09-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6c/24/f2dfbbec.jpg" width="30px"><span>liuy1226</span> 👍（7） 💬（2）<div>老师您好，我们知道docker镜像采用了镜像共享技术减少了镜像存储空间的大小，现在的问题是docker镜像这种实现的数据结构模型是什么，比如多个镜像共享了一个基础镜像。</div>2018-09-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/47/08/985632a6.jpg" width="30px"><span>旭</span> 👍（5） 💬（2）<div>老师，问题是这样的，只要我这个镜像没有运行的容器，这个镜像过段时间就会自动被删掉，我用docker images 看不到那个镜像了 。磁盘还有100多G，已占用96%。老师怎么继续再评论再评论</div>2018-10-19</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eppE3Zu7Gspiar34LSAg5R3qGukw9qJnmGU54FokyUGmwCtEcUnrwEIYXDPrhAJMvtjZvgaYjC3bNA/132" width="30px"><span>大麦08</span> 👍（5） 💬（2）<div>请问老师，在centos里aufs存放在哪里啊</div>2018-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/61/61/677e8f92.jpg" width="30px"><span>xianhai</span> 👍（5） 💬（1）<div>docker占用的port和宿主机的port互不干扰，docker是怎么实现port space独立的？</div>2018-09-07</li><br/>
+</div>2018-10-28</li><br/><li><span>吕</span> 👍（35） 💬（5）<div>请教一个低级的问题，我现在用docker部署，在多次部署以后，会导致磁盘占用空间急剧的增大，老是需要扩容，虽然对不使用的镜像定时做了删除，但还是会出现这样的问题，产生的文件也不敢在生产环境随便进行删除，只能清理镜像和容器。
+</div>2018-09-07</li><br/><li><span>long904</span> 👍（34） 💬（5）<div>请教老师，以我理解容器镜像依赖宿主机内核。那么如果镜像是基于Linux的系统制作而成（线上运行环境就是Linux），那么如果在Windows系统上它是不能运行这个镜像了，对吗？甚至目标机器如果内核跟镜像制作不同（比如centos5和centos7）如果是，请问该怎么理解容器跨平台部署一说？谢谢。</div>2018-09-07</li><br/><li><span>王由华</span> 👍（20） 💬（1）<div>被whiteout遮挡的文件会被清除吗？用什么命令清除的？否则镜像不是就膨胀了。</div>2018-09-13</li><br/><li><span>Kaer</span> 👍（20） 💬（1）<div>老师你好，如果依赖了内核运行的应用，必须得重新在跟宿主机相同内核下重新打包镜像才行吗？有没有完美解决方案：比如在镜像打包的时候，打一个兼容内核的补丁。</div>2018-09-09</li><br/><li><span>Hunsbiously</span> 👍（16） 💬（7）<div>你好，这个视频是我看到的一个很好的视频，希望老师能够找机会，详细分析下.
+https:&#47;&#47;m.youtube.com&#47;watch?v=90kZRyPcRZw#fauxfullscreen</div>2018-09-09</li><br/><li><span>陈华</span> 👍（13） 💬（1）<div>老师说没有内核所以rootfs会比较小，请问一般安装的linux系统内核文件在哪里存放呢？，</div>2018-09-10</li><br/>
 </ul>
 
 

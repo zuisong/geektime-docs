@@ -2842,6 +2842,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#kafka" class="md-nav__link">
+    <span class="md-ellipsis">
+      Kafka拦截器
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      典型使用场景
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例分享
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      开放讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13135,6 +13180,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#kafka" class="md-nav__link">
+    <span class="md-ellipsis">
+      Kafka拦截器
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      典型使用场景
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例分享
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      开放讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13169,20 +13259,129 @@
 <p>拦截器1和拦截器2分别在请求发送之前、发送之后以及完成之后三个地方插入了对应的处理逻辑。而Flume中的拦截器也是同理，它们插入的逻辑可以是修改待发送的消息，也可以是创建新的消息，甚至是丢弃消息。这些功能都是以配置拦截器类的方式动态插入到应用程序中的，故可以快速地切换不同的拦截器而不影响主程序逻辑。</p>
 <p>Kafka拦截器借鉴了这样的设计思路。你可以在消息处理的前后多个时点动态植入不同的处理逻辑，比如在消息发送前或者在消息被消费后。</p>
 <p>作为一个非常小众的功能，Kafka拦截器自0.10.0.0版本被引入后并未得到太多的实际应用，我也从未在任何Kafka技术峰会上看到有公司分享其使用拦截器的成功案例。但即便如此，在自己的Kafka工具箱中放入这么一个有用的东西依然是值得的。今天我们就让它来发挥威力，展示一些非常酷炫的功能。</p>
-<div><strong>精选留言（30）</strong></div>
+<h2 id="kafka"><strong>Kafka拦截器</strong></h2>
+<p><strong>Kafka拦截器分为生产者拦截器和消费者拦截器</strong>。生产者拦截器允许你在发送消息前以及消息提交成功后植入你的拦截器逻辑；而消费者拦截器支持在消费消息前以及提交位移后编写特定逻辑。值得一提的是，这两种拦截器都支持链的方式，即你可以将一组拦截器串连成一个大的拦截器，Kafka会按照添加顺序依次执行拦截器逻辑。</p>
+<p>举个例子，假设你想在生产消息前执行两个“前置动作”：第一个是为消息增加一个头信息，封装发送该消息的时间，第二个是更新发送消息数字段，那么当你将这两个拦截器串联在一起统一指定给Producer后，Producer会按顺序执行上面的动作，然后再发送消息。</p>
+<p>当前Kafka拦截器的设置方法是通过参数配置完成的。生产者和消费者两端有一个相同的参数，名字叫interceptor.classes，它指定的是一组类的列表，每个类就是特定逻辑的拦截器实现类。拿上面的例子来说，假设第一个拦截器的完整类路径是com.yourcompany.kafkaproject.interceptors.AddTimeStampInterceptor，第二个类是com.yourcompany.kafkaproject.interceptors.UpdateCounterInterceptor，那么你需要按照以下方法在Producer端指定拦截器：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Properties props = new Properties();
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>List&lt;String&gt; interceptors = new ArrayList&lt;&gt;();
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>interceptors.add(&quot;com.yourcompany.kafkaproject.interceptors.AddTimestampInterceptor&quot;); // 拦截器1
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>interceptors.add(&quot;com.yourcompany.kafkaproject.interceptors.UpdateCounterInterceptor&quot;); // 拦截器2
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>props.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, interceptors);
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>……
+</code></pre></div>
+<p>现在问题来了，我们应该怎么编写AddTimeStampInterceptor和UpdateCounterInterceptor类呢？其实很简单，这两个类以及你自己编写的所有Producer端拦截器实现类都要继承org.apache.kafka.clients.producer.ProducerInterceptor接口。该接口是Kafka提供的，里面有两个核心的方法。</p>
+<ol>
+<li>onSend：该方法会在消息发送之前被调用。如果你想在发送之前对消息“美美容”，这个方法是你唯一的机会。</li>
+<li>onAcknowledgement：该方法会在消息成功提交或发送失败之后被调用。还记得我在上一期中提到的发送回调通知callback吗？onAcknowledgement的调用要早于callback的调用。值得注意的是，这个方法和onSend不是在同一个线程中被调用的，因此如果你在这两个方法中调用了某个共享可变对象，一定要保证线程安全哦。还有一点很重要，这个方法处在Producer发送的主路径中，所以最好别放一些太重的逻辑进去，否则你会发现你的Producer TPS直线下降。</li>
+</ol>
+<p>同理，指定消费者拦截器也是同样的方法，只是具体的实现类要实现org.apache.kafka.clients.consumer.ConsumerInterceptor接口，这里面也有两个核心方法。</p>
+<ol>
+<li>onConsume：该方法在消息返回给Consumer程序之前调用。也就是说在开始正式处理消息之前，拦截器会先拦一道，搞一些事情，之后再返回给你。</li>
+<li>onCommit：Consumer在提交位移之后调用该方法。通常你可以在该方法中做一些记账类的动作，比如打日志等。</li>
+</ol>
+<p>一定要注意的是，<strong>指定拦截器类时要指定它们的全限定名</strong>，即full qualified name。通俗点说就是要把完整包名也加上，不要只有一个类名在那里，并且还要保证你的Producer程序能够正确加载你的拦截器类。</p>
+<h2 id="_2"><strong>典型使用场景</strong></h2>
+<p>Kafka拦截器都能用在哪些地方呢？其实，跟很多拦截器的用法相同，<strong>Kafka拦截器可以应用于包括客户端监控、端到端系统性能检测、消息审计等多种功能在内的场景</strong>。</p>
+<p>我以端到端系统性能检测和消息审计为例来展开介绍下。</p>
+<p>今天Kafka默认提供的监控指标都是针对单个客户端或Broker的，你很难从具体的消息维度去追踪集群间消息的流转路径。同时，如何监控一条消息从生产到最后消费的端到端延时也是很多Kafka用户迫切需要解决的问题。</p>
+<p>从技术上来说，我们可以在客户端程序中增加这样的统计逻辑，但是对于那些将Kafka作为企业级基础架构的公司来说，在应用代码中编写统一的监控逻辑其实是很难的，毕竟这东西非常灵活，不太可能提前确定好所有的计算逻辑。另外，将监控逻辑与主业务逻辑耦合也是软件工程中不提倡的做法。</p>
+<p>现在，通过实现拦截器的逻辑以及可插拔的机制，我们能够快速地观测、验证以及监控集群间的客户端性能指标，特别是能够从具体的消息层面上去收集这些数据。这就是Kafka拦截器的一个非常典型的使用场景。</p>
+<p>我们再来看看消息审计（message audit）的场景。设想你的公司把Kafka作为一个私有云消息引擎平台向全公司提供服务，这必然要涉及多租户以及消息审计的功能。</p>
+<p>作为私有云的PaaS提供方，你肯定要能够随时查看每条消息是哪个业务方在什么时间发布的，之后又被哪些业务方在什么时刻消费。一个可行的做法就是你编写一个拦截器类，实现相应的消息审计逻辑，然后强行规定所有接入你的Kafka服务的客户端程序必须设置该拦截器。</p>
+<h2 id="_3"><strong>案例分享</strong></h2>
+<p>下面我以一个具体的案例来说明一下拦截器的使用。在这个案例中，我们通过编写拦截器类来统计消息端到端处理的延时，非常实用，我建议你可以直接移植到你自己的生产环境中。</p>
+<p>我曾经给一个公司做Kafka培训，在培训过程中，那个公司的人提出了一个诉求。他们的场景很简单，某个业务只有一个Producer和一个Consumer，他们想知道该业务消息从被生产出来到最后被消费的平均总时长是多少，但是目前Kafka并没有提供这种端到端的延时统计。</p>
+<p>学习了拦截器之后，我们现在知道可以用拦截器来满足这个需求。既然是要计算总延时，那么一定要有个公共的地方来保存它，并且这个公共的地方还是要让生产者和消费者程序都能访问的。在这个例子中，我们假设数据被保存在Redis中。</p>
+<p>Okay，这个需求显然要实现生产者拦截器，也要实现消费者拦截器。我们先来实现前者：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>public class AvgLatencyProducerInterceptor implements ProducerInterceptor&lt;String, String&gt; {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    private Jedis jedis; // 省略Jedis初始化
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    @Override
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    public ProducerRecord&lt;String, String&gt; onSend(ProducerRecord&lt;String, String&gt; record) {
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        jedis.incr(&quot;totalSentMessage&quot;);
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>        return record;
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    }
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    @Override
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    public void onAcknowledgement(RecordMetadata metadata, Exception exception) {
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    }
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    @Override
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    public void close() {
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    }
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    @Override
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    public void configure(Map&lt;java.lang.String, ?&gt; configs) {
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>    }
+</code></pre></div>
+<p>上面的代码比较关键的是在发送消息前更新总的已发送消息数。为了节省时间，我没有考虑发送失败的情况，因为发送失败可能导致总发送数不准确。不过好在处理思路是相同的，你可以有针对性地调整下代码逻辑。</p>
+<p>下面是消费者端的拦截器实现，代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>public class AvgLatencyConsumerInterceptor implements ConsumerInterceptor&lt;String, String&gt; {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    private Jedis jedis; //省略Jedis初始化
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    @Override
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    public ConsumerRecords&lt;String, String&gt; onConsume(ConsumerRecords&lt;String, String&gt; records) {
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        long lantency = 0L;
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        for (ConsumerRecord&lt;String, String&gt; record : records) {
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>            lantency += (System.currentTimeMillis() - record.timestamp());
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>        }
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        jedis.incrBy(&quot;totalLatency&quot;, lantency);
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        long totalLatency = Long.parseLong(jedis.get(&quot;totalLatency&quot;));
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>        long totalSentMsgs = Long.parseLong(jedis.get(&quot;totalSentMessage&quot;));
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>        jedis.set(&quot;avgLatency&quot;, String.valueOf(totalLatency / totalSentMsgs));
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>        return records;
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    }
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    @Override
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>    public void onCommit(Map&lt;TopicPartition, OffsetAndMetadata&gt; offsets) {
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    }
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>    @Override
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>    public void close() {
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>    }
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>    @Override
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>    public void configure(Map&lt;String, ?&gt; configs) {
+</code></pre></div>
+<p>在上面的消费者拦截器中，我们在真正消费一批消息前首先更新了它们的总延时，方法就是用当前的时钟时间减去封装在消息中的创建时间，然后累计得到这批消息总的端到端处理延时并更新到Redis中。之后的逻辑就很简单了，我们分别从Redis中读取更新过的总延时和总消息数，两者相除即得到端到端消息的平均处理延时。</p>
+<p>创建好生产者和消费者拦截器后，我们按照上面指定的方法分别将它们配置到各自的Producer和Consumer程序中，这样就能计算消息从Producer端到Consumer端平均的处理延时了。这种端到端的指标监控能够从全局角度俯察和审视业务运行情况，及时查看业务是否满足端到端的SLA目标。</p>
+<h2 id="_4"><strong>小结</strong></h2>
+<p>今天我们花了一些时间讨论Kafka提供的冷门功能：拦截器。如之前所说，拦截器的出场率极低，以至于我从未看到过国内大厂实际应用Kafka拦截器的报道。但冷门不代表没用。事实上，我们可以利用拦截器满足实际的需求，比如端到端系统性能检测、消息审计等。</p>
+<p>从这一期开始，我们将逐渐接触到更多的实际代码。看完了今天的分享，我希望你能够亲自动手编写一些代码，去实现一个拦截器，体会一下Kafka拦截器的功能。要知道，“纸上得来终觉浅，绝知此事要躬行”。也许你在敲代码的同时，就会想到一个使用拦截器的绝妙点子，让我们拭目以待吧。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/f2/0d/f2cbe18428396aab14749be10dc5550d.jpg?wh=2069%2A2560" /></p>
+<h2 id="_5"><strong>开放讨论</strong></h2>
+<p>思考这样一个问题：Producer拦截器onSend方法的签名如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>public ProducerRecord&lt;K, V&gt; onSend(ProducerRecord&lt;K, V&gt; record)
+</code></pre></div>
+<p>如果我实现的逻辑仅仅是return null，你觉得Kafka会丢弃该消息，还是原封不动地发送消息？请动手试验一下，看看结果是否符合你的预期。</p>
+<p>欢迎写下你的思考和答案，我们一起讨论。如果你觉得有所收获，也欢迎把文章分享给你的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/8f/35/f1839bb2.jpg" width="30px"><span>风中花</span> 👍（90） 💬（19）<div>胡老师您好！ 我公司现在就我一个人懂点kafka，但是公司线下却有使用kafka，现在知道我学习这个就交给我了，我现在遇到一个线上问题：消息经常堆积起来，不能消费了，重启服务就能继续消费了。我目前得能力还搞不定，望老师能给指点一二 。谢谢。谢谢</div>2019-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f3/dc/e7e5c159.jpg" width="30px"><span>落霞与孤鹜</span> 👍（23） 💬（3）<div>这个问题和这期的内容没关系😓。
+<li><span>风中花</span> 👍（90） 💬（19）<div>胡老师您好！ 我公司现在就我一个人懂点kafka，但是公司线下却有使用kafka，现在知道我学习这个就交给我了，我现在遇到一个线上问题：消息经常堆积起来，不能消费了，重启服务就能继续消费了。我目前得能力还搞不定，望老师能给指点一二 。谢谢。谢谢</div>2019-07-04</li><br/><li><span>落霞与孤鹜</span> 👍（23） 💬（3）<div>这个问题和这期的内容没关系😓。
 
-如果一个主题，由一个应用的名为A的消费组消费，然后把消费组名改为B，重新发布应用，这个时候是不是从主题的分区头开始消费？如何保证从上次A消费组的最新偏移量处开始消费？</div>2019-06-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e2/6e/0a300829.jpg" width="30px"><span>李先生</span> 👍（13） 💬（1）<div>胡哥：
-consumer消费：比如异步发积分，发积分的消息进入kafka，加积分服务监听kafka的topic，为了避免重复消费，加积分服务获取到消息后先写入mysql，并利用mysql的唯一索引的能力来避免重复消费，然后加积分服务异步去执行mysql中的信息去实现加积分。这种实现方案会导致消费性能低下，但是写入mysql一是避免重复消费，二是做一条成功的记录(便于后期查询)。这种如何优化呢</div>2020-04-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/15/e7/da14c0a9.jpg" width="30px"><span>Lei@时速云</span> 👍（8） 💬（1）<div>👍 胡总出专栏了</div>2019-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（7） 💬（3）<div>胡老师好，请教两个小问题
+如果一个主题，由一个应用的名为A的消费组消费，然后把消费组名改为B，重新发布应用，这个时候是不是从主题的分区头开始消费？如何保证从上次A消费组的最新偏移量处开始消费？</div>2019-06-30</li><br/><li><span>李先生</span> 👍（13） 💬（1）<div>胡哥：
+consumer消费：比如异步发积分，发积分的消息进入kafka，加积分服务监听kafka的topic，为了避免重复消费，加积分服务获取到消息后先写入mysql，并利用mysql的唯一索引的能力来避免重复消费，然后加积分服务异步去执行mysql中的信息去实现加积分。这种实现方案会导致消费性能低下，但是写入mysql一是避免重复消费，二是做一条成功的记录(便于后期查询)。这种如何优化呢</div>2020-04-10</li><br/><li><span>Lei@时速云</span> 👍（8） 💬（1）<div>👍 胡总出专栏了</div>2019-06-29</li><br/><li><span>钱</span> 👍（7） 💬（3）<div>胡老师好，请教两个小问题
 1：broker通过网络拿到消息后，落盘的规则是什么？来一条消息就落盘一条？还是积攒够一定的量再落盘？
 2：从追主，新的消息是主主动推给各个从的？还是从主动拉取的？如果是主动拉取，从怎么知道主有新的消息的？另外，同步的时候是只要有一条新消息就同步嘛？
-如果其他同学清楚，也请帮忙解答一下，多谢。</div>2019-08-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/4a/0b/775b0a98.jpg" width="30px"><span>打码的土豆</span> 👍（7） 💬（2）<div>老师你好 最近在看kafka官方文档时有一处没看懂还望老师指教 
+如果其他同学清楚，也请帮忙解答一下，多谢。</div>2019-08-14</li><br/><li><span>打码的土豆</span> 👍（7） 💬（2）<div>老师你好 最近在看kafka官方文档时有一处没看懂还望老师指教 
 All data is immediately written to a persistent log on the filesystem without necessarily flushing to disk. In effect this just means that it is transferred into the kernel&#39;s pagecache
-这上面说的文件系统上的持久日志为什么会是pagecache  pagecache不是内存的一部分吗</div>2019-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9b/c8/665100a3.jpg" width="30px"><span>周曙光爱学习</span> 👍（6） 💬（1）<div>拦截器的确是很有用，我们在grpc的拦截器中做限流处理。同理，由于下游存储TPS能力有限，也完全可以在kafka消费的拦截器中做消费限流处理，防止把存储打挂</div>2020-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d2/6a/a9039139.jpg" width="30px"><span>IT小僧</span> 👍（6） 💬（1）<div>老师好！这个消费者段onConsume是在消费数据之前执行的方法，并不能真正统计实际处理该消费耗费时间的吧。我觉得理应放在onCommit里面。</div>2020-01-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eoXW5rycAcrNTwgOvib8poPXO0zvIekIPzBZJfsnciaLPIw9Q1t3rsXeH6DR24QndpYQibvibhR1tKHPw/132" width="30px"><span>小马</span> 👍（6） 💬（4）<div>老师有两个疑问请教下：
+这上面说的文件系统上的持久日志为什么会是pagecache  pagecache不是内存的一部分吗</div>2019-07-01</li><br/><li><span>周曙光爱学习</span> 👍（6） 💬（1）<div>拦截器的确是很有用，我们在grpc的拦截器中做限流处理。同理，由于下游存储TPS能力有限，也完全可以在kafka消费的拦截器中做消费限流处理，防止把存储打挂</div>2020-04-09</li><br/><li><span>IT小僧</span> 👍（6） 💬（1）<div>老师好！这个消费者段onConsume是在消费数据之前执行的方法，并不能真正统计实际处理该消费耗费时间的吧。我觉得理应放在onCommit里面。</div>2020-01-13</li><br/><li><span>小马</span> 👍（6） 💬（4）<div>老师有两个疑问请教下：
 1、时间的一致性问题。System.currentTimeMillis() - record.timestamp()发送和接收的时间实际上可能来自两台机器，有可能时间不一致，会导致统计结果偏差很大;
 2、消费端代码计算时间差是在循环里面进行的，把System.currentTimeMillis()提到循环外面应该会好一点吧，毕竟这一批消息应该算是同时接收的;
-3、消息总数是在生产端统计的，时延是在消费端统计的，但是如果在消息传输过程中出现部分消息丢失是不是会影响统计的准确性。</div>2020-01-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/1T8Etnuwm77aViawR2wyricV9SIh7EadUEmCZStBHZKC0BYibmwwFTVaVVBJLibnfibOPyfkgfrBuQePcicVHzny8iaNg/132" width="30px"><span>姬广龙</span> 👍（4） 💬（1）<div>Interceptor处理数据是单条的吗，还是多条数据作为一个集合</div>2019-11-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/51/0d/fc1652fe.jpg" width="30px"><span>James</span> 👍（4） 💬（7）<div>请问老师无法完成提交,是因为重新平衡,是什么原因才会导致.
+3、消息总数是在生产端统计的，时延是在消费端统计的，但是如果在消息传输过程中出现部分消息丢失是不是会影响统计的准确性。</div>2020-01-09</li><br/><li><span>姬广龙</span> 👍（4） 💬（1）<div>Interceptor处理数据是单条的吗，还是多条数据作为一个集合</div>2019-11-23</li><br/><li><span>James</span> 👍（4） 💬（7）<div>请问老师无法完成提交,是因为重新平衡,是什么原因才会导致.
 刚接触不久,就要修改线上环境问题.但是一直跑了一小时就会下面问题,然后oom
 Group coordinator rl-hadoop5.gci.com:9092 (id: 2147483646 rack: null) is unavailable or invalid, will attempt rediscovery
 
@@ -13190,17 +13389,7 @@ Group coordinator rl-hadoop5.gci.com:9092 (id: 2147483646 rack: null) is unavail
 Offset commit failed on partition dispatch_bus-1 at offset 28978632: The coordinator is not aware of this member.
 
 
-Commit cannot be completed since the group has already rebalanced and assigned the partitions to another member. This means that the time between subsequent calls to poll() was longer than the configured max.poll.interval.ms, which typically implies that the poll loop is spending too much time message processing. You can address this either by increasing the session timeout or by reducing the maximum size of batches returned in poll() with max.poll.records.</div>2019-11-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c4/92/338b5609.jpg" width="30px"><span>Roy Liang</span> 👍（3） 💬（1）<div>老师你好，onAcknowledgement不应该是消息ACK后吗？怎么是提交成功后呢？提交成功后感觉应该属于callback的</div>2020-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e9/e9/1f95e422.jpg" width="30px"><span>杨陆伟</span> 👍（3） 💬（1）<div>System.currentTimeMillis() - record.timestamp() 是否要求生产客户端设置record的timestamp字段？还是Producer Client会自动生成？对于Kafka中的timestamp还搞不太清楚，这对监控比较关键，不知道后面有没有介绍，谢谢</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b3/c5/7fc124e2.jpg" width="30px"><span>Liam</span> 👍（3） 💬（1）<div>请问下老师。onsend或onconsumer的执行线程和发送或消费消息的线程是否是同一个线程？加入太多耗时逻辑是否会影响主逻辑？</div>2019-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/30/bd/00cc9f72.jpg" width="30px"><span>Lvjsky</span> 👍（1） 💬（1）<div>老师，是否可以使用消费者过滤器，在使用Spark Streaming或Flink消费数据前，通过消费者拦截器过滤掉不需要的数据呢？这样可以减少下游消费者计算量</div>2020-12-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/19/fd/b77903c0.jpg" width="30px"><span>飞猪环游记</span> 👍（1） 💬（1）<div>老师，你好，消费端拦截器里接收到的多条消息是同一条吗？想在拦截器发送前，消费前对同一条消息做些处理可以实现吗</div>2020-04-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/47/ae/0a5f7a56.jpg" width="30px"><span>此方彼方Francis</span> 👍（1） 💬（1）<div>老师好，在kafka的interceptor里面实现权限控制的逻辑合适吗？
-假设说有另外一个服务维护了IP和topic之间的关系，在interceptor里面线获取到本机ip有权限的topic列表，然后每次发消息的时候做判断。</div>2019-10-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5c/8f/551b5624.jpg" width="30px"><span>小可</span> 👍（1） 💬（4）<div>老师好，有个场景想请教下。我们发送的数据是个大json，大概500K，有一百多的字段，其中一个字段450K是图片base64，发送的速度不到100条&#47;秒，像这种大消息体数据的发送，kafka有什么好的办法么？</div>2019-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/b6/48/1275e0ce.jpg" width="30px"><span>小头针</span> 👍（1） 💬（1）<div>我们的应用场景是这样的，将采集到的数据接收到kafka，并由kafka再进行生产供下一逻辑消费，消费的数据进行一些业务的修改，最后进入到查询平台中，但是经常会出现采集端的数据与查询端的数据量相差较大的情况，所以我们就简单的统计了数据写入到redis中。
-
-胡老师，请问Interceptor可以对生产者生产的数据以及消费者消费的数据进行统计么？
-
-
-</div>2019-07-05</li><br/><li><img src="" width="30px"><span>Geek_Sue</span> 👍（1） 💬（1）<div>胡老师，我想问下您文中的例子，在onConsume的时候，是否会存在这一时刻Producer仍然在发送消息，然后totalSentMessage这个值拿到的偏小，并不完全准确呢？</div>2019-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/4d/5e/c5c62933.jpg" width="30px"><span>lmtoo</span> 👍（1） 💬（2）<div>这个怎么保证不同机器的时钟频率是一样的？，如果不完全一样，误差应该会越累积越大</div>2019-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/37/29/b3af57a7.jpg" width="30px"><span>凯文小猪</span> 👍（0） 💬（2）<div>胡老师 使用kafka统计latency要尤其注意system.currentTimeMills() 如果是kafka这类高吞吐量的埋点要注意频繁的用户态切换问题。
-这个问题在KAFKA-2950 中也提到过</div>2021-09-26</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/mWicFKgbjL299CQPEhoFdSAphVb4UpibkhF8loRxryBRt3H7ZGkibibhaKANTxvSiatic4PLCy2MsbEMH1hc76YefPUw/132" width="30px"><span>eviltion</span> 👍（0） 💬（2）<div>胡老师，问个问题，现在有这样一个需求，定义一个接口，根据传入的参数的其中一个字段来判断是否存在topic,来创建topic，并发送消息，想知道怎么实现动态consumer来消费</div>2021-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/46/e7/e20279ea.jpg" width="30px"><span>氧气🌙 🐟 🌺</span> 👍（0） 💬（1）<div>如果实现的逻辑仅仅是 return null，你觉得 Kafka 会丢弃该消息，还是原封不动地发送消息？
-回答：拦截器 return null 意味着什么也不做，会原封不动的发送消息</div>2020-08-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/4f/3c/296b5fa7.jpg" width="30px"><span>mm马</span> 👍（0） 💬（1）<div>如果消费者是多个，示例中的消费者端拦截器就有并发问题了吧？</div>2020-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/16/e0/7abad3cc.jpg" width="30px"><span>星期八</span> 👍（0） 💬（2）<div>遇到过奇怪的现象：拦截用集合传进去，说class找不到，用字符串传却可以
-props.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG,  &quot;&quot;);
-这是什么现象啊</div>2020-04-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ee/d6/0142c3a3.jpg" width="30px"><span>HZ</span> 👍（0） 💬（3）<div>老师，interceptor的处理，sender，ack，更新元数据，callback处理 这些producer端的功能都是用的不同的线程吗？ producer端的线程安全如何来理解？</div>2020-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/d0/42/6fd01fb9.jpg" width="30px"><span>我已经设置了昵称</span> 👍（0） 💬（2）<div>老师，遇到个问题， 自己建了个consumer的interceptor，需要在interceptor中收到消息后，发送响应消息给发送方，但发现interceptor这个实例并没有被spring管理起来，就需要自己再new一个producer。但这个kafka配置又是配置在配置中心，也读不到，只能写死了。有啥好的方法吗</div>2019-09-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0a/c0/401c240e.jpg" width="30px"><span>撒旦的堕落</span> 👍（0） 💬（1）<div>我看到老师回答的onsend 和onAcknowledgement是生产者进程下的不同线程  既然都是子线程 为啥又特意提到onAcknowledgement这个方法又处在发送的主路径中 难道是源码中对这两个方法的调用有区别？</div>2019-07-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5c/d7/e4673fde.jpg" width="30px"><span>October</span> 👍（0） 💬（1）<div>请问老师，kafka Interceptor可以对客户端做哪些监控？可以举个例子吗？</div>2019-07-04</li><br/>
+Commit cannot be completed since the group has already rebalanced and assigned the partitions to another member. This means that the time between subsequent calls to poll() was longer than the configured max.poll.interval.ms, which typically implies that the poll loop is spending too much time message processing. You can address this either by increasing the session timeout or by reducing the maximum size of batches returned in poll() with max.poll.records.</div>2019-11-13</li><br/><li><span>Roy Liang</span> 👍（3） 💬（1）<div>老师你好，onAcknowledgement不应该是消息ACK后吗？怎么是提交成功后呢？提交成功后感觉应该属于callback的</div>2020-04-14</li><br/><li><span>杨陆伟</span> 👍（3） 💬（1）<div>System.currentTimeMillis() - record.timestamp() 是否要求生产客户端设置record的timestamp字段？还是Producer Client会自动生成？对于Kafka中的timestamp还搞不太清楚，这对监控比较关键，不知道后面有没有介绍，谢谢</div>2019-07-19</li><br/><li><span>Liam</span> 👍（3） 💬（1）<div>请问下老师。onsend或onconsumer的执行线程和发送或消费消息的线程是否是同一个线程？加入太多耗时逻辑是否会影响主逻辑？</div>2019-06-29</li><br/><li><span>Lvjsky</span> 👍（1） 💬（1）<div>老师，是否可以使用消费者过滤器，在使用Spark Streaming或Flink消费数据前，通过消费者拦截器过滤掉不需要的数据呢？这样可以减少下游消费者计算量</div>2020-12-03</li><br/>
 </ul>
 
 

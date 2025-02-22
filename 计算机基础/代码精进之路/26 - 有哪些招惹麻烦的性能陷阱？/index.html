@@ -2474,6 +2474,69 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      字符串的操作
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      内存的泄露
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      未关闭的资源
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hashcode" class="md-nav__link">
+    <span class="md-ellipsis">
+      遗漏的hashCode
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      撞车的哈希值
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      一起来动手
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5486,6 +5549,69 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      字符串的操作
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      内存的泄露
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      未关闭的资源
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hashcode" class="md-nav__link">
+    <span class="md-ellipsis">
+      遗漏的hashCode
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      撞车的哈希值
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      一起来动手
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5550,12 +5676,382 @@
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>$ Java -jar target/benchmarks.jar
 </code></pre></div>
 <p>稍微等待，基准测试结果就出来了。我们需要关注的是"Score"这一栏，它表示的是每秒钟可以执行的基准测试方法的次数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Benchmark                Mode  Cnt        Score          Error  Units
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>MyBenchmark.testMethod  thrpt   25        35.945 ▒       0.694  ops/s
+</code></pre></div>
+<p>这是JMH工具基本的使用流程，有关这个工具更多的选项和更详细的使用，需要你参考JMH的相关文档。</p>
+<p>下面，我们通过字符串连接操作和哈希值的例子，来谈论一下这个工具要怎么使用，以及对应的性能问题。同时，我们再看看其他影响性能的一些小陷阱，比如内存的泄露、未关闭的资源和遗漏的hashCode。</p>
+<h2 id="_2">字符串的操作</h2>
+<p>在Java的核心类库里，有三个字符串操作的类，分别问String、StringBuilder和StringBuffer。通过下面的基准测试，我们来了解下这三种不同的字符串操作的性能差异。为了方便，我把JMH测试的数据，标注在每个基准测试的方法注释里了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>    // JMH throughput benchmark: about 32 operations per second
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    @Benchmark
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    public String measureStringApend() {
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        String targetString = &quot;&quot;;
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        for (int i = 0; i &lt; 10000; i++) {
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>            targetString += &quot;hello&quot;;
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        }
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        return targetString;
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    }
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>    // JMH throughput benchmark: about 5,600 operations per second
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    @Benchmark
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    public String measureStringBufferApend() {
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>        StringBuffer buffer = new StringBuffer();
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        for (int i = 0; i &lt; 10000; i++) {
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>            buffer.append(&quot;hello&quot;);
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        }
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>        return buffer.toString();
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    }
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>    // JMH throughput benchmark: about 21,000 operations per second
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    @Benchmark
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    public String measureStringBuilderApend() {
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>        StringBuilder builder = new StringBuilder();
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>        for (int i = 0; i &lt; 10000; i++) {
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>            builder.append(&quot;hello&quot;);
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>        }
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>        return builder.toString();
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    }
+</code></pre></div>
+<p>对于字符串连接的操作，这个基准测试结果显示，使用StringBuffer的字符串连接操作，比使用String的操作快了近200倍；使用StringBuilder 的字符串连接操作，比使用String的操作快了近700倍。</p>
+<p>String的字符串连接操作为什么慢呢？ 这是因为每一个字符串连接的操作（targetString += “hello”），都需要创建一个新的String对象，然后再销毁，再创建。这种模式对CPU和内存消耗都比较大。</p>
+<p>StringBuilder和StringBuffer为什么快呢？因为StringBuilder和StringBuffer的内部实现，预先分配了一定的内存。字符串操作时，只有预分配内存不足，才会扩展内存，这就大幅度减少了内存分配、拷贝和释放的频率。</p>
+<p>StringBuilder为什么比StringBuffer还要快呢？StringBuffer的字符串操作是多线程安全的，而StringBuilder的操作就不是。如果我们看这两个方法的实现代码，除了线程安全的同步以外，几乎没有差别。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>public final class StringBuffer
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    extends AbstractStringBuilder
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    implements java.io.Serializable, Comparable&lt;StringBuffer&gt;, CharSequence {
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    // snipped
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    @Override
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    @HotSpotIntrinsicCandidate
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    public synchronized StringBuffer append(String str) {
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        toStringCache = null;
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>        super.append(str);
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>        return this;
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    }
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    //  snipped
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>}
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>public final class StringBuilder
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    extends AbstractStringBuilder
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    implements java.io.Serializable, Comparable&lt;StringBuilder&gt;, CharSequence {
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    // snipped
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    @Override
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    @HotSpotIntrinsicCandidate
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    public StringBuilder append(String str) {
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>        super.append(str);
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>        return this;
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    }
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    // snipped
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>}
+</code></pre></div>
+<p>JMH的基准测试，并没有涉及到线程同步问题，难道使用synchronized关键字也会有性能损耗吗？</p>
+<p>我们再来看看另外一个基准测试。这个基准测试，使用线程不安全的StringBuilder以及同步的字符串连接，部分模拟了线程安全的StringBuffer.append()方法的实现。为了方便你对比，我把没有使用同步的代码也拷贝在下面。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>    // JMH throughput benchmark: about 21,000 operations per second
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    @Benchmark
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    public String measureStringBuilderApend() {
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>        StringBuilder builder = new StringBuilder();
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        for (int i = 0; i &lt; 10000; i++) {
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>            builder.append(&quot;hello&quot;);
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>        }
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>        return builder.toString();
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    }
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>    // JMH throughput benchmark: about 16,000 operations per second
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    @Benchmark
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    public String measureStringBuilderSynchronizedApend() {
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>        StringBuilder builder = new StringBuilder();
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>        for (int i = 0; i &lt; 10000; i++) {
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>            synchronized (this) {
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>                builder.append(&quot;hello&quot;);
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>            }
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>        }
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>        return builder.toString();
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>    }
+</code></pre></div>
+<p>这个基准测试结果显示，虽然基准测试并没有使用多个线程，但是使用了线程同步的代码比不使用线程同步的代码慢。线程同步，就是StringBuffer比StringBuilder慢的原因之一。</p>
+<p>通过上面的基准测试，我们可以得出这样的结论：</p>
+<ol>
+<li>频繁的对象创建、销毁，有损代码的效率；</li>
+<li>减少内存分配、拷贝、释放的频率，可以提高代码的效率；</li>
+<li>即使是单线程环境，使用线程同步依然有损代码的效率。</li>
+</ol>
+<p>从上面的基准测试结果，是不是可以得出结论，我们应该使用StringBuilder来进行字符串操作呢？我们再来看几个基准测试的例子。</p>
+<p>下面的例子，测试的是常量字符串的连接操作。从测试结果，我们可以看出，使用String的连接操作，要比使用StringBuilder的字符串连接快5万倍，这是一个让人惊讶的性能差异。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>    // JMH throughput benchmark: about 1,440,000,000 operations per second
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    @Benchmark
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    public void measureSimpleStringApend() {
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>        for (int i = 0; i &lt; 10000; i++) {
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>            String targetString = &quot;Hello, &quot; + &quot;world!&quot;;
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>        }
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    }
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>    // JMH throughput benchmark: about 26,000 operations per second
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    @Benchmark
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    public void measureSimpleStringBuilderApend() {
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>        for (int i = 0; i &lt; 10000; i++) {
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>            StringBuilder builder = new StringBuilder();
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>            builder.append(&quot;hello, &quot;);
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>            builder.append(&quot;world!&quot;);
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>        }
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    }
+</code></pre></div>
+<p>这个巨大的差异，主要来自于Java编译器和JVM对字符串处理的优化。" Hello, " + " world! " 这样的表达式，并没有真正执行字符串连接。编译器会把它处理成一个连接好的常量字符串"Hello, world!"。这样，也就不存在反复的对象创建和销毁了，常量字符串的连接显示了超高的效率。</p>
+<p>如果字符串的连接里，出现了变量，编译器和JVM就没有办法进行优化了。这时候，StringBuilder的效率优势才能体现出来。下面的两个基准测试结果，就显示了变量对于字符长连接操作效率的影响。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>    // JMH throughput benchmark: about 9,000 operations per second
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    @Benchmark
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    public void measureVariableStringApend() {
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>        for (int i = 0; i &lt; 10000; i++) {
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>            String targetString = &quot;Hello, &quot; + getAppendix();
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>        }
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    }
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>    // JMH throughput benchmark: about 26,000 operations per second
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    @Benchmark
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    public void measureVariableStringBuilderApend() {
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>        for (int i = 0; i &lt; 10000; i++) {
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>            StringBuilder builder = new StringBuilder();
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>            builder.append(&quot;hello, &quot;);
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>            builder.append(getAppendix());
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>        }
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    }
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>    private String getAppendix() {
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>       return &quot;World!&quot;;
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    }
+</code></pre></div>
+<p>通过上面的基准测试，我们可以总结出下面的几条最佳实践：</p>
+<ol>
+<li>Java的编译器会优化常量字符串的连接，我们可以放心地把长的字符串换成多行；</li>
+<li>带有变量的字符串连接，StringBuilder效率更高。如果效率敏感的代码，建议使用StringBuilder。String的连接操作可读性更高，效率不敏感的代码可以使用，比如异常信息、调试日志、使用不频繁的代码；</li>
+<li>如果涉及大量的字符串操作，使用StringBuilder效率更高；</li>
+<li>除非有线程安全的需求，不推荐使用线程安全的StringBuffer。</li>
+</ol>
+<h2 id="_3">内存的泄露</h2>
+<p>内存泄漏是C语言的一个大问题。为了更好地管理内存，Java提供了自动的内存管理和垃圾回收机制。但是，Java依然会泄露内存。这种内存泄漏的主要表现是，如果一个对象不再有用处，而且它的引用还没有清零，垃圾回收器就意识不到这个对象需要及时回收，这时候就引发了内存泄露。</p>
+<p>生命周期长的集合，是Java容易发生内存泄漏的地方。比如，可以扩张的静态的集合，或者存活时间长的缓存等。如果不能及时清理掉集合里没有用处的对象，就会造成内存的持续增加，引发内存泄漏问题。</p>
+<p>比如下面这两个例子，就容易发生内存泄露。</p>
+<p>静态的集合：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>static final List&lt;Object&gt;
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>         staticCachedObjects = new LinkedList&lt;&gt;();
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>// snipped
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>staticCachedObjects.add(...);
+</code></pre></div>
+<p>长寿的缓存：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>final List&lt;Object&gt;
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>        longLastingCache = new LinkedList&lt;&gt;();
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>// snipped
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>longLastingCache.add(...);
+</code></pre></div>
+<p>解决这个问题的办法通常是使用SoftReference和WeakReference来存储对象的引用，或者主动地定期清理。</p>
+<p>静态的集合：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>static final List&lt;WeakReference&lt;Object&gt;&gt;
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>        staticCachedObjects = new LinkedList&lt;&gt;();
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>// snipped
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>staticCachedObjects.add(...);
+</code></pre></div>
+<p>长寿的缓存：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>final List&lt;WeakReference&lt;Object&gt;&gt;
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>        longLastingCache = new LinkedList&lt;&gt;();
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>// snipped
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>longLastingCache.add(...);
+</code></pre></div>
+<p>需要注意的是，缓存的处理是一个复杂的问题，使用SoftReference和WeakReference未必能够满足你的业务需求。更有效的缓存解决方案，依赖于具体的使用场景。</p>
+<h2 id="_4">未关闭的资源</h2>
+<p>有很多系统资源，需要明确地关闭，要不然，占用的系统资源就不能有效地释放。比如说，数据库连接、套接字连接和 I/O 操作等。原则上，所有实现了Closable接口的对象，都应该调用close()操作；所有需要明确关闭的类，都应该实现Closable接口。</p>
+<p>需要注意的是，close()操作，一定要使用try-finally或者try-with-resource语句。要不然，关闭资源的代码可能很复杂。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c8/53/c8f705647492b0faccbfff026eb88d53.png?wh=627%2A420" /><br />
+如果一个类需要关闭，但是又没有实现Closable接口，就比较麻烦，比如URLConnection. URLConnection.connect()能够建立连接，该连接需要关闭，但是URLConnection没有实现Closable接口，关闭的办法只能是关闭对应的I/O接口，可是关闭I/O输入和输出接口中的一个，还不能保证整个连接会完全关闭。谨慎的代码，需要把I/O输入和输出都关闭掉，哪怕不需要输入或者输出。但是这样一来，我们的编码负担就会加重。所以最好的方法就是实现Closable接口。</p>
+<p>双向关闭I/O：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>URL url = new URL(&quot;http://www.google.com/&quot;);
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>URLConnection conn = url.openConnection();
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>conn.connect();
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>try (InputStream is = conn.getInputStream()) {
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>    // sinnped
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>}
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>try (OutputStream os = conn.getOutputStream()) {
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>    // sinnped
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>}
+</code></pre></div>
+<p>单向关闭I/O：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>URL url = new URL(&quot;http://www.google.com/&quot;);
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>URLConnection conn = url.openConnection();
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>conn.connect();
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>try (InputStream is = conn.getInputStream()) {
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>    // sinnped
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>}
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>// The output strean is not close, the connection may be still alive.
+</code></pre></div>
+<h2 id="hashcode">遗漏的hashCode</h2>
+<p>在使用Hashtbale、HashMap、HashSet这样的依赖哈希（hash）值的集合时，有时候我们会忘记要检查产生哈希值的对象，一定要实现hashCode()和equals()这两个方法。缺省的hashCode()实现，返回值是每一个对象都不同的数值。即使是相等的对象，不同的哈希值，使用基于哈希值的集合时，也会被看作不同的对象。这样的行为，可能不符合我们的预期。而且，使用没有实现hashCode()和equals()这两个方法的对象，可能会造成集合的尺寸持续增加，无端地占用内存，甚至会造成内存的泄漏。</p>
+<p>所以，我们使用基于hash的集合时，一定要确保集合里的对象，都正确地实现了hashCode()和equals()这两个方法。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/bf/82/bf4fd2108a994b6bbfa7845dc65b1d82.jpg?wh=625%2A1235" /></p>
+<h2 id="_5">撞车的哈希值</h2>
+<p>实现hashCode()这个方法的，并没有要求不相等对象的返回值也必须是不相等的。但是如果返回的哈希值不同，对集合的性能就会有比较大的影响。</p>
+<p>下面的两个基准测试结果显示，如果10,000个对象，只有10个不同的哈希值，它的集合运算的性能是令人担忧的。和使用了不用哈希值的实现相比，性能有几百倍的差异。</p>
+<p>这种性能差异，主要是由基于哈希值的集合的实现方式决定的。哈希值如果相同，就要调用其他的方法来识别一个对象。哈希值如果不同，哈希值本身就可以确定一个对象的索引。如果哈希值撞车比例大，这种检索和计算的差距就会很大。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>    // JMH throughput benchmark: about 5,000 operations per second
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>    @Benchmark
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>    public void measureHashMap() throws IOException {
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>        Map&lt;HashedKey, String&gt; map = new HashMap&lt;&gt;();
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>        for (int i = 0; i &lt; 10000; i++) {
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>            map.put(new HashedKey(i), &quot;value&quot;);
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>        }
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>    }
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a>    private static class HashedKey {
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>        final int key;
+<a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a>
+<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a>        HashedKey(int key) {
+<a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a>            this.key = key;
+<a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a>        }
+<a id="__codelineno-23-16" name="__codelineno-23-16" href="#__codelineno-23-16"></a>
+<a id="__codelineno-23-17" name="__codelineno-23-17" href="#__codelineno-23-17"></a>        @Override
+<a id="__codelineno-23-18" name="__codelineno-23-18" href="#__codelineno-23-18"></a>        public boolean equals(Object obj) {
+<a id="__codelineno-23-19" name="__codelineno-23-19" href="#__codelineno-23-19"></a>            if (obj == this) {
+<a id="__codelineno-23-20" name="__codelineno-23-20" href="#__codelineno-23-20"></a>                return true;
+<a id="__codelineno-23-21" name="__codelineno-23-21" href="#__codelineno-23-21"></a>            }
+<a id="__codelineno-23-22" name="__codelineno-23-22" href="#__codelineno-23-22"></a>
+<a id="__codelineno-23-23" name="__codelineno-23-23" href="#__codelineno-23-23"></a>            if (obj instanceof HashedKey) {
+<a id="__codelineno-23-24" name="__codelineno-23-24" href="#__codelineno-23-24"></a>                return key == ((HashedKey)obj).key;
+<a id="__codelineno-23-25" name="__codelineno-23-25" href="#__codelineno-23-25"></a>            }
+<a id="__codelineno-23-26" name="__codelineno-23-26" href="#__codelineno-23-26"></a>
+<a id="__codelineno-23-27" name="__codelineno-23-27" href="#__codelineno-23-27"></a>            return false;
+<a id="__codelineno-23-28" name="__codelineno-23-28" href="#__codelineno-23-28"></a>        }
+<a id="__codelineno-23-29" name="__codelineno-23-29" href="#__codelineno-23-29"></a>
+<a id="__codelineno-23-30" name="__codelineno-23-30" href="#__codelineno-23-30"></a>        @Override
+<a id="__codelineno-23-31" name="__codelineno-23-31" href="#__codelineno-23-31"></a>        public int hashCode() {
+<a id="__codelineno-23-32" name="__codelineno-23-32" href="#__codelineno-23-32"></a>            return key;
+<a id="__codelineno-23-33" name="__codelineno-23-33" href="#__codelineno-23-33"></a>        }
+<a id="__codelineno-23-34" name="__codelineno-23-34" href="#__codelineno-23-34"></a>    }
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>    // JMH throughput benchmark: about 9.5 operations per second
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>    @Benchmark
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>    public void measureCollidedHashMap() throws IOException {
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>        Map&lt;CollidedKey, String&gt; map = new HashMap&lt;&gt;();
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>        for (int i = 0; i &lt; 10000; i++) {
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>            map.put(new CollidedKey(i), &quot;value&quot;);
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>        }
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>    }
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a>    private static class CollidedKey {
+<a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a>        final int key;
+<a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a>
+<a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a>        CollidedKey(int key) {
+<a id="__codelineno-24-14" name="__codelineno-24-14" href="#__codelineno-24-14"></a>            this.key = key;
+<a id="__codelineno-24-15" name="__codelineno-24-15" href="#__codelineno-24-15"></a>        }
+<a id="__codelineno-24-16" name="__codelineno-24-16" href="#__codelineno-24-16"></a>
+<a id="__codelineno-24-17" name="__codelineno-24-17" href="#__codelineno-24-17"></a>        @Override
+<a id="__codelineno-24-18" name="__codelineno-24-18" href="#__codelineno-24-18"></a>        public boolean equals(Object obj) {
+<a id="__codelineno-24-19" name="__codelineno-24-19" href="#__codelineno-24-19"></a>            if (obj == this) {
+<a id="__codelineno-24-20" name="__codelineno-24-20" href="#__codelineno-24-20"></a>                return true;
+<a id="__codelineno-24-21" name="__codelineno-24-21" href="#__codelineno-24-21"></a>            }
+<a id="__codelineno-24-22" name="__codelineno-24-22" href="#__codelineno-24-22"></a>
+<a id="__codelineno-24-23" name="__codelineno-24-23" href="#__codelineno-24-23"></a>            if (obj instanceof CollidedKey) {
+<a id="__codelineno-24-24" name="__codelineno-24-24" href="#__codelineno-24-24"></a>                return key == ((CollidedKey)obj).key;
+<a id="__codelineno-24-25" name="__codelineno-24-25" href="#__codelineno-24-25"></a>            }
+<a id="__codelineno-24-26" name="__codelineno-24-26" href="#__codelineno-24-26"></a>
+<a id="__codelineno-24-27" name="__codelineno-24-27" href="#__codelineno-24-27"></a>            return false;
+<a id="__codelineno-24-28" name="__codelineno-24-28" href="#__codelineno-24-28"></a>        }
+<a id="__codelineno-24-29" name="__codelineno-24-29" href="#__codelineno-24-29"></a>
+<a id="__codelineno-24-30" name="__codelineno-24-30" href="#__codelineno-24-30"></a>        @Override
+<a id="__codelineno-24-31" name="__codelineno-24-31" href="#__codelineno-24-31"></a>        public int hashCode() {
+<a id="__codelineno-24-32" name="__codelineno-24-32" href="#__codelineno-24-32"></a>            return key % 10;
+<a id="__codelineno-24-33" name="__codelineno-24-33" href="#__codelineno-24-33"></a>        }
+<a id="__codelineno-24-34" name="__codelineno-24-34" href="#__codelineno-24-34"></a>    }
+</code></pre></div>
+<h2 id="_6">小结</h2>
+<p>今天，我们主要讨论了一些容易被忽略的性能陷阱。比如，字符串怎么操作才是高效的；Java常见的内存泄漏；资源关闭的正确方法以及集合的相关性能问题。</p>
+<p>我们虽然使用了Java作为示例，但是像集合和字符串操作这样的性能问题，并不局限于特定的编程语言，你也可以看看你熟悉的编程语言有没有类似的问题。</p>
+<h2 id="_7">一起来动手</h2>
+<p>这一次的练手题，我们来练习使用JMH工具，分析更多的性能问题。在“撞车的哈希值”这一小节，我们测试了HashMap的put方法，你能不能测试下其他方法以及其他基于哈希值的集合（HashSet，Hashtable）？我们测试的是10,000个对象，只有10个哈希值。如果10,000个对象，有5,000个哈希值，性能影响有多大？</p>
+<p>下面的这段代码，你能够找到它的性能问题吗？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>package com.example;
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>import java.util.Arrays;
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>import java.util.Random;
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>public class UserId {
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>    private static final Random random = new Random();
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a>
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a>    private final byte[] userId = new byte[32];
+<a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a>
+<a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a>    public UserId() {
+<a id="__codelineno-25-12" name="__codelineno-25-12" href="#__codelineno-25-12"></a>        random.nextBytes(userId);
+<a id="__codelineno-25-13" name="__codelineno-25-13" href="#__codelineno-25-13"></a>    }
+<a id="__codelineno-25-14" name="__codelineno-25-14" href="#__codelineno-25-14"></a>
+<a id="__codelineno-25-15" name="__codelineno-25-15" href="#__codelineno-25-15"></a>    @Override
+<a id="__codelineno-25-16" name="__codelineno-25-16" href="#__codelineno-25-16"></a>    public boolean equals(Object obj) {
+<a id="__codelineno-25-17" name="__codelineno-25-17" href="#__codelineno-25-17"></a>        if (obj == this) {
+<a id="__codelineno-25-18" name="__codelineno-25-18" href="#__codelineno-25-18"></a>            return true;
+<a id="__codelineno-25-19" name="__codelineno-25-19" href="#__codelineno-25-19"></a>        }
+<a id="__codelineno-25-20" name="__codelineno-25-20" href="#__codelineno-25-20"></a>
+<a id="__codelineno-25-21" name="__codelineno-25-21" href="#__codelineno-25-21"></a>        if (obj instanceof UserId) {
+<a id="__codelineno-25-22" name="__codelineno-25-22" href="#__codelineno-25-22"></a>            return Arrays.equals(this.userId, ((UserId)obj).userId);
+<a id="__codelineno-25-23" name="__codelineno-25-23" href="#__codelineno-25-23"></a>        }
+<a id="__codelineno-25-24" name="__codelineno-25-24" href="#__codelineno-25-24"></a>
+<a id="__codelineno-25-25" name="__codelineno-25-25" href="#__codelineno-25-25"></a>        return false;
+<a id="__codelineno-25-26" name="__codelineno-25-26" href="#__codelineno-25-26"></a>    }
+<a id="__codelineno-25-27" name="__codelineno-25-27" href="#__codelineno-25-27"></a>
+<a id="__codelineno-25-28" name="__codelineno-25-28" href="#__codelineno-25-28"></a>    @Override
+<a id="__codelineno-25-29" name="__codelineno-25-29" href="#__codelineno-25-29"></a>    public int hashCode() {
+<a id="__codelineno-25-30" name="__codelineno-25-30" href="#__codelineno-25-30"></a>        int retVal = 0;
+<a id="__codelineno-25-31" name="__codelineno-25-31" href="#__codelineno-25-31"></a>
+<a id="__codelineno-25-32" name="__codelineno-25-32" href="#__codelineno-25-32"></a>        for (int i = 0; i &lt; userId.length; i++) {
+<a id="__codelineno-25-33" name="__codelineno-25-33" href="#__codelineno-25-33"></a>            retVal += userId[i];
+<a id="__codelineno-25-34" name="__codelineno-25-34" href="#__codelineno-25-34"></a>        }
+<a id="__codelineno-25-35" name="__codelineno-25-35" href="#__codelineno-25-35"></a>
+<a id="__codelineno-25-36" name="__codelineno-25-36" href="#__codelineno-25-36"></a>        return retVal;
+<a id="__codelineno-25-37" name="__codelineno-25-37" href="#__codelineno-25-37"></a>    }
+<a id="__codelineno-25-38" name="__codelineno-25-38" href="#__codelineno-25-38"></a>}
+</code></pre></div>
+<p>我们前面讨论了下面这段代码的性能问题，你能够使用JMH测试一个你的改进方案带来的效率提升吗？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>import java.util.HashMap;
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>import java.util.Map;
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>class Solution {
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>    /**
+<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>     * Given an array of integers, return indices of the two numbers
+<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>     * such that they add up to a specific target.
+<a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a>     */
+<a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a>    public int[] twoSum(int[] nums, int target) {
+<a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a>        Map&lt;Integer, Integer&gt; map = new HashMap&lt;&gt;();
+<a id="__codelineno-26-11" name="__codelineno-26-11" href="#__codelineno-26-11"></a>        for (int i = 0; i &lt; nums.length; i++) {
+<a id="__codelineno-26-12" name="__codelineno-26-12" href="#__codelineno-26-12"></a>            int complement = target - nums[i];
+<a id="__codelineno-26-13" name="__codelineno-26-13" href="#__codelineno-26-13"></a>            if (map.containsKey(complement)) {
+<a id="__codelineno-26-14" name="__codelineno-26-14" href="#__codelineno-26-14"></a>                return new int[] { map.get(complement), i };
+<a id="__codelineno-26-15" name="__codelineno-26-15" href="#__codelineno-26-15"></a>            }
+<a id="__codelineno-26-16" name="__codelineno-26-16" href="#__codelineno-26-16"></a>            map.put(nums[i], i);
+<a id="__codelineno-26-17" name="__codelineno-26-17" href="#__codelineno-26-17"></a>        }
+<a id="__codelineno-26-18" name="__codelineno-26-18" href="#__codelineno-26-18"></a>        throw new IllegalArgumentException(&quot;No two sum solution&quot;);
+<a id="__codelineno-26-19" name="__codelineno-26-19" href="#__codelineno-26-19"></a>    }
+<a id="__codelineno-26-20" name="__codelineno-26-20" href="#__codelineno-26-20"></a>}
+</code></pre></div>
+<p>另外，你也可以检查一下你手头的代码，看看有没有踩到类似的坑。如果遇到类似的陷阱，看一看能不能改进。</p>
+<p>容易被忽略的性能陷阱，有很多种。这些大大小小的经验，需要我们日复一日的积累。如果你有这方面的经验，或者看到这方面的技术，请你分享在留言区，我们一起来学习、积累这些经验。</p>
+<p>也欢迎点击“请朋友读”，把这篇文章分享给你的朋友或者同事，一起交流一下。</p>
 <div><strong>精选留言（5）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/7b/ae/66ae403d.jpg" width="30px"><span>熊猫</span> 👍（6） 💬（1）<div>老师，能推荐JMH快速入门的博客吗？减少大家查找信息成本。</div>2019-05-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/37/af/d72f4cba.jpg" width="30px"><span>夕夏洛克</span> 👍（4） 💬（1）<div>老师这是我用jmh 跑出的性能数据 为什么 string的性能是最好的呢
+<li><span>熊猫</span> 👍（6） 💬（1）<div>老师，能推荐JMH快速入门的博客吗？减少大家查找信息成本。</div>2019-05-22</li><br/><li><span>夕夏洛克</span> 👍（4） 💬（1）<div>老师这是我用jmh 跑出的性能数据 为什么 string的性能是最好的呢
 MyBenchmark.stringMethod  thrpt   25  15.036 ± 1.045  ops&#47;s
 MyBenchmark.stringBufferMethod  thrpt   25  7689.300 ± 367.812  ops&#47;s
-MyBenchmark.stringBuilderMethod  thrpt   25  7690.659 ± 251.793  ops&#47;s</div>2019-03-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/76/23/31e5e984.jpg" width="30px"><span>空知</span> 👍（3） 💬（0）<div>@夕夏洛克 查了下 JMH有四种模式,Throughput是吞吐量,单位时间内处理请求数,越大越好, 注解@BenchmarkMode(Mode.Throughput)可以修改模式 </div>2019-03-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>生命周期长的集合，是 Java 容易发生内存泄漏的地方。--记下来</div>2022-07-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/da/ec/779c1a78.jpg" width="30px"><span>往事随风，顺其自然</span> 👍（0） 💬（0）<div>存在拆箱和装箱的转换问题，比较耗费资源</div>2019-03-05</li><br/>
+MyBenchmark.stringBuilderMethod  thrpt   25  7690.659 ± 251.793  ops&#47;s</div>2019-03-06</li><br/><li><span>空知</span> 👍（3） 💬（0）<div>@夕夏洛克 查了下 JMH有四种模式,Throughput是吞吐量,单位时间内处理请求数,越大越好, 注解@BenchmarkMode(Mode.Throughput)可以修改模式 </div>2019-03-07</li><br/><li><span>ifelse</span> 👍（0） 💬（0）<div>生命周期长的集合，是 Java 容易发生内存泄漏的地方。--记下来</div>2022-07-26</li><br/><li><span>往事随风，顺其自然</span> 👍（0） 💬（0）<div>存在拆箱和装箱的转换问题，比较耗费资源</div>2019-03-05</li><br/>
 </ul>
 
 

@@ -1676,6 +1676,8 @@
       
         
       
+        
+      
     
     
       
@@ -3849,6 +3851,24 @@
   <a href="#linucb" class="md-nav__link">
     <span class="md-ellipsis">
       LinUCB
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      构建特征
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
     </span>
   </a>
   
@@ -6179,6 +6199,24 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      构建特征
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6261,10 +6299,42 @@
 </ol>
 <p>当LinUCB的特征向量始终取1，每个候选臂的参数是收益均值的时候，LinUCB就是UCB。</p>
 <p>说完简单版的LinUCB，再看看高级版的LinUCB。与简单版的相比，就是认为有一部分特征对应的参数是在所有候选臂之间共享的，所谓共享，也就是无论是哪个候选臂被选中，都会去更新这部分参数。</p>
+<h2 id="_1">构建特征</h2>
+<p>LinUCB算法有一个很重要的步骤，就是给用户和物品构建特征，也就是刻画上下文。</p>
+<p>在“Yahoo！”的应用中，物品是文章。它对特征做了一些工程化的处理，这里稍微讲一下，可供实际应用时参考借鉴。</p>
+<p>首先，原始用户特征有下面几个。</p>
+<ol>
+<li>人口统计学：性别特征（2类），年龄特征（离散成10个区间）。</li>
+<li>地域信息：遍布全球的大都市，美国各个州。</li>
+<li>行为类别：代表用户历史行为的1000个类别取值。</li>
+</ol>
+<p>其次，原始文章特征有：</p>
+<ol>
+<li>URL类别：根据文章来源分成了几十个类别。</li>
+<li>编辑打标签：编辑人工给内容从几十个话题标签中挑选出来的。</li>
+</ol>
+<p>原始特征向量先经过归一化，变成单位向量。</p>
+<p>再对原始用户特征做第一次降维，降维的方法就是利用用户特征和物品特征以及用户的点击行为去拟合一个矩阵W。</p>
+<p>$$\phi_{u}<sup T="T">{T}W\phi_{a}</sup>$$</p>
+<p>就用逻辑回归拟合用户对文章的点击历史，得到的W直觉上理解就是：能够把用户特征映射到物品特征上，相当于对用户特征降维了，映射方法是下面这样。</p>
+<p>$$\psi_{u}=\phi_{u}^{T}W$$</p>
+<p>这一步可以将原始的1000多维用户特征投射到文章的80多维的特征空间。</p>
+<p>然后，用投射后的80多维特征对用户聚类，得到5个类，文章页同样聚类成5个类，再加上常数1，用户和文章各自被表示成6维向量。</p>
+<p>接下来就应用前面的LinUCB算法就是了，特征工程依然还是很有效的。</p>
+<h2 id="_2">总结</h2>
+<p>今天我和你分享了一种上下文有关的Bandit算法，叫做LinUCB，它有这么几个优点：</p>
+<ol>
+<li>由于加入了特征，所以收敛比UCB更快，也就是比UCB更快见效；</li>
+<li>各个候选臂之间参数是独立的，可以互相不影响地更新参数；</li>
+<li>由于参与计算的是特征，所以可以处理动态的推荐候选池，编辑可以增删文章；</li>
+</ol>
+<p>当然，LinUCB以及所有的Bandit算法都有个缺点：同时处理的候选臂数量不能太多，不超过几百个最佳。因为每一次要计算每一个候选臂的期望收益和置信区间，一旦候选太多，计算代价将不可接受。</p>
+<p>LinUCB只是一个推荐框架，可以将这个框架应用在很多地方，比如投放广告，为用户选择兴趣标签，你还可以发挥聪明才智，看看它还能用来解决什么问题，欢迎留言一起交流。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/87/b0/873b086966136189db14874181823fb0.jpg?wh=1110%2A549" /></p>
 <div><strong>精选留言（12）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/5e/92/cd3ad588.jpg" width="30px"><span>cyrilliang</span> 👍（5） 💬（2）<div>真是越能看到后面的人越少。老师讲得不错，赞一个</div>2018-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/68/5a/4e7754d3.jpg" width="30px"><span>范深</span> 👍（5） 💬（0）<div>Bandit 的精髓之一就是在没有特征，没有状态的情况下进行选择。如果LinUCB引进来了，说明U-I的特征也有了，这时候能用的算法就很多了，包括DQN等。我理解的对吗？</div>2018-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c1/a7/5e66d331.jpg" width="30px"><span>林彦</span> 👍（4） 💬（1）<div>简单搜索了下，除了典型的商品和内容推荐，也有人在非工业领域用于搜索更好的游戏策略(蒙特卡罗模拟)，更好的短信交互策略提高用户互动目标的完成度。如果更幻想一些，理论上有足够多的数据也可以协助更好地诊断疾病标签和推荐可能更有效的治疗方案(如果医疗机构有意愿积极协作)。</div>2018-04-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/cc/3b/8ce7c7b1.jpg" width="30px"><span>在西伯利亚森林养猫</span> 👍（1） 💬（0）<div>ψu​=ϕuT​ W 
-这个公式可以详细讲讲吗，构建特征工程哪儿没有明白</div>2020-10-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/6c/c8/1908ea47.jpg" width="30px"><span>Austin</span> 👍（1） 💬（0）<div>感觉就是矩阵分解呀</div>2019-12-17</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83erc7pC0kHVzTEia77z8ehTlUdyeic5L0IQjlY2poJ6BkibPeLBbGaiaV4lsT8SzlibIEIyIAho1l0INreQ/132" width="30px"><span>星</span> 👍（1） 💬（4）<div>老师好。看完您的视频，就能找份推荐的工作了吗？谢谢</div>2018-08-06</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/ajNVdqHZLLBkrZdibnbjt4E1Sntg9ZyrUIFAUSbvs9ic2lTGA4a7IiblLEMZ8rwz2uIK72rE2iaVpJh5Mqme25omJg/132" width="30px"><span>dtttt</span> 👍（0） 💬（0）<div>老师好，如何从 LinUCB 的置信区间上边界的公式得出 m 越大，其置信区间越小的呢？</div>2021-06-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/47/1a/645ab65b.jpg" width="30px"><span>全</span> 👍（0） 💬（0）<div>利用context 特征，并且将用户和臂的特征进行相似性计算(这里可以有很多方式，线性，双线性，cos，模型）作为最后的收益。</div>2021-03-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/47/1a/645ab65b.jpg" width="30px"><span>全</span> 👍（0） 💬（0）<div>感觉linucb 也可以做用户粗粒度画像</div>2021-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/6c/c8/1908ea47.jpg" width="30px"><span>Austin</span> 👍（0） 💬（2）<div>没讲清楚，都有这么多数据积累了，干嘛不直接用LR</div>2019-12-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKotwgsX9quRzOt8WqWHCxJ1DzA5pETgeialJs5NmP1icZsWJwNgv8I2icgz504wKHg4AuxMzpFibnmvg/132" width="30px"><span>qingyunhe</span> 👍（0） 💬（0）<div>哈哈，放心，我会学完的~~ 只不过学到这儿，是我第一个需要课下再消化一下的小节，光那篇论文需要细细研读一遍~~~</div>2019-06-12</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/qRjoqWIGC6tpmKZBGTxjQKC9cbz9XLhw2nF1c74R4icFOYOdVO4iaeQEQDqEvmbicxn6HEc4SU8kpkwVaO5nABMug/132" width="30px"><span>shangqiu86</span> 👍（0） 💬（0）<div>讲的很好，就是后面的linUCB感觉是个大工程，需要不断优化不断累积修正特征</div>2019-05-05</li><br/>
+<li><span>cyrilliang</span> 👍（5） 💬（2）<div>真是越能看到后面的人越少。老师讲得不错，赞一个</div>2018-07-09</li><br/><li><span>范深</span> 👍（5） 💬（0）<div>Bandit 的精髓之一就是在没有特征，没有状态的情况下进行选择。如果LinUCB引进来了，说明U-I的特征也有了，这时候能用的算法就很多了，包括DQN等。我理解的对吗？</div>2018-06-06</li><br/><li><span>林彦</span> 👍（4） 💬（1）<div>简单搜索了下，除了典型的商品和内容推荐，也有人在非工业领域用于搜索更好的游戏策略(蒙特卡罗模拟)，更好的短信交互策略提高用户互动目标的完成度。如果更幻想一些，理论上有足够多的数据也可以协助更好地诊断疾病标签和推荐可能更有效的治疗方案(如果医疗机构有意愿积极协作)。</div>2018-04-11</li><br/><li><span>在西伯利亚森林养猫</span> 👍（1） 💬（0）<div>ψu​=ϕuT​ W 
+这个公式可以详细讲讲吗，构建特征工程哪儿没有明白</div>2020-10-26</li><br/><li><span>Austin</span> 👍（1） 💬（0）<div>感觉就是矩阵分解呀</div>2019-12-17</li><br/><li><span>星</span> 👍（1） 💬（4）<div>老师好。看完您的视频，就能找份推荐的工作了吗？谢谢</div>2018-08-06</li><br/><li><span>dtttt</span> 👍（0） 💬（0）<div>老师好，如何从 LinUCB 的置信区间上边界的公式得出 m 越大，其置信区间越小的呢？</div>2021-06-27</li><br/><li><span>全</span> 👍（0） 💬（0）<div>利用context 特征，并且将用户和臂的特征进行相似性计算(这里可以有很多方式，线性，双线性，cos，模型）作为最后的收益。</div>2021-03-27</li><br/><li><span>全</span> 👍（0） 💬（0）<div>感觉linucb 也可以做用户粗粒度画像</div>2021-03-23</li><br/><li><span>Austin</span> 👍（0） 💬（2）<div>没讲清楚，都有这么多数据积累了，干嘛不直接用LR</div>2019-12-17</li><br/><li><span>qingyunhe</span> 👍（0） 💬（0）<div>哈哈，放心，我会学完的~~ 只不过学到这儿，是我第一个需要课下再消化一下的小节，光那篇论文需要细细研读一遍~~~</div>2019-06-12</li><br/><li><span>shangqiu86</span> 👍（0） 💬（0）<div>讲的很好，就是后面的linUCB感觉是个大工程，需要不断优化不断累积修正特征</div>2019-05-05</li><br/>
 </ul>
 
 

@@ -2167,6 +2167,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#02" class="md-nav__link">
+    <span class="md-ellipsis">
+      02 | 代码加锁：不要让“锁”事成为烦心事
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#03" class="md-nav__link">
+    <span class="md-ellipsis">
+      03 | 线程池：业务代码最常用也最容易犯错的组件
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#04" class="md-nav__link">
+    <span class="md-ellipsis">
+      04 | 连接池：别让连接池帮了倒忙
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#05-http" class="md-nav__link">
+    <span class="md-ellipsis">
+      05 | HTTP调用：你考虑到超时、重试、并发了吗？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#06-20spring" class="md-nav__link">
+    <span class="md-ellipsis">
+      06 | 20%的业务代码的Spring声明式事务，可能都没处理正确
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13156,6 +13201,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#02" class="md-nav__link">
+    <span class="md-ellipsis">
+      02 | 代码加锁：不要让“锁”事成为烦心事
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#03" class="md-nav__link">
+    <span class="md-ellipsis">
+      03 | 线程池：业务代码最常用也最容易犯错的组件
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#04" class="md-nav__link">
+    <span class="md-ellipsis">
+      04 | 连接池：别让连接池帮了倒忙
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#05-http" class="md-nav__link">
+    <span class="md-ellipsis">
+      05 | HTTP调用：你考虑到超时、重试、并发了吗？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#06-20spring" class="md-nav__link">
+    <span class="md-ellipsis">
+      06 | 20%的业务代码的Spring声明式事务，可能都没处理正确
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13193,9 +13283,289 @@
 <blockquote>
 <p>Usages of this class should typically be of the form: ThreadLocalRandom.current().nextX(…) (where X is Int, Long, etc). When all usages are of this form, it is never possible to accidently share a ThreadLocalRandom across multiple threads.</p>
 </blockquote>
-<div><strong>精选留言（23）</strong></div>
+<p>那为什么规定要ThreadLocalRandom.current().nextX(…)这样来使用呢？我来分析下原因吧。</p>
+<p>current()的时候初始化一个初始化种子到线程，每次nextseed再使用之前的种子生成新的种子：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>UNSAFE.putLong(t = Thread.currentThread(), SEED, r = UNSAFE.getLong(t, SEED) + GAMMA);
+</code></pre></div>
+<p>如果你通过主线程调用一次current生成一个ThreadLocalRandom的实例保存起来，那么其它线程来获取种子的时候必然取不到初始种子，必须是每一个线程自己用的时候初始化一个种子到线程。你可以在nextSeed方法设置一个断点来测试：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>UNSAFE.getLong(Thread.currentThread(),SEED);
+</code></pre></div>
+<p><strong>问题2：</strong>ConcurrentHashMap还提供了putIfAbsent方法，你能否通过查阅<a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ConcurrentHashMap.html">JDK文档</a>，说说computeIfAbsent和putIfAbsent方法的区别？</p>
+<p>答：computeIfAbsent和putIfAbsent这两个方法，都是判断值不存在的时候为Map进行赋值的原子方法，它们的区别具体包括以下三个方面：</p>
+<ol>
+<li>当Key存在的时候，如果Value的获取比较昂贵的话，putIfAbsent方法就会白白浪费时间在获取这个昂贵的Value上（这个点特别注意），而computeIfAbsent则会因为传入的是Lambda表达式而不是实际值不会有这个问题。</li>
+<li>Key不存在的时候，putIfAbsent会返回null，这时候我们要小心空指针；而computeIfAbsent会返回计算后的值，不存在空指针的问题。</li>
+<li>当Key不存在的时候，putIfAbsent允许put null进去，而computeIfAbsent不能（当然了，此条针对HashMap，ConcurrentHashMap不允许put null value进去）。</li>
+</ol>
+<p>我写了一段代码来证明这三点，你可以点击<a href="https://github.com/JosephZhu1983/java-common-mistakes/blob/master/src/main/java/org/geekbang/time/commonmistakes/concurrenttool/ciavspia/CommonMistakesApplication.java">这里</a>的GitHub链接查看。</p>
+<h3 id="02"><a href="https://time.geekbang.org/column/article/209520">02 | 代码加锁：不要让“锁”事成为烦心事</a></h3>
+<p><strong>问题1：</strong>在这一讲开头的例子里，我们为变量a、b都使用了volatile关键字进行修饰，你知道volatile关键字的作用吗？我之前遇到过这样一个坑：我们开启了一个线程无限循环来跑一些任务，有一个bool类型的变量来控制循环的退出，默认为true代表执行，一段时间后主线程将这个变量设置为了false。如果这个变量不是volatile修饰的，子线程可以退出吗？你能否解释其中的原因呢？</p>
+<p>答：不能退出。比如下面的代码，3秒后另一个线程把b设置为false，但是主线程无法退出：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>private static boolean b = true;
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>public static void main(String[] args) throws InterruptedException {
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    new Thread(()-&gt;{
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        try {
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>            TimeUnit.SECONDS.sleep(3);
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        } catch (InterruptedException e) { }
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        b =false;
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    }).start();
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    while (b) {
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        TimeUnit.MILLISECONDS.sleep(0);
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    }
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    System.out.println(&quot;done&quot;);
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>}
+</code></pre></div>
+<p>其实，这是可见性的问题。</p>
+<p>虽然另一个线程把b设置为了false，但是这个字段在CPU缓存中，另一个线程（主线程）还是读不到最新的值。使用volatile关键字，可以让数据刷新到主内存中去。准确来说，让数据刷新到主内存中去是两件事情：</p>
+<ol>
+<li>将当前处理器缓存行的数据，写回到系统内存；</li>
+<li>这个写回内存的操作会导致其他CPU里缓存了该内存地址的数据变为无效。</li>
+</ol>
+<p>当然，使用AtomicBoolean等关键字来修改变量b也行。但相比volatile来说，AtomicBoolean等关键字除了确保可见性，还提供了CAS方法，具有更多的功能，在本例的场景中用不到。</p>
+<p><strong>问题2：</strong>关于代码加锁还有两个坑，一是加锁和释放没有配对的问题，二是分布式锁自动释放导致的重复逻辑执行的问题。你有什么方法来发现和解决这两个问题吗？</p>
+<p>答：针对加解锁没有配对的问题，我们可以用一些代码质量工具或代码扫描工具（比如Sonar）来帮助排查。这个问题在编码阶段就能发现。</p>
+<p>针对分布式锁超时自动释放问题，可以参考Redisson的RedissonLock的<a href="https://github.com/redisson/redisson/blob/e11c1e14ba50bc5938184fb96d9b72782e591df7/redisson/src/main/java/org/redisson/RedissonLock.java#L265">锁续期机制</a>。锁续期是每次续一段时间，比如30秒，然后10秒执行一次续期。虽然是无限次续期，但即使客户端崩溃了也没关系，不会无限期占用锁，因为崩溃后无法自动续期自然最终会超时。</p>
+<h3 id="03"><a href="https://time.geekbang.org/column/article/210337">03 | 线程池：业务代码最常用也最容易犯错的组件</a></h3>
+<p><strong>问题1：</strong>在讲线程池的管理策略时我们提到，或许一个激进创建线程的弹性线程池更符合我们的需求，你能给出相关的实现吗？实现后再测试一下，是否所有的任务都可以正常处理完成呢？</p>
+<p>答：我们按照文中提到的两个思路来实现一下激进线程池：</p>
+<ol>
+<li>由于线程池在工作队列满了无法入队的情况下会扩容线程池，那么我们可以重写队列的 offer 方法，造成这个队列已满的假象；</li>
+<li>由于我们 Hack 了队列，在达到了最大线程后势必会触发拒绝策略，那么我们还需要实现一个自定义的拒绝策略处理程序，这个时候再把任务真正插入队列。</li>
+</ol>
+<p>完整的实现代码以及相应的测试代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>@GetMapping(&quot;better&quot;)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>public int better() throws InterruptedException {
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    //这里开始是激进线程池的实现
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    BlockingQueue&lt;Runnable&gt; queue = new LinkedBlockingQueue&lt;Runnable&gt;(10) {
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        @Override
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        public boolean offer(Runnable e) {
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>            //先返回false，造成队列满的假象，让线程池优先扩容
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>            return false;
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        }
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    };
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    ThreadPoolExecutor threadPool = new ThreadPoolExecutor(
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>            2, 5,
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>            5, TimeUnit.SECONDS,
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>            queue, new ThreadFactoryBuilder().setNameFormat(&quot;demo-threadpool-%d&quot;).get(), (r, executor) -&gt; {
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>        try {
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>            //等出现拒绝后再加入队列
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>            //如果希望队列满了阻塞线程而不是抛出异常，那么可以注释掉下面三行代码，修改为executor.getQueue().put(r);
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>            if (!executor.getQueue().offer(r, 0, TimeUnit.SECONDS)) {
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>                throw new RejectedExecutionException(&quot;ThreadPool queue full, failed to offer &quot; + r.toString());
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>            }
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>        } catch (InterruptedException e) {
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>            Thread.currentThread().interrupt();
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>        }
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    });
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>    //激进线程池实现结束
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>    printStats(threadPool);
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>    //每秒提交一个任务，每个任务耗时10秒执行完成，一共提交20个任务
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>    //任务编号计数器
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>    AtomicInteger atomicInteger = new AtomicInteger();
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>    IntStream.rangeClosed(1, 20).forEach(i -&gt; {
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>        try {
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>            TimeUnit.SECONDS.sleep(1);
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>        } catch (InterruptedException e) {
+<a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>            e.printStackTrace();
+<a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>        }
+<a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>        int id = atomicInteger.incrementAndGet();
+<a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>        try {
+<a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>            threadPool.submit(() -&gt; {
+<a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a>                log.info(&quot;{} started&quot;, id);
+<a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a>                try {
+<a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a>                    TimeUnit.SECONDS.sleep(10);
+<a id="__codelineno-3-46" name="__codelineno-3-46" href="#__codelineno-3-46"></a>                } catch (InterruptedException e) {
+<a id="__codelineno-3-47" name="__codelineno-3-47" href="#__codelineno-3-47"></a>                }
+<a id="__codelineno-3-48" name="__codelineno-3-48" href="#__codelineno-3-48"></a>                log.info(&quot;{} finished&quot;, id);
+<a id="__codelineno-3-49" name="__codelineno-3-49" href="#__codelineno-3-49"></a>            });
+<a id="__codelineno-3-50" name="__codelineno-3-50" href="#__codelineno-3-50"></a>        } catch (Exception ex) {
+<a id="__codelineno-3-51" name="__codelineno-3-51" href="#__codelineno-3-51"></a>            log.error(&quot;error submitting task {}&quot;, id, ex);
+<a id="__codelineno-3-52" name="__codelineno-3-52" href="#__codelineno-3-52"></a>            atomicInteger.decrementAndGet();
+<a id="__codelineno-3-53" name="__codelineno-3-53" href="#__codelineno-3-53"></a>        }
+<a id="__codelineno-3-54" name="__codelineno-3-54" href="#__codelineno-3-54"></a>    });
+<a id="__codelineno-3-55" name="__codelineno-3-55" href="#__codelineno-3-55"></a>
+<a id="__codelineno-3-56" name="__codelineno-3-56" href="#__codelineno-3-56"></a>    TimeUnit.SECONDS.sleep(60);
+<a id="__codelineno-3-57" name="__codelineno-3-57" href="#__codelineno-3-57"></a>    return atomicInteger.intValue();
+<a id="__codelineno-3-58" name="__codelineno-3-58" href="#__codelineno-3-58"></a>}
+</code></pre></div>
+<p>使用这个激进的线程池可以处理完这20个任务，因为我们优先开启了更多线程来处理任务。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>[10:57:16.092] [demo-threadpool-4] [INFO ] [o.g.t.c.t.t.ThreadPoolOOMController:157 ] - 20 finished
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>[10:57:17.062] [pool-8-thread-1] [INFO ] [o.g.t.c.t.t.ThreadPoolOOMController:22  ] - =========================
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>[10:57:17.062] [pool-8-thread-1] [INFO ] [o.g.t.c.t.t.ThreadPoolOOMController:23  ] - Pool Size: 5
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>[10:57:17.062] [pool-8-thread-1] [INFO ] [o.g.t.c.t.t.ThreadPoolOOMController:24  ] - Active Threads: 0
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>[10:57:17.062] [pool-8-thread-1] [INFO ] [o.g.t.c.t.t.ThreadPoolOOMController:25  ] - Number of Tasks Completed: 20
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>[10:57:17.062] [pool-8-thread-1] [INFO ] [o.g.t.c.t.t.ThreadPoolOOMController:26  ] - Number of Tasks in Queue: 0
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>[10:57:17.062] [pool-8-thread-1] [INFO ] [o.g.t.c.t.t.ThreadPoolOOMController:28  ] - =========================
+</code></pre></div>
+<p><strong>问题2：</strong>在讲“务必确认清楚线程池本身是不是复用”时，我们改进了ThreadPoolHelper使其能够返回复用的线程池。如果我们不小心每次都创建了这样一个自定义的线程池（10核心线程，50最大线程，2秒回收的），反复执行测试接口线程，最终可以被回收吗？会出现OOM问题吗？</p>
+<p>答：会因为创建过多线程导致OOM，因为默认情况下核心线程不会回收，并且ThreadPoolExecutor也回收不了。</p>
+<p>我们可以看看它的源码，工作线程Worker是内部类，只要它活着，换句话说就是线程在跑，就会阻止ThreadPoolExecutor回收：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>public class ThreadPoolExecutor extends AbstractExecutorService {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    private final class Worker
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        extends AbstractQueuedSynchronizer
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        implements Runnable 
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        { 
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        }
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a> }
+</code></pre></div>
+<p>因此，我们不能认为ThreadPoolExecutor没有引用，就能回收。</p>
+<h3 id="04"><a href="https://time.geekbang.org/column/article/211388">04 | 连接池：别让连接池帮了倒忙</a></h3>
+<p><strong>问题1：</strong>有了连接池之后，获取连接是从连接池获取，没有足够连接时连接池会创建连接。这时，获取连接操作往往有两个超时时间：一个是从连接池获取连接的最长等待时间，通常叫作请求连接超时connectRequestTimeout，或连接等待超时connectWaitTimeout；一个是连接池新建TCP连接三次握手的连接超时，通常叫作连接超时connectTimeout。针对JedisPool、Apache HttpClient和Hikari数据库连接池，你知道如何设置这2个参数吗？</p>
+<p>答：假设我们希望设置连接超时5s、请求连接超时10s，下面我来演示下，如何配置Hikari、Jedis和HttpClient的两个超时参数。</p>
+<p>针对Hikari，设置两个超时时间的方式，是修改数据库连接字符串中的connectTimeout属性和配置文件中的hikari配置的connection-timeout：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>spring.datasource.hikari.connection-timeout=10000
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>spring.datasource.url=jdbc:mysql://localhost:6657/common_mistakes?connectTimeout=5000&amp;characterEncoding=UTF-8&amp;useSSL=false&amp;rewriteBatchedStatements=true
+</code></pre></div>
+<p>针对Jedis，是设置JedisPoolConfig的MaxWaitMillis属性和设置创建JedisPool时的timeout属性：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>JedisPoolConfig config = new JedisPoolConfig();
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>config.setMaxWaitMillis(10000);
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>try (JedisPool jedisPool = new JedisPool(config, &quot;127.0.0.1&quot;, 6379, 5000);
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>     Jedis jedis = jedisPool.getResource()) {
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    return jedis.set(&quot;test&quot;, &quot;test&quot;);
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>}
+</code></pre></div>
+<p>针对HttpClient，是设置RequestConfig的ConnectionRequestTimeout和ConnectTimeout属性：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>RequestConfig requestConfig = RequestConfig.custom()
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>        .setConnectTimeout(5000)
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>        .setConnectionRequestTimeout(10000)
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>        .build();
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>HttpGet httpGet = new HttpGet(&quot;http://127.0.0.1:45678/twotimeoutconfig/test&quot;);
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>httpGet.setConfig(requestConfig);
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    return EntityUtils.toString(response.getEntity());
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>} catch (Exception ex) {
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    ex.printStackTrace();
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>}
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>return null;
+</code></pre></div>
+<p>也可以直接参考我放在<a href="https://github.com/JosephZhu1983/java-common-mistakes/tree/master/src/main/java/org/geekbang/time/commonmistakes/connectionpool/twotimeoutconfig">GitHub</a>上的源码。</p>
+<p><strong>问题2：</strong>对于带有连接池的SDK的使用姿势，最主要的是鉴别其内部是否实现了连接池，如果实现了连接池要尽量复用Client。对于NoSQL中的MongoDB来说，使用MongoDB Java驱动时，MongoClient类应该是每次都创建还是复用呢？你能否在<a href="https://mongodb.github.io/mongo-java-driver/3.12/">官方文档</a>中找到答案呢？</p>
+<p>答：官方文档里有这么一段话：</p>
+<blockquote>
+<p>Typically you only create one MongoClient instance for a given MongoDB deployment (e.g. standalone, replica set, or a sharded cluster) and use it across your application. However, if you do create multiple instances:<br />
+All resource usage limits (e.g. max connections, etc.) apply per MongoClient instance.<br />
+To dispose of an instance, call MongoClient.close() to clean up resources.</p>
+</blockquote>
+<p>MongoClient类应该尽可能复用（一个MongoDB部署只使用一个MongoClient），不过复用不等于在任何情况下就只用一个。正如文档里所说，每一个MongoClient示例有自己独立的资源限制。</p>
+<h3 id="05-http"><a href="https://time.geekbang.org/column/article/213273">05 | HTTP调用：你考虑到超时、重试、并发了吗？</a></h3>
+<p><strong>问题1：</strong>在“配置连接超时和读取超时参数的学问”这一节中，我们强调了要注意连接超时和读取超时参数的配置，大多数的HTTP客户端也都有这两个参数。有读就有写，但为什么我们很少看到“写入超时”的概念呢？</p>
+<p>答：其实写入操作只是将数据写入TCP的发送缓冲区，已经发送到网络的数据依然需要暂存在发送缓冲区中，只有收到对方的ack后，操作系统内核才从缓冲区中清除这一部分数据，为后续发送数据腾出空间。</p>
+<p>如果接收端从socket读取数据的速度太慢，可能会导致发送端发送缓冲区满，导致写入操作阻塞，产生写入超时。但是，因为有滑动窗口的控制，通常不太容易发生发送缓冲区满导致写入超时的情况。相反，读取超时包含了服务端处理数据执行业务逻辑的时间，所以读取超时是比较容易发生的。</p>
+<p>这也就是为什么我们一般都会比较重视读取超时而不是写入超时的原因了。</p>
+<p><strong>问题2：</strong>除了Ribbon的AutoRetriesNextServer重试机制，Nginx也有类似的重试功能。你了解Nginx相关的配置吗？</p>
+<p>答：关于Nginx的重试功能，你可以参考<a href="http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_next_upstream">这里</a>，了解下Nginx的proxy_next_upstream配置。</p>
+<p>proxy_next_upstream，用于指定在什么情况下Nginx会将请求转移到其他服务器上。其默认值是proxy_next_upstream error timeout，即发生网络错误以及超时，才会重试其他服务器。也就是说，默认情况下，服务返回500状态码是不会重试的。</p>
+<p>如果我们想在请求返回500状态码时也进行重试，可以配置：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>proxy_next_upstream error timeout http_500;
+</code></pre></div>
+<p>需要注意的是，proxy_next_upstream配置中有一个选项non_idempotent，一定要小心开启。通常情况下，如果请求使用非等幂方法（POST、PATCH），请求失败后不会再到其他服务器进行重试。但是，加上non_idempotent这个选项后，即使是非幂等请求类型（例如POST请求），发生错误后也会重试。</p>
+<h3 id="06-20spring"><a href="https://time.geekbang.org/column/article/213295">06 | 20%的业务代码的Spring声明式事务，可能都没处理正确</a></h3>
+<p><strong>问题1：</strong>考虑到Demo的简洁，这一讲中所有数据访问使用的都是Spring Data JPA。国内大多数互联网业务项目是使用MyBatis进行数据访问的，使用MyBatis配合Spring的声明式事务也同样需要注意这一讲中提到的这些点。你可以尝试把今天的Demo改为MyBatis做数据访问实现，看看日志中是否可以体现出这些坑？</p>
+<p>答：使用mybatis-spring-boot-starter无需做任何配置，即可使MyBatis整合Spring的声明式事务。在GitHub上的课程<a href="https://github.com/JosephZhu1983/java-common-mistakes/tree/master/src/main/java/org/geekbang/time/commonmistakes/transaction/nested">源码</a>中，我更新了一个使用MyBatis配套嵌套事务的例子，实现的效果是主方法出现异常，子方法的嵌套事务也会回滚。</p>
+<p>我来和你解释下这个例子中的核心代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>@Transactional
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>public void createUser(String name) {
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    createMainUser(name);
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    try {
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        subUserService.createSubUser(name);
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    } catch (Exception ex) {
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>        log.error(&quot;create sub user error:{}&quot;, ex.getMessage());
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    }
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    //如果createSubUser是NESTED模式，这里抛出异常会导致嵌套事务无法“提交”
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    throw new RuntimeException(&quot;create main user error&quot;);
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>}
+</code></pre></div>
+<p>子方法使用了NESTED事务传播模式：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>@Transactional(propagation = Propagation.NESTED)
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>public void createSubUser(String name) {
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    userDataMapper.insert(name, &quot;sub&quot;);
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>}
+</code></pre></div>
+<p>执行日志如下图所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/cd/0e/cda8d69f99c0063046a085a39d520c0e.png?wh=1280%2A360" /></p>
+<p>每个NESTED事务执行前，会将当前操作保存下来，叫做savepoint（保存点）。NESTED事务在外部事务提交以后自己才会提交，如果当前NESTED事务执行失败，则回滚到之前的保存点。</p>
+<p><strong>问题2：</strong>在讲“小心 Spring 的事务可能没有生效”时我们提到，如果要针对private方法启用事务，动态代理方式的AOP不可行，需要使用静态织入方式的AOP，也就是在编译期间织入事务增强代码，可以配置Spring框架使用AspectJ来实现AOP。你能否参阅Spring的文档“<a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/data-access.html#transaction-declarative-aspectj">Using @Transactional with AspectJ</a>”试试呢？注意：AspectJ配合lombok使用，还可能会踩一些坑。</p>
+<p>答：我们需要加入aspectj的依赖和配置aspectj-maven-plugin插件，并且需要设置Spring开启AspectJ事务管理模式。具体的实现方式，包括如下4步。</p>
+<p>第一步，引入spring-aspects依赖：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>&lt;dependency&gt;
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    &lt;groupId&gt;org.springframework&lt;/groupId&gt;
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    &lt;artifactId&gt;spring-aspects&lt;/artifactId&gt;
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>&lt;/dependency&gt;
+</code></pre></div>
+<p>第二步，加入lombok和aspectj插件：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>&lt;plugin&gt;
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    &lt;groupId&gt;org.projectlombok&lt;/groupId&gt;
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    &lt;artifactId&gt;lombok-maven-plugin&lt;/artifactId&gt;
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    &lt;version&gt;1.18.0.0&lt;/version&gt;
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    &lt;executions&gt;
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>        &lt;execution&gt;
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>            &lt;phase&gt;generate-sources&lt;/phase&gt;
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>            &lt;goals&gt;
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>                &lt;goal&gt;delombok&lt;/goal&gt;
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>            &lt;/goals&gt;
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>        &lt;/execution&gt;
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    &lt;/executions&gt;
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    &lt;configuration&gt;
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>        &lt;addOutputDirectory&gt;false&lt;/addOutputDirectory&gt;
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>        &lt;sourceDirectory&gt;src/main/java&lt;/sourceDirectory&gt;
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>    &lt;/configuration&gt;
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>&lt;/plugin&gt;
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>&lt;plugin&gt;
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>    &lt;groupId&gt;org.codehaus.mojo&lt;/groupId&gt;
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>    &lt;artifactId&gt;aspectj-maven-plugin&lt;/artifactId&gt;
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>    &lt;version&gt;1.10&lt;/version&gt;
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>    &lt;configuration&gt;
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>        &lt;complianceLevel&gt;1.8&lt;/complianceLevel&gt;
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>        &lt;source&gt;1.8&lt;/source&gt;
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>        &lt;aspectLibraries&gt;
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>            &lt;aspectLibrary&gt;
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>                &lt;groupId&gt;org.springframework&lt;/groupId&gt;
+<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a>                &lt;artifactId&gt;spring-aspects&lt;/artifactId&gt;
+<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>            &lt;/aspectLibrary&gt;
+<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a>        &lt;/aspectLibraries&gt;
+<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a>    &lt;/configuration&gt;
+<a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a>    &lt;executions&gt;
+<a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a>        &lt;execution&gt;
+<a id="__codelineno-13-34" name="__codelineno-13-34" href="#__codelineno-13-34"></a>            &lt;goals&gt;
+<a id="__codelineno-13-35" name="__codelineno-13-35" href="#__codelineno-13-35"></a>                &lt;goal&gt;compile&lt;/goal&gt;
+<a id="__codelineno-13-36" name="__codelineno-13-36" href="#__codelineno-13-36"></a>                &lt;goal&gt;test-compile&lt;/goal&gt;
+<a id="__codelineno-13-37" name="__codelineno-13-37" href="#__codelineno-13-37"></a>            &lt;/goals&gt;
+<a id="__codelineno-13-38" name="__codelineno-13-38" href="#__codelineno-13-38"></a>        &lt;/execution&gt;
+<a id="__codelineno-13-39" name="__codelineno-13-39" href="#__codelineno-13-39"></a>    &lt;/executions&gt;
+<a id="__codelineno-13-40" name="__codelineno-13-40" href="#__codelineno-13-40"></a>&lt;/plugin&gt;
+</code></pre></div>
+<p>使用delombok插件的目的是，把代码中的Lombok注解先编译为代码，这样AspectJ编译不会有问题，同时需要设置中的sourceDirectory为delombok目录：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>&lt;sourceDirectory&gt;${project.build.directory}/generated-sources/delombok&lt;/sourceDirectory&gt;
+</code></pre></div>
+<p>第三步，设置@EnableTransactionManagement注解，开启事务管理走AspectJ模式：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>@SpringBootApplication
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>@EnableTransactionManagement(mode = AdviceMode.ASPECTJ)
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>public class CommonMistakesApplication {
+</code></pre></div>
+<p>第四步，使用Maven编译项目，编译后查看createUserPrivate方法的源码，可以发现AspectJ帮我们做编译时织入（Compile Time Weaving）：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/11/1d/11da9146b324e47fcd96631d47db961d.png?wh=3184%2A1204" /></p>
+<p>运行程序，观察日志可以发现createUserPrivate（私有）方法同样应用了事务，出异常后事务回滚：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>[14:21:39.155] [http-nio-45678-exec-2] [DEBUG] [o.s.orm.jpa.JpaTransactionManager:370 ] - Creating new transaction with name [org.geekbang.time.commonmistakes.transaction.transactionproxyfailed.UserService.createUserPrivate]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>[14:21:39.155] [http-nio-45678-exec-2] [DEBUG] [o.s.orm.jpa.JpaTransactionManager:393 ] - Opened new EntityManager [SessionImpl(1087443072&lt;open&gt;)] for JPA transaction
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>[14:21:39.158] [http-nio-45678-exec-2] [DEBUG] [o.s.orm.jpa.JpaTransactionManager:421 ] - Exposing JPA transaction as JDBC [org.springframework.orm.jpa.vendor.HibernateJpaDialect$HibernateConnectionHandle@4e16e6ea]
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>[14:21:39.159] [http-nio-45678-exec-2] [DEBUG] [o.s.orm.jpa.JpaTransactionManager:356 ] - Found thread-bound EntityManager [SessionImpl(1087443072&lt;open&gt;)] for JPA transaction
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>[14:21:39.159] [http-nio-45678-exec-2] [DEBUG] [o.s.orm.jpa.JpaTransactionManager:471 ] - Participating in existing transaction
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>[14:21:39.173] [http-nio-45678-exec-2] [DEBUG] [o.s.orm.jpa.JpaTransactionManager:834 ] - Initiating transaction rollback
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>[14:21:39.173] [http-nio-45678-exec-2] [DEBUG] [o.s.orm.jpa.JpaTransactionManager:555 ] - Rolling back JPA transaction on EntityManager [SessionImpl(1087443072&lt;open&gt;)]
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>[14:21:39.176] [http-nio-45678-exec-2] [DEBUG] [o.s.orm.jpa.JpaTransactionManager:620 ] - Closing JPA EntityManager [SessionImpl(1087443072&lt;open&gt;)] after transaction
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>[14:21:39.176] [http-nio-45678-exec-2] [ERROR] [o.g.t.c.t.t.UserService:28  ] - create user failed because invalid username!
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>[14:21:39.177] [http-nio-45678-exec-2] [DEBUG] [o.s.o.j.SharedEntityManagerCreator$SharedEntityManagerInvocationHandler:305 ] - Creating new EntityManager for shared EntityManager invocation
+</code></pre></div>
+<p>以上，就是咱们这门课前6讲的思考题答案了。</p>
+<p>关于这些题目，以及背后涉及的知识点，如果你还有哪里感觉不清楚的，欢迎在评论区与我留言，也欢迎你把今天的内容分享给你的朋友或同事，一起交流。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/13/26/38/ef063dc2.jpg" width="30px"><span>Darren</span> 👍（40） 💬（3）<div>老师的答疑文章真的是超级棒；看到事务传播特性，突然觉得好陌生，好久没有关注了，再次熟悉了下😂，简单的总结下：
+<li><span>Darren</span> 👍（40） 💬（3）<div>老师的答疑文章真的是超级棒；看到事务传播特性，突然觉得好陌生，好久没有关注了，再次熟悉了下😂，简单的总结下：
 
 首先举个可能不是很适合的例子解释下保存点：比如银行转账发送短信业务（在同一事务中）；可以简单的理解为转账和发送短信两个业务，如果没有保存点的话，发送短信失败了，转账业务也需要回滚，想想是不是很恐怖，但是如果有了保存点的概念，就可以只需要回滚到上一个保存点即可，无需回滚整个事务；所以在上面的场景中，虽然转账和发送短信在同一事务中，但是转账结束后，可以增加保存点，即使发送短信失败，也不会影响转账业务。
 
@@ -13205,18 +13575,11 @@ PROPAGATION_NESTED uses a single physical transaction with multiple savepoints t
 NESTED和REQUIRED修饰的内部方法都属于外围方法事务，如果外围方法抛出异常，这两种方法的事务都会被回滚。但是REQUIRED是加入外围方法事务，所以和外围事务同属于一个事务，一旦REQUIRED事务抛出异常被回滚，外围方法事务也将被回滚。而NESTED是外围方法的子事务，有单独的保存点，所以NESTED方法抛出异常被回滚，不会影响到外围方法的事务。
 
 NESTED和REQUIRES_NEW都可以做到内部方法事务回滚而不影响外围方法事务。但是因为NESTED是嵌套事务，所以外围方法回滚之后，作为外围方法事务的子事务也会被回滚。而REQUIRES_NEW是通过开启新的事务实现的，内部事务和外围事务是两个事务，外围事务回滚不会影响内部事务。
-</div>2020-07-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/21/50/265671fd.jpg" width="30px"><span>LGY001</span> 👍（3） 💬（1）<div>朱老师的课程真的好，很早就买了课但是一直没有沉下心去看，最近通勤的时候听了几篇，听到朱老师文章时候感觉很惊艳，下班了赶紧仔细阅读发现能从中收获到需要知识，非常感谢朱老师的分享！！！</div>2020-10-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/20/e1/44/8f26fe96.jpg" width="30px"><span>雨后晴天</span> 👍（2） 💬（1）<div>老师，自定义激进的线程池，在达到最大线程数后通过拒绝策略写队列，executor.getQueue().offer()执行后不是直接返回false吗？还能写得进去吗</div>2020-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/96/63/7eb32c9b.jpg" width="30px"><span>捞鱼的搬砖奇</span> 👍（1） 💬（2）<div>老实方便说下课程代码怎么运行么，要去调整 POM 里的 main class 配置嘛</div>2020-07-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/23/45/27/4fbf8f6a.jpg" width="30px"><span>luke Y</span> 👍（0） 💬（2）<div>&quot;虽然另一个线程把 b 设置为了 false，但是这个字段在 CPU 缓存中，另一个线程（主线程）还是读不到最新的值。使用 volatile 关键字，可以让数据刷新到主内存中去。准确来说，让数据刷新到主内存中去是两件事.....&quot;
+</div>2020-07-14</li><br/><li><span>LGY001</span> 👍（3） 💬（1）<div>朱老师的课程真的好，很早就买了课但是一直没有沉下心去看，最近通勤的时候听了几篇，听到朱老师文章时候感觉很惊艳，下班了赶紧仔细阅读发现能从中收获到需要知识，非常感谢朱老师的分享！！！</div>2020-10-28</li><br/><li><span>雨后晴天</span> 👍（2） 💬（1）<div>老师，自定义激进的线程池，在达到最大线程数后通过拒绝策略写队列，executor.getQueue().offer()执行后不是直接返回false吗？还能写得进去吗</div>2020-11-07</li><br/><li><span>捞鱼的搬砖奇</span> 👍（1） 💬（2）<div>老实方便说下课程代码怎么运行么，要去调整 POM 里的 main class 配置嘛</div>2020-07-14</li><br/><li><span>luke Y</span> 👍（0） 💬（2）<div>&quot;虽然另一个线程把 b 设置为了 false，但是这个字段在 CPU 缓存中，另一个线程（主线程）还是读不到最新的值。使用 volatile 关键字，可以让数据刷新到主内存中去。准确来说，让数据刷新到主内存中去是两件事.....&quot;
 
-老师我有个问题，如果是单核cpu那么是不是就没有 文中的可见性问题了</div>2022-03-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/72/93/46895883.jpg" width="30px"><span>terryking</span> 👍（0） 💬（1）<div>老师，问一下，对于socket的发送缓冲区是针对每一个socket都是独立的一份缓冲区还是全局tcp协议就一个呢？如果是独立的一份那网卡驱动又是怎么找这些缓冲区的呢？优先级又是怎样的？如果是全局一份，那对于没有收到ack的消息是会一直阻塞向网络中发送数据，直到某一个客户端的ack返回么？谢谢老师，麻烦有时间回复一下</div>2020-12-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/21/50/265671fd.jpg" width="30px"><span>LGY001</span> 👍（0） 💬（1）<div>朱老师，我想问一下第六篇的第二个问题答疑中的Aspectj与lombok插件冲突解决的相关问题，“这样 AspectJ 编译不会有问题，同时需要设置中的 sourceDirectory 为 delombok 目录 ：
-&lt;sourceDirectory&gt;${project.build.directory}&#47;generated-sources&#47;delombok&lt;&#47;sourceDirectory&gt;”，您文章中的这句话什么意思，相关配置项应该在哪里配置呢？希望老师可以解答一下</div>2020-10-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/0b/5c/9734702d.jpg" width="30px"><span>向博士后进军</span> 👍（0） 💬（0）<div>没看懂computeIfAbsent，putIfAbsent的区别呢</div>2020-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/74/8a/d5b0cf30.jpg" width="30px"><span>kyl</span> 👍（6） 💬（0）<div>朱老师的课程不要太棒👍</div>2020-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/99/af/d29273e2.jpg" width="30px"><span>饭粒</span> 👍（1） 💬（0）<div>主课，代码，答疑做的都太到位了。</div>2021-09-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/c4/f3/92f654f1.jpg" width="30px"><span>Bug? Feature!</span> 👍（1） 💬（0）<div>Mark!</div>2020-07-14</li><br/><li><img src="" width="30px"><span>Geek_f7adad</span> 👍（0） 💬（0）<div>这个不是视频教学么，是音频？？</div>2022-10-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/93/cd/dbafc7d1.jpg" width="30px"><span>全麦小面包</span> 👍（0） 💬（0）<div>爱你~</div>2022-10-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/21/7c/17f0189c.jpg" width="30px"><span>凝成</span> 👍（0） 💬（0）<div>强的一笔，又可以愉快地装呗了</div>2022-09-07</li><br/><li><img src="" width="30px"><span>Geek_8b92bf</span> 👍（0） 💬（0）<div>volatile关键字应该只是让cpu缓存失效的意思吧。不加volatile关键字，数据应该也写回了主内存。譬如过了几分钟，另外有一个线程读取该变量，应该是从主内存中读到最新的值。
----虽然另一个线程把 b 设置为了 false，但是这个字段在 CPU 缓存中，另一个线程（主线程）还是读不到最新的值。使用 volatile 关键字，可以让数据刷新到主内存中去。准确来说，让数据刷新到主内存中去是两件事情：将当前处理器缓存行的数据，写回到系统内存；这个写回内存的操作会导致其他 CPU 里缓存了该内存地址的数据变为无效。</div>2022-06-02</li><br/><li><img src="" width="30px"><span>Geek_8b92bf</span> 👍（0） 💬（0）<div>虽然另一个线程把 b 设置为了 false，但是这个字段在 CPU 缓存中，另一个线程（主线程）还是读不到最新的值。使用 volatile 关键字，可以让数据刷新到主内存中去。准确来说，让数据刷新到主内存中去是两件事情：将当前处理器缓存行的数据，写回到系统内存；这个写回内存的操作会导致其他 CPU 里缓存了该内存地址的数据变为无效。</div>2022-06-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/cb/11/3733b781.jpg" width="30px"><span>shawn</span> 👍（0） 💬（0）<div>很有用,理解了,感谢</div>2021-06-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/6b/d7/8872624a.jpg" width="30px"><span>xmeng</span> 👍（0） 💬（0）<div>赞赞赞</div>2021-01-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/62/ff/221c2950.jpg" width="30px"><span>迎风追日</span> 👍（0） 💬（0）<div>成功安利一名同事购买这个课</div>2021-01-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7d/ec/ccd30c1d.jpg" width="30px"><span>WangBo</span> 👍（0） 💬（0）<div>老师，问题3的答案代码中，在自定义的拒绝策略中，使用了queue.put(r) 方法，put方法会一直阻塞。如果不想被阻塞，希望实现 如果队列满了就抛出异常，队列不满就放入任务，怎么实现呢？</div>2020-11-07</li><br/><li><img src="" width="30px"><span>李小平</span> 👍（0） 💬（0）<div>03 | 线程池：业务代码最常用也最容易犯错的组件
-问题 1
-  TimeUnit.SECONDS.sleep(60); 
-  改成：
-  threadPool.close();
-  threadPool.awaitTermination(60, TimeUnit.SECONDS);
-
-感觉主动关闭线程池比较好。</div>2020-08-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/c3/65/b5f8581d.jpg" width="30px"><span>梵高</span> 👍（0） 💬（0）<div>老师，你好。锁时间超时自动释放，除了文中讲的续期，还有没有别的方法？</div>2020-08-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/96/63/7eb32c9b.jpg" width="30px"><span>捞鱼的搬砖奇</span> 👍（0） 💬（4）<div>“value 的获取比较昂贵” 这里的昂贵要怎么理解呢</div>2020-08-01</li><br/>
+老师我有个问题，如果是单核cpu那么是不是就没有 文中的可见性问题了</div>2022-03-27</li><br/><li><span>terryking</span> 👍（0） 💬（1）<div>老师，问一下，对于socket的发送缓冲区是针对每一个socket都是独立的一份缓冲区还是全局tcp协议就一个呢？如果是独立的一份那网卡驱动又是怎么找这些缓冲区的呢？优先级又是怎样的？如果是全局一份，那对于没有收到ack的消息是会一直阻塞向网络中发送数据，直到某一个客户端的ack返回么？谢谢老师，麻烦有时间回复一下</div>2020-12-07</li><br/><li><span>LGY001</span> 👍（0） 💬（1）<div>朱老师，我想问一下第六篇的第二个问题答疑中的Aspectj与lombok插件冲突解决的相关问题，“这样 AspectJ 编译不会有问题，同时需要设置中的 sourceDirectory 为 delombok 目录 ：
+&lt;sourceDirectory&gt;${project.build.directory}&#47;generated-sources&#47;delombok&lt;&#47;sourceDirectory&gt;”，您文章中的这句话什么意思，相关配置项应该在哪里配置呢？希望老师可以解答一下</div>2020-10-28</li><br/><li><span>向博士后进军</span> 👍（0） 💬（0）<div>没看懂computeIfAbsent，putIfAbsent的区别呢</div>2020-09-07</li><br/><li><span>kyl</span> 👍（6） 💬（0）<div>朱老师的课程不要太棒👍</div>2020-07-19</li><br/><li><span>饭粒</span> 👍（1） 💬（0）<div>主课，代码，答疑做的都太到位了。</div>2021-09-30</li><br/><li><span>Bug? Feature!</span> 👍（1） 💬（0）<div>Mark!</div>2020-07-14</li><br/><li><span>Geek_f7adad</span> 👍（0） 💬（0）<div>这个不是视频教学么，是音频？？</div>2022-10-17</li><br/><li><span>全麦小面包</span> 👍（0） 💬（0）<div>爱你~</div>2022-10-08</li><br/><li><span>凝成</span> 👍（0） 💬（0）<div>强的一笔，又可以愉快地装呗了</div>2022-09-07</li><br/><li><span>Geek_8b92bf</span> 👍（0） 💬（0）<div>volatile关键字应该只是让cpu缓存失效的意思吧。不加volatile关键字，数据应该也写回了主内存。譬如过了几分钟，另外有一个线程读取该变量，应该是从主内存中读到最新的值。
+---虽然另一个线程把 b 设置为了 false，但是这个字段在 CPU 缓存中，另一个线程（主线程）还是读不到最新的值。使用 volatile 关键字，可以让数据刷新到主内存中去。准确来说，让数据刷新到主内存中去是两件事情：将当前处理器缓存行的数据，写回到系统内存；这个写回内存的操作会导致其他 CPU 里缓存了该内存地址的数据变为无效。</div>2022-06-02</li><br/>
 </ul>
 
 

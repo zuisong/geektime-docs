@@ -1906,8 +1906,53 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      配置解析
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#onhttprequestbody" class="md-nav__link">
+    <span class="md-ellipsis">
+      onHttpRequestBody
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#onhttpresponsebody" class="md-nav__link">
+    <span class="md-ellipsis">
+      onHttpResponseBody
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
   
 </li>
       
@@ -5321,8 +5366,53 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      配置解析
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#onhttprequestbody" class="md-nav__link">
+    <span class="md-ellipsis">
+      onHttpRequestBody
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#onhttpresponsebody" class="md-nav__link">
+    <span class="md-ellipsis">
+      onHttpResponseBody
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
   
 </li>
       
@@ -5363,6 +5453,202 @@
 <h3 id="_2">总体架构</h3>
 <p>我们先来看一下总体架构设计。</p>
 <p>在第 0 步，用户在开启插件时，需要配置 tools 等相关参数，这个在讲配置解析时再详细说明有哪些和之前不一样的参数。</p>
+<p>插件开启后，就是第 1 步，用户使用 OpenAI 协议向网关发送 Request 请求，此时 Agent 插件会在 RequestBody 阶段进行拦截，取出 Request Body 中的 messages，之后在第 2 步填充 ReAct 模板，组成新的 messages 替换原有的 Request Body 。</p>
+<p>之后就是通过 AI Proxy 插件将请求发送给大模型，并得到了大模型的反馈，也就是图中的第 3、4、5 步。我们如何拦截大模型的反馈呢？没错，我们要在 ResponseBody 阶段拦截。</p>
+<p>此时我们得到了大模型的第一次反馈，也就是是否要调用工具，还是已经得到了 Final Answer。此后就要循环思考了，如果要调用工具，就要使用同样的 HTTP 方法调用工具，并将结果反馈大模型，也就是图中的第 6、7 两步；如果得到了 Final Answer，就直接反馈给用户，也就是图中的第 8 步。</p>
+<p>如果你已经对我们之前讲过的 ReAct Agent 的流程非常熟悉了，应该就能感受到，<strong>Agent 的核心思考阶段，都在 ResponseBody 阶段完成了。</strong>因此这一阶段非常重要。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/89/56/893a0dbc074abed038283154a893a356.jpg?wh=1920x1034" /></p>
+<p>这就是我们这个插件在网关上的整体架构流程和设计思路，理清思路后，代码就好说了。</p>
+<h3 id="_3">配置解析</h3>
+<p>首先来看配置解析。在<a href="https://time.geekbang.org/column/article/840477">第 16 节课</a>中，我曾设计过 API Agent 的配置，当时由于默认大模型使用的是通义千问，因此设计的结构如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">instruction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">xxxx</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">apis</span><span class="p">:</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apiProvider：</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">apikey</span><span class="p p-Indicator">:</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">xxx</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">      </span><span class="nt">in</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">header</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">api</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="no">openapi: 3.1.0</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="no">info: xxx</span>
+</code></pre></div>
+<p>结构中只包含 tools 供应商的信息以及 tools 的 OpenAPI 文档。</p>
+<p>本次在插件中，就需要增加大模型相关的配置了，保证大模型是用户可选的。除此之外，我还增加了 JSON Mode 功能，这是为了满足部分用户希望按照规定的 JSON 格式返回内容，便于其在程序中做一些其他处理而设计的，因此也需要增加 JSON Mode 相关的配置。</p>
+<p>配置就变成了如表格所示的样子：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/0f/a0/0fcf824344d747ff6368f5a230a9e3a0.png?wh=1920x588" /><br />
+llm 的定义如下：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/de/8e/de0832f426c4f8d018be45acf8e3318e.png?wh=1920x1173" /></p>
+<p>jsonResp 的定义如下：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/c8/b3/c8650747b15c343d45cac432177666b3.png?wh=1920x481" /></p>
+<p>由于本插件不涉及全局配置与路由级配置不一致的问题，因此直接使用 wrapper.ParseConfigBy 进行配置解析即可。配置解析的代码在 API Agent 章节都已经讲解过，主要复杂点在于 OpenAPI 文档的处理，其他参数直接使用 github.com/tidwall/gjson 包提供的 JSON 解析方法进行解析就好，注意参数的层级包含关系。</p>
+<h3 id="onhttprequestbody">onHttpRequestBody</h3>
+<p>在总体架构小节，讲了在 RequestBody 阶段，主要用来拦截用户基于 OpenAI 协议的请求，并替换 Body 中的 messages 部分。messages 是由两部分组成的，第一部分是用户在请求中携带的历史对话，这一部分需要拆解出来放到 ReAct 模板的 historic_messages 中；另一部分是用户 query，需要放到模板的 query 部分。例如一段 messages 如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">&quot;messages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;济南的天气如何？&quot;</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;assistant&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;\&quot;目前，济南市的天气为多云，气温为24℃，数据更新时间为2024年9月12日21时50分14秒。\&quot;&quot;</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;北京呢？&quot;</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="err"> </span><span class="w"> </span><span class="err"> </span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="p">]</span>
+</code></pre></div>
+<p>query 部分就是 messages[len(messages)-1] 的部分，其余部分都是历史对话。所以代码可以这么写：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">var</span><span class="w"> </span><span class="nx">query</span><span class="w"> </span><span class="kt">string</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kd">var</span><span class="w"> </span><span class="nx">history</span><span class="w"> </span><span class="kt">string</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nx">messageLength</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">rawRequest</span><span class="p">.</span><span class="nx">Messages</span><span class="p">)</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="nx">log</span><span class="p">.</span><span class="nx">Debugf</span><span class="p">(</span><span class="s">&quot;[onHttpRequestBody] messageLength: %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">messageLength</span><span class="p">)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="k">if</span><span class="w"> </span><span class="nx">messageLength</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span><span class="nx">query</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">rawRequest</span><span class="p">.</span><span class="nx">Messages</span><span class="p">[</span><span class="nx">messageLength</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="nx">Content</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nx">Debugf</span><span class="p">(</span><span class="s">&quot;[onHttpRequestBody] query: %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">query</span><span class="p">)</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">messageLength</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nx">messageLength</span><span class="o">-</span><span class="mi">1</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">            </span><span class="nx">history</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="s">&quot;human: &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">rawRequest</span><span class="p">.</span><span class="nx">Messages</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">Content</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot;\nAI: &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">rawRequest</span><span class="p">.</span><span class="nx">Messages</span><span class="p">[</span><span class="nx">i</span><span class="o">+</span><span class="mi">1</span><span class="p">].</span><span class="nx">Content</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">        </span><span class="nx">history</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">types</span><span class="p">.</span><span class="nx">ActionContinue</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="p">}</span>
+</code></pre></div>
+<p>之后，便是组装 ReAct 模板的过程，代码就不再展示。组装完成后，可以替换原始的 body，并恢复被拦截的请求。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">newbody</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">json</span><span class="p">.</span><span class="nx">Marshal</span><span class="p">(</span><span class="nx">rawRequest</span><span class="p">)</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">types</span><span class="p">.</span><span class="nx">ActionContinue</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nx">Debugf</span><span class="p">(</span><span class="s">&quot;[onHttpRequestBody] newRequestBody: %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">string</span><span class="p">(</span><span class="nx">newbody</span><span class="p">))</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">    </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">proxywasm</span><span class="p">.</span><span class="nx">ReplaceHttpRequestBody</span><span class="p">(</span><span class="nx">newbody</span><span class="p">)</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">        </span><span class="nx">log</span><span class="p">.</span><span class="nx">Debugf</span><span class="p">(</span><span class="s">&quot;failed replace err: %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">        </span><span class="nx">proxywasm</span><span class="p">.</span><span class="nx">SendHttpResponse</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span><span class="w"> </span><span class="p">[][</span><span class="mi">2</span><span class="p">]</span><span class="kt">string</span><span class="p">{{</span><span class="s">&quot;content-type&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json; charset=utf-8&quot;</span><span class="p">}},</span><span class="w"> </span><span class="p">[]</span><span class="nb">byte</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="nx">config</span><span class="p">.</span><span class="nx">ReturnResponseTemplate</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;替换失败&quot;</span><span class="o">+</span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())),</span><span class="w"> </span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nx">Debug</span><span class="p">(</span><span class="s">&quot;[onHttpRequestBody] replace request success&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">types</span><span class="p">.</span><span class="nx">ActionContinue</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="onhttpresponsebody">onHttpResponseBody</h3>
+<p>Agent 多轮对话循环调用工具的代码就是在这一部分了。在之前的 Agent 代码中，我们一直都是通过一个 for{} 死循环来进行控制。但在 Wasm 中，所有的 HTTP 的外部调用，都是采用的回调的方式，因此应采用递归调用的方式来替代 for{} 死循环。</p>
+<p>我设计了两个函数来实现递归，第一个函数是 toolsCall 函数，第二个是 toolsCallResult 函数。</p>
+<p>toolsCall 的核心代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kd">func</span><span class="w"> </span><span class="nx">toolsCall</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">wrapper</span><span class="p">.</span><span class="nx">HttpContext</span><span class="p">,</span><span class="w"> </span><span class="nx">llmClient</span><span class="w"> </span><span class="nx">wrapper</span><span class="p">.</span><span class="nx">HttpClient</span><span class="p">,</span><span class="w"> </span><span class="nx">llmInfo</span><span class="w"> </span><span class="nx">LLMInfo</span><span class="p">,</span><span class="w"> </span><span class="nx">jsonResp</span><span class="w"> </span><span class="nx">JsonResp</span><span class="p">,</span><span class="w"> </span><span class="nx">aPIsParam</span><span class="w"> </span><span class="p">[]</span><span class="nx">APIsParam</span><span class="p">,</span><span class="w"> </span><span class="nx">aPIClient</span><span class="w"> </span><span class="p">[]</span><span class="nx">wrapper</span><span class="p">.</span><span class="nx">HttpClient</span><span class="p">,</span><span class="w"> </span><span class="nx">content</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">rawResponse</span><span class="w"> </span><span class="nx">Response</span><span class="p">,</span><span class="w"> </span><span class="nx">log</span><span class="w"> </span><span class="nx">wrapper</span><span class="p">.</span><span class="nx">Log</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="nx">types</span><span class="p">.</span><span class="nx">Action</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="nx">dashscope</span><span class="p">.</span><span class="nx">MessageStore</span><span class="p">.</span><span class="nx">AddForAssistant</span><span class="p">(</span><span class="nx">content</span><span class="p">)</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="nx">action</span><span class="p">,</span><span class="w"> </span><span class="nx">actionInput</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">outputParser</span><span class="p">(</span><span class="nx">content</span><span class="p">,</span><span class="w"> </span><span class="nx">log</span><span class="p">)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="c1">//得到最终答案</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">action</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;Final Answer&quot;</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">types</span><span class="p">.</span><span class="nx">ActionContinue</span><span class="p">,</span><span class="w"> </span><span class="nx">actionInput</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="nx">count</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">GetContext</span><span class="p">(</span><span class="nx">ToolCallsCount</span><span class="p">).(</span><span class="kt">int</span><span class="p">)</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">    </span><span class="nx">count</span><span class="o">++</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nx">Debugf</span><span class="p">(</span><span class="s">&quot;toolCallsCount:%d, config.LLMInfo.MaxIterations=%d&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">count</span><span class="p">,</span><span class="w"> </span><span class="nx">llmInfo</span><span class="p">.</span><span class="nx">MaxIterations</span><span class="p">)</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">    </span><span class="c1">//函数递归调用次数，达到了预设的循环次数，强制结束</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nb">int64</span><span class="p">(</span><span class="nx">count</span><span class="p">)</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="nx">llmInfo</span><span class="p">.</span><span class="nx">MaxIterations</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">        </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">SetContext</span><span class="p">(</span><span class="nx">ToolCallsCount</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">types</span><span class="p">.</span><span class="nx">ActionContinue</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">        </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">SetContext</span><span class="p">(</span><span class="nx">ToolCallsCount</span><span class="p">,</span><span class="w"> </span><span class="nx">count</span><span class="p">)</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="w">    </span><span class="o">...</span>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">apiClient</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="w">        </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">apiClient</span><span class="p">.</span><span class="nx">Call</span><span class="p">(</span>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="w">            </span><span class="nx">method</span><span class="p">,</span>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="w">            </span><span class="nx">urlStr</span><span class="p">,</span>
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a><span class="w">            </span><span class="nx">headers</span><span class="p">,</span>
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a><span class="w">            </span><span class="nx">reqBody</span><span class="p">,</span>
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a><span class="w">            </span><span class="kd">func</span><span class="p">(</span><span class="nx">statusCode</span><span class="w"> </span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="nx">responseHeaders</span><span class="w"> </span><span class="nx">http</span><span class="p">.</span><span class="nx">Header</span><span class="p">,</span><span class="w"> </span><span class="nx">responseBody</span><span class="w"> </span><span class="p">[]</span><span class="kt">byte</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a><span class="w">                </span><span class="nx">toolsCallResult</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">llmClient</span><span class="p">,</span><span class="w"> </span><span class="nx">llmInfo</span><span class="p">,</span><span class="w"> </span><span class="nx">jsonResp</span><span class="p">,</span><span class="w"> </span><span class="nx">aPIsParam</span><span class="p">,</span><span class="w"> </span><span class="nx">aPIClient</span><span class="p">,</span><span class="w"> </span><span class="nx">content</span><span class="p">,</span><span class="w"> </span><span class="nx">rawResponse</span><span class="p">,</span><span class="w"> </span><span class="nx">log</span><span class="p">,</span><span class="w"> </span><span class="nx">statusCode</span><span class="p">,</span><span class="w"> </span><span class="nx">responseBody</span><span class="p">)</span>
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a><span class="w">            </span><span class="p">},</span><span class="w"> </span><span class="nb">uint32</span><span class="p">(</span><span class="nx">maxExecutionTime</span><span class="p">))</span>
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a><span class="w">            </span><span class="nx">log</span><span class="p">.</span><span class="nx">Debugf</span><span class="p">(</span><span class="s">&quot;tool calls error: %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a><span class="w">            </span><span class="nx">proxywasm</span><span class="p">.</span><span class="nx">ResumeHttpRequest</span><span class="p">()</span>
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">types</span><span class="p">.</span><span class="nx">ActionContinue</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">types</span><span class="p">.</span><span class="nx">ActionPause</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a><span class="p">}</span>
+</code></pre></div>
+<p>首先通过 outputParser 函数解析出大模型的返回，得到 Action 与 Action Input。然后判断 Action 是否是 “Final Answer”，如果是，则直接返回 types.ActionContinue 以及 Action Input 即可，代码会解析出 Action Input 的内容，替换原始 Body，返回给用户。如果不是，则开启组装 URL 和参数，调用工具的过程。调用工具是通过 apiClient.Call 实现的。调用工具的结果会通过回调函数得到，并进入 toolsCallResult 函数对结果进行处理。</p>
+<p>toolsCallResult 的代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kd">func</span><span class="w"> </span><span class="nx">toolsCallResult</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">wrapper</span><span class="p">.</span><span class="nx">HttpContext</span><span class="p">,</span><span class="w"> </span><span class="nx">llmClient</span><span class="w"> </span><span class="nx">wrapper</span><span class="p">.</span><span class="nx">HttpClient</span><span class="p">,</span><span class="w"> </span><span class="nx">llmInfo</span><span class="w"> </span><span class="nx">LLMInfo</span><span class="p">,</span><span class="w"> </span><span class="nx">jsonResp</span><span class="w"> </span><span class="nx">JsonResp</span><span class="p">,</span><span class="w"> </span><span class="nx">aPIsParam</span><span class="w"> </span><span class="p">[]</span><span class="nx">APIsParam</span><span class="p">,</span><span class="w"> </span><span class="nx">aPIClient</span><span class="w"> </span><span class="p">[]</span><span class="nx">wrapper</span><span class="p">.</span><span class="nx">HttpClient</span><span class="p">,</span><span class="w"> </span><span class="nx">content</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">rawResponse</span><span class="w"> </span><span class="nx">Response</span><span class="p">,</span><span class="w"> </span><span class="nx">log</span><span class="w"> </span><span class="nx">wrapper</span><span class="p">.</span><span class="nx">Log</span><span class="p">,</span><span class="w"> </span><span class="nx">statusCode</span><span class="w"> </span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="nx">responseBody</span><span class="w"> </span><span class="p">[]</span><span class="kt">byte</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">statusCode</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nx">http</span><span class="p">.</span><span class="nx">StatusOK</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">        </span><span class="nx">log</span><span class="p">.</span><span class="nx">Debugf</span><span class="p">(</span><span class="s">&quot;statusCode: %d&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">statusCode</span><span class="p">)</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nx">Info</span><span class="p">(</span><span class="s">&quot;========function result========&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nx">Infof</span><span class="p">(</span><span class="nb">string</span><span class="p">(</span><span class="nx">responseBody</span><span class="p">))</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="nx">observation</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="s">&quot;Observation: &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nb">string</span><span class="p">(</span><span class="nx">responseBody</span><span class="p">)</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="nx">dashscope</span><span class="p">.</span><span class="nx">MessageStore</span><span class="p">.</span><span class="nx">AddForUser</span><span class="p">(</span><span class="nx">observation</span><span class="p">)</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">    </span><span class="nx">completion</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">dashscope</span><span class="p">.</span><span class="nx">Completion</span><span class="p">{</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">        </span><span class="nx">Model</span><span class="p">:</span><span class="w">     </span><span class="nx">llmInfo</span><span class="p">.</span><span class="nx">Model</span><span class="p">,</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">        </span><span class="nx">Messages</span><span class="p">:</span><span class="w">  </span><span class="nx">dashscope</span><span class="p">.</span><span class="nx">MessageStore</span><span class="p">,</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">        </span><span class="nx">MaxTokens</span><span class="p">:</span><span class="w"> </span><span class="nx">llmInfo</span><span class="p">.</span><span class="nx">MaxTokens</span><span class="p">,</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="w">    </span><span class="nx">headers</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">[][</span><span class="mi">2</span><span class="p">]</span><span class="kt">string</span><span class="p">{{</span><span class="s">&quot;Content-Type&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="s">&quot;Authorization&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Bearer &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">llmInfo</span><span class="p">.</span><span class="nx">APIKey</span><span class="p">}}</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="w">    </span><span class="nx">completionSerialized</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">json</span><span class="p">.</span><span class="nx">Marshal</span><span class="p">(</span><span class="nx">completion</span><span class="p">)</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="w">    </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">llmClient</span><span class="p">.</span><span class="nx">Post</span><span class="p">(</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="w">        </span><span class="nx">llmInfo</span><span class="p">.</span><span class="nx">Path</span><span class="p">,</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="w">        </span><span class="nx">headers</span><span class="p">,</span>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="w">        </span><span class="nx">completionSerialized</span><span class="p">,</span>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="w">        </span><span class="kd">func</span><span class="p">(</span><span class="nx">statusCode</span><span class="w"> </span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="nx">responseHeaders</span><span class="w"> </span><span class="nx">http</span><span class="p">.</span><span class="nx">Header</span><span class="p">,</span><span class="w"> </span><span class="nx">responseBody</span><span class="w"> </span><span class="p">[]</span><span class="kt">byte</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="w">            </span><span class="c1">//得到gpt的返回结果</span>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="w">            </span><span class="kd">var</span><span class="w"> </span><span class="nx">responseCompletion</span><span class="w"> </span><span class="nx">dashscope</span><span class="p">.</span><span class="nx">CompletionResponse</span>
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a><span class="w">            </span><span class="nx">_</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">json</span><span class="p">.</span><span class="nx">Unmarshal</span><span class="p">(</span><span class="nx">responseBody</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">responseCompletion</span><span class="p">)</span>
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a><span class="w">            </span><span class="nx">log</span><span class="p">.</span><span class="nx">Infof</span><span class="p">(</span><span class="s">&quot;[toolsCall] content: %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">responseCompletion</span><span class="p">.</span><span class="nx">Choices</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">Message</span><span class="p">.</span><span class="nx">Content</span><span class="p">)</span>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nx">responseCompletion</span><span class="p">.</span><span class="nx">Choices</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">Message</span><span class="p">.</span><span class="nx">Content</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a><span class="w">                </span><span class="nx">retType</span><span class="p">,</span><span class="w"> </span><span class="nx">actionInput</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">toolsCall</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">llmClient</span><span class="p">,</span><span class="w"> </span><span class="nx">llmInfo</span><span class="p">,</span><span class="w"> </span><span class="nx">jsonResp</span><span class="p">,</span><span class="w"> </span><span class="nx">aPIsParam</span><span class="p">,</span><span class="w"> </span><span class="nx">aPIClient</span><span class="p">,</span><span class="w"> </span><span class="nx">responseCompletion</span><span class="p">.</span><span class="nx">Choices</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">Message</span><span class="p">.</span><span class="nx">Content</span><span class="p">,</span><span class="w"> </span><span class="nx">rawResponse</span><span class="p">,</span><span class="w"> </span><span class="nx">log</span><span class="p">)</span>
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="nx">retType</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">types</span><span class="p">.</span><span class="nx">ActionContinue</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a><span class="w">                    </span><span class="c1">//得到了Final Answer</span>
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a><span class="w">                    </span><span class="kd">var</span><span class="w"> </span><span class="nx">assistantMessage</span><span class="w"> </span><span class="nx">Message</span>
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="w">                    </span><span class="kd">var</span><span class="w"> </span><span class="nx">streamMode</span><span class="w"> </span><span class="kt">bool</span>
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a><span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">GetContext</span><span class="p">(</span><span class="nx">StreamContextKey</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a><span class="w">                        </span><span class="nx">streamMode</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">false</span>
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a><span class="w">                        </span><span class="k">if</span><span class="w"> </span><span class="nx">jsonResp</span><span class="p">.</span><span class="nx">Enable</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a><span class="w">                            </span><span class="nx">jsonFormat</span><span class="p">(</span><span class="nx">llmClient</span><span class="p">,</span><span class="w"> </span><span class="nx">llmInfo</span><span class="p">,</span><span class="w"> </span><span class="nx">jsonResp</span><span class="p">.</span><span class="nx">JsonSchema</span><span class="p">,</span><span class="w"> </span><span class="nx">assistantMessage</span><span class="p">,</span><span class="w"> </span><span class="nx">actionInput</span><span class="p">,</span><span class="w"> </span><span class="nx">headers</span><span class="p">,</span><span class="w"> </span><span class="nx">streamMode</span><span class="p">,</span><span class="w"> </span><span class="nx">rawResponse</span><span class="p">,</span><span class="w"> </span><span class="nx">log</span><span class="p">)</span>
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a><span class="w">                        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a><span class="w">                            </span><span class="nx">noneStream</span><span class="p">(</span><span class="nx">assistantMessage</span><span class="p">,</span><span class="w"> </span><span class="nx">actionInput</span><span class="p">,</span><span class="w"> </span><span class="nx">rawResponse</span><span class="p">,</span><span class="w"> </span><span class="nx">log</span><span class="p">)</span>
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a><span class="w">                        </span><span class="p">}</span>
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a><span class="w">                    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a><span class="w">                        </span><span class="nx">streamMode</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">true</span>
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a><span class="w">                        </span><span class="k">if</span><span class="w"> </span><span class="nx">jsonResp</span><span class="p">.</span><span class="nx">Enable</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a><span class="w">                            </span><span class="nx">jsonFormat</span><span class="p">(</span><span class="nx">llmClient</span><span class="p">,</span><span class="w"> </span><span class="nx">llmInfo</span><span class="p">,</span><span class="w"> </span><span class="nx">jsonResp</span><span class="p">.</span><span class="nx">JsonSchema</span><span class="p">,</span><span class="w"> </span><span class="nx">assistantMessage</span><span class="p">,</span><span class="w"> </span><span class="nx">actionInput</span><span class="p">,</span><span class="w"> </span><span class="nx">headers</span><span class="p">,</span><span class="w"> </span><span class="nx">streamMode</span><span class="p">,</span><span class="w"> </span><span class="nx">rawResponse</span><span class="p">,</span><span class="w"> </span><span class="nx">log</span><span class="p">)</span>
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a><span class="w">                        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a><span class="w">                            </span><span class="nx">stream</span><span class="p">(</span><span class="nx">actionInput</span><span class="p">,</span><span class="w"> </span><span class="nx">rawResponse</span><span class="p">,</span><span class="w"> </span><span class="nx">log</span><span class="p">)</span>
+<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a><span class="w">                        </span><span class="p">}</span>
+<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a><span class="w">                    </span><span class="p">}</span>
+<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a><span class="w">                </span><span class="p">}</span>
+<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a><span class="w">            </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a><span class="w">                </span><span class="nx">proxywasm</span><span class="p">.</span><span class="nx">ResumeHttpRequest</span><span class="p">()</span>
+<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a><span class="w">            </span><span class="p">}</span>
+<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a><span class="w">        </span><span class="p">},</span><span class="w"> </span><span class="nb">uint32</span><span class="p">(</span><span class="nx">llmInfo</span><span class="p">.</span><span class="nx">MaxExecutionTime</span><span class="p">))</span>
+<a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a><span class="w">        </span><span class="nx">log</span><span class="p">.</span><span class="nx">Debugf</span><span class="p">(</span><span class="s">&quot;[onHttpRequestBody] completion err: %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
+<a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a><span class="w">        </span><span class="nx">proxywasm</span><span class="p">.</span><span class="nx">ResumeHttpRequest</span><span class="p">()</span>
+<a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a><span class="p">}</span>
+</code></pre></div>
+<p>代码拼接了 Obervation，然后对大模型进行了请求，这个过程相信你已经很熟悉了。在得到大模型的回复后，又会继续调用 toolsCall 函数，这样无限递归。总之退出条件只有两个，要么遇到 “Final Answer”，要么迭代次数达到上限。</p>
+<p>至此，代码的核心功能已经完成。在掌握了Agent和Wasm的编程方法后，编写本节课的插件相对轻松。这也正是我一直强调要重点学习编程套路的原因。本节课我们暂不进行测试，下一节课我们将结合之前开发的K8s运维助手工具，配合本插件，再进行全面的测试。</p>
+<h2 id="_4">总结</h2>
+<p>本节课是对过去所学知识点的复习与进阶实战。在之前的章节中，我们从最简陋的Agent开始，逐步深入，最终学习了标准API Agent的实现方式。结合本章节前面几课时的Wasm理论与实践，我们在本节课中使用Wasm完成了Agent功能的实现。这一功能也是我今年参加阿里云天池云原生编程挑战赛附加题的作品，最终获得了18分（满分20分）的成绩，位列第一名。</p>
+<p>本节课的代码已合并到Higress源码中，你可以点击<a href="https://github.com/alibaba/higress/tree/main/plugins/wasm-go/extensions/ai-agent">链接</a>查看源码详情。至此，编码实践环节即将告一段落。本章节的最后几课时我将以测试和方案介绍为主，和你一起开开思路，讨论应用落地方向等等。</p>
+<h2 id="_5">思考题</h2>
+<p>我在配置解析模块，讲到该插件还支持 JSOM Mode 功能，你认为该功能应该如何实现呢？在下一节课，我会花一点小篇幅补充上这个知识点。</p>
+<p>欢迎你在留言区分享你的代码设计思路，我们一起来讨论。如果你觉得这节课的内容对你有帮助的话，也欢迎你分享给其他朋友，我们下节课再见！</p>
 
 
 

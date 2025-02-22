@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -4787,6 +4792,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    11 代码块与作用域：如何保证变量不会被遮蔽？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -4796,6 +4812,68 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      代码块与作用域
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      避免变量遮蔽的原则
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      利用工具检测变量遮蔽问题
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -13477,6 +13555,59 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      代码块与作用域
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      避免变量遮蔽的原则
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      利用工具检测变量遮蔽问题
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -13518,9 +13649,194 @@
 </code></pre></div>
 <p>你可以看到，在这段代码中，函数foo调用前后，包级变量a的值都没有发生变化。这是因为，虽然foo函数中也使用了变量a，但是foo函数中的变量a遮蔽了外面的包级变量a，这使得包级变量a没有参与到foo函数的逻辑中，所以就没有发生变化了。</p>
 <p>变量遮蔽是Go开发人员在日常开发工作中最容易犯的编码错误之一，它低级又不容易查找，常常会让你陷入漫长的调试过程。上面的实例较为简单，你可以通过肉眼很快找到问题所在，但一旦遇到更为复杂的变量遮蔽的问题，你就可能会被折腾很久，甚至只能通过工具才能帮助捕捉问题所在。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>变量遮蔽只是个引子，我真正想跟你说的是<strong>代码块</strong>（Block，也可译作词法块）和<strong>作用域</strong>（Scope）这两个概念，因为要想彻底保证不出现变量遮蔽问题，我们需要深入了解这两个概念以及其背后的规则。</p>
+<p>现在了，我们就来先学习一下代码块与作用域的概念。</p>
+<h2 id="_1">代码块与作用域</h2>
+<p>我们先来解析一下Go里面的代码块。</p>
+<p>Go语言中的代码块是包裹在一对大括号内部的声明和语句序列，如果一对大括号内部没有任何声明或其他语句，我们就把它叫做<strong>空代码块</strong>。Go代码块支持嵌套，我们可以在一个代码块中嵌入多个层次的代码块，如下面示例代码所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>func foo() { //代码块1
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    { // 代码块2
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>        { // 代码块3
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>            { // 代码块4
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>            }
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        }
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    }
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>}
+</code></pre></div>
+<p>在这个示例中，函数foo的函数体是最外层的代码块，这里我们将它编号为“代码块1”。而且，在它的函数体内部，又嵌套了三层代码块，由外向内看分别为代码块2、代码块3以及代码块4。</p>
+<p>像代码块1到代码块4这样的代码块，它们都是由两个肉眼可见的且配对的大括号包裹起来的，我们称这样的代码块为显式代码块（Explicit Blocks）。既然提到了显式代码块，我们肯定也不能忽略另外一类代码块的存在，也就是隐式代码块（Implicit Block）。顾名思义，隐式代码块没有显式代码块那样的肉眼可见的配对大括号包裹，我们无法通过大括号来识别隐式代码块。</p>
+<p>虽然隐式代码块身着“隐身衣”，但我们也不是没有方法来识别它，因为Go语言规范对现存的几类隐式代码块做了明确的定义，你可以先花一两分钟看看下面这张图。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/3d/85/3d02138cf8f8a7a85fe0cfe5c29a6585.jpg?wh=1920x1047" /></p>
+<p>我们按代码块范围从大到小，逐一说明一下。</p>
+<p>首先是位于最外层的<strong>宇宙代码块（Universe Block）</strong>，它囊括的范围最大，所有Go源码都在这个隐式代码块中，你也可以将该隐式代码块想象为在所有Go代码的最外层加一对大括号，就像图中最外层的那对大括号那样。</p>
+<p>在<strong>宇宙代码块</strong>内部嵌套了<strong>包代码块（Package Block）</strong>，每个Go包都对应一个隐式包代码块，每个包代码块包含了该包中的所有Go源码，不管这些代码分布在这个包里的多少个的源文件中。</p>
+<p>我们再往里面看，在包代码块的内部嵌套着若干<strong>文件代码块（File Block）</strong>，每个Go源文件都对应着一个文件代码块，也就是说一个Go包如果有多个源文件，那么就会有多个对应的文件代码块。</p>
+<p>再下一个级别的隐式代码块就在控制语句层面了，包括if、for与switch。我们可以把每个控制语句都视为在它自己的隐式代码块里。不过你要注意，这里的控制语句隐式代码块与控制语句使用大括号包裹的显式代码块并不是一个代码块。你再看一下前面的图，switch控制语句的隐式代码块的位置是在它显式代码块的外面的。</p>
+<p>最后，位于最内层的隐式代码块是switch或select语句的每个case/default子句中，虽然没有大括号包裹，但实质上，每个子句都自成一个代码块。</p>
+<p>有了这些代码块的概念后，你能更好理解作用域的概念了。作用域的概念是针对标识符的，不局限于变量。每个标识符都有自己的作用域，而<strong>一个标识符的作用域就是指这个标识符在被声明后可以被有效使用的源码区域</strong>。</p>
+<p>显然，作用域是一个编译期的概念，也就是说，编译器在编译过程中会对每个标识符的作用域进行检查，对于在标识符作用域外使用该标识符的行为会给出编译错误的报错。</p>
+<p>不过，我们可以使用代码块的概念来划定每个标识符的作用域。这个划定原则是什么呢？原则就是<strong>声明于外层代码块中的标识符，其作用域包括所有内层代码块</strong>。而且，这一原则同时适于显式代码块与隐式代码块。现在，对照上面的示意图，我们再举一些典型的例子，让你对作用域这个抽象的概念有更进一步的了解。</p>
+<p><strong>首先，我们来看看位于最外层的宇宙隐式代码块的标识符。</strong></p>
+<p>我们先来看第一个问题：我们要怎么声明这一区域的标识符呢？</p>
+<p>这个问题的答案是，我们并不能声明这一块的标识符，因为这一区域是Go语言<strong>预定义标识符</strong>的自留地。这里我整理了Go语言当前版本定义里的所有预定义标识符，你可以看看下面这张表：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/01/95/01b8135e83c9fc39afcecdb26d4e1495.jpg?wh=1920x748" /></p>
+<p>由于这些预定义标识符位于包代码块的外层，所以它们的作用域是范围最大的，对于开发者而言，它们的作用域就是源代码中的任何位置。不过，这些预定义标识符不是关键字，我们同样可以在内层代码块中声明同名的标识符。</p>
+<p><strong>那现在第二个问题就来了：既然宇宙代码块里存在预定义标识符，而且宇宙代码块的下一层是包代码块，那还有哪些标识符具有包代码块级作用域呢？</strong></p>
+<p>答案是，包顶层声明中的常量、类型、变量或函数（不包括方法）对应的标识符的作用域是包代码块。</p>
+<p>不过，对于作用域为包代码块的标识符，我需要你知道一个特殊情况。那就是当一个包A导入另外一个包B后，包A仅可以使用被导入包包B中的导出标识符（Exported Identifier）。</p>
+<p>这是为什么呢？而且，什么是导出标识符呢？</p>
+<p>按照Go语言定义，一个标识符要成为导出标识符需同时具备两个条件：一是这个标识符声明在包代码块中，或者它是一个字段名或方法名；二是它名字第一个字符是一个大写的Unicode字符。这两个条件缺一不可。</p>
+<p>从我们前面的讲解中，你一定发现了大部分在包顶层声明的标识符都具有包代码块范围的作用域，那<strong>还有标识符的作用域是文件代码块范围的吗？</strong></p>
+<p>确实不多了。但还有一个，我一说你肯定会有一种恍然大悟的感觉，它就是导入的包名。也就是说，如果一个包A有两个源文件要实现，而且这两个源文件中的代码都依赖包B中的标识符，那么这两个源文件都需要导入包B。</p>
+<p>在源文件层面，去掉拥有包代码块作用域的标识符后，剩余的就都是一个个函数/方法的实现了。在这些函数/方法体中，标识符作用域划分原则更为简单，因为我们可以凭借肉眼可见的、配对的大括号来明确界定一个标识符的作用域范围，我们来看下面这个示例：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>func (t T) M1(x int) (err error) {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>// 代码块1
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    m := 13
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    // 代码块1是包含m、t、x和err三个标识符的最内部代码块
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    { // 代码块2
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        // &quot;代码块2&quot;是包含类型bar标识符的最内部的那个包含代码块
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        type bar struct {} // 类型标识符bar的作用域始于此
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        { // 代码块3
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>            // &quot;代码块3&quot;是包含变量a标识符的最内部的那个包含代码块
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>            a := 5 // a作用域开始于此
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>            {  // 代码块4 
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>                //... ...
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>            }
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>            // a作用域终止于此
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>        }
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>        // 类型标识符bar的作用域终止于此
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    }
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    // m、t、x和err的作用域终止于此
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>}
+</code></pre></div>
+<p>我们可以看到，上面示例中定义了类型T的一个方法M1，方法接收器(receiver)变量t、函数参数x，以及返回值变量err对应的标识符的作用域范围是M1函数体对应的显式代码块1。虽然t、x和err并没有被函数体的大括号所显式包裹，但它们属于函数定义的一部分，所以作用域依旧是代码块1。</p>
+<p>说完了函数体外部的诸如函数参数、返回值等元素的作用域后，我们现在就来分析<strong>函数体内部的那些语法元素</strong>。</p>
+<p>函数内部声明的常量或变量对应的标识符的作用域范围开始于常量或变量声明语句的末尾，并终止于其最内部的那个包含块的末尾。在上述例子中，变量m、自定义类型bar以及在代码块3中声明的变量a均符合这个划分规则。</p>
+<p>接下来，我们再看看<strong>位于控制语句隐式代码块中的标识符的作用域划分</strong>。我们以下面这个if条件分支语句为例来分析一下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>func bar() {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    if a := 1; false {
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    } else if b := 2; false {
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    } else if c := 3; false {
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    } else {
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        println(a, b, c)
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    }
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>}
+</code></pre></div>
+<p>这是一个复杂的“if - else if - else”条件分支语句结构，根据我们前面讲过的隐式代码块规则，我们将上面示例中隐式代码块转换为显式代码块后，会得到下面这段等价的代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>func bar() {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    { // 等价于第一个if的隐式代码块
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        a := 1 // 变量a作用域始于此
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        if false {
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        } else {
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>            { // 等价于第一个else if的隐式代码块
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>                b := 2 // 变量b的作用域始于此
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>                if false {
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>                } else {
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>                    { // 等价于第二个else if的隐式代码块
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>                        c := 3 // 变量c作用域始于此
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>                        if false {
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>                        } else {
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>                            println(a, b, c)
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>                        }
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>                        // 变量c的作用域终止于此
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>                    }
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>                }
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>                // 变量b的作用域终止于此
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>            }
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>        }
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>        // 变量a作用域终止于此
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>    }
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>}
+</code></pre></div>
+<p>我们看到，经过这么一个等价转换，各个声明于if表达式中的变量的作用域就变得一目了然了。声明于不同层次的隐式代码块中的变量a、b和c的实际作用域都位于最内层的else显式代码块之外，于是在println的那个显式代码块中，变量a、b、c都是合法的，而且还保持了初始值。</p>
+<p>好了，到这里我们已经了解代码块与作用域的概念与规则了，那么我们要怎么利用这些知识避免在实际编码中的变量遮蔽问题呢？避免变量遮蔽的原则又是什么呢？</p>
+<h2 id="_2">避免变量遮蔽的原则</h2>
+<p>变量是标识符的一种，所以我们前面说的标识符的作用域规则同样适用于变量。在前面的讲述中，我们已经知道了，一个变量的作用域起始于其声明所在的代码块，并且可以一直扩展到嵌入到该代码块中的所有内层代码块，而正是这样的作用域规则，成为了滋生“变量遮蔽问题”的土壤。</p>
+<p>变量遮蔽问题的根本原因，就是内层代码块中声明了一个与外层代码块同名且同类型的变量，这样，内层代码块中的同名变量就会替代那个外层变量，参与此层代码块内的相关计算，我们也就说内层变量遮蔽了外层同名变量。现在，我们先来看一下这个示例代码，它就存在着多种变量遮蔽的问题：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>... ...
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a> var a int = 2020
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a> func checkYear() error {
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>     err := errors.New(&quot;wrong year&quot;)
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>     switch a, err := getYear(); a {
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>     case 2020:
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>         fmt.Println(&quot;it is&quot;, a, err)
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>     case 2021:
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>         fmt.Println(&quot;it is&quot;, a)
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>         err = nil
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>     }
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>     fmt.Println(&quot;after check, it is&quot;, a)
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>     return err
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a> }
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a> type new int
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a> func getYear() (new, error) {
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>     var b int16 = 2021
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>     return new(b), nil
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a> }
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a> func main() {
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>     err := checkYear()
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>     if err != nil {
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>         fmt.Println(&quot;call checkYear error:&quot;, err)
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>         return
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>     }
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>     fmt.Println(&quot;call checkYear ok&quot;)
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a> }
+</code></pre></div>
+<p>这个变量遮蔽的例子还是有点复杂的，为了讲解方便，我给代码加上了行编号。我们首先运行一下这个例子：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$go run complex.go
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>it is 2021
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>after check, it is 2020
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>call checkYear error: wrong year
+</code></pre></div>
+<p>我们可以看到，第20行定义的getYear函数返回了正确的年份(2021)，但是checkYear在结尾却输出“after check, it is 2020”，并且返回的err并非为nil，这显然是变量遮蔽的“锅”！</p>
+<p>根据我们前面给出的变量遮蔽的根本原因，我们来“找找茬”，看看上面这段代码究竟有几处变量遮蔽问题（包括标识符遮蔽问题）。</p>
+<p><strong>第一个问题：遮蔽预定义标识符。</strong></p>
+<p>面对上面代码，我们一眼就看到了位于第18行的new，这本是Go语言的一个预定义标识符，但上面示例代码呢，却用new这个名字定义了一个新类型，于是new这个标识符就被遮蔽了。如果这个时候你在main函数下方放上下面代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>p := new(int)
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>*p = 11
+</code></pre></div>
+<p>你就会收到Go编译器的错误提示：“type int is not an expression”，如果没有意识到new被遮蔽掉，这个提示就会让你不知所措。不过，在上面示例代码中，遮蔽new并不是示例未按预期输出结果的真实原因，我们还得继续往下看。</p>
+<p><strong>这时我们发现了第二个问题：遮蔽包代码块中的变量。</strong></p>
+<p>你看，位于第7行的switch语句在它自身的隐式代码块中，通过短变量声明形式重新声明了一个变量a，这个变量a就遮蔽了外层包代码块中的包级变量a，这就是打印“after check, it is 2020”的原因。包级变量a没有如预期那样被getYear的返回值赋值为正确的年份2021，2021被赋值给了遮蔽它的switch语句隐式代码块中的那个新声明的a。</p>
+<p><strong>不过，同一行里，其实还有第三个问题：遮蔽外层显式代码块中的变量。</strong></p>
+<p>同样还是第7行的switch语句，除了声明一个新的变量a之外，它还声明了一个名为err的变量，这个变量就遮蔽了第4行checkYear函数在显式代码块中声明的err变量，这导致第12行的nil赋值动作作用到了switch隐式代码块中的err变量上，而不是外层checkYear声明的本地变量err变量上，后者并非nil，这样checkYear虽然从getYear得到了正确的年份值，但却返回了一个错误给main函数，这直接导致了main函数打印了错误：“call checkYear error: wrong year”。</p>
+<p>通过这个示例，我们也可以看到，短变量声明与控制语句的结合十分容易导致变量遮蔽问题，并且很不容易识别，因此在日常go代码开发中你要尤其注意两者结合使用的地方。</p>
+<p>不过，依靠肉眼识别变量遮蔽问题终归不是长久之计，有没有工具可以帮助我们识别这类问题呢？其实是有的，下面我们就来介绍一下可以检测变量遮蔽问题的工具。</p>
+<h2 id="_3">利用工具检测变量遮蔽问题</h2>
+<p>Go官方提供了go vet工具可以用于对Go源码做一系列静态检查，在Go 1.14版以前默认支持变量遮蔽检查，Go 1.14版之后，变量遮蔽检查的插件就需要我们单独安装了，安装方法如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>go: downloading golang.org/x/tools v0.1.5
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>go: downloading golang.org/x/mod v0.4.2
+</code></pre></div>
+<p>一旦安装成功，我们就可以通过go vet扫描代码并检查这里面有没有变量遮蔽的问题了。我们现在就来检查一下前面的示例代码，看看效果怎么样。执行检查的命令如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$go vet -vettool=$(which shadow) -strict complex.go 
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>./complex.go:13:12: declaration of &quot;err&quot; shadows declaration at line 11
+</code></pre></div>
+<p>我们看到，go vet只给出了err变量被遮蔽的提示，变量a以及预定义标识符new被遮蔽的情况并没有给出提示。可以看到，工具确实可以辅助检测，但也不是万能的，不能穷尽找出代码中的所有问题，所以你还是要深入理解代码块与作用域的概念，尽可能在日常编码时就主动规避掉所有遮蔽问题。</p>
+<h2 id="_4">小结</h2>
+<p>好了，今天的课讲到这里就结束了，现在我们一起来回顾一下吧。</p>
+<p>在这一讲中，我们学习了另外两个变量相关的概念：代码块与作用域。</p>
+<p>代码块有显式与隐式之分，显式代码块就是包裹在一对配对大括号内部的语句序列，而隐式代码块则不容易肉眼分辨，它是通过Go语言规范明确规定的。隐式代码块有五种，分别是宇宙代码块、包代码块、文件代码块、分支控制语句隐式代码块，以及switch/select的子句隐式代码块，理解隐式代码块是理解代码块概念以及后续作用域概念的前提与基础。</p>
+<p>作用域的概念是Go源码编译过程中标识符（包括变量）的一个属性。Go编译器会校验每个标识符的作用域，如果它的使用范围超出其作用域，编译器会报错。</p>
+<p>不过呢，我们可以使用代码块的概念来划定每个标识符的作用域。划定原则就是声明于外层代码块中的标识符，其作用域包括所有内层代码块。但是，Go的这种作用域划定也带来了变量遮蔽问题。简单的遮蔽问题，我们通过分析代码可以很快找出，复杂的遮蔽问题，即便是通过go vet这样的静态代码分析工具也难于找全。</p>
+<p>因此，我们只有了解变量遮蔽问题本质，在日常编写代码时注意同名变量的声明，注意短变量声明与控制语句的结合，才能从根源上尽量避免变量遮蔽问题的发生。</p>
+<h2 id="_5">思考题</h2>
+<p>今天的思考题，你知道怎么来修正我们这节课最后那个复杂的变量遮蔽的例子吗？期待在留言区见到你的答案。</p>
+<p>感谢你和我一起学习，也欢迎你把这节课分享给更多对Go语言感兴趣的朋友。我是Tony Bai，我们下节课见。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/14/9d/a4/e481ae48.jpg" width="30px"><span>lesserror</span> 👍（12） 💬（7）<div>关于这一块儿的知识其实还挺绕的。
+<li><span>lesserror</span> 👍（12） 💬（7）<div>关于这一块儿的知识其实还挺绕的。
 
 不同代码块中的重名变量与变量重声明中的变量区别到底在哪儿？为了方便描述，我就把不同代码块中的重名变量叫做“可重名变量”吧。注意，在同一个代码块中不允许出现重名的变量，这违背了 Go 语言的语法。关于这两者的表象和机理，我们已经讨论得足够充分了。你现在可以说出几条区别？请想一想，然后再看下面的列表。
 
@@ -13530,7 +13846,7 @@
 
 3. 不论对变量重声明多少次，其类型必须始终一致，具体遵从它第一次被声明时给定的类型。而可重名变量之间不存在类似的限制，它们的类型可以是任意的。
 
-4. 如果可重名变量所在的代码块之间，存在直接或间接的嵌套关系，那么它们之间一定会存在“屏蔽”的现象。但是这种现象绝对不会在变量重声明的场景下出现。</div>2021-11-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/e9/26/472e16e4.jpg" width="30px"><span>Amosヾ</span> 👍（9） 💬（5）<div>可不可以通过变量尽量不重名来避免变量遮蔽呢？</div>2021-11-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/92/af/ad02ae4b.jpg" width="30px"><span>扣剑书生</span> 👍（8） 💬（6）<div>func checkYear() error {
+4. 如果可重名变量所在的代码块之间，存在直接或间接的嵌套关系，那么它们之间一定会存在“屏蔽”的现象。但是这种现象绝对不会在变量重声明的场景下出现。</div>2021-11-05</li><br/><li><span>Amosヾ</span> 👍（9） 💬（5）<div>可不可以通过变量尽量不重名来避免变量遮蔽呢？</div>2021-11-05</li><br/><li><span>扣剑书生</span> 👍（8） 💬（6）<div>func checkYear() error {
     err := errors.New(&quot;wrong year&quot;)
 
     &#47;&#47; 短变量形式，屏蔽了外层的包级变量 a，代替 其接收值
@@ -13548,7 +13864,7 @@
     }
     fmt.Println(&quot;after check, it is&quot;, a)
     return err
-}</div>2021-12-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5c/da/0a8bc27b.jpg" width="30px"><span>文经</span> 👍（7） 💬（1）<div>约定号包级别的变量用长的名字，越是局部的变量用越短小的名字，应该能够解决一大部分变量zhe遮蔽的问题。</div>2021-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ae/6b/b72b0d90.jpg" width="30px"><span>程旭阳</span> 👍（6） 💬（3）<div>go1.17.1 `type new int`会报错： 
+}</div>2021-12-02</li><br/><li><span>文经</span> 👍（7） 💬（1）<div>约定号包级别的变量用长的名字，越是局部的变量用越短小的名字，应该能够解决一大部分变量zhe遮蔽的问题。</div>2021-11-12</li><br/><li><span>程旭阳</span> 👍（6） 💬（3）<div>go1.17.1 `type new int`会报错： 
 cannot assign new to a (type int) in multiple assignment
 cannot use new value as type int in assignment
 修改为 `type new = int` 之后不再报错
@@ -13592,9 +13908,9 @@ func main() {
         return
     }
     fmt.Println(&quot;call checkYear ok&quot;)
-}</div>2021-11-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/df/43/1aa8708a.jpg" width="30px"><span>子杨</span> 👍（5） 💬（1）<div>「作者回复: 一旦“禁止用预定义标识符定义新类型或者变量的行为”，那么new这样的预定义标识符就和关键字没啥区别了。」
+}</div>2021-11-06</li><br/><li><span>子杨</span> 👍（5） 💬（1）<div>「作者回复: 一旦“禁止用预定义标识符定义新类型或者变量的行为”，那么new这样的预定义标识符就和关键字没啥区别了。」
 
-想请问老师，预定义标识符和关键字的区别是啥？</div>2022-12-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4c/12/f0c145d4.jpg" width="30px"><span>Rayjun</span> 👍（4） 💬（1）<div>老师，这里我还有一个问题，我发现如果是在同级的作用域中，声明两个一样的变量就会报错，但是在不同级的作用域中就不会，那么 go 语言为何不禁止同名变量的声明，这样不就可以解决变量遮蔽的问题么</div>2022-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b2/bf/aea9e7c6.jpg" width="30px"><span>615</span> 👍（3） 💬（1）<div>刚细翻看了下go语言圣经，switch里的a和err确实是新声明的而不存在赋值行为，因为重新赋值行为只存在于变量已经在相同block中声明过。</div>2023-04-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/15/8e/8fc00a53.jpg" width="30px"><span>🐎</span> 👍（3） 💬（1）<div>感觉和js一样，变量就近使用</div>2022-08-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4c/12/f0c145d4.jpg" width="30px"><span>Rayjun</span> 👍（3） 💬（1）<div>修改两个地方，把 a 的类型改成 new，并 去掉 switch 那的一个引号
+想请问老师，预定义标识符和关键字的区别是啥？</div>2022-12-13</li><br/><li><span>Rayjun</span> 👍（4） 💬（1）<div>老师，这里我还有一个问题，我发现如果是在同级的作用域中，声明两个一样的变量就会报错，但是在不同级的作用域中就不会，那么 go 语言为何不禁止同名变量的声明，这样不就可以解决变量遮蔽的问题么</div>2022-03-01</li><br/><li><span>615</span> 👍（3） 💬（1）<div>刚细翻看了下go语言圣经，switch里的a和err确实是新声明的而不存在赋值行为，因为重新赋值行为只存在于变量已经在相同block中声明过。</div>2023-04-29</li><br/><li><span>🐎</span> 👍（3） 💬（1）<div>感觉和js一样，变量就近使用</div>2022-08-21</li><br/><li><span>Rayjun</span> 👍（3） 💬（1）<div>修改两个地方，把 a 的类型改成 new，并 去掉 switch 那的一个引号
 
 var a new = 2020 
 
@@ -13625,13 +13941,13 @@ func main() {
         return 
     } 
     fmt.Println(&quot;call checkYear ok&quot;) 
-}</div>2021-11-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/54/7b/780c04ff.jpg" width="30px"><span>史努比</span> 👍（2） 💬（1）<div>Universe Block是不是翻译成“全局代码块”更贴切一些，“宇宙代码块”总觉得怪怪的。</div>2022-03-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2a/eb/a4/b247e9b7.jpg" width="30px"><span>独钓寒江</span> 👍（2） 💬（2）<div>“位于第 18 行的 new，这本是 Go 语言的一个预定义标识符，但上面示例代码呢，却用 new 这个名字定义了一个新类型，于是 new 这个标识符就被遮蔽了”
-为什么不禁止用预定义标识符定义新类型或者变量的行为呢？</div>2022-01-15</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/qwqPnn095yDuc6uycMwCt7TIBibFXriaPS9BrMXic6tcNg1OlAiaR8YDeiaO5uDictZJFfnaL81rVflyeibTTR5qNibFCg/132" width="30px"><span>Geek_754270</span> 👍（1） 💬（1）<div>
+}</div>2021-11-06</li><br/><li><span>史努比</span> 👍（2） 💬（1）<div>Universe Block是不是翻译成“全局代码块”更贴切一些，“宇宙代码块”总觉得怪怪的。</div>2022-03-27</li><br/><li><span>独钓寒江</span> 👍（2） 💬（2）<div>“位于第 18 行的 new，这本是 Go 语言的一个预定义标识符，但上面示例代码呢，却用 new 这个名字定义了一个新类型，于是 new 这个标识符就被遮蔽了”
+为什么不禁止用预定义标识符定义新类型或者变量的行为呢？</div>2022-01-15</li><br/><li><span>Geek_754270</span> 👍（1） 💬（1）<div>
 func test ()error{
 error:=errors.new(&quot;第一次申明error变量&quot;)
 a,error:=test2()
 fmt.print(a,error)
-}老师我想问一下这串代码里的error是被申明了两次吗？如果不是哪有该怎么理解这里第二次出现的error呢？如果是的话那编译为什么能通。</div>2023-10-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/0e/df/a64b3146.jpg" width="30px"><span>长林啊</span> 👍（1） 💬（1）<div>package main
+}老师我想问一下这串代码里的error是被申明了两次吗？如果不是哪有该怎么理解这里第二次出现的error呢？如果是的话那编译为什么能通。</div>2023-10-31</li><br/><li><span>长林啊</span> 👍（1） 💬（1）<div>package main
 
 import (
     &quot;errors&quot;
@@ -13670,121 +13986,7 @@ func main() {
         return
     }
     fmt.Println(&quot;call checkYear ok&quot;)
-}</div>2023-10-02</li><br/><li><img src="" width="30px"><span>Geek_7806de</span> 👍（1） 💬（1）<div>go竟然会允许变量重名，不知道设计者怎么想的</div>2023-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b2/bf/aea9e7c6.jpg" width="30px"><span>615</span> 👍（1） 💬（1）<div>请问老师，go语言圣经里说，短变量声明具有重新赋值的作用，上面的例子为什么不可能是创建局部变量a，重新赋值err呢？或者是创建局部变量err，重新赋值a呢？</div>2023-04-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/39/ba/a2b48904.jpg" width="30px"><span>Min</span> 👍（1） 💬（2）<div>记录下在 Windows Gitbash 终端使用 go vet 遇到的坑：
-
-$ go vet -vettool=$(which shadow) -strict main.go
-shadow: open C:\Users\myangvgo\go\bin\shadow: The system cannot find the file specified.
-go: error obtaining buildID for C:\Users\myangvgo\go\bin\shadow: exit status 1
-
-原因是 shadow 在 windows 下叫 shadow.exe，而不是 Unix 系统下的 shadow。解决办法就是加上.exe
-
-$ go vet -vettool=$(which shadow).exe -strict main.go
-# command-line-arguments
-.\main.go:14:12: declaration of &quot;err&quot; shadows declaration at line 11
-</div>2022-09-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/33/61/16505a1a.jpg" width="30px"><span>He</span> 👍（1） 💬（1）<div>package main
-
-import (
-    &quot;errors&quot;
-    &quot;fmt&quot;
-)
-var a int = 2020
-
-func checkYear() error {
-    err := errors.New(&quot;wrong year&quot;)
-    var a new
-    switch a, err = getYear(); a {  &#47;&#47; 重新声明，使用赋值
-    case 2020:
-        fmt.Println(&quot;it is&quot;, a, err)
-    case 2021:
-        fmt.Println(&quot;it is&quot;, a)
-        err = nil
-    }
-    fmt.Println(&quot;after check, it is&quot;, a)
-    return err
-}
-
-type new int
-
-func getYear() (new, error) {
-    var b int16 = 2021
-    return new(b), nil
-}
-
-func main() {
-    err := checkYear()
-    if err != nil {
-        fmt.Println(&quot;call checkYear error:&quot;, err)
-        return
-    }
-    fmt.Println(&quot;call checkYear ok&quot;)
-}</div>2022-06-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/ea/05/9976b871.jpg" width="30px"><span>westfall</span> 👍（1） 💬（2）<div>奇怪了，mac 上执行 
-go install golang.org&#47;x&#47;tools&#47;go&#47;analysis&#47;passes&#47;shadow&#47;cmd&#47;shadow@latest 
-安装成功之后，执行 which shadow 总是 shadow not found</div>2022-05-02</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTI2doZU8iaFwEWjyVB095OxmUxGN0ZFJNhicDpAneHEaHWicOa3ClHbZ0rs5gtTIPI1OicxYL68icGmNmg/132" width="30px"><span>时间带走初心</span> 👍（1） 💬（1）<div>老师,想请问一下为啥在window下执行go vet -vettool=$(which shadow) -strict complex.go 会出现这样的提示which : 无法将“which”项识别为 cmdlet、函数、脚本文件或可运行程序的名称
-。请检查名称的拼写，如果包括路径，请确保路径正确，然后再试一次。
-所在位置 行:1 字符: 19</div>2022-04-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c9/1c/596749c8.jpg" width="30px"><span>肖肖</span> 👍（1） 💬（1）<div>这个问题有人碰到过吗，该怎么解决呢。 
-不加-strict 就是好的，但不会报变量遮蔽提示；而加了 -strict 就会报错
-go vet -vettool=$(which shaow) -strict test.go 
-flag provided but not defined: -strict</div>2022-03-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/4b/d7/f46c6dfd.jpg" width="30px"><span>William Ning</span> 👍（1） 💬（1）<div>外层评论一下：
-
-又看了一遍，果然看一遍是记不住的，平时主要写PHP代码，因为只支持函数作用域，所以，不会出现上面的问题，而且使用重名的变量好处之一，减少内存占用。
-所以，老师，同学，我想问，划分这么细的作用域的目的是什么呢？</div>2022-03-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4c/12/f0c145d4.jpg" width="30px"><span>Rayjun</span> 👍（1） 💬（2）<div>为啥没有函数&#47;方法代码块呢？</div>2022-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/75/bc/89d88775.jpg" width="30px"><span>Calvin</span> 👍（1） 💬（3）<div>老师，为什么我按文章中这样安装了变量屏蔽检查的插件之后执行会报错（我的 go 版本是 1.17.3)：
-which : 无法将“which”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保路径正确，然后再试一次。
-所在位置 行:1 字符: 19
-+ go vet -vettool=$(which bodyclose) main.go
-+                   ~~~~~
-    + CategoryInfo          : ObjectNotFound: (which:String) [], CommandNotFoundException
-    + FullyQualifiedErrorId : CommandNotFoundException</div>2021-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/70/67/0c1359c2.jpg" width="30px"><span>qinsi</span> 👍（1） 💬（1）<div>if语句的隐式代码块导致在if的初始化语句中声明的变量都只能在if的显式代码块中处理，这就很容易写出嵌套的if：
-
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">if</span><span class="w"> </span><span class="nx">val1</span><span class="p">,</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">getVal1</span><span class="p">();</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="nx">val2</span><span class="p">,</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">getVal2</span><span class="p">();</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">val3</span><span class="p">,</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">getVal3</span><span class="p">();</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">      </span><span class="nx">val</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">val1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">val2</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">val3</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">      </span><span class="o">...</span>
-</code></pre></div>
-
-有没有什么简洁的去掉嵌套的写法？</div>2021-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/0e/d9/e61ce097.jpg" width="30px"><span>郭纯</span> 👍（1） 💬（2）<div>其实定义变量的时候加前缀可以解决变量遮蔽的问题。但是这样会造成生命变量体积变大。如果配合短前缀还是可以的。但是这样需要整体的团队一起配合。 比如。local_. global_.   前缀。 还有尽量不要在 if switch。select  控制语句定义变量。 if a:=10;b &gt; 10 {} 这样的写法。</div>2021-11-05</li><br/><li><img src="" width="30px"><span>Geek_maohq</span> 👍（0） 💬（1）<div>这个问题不能通过编译器解决吗？外层定义的变量a，其作用域是包含函数代码块的，在函数内再定义变量a不就等于定义了两个同名的变量吗？编译器应该是可检查出来的，我知道其他语言是可以的</div>2024-09-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/05/93/3c3f2a6d.jpg" width="30px"><span>安石</span> 👍（0） 💬（2）<div>其实不是很绕哈哈，熟悉js的话</div>2024-07-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/cc/70/64045bc0.jpg" width="30px"><span>人言有力</span> 👍（0） 💬（1）<div>本节讲解了变量作用域与变量遮蔽问题
-1. 变量作用域划分有显式代码块和隐式代码块两种
-a.显式代码块即大括号包含的代码，其变量声明作用域，从声明到大括号止
-b.隐式代码块包含宇宙代码块（整个go语言，主要是语言预留标识符如int、true等等非关键字的）、包代码块（如源文件顶层声明的变量、常量、类型、函数）、文件代码块（基本就一个包导入标识符）和控制语句代码块（如switch、if等）还有控制语句子代码块（如switch语句的case子句等）
-
-2.变量遮蔽是指存在包含关系的不同级别的代码块分别定义了重名标识符时，在低等级的代码块中会遮蔽高等级的标识符，造成非预期结果。
-本质上还是重复标识符惹的祸，尽管可用通过go vet工具进行检查，不如编译器直接报错避免这类问题。
-
-3.思考题，如何避免变量遮蔽？
-一言以蔽之，对于复杂源文件，每个变量命名尽量和执行逻辑相关，赋予关联语义，避免重复。
-
-... ...
- var globalYear int = 2020
-
- func checkYear() error {
-     checkYearErr := errors.New(&quot;wrong year&quot;)
-
-     switch year, getYearErr := getYear(); year {
-     case 2020:
-         fmt.Println(&quot;it is&quot;, year, getYearErr)
-     case 2021:
-         fmt.Println(&quot;it is&quot;, year)
-         checkYearErr = nil
-     }
-     fmt.Println(&quot;after check, it is&quot;, globalYear)
-     return checkYearErr
- }
-
- type new int
-
- func getYear() (new, error) {
-     var b int16 = 2021
-     return new(b), nil
- }
-
- func main() {
-     err := checkYear()
-     if err != nil {
-         fmt.Println(&quot;call checkYear error:&quot;, err)
-         return
-     }
-     fmt.Println(&quot;call checkYear ok&quot;)
- }</div>2024-05-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/ba/56/1cbe8c04.jpg" width="30px"><span>Jayleonc</span> 👍（0） 💬（1）<div>我在一个外国人的课程里面学到过类似文章中提到的 “变量遮蔽” 的内容，其实就是值语义和指针语义的区别。文章提到的变量遮蔽，原因就是值语义，当变量传递到函数中，go 重新开辟了一块内存，将值拷贝了一份。全局的 a，不会因为 foo 函数而改变，变量地址就不一样。如果学习了值语义和指针语义的相关内容，这一块就非常容易理解了。</div>2023-09-04</li><br/>
+}</div>2023-10-02</li><br/><li><span>Geek_7806de</span> 👍（1） 💬（1）<div>go竟然会允许变量重名，不知道设计者怎么想的</div>2023-08-13</li><br/>
 </ul>
 
 

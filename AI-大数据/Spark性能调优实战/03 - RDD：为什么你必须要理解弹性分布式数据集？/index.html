@@ -1676,6 +1676,8 @@
       
         
       
+        
+      
     
     
       
@@ -2445,6 +2447,57 @@
   <a href="#rdd" class="md-nav__link">
     <span class="md-ellipsis">
       RDD为何如此重要
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rdd_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      深入理解RDD
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="深入理解RDD">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rdd_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      从薯片的加工流程看RDD
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rdd_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      RDD的核心特征和属性
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      每日一练
     </span>
   </a>
   
@@ -6077,6 +6130,57 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#rdd_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      深入理解RDD
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="深入理解RDD">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rdd_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      从薯片的加工流程看RDD
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rdd_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      RDD的核心特征和属性
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      每日一练
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6109,21 +6213,103 @@
 <h2 id="rdd">RDD为何如此重要</h2>
 <p>首先，RDD作为Spark对于分布式数据模型的抽象，是构建Spark分布式内存计算引擎的基石。很多Spark核心概念与核心组件，如DAG和调度系统都衍生自RDD。<strong>因此，深入理解RDD有利于你更全面、系统地学习Spark的工作原理。</strong></p>
 <p>其次，尽管RDD API使用频率越来越低，绝大多数人也都已经习惯于DataFrame和Dataset API，但是，无论采用哪种API或是哪种开发语言，你的应用在Spark内部最终都会转化为RDD之上的分布式计算。换句话说，<strong>如果你想要在运行时判断应用的性能瓶颈，前提是你要对RDD足够了解</strong>。还记得吗？定位性能瓶颈是Spark性能调优的第一步。</p>
-<div><strong>精选留言（22）</strong></div>
+<p>不仅如此，对于RDD不求甚解还有可能带来潜在的性能隐患，接下来，我们就从一个反例入手，一起来分析一下。</p>
+<p>还记得，我们在第1讲中讲过的数据过滤与聚合的反例吗？通过这个例子我们明白了性能调优的必要性。那这个例子和RDD有什么关系呢？</p>
+<p>别着急，我们先来回顾一下这个案例中的代码实现，去挖掘开发者采用这种实现方式的深层原因。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>  //实现方案1 —— 反例
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>def createInstance(factDF: DataFrame, startDate: String, endDate: String): DataFrame = {
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>val instanceDF = factDF
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    .filter(col(&quot;eventDate&quot;) &gt; lit(startDate) &amp;&amp; col(&quot;eventDate&quot;) &lt;= lit(endDate))
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    .groupBy(&quot;dim1&quot;, &quot;dim2&quot;, &quot;dim3&quot;, &quot;event_date&quot;)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    .agg(&quot;sum(value) as sum_value&quot;)
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>instanceDF
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>}
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>pairDF.collect.foreach{
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>case (startDate: String, endDate: String) =&gt;
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    val instance = createInstance(factDF, startDate, endDate)
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    val outPath = s&quot;${rootPath}/endDate=${endDate}/startDate=${startDate}&quot;
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    instance.write.parquet(outPath)
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>} 
+</code></pre></div>
+<p>在这段代码中，createInstance的主要逻辑是按照时间条件对factDF进行过滤，返回汇总的业务统计量，然后pairDF循环遍历每一对开始时间和结束时间，循环调用createInstance获取汇总结果并落盘。我们在<a href="https://time.geekbang.org/column/article/352035">第1课</a>中分析过，这份代码的主要问题在于囊括上千万行数据的factDF被反复扫描了几百次，而且是全量扫描，从而拖垮了端到端的执行性能。</p>
+<p>那么，我们不禁要问：开发者究竟为什么会想到用这种低效的方式去实现业务逻辑呢？或者说，是什么内驱因素让开发者自然而然地采用这种实现方式呢？</p>
+<p>让我们跳出Spark、跳出这个专栏，把自己置身于一间教室内：黑板前，老师正在讲解《XX语言编程》，旁边是你的同学，他边听老师讲课，边翻看着桌上的课本。这个场景熟不熟悉？亲不亲切？回想一下，老师讲的、书本上教的和我们示例中的代码，是不是极其类似？</p>
+<p>没错！我们的大脑，已经习惯了for循环，习惯了用函数处理变量、封装计算逻辑，习惯了面向过程的编程模式。在分布式计算出现以前，我们都是这么开发的，老师也是这么讲的，书本上也是这么教的，没毛病。</p>
+<p>因此我认为，开发者之所以会选择上面的实现方式，根本原因在于他把factDF当成了一个普通变量，一个与createInstance函数中startDate、endDate同等地位的形参，他并没有意识到，factDF实际上是一个庞大的、横跨所有计算节点的分布式数据集合，更没有意识到，在分布式运行环境中，外面的for循环会导致这个庞大的数据集被反复地全量扫描。</p>
+<p>这种对于分布式计算认知方面的缺失，究其缘由，还是我们对Spark核心概念RDD的理解不够透彻。所以你看，深入理解RDD还是很有必要的，<strong>对于RDD一知半解，极有可能在应用开发的过程中，不知不觉地留下潜在的性能隐患</strong>。</p>
+<h2 id="rdd_1">深入理解RDD</h2>
+<p>既然RDD如此重要，它究竟是什么呢？2010年，在一个夜黑风高的夜晚，Matei等人发表了一篇名为《Spark: Cluster Computing with Working Sets》的论文并首次提出了RDD的概念。RDD，全称Resilient Distributed Datasets，翻译过来就是弹性分布式数据集。本质上，它是对于数据模型的抽象，用于囊括所有内存中和磁盘中的分布式数据实体。</p>
+<p>如果就这么从理论出发、照本宣科地讲下去，未免过于枯燥、乏味、没意思！不如，我先来给你讲个故事。</p>
+<h3 id="rdd_2">从薯片的加工流程看RDD</h3>
+<p>在很久很久以前，有个生产桶装薯片的工坊，工坊的规模较小，工艺也比较原始。为了充分利用每一颗土豆、降低生产成本，工坊使用 3 条流水线来同时生产 3 种不同尺寸的桶装薯片。3 条流水线可以同时加工 3 颗土豆，每条流水线的作业流程都是一样的，分别是清洗、切片、烘焙、分发和装桶。其中，分发环节用于区分小、中、大号 3 种薯片，3种不同尺寸的薯片分别被发往第1、2、3条流水线。具体流程如下图所示。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/3c/6e/3c7ff059e50f3dc70bf4yy082c31956e.jpg?wh=9021%2A2316" title="RDD的生活化类比" /></p>
+<p>看得出来，这家工坊制作工艺虽然简单，倒也蛮有章法。从头至尾，除了分发环节，3 条流水线没有任何交集。在分发环节之前，每条流水线都是专心致志、各顾各地开展工作：把土豆食材加载到流水线上，再进行清洗、切片、烘焙；在分发环节之后，3 条流水线也是各自装桶，互不干涉、互不影响。流水线的作业方式提供了较强的容错能力，如果某个加工环节出错，工人们只需要往出错的流水线上重新加载一颗新的土豆，整个流水线就能够恢复生产。</p>
+<p>好了，故事讲完了。如果我们把每一条流水线看作是分布式运行环境的计算节点，用薯片生产的流程去类比Spark分布式计算，会有哪些有趣的发现呢？</p>
+<p>仔细观察，我们发现：<strong>刚从地里挖出来的土豆食材、清洗过后的干净土豆、生薯片、烤熟的薯片，流水线上这些食材的不同形态，就像是Spark中RDD对于不同数据集合的抽象</strong>。</p>
+<p>沿着流水线的纵深方向，也就是图中从左向右的方向，每一种食材形态都是在前一种食材之上用相应的加工方法进行处理得到的。<strong>每种食材形态都依赖于前一种食材，这就像是RDD中dependencies属性记录的依赖关系，而不同环节的加工方法，对应的刚好就是RDD的compute属性。</strong></p>
+<p>横看成岭侧成峰，再让我们从横向的角度来重新审视上面的土豆加工流程，也就是图中从上至下的方向，让我们把目光集中在流水线开端那3颗带泥的土豆上。这3颗土豆才从地里挖出来，是原始的食材形态，正等待清洗。如图所示，我们把这种食材形态标记为potatosRDD，那么，<strong>这里的每一颗土豆就是RDD中的数据分片，3颗土豆一起对应的就是RDD的partitions属性</strong>。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/a2/c8/a2f8bc7bf10c31fedb85196f33f44fc8.jpg?wh=9021%2A2373" /></p>
+<p>带泥土豆经过清洗、切片和烘焙之后，按照大小个儿被分发到下游的3条流水线上，这3条流水线上承载的RDD记为shuffledBakedChipsRDD。很明显，这个RDD对于partitions的划分是有讲究的，根据尺寸的不同，即食薯片会被划分到不同的数据分片中。<strong>像这种数据分片划分规则，对应的就是RDD中的partitioner属性。</strong> 在分布式运行环境中，partitioner属性定义了RDD所封装的分布式数据集如何划分成数据分片。</p>
+<p>总的来说，我们发现，薯片生产的流程和Spark分布式计算是一一对应的，一共可以总结为6点：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/13/47/ba/d36340c1.jpg" width="30px"><span>Shockang</span> 👍（60） 💬（1）<div>RDD的5大特性总结起来就是：3个列表，2个函数。3个列表是分区列表，依赖列表和优先位置列表；2个函数就是：计算函数和分区函数。我这样总结是为了方便记忆的，分享给大家！</div>2021-03-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/63/6e/6b971571.jpg" width="30px"><span>Z宇锤锤</span> 👍（25） 💬（3）<div>RDD的四大特性：两横两纵一漂移。两纵土豆每一个生产线的流转就是父RDD到子RDD的流转，其中的流转方法就是compute算子。两横：就是土豆和土豆片之间的工具，切出来的土豆片就是partitions,怎么切土豆片就是partitoner。漂移就是prefered location,选择在哪个RDD上取数据。</div>2021-03-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/42/f3/e945e4ac.jpg" width="30px"><span>sparkjoy</span> 👍（18） 💬（4）<div>preferredLocations不起作用的场景有一种是存算分离的场景，计算节点在k8s集群里，远程读取分布式文件系统，例如hdfs或者ceph等，可能接入万兆SDN网络能够有一些收益</div>2021-03-23</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/IcDlyK6DaBrssVGlmosXnahdJ4bwCesjXa98iaapSDozBiagZTqSCok6iaktu2wOibvpNv9Pd6nfwMg7N7KTSTzYRw/132" width="30px"><span>慢慢卢</span> 👍（8） 💬（1）<div>读了两遍，开始不太理解容错和Resilient 有什么关系，读了两遍，有点感觉了：弹性描述物体在压缩和拉伸之后具备恢复原状的能力。类比RDD，rdd因为依赖和compute，具备了错误恢复能力，把这个性质称之为弹性。</div>2021-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/42/f3/e945e4ac.jpg" width="30px"><span>sparkjoy</span> 👍（7） 💬（1）<div>老师，spark是惰性计算，action算子才能真正触发算子的计算逻辑，那么DAG（rdd的实例化以及dependency对象的创建）是什么时候构建的呢？没找到DAG创建的代码入口</div>2021-09-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/20/bd/5656b5d7.jpg" width="30px"><span>走刀口 💰</span> 👍（5） 💬（1）<div>老师，请教个问题，关于宽窄依赖划分。网上很多文章是根据父子rdd分区数量划分的，但我这样不对。比如cartsian算子，它父rdd一个分区对应子rdd多个分区，可它是窄依赖。
-宽窄依赖划分依据到底是啥？</div>2021-03-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a2/4b/b72f724f.jpg" width="30px"><span>zxk</span> 👍（4） 💬（3）<div>preferredLocations，作业尽可能在在数据所在节点上运行，或者同个机架下等情况，都可以提升 I&#47;O 效率。
-当数据不管落在哪个节点，都需要从远端拉取数据时，这时候作用可能就不是那么大。</div>2021-03-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/90/93/5e94be87.jpg" width="30px"><span>钝感</span> 👍（3） 💬（1）<div>刚开始听的时候：“什么土豆工坊？什么土豆片，什么形态，什么流水线，什么加工方法？”这都是啥啊。。再往后听，我的天！！这形容比喻也太贴切了吧！！👍，虽然已是深夜，但还是从床上起了起来，边吃薯片边听，我要听一宿，我要学习！！！🙈</div>2021-10-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/b8/ae/085484e7.jpg" width="30px"><span>Insomnia</span> 👍（3） 💬（1）<div>老师, 我这么理解不知道对不对? 
-当下比较流行的计算框架 Spark&#47;Flink, 如果使用 Yarn 来调度计算任务, 对于 Yarn 而言, 本地的 Spark&#47;Flink 都可以看作是 Yarn 的客户端, 而对于用户而言, 编写的 job 都可以看做是本地的 Spark&#47;Flink 的客户端,  他们共同的本质都是使用本地 Spark&#47;Flink, 将用户的 job 解析并优化成物理执行计划, 然后提交到 Yarn 上部署执行</div>2021-03-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/23/85/e19f8833.jpg" width="30px"><span>tony</span> 👍（2） 💬（1）<div>纯算分离 有 计算节点+oss，所有计算节点从oss访问数据，网络io代价差不多。为了加速计算节点访问速度，还会在计算节点上加个缓存。
+<li>土豆工坊的每条流水线就像是分布式环境中的计算节点；</li>
+<li>不同的食材形态，如带泥的土豆、土豆切片、烘烤的土豆片等等，对应的就是RDD；</li>
+<li>每一种食材形态都会依赖上一种形态，如烤熟的土豆片依赖上一个步骤的生土豆切片。这种依赖关系对应的就是RDD中的dependencies属性；</li>
+<li>不同环节的加工方法对应RDD的compute属性；</li>
+<li>同一种食材形态在不同流水线上的具体实物，就是RDD的partitions属性；</li>
+<li>食材按照什么规则被分配到哪条流水线，对应的就是RDD的partitioner属性。</li>
+</ul>
+<p>不知道土豆工坊的类比，有没有帮你逐渐勾勒出RDD的本来面貌呢？话付前言，接下来，咱们来一本正经地聊聊RDD。</p>
+<h3 id="rdd_3">RDD的核心特征和属性</h3>
+<p>通过刚才的例子，我们知道RDD具有4大属性，<strong>分别是partitions、partitioner、dependencies和compute属性。正因为有了这4大属性的存在，让RDD具有分布式和容错性这两大最突出的特性。</strong>要想深入理解RDD，我们不妨从它的核心特性和属性入手。</p>
+<p><strong>首先，我们来看partitions、partitioner属性。</strong></p>
+<p>在分布式运行环境中，RDD封装的数据在物理上散落在不同计算节点的内存或是磁盘中，这些散落的数据被称“数据分片”，RDD的分区规则决定了哪些数据分片应该散落到哪些节点中去。RDD的partitions属性对应着RDD分布式数据实体中所有的数据分片，而partitioner属性则定义了划分数据分片的分区规则，如按哈希取模或是按区间划分等。</p>
+<p>不难发现，partitions和partitioner属性刻画的是RDD在跨节点方向上的横向扩展，所以我们把它们叫做RDD的“横向属性”。</p>
+<p><strong>然后，我们再来说说dependencies和compute属性。</strong></p>
+<p>在Spark中，任何一个 RDD 都不是凭空产生的，每个 RDD 都是基于某种计算逻辑从某个“数据源”转换而来。RDD的dependencies属性记录了生成RDD 所需的“数据源”，术语叫做父依赖（或父RDD），compute方法则封装了从父 RDD到当前RDD转换的计算逻辑。</p>
+<p>基于数据源和转换逻辑，无论RDD有什么差池（如节点宕机造成部分数据分片丢失），在dependencies属性记录的父RDD之上，都可以通过执行compute封装的计算逻辑再次得到当前的RDD，如下图所示。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/fb/91/fba28ce0c70b4c5553505911663aa491.jpg?wh=5496%2A1251" title="基于dependencies和compute属性得到当前RDD" /></p>
+<p>由dependencies和compute属性提供的容错能力，为Spark分布式内存计算的稳定性打下了坚实的基础，这也正是RDD命名中Resilient的由来。接着观察上图，我们不难发现，不同的RDD通过dependencies和compute属性链接在一起，逐渐向纵深延展，构建了一张越来越深的有向无环图，也就是我们常说的DAG。</p>
+<p>由此可见，dependencies属性和compute属性负责RDD在纵深方向上的延展，因此我们不妨把这两个属性称为“纵向属性”。</p>
+<p>总的来说，<strong>RDD的4大属性又可以划分为两类，横向属性和纵向属性。其中，横向属性锚定数据分片实体，并规定了数据分片在分布式集群中如何分布；纵向属性用于在纵深方向构建DAG，通过提供重构RDD的容错能力保障内存计算的稳定性</strong>。</p>
+<p>同时，为了帮助你记忆，我把这4大核心属性的基本概念和分类总结在了如下的表格中，你可以看一看。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ca/1e/ca6ef660c2b7f3777e244a535020191e.jpeg?wh=1920%2A875" /></p>
+<p>除此之外，我还想再多说两句。在这节课开头的反例中，我们分析了开发者采用foreach语句循环遍历分布式数据集的深层次原因。<strong>这种不假思索地直入面向过程编程、忽略或无视分布式数据实体的编程模式，我将其称为单机思维模式</strong>。</p>
+<p>在学习了RDD横向的partitions属性和纵向的dependencies属性之后，如果你能把它们牢记于心，那么在频繁调用或引用这个RDD之前，你自然会想到它所囊括的数据集合，很有可能在全节点范围内被反复扫描、反复计算。这种下意识的反思会驱使你尝试探索其他更优的实现方式，从而跳出单机思维模式。因此，<strong>深入理解RDD，也有利于你跳出单机思维模式，避免在应用代码中留下性能隐患</strong>。</p>
+<h2 id="_1">小结</h2>
+<p>今天，我带你学习了RDD的重要性，以及它的2大核心特性和4大属性。</p>
+<p>首先，深入理解RDD对开发者来说有百利而无一害，原因有如下3点：</p>
+<ul>
+<li>Spark很多核心概念都衍生自RDD，弄懂RDD，有利于你全面地学习Spark；</li>
+<li>牢记RDD的关键特性和核心属性，有利于你在运行时更好地定位性能瓶颈，而瓶颈定位，恰恰是性能调优的前提；</li>
+<li><strong>深入理解RDD有利于你跳出单机思维模式，避免在应用代码中留下性能隐患。</strong></li>
+</ul>
+<p>关于RDD的特性与核心属性，只要你把如下2点牢记于心，我相信在不知不觉中你自然会绕过很多性能上的坑：</p>
+<ul>
+<li>横向属性partitions和partitioner锚定数据分片实体，并且规定了数据分片在分布式集群中如何分布；</li>
+<li>纵向属性dependencies和compute用于在纵深方向构建DAG，通过提供重构RDD的容错能力保障内存计算的稳定性。</li>
+</ul>
+<h2 id="_2">每日一练</h2>
+<ol>
+<li>在日常的开发工作中，你遇到过“单机思维模式”吗？有哪些呢？</li>
+<li>除了我们今天讲的4大属性，RDD还有个很重要的属性：preferredLocations。按照经验，你认为在哪些情况下，preferredLocations很重要，会提升I/O效率，又在哪些环境中不起作用呢？为什么？</li>
+</ol>
+<p>期待在留言区看到你的思考，也欢迎你分享工作中遇到过的“单机思维模式”，我们下节课见！</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>Shockang</span> 👍（61） 💬（1）<div>RDD的5大特性总结起来就是：3个列表，2个函数。3个列表是分区列表，依赖列表和优先位置列表；2个函数就是：计算函数和分区函数。我这样总结是为了方便记忆的，分享给大家！</div>2021-03-19</li><br/><li><span>Z宇锤锤</span> 👍（25） 💬（3）<div>RDD的四大特性：两横两纵一漂移。两纵土豆每一个生产线的流转就是父RDD到子RDD的流转，其中的流转方法就是compute算子。两横：就是土豆和土豆片之间的工具，切出来的土豆片就是partitions,怎么切土豆片就是partitoner。漂移就是prefered location,选择在哪个RDD上取数据。</div>2021-03-27</li><br/><li><span>sparkjoy</span> 👍（19） 💬（4）<div>preferredLocations不起作用的场景有一种是存算分离的场景，计算节点在k8s集群里，远程读取分布式文件系统，例如hdfs或者ceph等，可能接入万兆SDN网络能够有一些收益</div>2021-03-23</li><br/><li><span>慢慢卢</span> 👍（9） 💬（1）<div>读了两遍，开始不太理解容错和Resilient 有什么关系，读了两遍，有点感觉了：弹性描述物体在压缩和拉伸之后具备恢复原状的能力。类比RDD，rdd因为依赖和compute，具备了错误恢复能力，把这个性质称之为弹性。</div>2021-06-17</li><br/><li><span>sparkjoy</span> 👍（7） 💬（1）<div>老师，spark是惰性计算，action算子才能真正触发算子的计算逻辑，那么DAG（rdd的实例化以及dependency对象的创建）是什么时候构建的呢？没找到DAG创建的代码入口</div>2021-09-23</li><br/><li><span>走刀口 💰</span> 👍（5） 💬（1）<div>老师，请教个问题，关于宽窄依赖划分。网上很多文章是根据父子rdd分区数量划分的，但我这样不对。比如cartsian算子，它父rdd一个分区对应子rdd多个分区，可它是窄依赖。
+宽窄依赖划分依据到底是啥？</div>2021-03-28</li><br/><li><span>zxk</span> 👍（4） 💬（3）<div>preferredLocations，作业尽可能在在数据所在节点上运行，或者同个机架下等情况，都可以提升 I&#47;O 效率。
+当数据不管落在哪个节点，都需要从远端拉取数据时，这时候作用可能就不是那么大。</div>2021-03-20</li><br/><li><span>钝感</span> 👍（3） 💬（1）<div>刚开始听的时候：“什么土豆工坊？什么土豆片，什么形态，什么流水线，什么加工方法？”这都是啥啊。。再往后听，我的天！！这形容比喻也太贴切了吧！！👍，虽然已是深夜，但还是从床上起了起来，边吃薯片边听，我要听一宿，我要学习！！！🙈</div>2021-10-11</li><br/><li><span>Insomnia</span> 👍（3） 💬（1）<div>老师, 我这么理解不知道对不对? 
+当下比较流行的计算框架 Spark&#47;Flink, 如果使用 Yarn 来调度计算任务, 对于 Yarn 而言, 本地的 Spark&#47;Flink 都可以看作是 Yarn 的客户端, 而对于用户而言, 编写的 job 都可以看做是本地的 Spark&#47;Flink 的客户端,  他们共同的本质都是使用本地 Spark&#47;Flink, 将用户的 job 解析并优化成物理执行计划, 然后提交到 Yarn 上部署执行</div>2021-03-26</li><br/><li><span>tony</span> 👍（2） 💬（1）<div>纯算分离 有 计算节点+oss，所有计算节点从oss访问数据，网络io代价差不多。为了加速计算节点访问速度，还会在计算节点上加个缓存。
 
-所以当计算节点访问数据不在cache，那么preferecneLocations应该就不起什么作用了。这么理解对吗？</div>2021-09-04</li><br/><li><img src="" width="30px"><span>林建林</span> 👍（2） 💬（1）<div>preferredLocations：可以理解为最佳位置，移动计算不移动数据，数据在哪就在哪计算，减少IO</div>2021-03-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/63/6e/6b971571.jpg" width="30px"><span>Z宇锤锤</span> 👍（2） 💬（2）<div># 关于RDD的单机思维模式
+所以当计算节点访问数据不在cache，那么preferecneLocations应该就不起什么作用了。这么理解对吗？</div>2021-09-04</li><br/><li><span>林建林</span> 👍（2） 💬（1）<div>preferredLocations：可以理解为最佳位置，移动计算不移动数据，数据在哪就在哪计算，减少IO</div>2021-03-31</li><br/><li><span>Z宇锤锤</span> 👍（2） 💬（2）<div># 关于RDD的单机思维模式
 ## RDD中的集合排序问题
 RDD.collect.sort
-</div>2021-03-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/65/75/f9d7e8b7.jpg" width="30px"><span>L3nvy</span> 👍（2） 💬（8）<div>1. “单机模式”，不知道算不算。不知道Spark可以开多线程触发action算子，同时提交多个不相关的作业，Spark UI同时运行的job拉满 : )。之前代码都是按面向过程的思维一步一步写的。
+</div>2021-03-27</li><br/><li><span>L3nvy</span> 👍（2） 💬（8）<div>1. “单机模式”，不知道算不算。不知道Spark可以开多线程触发action算子，同时提交多个不相关的作业，Spark UI同时运行的job拉满 : )。之前代码都是按面向过程的思维一步一步写的。
 2. 处理数据源的时候，jdbc，读取本地文件不起作用
-</div>2021-03-19</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIiaeebUYxl7e4jicPshDRKMbiculHUjKgZZ2ygDibn2S7bbsjeqYIdsEUdVyoryKNa43ZGnDQmWjv3ibQ/132" width="30px"><span>Geek_d794f8</span> 👍（1） 💬（1）<div>老师，如果计算和存储分离，比如计算集群A，存储集群B，且spark计算基于yarn调度，那么是不是，yarn集群必须部署在集群A上？</div>2021-03-25</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83erqPQcbrNpo7UcKiaDpNbPaaV1A2TIprO7ryaVL3XaG89zhP5uibv7HuApkQDoaibPS7JGnNqP4ykFIg/132" width="30px"><span>一群孤儿</span> 👍（0） 💬（2）<div>RDD里面装的是数据吗? 一个spark任务有几个RDD?
-</div>2021-07-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/37/d0/26975fba.jpg" width="30px"><span>西南偏北</span> 👍（0） 💬（2）<div>1. 单机思维，在RDD&#47;Dataset后面的map函数中使用了HashMap，哈哈
-2. 除了计算分离、单节点计算之外，还有一种情况，比如我申请了5个Executor，但因为资源的问题，导致这5个Executor全部启在了同一个节点上。</div>2021-05-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/95/46/1cd5ab5f.jpg" width="30px"><span>弦断觅知音</span> 👍（0） 💬（1）<div>preferredLocations不起作用情况之一，比如有单独机器作为集群的客户端，然后提交的任务在集群的客户端上运行，这种情况算不算？</div>2021-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/91/56/f714ad14.jpg" width="30px"><span>老A</span> 👍（0） 💬（1）<div>preferredLocations 不起作用，应该在数据源是单节点情况，比如socket数据源，还有就是读取hdfs的数据块比较小不足一个split分片128M的情况，还有就是大的压缩数据块，比如snappy压缩，这种压缩不支持切分的情况。</div>2021-03-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/d0/0b/6504c7b1.jpg" width="30px"><span>geegeek</span> 👍（1） 💬（0）<div>现在公司很多都是使用对象存储的，因为能节省成本，这也是云厂商的解决方案，preferredLocations这个参数对于这种“存算分离”的场景是无法生效的，因为无论如何在计算前都需要拉取数据。用对象存储的话，我观察到的现象是sparkui里显示的都是process_local，但其实我估计是把数据拉取到了本地的原因，还是有网络开销的。所以近期比较火的数据湖就对这种云原生的场景支持比较好，数据湖的元数据就类似一个二级索引，读取的时候先看元数据里的统计信息，再去决定是否要真的拉取数据文件，经过我们测试，sparksql在iceberg上的查询效率是hive上的将近一倍（时间上快90%）。在一些小企业，没有自己的集群环境，需要用云服务的场景下，数据湖是一种不错的选择</div>2023-03-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/73/c5/d0880e7a.jpg" width="30px"><span>面对疾风吧</span> 👍（0） 💬（0）<div>Rdd 特性，分布式、容错性弹性、计算靠近存储</div>2022-04-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/31/9d/daad92d2.jpg" width="30px"><span>Stony.修行僧</span> 👍（0） 💬（0）<div>面试归来，二刷RDD</div>2022-03-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/d3/82/c3e57eb3.jpg" width="30px"><span>xuchuan</span> 👍（0） 💬（0）<div>简单易懂，单机思维和分布式思维模式总结到位</div>2021-05-01</li><br/>
+</div>2021-03-19</li><br/><li><span>Geek_d794f8</span> 👍（1） 💬（1）<div>老师，如果计算和存储分离，比如计算集群A，存储集群B，且spark计算基于yarn调度，那么是不是，yarn集群必须部署在集群A上？</div>2021-03-25</li><br/><li><span>一群孤儿</span> 👍（0） 💬（2）<div>RDD里面装的是数据吗? 一个spark任务有几个RDD?
+</div>2021-07-05</li><br/>
 </ul>
 
 

@@ -2490,6 +2490,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#kong-ingress-controller_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      安装Kong Ingress Controller
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kong-ingress-controller_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用Kong Ingress Controller
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kong-ingress-controller_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      扩展Kong Ingress Controller
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课下作业
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5548,6 +5593,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#kong-ingress-controller_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      安装Kong Ingress Controller
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kong-ingress-controller_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用Kong Ingress Controller
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kong-ingress-controller_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      扩展Kong Ingress Controller
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课下作业
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5582,13 +5672,226 @@
 <p>Ingress类似Service，基于HTTP/HTTPS协议，是七层负载均衡规则的集合，但它自身没有管理能力，必须要借助Ingress Controller才能控制Kubernetes集群的进出口流量。</p>
 <p>所以，基于Ingress的定义，就出现了各式各样的Ingress Controller实现。</p>
 <p>我们已经见过了Nginx官方开发的Nginx Ingress Controller，但它局限于Nginx自身的能力，Ingress、Service等对象更新时必须要修改静态的配置文件，再重启进程（reload），在变动频繁的微服务系统里就会引发一些问题。</p>
-<div><strong>精选留言（11）</strong></div>
+<p>而今天要说的<strong>Kong Ingress Controller</strong>，则是站在了Nginx这个巨人的肩膀之上，基于OpenResty和内嵌的LuaJIT环境，实现了完全动态的路由变更，消除了reload的成本，运行更加平稳，而且还有很多额外的增强功能，非常适合那些对Kubernetes集群流量有更高、更细致管理需求的用户（<a href="https://konghq.com/solutions/build-on-kubernetes">图片来源Kong官网</a>）。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/8e/43/8ed5086bb73d01ccdcd83deec1b8d643.png?wh=400x300" /></p>
+<h2 id="kong-ingress-controller_1">安装Kong Ingress Controller</h2>
+<p>接下来我们就来看看如何在Kubernetes集群里引入Kong Ingress Controller。</p>
+<p>简单起见，这次我选择了minikube环境，版本还是1.25.2，对应的Kubernetes也是之前的1.23.3：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/25/53/252d80c9a08b7ddfccceb09a63b2da53.png?wh=1266x360" /></p>
+<p>目前Kong Ingress Controller的最新版本是2.7.0，你可以从GitHub上(<a href="https://github.com/Kong/kubernetes-ingress-controller">https://github.com/Kong/kubernetes-ingress-controller</a>)直接获取它的源码包：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>wget https://github.com/Kong/kubernetes-ingress-controller/archive/refs/tags/v2.7.0.tar.gz
+</code></pre></div>
+<p>Kong Ingress Controller安装所需的YAML文件，都存放在解压缩后的“deploy”目录里，提供“有数据库”和“无数据库”两种部署方式，这里我选择了最简单的“无数据库”方式，只需要一个 <code>all-in-one-dbless.yaml</code> 就可以完成部署工作，也就是执行这条 <code>kubectl apply</code> 命令：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl apply -f all-in-one-dbless.yaml
+</code></pre></div>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/ee/a6/ee592a45c3b45c8335a2d1ae08bd73a6.png?wh=1920x981" /></p>
+<p>我们可以再对比一下两种 Ingress Controller的安装方式。Nginx Ingress Controller是由多个分散的YAML文件组成的，需要顺序执行多次 <code>kubectl apply</code> 命令，有点麻烦；<strong>而Kong Ingress Controller则把Namespace、RBAC、Secret、CRD等对象都合并在了一个文件里，安装很方便，同时也不会发生遗忘创建资源的错误。</strong></p>
+<p>安装之后，Kong Ingress Controller会创建一个新的名字空间“kong”，里面有一个默认的Ingress Controller，还有对应的Service，你可以用 <code>kubectl get</code> 来查看：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/96/9e/967cbd227fc4aa8202b2531b59341f9e.png?wh=1920x326" /></p>
+<p>看这里的截图，你可能会注意到，在 <code>kubectl get pod</code> 输出的“READY”列里显示的是“2/2”，意思是这个Pod里有两个容器。</p>
+<p>这也是Kong Ingress Controller与Nginx Ingress Controller在实现架构方面的一个明显不同点。</p>
+<p>Kong Ingress Controller，在Pod里使用两个容器，分别运行管理进程Controller和代理进程Proxy，两个容器之间使用环回地址（Loopback）通信；而Nginx Ingress Controller则是因为要修改静态的Nginx配置文件，所以管理进程和代理进程必须在一个容器里（<a href="https://docs.konghq.com/kubernetes-ingress-controller/2.7.x/concepts/design/">图片</a>表示Kong架构设计）。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/e7/d3/e78c0c518c6257bc5018d0df8bd536d3.png?wh=1262x644" /></p>
+<p>两种方式并没有优劣之分，但<strong>Kong Ingress Controller分离的好处是两个容器彼此独立，可以各自升级维护，对运维更友好一点</strong>。</p>
+<p>Kong Ingress Controller还创建了两个Service对象，其中的“kong-proxy”是转发流量的服务，注意它被定义成了“LoadBalancer”类型，显然是为了在生产环境里对外暴露服务，不过在我们的实验环境（无论是minikube还是kubeadm）中只能使用NodePort的形式，这里可以看到80端口被映射到了节点的32201。</p>
+<p>现在让我们尝试访问一下Kong Ingress Controller，IP就用worker节点的地址，如果你和我一样用的是minikube，则可以用 <code>$(minikube ip)</code> 的形式简单获取：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl $(minikube ip):32201 -i
+</code></pre></div>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/a0/f5/a00aea97b464f071e9bea603f5678ef5.png?wh=1256x606" /></p>
+<p>从curl获取的响应结果可以看到， Kong Ingress Controller 2.7内部使用的Kong版本是3.0.1，因为现在我们没有为它配置任何Ingress资源，所以返回了状态码404，这是正常的。</p>
+<p>我们还可以用 <code>kubectl exec</code> 命令进入Pod，查看它的内部信息：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/60/32/60a4f01dd3bbb0afab4d142b1d232a32.png?wh=1920x1814" /></p>
+<p>虽然Kong Ingress Controller里有两个容器，但我们不需要特意用 <code>-c</code> 选项指定容器，它会自动进入默认的Proxy容器（另一个Controller容器里因为不包含Shell，也是无法进入查看的）。</p>
+<h2 id="kong-ingress-controller_2">使用Kong Ingress Controller</h2>
+<p>安装好了，我们看如何使用。和第21讲里的一样，我们仍然不使用默认的Ingress Controller，而是利用Ingress Class自己创建一个新的实例，这样能够更好地理解掌握Kong Ingress Controller的用法。</p>
+<p>首先，定义后端应用，还是用Nginx来模拟，做法和<a href="https://time.geekbang.org/column/article/536829">第20讲</a>里的差不多，用ConfigMap定义配置文件再加载进Nginx Pod里，然后部署Deployment和Service，比较简单，你也比较熟悉，就不列出YAML 代码了，只看一下运行命令后的截图：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/a2/05/a2d859927200ca449d9e50f6122e5705.png?wh=1654x484" /></p>
+<p>显示我创建了两个Nginx Pod，Service对象的名字是ngx-svc。</p>
+<p>接下来是定义Ingress Class，名字是“<strong>kong-ink</strong>”， “spec.controller”字段的值是Kong Ingress Controller的名字“<strong>ingress-controllers.konghq.com/kong</strong>”，YAML的格式可以参考<a href="https://time.geekbang.org/column/article/538760">第21讲</a>：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">networking.k8s.io/v1</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">IngressClass</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="err"> </span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong-ink</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="err"> </span><span class="w"> </span><span class="nt">controller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress-controllers.konghq.com/kong</span>
+</code></pre></div>
+<p>然后就是定义Ingress对象了，我们还是可以用 <code>kubectl create</code> 来生成YAML 样板文件，用 <code>--rule</code> 指定路由规则，用 <code>--class</code> 指定Ingress Class：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl create ing kong-ing --rule=&quot;kong.test/=ngx-svc:80&quot; --class=kong-ink $out
+</code></pre></div>
+<p>生成的Ingress对象大概就是下面这样，域名是“kong.test”，流量会转发到后端的ngx-svc服务：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">networking.k8s.io/v1</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ingress</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="err"> </span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong-ing</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="err"> </span><span class="w"> </span><span class="nt">ingressClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong-ink</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="err"> </span><span class="w"> </span><span class="nt">rules</span><span class="p">:</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="err"> </span><span class="w"> </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong.test</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="err">   </span><span class="w"> </span><span class="nt">http</span><span class="p">:</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="err">     </span><span class="w"> </span><span class="nt">paths</span><span class="p">:</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="err">     </span><span class="w"> </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="err">       </span><span class="w"> </span><span class="nt">pathType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Prefix</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="err">       </span><span class="w"> </span><span class="nt">backend</span><span class="p">:</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="err">         </span><span class="w"> </span><span class="nt">service</span><span class="p">:</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="err">           </span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ngx-svc</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="err">           </span><span class="w"> </span><span class="nt">port</span><span class="p">:</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="err">             </span><span class="w"> </span><span class="nt">number</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
+</code></pre></div>
+<p>最后，我们要从 <code>all-in-one-dbless.yaml</code> 这个文件中分离出Ingress Controller的定义。其实也很简单，只要搜索“Deployment”就可以了，然后把它以及相关的Service代码复制一份，另存成“kic.yml”。</p>
+<p>当然了，刚复制的代码和默认的Kong Ingress Controller是完全相同的，所以我们必须要参考帮助文档做一些修改，要点我列在了这里：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/cb/1f/d12f34de.jpg" width="30px"><span>Sheldon</span> 👍（4） 💬（1）<div>谢谢老师的加餐，这个课程真的很超值。</div>2023-02-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/a6/d4/8d50d502.jpg" width="30px"><span>简简单单</span> 👍（4） 💬（1）<div>赞</div>2022-12-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f2/cc/b281c2b8.jpg" width="30px"><span>寒夜客来茶当酒</span> 👍（1） 💬（1）<div>我在文中看到了
-“但它局限于 Nginx 自身的能力，Ingress、Service 等对象更新时必须要修改静态的配置文件，再重启进程（reload）”
- 但是我学习了上文中 nginx ingress controller 的使用，并没有提及到修改 ingress 规则后需要重启 nginx 的相关内容，拜托老师解惑</div>2024-04-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2f/85/6f/1654f4b9.jpg" width="30px"><span>nc_ops</span> 👍（1） 💬（1）<div>老师，进入pod时为什么会默认进入proxy这个容器？这是在yaml文件的哪个位置确定的呢？</div>2023-01-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/5f/12/791d0f5e.jpg" width="30px"><span>mono176</span> 👍（0） 💬（1）<div> Failed to pull image &quot;kong&#47;kubernetes-ingress-controller:2.7.0&quot; 镜像拉去不下来，有国内阿里云的镜像嘛</div>2024-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/38/c1/e6/13b98a6b.jpg" width="30px"><span>钢</span> 👍（0） 💬（1）<div>traefik也是一种ingress Controller吗？</div>2023-09-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/95/af/b7f8dc43.jpg" width="30px"><span>拓山</span> 👍（0） 💬（1）<div>谢谢老师，两周的高强度学习，完成了k8s的入门。
-后面就要开始用k8s完成一系列云原生应用开发部署</div>2023-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7c/25/19cbcd56.jpg" width="30px"><span>StackOverflow</span> 👍（0） 💬（1）<div>和 apisix 功能很类似</div>2023-04-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/5c/65/27fabb5f.jpg" width="30px"><span>茗</span> 👍（0） 💬（1）<div>老师，我初始化集群的时候制定了service的网段，为啥创建的service的ip地址不是我指定的网段呢？</div>2023-03-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/19/35/be8372be.jpg" width="30px"><span>quietwater</span> 👍（0） 💬（1）<div>老师的课程很对我的胃口，按部就班学习不会有什么障碍，必须点赞！！！APISIX也是一种Ingress，老师是否可以介绍一下。查了一些资料，感觉APISIX比Kong更强大。求解惑！！！</div>2023-02-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2f/85/6f/1654f4b9.jpg" width="30px"><span>nc_ops</span> 👍（0） 💬（1）<div>除了执行curl $(minikube ip):32521 -H &#39;host: kong.test&#39; -i，如果想在网页上查看实验结果，该怎么操作呢</div>2023-02-17</li><br/>
+<li>Deployment、Service里metadata的 name 都要重命名，比如改成 ingress-kong-dep、ingress-kong-svc。</li>
+<li>spec.selector 和 template.metadata.labels 也要修改成自己的名字，一般来说和Deployment的名字一样，也就是ingress-kong-dep。</li>
+<li>第一个容器是流量代理Proxy，它里面的镜像可以根据需要，改成任意支持的版本，比如Kong:2.7、Kong:2.8或者Kong:3.1。</li>
+<li>第二个容器是规则管理Controller，要用环境变量“CONTROLLER_INGRESS_CLASS”指定新的Ingress Class名字 <code>kong-ink</code>，同时用“CONTROLLER_PUBLISH_SERVICE”指定Service的名字 <code>ingress-kong-svc</code>。</li>
+<li>Service对象可以把类型改成NodePort，方便后续的测试。</li>
 </ul>
+<p>改了这些之后，一个新的Kong Ingress Controller就完成了，大概是这样，修改点我也加注释了你可以对照着看：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps/v1</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deployment</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="err"> </span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress-kong-dep</span><span class="w">            </span><span class="c1"># 重命名</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="err"> </span><span class="w"> </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="err"> </span><span class="w"> </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="err"> </span><span class="w"> </span><span class="nt">selector</span><span class="p">:</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="err">   </span><span class="w"> </span><span class="nt">matchLabels</span><span class="p">:</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="err">     </span><span class="w"> </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress-kong-dep</span><span class="w">        </span><span class="c1"># 重命名</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="err"> </span><span class="w"> </span><span class="nt">template</span><span class="p">:</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="err">   </span><span class="w"> </span><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="err">     </span><span class="w"> </span><span class="nt">labels</span><span class="p">:</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="err">       </span><span class="w"> </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress-kong-dep</span><span class="w">        </span><span class="c1"># 重命名</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="err">   </span><span class="w"> </span><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="err">     </span><span class="w"> </span><span class="nt">containers</span><span class="p">:</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="err">     </span><span class="w"> </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">env</span><span class="p">:</span><span class="w">                       </span><span class="c1"># 第一个容器， Proxy</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="err">       </span><span class="w"> </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong:3.1</span><span class="w">            </span><span class="c1"># 改镜像</span>
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="err">     </span><span class="w"> </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">env</span><span class="p">:</span><span class="w">                       </span><span class="c1"># 第二个容器，Controller</span>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a><span class="err">       </span><span class="w"> </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CONTROLLER_INGRESS_CLASS</span>
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a><span class="err">         </span><span class="w"> </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong-ink</span><span class="w">                  </span><span class="c1"># 改Ingress Class</span>
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a><span class="err">       </span><span class="w"> </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CONTROLLER_PUBLISH_SERVICE</span>
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a><span class="err">         </span><span class="w"> </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong/ingress-kong-svc</span><span class="w">     </span><span class="c1"># 改Service</span>
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a><span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a><span class="nn">---</span>
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Service</span>
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a><span class="err"> </span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress-kong-svc</span><span class="w">          </span><span class="c1"># 重命名</span>
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a><span class="err"> </span><span class="w"> </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong</span>
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a><span class="err"> </span><span class="w"> </span><span class="nt">selector</span><span class="p">:</span>
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a><span class="err">   </span><span class="w"> </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress-kong-dep</span><span class="w">         </span><span class="c1"># 重命名</span>
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a><span class="err"> </span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">NodePort</span><span class="w">                  </span><span class="c1"># 改类型 </span>
+</code></pre></div>
+<p>在我们专栏的配套GitHub项目里，你也可以直接找到改好的YAML 文件。<br />
+把这些都准备好，我们就可以来测试验证Kong Ingress Controller了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl apply -f ngx-deploy.yml
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>kubectl apply -f ingress.yml
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>kubectl apply -f kic.yml
+</code></pre></div>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/7a/cc/7a00571f1c6ffc3391bda762206e74cc.png?wh=1920x442" /></p>
+<p>这个截图显示了这些对象的创建结果，其中，新Service对象的NodePort端口是32521。</p>
+<p>下面我们就来用curl发送HTTP请求，注意，<strong>应该用“--resolve”或者“-H”参数指定Ingress里定义的域名“kong.test”</strong>，否则Kong Ingress Controller会找不到路由：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>curl $(minikube ip):32521 -H &#39;host: kong.test&#39; -v
+</code></pre></div>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/16/3d/16b663f31e55015a526791c22f6bcc3d.png?wh=1764x1320" /></p>
+<p>你可以看到，Kong Ingress Controller正确应用了Ingress路由规则，返回了后端Nginx应用的响应数据，而且从响应头“Via”里还可以发现，它现在用的是Kong 3.1。</p>
+<h2 id="kong-ingress-controller_3">扩展Kong Ingress Controller</h2>
+<p>到这里，Kong Ingress Controller的基本用法你就掌握了。</p>
+<p>不过，只使用Kubernetes标准的Ingress资源来管理流量，是无法发挥出Kong Ingress Controller的真正实力的，它还有很多非常好用、非常实用的增强功能。</p>
+<p>我们在<a href="https://time.geekbang.org/column/article/547301">第27讲</a>里曾经说过annotation，是Kubernetes为资源对象提供的一个方便扩展功能的手段，所以，<strong>使用annotation就可以在不修改Ingress自身定义的前提下，让Kong Ingress Controller更好地利用内部的Kong来管理流量。</strong></p>
+<p>目前Kong Ingress Controller支持在Ingress和Service这两个对象上添加annotation，相关的详细文档可以参考官网（<a href="https://docs.konghq.com/kubernetes-ingress-controller/2.7.x/references/annotations/">https://docs.konghq.com/kubernetes-ingress-controller/2.7.x/references/annotations/</a>），这里我只介绍两个annotation。</p>
+<p>第一个是“<strong>konghq.com/host-aliases</strong>”，它可以为Ingress规则添加额外的域名。</p>
+<p>你应该知道吧，Ingress的域名里可以使用通配符 <code>*</code>，比如 <code>*.abc.com</code>，但问题在于 <code>*</code> 只能是前缀，不能是后缀，也就是说我们无法写出 <code>abc.*</code> 这样的域名，这在管理多个域名的时候就显得有点麻烦。</p>
+<p>有了“konghq.com/host-aliases”，我们就可以用它来“绕过”这个限制，让Ingress轻松匹配有不同后缀的域名。</p>
+<p>比如，我修改一下Ingress定义，在“metadata”里添加一个annotation，让它除了“kong.test”，还能够支持“kong.dev”“kong.ops”等域名，就是这样：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">networking.k8s.io/v1</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ingress</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="err"> </span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong-ing</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="err"> </span><span class="w"> </span><span class="nt">annotations</span><span class="p">:</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="err">   </span><span class="w"> </span><span class="nt">konghq.com/host-aliases</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;kong.dev,</span><span class="nv"> </span><span class="s">kong.ops&quot;</span><span class="w">  </span><span class="c1">#注意这里</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+</code></pre></div>
+<p>使用 <code>kubectl apply</code> 更新Ingress，再用curl来测试一下：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/34/yy/341506cde73d8b7a75eb6ee75ea77eyy.png?wh=1646x478" /></p>
+<p>你就会发现Ingress已经支持了这几个新域名。</p>
+<p>第二个是“<strong>konghq.com/plugins</strong>”，它可以启用Kong Ingress Controller内置的各种插件（Plugins）。</p>
+<p>插件，是Kong Ingress Controller的一个特色功能，你可以理解成是“预制工件”，能够附加在流量转发的过程中，实现各种数据处理，并且这个插件机制是开放的，我们既可以使用官方插件，也可以使用第三方插件，还可以使用Lua、Go等语言编写符合自己特定需求的插件。</p>
+<p>Kong公司维护了一个经过认证的插件中心（<a href="https://docs.konghq.com/hub/">https://docs.konghq.com/hub/</a>），你可以在这里找到涉及认证、安全、流控、分析、日志等多个领域大约100多个插件，今天我们看两个常用的 Response Transformer、Rate Limiting。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/ed/8d/edc8b1307a7194935d2ccc96fb4bbe8d.png?wh=1920x1164" /></p>
+<p>Response Transformer插件实现了对响应数据的修改，能够添加、替换、删除响应头或者响应体；Rate Limiting插件就是限速，能够以时分秒等单位任意限制客户端访问的次数。</p>
+<p>定义插件需要使用CRD资源，名字是“<strong>KongPlugin</strong>”，你也可以用<code>kubectl api-resources</code>、<code>kubectl explain</code> 等命令来查看它的apiVersion、kind等信息：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/36/43/36a25a182b0b1b671c1336a7b0610443.png?wh=1920x791" /></p>
+<p>下面我就给出这两个插件对象的示例定义：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">configuration.konghq.com/v1</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">KongPlugin</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="err"> </span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong-add-resp-header-plugin</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="nt">plugin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">response-transformer</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="nt">config</span><span class="p">:</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="err"> </span><span class="w"> </span><span class="nt">add</span><span class="p">:</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="err">   </span><span class="w"> </span><span class="nt">headers</span><span class="p">:</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="err">   </span><span class="w"> </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Resp-New-Header:kong-kic</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="nn">---</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">configuration.konghq.com/v1</span>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">KongPlugin</span>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a><span class="err"> </span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong-rate-limiting-plugin</span>
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="nt">plugin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rate-limiting</span>
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a><span class="nt">config</span><span class="p">:</span>
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a><span class="err"> </span><span class="w"> </span><span class="nt">minute</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</code></pre></div>
+<p>KongPlugin对象，因为是自定义资源，所以和标准Kubernetes对象不一样，不使用“spec”字段，而是用“<strong>plugin</strong>”来指定插件名，用“<strong>config</strong>”来指定插件的配置参数。</p>
+<p>比如在这里，我就让Response Transformer插件添加一个新的响应头字段，让Rate Limiting插件限制客户端每分钟只能发两个请求。</p>
+<p>定义好这两个插件之后，我们就可以在Ingress对象里用annotations来启用插件功能了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">networking.k8s.io/v1</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ingress</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="err"> </span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong-ing</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="err"> </span><span class="w"> </span><span class="nt">annotations</span><span class="p">:</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="err">   </span><span class="w"> </span><span class="nt">konghq.com/plugins</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="err">       </span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong-add-resp-header-plugin,</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="err">       </span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kong-rate-limiting-plugin</span>
+</code></pre></div>
+<p>现在让我们应用这些插件对象，并且更新Ingress：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>kubectl apply -f crd.yml
+</code></pre></div>
+<p>再发送curl请求：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>curl $(minikube ip):32521 -H &#39;host: kong.test&#39; -i
+</code></pre></div>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/a6/15/a6cc78271975de082c140a83e581b615.png?wh=1756x1200" /></p>
+<p>你就会发现响应头里多出了几个字段，其中的 <code>RateLimit-*</code> 是限速信息，而 <code>Resp-New-Header</code> 就是新加的响应头字段。</p>
+<p>把curl连续执行几次，就可以看到限速插件生效了：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/b2/82/b2b321c8f7597c9ed151c2783af76282.png?wh=1756x1144" /></p>
+<p>Kong Ingress Controller会返回429错误，告诉你访问受限，而且会用“Retry-After”等字段来告诉你多少秒之后才能重新发请求。</p>
+<h2 id="_1">小结</h2>
+<p>好了，今天我们学习了另一种在Kubernetes管理集群进出流量的工具：Kong Ingress Controller，小结一下要点内容：</p>
+<ol>
+<li>Kong Ingress Controller的底层内核仍然是Nginx，但基于OpenResty和LuaJIT，实现了对路由的完全动态管理，不需要reload。</li>
+<li>使用“无数据库”的方式可以非常简单地安装Kong Ingress Controller，它是一个由两个容器组成的Pod。</li>
+<li>Kong Ingress Controller支持标准的Ingress资源，但还使用了annotation和CRD提供更多的扩展增强功能，特别是插件，可以灵活地加载或者拆卸，实现复杂的流量管理策略。</li>
+</ol>
+<p>作为一个CNCF云原生项目，Kong Ingress Controller已经得到了广泛的应用和认可，而且在近年的发展过程中，它也开始支持新的Gateway API，等下次有机会我们再细聊吧。</p>
+<h2 id="_2">课下作业</h2>
+<p>最后是课下作业时间，给你留两个思考题：</p>
+<ol>
+<li>你能否对比一下Kong Ingress Controller和Nginx Ingress Controller这两个产品，你看重的是它哪方面的表现呢？</li>
+<li>你觉得插件这种机制有什么好处，能否列举一些其他领域里的类似项目？</li>
+</ol>
+<p>好久不见了，期待看到你的想法，我们一起讨论，留言区见。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/e9/c8/e9c9050ebcd1d0fc001c53e1d75a37c8.jpg?wh=1920x2401" /></p>
 
 
 

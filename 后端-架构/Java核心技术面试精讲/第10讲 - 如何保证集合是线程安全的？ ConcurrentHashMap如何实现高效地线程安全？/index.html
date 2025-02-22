@@ -2668,6 +2668,24 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      知识扩展
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      一课一练
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13090,6 +13108,24 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      知识扩展
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      一课一练
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13129,35 +13165,236 @@
 <h2 id="_2">考点分析</h2>
 <p>谈到线程安全和并发，可以说是Java面试中必考的考点，我上面给出的回答是一个相对宽泛的总结，而且ConcurrentHashMap等并发容器实现也在不断演进，不能一概而论。</p>
 <p>如果要深入思考并回答这个问题及其扩展方面，至少需要：</p>
-<div><strong>精选留言（30）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/7c/8e/73581062.jpg" width="30px"><span>徐金铎</span> 👍（121） 💬（6）<div>需要注意的一点是，1.8以后的锁的颗粒度，是加在链表头上的，这个是个思路上的突破。</div>2018-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/6b/abb7bfe3.jpg" width="30px"><span>Sean</span> 👍（54） 💬（2）<div>最近用ConcurrentHashMap的场景是，由于系统是一个公共服务，全程异步处理。最后一环节需要http rest主动响应接入系统，于是为了定制化需求，利用netty写了一版异步http clinet。其在缓存tcp链接时用到了。
+<li>理解基本的线程安全工具。</li>
+<li>理解传统集合框架并发编程中Map存在的问题，清楚简单同步方式的不足。</li>
+<li>梳理并发包内，尤其是ConcurrentHashMap采取了哪些方法来提高并发表现。</li>
+<li>最好能够掌握ConcurrentHashMap自身的演进，目前的很多分析资料还是基于其早期版本。</li>
+</ul>
+<p>今天我主要是延续专栏之前两讲的内容，重点解读经常被同时考察的HashMap和ConcurrentHashMap。今天这一讲并不是对并发方面的全面梳理，毕竟这也不是专栏一讲可以介绍完整的，算是个开胃菜吧，类似CAS等更加底层的机制，后面会在Java进阶模块中的并发主题有更加系统的介绍。</p>
+<h2 id="_3">知识扩展</h2>
+<p>1.为什么需要ConcurrentHashMap？</p>
+<p>Hashtable本身比较低效，因为它的实现基本就是将put、get、size等各种方法加上“synchronized”。简单来说，这就导致了所有并发操作都要竞争同一把锁，一个线程在进行同步操作时，其他线程只能等待，大大降低了并发操作的效率。</p>
+<p>前面已经提过HashMap不是线程安全的，并发情况会导致类似CPU占用100%等一些问题，那么能不能利用Collections提供的同步包装器来解决问题呢？</p>
+<p>看看下面的代码片段，我们发现同步包装器只是利用输入Map构造了另一个同步版本，所有操作虽然不再声明成为synchronized方法，但是还是利用了“this”作为互斥的mutex，没有真正意义上的改进！</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>private static class SynchronizedMap&lt;K,V&gt;
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    implements Map&lt;K,V&gt;, Serializable {
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    private final Map&lt;K,V&gt; m;     // Backing Map
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    final Object      mutex;        // Object on which to synchronize
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    // …
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    public int size() {
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        synchronized (mutex) {return m.size();}
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    }
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a> // … 
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>}
+</code></pre></div>
+<p>所以，Hashtable或者同步包装版本，都只是适合在非高度并发的场景下。</p>
+<p>2.ConcurrentHashMap分析</p>
+<p>我们再来看看ConcurrentHashMap是如何设计实现的，为什么它能大大提高并发效率。</p>
+<p>首先，我这里强调，<strong>ConcurrentHashMap的设计实现其实一直在演化</strong>，比如在Java 8中就发生了非常大的变化（Java 7其实也有不少更新），所以，我这里将比较分析结构、实现机制等方面，对比不同版本的主要区别。</p>
+<p>早期ConcurrentHashMap，其实现是基于：</p>
+<ul>
+<li>分离锁，也就是将内部进行分段（Segment），里面则是HashEntry的数组，和HashMap类似，哈希相同的条目也是以链表形式存放。</li>
+<li>HashEntry内部使用volatile的value字段来保证可见性，也利用了不可变对象的机制以改进利用Unsafe提供的底层能力，比如volatile access，去直接完成部分操作，以最优化性能，毕竟Unsafe中的很多操作都是JVM intrinsic优化过的。</li>
+</ul>
+<p>你可以参考下面这个早期ConcurrentHashMap内部结构的示意图，其核心是利用分段设计，在进行并发操作的时候，只需要锁定相应段，这样就有效避免了类似Hashtable整体同步的问题，大大提高了性能。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/d4/d9/d45bcf9a34da2ef1ef335532b0198bd9.png?wh=881%2A611" /></p>
+<p>在构造的时候，Segment的数量由所谓的concurrencyLevel决定，默认是16，也可以在相应构造函数直接指定。注意，Java需要它是2的幂数值，如果输入是类似15这种非幂值，会被自动调整到16之类2的幂数值。</p>
+<p>具体情况，我们一起看看一些Map基本操作的<a href="http://hg.openjdk.java.net/jdk7/jdk7/jdk/file/9b8c96f96a0f/src/share/classes/java/util/concurrent/ConcurrentHashMap.java">源码</a>，这是JDK 7比较新的get代码。针对具体的优化部分，为方便理解，我直接注释在代码段里，get操作需要保证的是可见性，所以并没有什么同步逻辑。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>public V get(Object key) {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>        Segment&lt;K,V&gt; s; // manually integrate access methods to reduce overhead
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>        HashEntry&lt;K,V&gt;[] tab;
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        int h = hash(key.hashCode());
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>       //利用位操作替换普通数学运算
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>       long u = (((h &gt;&gt;&gt; segmentShift) &amp; segmentMask) &lt;&lt; SSHIFT) + SBASE;
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        // 以Segment为单位，进行定位
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        // 利用Unsafe直接进行volatile access
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        if ((s = (Segment&lt;K,V&gt;)UNSAFE.getObjectVolatile(segments, u)) != null &amp;&amp;
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>            (tab = s.table) != null) {
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>           //省略
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>          }
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        return null;
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    }
+</code></pre></div>
+<p>而对于put操作，首先是通过二次哈希避免哈希冲突，然后以Unsafe调用方式，直接获取相应的Segment，然后进行线程安全的put操作：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a> public V put(K key, V value) {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>        Segment&lt;K,V&gt; s;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>        if (value == null)
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>            throw new NullPointerException();
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>        // 二次哈希，以保证数据的分散性，避免哈希冲突
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        int hash = hash(key.hashCode());
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        int j = (hash &gt;&gt;&gt; segmentShift) &amp; segmentMask;
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        if ((s = (Segment&lt;K,V&gt;)UNSAFE.getObject          // nonvolatile; recheck
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>             (segments, (j &lt;&lt; SSHIFT) + SBASE)) == null) //  in ensureSegment
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>            s = ensureSegment(j);
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        return s.put(key, hash, value, false);
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    }
+</code></pre></div>
+<p>其核心逻辑实现在下面的内部方法中：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>final V put(K key, int hash, V value, boolean onlyIfAbsent) {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>            // scanAndLockForPut会去查找是否有key相同Node
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>            // 无论如何，确保获取锁
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>            HashEntry&lt;K,V&gt; node = tryLock() ? null :
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>                scanAndLockForPut(key, hash, value);
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>            V oldValue;
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>            try {
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>                HashEntry&lt;K,V&gt;[] tab = table;
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>                int index = (tab.length - 1) &amp; hash;
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>                HashEntry&lt;K,V&gt; first = entryAt(tab, index);
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>                for (HashEntry&lt;K,V&gt; e = first;;) {
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>                    if (e != null) {
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>                        K k;
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>                        // 更新已有value...
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>                    }
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>                    else {
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>                        // 放置HashEntry到特定位置，如果超过阈值，进行rehash
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>                        // ...
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>                    }
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>                }
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>            } finally {
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>                unlock();
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>            }
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>            return oldValue;
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>        }
+</code></pre></div>
+<p>所以，从上面的源码清晰的看出，在进行并发写操作时：</p>
+<ul>
+<li>ConcurrentHashMap会获取再入锁，以保证数据一致性，Segment本身就是基于ReentrantLock的扩展实现，所以，在并发修改期间，相应Segment是被锁定的。</li>
+<li>在最初阶段，进行重复性的扫描，以确定相应key值是否已经在数组里面，进而决定是更新还是放置操作，你可以在代码里看到相应的注释。重复扫描、检测冲突是ConcurrentHashMap的常见技巧。</li>
+<li>我在专栏上一讲介绍HashMap时，提到了可能发生的扩容问题，在ConcurrentHashMap中同样存在。不过有一个明显区别，就是它进行的不是整体的扩容，而是单独对Segment进行扩容，细节就不介绍了。</li>
+</ul>
+<p>另外一个Map的size方法同样需要关注，它的实现涉及分离锁的一个副作用。</p>
+<p>试想，如果不进行同步，简单的计算所有Segment的总值，可能会因为并发put，导致结果不准确，但是直接锁定所有Segment进行计算，就会变得非常昂贵。其实，分离锁也限制了Map的初始化等操作。</p>
+<p>所以，ConcurrentHashMap的实现是通过重试机制（RETRIES_BEFORE_LOCK，指定重试次数2），来试图获得可靠值。如果没有监控到发生变化（通过对比Segment.modCount），就直接返回，否则获取锁进行操作。</p>
+<p>下面我来对比一下，<strong>在Java 8和之后的版本中，ConcurrentHashMap发生了哪些变化呢？</strong></p>
+<ul>
+<li>总体结构上，它的内部存储变得和我在专栏上一讲介绍的HashMap结构非常相似，同样是大的桶（bucket）数组，然后内部也是一个个所谓的链表结构（bin），同步的粒度要更细致一些。</li>
+<li>其内部仍然有Segment定义，但仅仅是为了保证序列化时的兼容性而已，不再有任何结构上的用处。</li>
+<li>因为不再使用Segment，初始化操作大大简化，修改为lazy-load形式，这样可以有效避免初始开销，解决了老版本很多人抱怨的这一点。</li>
+<li>数据存储利用volatile来保证可见性。</li>
+<li>使用CAS等操作，在特定场景进行无锁并发操作。</li>
+<li>使用Unsafe、LongAdder之类底层手段，进行极端情况的优化。</li>
+</ul>
+<p>先看看现在的数据存储内部实现，我们可以发现Key是final的，因为在生命周期中，一个条目的Key发生变化是不可能的；与此同时val，则声明为volatile，以保证可见性。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a> static class Node&lt;K,V&gt; implements Map.Entry&lt;K,V&gt; {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>        final int hash;
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        final K key;
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        volatile V val;
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        volatile Node&lt;K,V&gt; next;
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        // … 
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    }
+</code></pre></div>
+<p>我这里就不再介绍get方法和构造函数了，相对比较简单，直接看并发的put是如何实现的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>final V putVal(K key, V value, boolean onlyIfAbsent) { if (key == null || value == null) throw new NullPointerException();
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    int hash = spread(key.hashCode());
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    int binCount = 0;
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    for (Node&lt;K,V&gt;[] tab = table;;) {
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        Node&lt;K,V&gt; f; int n, i, fh; K fk; V fv;
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        if (tab == null || (n = tab.length) == 0)
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>            tab = initTable();
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        else if ((f = tabAt(tab, i = (n - 1) &amp; hash)) == null) {
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>            // 利用CAS去进行无锁线程安全操作，如果bin是空的
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>            if (casTabAt(tab, i, null, new Node&lt;K,V&gt;(hash, key, value)))
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>                break; 
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>        }
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>        else if ((fh = f.hash) == MOVED)
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>            tab = helpTransfer(tab, f);
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>        else if (onlyIfAbsent // 不加锁，进行检查
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>                 &amp;&amp; fh == hash
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>                 &amp;&amp; ((fk = f.key) == key || (fk != null &amp;&amp; key.equals(fk)))
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>                 &amp;&amp; (fv = f.val) != null)
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>            return fv;
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>        else {
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>            V oldVal = null;
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>            synchronized (f) {
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>                   // 细粒度的同步修改操作... 
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>                }
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>            }
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>            // Bin超过阈值，进行树化
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>            if (binCount != 0) {
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>                if (binCount &gt;= TREEIFY_THRESHOLD)
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>                    treeifyBin(tab, i);
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>                if (oldVal != null)
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>                    return oldVal;
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>                break;
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>            }
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>        }
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>    }
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>    addCount(1L, binCount);
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>    return null;
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>}
+</code></pre></div>
+<p>初始化操作实现在initTable里面，这是一个典型的CAS使用场景，利用volatile的sizeCtl作为互斥手段：如果发现竞争性的初始化，就spin在那里，等待条件恢复；否则利用CAS设置排他标志。如果成功则进行初始化；否则重试。</p>
+<p>请参考下面代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>private final Node&lt;K,V&gt;[] initTable() {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    Node&lt;K,V&gt;[] tab; int sc;
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    while ((tab = table) == null || tab.length == 0) {
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>        // 如果发现冲突，进行spin等待
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        if ((sc = sizeCtl) &lt; 0)
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>            Thread.yield(); 
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        // CAS成功返回true，则进入真正的初始化逻辑
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        else if (U.compareAndSetInt(this, SIZECTL, sc, -1)) {
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>            try {
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>                if ((tab = table) == null || tab.length == 0) {
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>                    int n = (sc &gt; 0) ? sc : DEFAULT_CAPACITY;
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>                    @SuppressWarnings(&quot;unchecked&quot;)
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>                    Node&lt;K,V&gt;[] nt = (Node&lt;K,V&gt;[])new Node&lt;?,?&gt;[n];
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>                    table = tab = nt;
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>                    sc = n - (n &gt;&gt;&gt; 2);
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>                }
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>            } finally {
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>                sizeCtl = sc;
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>            }
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>            break;
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>        }
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>    }
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>    return tab;
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>}
+</code></pre></div>
+<p>当bin为空时，同样是没有必要锁定，也是以CAS操作去放置。</p>
+<p>你有没有注意到，在同步逻辑上，它使用的是synchronized，而不是通常建议的ReentrantLock之类，这是为什么呢？现代JDK中，synchronized已经被不断优化，可以不再过分担心性能差异，另外，相比于ReentrantLock，它可以减少内存消耗，这是个非常大的优势。</p>
+<p>与此同时，更多细节实现通过使用Unsafe进行了优化，例如tabAt就是直接利用getObjectAcquire，避免间接调用的开销。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>static final &lt;K,V&gt; Node&lt;K,V&gt; tabAt(Node&lt;K,V&gt;[] tab, int i) {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    return (Node&lt;K,V&gt;)U.getObjectAcquire(tab, ((long)i &lt;&lt; ASHIFT) + ABASE);
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>}
+</code></pre></div>
+<p>再看看，现在是如何实现size操作的。<a href="http://hg.openjdk.java.net/jdk/jdk/file/12fc7bf488ec/src/java.base/share/classes/java/util/concurrent/ConcurrentHashMap.java">阅读代码</a>你会发现，真正的逻辑是在sumCount方法中， 那么sumCount做了什么呢？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>final long sumCount() {
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    CounterCell[] as = counterCells; CounterCell a;
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    long sum = baseCount;
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    if (as != null) {
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>        for (int i = 0; i &lt; as.length; ++i) {
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>            if ((a = as[i]) != null)
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>                sum += a.value;
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        }
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    }
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    return sum;
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>}
+</code></pre></div>
+<p>我们发现，虽然思路仍然和以前类似，都是分而治之的进行计数，然后求和处理，但实现却基于一个奇怪的CounterCell。 难道它的数值，就更加准确吗？数据一致性是怎么保证的？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>static final class CounterCell {
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    volatile long value;
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    CounterCell(long x) { value = x; }
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>}
+</code></pre></div>
+<p>其实，对于CounterCell的操作，是基于java.util.concurrent.atomic.LongAdder进行的，是一种JVM利用空间换取更高效率的方法，利用了<a href="http://hg.openjdk.java.net/jdk/jdk/file/12fc7bf488ec/src/java.base/share/classes/java/util/concurrent/atomic/Striped64.java">Striped64</a>内部的复杂逻辑。这个东西非常小众，大多数情况下，建议还是使用AtomicLong，足以满足绝大部分应用的性能需求。</p>
+<p>今天我从线程安全问题开始，概念性的总结了基本容器工具，分析了早期同步容器的问题，进而分析了Java 7和Java 8中ConcurrentHashMap是如何设计实现的，希望ConcurrentHashMap的并发技巧对你在日常开发可以有所帮助。</p>
+<h2 id="_4">一课一练</h2>
+<p>关于今天我们讨论的题目你做到心中有数了吗？留一个道思考题给你，在产品代码中，有没有典型的场景需要使用类似ConcurrentHashMap这样的并发容器呢？</p>
+<p>请你在留言区写写你对这个问题的思考，我会选出经过认真思考的留言，送给你一份学习鼓励金，欢迎你与我一起讨论。</p>
+<p>你的朋友是不是也在准备面试呢？你可以“请朋友读”，把今天的题目分享给好友，或许你能帮到他。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>徐金铎</span> 👍（121） 💬（6）<div>需要注意的一点是，1.8以后的锁的颗粒度，是加在链表头上的，这个是个思路上的突破。</div>2018-05-26</li><br/><li><span>Sean</span> 👍（54） 💬（2）<div>最近用ConcurrentHashMap的场景是，由于系统是一个公共服务，全程异步处理。最后一环节需要http rest主动响应接入系统，于是为了定制化需求，利用netty写了一版异步http clinet。其在缓存tcp链接时用到了。
 看到下面有一位朋友说起了自旋锁和偏向锁。
 自旋锁个人理解的是cas的一种应用方式。并发包中的原子类是典型的应用。
 偏向锁个人理解的是获取锁的优化。在ReentrantLock中用于实现已获取完锁的的线程重入问题。
-不知道理解的是否有误差。欢迎指正探讨。谢谢</div>2018-05-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/11/93/8b41390b.jpg" width="30px"><span>虞飞</span> 👍（27） 💬（1）<div>老师在课程里讲到同步包装类比较低效，不太适合高并发的场景，那想请教一下老师，在list接口的实现类中。在高并发的场景下，选择哪种实现类比较好？因为ArrayList是线程不安全的，同步包装类又很低效，CopyonwriteArrayList又是以快照的形式来实现的，在频繁写入数据的时候，其实也很低效，那这个类型该怎么选择比较好？</div>2018-05-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/65/69/efb57b83.jpg" width="30px"><span>Leiy</span> 👍（13） 💬（1）<div>我感觉jdk8就相当于把segment分段锁更细粒度了，每个数组元素就是原来一个segment，那并发度就由原来segment数变为数组长度？而且用到了cas乐观锁，所以能支持更高的并发，不知道我这种理解对吗？如果对的话，我就在想，为什么并发大神之前没想到这种，哈哈😄，恳请指正。谢谢</div>2018-05-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1e/c6/6f817e6e.jpg" width="30px"><span>coder王</span> 👍（12） 💬（3）<div>您说的synchronized被改进很多很多了，那么在我们平常使用中，就用这个synchronized完成一些同步操作是不是OK？😁</div>2018-05-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f8/ba/d28174a9.jpg" width="30px"><span>Geek_zbvt62</span> 👍（10） 💬（1）<div>这期内容太难，分寸不好把握
+不知道理解的是否有误差。欢迎指正探讨。谢谢</div>2018-05-28</li><br/><li><span>虞飞</span> 👍（27） 💬（1）<div>老师在课程里讲到同步包装类比较低效，不太适合高并发的场景，那想请教一下老师，在list接口的实现类中。在高并发的场景下，选择哪种实现类比较好？因为ArrayList是线程不安全的，同步包装类又很低效，CopyonwriteArrayList又是以快照的形式来实现的，在频繁写入数据的时候，其实也很低效，那这个类型该怎么选择比较好？</div>2018-05-27</li><br/><li><span>Leiy</span> 👍（13） 💬（1）<div>我感觉jdk8就相当于把segment分段锁更细粒度了，每个数组元素就是原来一个segment，那并发度就由原来segment数变为数组长度？而且用到了cas乐观锁，所以能支持更高的并发，不知道我这种理解对吗？如果对的话，我就在想，为什么并发大神之前没想到这种，哈哈😄，恳请指正。谢谢</div>2018-05-29</li><br/><li><span>coder王</span> 👍（12） 💬（3）<div>您说的synchronized被改进很多很多了，那么在我们平常使用中，就用这个synchronized完成一些同步操作是不是OK？😁</div>2018-05-28</li><br/><li><span>Geek_zbvt62</span> 👍（10） 💬（1）<div>这期内容太难，分寸不好把握
 看8的concurenthashmap源码感觉挺困难，网上的博文帮助也不大，尤其是扩容这部分（似乎文章中没提）
 求问杨大有没有什么窍门，或者有什么启发性的paper或文章？
-可以泛化成，长期对lock free实现多个状态修改的问题比较困惑，希望得到启发</div>2018-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fc/24/7d43d807.jpg" width="30px"><span>mongo</span> 👍（5） 💬（1）<div>请教老师：putVal方法中，什么情况下会进入else if ((fh=f.hash) == MOVED)分支？是进行扩容的时候吗？nextTable是做什么用的？</div>2018-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fc/24/7d43d807.jpg" width="30px"><span>mongo</span> 👍（5） 💬（2）<div>请教老师：putVal方法的第二个if分支，为什么要用tabAt？我的认识里直接数组下标寻址tab[i=(n-1) &amp; hash]也是一个原子操作，不是吗？tabAt里面的getObjectVolatle（）方法跟直接用数组下标tab[i=(n-1) &amp; hash]寻址有什么区别？</div>2018-05-26</li><br/><li><img src="" width="30px"><span>Xg huang</span> 👍（4） 💬（1）<div>这里有个地方想跟老师交流一下想法, 从文中&quot;所以，ConcurrentHashMap 的实现是通过重试机制（RETRIES_BEFORE_LOCK，指定重试次数 2），来试图获得可靠值。如果没有监控到发生变化（通过对比 Segment.modCount），就直接返回，否则获取锁进行操作。&quot; 可以看出, 在高并发的情况下, &quot;size()&quot; 方法只是返回&quot;近似值&quot;, 而我的问题是: 既然只是一个近似值, 为啥要用这种&quot;重试,分段锁&quot; 的复杂做法去计算这个值? 直接在不加锁的情况下返回segment 的size 岂不是更简单? 我能理解jdk开发者想尽一切努力在高性能地返回最精确的数值, 但这个&quot;精确&quot; 度无法量化啊, 对于调用方来说,这个值依然是不可靠的啊. 所以, 在我看来,这种做法收益很小(可能是我也比较懒吧), 或者有些设计上的要点我没有领悟出来, 希望老师指点一下.</div>2018-06-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3b/36/2d61e080.jpg" width="30px"><span>行者</span> 👍（3） 💬（1）<div>老师麻烦讲讲自旋锁，偏向锁的特点和区别吧，一直不太清楚。</div>2018-05-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f0/35/a5ded70c.jpg" width="30px"><span>陈坤</span> 👍（2） 💬（1）<div>老师，cas操作有没有什么弊端呢？因为cas也很长一段时间了，根据您的经验，有弊端吗？</div>2018-11-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/86/b1/4b5d3a3b.jpg" width="30px"><span>宁宁</span> 👍（2） 💬（1）<div>在构造的时候，Segment 的数量由所谓的 concurrentcyLevel 决定，默认是 16！并发数不是越多越好吗？</div>2018-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/76/9d/6dab9e0e.jpg" width="30px"><span>Levy</span> 👍（2） 💬（1）<div>老师你好，tabAt里面的getObjectVolatle（）方法跟直接用数组下标tab[i=(n-1) &amp; hash]寻址有什么区别，这个我也不懂，volitile不是已经保证内存可见性吗？</div>2018-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ab/10/b812ff3e.jpg" width="30px"><span>Hesher</span> 👍（2） 💬（1）<div>并发包用的很少，这一节内容的前置知识比较多，对于使用经验少的人来说貌似是有点难了。问题很好，正好可以见识一下各种使用场景，不过留言大部分是针对内容的难点提问，而真正回答问题的还没有出现。</div>2018-05-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/33/92/99530cee.jpg" width="30px"><span>灰飞灰猪不会灰飞.烟灭</span> 👍（2） 💬（1）<div>jdk7和8的区别感觉就是加锁不一样了，其他的没看懂。
+可以泛化成，长期对lock free实现多个状态修改的问题比较困惑，希望得到启发</div>2018-05-26</li><br/><li><span>mongo</span> 👍（5） 💬（1）<div>请教老师：putVal方法中，什么情况下会进入else if ((fh=f.hash) == MOVED)分支？是进行扩容的时候吗？nextTable是做什么用的？</div>2018-05-26</li><br/><li><span>mongo</span> 👍（5） 💬（2）<div>请教老师：putVal方法的第二个if分支，为什么要用tabAt？我的认识里直接数组下标寻址tab[i=(n-1) &amp; hash]也是一个原子操作，不是吗？tabAt里面的getObjectVolatle（）方法跟直接用数组下标tab[i=(n-1) &amp; hash]寻址有什么区别？</div>2018-05-26</li><br/><li><span>Xg huang</span> 👍（4） 💬（1）<div>这里有个地方想跟老师交流一下想法, 从文中&quot;所以，ConcurrentHashMap 的实现是通过重试机制（RETRIES_BEFORE_LOCK，指定重试次数 2），来试图获得可靠值。如果没有监控到发生变化（通过对比 Segment.modCount），就直接返回，否则获取锁进行操作。&quot; 可以看出, 在高并发的情况下, &quot;size()&quot; 方法只是返回&quot;近似值&quot;, 而我的问题是: 既然只是一个近似值, 为啥要用这种&quot;重试,分段锁&quot; 的复杂做法去计算这个值? 直接在不加锁的情况下返回segment 的size 岂不是更简单? 我能理解jdk开发者想尽一切努力在高性能地返回最精确的数值, 但这个&quot;精确&quot; 度无法量化啊, 对于调用方来说,这个值依然是不可靠的啊. 所以, 在我看来,这种做法收益很小(可能是我也比较懒吧), 或者有些设计上的要点我没有领悟出来, 希望老师指点一下.</div>2018-06-08</li><br/><li><span>行者</span> 👍（3） 💬（1）<div>老师麻烦讲讲自旋锁，偏向锁的特点和区别吧，一直不太清楚。</div>2018-05-27</li><br/><li><span>陈坤</span> 👍（2） 💬（1）<div>老师，cas操作有没有什么弊端呢？因为cas也很长一段时间了，根据您的经验，有弊端吗？</div>2018-11-28</li><br/><li><span>宁宁</span> 👍（2） 💬（1）<div>在构造的时候，Segment 的数量由所谓的 concurrentcyLevel 决定，默认是 16！并发数不是越多越好吗？</div>2018-06-04</li><br/><li><span>Levy</span> 👍（2） 💬（1）<div>老师你好，tabAt里面的getObjectVolatle（）方法跟直接用数组下标tab[i=(n-1) &amp; hash]寻址有什么区别，这个我也不懂，volitile不是已经保证内存可见性吗？</div>2018-05-30</li><br/><li><span>Hesher</span> 👍（2） 💬（1）<div>并发包用的很少，这一节内容的前置知识比较多，对于使用经验少的人来说貌似是有点难了。问题很好，正好可以见识一下各种使用场景，不过留言大部分是针对内容的难点提问，而真正回答问题的还没有出现。</div>2018-05-28</li><br/><li><span>灰飞灰猪不会灰飞.烟灭</span> 👍（2） 💬（1）<div>jdk7和8的区别感觉就是加锁不一样了，其他的没看懂。
 老师，synchronized和lock是不是都是在类字节码种携带自旋锁和偏向锁啊？
-他两底层区别是啥呢？我知道lock里面维护了一个双向链表</div>2018-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/7b/5b/907744cf.jpg" width="30px"><span>bazindes</span> 👍（1） 💬（1）<div>老师的内容讲的丰富 深入浅出 希望提高一下朗读人的要求吧 每节课都感觉有读错的 英文读不准就不说了 互斥读成互拆听的实在是别扭</div>2018-06-26</li><br/><li><img src="" width="30px"><span>极客cq</span> 👍（1） 💬（1）<div>不从实现上只从图形结构上看，ConcurrentHashMap和HashMap一样，不过是将buckets换成了segment，然后加锁方式从整map，下沉到segment（buckets）上，这样简单理解正确么？</div>2018-05-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fa/10/cefb0e21.jpg" width="30px"><span>cuzz.</span> 👍（1） 💬（1）<div>有点不懂。。</div>2018-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b1/20/8718252f.jpg" width="30px"><span>鲲鹏飞九万里</span> 👍（0） 💬（1）<div>好几个词感觉第一次见，大哭😹</div>2018-06-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5b/fc/5c24080b.jpg" width="30px"><span>牛在天上飞</span> 👍（0） 💬（1）<div>老师能解释下可重入锁吗？</div>2018-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/fe/3c/13175251.jpg" width="30px"><span>Miaozhe</span> 👍（0） 💬（1）<div>杨老师，看到ConcurrentHashMap中有定义N CPU,想问问跟CPU什么关系？</div>2018-05-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d6/6c/874ca8ad.jpg" width="30px"><span>George</span> 👍（0） 💬（1）<div>文中说的UNSAFE是什么意思？</div>2018-05-30</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epTXXDNFFe90dwTK2s5PxeuYn3MOLvfU6YLQ0uxuf9bXI8dWXgib5LRnOwk1uWiaDHqIGibOKyU4x3CQ/132" width="30px"><span>Ethan</span> 👍（0） 💬（1）<div>请问老师以后会不会有讲线程中断的不同处理呢？这一块一直对我来讲都比较抽象而且不好测试</div>2018-05-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ee/64/2646f6ef.jpg" width="30px"><span>胖</span> 👍（0） 💬（1）<div>如果多线程中已经在上层代码使用了读写锁进行访问控制，底层集合是否就可以使用HashMap，而没有必要使用线程安全的容器了？</div>2018-05-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f8/e9/f25cce9e.jpg" width="30px"><span>李军</span> 👍（0） 💬（1）<div>可不可以用AI让JVM更智能？</div>2018-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ad/4d/e24fc9e4.jpg" width="30px"><span>蔡光明</span> 👍（209） 💬（9）<div>1.7
-put加锁
-通过分段加锁segment，一个hashmap里有若干个segment，每个segment里有若干个桶，桶里存放K-V形式的链表，put数据时通过key哈希得到该元素要添加到的segment，然后对segment进行加锁，然后在哈希，计算得到给元素要添加到的桶，然后遍历桶中的链表，替换或新增节点到桶中
-
-size
-分段计算两次，两次结果相同则返回，否则对所以段加锁重新计算
-
-
-1.8
-put CAS 加锁
-1.8中不依赖与segment加锁，segment数量与桶数量一致；
-首先判断容器是否为空，为空则进行初始化利用volatile的sizeCtl作为互斥手段，如果发现竞争性的初始化，就暂停在那里，等待条件恢复，否则利用CAS设置排他标志（U.compareAndSwapInt(this, SIZECTL, sc, -1)）;否则重试
-对key hash计算得到该key存放的桶位置，判断该桶是否为空，为空则利用CAS设置新节点
-否则使用synchronize加锁，遍历桶中数据，替换或新增加点到桶中
-最后判断是否需要转为红黑树，转换之前判断是否需要扩容
-
-size
-利用LongAdd累加计算</div>2018-07-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9b/29/c50118cf.jpg" width="30px"><span>t</span> 👍（44） 💬（2）<div>对于我这种菜鸟来说，应该来一期讲讲volatile😭</div>2018-07-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/55/a1/ed52e319.jpg" width="30px"><span>j.c.</span> 👍（34） 💬（0）<div>期待unsafe和cas的文章</div>2018-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/15/02/66f65388.jpg" width="30px"><span>雷霹雳的爸爸</span> 👍（30） 💬（0）<div>今天这个纯粹知识盲点，纯赞，源码也得不停看</div>2018-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e0/9f/9259a6b9.jpg" width="30px"><span>Kyle</span> 👍（10） 💬（3）<div>之前用JavaFX做一个客户端IM工具的时候，我将拉来的未被读取的用户聊天信息用ConcurrentHashMap存储（同时异步存储到Sqlite），Key存放用户id，Value放未读取的聊天消息列表。因为我考虑到存消息和读消息是由两个线程并发处理的，这两个线程共同操作一个ConcurrentHashMap。可能是我没处理好，最后直到我离职了还有消息重复、乱序的问题。请问我这种应用场景有什么问题吗?</div>2018-05-28</li><br/>
+他两底层区别是啥呢？我知道lock里面维护了一个双向链表</div>2018-05-26</li><br/>
 </ul>
 
 

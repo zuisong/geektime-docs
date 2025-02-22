@@ -9066,6 +9066,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#servlet" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何实现Servlet规范
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13093,6 +13120,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#servlet" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何实现Servlet规范
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13139,11 +13193,63 @@
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>}
 </code></pre></div>
 <p>你会看到Handler接口的定义非常简洁，主要就是用handle方法用来处理请求，跟Tomcat容器组件的service方法一样，它有ServletRequest和ServletResponse两个参数。除此之外，这个接口中还有setServer和getServer方法，因为任何一个Handler都需要关联一个Server组件，也就是说Handler需要被Server组件来管理。一般来说Handler会加载一些资源到内存，因此通过设置destroy方法来销毁。</p>
+<p><strong>Handler继承关系</strong></p>
+<p>Handler只是一个接口，完成具体功能的还是它的子类。那么Handler有哪些子类呢？它们的继承关系又是怎样的？这些子类是如何实现Servlet容器功能的呢？</p>
+<p>Jetty中定义了一些默认Handler类，并且这些Handler类之间的继承关系比较复杂，我们先通过一个全景图来了解一下。为了避免让你感到不适，我对类图进行了简化。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/3a/64/3a7b3fbf16bb79594ec23620507c5c64.png?wh=1145%2A684" /></p>
+<p>从图上你可以看到，Handler的种类和层次关系还是比较复杂的：</p>
+<p>Handler接口之下有抽象类AbstractHandler，这一点并不意外，因为有接口一般就有抽象实现类。</p>
+<p>在AbstractHandler之下有AbstractHandlerContainer，为什么需要这个类呢？这其实是个过渡，为了实现链式调用，一个Handler内部必然要有其他Handler的引用，所以这个类的名字里才有Container，意思就是这样的Handler里包含了其他Handler的引用。</p>
+<p>理解了上面的AbstractHandlerContainer，我们就能理解它的两个子类了：HandlerWrapper和HandlerCollection。简单来说就是，HandlerWrapper和HandlerCollection都是Handler，但是这些Handler里还包括其他Handler的引用。不同的是，HandlerWrapper只包含一个其他Handler的引用，而HandlerCollection中有一个Handler数组的引用。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/f8/c1/f89a1e88a78a7e6860d69af3572467c1.png?wh=1470%2A544" /></p>
+<p>接着来看左边的HandlerWrapper，它有两个子类：Server和ScopedHandler。Server比较好理解，它本身是Handler模块的入口，必然要将请求传递给其他Handler来处理，为了触发其他Handler的调用，所以它是一个HandlerWrapper。</p>
+<p>再看ScopedHandler，它也是一个比较重要的Handler，实现了“具有上下文信息”的责任链调用。为什么我要强调“具有上下文信息”呢？那是因为Servlet规范规定Servlet在执行过程中是有上下文的。那么这些Handler在执行过程中如何访问这个上下文呢？这个上下文又存在什么地方呢？答案就是通过ScopedHandler来实现的。</p>
+<p>而ScopedHandler有一堆的子类，这些子类就是用来实现Servlet规范的，比如ServletHandler、ContextHandler、SessionHandler、ServletContextHandler和WebAppContext。接下来我会详细介绍它们，但我们先把总体类图看完。</p>
+<p>请看类图的右边，跟HandlerWrapper对等的还有HandlerCollection，HandlerCollection其实维护了一个Handler数组。你可能会问，为什么要发明一个这样的Handler？这是因为Jetty可能需要同时支持多个Web应用，如果每个Web应用有一个Handler入口，那么多个Web应用的Handler就成了一个数组，比如Server中就有一个HandlerCollection，Server会根据用户请求的URL从数组中选取相应的Handler来处理，就是选择特定的Web应用来处理请求。</p>
+<p><strong>Handler的类型</strong></p>
+<p>虽然从类图上看Handler有很多，但是本质上这些Handler分成三种类型：</p>
+<ul>
+<li>第一种是<strong>协调Handler</strong>，这种Handler负责将请求路由到一组Handler中去，比如上图中的HandlerCollection，它内部持有一个Handler数组，当请求到来时，它负责将请求转发到数组中的某一个Handler。</li>
+<li>第二种是<strong>过滤器Handler</strong>，这种Handler自己会处理请求，处理完了后再把请求转发到下一个Handler，比如图上的HandlerWrapper，它内部持有下一个Handler的引用。需要注意的是，所有继承了HandlerWrapper的Handler都具有了过滤器Handler的特征，比如ContextHandler、SessionHandler和WebAppContext等。</li>
+<li>第三种是<strong>内容Handler</strong>，说白了就是这些Handler会真正调用Servlet来处理请求，生成响应的内容，比如ServletHandler。如果浏览器请求的是一个静态资源，也有相应的ResourceHandler来处理这个请求，返回静态页面。</li>
+</ul>
+<h2 id="servlet">如何实现Servlet规范</h2>
+<p>上文提到，ServletHandler、ContextHandler以及WebAppContext等，它们实现了Servlet规范，那具体是怎么实现的呢？为了帮助你理解，在这之前，我们还是来看看如何使用Jetty来启动一个Web应用。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>//新建一个WebAppContext，WebAppContext是一个Handler
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>WebAppContext webapp = new WebAppContext();
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>webapp.setContextPath(&quot;/mywebapp&quot;);
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>webapp.setWar(&quot;mywebapp.war&quot;);
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>//将Handler添加到Server中去
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>server.setHandler(webapp);
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>//启动Server
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>server.start();
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>server.join();
+</code></pre></div>
+<p>上面的过程主要分为两步：</p>
+<p>第一步创建一个WebAppContext，接着设置一些参数到这个Handler中，就是告诉WebAppContext你的WAR包放在哪，Web应用的访问路径是什么。</p>
+<p>第二步就是把新创建的WebAppContext添加到Server中，然后启动Server。</p>
+<p>WebAppContext对应一个Web应用。我们回忆一下Servlet规范中有Context、Servlet、Filter、Listener和Session等，Jetty要支持Servlet规范，就需要有相应的Handler来分别实现这些功能。因此，Jetty设计了3个组件：ContextHandler、ServletHandler和SessionHandler来实现Servlet规范中规定的功能，而<strong>WebAppContext本身就是一个ContextHandler</strong>，另外它还负责管理ServletHandler和SessionHandler。</p>
+<p>我们再来看一下什么是ContextHandler。ContextHandler会创建并初始化Servlet规范里的ServletContext对象，同时ContextHandler还包含了一组能够让你的Web应用运行起来的Handler，可以这样理解，Context本身也是一种Handler，它里面包含了其他的Handler，这些Handler能处理某个特定URL下的请求。比如，ContextHandler包含了一个或者多个ServletHandler。</p>
+<p>再来看ServletHandler，它实现了Servlet规范中的Servlet、Filter和Listener的功能。ServletHandler依赖FilterHolder、ServletHolder、ServletMapping、FilterMapping这四大组件。FilterHolder和ServletHolder分别是Filter和Servlet的包装类，每一个Servlet与路径的映射会被封装成ServletMapping，而Filter与拦截URL的映射会被封装成FilterMapping。</p>
+<p>SessionHandler从名字就知道它的功能，用来管理Session。除此之外WebAppContext还有一些通用功能的Handler，比如SecurityHandler和GzipHandler，同样从名字可以知道这些Handler的功能分别是安全控制和压缩/解压缩。</p>
+<p>WebAppContext会将这些Handler构建成一个执行链，通过这个链会最终调用到我们的业务Servlet。我们通过一张图来理解一下。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/5f/c1/5f1404567deec36ac68c36e44bb06cc1.jpg?wh=1994%2A934" /></p>
+<p>通过对比Tomcat的架构图，你可以看到，Jetty的Handler组件和Tomcat中的容器组件是大致是对等的概念，Jetty中的WebAppContext相当于Tomcat的Context组件，都是对应一个Web应用；而Jetty中的ServletHandler对应Tomcat中的Wrapper组件，它负责初始化和调用Servlet，并实现了Filter的功能。</p>
+<p>对于一些通用组件，比如安全和解压缩，在Jetty中都被做成了Handler，这是Jetty Handler架构的特点。</p>
+<p>因此对于Jetty来说，请求处理模块就被抽象成Handler，不管是实现了Servlet规范的Handler，还是实现通用功能的Handler，比如安全、解压缩等，我们可以任意添加或者裁剪这些“功能模块”，从而实现高度的可定制化。</p>
+<h2 id="_1">本期精华</h2>
+<p>Jetty Server就是由多个Connector、多个Handler，以及一个线程池组成。</p>
+<p>Jetty的Handler设计是它的一大特色，Jetty本质就是一个Handler管理器，Jetty本身就提供了一些默认Handler来实现Servlet容器的功能，你也可以定义自己的Handler来添加到Jetty中，这体现了“<strong>微内核 + 插件</strong>”的设计思想。</p>
+<h2 id="_2">课后思考</h2>
+<p>通过今天的学习，我们知道各种Handler都会对请求做一些处理，再将请求传给下一个Handler，而Servlet也是用来处理请求的，那Handler跟Servlet有什么区别呢？</p>
+<p>不知道今天的内容你消化得如何？如果还有疑问，请大胆的在留言区提问，也欢迎你把你的课后思考和心得记录下来，与我和其他同学一起讨论。如果你觉得今天有所收获，欢迎你把它分享给你的朋友。</p>
 <div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/21/20/1299e137.jpg" width="30px"><span>秋天</span> 👍（22） 💬（1）<div>hadler只算是一层wrapper，真正处理得还是真正处理servlet逻辑的servlet</div>2019-07-16</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTI1ibgEPxRmTaEYWYnv8QHwL4ic7ibcjMEGTeb66LtzFCgR6mqOMjr4kvZgfuMIEibzG5Yp2JIaxtNeIA/132" width="30px"><span>夏天</span> 👍（15） 💬（2）<div>想学习tomcat架构，大佬有没有推荐的书籍</div>2019-06-01</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqLcWH3mSPmhjrs1aGL4b3TqI7xDqWWibM4nYFrRlp0z7FNSWaJz0mqovrgIA7ibmrPt8zRScSfRaqQ/132" width="30px"><span>易儿易</span> 👍（7） 💬（2）<div>老师讲的这篇知识点脉络清晰，看完之后能够明确课程内容，但是考虑到开发使用，我却更迷糊了，web开发要怎样跟Jetty这样的容器相结合呢？我们跑在tomcat上的项目能拿下来直接放到Jetty上吗？感觉Jetty需要在项目中增加很多配置才行，对开发的要求也多……没有用过Jetty</div>2019-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（6） 💬（1）<div>老师有jetty源码下载地址链接么？git的下不动😂</div>2019-06-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（3） 💬（1）<div>Handler实现了 Servlet 规范中的 Servlet、Filter 和 Listener 功能中的一个或者多个。handler可以持有别的handle，servlet不持有别的servlet。servlet的调用关系通过servlet容器来控制。handler的调用关系通过wabappcontext控制。老师好!
-Tomcat通过连接器来区分协议和端口号，host区分虚拟主机(二级域名)。jetty里面是怎么绑定的呢?jetty的连接器和容器没有对应关系，所有的容器都可以处理各种的协议么?mapping具体又是在哪里起作用的呢?是handlecollection通过mapping找到对应的wabappcontext吗?</div>2019-06-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/76/23/31e5e984.jpg" width="30px"><span>空知</span> 👍（1） 💬（1）<div>老师问下
-server是一个 handlerWrapper 内部应该只有一个hanlder 可是他内部又维护一个handlerCollection,当请求过来时候 去handlerCollection 里面根据url判断是哪个项目 那定义的那个 单独的hanlder 有啥用?</div>2019-06-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/74/c9/d3439ca4.jpg" width="30px"><span>why</span> 👍（11） 💬（0）<div>- Handler 是一个接口, 有一堆实现类
+<li><span>秋天</span> 👍（22） 💬（1）<div>hadler只算是一层wrapper，真正处理得还是真正处理servlet逻辑的servlet</div>2019-07-16</li><br/><li><span>夏天</span> 👍（15） 💬（2）<div>想学习tomcat架构，大佬有没有推荐的书籍</div>2019-06-01</li><br/><li><span>易儿易</span> 👍（7） 💬（2）<div>老师讲的这篇知识点脉络清晰，看完之后能够明确课程内容，但是考虑到开发使用，我却更迷糊了，web开发要怎样跟Jetty这样的容器相结合呢？我们跑在tomcat上的项目能拿下来直接放到Jetty上吗？感觉Jetty需要在项目中增加很多配置才行，对开发的要求也多……没有用过Jetty</div>2019-07-01</li><br/><li><span>-W.LI-</span> 👍（6） 💬（1）<div>老师有jetty源码下载地址链接么？git的下不动😂</div>2019-06-02</li><br/><li><span>-W.LI-</span> 👍（3） 💬（1）<div>Handler实现了 Servlet 规范中的 Servlet、Filter 和 Listener 功能中的一个或者多个。handler可以持有别的handle，servlet不持有别的servlet。servlet的调用关系通过servlet容器来控制。handler的调用关系通过wabappcontext控制。老师好!
+Tomcat通过连接器来区分协议和端口号，host区分虚拟主机(二级域名)。jetty里面是怎么绑定的呢?jetty的连接器和容器没有对应关系，所有的容器都可以处理各种的协议么?mapping具体又是在哪里起作用的呢?是handlecollection通过mapping找到对应的wabappcontext吗?</div>2019-06-03</li><br/><li><span>空知</span> 👍（1） 💬（1）<div>老师问下
+server是一个 handlerWrapper 内部应该只有一个hanlder 可是他内部又维护一个handlerCollection,当请求过来时候 去handlerCollection 里面根据url判断是哪个项目 那定义的那个 单独的hanlder 有啥用?</div>2019-06-03</li><br/><li><span>why</span> 👍（11） 💬（0）<div>- Handler 是一个接口, 有一堆实现类
     - Handler 接口用 handle 方法处理请求, 类似 Tomcat 的 service
     - 有 set&#47;getServer 用于关联一个 Server
     - 用 destroy 销毁释放资源
@@ -13170,13 +13276,13 @@ server是一个 handlerWrapper 内部应该只有一个hanlder 可是他内部�
         - ContextHandler 负责创建并初始化 ServletContext 对象, 另外还包含一组 Handler, 处理特定 URL 的请求(ServletHandler)
             - ServletHandler 实现 Servlet, Filter, Listen 的功能; 其依赖 Filter&#47;ServletHandler(Filter 和 Serlvet 的包装类) 以及 Filter&#47;ServletMapping 封装 Filter&#47;Servlet 及其映射的路径
         - SessionHandler 管理 Session
-    - WebAppContext 将这些 Handler 构成执行链: Connection→SessionHandler→SecurityHandler→...→SevletHandler→Servlet.</div>2019-06-07</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/wIWrciav7DRkOaD7vUtr084sxprq2U4obfH1ibls4RIsAw5foQlDGIt98x1RHATznNbh0iasibWV2Y7I7QpyFJ4TVA/132" width="30px"><span>Wipeher</span> 👍（2） 💬（1）<div>老师。看了下源码。Server中并没有HandlerCollection。而只有一个private final List&lt;Connector&gt; _connectors = new CopyOnWriteArrayList&lt;&gt;(); 所以不太明白，文中为何提到Server有HandlerCollection，而且，从类图上来说，也不符合逻辑，已经声明为HandleWrapper了，为何要维护一个HandlerCollection，不如一开始直接实现一个HandlerCollection就可以了。望老师指教</div>2020-06-19</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLNRjRHibgf1ia8RrhPJSZBiawk5OOb5VsVva5cmwickaV58WsaOkljD5rVeibWnlic62c2ZqcPsapOqCdw/132" width="30px"><span>east</span> 👍（2） 💬（0）<div>1.H和S都能处理请求，
+    - WebAppContext 将这些 Handler 构成执行链: Connection→SessionHandler→SecurityHandler→...→SevletHandler→Servlet.</div>2019-06-07</li><br/><li><span>Wipeher</span> 👍（2） 💬（1）<div>老师。看了下源码。Server中并没有HandlerCollection。而只有一个private final List&lt;Connector&gt; _connectors = new CopyOnWriteArrayList&lt;&gt;(); 所以不太明白，文中为何提到Server有HandlerCollection，而且，从类图上来说，也不符合逻辑，已经声明为HandleWrapper了，为何要维护一个HandlerCollection，不如一开始直接实现一个HandlerCollection就可以了。望老师指教</div>2020-06-19</li><br/><li><span>east</span> 👍（2） 💬（0）<div>1.H和S都能处理请求，
 2.H可以调用S，S不能调用H，
-3.H更多处理通用的处理并且是抽象的，S是处理具体的且比较特定化请求</div>2019-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/8a/76/4abc8ac1.jpg" width="30px"><span>完美世界</span> 👍（1） 💬（0）<div>Jetty Server 就是由多个 Connector、多个 Handler，以及一个线程池组成。
+3.H更多处理通用的处理并且是抽象的，S是处理具体的且比较特定化请求</div>2019-06-01</li><br/><li><span>完美世界</span> 👍（1） 💬（0）<div>Jetty Server 就是由多个 Connector、多个 Handler，以及一个线程池组成。
 
 Jetty 的 Handler 设计是它的一大特色，Jetty 本质就是一个 Handler 管理器，Jetty 本身就提供了一些默认 Handler 来实现 Servlet 容器的功能，你也可以定义自己的 Handler 来添加到 Jetty 中，这体现了“微内核 + 插件”的设计思想。
 
-handler 应该会把请求字节流转换为servlet request</div>2019-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0c/86/8e52afb8.jpg" width="30px"><span>花花大脸猫</span> 👍（0） 💬（0）<div>老是，有一个问题，HandleWrapper可以看做是特殊的HandleCollection的话，那是不是可以说明HandleWrapper实现的功能，对应的HandleCollection也能实现，从而间接说明两者并不是对等的，而且将HandleWrapper作为HandleCollection的一种简易的handle实现方式？</div>2022-06-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/b6/d9/4d8a4d4c.jpg" width="30px"><span>红豆成香</span> 👍（0） 💬（0）<div>jetty这两节不太好肯</div>2022-02-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/0f/f2/3f3c0946.jpg" width="30px"><span>美好时光海苔</span> 👍（0） 💬（0）<div>老师，过滤器 Handler 和 Servlet 规范中的 Filter 有什么区别？如果已经有 Servlet 规范中的 Filter，为什么我们还需要 过滤器类 的 Handler ？ </div>2021-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/70/9e/9337ca8e.jpg" width="30px"><span>jaryoung</span> 👍（0） 💬（0）<div>handler 是指挥官？serlvet 真正的执行者</div>2019-08-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/51/0d/14d9364a.jpg" width="30px"><span>L.B.Q.Y</span> 👍（0） 💬（0）<div>Servlet用于处理业务逻辑，Handler用于路由请求到指定的Servlet上。</div>2019-07-30</li><br/>
+handler 应该会把请求字节流转换为servlet request</div>2019-06-04</li><br/><li><span>花花大脸猫</span> 👍（0） 💬（0）<div>老是，有一个问题，HandleWrapper可以看做是特殊的HandleCollection的话，那是不是可以说明HandleWrapper实现的功能，对应的HandleCollection也能实现，从而间接说明两者并不是对等的，而且将HandleWrapper作为HandleCollection的一种简易的handle实现方式？</div>2022-06-09</li><br/><li><span>红豆成香</span> 👍（0） 💬（0）<div>jetty这两节不太好肯</div>2022-02-09</li><br/><li><span>美好时光海苔</span> 👍（0） 💬（0）<div>老师，过滤器 Handler 和 Servlet 规范中的 Filter 有什么区别？如果已经有 Servlet 规范中的 Filter，为什么我们还需要 过滤器类 的 Handler ？ </div>2021-06-06</li><br/><li><span>jaryoung</span> 👍（0） 💬（0）<div>handler 是指挥官？serlvet 真正的执行者</div>2019-08-17</li><br/><li><span>L.B.Q.Y</span> 👍（0） 💬（0）<div>Servlet用于处理业务逻辑，Handler用于路由请求到指定的Servlet上。</div>2019-07-30</li><br/>
 </ul>
 
 

@@ -1676,6 +1676,8 @@
       
         
       
+        
+      
     
     
       
@@ -5806,25 +5808,267 @@
 <h1 id="_1">定义问题</h1>
 <p>请你想象一下，你刚为客户做了分组画像，老板推门而入：“价值分组这个项目做得不错嘛！现在有这么一个新需求，你看看你这边还有什么idea。”</p>
 <p>他继续说道：“你也知道，现在流量太贵了，拉新成本平均下来每注册一个用户我几乎要花接近500元。我是这么想的。500元，说贵也贵，说不贵也不贵，关键还是要看这些用户能给我们带来多大价值、多大回报，你说对吧？要是多数人用我们的App，用几次就不用了，订花的总消费甚至比500元还少，那就没什么意思了。所以，你看能不能根据历史数据，预测一下新用户未来一两年的消费总额？”</p>
-<div><strong>精选留言（24）</strong></div>
+<p>好，那现在我们来分析一下这个问题。其实，这个问题的实质是计算一个用户使用某产品的过程中消费总量是多少。比如某类手机App，用户的平均使用长度是两年左右，那么两年内用户在App上消费所产生的总收益就是用户的生命周期价值，英文是Lifetime Value，简称LTV，有时我们也叫CLV（Customer Lifetime Value）。</p>
+<p>请你想想看，如果你得到一个新用户的成本是500元，看上去是很贵，但如果这个人在你的店铺买花的钱预计会超过万元，那么扣除进货成本和获客成本，你还是赚到了，ROI高嘛。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c0/b7/c0267aa171088a27f6c00470749749b7.png?wh=415x239" title="用户的LTV越高，我们ROI越高" /></p>
+<p>所以，我们的目标就是通过现有数据，找到一个能预测出用户生命周期价值的模型，来指导我们获客的成本，避免超出回报的盲目投入。</p>
+<p>那对于这个问题，我们还是会使用上一个项目中的原始数据集，你在<a href="https://github.com/huangjia2019/geektime/tree/main/%E5%8F%98%E7%8E%B0%E5%85%B307">这里</a>就能下载到。拿到数据集后，我们就可以开始数据的预处理工作了。</p>
+<h1 id="_2">数据预处理</h1>
+<p>通过前面的课程，我想你应该已经想到：“用户生命周期价值”是一种连续性数值，对这种连续性数值的预测，属于一个回归问题。那么，在数据预处理阶段，我们就要确定把哪些特征字段输入到回归模型中。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/7b/e9/7bf08c35eecd0e311942269c801296e9.png?wh=709x161" /></p>
+<p>我们看到，这个数据集的字段包括订单号、产品码、消费日期、产品说明、数量（订单）、单价、用户码和城市。那么，哪些字段和用户的LTV相关呢？</p>
+<p>很显然，像订单号、用户码、产品说明这些信息，肯定和用户的LTV值是不相关的。你可能会说，用户所在的“城市”这个字段，也许和用户的消费能力有一定的关联。</p>
+<p>这看起来有一定的道理。不过，像“北京”、“上海”这样的文本字段肯定不能直接被输入回归模型，如果要考虑城市信息，也应该转换为0、1的哑变量值，再输入模型。也就是说转换成“是否北京”(值是0或1)，“是否上海”（值是0或1），“是否深圳”（值是0或1）……</p>
+<p>你看，这样一下子就增加了好多个特征，而且对这个数据集来说，城市对于LTV值的影响其实并不大。综合这些因素，在这个项目中，我们就不考虑“城市”这个字段了。</p>
+<p>看到这，你也许会想：那这么说的话，用户的消费金额肯定和LTV非常相关，可是，用户的消费金额不就是LTV本身嘛，用自己去预测自己，这样的模型有什么意义呢？</p>
+<p>这个想法没错，用户的消费金额确实是和LTV最为相关的变量。不过，我们要做两个小调整，来解答你的困惑。</p>
+<p>第一个调整是，我们可以考虑用头3个月的消费金额，而不是全部一整年的消费金额，来预测用户后续一年或两年的“价值”。这样，根据历史数据搭建起模型后，对于新注册的用户，我们只需要观察其头3个月的表现，就能够预测他今后一、两年的消费总量。如果某类App用户平均使用长度是一年或两年的话，这也就是该用户的生命周期价值。</p>
+<p>第二个调整是，用我们在前两节课中学到的R、F、M值来做特征变量，这就避免了单一维度建模的局限性。在RMF用户分组中，我们不仅可以得到消费金额，还能得到新近度、消费频率。这些层级把消费频率、最近消费日期这些非数值变量转化成了数值变量，而且这些数值与用户的LTV也都密切相关。</p>
+<p>因此，<strong>在我们的模型中，可以用头3个月的R、F、M这3个数值作为特征，也就是回归模型的自变量。而回归模型所要预测的因变量，即数据集的标签，就是一年的总消费额，你可以认为它就是用户的LTV。</strong></p>
+<p>我要说明一下，这里的3个月、12个月都只是思路上的示意，我们不去考虑用户平均会使用该App一年还是两年、三年。在不同业务场景中，计算RFM特征值的时间区间和LTV的时间区间可以视情况而定。</p>
+<p>下面我们要做的就是数据清洗，这其中包括删除不符合逻辑的负值、查看有没有缺失值、添加每个订单的总价字段等。这部分内容和上一讲的类似，我就不再重复了，你如果不清楚，可以去回顾<a href="https://time.geekbang.org/column/article/416824">上一讲</a>的内容。</p>
+<p>在数据预处理阶段，唯一不同的就是，当前项目需要显示数据集的时间跨度，因为我们要拆分出头3个月的数据作为输入特征，并且只考虑12月的总消费金额作为LTV，所以我们要通过数据集的时间跨度来把它分为两部分，一部分用来构建RFM特征（头３个月），另一部分用来构建LTV这个标签（整个1２个月）。</p>
+<ol>
+<li><strong>整理数据集记录的时间范围</strong></li>
+</ol>
+<p>通过这段代码，我可以知道当前数据集一共覆盖了多长的时间。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">import</span><span class="w"> </span><span class="nx">numpy</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">np</span><span class="w"> </span><span class="err">#</span><span class="nx">导入NumPy</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">import</span><span class="w"> </span><span class="nx">pandas</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">pd</span><span class="w"> </span><span class="err">#</span><span class="nx">导入Pandas</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nx">df_sales</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">pd</span><span class="p">.</span><span class="nx">read_csv</span><span class="p">(</span><span class="s1">&#39;易速鲜花订单记录.csv&#39;</span><span class="p">)</span><span class="w"> </span><span class="err">#</span><span class="nx">载入数据</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nx">print</span><span class="p">(</span><span class="s1">&#39;日期范围: %s ~ %s&#39;</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="p">(</span><span class="nx">df_sales</span><span class="p">[</span><span class="s1">&#39;消费日期&#39;</span><span class="p">].</span><span class="nx">min</span><span class="p">(),</span><span class="w"> </span><span class="nx">df_sales</span><span class="p">[</span><span class="s1">&#39;消费日期&#39;</span><span class="p">].</span><span class="nx">max</span><span class="p">()))</span><span class="w"> </span><span class="err">#</span><span class="nx">显示日期范围</span><span class="err">（</span><span class="nx">格式转换前</span><span class="err">）</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nx">df_sales</span><span class="p">[</span><span class="s1">&#39;消费日期&#39;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">pd</span><span class="p">.</span><span class="nx">to_datetime</span><span class="p">(</span><span class="nx">df_sales</span><span class="p">[</span><span class="s1">&#39;消费日期&#39;</span><span class="p">])</span><span class="w"> </span><span class="err">#</span><span class="nx">转换日期格式</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nx">print</span><span class="p">(</span><span class="s1">&#39;日期范围: %s ~ %s&#39;</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="p">(</span><span class="nx">df_sales</span><span class="p">[</span><span class="s1">&#39;消费日期&#39;</span><span class="p">].</span><span class="nx">min</span><span class="p">(),</span><span class="w"> </span><span class="nx">df_sales</span><span class="p">[</span><span class="s1">&#39;消费日期&#39;</span><span class="p">].</span><span class="nx">max</span><span class="p">()))</span><span class="err">#</span><span class="nx">显示日期范围</span>
+</code></pre></div>
+<p>输出如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">日期范围</span><span class="err">（</span><span class="nx">格式转化前</span><span class="err">）</span><span class="o">:</span><span class="w"> </span><span class="mf">1</span><span class="o">/</span><span class="mf">1</span><span class="o">/</span><span class="mf">2021</span><span class="w"> </span><span class="nx">10</span><span class="o">:</span><span class="kt">11</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="mf">9</span><span class="o">/</span><span class="mf">9</span><span class="o">/</span><span class="mf">2020</span><span class="w"> </span><span class="nx">9</span><span class="o">:</span><span class="kt">20</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nx">日期范围</span><span class="err">（</span><span class="nx">格式转化后</span><span class="err">）</span><span class="o">:</span><span class="w"> </span><span class="mf">2020</span><span class="o">-</span><span class="mo">06</span><span class="o">-</span><span class="mo">01</span><span class="w"> </span><span class="nx">09</span><span class="o">:</span><span class="kt">09</span><span class="o">:</span><span class="mo">00</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="mf">2021</span><span class="o">-</span><span class="mo">06</span><span class="o">-</span><span class="mf">09</span><span class="w"> </span><span class="nx">12</span><span class="o">:</span><span class="kt">31</span><span class="o">:</span><span class="mo">00</span>
+</code></pre></div>
+<p>结果显示，数据集中的时间跨度是从2020年6月到2021年6月9号。</p>
+<p>因为我们希望求的是整年的LTV，所以，这里我们把不完整的2021年6月份的数据删除：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">df_sales</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">df_sales</span><span class="p">.</span><span class="nx">loc</span><span class="p">[</span><span class="nx">df_sales</span><span class="p">[</span><span class="s1">&#39;消费日期&#39;</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="s1">&#39;2021-06-01&#39;</span><span class="p">]</span><span class="w"> </span><span class="err">#</span><span class="nx">只保留整月数据</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nx">print</span><span class="p">(</span><span class="s1">&#39;日期范围: %s ~ %s&#39;</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="p">(</span><span class="nx">df_sales</span><span class="p">[</span><span class="s1">&#39;消费日期&#39;</span><span class="p">].</span><span class="nx">min</span><span class="p">(),</span><span class="w"> </span><span class="nx">df_sales</span><span class="p">[</span><span class="s1">&#39;消费日期&#39;</span><span class="p">].</span><span class="nx">max</span><span class="p">()))</span><span class="w"> </span><span class="err">#</span><span class="nx">显示日期范围</span>
+</code></pre></div>
+<p>输出如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">日期范围</span><span class="err">（</span><span class="nx">删除不完整的月份</span><span class="err">）</span><span class="o">:</span><span class="w"> </span><span class="mf">2020</span><span class="o">-</span><span class="mo">06</span><span class="o">-</span><span class="mo">01</span><span class="w"> </span><span class="nx">09</span><span class="o">:</span><span class="kt">09</span><span class="o">:</span><span class="mo">00</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="mf">2021</span><span class="o">-</span><span class="mo">05</span><span class="o">-</span><span class="mf">31</span><span class="w"> </span><span class="nx">17</span><span class="o">:</span><span class="kt">39</span><span class="o">:</span><span class="mo">00</span>
+</code></pre></div>
+<p>目前的数据集中，共包含了整整12个月的数据。下面，我们开始构建机器学习数据集的特征和标签字段。</p>
+<ol>
+<li><strong>构建特征和标签</strong></li>
+</ol>
+<p>基于前面的分析，我们用前3个月的R、F、M值作为特征字段，然后把整个12个月的消费金额视为LTV，作为标签字段。</p>
+<p>首先，我们把头3个月的销售数据拆分出来，形成独立的df_sales_3m对象。这部分数据将是对用户LTV预测的依据。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nx">df_sales_3m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">df_sales</span><span class="p">[(</span><span class="nx">df_sales</span><span class="p">.</span><span class="nx">消费日期</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="s1">&#39;2020-06-01&#39;</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="p">(</span><span class="nx">df_sales</span><span class="p">.</span><span class="nx">消费日期</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="s1">&#39;2020-08-30&#39;</span><span class="p">)]</span><span class="w"> </span><span class="err">#</span><span class="nx">构建仅含头三个月数据的数据集</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nx">df_sales_3m</span><span class="p">.</span><span class="nx">reset_index</span><span class="p">(</span><span class="nx">drop</span><span class="o">=</span><span class="nx">True</span><span class="p">)</span><span class="w"> </span><span class="err">#</span><span class="nx">重置索引</span>
+</code></pre></div>
+<p>接下来，我们创建以用户码为主键的df_user_LTV对象，利用头3个月的数据，构建R、F、M层级，形成新特征。具体的思路和步骤，我们在<a href="https://time.geekbang.org/column/article/415910">第5讲</a>中讲解过，我就不啰嗦了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nx">df_user_LTV</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">pd</span><span class="p">.</span><span class="nx">DataFrame</span><span class="p">(</span><span class="nx">df_sales</span><span class="p">[</span><span class="s1">&#39;用户码&#39;</span><span class="p">].</span><span class="nx">unique</span><span class="p">())</span><span class="w"> </span><span class="err">#</span><span class="nx">生成以用户码为主键的结构</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nx">df_user_LTV</span><span class="p">.</span><span class="nx">columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;用户码&#39;</span><span class="p">]</span><span class="w"> </span><span class="err">#</span><span class="nx">设定字段名</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nx">df_user_LTV</span><span class="p">.</span><span class="nx">head</span><span class="p">()</span><span class="w"> </span><span class="err">#</span><span class="nx">显示头几行数据</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="nx">df_R_value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">df_sales_3m</span><span class="p">.</span><span class="nx">groupby</span><span class="p">(</span><span class="s1">&#39;用户码&#39;</span><span class="p">).</span><span class="nx">消费日期</span><span class="p">.</span><span class="nx">max</span><span class="p">().</span><span class="nx">reset_index</span><span class="p">()</span><span class="w"> </span><span class="err">#</span><span class="nx">找到每个用户的最近消费日期</span><span class="err">，</span><span class="nx">构建df_R_value对象</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="nx">df_R_value</span><span class="p">.</span><span class="nx">columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;用户码&#39;</span><span class="p">,</span><span class="s1">&#39;最近购买日期&#39;</span><span class="p">]</span><span class="w"> </span><span class="err">#</span><span class="nx">设定字段名</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="nx">df_R_value</span><span class="p">[</span><span class="s1">&#39;R值&#39;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">df_R_value</span><span class="p">[</span><span class="s1">&#39;最近购买日期&#39;</span><span class="p">].</span><span class="nx">max</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">df_R_value</span><span class="p">[</span><span class="s1">&#39;最近购买日期&#39;</span><span class="p">]).</span><span class="nx">dt</span><span class="p">.</span><span class="nx">days</span><span class="w"> </span><span class="err">#</span><span class="nx">计算最新日期与上次消费日期的天数</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="nx">df_user_LTV</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">pd</span><span class="p">.</span><span class="nx">merge</span><span class="p">(</span><span class="nx">df_user_LTV</span><span class="p">,</span><span class="w"> </span><span class="nx">df_R_value</span><span class="p">[[</span><span class="s1">&#39;用户码&#39;</span><span class="p">,</span><span class="s1">&#39;R值&#39;</span><span class="p">]],</span><span class="w"> </span><span class="nx">on</span><span class="o">=</span><span class="s1">&#39;用户码&#39;</span><span class="p">)</span><span class="w"> </span><span class="err">#</span><span class="nx">把上次消费距最新日期的天数</span><span class="err">（</span><span class="nx">R值</span><span class="err">）</span><span class="nx">合并至df_user结构</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="nx">df_F_value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">df_sales_3m</span><span class="p">.</span><span class="nx">groupby</span><span class="p">(</span><span class="s1">&#39;用户码&#39;</span><span class="p">).</span><span class="nx">消费日期</span><span class="p">.</span><span class="nx">count</span><span class="p">().</span><span class="nx">reset_index</span><span class="p">()</span><span class="w"> </span><span class="err">#</span><span class="nx">计算每个用户消费次数</span><span class="err">，</span><span class="nx">构建df_F_value对象</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="nx">df_F_value</span><span class="p">.</span><span class="nx">columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;用户码&#39;</span><span class="p">,</span><span class="s1">&#39;F值&#39;</span><span class="p">]</span><span class="w"> </span><span class="err">#</span><span class="nx">设定字段名</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="nx">df_user_LTV</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">pd</span><span class="p">.</span><span class="nx">merge</span><span class="p">(</span><span class="nx">df_user_LTV</span><span class="p">,</span><span class="w"> </span><span class="nx">df_F_value</span><span class="p">[[</span><span class="s1">&#39;用户码&#39;</span><span class="p">,</span><span class="s1">&#39;F值&#39;</span><span class="p">]],</span><span class="w"> </span><span class="nx">on</span><span class="o">=</span><span class="s1">&#39;用户码&#39;</span><span class="p">)</span><span class="w"> </span><span class="err">#</span><span class="nx">把消费频率</span><span class="p">(</span><span class="nx">F值</span><span class="p">)</span><span class="nx">整合至df_user结构</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="nx">df_M_value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">df_sales_3m</span><span class="p">.</span><span class="nx">groupby</span><span class="p">(</span><span class="s1">&#39;用户码&#39;</span><span class="p">).</span><span class="nx">总价</span><span class="p">.</span><span class="nx">sum</span><span class="p">().</span><span class="nx">reset_index</span><span class="p">()</span><span class="w"> </span><span class="err">#</span><span class="nx">计算每个用户三个月消费总额</span><span class="err">，</span><span class="nx">构建df_M_value对象</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="nx">df_M_value</span><span class="p">.</span><span class="nx">columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;用户码&#39;</span><span class="p">,</span><span class="s1">&#39;M值&#39;</span><span class="p">]</span><span class="w"> </span><span class="err">#</span><span class="nx">设定字段名</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="nx">df_user_LTV</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">pd</span><span class="p">.</span><span class="nx">merge</span><span class="p">(</span><span class="nx">df_user_LTV</span><span class="p">,</span><span class="w"> </span><span class="nx">df_M_value</span><span class="p">,</span><span class="w"> </span><span class="nx">on</span><span class="o">=</span><span class="s1">&#39;用户码&#39;</span><span class="p">)</span><span class="w"> </span><span class="err">#</span><span class="nx">把消费总额整合至df_user结构</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="nx">df_user_LTV</span><span class="w"> </span><span class="err">#</span><span class="nx">显示用户表结构</span>
+</code></pre></div>
+<p>最后，我们输出显示df_user_LTV对象，就会看到头三个月的R值、F值、M值都已经作为特征，存到我们的数据集df_user_LTV中了。到这里，特征构建完毕。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/43/y2/430c2cdae13627cf5be68674cc1d4yy2.png?wh=211x167" /></p>
+<p>下面我们再来看怎么构建数据集的标签。</p>
+<p>我们说过，标签，就是我们需要去预测或者判断的东西。而机器学习，就是通过已知来预测未知，通过训练数据集来寻找规律，发现特征和标签之间的联系。所以，我们下一步要做的，就是把LTV值加入到df_user_LTV中，这样数据集才完整。</p>
+<p>我们先根据一整年的数据计算出每一个用户的LTV值，也就是12个月的总消费金额：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nx">df_user_1y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">df_sales</span><span class="p">.</span><span class="nx">groupby</span><span class="p">(</span><span class="s1">&#39;用户码&#39;</span><span class="p">)[</span><span class="s1">&#39;总价&#39;</span><span class="p">].</span><span class="nx">sum</span><span class="p">().</span><span class="nx">reset_index</span><span class="p">()</span><span class="w"> </span><span class="err">#</span><span class="nx">计算每个用户整年消费总额</span><span class="err">，</span><span class="nx">构建df_user_1y对象</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nx">df_user_1y</span><span class="p">.</span><span class="nx">columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;用户码&#39;</span><span class="p">,</span><span class="s1">&#39;年度LTV&#39;</span><span class="p">]</span><span class="w"> </span><span class="err">#</span><span class="nx">设定字段名</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="nx">df_user_1y</span><span class="p">.</span><span class="nx">head</span><span class="p">()</span><span class="w"> </span><span class="err">#</span><span class="nx">显示头几行数据</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nx">df_LTV</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">pd</span><span class="p">.</span><span class="nx">merge</span><span class="p">(</span><span class="nx">df_user_LTV</span><span class="p">,</span><span class="w"> </span><span class="nx">df_user_1y</span><span class="p">,</span><span class="w"> </span><span class="nx">on</span><span class="o">=</span><span class="s1">&#39;用户码&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span><span class="w"> </span><span class="err">#</span><span class="nx">构建整体LTV训练数据集</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="nx">df_LTV</span><span class="w"> </span><span class="err">#</span><span class="nx">显示df_LTV</span>
+</code></pre></div>
+<p>然后，再把得到的LTV值整合到之前构建的df_user_LTV中，就形成了完整的、带标签的LTV数据集。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/93/ea/93e42f2785abde4cdfbac43a48a088ea.png?wh=280x351" /></p>
+<p>现在，在这个数据集中，R、F、M值来自于头3个月收集的数据，是模型的特征；LTV值来自于整年的数据，是模型的标签。这非常符合我们的目标：<strong>用短期数据，来预测用户的长期价值</strong>。</p>
+<p>数据集形成之后，你会发现用户的数量从原来的981个减少到了361个，这是因为在头三个月出现过消费行为的用户数就只有361个。所以，我们后续基于这361个用户的数据来开展机器学习建模就可以了。</p>
+<ol>
+<li><strong>创建特征集和标签集</strong></li>
+</ol>
+<p>刚刚我们把特征和标签整合在一起，是为了形成完整的数据集。不过，标签集和特征集要分别输入机器学习模型，所以要分别创建。</p>
+<p>我们先来构建特征集X：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nx">X</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">df_LTV</span><span class="p">.</span><span class="nx">drop</span><span class="p">([</span><span class="s1">&#39;用户码&#39;</span><span class="p">,</span><span class="s1">&#39;年度LTV&#39;</span><span class="p">],</span><span class="nx">axis</span><span class="o">=</span><span class="mf">1</span><span class="p">)</span><span class="w"> </span><span class="err">#</span><span class="nx">特征集</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nx">X</span><span class="p">.</span><span class="nx">head</span><span class="p">()</span><span class="w"> </span><span class="err">#</span><span class="nx">显示特征集</span>
+</code></pre></div>
+<p>在这段代码中，我们除了移除了LTV值之外，还移除了用户码字段。因为用户码对于回归模型的训练毫无意义，而且用户码也是数字，会对模型形成干扰。如果不移除的话，机器就会把它也视作一个变量，认为15291比15100大，这显然不合逻辑。<br />
+然后，我们再来构建标签集y。这里多说一句，在机器学习中，特征集的X大写，标签集的y小写，似乎是个惯例。这可能是因为通常情况下，X是一个向量，而y是一个数值。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nx">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">df_LTV</span><span class="p">[</span><span class="s1">&#39;年度LTV&#39;</span><span class="p">]</span><span class="w"> </span><span class="err">#</span><span class="nx">标签集</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nx">y</span><span class="p">.</span><span class="nx">head</span><span class="p">()</span><span class="w"> </span><span class="err">#</span><span class="nx">显示标签集</span>
+</code></pre></div>
+<p>构建好特征集和标签集后，我们就可以把它们拆分为训练集、验证集和测试集了。</p>
+<ol>
+<li><strong>拆分训练集、验证集和测试集</strong></li>
+</ol>
+<p>我们用scikit-learn工具包中的拆分工具train_test_split，进行拆分：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kr">from</span><span class="w"> </span><span class="nx">sklearn</span><span class="p">.</span><span class="nx">model_selection</span><span class="w"> </span><span class="k">import</span><span class="w"> </span><span class="nx">train_test_split</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="err">#</span><span class="w"> </span><span class="nx">先拆分训练集和其它集</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="nx">X_train</span><span class="p">,</span><span class="w"> </span><span class="nx">X_rem</span><span class="p">,</span><span class="w"> </span><span class="nx">y_train</span><span class="p">,</span><span class="w"> </span><span class="nx">y_rem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">train_test_split</span><span class="p">(</span><span class="nx">X</span><span class="p">,</span><span class="nx">y</span><span class="p">,</span><span class="w"> </span><span class="nx">train_size</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span><span class="nx">random_state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">36</span><span class="p">)</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="err">#</span><span class="w"> </span><span class="nx">再把其它集拆分成验证集和测试集</span><span class="w"> </span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="nx">X_valid</span><span class="p">,</span><span class="w"> </span><span class="nx">X_test</span><span class="p">,</span><span class="w"> </span><span class="nx">y_valid</span><span class="p">,</span><span class="w"> </span><span class="nx">y_test</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">train_test_split</span><span class="p">(</span><span class="nx">X_rem</span><span class="p">,</span><span class="nx">y_rem</span><span class="p">,</span><span class="w"> </span><span class="nx">test_size</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span><span class="nx">random_state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">36</span><span class="p">)</span>
+</code></pre></div>
+<p>请你注意，这里我做了两重的拆分，至于为什么要这样做，你可以回顾下<a href="https://time.geekbang.org/column/article/414504">第三讲</a>的内容。</p>
+<p>最后，我们得到的数据集X_train、X_valid和X_test的字段，与X中的字段还是一样，y_train、y_valid、y_test中的字段和y的也一样，只是它们的行数发生了改变：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/15/23/bb/a1a61f7c.jpg" width="30px"><span>GAC·DU</span> 👍（4） 💬（1）<div>真值: 14389.900000000007
+<li>X_train是288行×4列；</li>
+<li>y_train是288行×1列；</li>
+<li>X_valid是73行×4列；</li>
+<li>y_valid是73行×1列；</li>
+<li>X_test是73行×4列；</li>
+<li>y_test是73行×1列。</li>
+</ul>
+<p>好，到这里，我们的数据准备工作就全部完成啦。在这个项目中，这部分工作几乎占了大头，好在我们已经攻克，下面我们一起进入选算法并创建模型的环节。</p>
+<h1 id="_3">选择算法创建模型</h1>
+<p>因为这是一个回归问题，所以，在模型类型的选择方面，我们肯定使用的是回归算法。这是基于问题本身的性质而确定的，毋庸置疑。</p>
+<p>不过我们说过，在机器学习中，能够解决回归问题的常见算法有不少：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/84/34/844348a55550d08968ffb1d0dcaf3a34.jpg?wh=2248x1265" /></p>
+<p>一般来说，我们在解决具体问题的时候，会选择多种算法进行建模，相互比较之后，再确定比较适合的模型。由于篇幅所限，我们不会使用上述全部算法建立模型，这里我会带你比较3种算法的效率：最基本的线性回归模型、决策树模型和随机森林模型（你可以自己试着使用其它的算法创建别的模型）。</p>
+<p>线性回归我们已经用过了，它是通过梯度下降找到最优的权重和模型偏置的最基本的回归算法。这里，我会用它做为一个基准模型，把其它模型的结果与其相比较，来确定优劣。</p>
+<p>而决策树算法，简单地说是从样本数据的特征属性中，通过学习简单的决策规则，也就是我们耳熟能详的IF ELSE规则，来预测目标变量的值。这个算法的核心是划分点的选择和输出值的确定。</p>
+<p>下面，我给你画了一张图，来帮你理解决策树是怎么进行判断预测的。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/be/db/be2728ac9936a4c2dd1692c227dfffdb.jpg?wh=2248x2885" /></p>
+<p>你可以看到，这种算法是根据两个特征$x_{1}$和$x_{2}$的值，以及标签y的取值，来对二维平面上的区域进行精准分割，以确定从特征到标签的映射规则。根据树的深度和分叉时所选择的特征的不同，我们可以训练出很多棵不一样的树来。</p>
+<p>而随机森林呢，就是由多棵决策树构成的集成学习算法。它既能用于分类问题，也能用于回归问题。而且无论是解决哪类问题，它都是相对优秀的算法。在训练模型的过程中，随机森林会构建多个决策树，如果解决的是分类问题，那么它的输出类别是由个别树输出的类别的众数而定；如果解决的是回归问题，那么它会对多棵树的预测结果进行平均。</p>
+<p>关于集成学习，我后面还会单独拿出来给你讲解。现在你只需要知道，随机森林纠正了决策树过度拟合其训练集的问题，在很多情况下它都能有不错的表现。这里的“过拟合”，其实就是说模型对训练集的模拟过头了，反而不太适合验证集和测试集。</p>
+<p>下面我们导入并创建线性回归模型、决策树模型和随机森林模型。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kr">from</span><span class="w"> </span><span class="nx">sklearn</span><span class="p">.</span><span class="nx">linear_model</span><span class="w"> </span><span class="k">import</span><span class="w"> </span><span class="nx">LinearRegression</span><span class="w"> </span><span class="err">#</span><span class="nx">导入线性回归模型</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="kr">from</span><span class="w"> </span><span class="nx">sklearn</span><span class="p">.</span><span class="nx">tree</span><span class="w"> </span><span class="k">import</span><span class="w"> </span><span class="nx">DecisionTreeRegressor</span><span class="w"> </span><span class="err">#</span><span class="nx">导入决策树回归模型</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="kr">from</span><span class="w"> </span><span class="nx">sklearn</span><span class="p">.</span><span class="nx">ensemble</span><span class="w"> </span><span class="k">import</span><span class="w"> </span><span class="nx">RandomForestRegressor</span><span class="w"> </span><span class="err">#</span><span class="nx">导入随机森林回归模型</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="nx">model_lr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">LinearRegression</span><span class="p">()</span><span class="w"> </span><span class="err">#</span><span class="nx">创建线性回归模型</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="nx">model_dtr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">DecisionTreeRegressor</span><span class="p">()</span><span class="w"> </span><span class="err">#</span><span class="nx">创建决策树回归模型</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="nx">model_rfr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">RandomForestRegressor</span><span class="p">()</span><span class="w"> </span><span class="err">#</span><span class="nx">创建随机森林回归模型</span>
+</code></pre></div>
+<p>在代码中，有几个缩写我解释一下：</p>
+<ul>
+<li>lr是Linear Regression（线性回归）的缩写；</li>
+<li>dtr是Decision Tree Regresssor（决策树回归）的缩写；</li>
+<li>rfr是Random Forest Regressor（随机森林回归）的缩写。</li>
+</ul>
+<p>对于决策树和随机森林算法来说，它们既有回归算法（Regressor），也有分类算法（Classifer）。以后，我们用到分类模型的时候，我就会把决策树分类模型命名为model_dtc，把随机森林分类模型命名为model_rfc，其中的“c”就代表Classifer。</p>
+<p>创建好模型之后，我们就可以开始训练机器了。</p>
+<h1 id="_4">训练模型</h1>
+<p>我们直接对线性回归、决策树模型和随机森林模型进行训练、拟合：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nx">model_lr</span><span class="p">.</span><span class="nx">fit</span><span class="p">(</span><span class="nx">X_train</span><span class="p">,</span><span class="w"> </span><span class="nx">y_train</span><span class="p">)</span><span class="w"> </span><span class="err">#</span><span class="nx">拟合线性回归模型</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nx">model_dtr</span><span class="p">.</span><span class="nx">fit</span><span class="p">(</span><span class="nx">X_train</span><span class="p">,</span><span class="w"> </span><span class="nx">y_train</span><span class="p">)</span><span class="w"> </span><span class="err">#</span><span class="nx">拟合决策树模型</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="nx">model_rfr</span><span class="p">.</span><span class="nx">fit</span><span class="p">(</span><span class="nx">X_train</span><span class="p">,</span><span class="w"> </span><span class="nx">y_train</span><span class="p">)</span><span class="w"> </span><span class="err">#</span><span class="nx">拟合随机森林模型</span>
+</code></pre></div>
+<p>你不要小看上面这几个简单的<strong>fit语句，这是模型进行自我学习的关键过程</strong>。我们前面说了，在线性回归算法中，机器是通过梯度下降，逐步减少数据集拟合过程中的损失，让线性函数对特征到标签的模拟越来越贴切。而在决策树模型中，算法是通过根据特征值选择划分点来确定输出值的；在随机森林算法中，机器则是生成多棵决策树，并通过Bagging的方法得到最终的预测模型。</p>
+<p>不过，拟合之后的模型是否有效，我们还无法确定，需要进行验证集上的预测并验证预测结果。</p>
+<h1 id="_5">评估模型</h1>
+<p>下面我们用这三种模型对验证集分别进行预测。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nx">y_valid_preds_lr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">model_lr</span><span class="p">.</span><span class="nx">predict</span><span class="p">(</span><span class="nx">X_valid</span><span class="p">)</span><span class="w"> </span><span class="err">#</span><span class="nx">用线性回归模型预测验证集</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="nx">y_valid_preds_dtr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">model_dtr</span><span class="p">.</span><span class="nx">predict</span><span class="p">(</span><span class="nx">X_valid</span><span class="p">)</span><span class="w"> </span><span class="err">#</span><span class="nx">用决策树模型预测验证集</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="nx">y_valid_preds_rfr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">model_rfr</span><span class="p">.</span><span class="nx">predict</span><span class="p">(</span><span class="nx">X_valid</span><span class="p">)</span><span class="w"> </span><span class="err">#</span><span class="nx">用随机森林模型预测验证集</span>
+</code></pre></div>
+<p>为了看看这些模型预测的LTV值是否大体上靠谱，我们先来随机选择其中一行数据，看看模型的预测结果。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nx">X_valid</span><span class="p">.</span><span class="nx">iloc</span><span class="p">[</span><span class="mf">2</span><span class="p">]</span><span class="w"> </span><span class="err">#</span><span class="nx">随便选择一个数据</span>
+</code></pre></div>
+<p>这行数据的特征如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="nx">R值</span><span class="w">       </span><span class="mf">1.00</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="nx">F值</span><span class="w">     </span><span class="mf">153.00</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="nx">M值</span><span class="w">    </span><span class="mf">1413.83</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="nx">Name</span><span class="o">:</span><span class="w"> </span><span class="kt">163</span><span class="p">,</span><span class="w"> </span><span class="nx">dtype</span><span class="o">:</span><span class="w"> </span><span class="kt">float64</span>
+</code></pre></div>
+<p>然后，我们再显示一下三个模型对这一行数据所预测的LTV值，以及该用户的LTV真值。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nx">print</span><span class="p">(</span><span class="s1">&#39;真值:&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">y_valid</span><span class="p">.</span><span class="nx">iloc</span><span class="p">[</span><span class="mf">2</span><span class="p">])</span><span class="w">  </span><span class="err">#</span><span class="nx">真值</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="nx">print</span><span class="p">(</span><span class="s1">&#39;线性回归预测值:&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">y_valid_preds_lr</span><span class="p">[</span><span class="mf">2</span><span class="p">])</span><span class="w">  </span><span class="err">#</span><span class="nx">线性回归模型预测值</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="nx">print</span><span class="p">(</span><span class="s1">&#39;决策树预测值:&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">y_valid_preds_dtr</span><span class="p">[</span><span class="mf">2</span><span class="p">])</span><span class="w">  </span><span class="err">#</span><span class="nx">决策树模型预测值</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="nx">print</span><span class="p">(</span><span class="s1">&#39;随机森林预测值:&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">y_valid_preds_rfr</span><span class="p">[</span><span class="mf">2</span><span class="p">])</span><span class="w"> </span><span class="err">#</span><span class="nx">随机森林模型预测值</span>
+</code></pre></div>
+<p>输出：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nx">真值</span><span class="o">:</span><span class="w"> </span><span class="kt">4391.9399999999905</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="nx">线性回归预测值</span><span class="o">:</span><span class="w"> </span><span class="kt">7549.22894678151</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="nx">决策树预测值</span><span class="o">:</span><span class="w"> </span><span class="kt">4243.209999999997</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="nx">随机森林预测值</span><span class="o">:</span><span class="w"> </span><span class="kt">4704.671799999999</span>
+</code></pre></div>
+<p>可以看到，相对而言，对这个数据点来说，决策树和随机森林所预测的y值更接近真值。</p>
+<p>当然，一个数据点接近真值完全不能说明问题，我们还是要用$R^2$、MSE等评估指标在验证集上做整体的评估，比较模型的优劣。</p>
+<p>下面我们用$R^2$指标，来评估模型的预测准确率：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kr">from</span><span class="w"> </span><span class="nx">sklearn</span><span class="p">.</span><span class="nx">metrics</span><span class="w"> </span><span class="k">import</span><span class="w"> </span><span class="nx">r2_score</span><span class="p">,</span><span class="w">   </span><span class="nx">median_absolute_error</span><span class="w"> </span><span class="err">#</span><span class="nx">导入Sklearn评估模块</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="nx">print</span><span class="p">(</span><span class="s1">&#39;验证集上的R平方分数-线性回归: %0.4f&#39;</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="nx">r2_score</span><span class="p">(</span><span class="nx">y_valid</span><span class="p">,</span><span class="w"> </span><span class="nx">model_lr</span><span class="p">.</span><span class="nx">predict</span><span class="p">(</span><span class="nx">X_valid</span><span class="p">)))</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="nx">print</span><span class="p">(</span><span class="s1">&#39;验证集上的R平方分数-决策树: %0.4f&#39;</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="nx">r2_score</span><span class="p">(</span><span class="nx">y_valid</span><span class="p">,</span><span class="w"> </span><span class="nx">model_dtr</span><span class="p">.</span><span class="nx">predict</span><span class="p">(</span><span class="nx">X_valid</span><span class="p">)))</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="nx">print</span><span class="p">(</span><span class="s1">&#39;验证集上的R平方分数-随机森林: %0.4f&#39;</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="nx">r2_score</span><span class="p">(</span><span class="nx">y_valid</span><span class="p">,</span><span class="w"> </span><span class="nx">model_rfr</span><span class="p">.</span><span class="nx">predict</span><span class="p">(</span><span class="nx">X_valid</span><span class="p">)))</span>
+</code></pre></div>
+<p>输出如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>验证集上的R平方分数-线性回归: 0.4333
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>验证集上的R平方分数-决策树: 0.3093
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>验证集上的R平方分数-随机森林: 0.4677
+</code></pre></div>
+<p>我们把这个结果用图表来显示一下，会更加直观：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/47/69/477cb3f996975aa3475c6397bab40569.png?wh=384x267" /></p>
+<p>我们可以看到，在都没有经过任何参数设定的情况下，和线性回归、决策树相比，随机森林算法显示出了更好的预测能力。</p>
+<p>最后，我们在随机森林上面运行测试集，并绘制出预测值和真值之间的散点图：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>y_test_preds_rfr = model_rfr.predict(X_test) #用模型预随机森林模型预测验证集
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>plt.scatter(y_test, y_test_preds) #预测值和实际值的散点图
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>plt.plot([0, max(y_test)], [0, max(y_test_preds)],   color=&#39;gray&#39;, lw=1, linestyle=&#39;--&#39;) #绘图
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>plt.xlabel(&#39;实际值&#39;) #X轴
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>plt.ylabel(&#39;预测值&#39;) #Y轴
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>plt.title(&#39;实际值 vs. 预测值&#39;) #标题
+</code></pre></div>
+<p>输出如下：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ff/96/ffa9daf7d1b7c0f9697c08bb6a1f3696.png?wh=1000x699" /></p>
+<p>我们希望实际值和预测值基本上是相等的（预测值越接近真值，则误差越小）。举例来说，图中一个全年消费12000元的用户，所预测出来的LTV值，也在12000元左右。这样的情况越多，就表明模型越准确。</p>
+<p>现在有了这个机器学习模型，我们再回过头看一下，在这一讲的开始，老板提出的问题：如何判断获客成本是否过高？根据模型预测结果，我们可以进一步观察处于R、F、M各个层级中的用户，看他们的LTV值大概是多少，这样就不难得知每个层级的获客成本应该控制在什么范围了。</p>
+<p>对于高RFM价值的客户来说，我们可以适当多投入获客成本；而对于低RFM价值的客户，我们就要严格控制获客成本了。所以，根据这个模型，我们可以得出一个<strong>获客成本的指导区间</strong>。而且，通过该模型，我们<strong>还可以便捷地计算出每个新用户的LTV值。</strong></p>
+<h1 id="_6">总结一下</h1>
+<p>好，今天这一讲到这里就结束了，我们来回顾一下你在这节课中学到了什么。</p>
+<p>在这一讲中，我们应用机器学习的实战5步，解决了一个回归问题。在这一过程中，最重要的部分是构建特征，也就是把原始数据，转化成R值、F值和M值，来作为新特征进行机器学习。而<strong>这个过程本身就是一个很有意思的特征工程</strong>。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/77/9f/7780d2ec6af77dd8f482d9551e65d49f.png?wh=616x424" /></p>
+<p>在模型选择的方面，我们使用普通的线性回归算法作为基准模型。然后，再拿其它的算法（这里我们选择的是决策树和随机森林）与之比较，从而找出更优的算法。请你注意，这里所谓的更优，仅针对于当前的场景而言，并不是说随机森林算法就一定优于线性回归算法。</p>
+<p>当然，一般来说，随机森林简单且容易解释。如果对于任何一个特定问题，你能找到比随机森林还好的算法，那么就可以说是相当成功了。</p>
+<p>在这次实战中，我们只是简单地调用模型，还并没有进行任何的参数优化步骤。以后，我们还会对随机森林算法做调优的工作。</p>
+<h1 id="_7">思考题</h1>
+<p>这节课就到这里了，最后，我给你留3个思考题：</p>
+<ol>
+<li>在这次实战中，我们放弃了用户所在的“城市”这个信息，请你使用Pandas中的get_dummies这个工具，来添加“城市”相关的哑变量，然后添加到特征集中，输入模型。</li>
+</ol>
+<p><strong>提示</strong>：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="nx">city</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">pd</span><span class="p">.</span><span class="nx">get_dummies</span><span class="p">(</span><span class="nx">df_sales</span><span class="p">.</span><span class="nx">城市</span><span class="p">,</span><span class="w"> </span><span class="nx">prefix</span><span class="o">=</span><span class="s1">&#39;城市&#39;</span><span class="p">)</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="nx">df_sales</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">pd</span><span class="p">.</span><span class="nx">concat</span><span class="p">([</span><span class="nx">df_sales</span><span class="p">,</span><span class="w"> </span><span class="nx">city</span><span class="p">],</span><span class="w"> </span><span class="nx">axis</span><span class="o">=</span><span class="mf">1</span><span class="p">)</span>
+</code></pre></div>
+<ol>
+<li>其实，SVM和朴素贝叶斯也可以解决回归问题，请你使用这两种算法（或其它回归算法）来尝试解决这个问题，然后比较各个算法的优劣。</li>
+</ol>
+<p><strong>提示</strong>：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>from sklearn.svm import SVR
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>from sklearn.linear_model import BayesianRidge
+</code></pre></div>
+<ol>
+<li>在验证时，我选择了$R^2$作为回归问题的评估指标，你能否尝试使用均方误差、中值绝对误差等评估指标，来验证我们的模型呢？</li>
+</ol>
+<p><strong>提示</strong>：除了$R^2$是越大越好之外，其它评估指标都是越小越好。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>from sklearn.metrics import mean_squared_error
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>from sklearn.metrics import median_absolute_error
+</code></pre></div>
+<p>欢迎你在留言区分享你的想法和收获，我在留言区等你。如果这节课帮到了你，也欢迎你把这节课分享给自己的朋友。我们下一讲再见！</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/5a/fa/5af212b016be19f8742bafbdd35b26fa.jpg?wh=2284x1149" /></p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>GAC·DU</span> 👍（4） 💬（1）<div>真值: 14389.900000000007
 线性回归预测值: 150.00460000000007
 决策树预测值: 106.2
 随机森林预测值: 150.00460000000007
 验证集上的R平方分数-线性回归: 0.3002
 验证集上的R平方分数-决策树: 0.3391
 验证集上的R平方分数-随机森林: 0.3353
-老师，我复现了一下代码，但是真值和预测值偏差较大，对于这种问题，老师的解决问题思路是什么啊？</div>2021-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/66/8f/02be926d.jpg" width="30px"><span>在路上</span> 👍（1） 💬（1）<div>佳哥好，加上SVM和朴素贝叶斯算法之后R^2值为：
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>验证集上的R平方分数-线性回归: 0.4333
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>验证集上的R平方分数-决策树: 0.3286
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>验证集上的R平方分数-随机森林: 0.5130
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>验证集上的R平方分数-SVM: -0.1085
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>验证集上的R平方分数-朴素贝叶斯: 0.4417
+老师，我复现了一下代码，但是真值和预测值偏差较大，对于这种问题，老师的解决问题思路是什么啊？</div>2021-09-13</li><br/><li><span>在路上</span> 👍（1） 💬（1）<div>佳哥好，加上SVM和朴素贝叶斯算法之后R^2值为：
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>验证集上的R平方分数-线性回归: 0.4333
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>验证集上的R平方分数-决策树: 0.3286
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>验证集上的R平方分数-随机森林: 0.5130
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>验证集上的R平方分数-SVM: -0.1085
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>验证集上的R平方分数-朴素贝叶斯: 0.4417
 </code></pre></div>
 可以看到朴素贝叶斯算法的效果也不错，SVM算法的效果则很差。写Demo的时候发现sklearn库非常强大，测试不同算法的效果非常容易。
 
-回归问题的评估指标有很多种，R^2、均方误差、中值绝对误差有什么区别呢？首先是取标准值，是数据集的中值，还是数据集加总后的平均值。然后是误差的计算，距离标准值越大，结果以什么样的形式放大，是差值的绝对值，还是差值的平方，平方意味结果被显著的放大，差值越大的数据影响越大。最后是消除原始数据离散的影响，这体现在R^2计算公式的分母中，原始数据离散程度越高，很可能会导致预测结果的波动越大。</div>2021-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7e/80/be05419a.jpg" width="30px"><span>李冀</span> 👍（4） 💬（1）<div>“通过不同RFM层级就可以确定不同的获客成本”。但花钱引流时不知道RFM值啊，再建立一个渠道、城市到RFM的模型？感觉初期RFM到LTV的关系对促活更有指导意义，而不是拉新</div>2021-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2a/29/38/9c0edffc.jpg" width="30px"><span>For Uuuuu</span> 👍（3） 💬（2）<div>有交流群吗？</div>2021-09-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqGaJsoQicG7Bp8cUjUkevAp5Sm8ZXy5vl5TVk4CDrq5UAoI9VicK5wwjCdk66FVRbGziaWXHgO52l1Q/132" width="30px"><span>Geek_06d12d</span> 👍（4） 💬（1）<div>预测值和老师贴的相差较大，看了下老师在github上的代码，发现再清洗的时候没有把数量小于0的给清洗掉。</div>2022-10-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2c/d6/f8/cb21b43c.jpg" width="30px"><span>松饼Muffin</span> 👍（3） 💬（3）<div>老师， 想到一个问题， 客户的第一次购买时间（即获客时间）并不都 是从2020年6月1号开始， 所以要选取特征值（客户前三个月的ＲＦＭ）是不是以该客户第一次购买后的三个月内的数值更公平些？同理，　标签值（客户１２个月的购买金额）是不是也用自从该客户第一次购买以来的１２个月内的总购买金额为妥？</div>2022-03-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/5a/c1/6df65e0a.jpg" width="30px"><span>190coder</span> 👍（2） 💬（1）<div>rfm值高会不会有边际效益递减的问题，应该多花钱给Rfm低的用户，弹性更大</div>2023-01-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/e9/c5/7ecb497f.jpg" width="30px"><span>青松</span> 👍（2） 💬（1）<div>这个课程有jupyter notebook格式的文档吗？想一边教学一边实践</div>2021-09-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/e2/83/e2888084.jpg" width="30px"><span>谦</span> 👍（2） 💬（1）<div>sklearn很好用，不过在实际项目中我经常需要把训练好的模型移植到其他平台上，例如用c语言重新实现一次预测模型，一般来说svm移植比较简单，找到coef_和intercept_，复制一下就可以。决策树相对麻烦一点，要递归遍历整棵树，输出特征和阈值。随机森林或者使用决策树的adaboost就要遍历很多棵树。想请问佳哥在预测模型的移植和应用上有没有一些经验可以分享一下？谢谢😊</div>2021-09-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d5/63/6d3bbc08.jpg" width="30px"><span>陶狗</span> 👍（1） 💬（1）<div>df_usr_latest = df_sales_3m.sort_values(by=[&#39;用户码&#39;, &#39;消费日期&#39;], ascending=[True, False]).drop_duplicates(subset=&#39;用户码&#39;, keep=&#39;first&#39;)</div>2024-03-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/9d/2a/3e57b54a.jpg" width="30px"><span>地平线</span> 👍（1） 💬（1）<div>验证集上的均方误差-线性回归: 10657316.3310
+回归问题的评估指标有很多种，R^2、均方误差、中值绝对误差有什么区别呢？首先是取标准值，是数据集的中值，还是数据集加总后的平均值。然后是误差的计算，距离标准值越大，结果以什么样的形式放大，是差值的绝对值，还是差值的平方，平方意味结果被显著的放大，差值越大的数据影响越大。最后是消除原始数据离散的影响，这体现在R^2计算公式的分母中，原始数据离散程度越高，很可能会导致预测结果的波动越大。</div>2021-09-13</li><br/><li><span>李冀</span> 👍（4） 💬（1）<div>“通过不同RFM层级就可以确定不同的获客成本”。但花钱引流时不知道RFM值啊，再建立一个渠道、城市到RFM的模型？感觉初期RFM到LTV的关系对促活更有指导意义，而不是拉新</div>2021-09-13</li><br/><li><span>For Uuuuu</span> 👍（3） 💬（2）<div>有交流群吗？</div>2021-09-13</li><br/><li><span>Geek_06d12d</span> 👍（4） 💬（1）<div>预测值和老师贴的相差较大，看了下老师在github上的代码，发现再清洗的时候没有把数量小于0的给清洗掉。</div>2022-10-07</li><br/><li><span>松饼Muffin</span> 👍（3） 💬（3）<div>老师， 想到一个问题， 客户的第一次购买时间（即获客时间）并不都 是从2020年6月1号开始， 所以要选取特征值（客户前三个月的ＲＦＭ）是不是以该客户第一次购买后的三个月内的数值更公平些？同理，　标签值（客户１２个月的购买金额）是不是也用自从该客户第一次购买以来的１２个月内的总购买金额为妥？</div>2022-03-16</li><br/><li><span>190coder</span> 👍（2） 💬（1）<div>rfm值高会不会有边际效益递减的问题，应该多花钱给Rfm低的用户，弹性更大</div>2023-01-11</li><br/><li><span>青松</span> 👍（2） 💬（1）<div>这个课程有jupyter notebook格式的文档吗？想一边教学一边实践</div>2021-09-16</li><br/><li><span>谦</span> 👍（2） 💬（1）<div>sklearn很好用，不过在实际项目中我经常需要把训练好的模型移植到其他平台上，例如用c语言重新实现一次预测模型，一般来说svm移植比较简单，找到coef_和intercept_，复制一下就可以。决策树相对麻烦一点，要递归遍历整棵树，输出特征和阈值。随机森林或者使用决策树的adaboost就要遍历很多棵树。想请问佳哥在预测模型的移植和应用上有没有一些经验可以分享一下？谢谢😊</div>2021-09-14</li><br/><li><span>陶狗</span> 👍（1） 💬（1）<div>df_usr_latest = df_sales_3m.sort_values(by=[&#39;用户码&#39;, &#39;消费日期&#39;], ascending=[True, False]).drop_duplicates(subset=&#39;用户码&#39;, keep=&#39;first&#39;)</div>2024-03-28</li><br/><li><span>地平线</span> 👍（1） 💬（1）<div>验证集上的均方误差-线性回归: 10657316.3310
 验证集上的均方误差-决策树: 11584241.1637
 验证集上的均方误差-随机森林: 10526728.9502
 验证集上的均方误差-支持向量机: 17952311.0810
@@ -5834,10 +6078,10 @@
 验证集上的中值绝对误差-决策树: 798.1450
 验证集上的中值绝对误差-随机森林: 868.3853
 验证集上的中值绝对误差-支持向量机: 1002.8237
-验证集上的中值绝对误差-贝叶斯: 718.2908</div>2023-08-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/18/bb/9299fab1.jpg" width="30px"><span>Null</span> 👍（0） 💬（1）<div>老师非常感谢这么优秀的课程，有几处建议和请求了。
+验证集上的中值绝对误差-贝叶斯: 718.2908</div>2023-08-11</li><br/><li><span>Null</span> 👍（0） 💬（1）<div>老师非常感谢这么优秀的课程，有几处建议和请求了。
 个人觉得用模型去score，print(&#39;验证集上的R平方分数-线性回归: %0.4f&#39; % model_lr.score(x_valid, y_valid))，学员更容易记住和理解。不用去记一个函数。延续了model的fit，predict，score一惯性。
 
-另外，数据分为  train, valid, test。感觉是不是有些多余，感觉valid也在做的是test的事呢。只分为train和test就好了吧。文章最后的真实值和预测值用valid数据也是没问题的。</div>2022-09-19</li><br/><li><img src="" width="30px"><span>Amaplan</span> 👍（0） 💬（1）<div>问题二代码:
+另外，数据分为  train, valid, test。感觉是不是有些多余，感觉valid也在做的是test的事呢。只分为train和test就好了吧。文章最后的真实值和预测值用valid数据也是没问题的。</div>2022-09-19</li><br/><li><span>Amaplan</span> 👍（0） 💬（1）<div>问题二代码:
 from sklearn.metrics import explained_variance_score,\
 mean_absolute_error,mean_squared_error,median_absolute_error,r2_score
 print(&#39;数据梯度提升回归树模型的平均绝对误差为：&#39;,
@@ -5849,7 +6093,7 @@ print(&#39;数据梯度提升回归树模型的中值绝对误差为：&#39;,
 print(&#39;数据梯度提升回归树模型的可解释方差值为：&#39;,
      explained_variance_score(y_valid,model_br.predict(X2_valid)))
 print(&#39;数据梯度提升回归树模型的R方值为：&#39;,
-     r2_score(y_valid,model_br.predict(X2_valid)))</div>2022-04-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/66/11/f7408e3e.jpg" width="30px"><span>云师兄</span> 👍（0） 💬（1）<div>验证集上的R平方分数-线性回归: 0.4333
+     r2_score(y_valid,model_br.predict(X2_valid)))</div>2022-04-29</li><br/><li><span>云师兄</span> 👍（0） 💬（1）<div>验证集上的R平方分数-线性回归: 0.4333
 验证集上的R平方分数-决策树: 0.0872
 验证集上的R平方分数-随机森林: 0.5570
 验证集上的R平方分数-svm: -0.1085
@@ -5863,61 +6107,8 @@ print(&#39;数据梯度提升回归树模型的R方值为：&#39;,
 验证集上的中值绝对误差分数-决策树: 1137.9000
 验证集上的中值绝对误差分数-随机森林: 637.8602
 验证集上的中值绝对误差分数-svm: 903.3303
-验证集上的中值绝对误差分数-朴素贝叶斯: 763.8333</div>2022-04-15</li><br/><li><img src="" width="30px"><span>trust</span> 👍（0） 💬（2）<div>老师，前三个月付费是0的用户也是需要分摊成本的不，为啥要把这部分人去掉呢，这样会不会让得出来的投放成本变大呢？
-第二个问题是rfm三个特征还是都需要做共线性判断哒</div>2021-12-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d9/bc/a2803bb7.jpg" width="30px"><span>鼎</span> 👍（0） 💬（3）<div>佳哥好，我将城市作为自变量，引入 city = pd.get_dummies(df_sales.城市, prefix=&#39;城市&#39;)
-结果显示R2数基本为1，基本上完全预测正确，但应该是不太可能的，不知道是哪里出了问题？
-
-“验证集上的R平方分数-线性回归: 0.9102
-验证集上的R平方分数-决策树: 1.0000
-验证集上的R平方分数-随机森林: 1.0000“</div>2021-11-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/60/9d/574a9fa0.jpg" width="30px"><span>曲**</span> 👍（0） 💬（1）<div>老师我看了楼上的留言，根据demo作出的偏差较大。想问一下，什么程度的方案才具有实际应用的价值？</div>2021-11-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2a/20/1c/de379ed1.jpg" width="30px"><span>shatu</span> 👍（0） 💬（2）<div>最后绘图随机森林（rfr）的预测结果为什么要用线性回归（lr）的模型？
-y_test_preds_rfr = model_lr.predict(X_test) #用模型预随机森林模型预测验证集</div>2021-10-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/99/87/5066026c.jpg" width="30px"><span>dao</span> 👍（0） 💬（1）<div>老师，回归算法每次训练出来的结果是不同的？这是否是因为训练集分隔的随机性造成的？</div>2021-10-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/e9/c5/7ecb497f.jpg" width="30px"><span>青松</span> 👍（0） 💬（1）<div>原文中：
-X_train 是 288 行×4 列；
-y_train 是 288 行×1 列；
-X_valid 是 73 行×4 列；
-y_valid 是 73 行×1 列；
-X_test 是 73 行×4 列；
-y_test 是 73 行×1 列。
-这个有问题，一共361的样本，361*0.7=255（X_train），361*0.3*0.5= 54(或者55）（X_valid和X_test)</div>2021-09-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/e9/c5/7ecb497f.jpg" width="30px"><span>青松</span> 👍（0） 💬（1）<div>构建特征和标签 这节中我怎么得到370个数量集呢？？</div>2021-09-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d6/97/035a237b.jpg" width="30px"><span>Jove</span> 👍（0） 💬（4）<div>1、
-df_C_value = (df_sales.groupby(&#39;用户码&#39;)[[&#39;城市_上海&#39;,&#39;城市_北京&#39;, &#39;城市_广州&#39;, &#39;城市_成都&#39;, &#39;城市_深圳&#39;, &#39;城市_苏州&#39;, &#39;城市_西安&#39;]].sum() &gt; 1)
-df_LTV = pd.merge(df_LTV, df_C_value, on=&#39;用户码&#39;)
-
-2、以下为添加城市维度
-验证集上的R平方分数-线性回归: 0.5627
-验证集上的R平方分数-决策树: 0.8694
-验证集上的R平方分数-随机森林: 0.7361
-验证集上的R平方分数-SVM: -0.0777
-验证集上的R平方分数-朴素贝叶斯: 0.5872
-
-验证集上的中值绝对误差分数-线性回归: 741.8732
-验证集上的中值绝对误差分数-决策树: 758.0300
-验证集上的中值绝对误差分数-随机森林: 685.0138
-验证集上的中值绝对误差分数-SVM: 931.4885
-验证集上的中值绝对误差分数-朴素贝叶斯: 763.8012
-
-验证集上的均方差误差分数-线性回归: 22805033.1514
-验证集上的均方差误差分数-决策树: 6812124.3173
-验证集上的均方差误差分数-随机森林: 13761994.3462
-验证集上的均方差误差分数-SVM: 56202432.0296
-验证集上的均方差误差分数-朴素贝叶斯: 21528518.5128
-
-ps: 不同评估方法对结果不同，R平方：决策树；中值：SVM；均方差：SVM。
-疑问如何各个评估标准结果都不一样，该如何选择模型呢？</div>2021-09-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7e/80/be05419a.jpg" width="30px"><span>李冀</span> 👍（0） 💬（1）<div>哪些模型适合用哪种度量值，这个有最佳实践吗</div>2021-09-13</li><br/><li><img src="" width="30px"><span>Geek_9acbe3</span> 👍（0） 💬（3）<div>构建前三个月RFM值的时候报错，有小伙伴知道什么情况不？
-AttributeError                            Traceback (most recent call last)
-&lt;ipython-input-6-cdf870b083b2&gt; in &lt;module&gt;
-      9 df_F_value.columns = [&#39;用户码&#39;,&#39;F值&#39;] #设定字段名
-     10 df_user_LTV = pd.merge(df_user_LTV, df_F_value[[&#39;用户码&#39;,&#39;F值&#39;]], on=&#39;用户码&#39;) #把消费频率(F值)整合至df_user结构
----&gt; 11 df_M_value = df_sales_3m.groupby(&#39;用户码&#39;).总价.sum().reset_index() #计算每个用户三个月消费总额，构建df_M_value对象
-     12 df_M_value.columns = [&#39;用户码&#39;,&#39;M值&#39;] #设定字段名
-     13 df_user_LTV = pd.merge(df_user_LTV, df_M_value, on=&#39;用户码&#39;) #把消费总额整合至df_user结构
-
-C:\ProgramData\Anaconda3\lib\site-packages\pandas\core\groupby\groupby.py in __getattr__(self, attr)
-    750             return self[attr]
-    751 
---&gt; 752         raise AttributeError(
-    753             f&quot;&#39;{type(self).__name__}&#39; object has no attribute &#39;{attr}&#39;&quot;
-    754         )
-
-AttributeError: &#39;DataFrameGroupBy&#39; object has no attribute &#39;总价&#39;</div>2022-02-09</li><br/>
+验证集上的中值绝对误差分数-朴素贝叶斯: 763.8333</div>2022-04-15</li><br/><li><span>trust</span> 👍（0） 💬（2）<div>老师，前三个月付费是0的用户也是需要分摊成本的不，为啥要把这部分人去掉呢，这样会不会让得出来的投放成本变大呢？
+第二个问题是rfm三个特征还是都需要做共线性判断哒</div>2021-12-28</li><br/>
 </ul>
 
 

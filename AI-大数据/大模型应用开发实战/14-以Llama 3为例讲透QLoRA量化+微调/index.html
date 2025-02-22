@@ -1676,6 +1676,8 @@
       
         
       
+        
+      
     
     
       
@@ -3297,6 +3299,51 @@
   <a href="#llama-3" class="md-nav__link">
     <span class="md-ellipsis">
       Llama 3 模型介绍
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lora" class="md-nav__link">
+    <span class="md-ellipsis">
+      LoRA 原理解析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lora-qlora" class="md-nav__link">
+    <span class="md-ellipsis">
+      从 LoRA 到 QLoRA
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#peft-qlora" class="md-nav__link">
+    <span class="md-ellipsis">
+      用 PEFT 做 QLoRA 微调
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
     </span>
   </a>
   
@@ -5846,6 +5893,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#lora" class="md-nav__link">
+    <span class="md-ellipsis">
+      LoRA 原理解析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lora-qlora" class="md-nav__link">
+    <span class="md-ellipsis">
+      从 LoRA 到 QLoRA
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#peft-qlora" class="md-nav__link">
+    <span class="md-ellipsis">
+      用 PEFT 做 QLoRA 微调
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5884,6 +5976,300 @@
 <li>Llama 3-8B：具有非常好的性价比，性能在同级别的模型中很突出。测试显示它在问答、摘要和指令执行等任务中表现良好。</li>
 <li>Llama 3-70B：70B模型在更复杂的任务中表现卓越。在MMLU（一般知识）和HumanEval（编码）等基准测试中表现优异​。这个模型特别擅长理解和生成细致入微的回应，在某些任务中可以与GPT-4等更大模型竞争。</li>
 </ul>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/32/0b/32601bcf197371d2704c8d6e7e07320b.png?wh=846x617" title="Llama 3 是目前最强开源模型，性能堪比 GPT-4" /></p>
+<p>Meta在训练Llama时采用了一种创新的方式来收集和筛选训练数据。与常见的从网络上爬取文本的做法不同，Llama的训练数据主要来自于与人类助手的对话互动。这些数据被称为“自我指导”数据，因为它们是通过提示大语言模型自己生成指令并完成任务而得到的。这种数据不仅更贴近实际应用场景，而且还有助于减少有害内容的出现。</p>
+<p>上一课中说了，在开源Llama的同时，Meta也提供了一个指令微调的数据集，叫做Alpaca。这个数据集包含52K个由Llama自己生成的指令-输出对，涵盖了问答、总结、创意写作等多种任务类型。Alpaca很快引起了开发者社区的广泛兴趣，催生出Stanford Alpaca、Vicuna、Alpaca-LoRA等一系列基于Llama的微调项目。上节课我们已经看到的中医数据集，正是Alpaca的数据格式，因此我们的微调项目也可以称作Alpaca -中医项目。</p>
+<p>虽然Llama 3的体积巨大，要在完整模型上进行微调非常困难。但借助LoRA技术，我们仍然可以用比较实惠的算力来适配Llama。接下来，我们就来仔细看看LoRA是如何工作的。</p>
+<h2 id="lora">LoRA 原理解析</h2>
+<p>LoRA是Low-Rank Adaptation的缩写，顾名思义，它利用了低秩分解的数学技巧来近似大模型中的权重矩阵。</p>
+<p>对于Transformer类的语言模型来说，绝大部分的参数都集中在自注意力模块和前馈网络中。而LoRA的核心思想，就是用两个低秩矩阵（秩r远小于原矩阵的维度）的乘积，去近似原本的权重矩阵A。</p>
+<p>$$A’ = A + B*C$$</p>
+<p>这里：</p>
+<ul>
+<li>原始矩阵 <code>A</code> 是一个 <code>d x d</code> 的大矩阵。</li>
+<li>矩阵 <code>B</code> 是一个 <code>d x r</code> 的小矩阵。</li>
+<li>矩阵 <code>C</code> 是一个 <code>r x d</code> 的小矩阵，其中 <code>r</code> 远小于 <code>d</code>。</li>
+</ul>
+<p>也就是说，B和C是两个可学习的低秩矩阵（形状分别为(d, r)和(r, d)），d是原矩阵A的维度，r是我们设定的秩（通常取8、16、32等较小的值）。</p>
+<p>在训练阶段，我们冻结原模型的权重A，只更新LoRA引入的B、C矩阵。因为B、C的参数量很小（只有原矩阵的一小部分），所以训练开销大大降低。在推理阶段，我们可以把A’ 还原成一个完整矩阵，或者保留A、B、C的低秩形式，以节省内存。</p>
+<p>通过这样一个很简单的矩阵分解，我们实现了用极小的参数开销去适配一个超大模型。LoRA巧妙地保留了预训练权重中蕴含的通用语言知识，同时引入了专门用于特定任务的增量。</p>
+<h2 id="lora-qlora">从 LoRA 到 QLoRA</h2>
+<p>LoRA主要解决了参数效率问题，而没有考虑到模型的大小以及推理阶段的速度和显存占用。然而现代的大模型体积过于庞大，就拿我现在用的Nvidia A100 DGX服务器、24G内存显卡来说，如果使用LoRA进行微调Llama3-8B模型，肯定仍然会出现内存溢出问题。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/19/d0/191e206b0b46f34bdyy1eabf1028a1d0.png?wh=1047x373" title="A100 GPU 服务器直接 LoRA 微调 Llama3-8B 模型，内存溢出" /></p>
+<p>为了进一步压缩和加速微调后的LoRA模型，我们可以在此基础上应用量化（Quantization）技术。</p>
+<p>那么，什么是量化？其实很简单，量化是用较低的数值精度（如int8、int4）去表示原本的浮点数（float32），从而减小模型体积。量化可以在模型训练完成后进行（Post-training Quantization，PTQ），也可以在训练过程中同步进行（Quantization-aware training，QAT）。</p>
+<p>如何做到的？</p>
+<p>原始模型中的权重通常以float32格式存储，每个权重需要32位来表示。在量化过程中，这些浮点数被转换成整数，且使用的位数更少。例如：</p>
+<ul>
+<li>int8量化：每个权重用8位整数表示。这意味着每个权重的取值范围限制在-128到127之间（对于有符号整数）。</li>
+<li>int4量化：每个权重用4位整数表示，取值范围是-8到7之间（对于有符号整数）。</li>
+</ul>
+<p>这种转换通常涉及到缩放和偏移操作，以保持量化前后的值尽可能接近。例如，浮点数乘以一个缩放因子（scale factor）后四舍五入到最近的整数，然后可能还需要加上一个偏移量（zero point）以匹配整数表示的范围。</p>
+<p>通过使用更少的位来表示每个权重，量化可以显著减少模型的存储需求。以一个简单的例子说明。</p>
+<ul>
+<li>假设一个模型有1百万个权重（当然真实的大模型的参数数量远远超过1百万）。</li>
+<li>在float32格式中，这些权重总共需要32位 x 1,000,000 = 32,000,000位，即4MB的存储空间。</li>
+<li>如果使用int8量化，相同的权重只需要8位 x 1,000,000 = 8,000,000位，即1MB的存储空间。</li>
+<li>如果进一步使用int4量化，存储需求降至4位 x 1,000,000 = 4,000,000位，即0.5MB。</li>
+</ul>
+<p>目前，最为流行的量化技术就是LoRA和量化相结合的变体，叫做QLoRA。顾名思义，QLoRA就是用int4或者int8级别的低精度去表示LoRA中引入的增量矩阵。这种方法大幅降低了LoRA的存储和带宽需求，使其更容易在资源受限的环境中部署。</p>
+<p>在微调阶段，QLoRA采用了跟LoRA类似的思路。原模型权重依然保持不变，QLoRA引入两个增量矩阵（对应LoRA的B和C）。增量矩阵初始化为全零，在训练过程中逐步学习到用于适配目标任务的低秩增量。每一步更新完增量矩阵后，QLoRA就对其进行动态量化（Dynamic Quantization），将其转换为int4。</p>
+<p>在推理阶段，我们可以选择只保存量化后的增量矩阵，把原模型的编码和增量的编码分开。这样不仅减小了微调模型的体积，也避免了重复存储原模型的精度浪费问题。</p>
+<p>通过QLoRA，我们在模型性能几乎无损的情况下，可以把LoRA增量矩阵的体积压缩到原来的1/8（从float32到int4），模型完成了瘦身（注意，这个瘦身只是针对于LoRA增量矩阵而言，模型原始权重矩阵A精度不变），推理速度也因此提升。当然，这是以损失一部分精度为代价的。</p>
+<h2 id="peft-qlora">用 PEFT 做 QLoRA 微调</h2>
+<p>之前我们提到过，Hugging Face的PEFT是一个非常强大的参数高效微调框架，它集成了各种微调技术，包括Adapter、Prefix Tuning、P-Tuning、LoRA、QLoRA等。我们在上一讲中已经实现了通过LoRA对Qwen中文大模型进行微调。</p>
+<p>下面，我们继续保持程序的结构不变，只是在其中加入量化的部分。要在PEFT框架的基础上进一步进行模型量化，我们必须安装bitsandbytes包。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install bitsandbytes
+</code></pre></div>
+<p>bitsandbytes 是一个优化库，主要用于加速和优化大规模机器学习模型的训练和推理，在资源受限的环境下进行深度学习任务。 bitsandbytes 支持多种低精度格式（如int8、int4），以显著减少模型的内存占用和计算需求。</p>
+<p>具体来说，bitsandbytes 库通过以下方式实现 4 位（或8位）量化。</p>
+<ol>
+<li><strong>权重量化：</strong>将模型的权重（通常是 32 位浮点数）转换为 4 位（或8位）整数表示。</li>
+<li><strong>反量化：</strong>在进行计算时，将 4 位（或8位）整数权重转换回浮点数。</li>
+<li><strong>优化计算：</strong>bitsandbytes 库针对低精度计算进行了优化，以提高计算效率。</li>
+</ol>
+<p>接下来导入所需要的库，尤其是bitsandbytes。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>import json
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>import torch
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>from torch.utils.data import Dataset
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments, Trainer
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>from peft import get_peft_model, LoraConfig, TaskType
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>from transformers import BitsAndBytesConfig
+</code></pre></div>
+<p>之后，我们指定模型、设备，并加载分词器。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/17/64/179068c3cccde2ce5063b4b3b31db564.png?wh=1096x372" /></p>
+<p>Hugging Face 上面有两个8B版本的模型供选择。其中，后缀为Instruct的是Llama 3 指令微调模型，也就是针对对话用例进行了优化，在常见的行业基准上优于许多可用的开源聊天模型。我们可以选择这个模型。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a># 指定模型
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>MODEL = &#39;meta-llama/Meta-Llama-3-8B&#39;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a># 确定设备
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>device = torch.device(&quot;cuda&quot; if torch.cuda.is_available() else &quot;cpu&quot;)
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a># 加载分词器和模型
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>tokenizer = AutoTokenizer.from_pretrained(MODEL, trust_remote_code=True)
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>tokenizer.pad_token = tokenizer.eos_token
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a># 使用 BitsAndBytesConfig 进行量化配置
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>quantization_config = BitsAndBytesConfig(load_in_4bit=True,
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>                                         llm_int4_threshold=200.0)
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>model = AutoModelForCausalLM.from_pretrained(MODEL, 
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>                                             trust_remote_code=True,
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>                                             device_map=&quot;auto&quot;,
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>                                             torch_dtype=torch.float16)
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>model.is_parallelizable = True
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>model.model_parallel = True
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>model.supports_gradient_checkpointing = True
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>model.gradient_checkpointing_enable()
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>model.enable_input_require_grads()
+</code></pre></div>
+<p>代码中的 <code>tokenizer.pad_token = tokenizer.eos_token</code> 非常重要，因为如果不做这个步骤，我的Llama 3微调过程就会出错。这是因为 Llama 3 模型的 tokenizer 默认没有填充符（pad token），而 <code>Trainer</code> 在处理批次数据时需要使用填充符将不同长度的序列填充到相同的长度。</p>
+<p>在这里，<strong>量化是在加载模型时通过BitsAndBytesConfig实现的</strong>。作用是使用 bitsandbytes 库将模型的权重加载为 4 位精度（int4）的格式。4 位量化可以显著减少模型的内存占用，同时在一定程度上保持模型的性能。bitsandbytes 库还支持 8 位量化（<code>load_in_8bit=True</code>）选项。</p>
+<p>其中，参数llm_int4_threshold的作用是设置一个阈值，用于确定哪些权重应该被量化为 4 位。这个阈值的目的是保留重要的高精度权重，同时量化那些对模型性能影响较小的权重。这个参数一般是一个比较大的整数，比如200，<strong>也就是值高出200的参数被视为重要权重，就不量化了</strong>。</p>
+<p>下面，继续数据集的定义部分，代码保持不变。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a># 自定义数据集类
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>class CustomDataset(Dataset):
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    def __init__(self, data_path, tokenizer, device):
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        self.data = json.load(open(data_path))
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        self.tokenizer = tokenizer
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        self.device = device
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    def __len__(self):
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        return len(self.data)
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    def __getitem__(self, idx):
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        example = self.data[idx]
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>        formatted_example = self.format_example(example)
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>        inputs = self.tokenizer(
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>            formatted_example[&quot;context&quot;],
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>            max_length=512,
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>            truncation=True,
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>            padding=&#39;max_length&#39;,
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>            return_tensors=&quot;pt&quot;
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>        )
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>        labels = self.tokenizer(
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>            formatted_example[&quot;target&quot;],
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>            max_length=512,
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>            truncation=True,
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>            padding=&#39;max_length&#39;,
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>            return_tensors=&quot;pt&quot;
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>        )
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>        inputs[&#39;labels&#39;] = labels[&#39;input_ids&#39;]
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>        result = {key: val.squeeze().to(self.device) for key, val in inputs.items()}
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>        
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>        # 打印输入数据和形状
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>        print(f&quot;Sample {idx}:&quot;)
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>        print(f&quot;Context: {formatted_example[&#39;context&#39;]}&quot;)
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>        print(f&quot;Target: {formatted_example[&#39;target&#39;]}&quot;)
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>        print({key: val.shape for key, val in result.items()})
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>        
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>        return result
+<a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>
+<a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>    def format_example(self, example: dict) -&gt; dict:
+<a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>        context = f&quot;Instruction: {example[&#39;instruction&#39;]}\n&quot;
+<a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>        if example.get(&quot;input&quot;):
+<a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>            context += f&quot;Input: {example[&#39;input&#39;]}\n&quot;
+<a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a>        context += &quot;Answer: &quot;
+<a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a>        target = example[&quot;output&quot;]
+<a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a>        return {&quot;context&quot;: context, &quot;target&quot;: target}
+</code></pre></div>
+<p>定义训练参数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a># 定义训练参数
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>training_args = TrainingArguments(
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    output_dir=&#39;./results&#39;,
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    num_train_epochs=5,
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    per_device_train_batch_size=4,
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    gradient_accumulation_steps=8,
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    evaluation_strategy=&quot;no&quot;,
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    save_strategy=&quot;epoch&quot;,
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    learning_rate=5e-5,
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    fp16=True,
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    logging_dir=&#39;./logs&#39;,
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    dataloader_pin_memory=False,
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>)
+</code></pre></div>
+<p>TrainingArguments中的各个参数列表解释如下：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/5d/30/5d71fcd4db693a48682c4848786c5230.jpg?wh=2218x1362" /></p>
+<p>然后就是自定义Trainer，并开始训练。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a># 自定义 Trainer
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>class CustomTrainer(Trainer):
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    def compute_loss(self, model, inputs, return_outputs=False):
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        labels = inputs.pop(&quot;labels&quot;)
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        print({key: val.shape for key, val in inputs.items()})  # 打印输入形状
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        outputs = model(**inputs)
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        logits = outputs.logits
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        shift_logits = logits[..., :-1, :].contiguous()
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        shift_labels = labels[..., 1:].contiguous()
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        loss_fct = torch.nn.CrossEntropyLoss()
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>        return (loss, outputs) if return_outputs else loss
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a># 定义 Trainer
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>trainer = CustomTrainer(
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    model=model,
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    args=training_args,
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    train_dataset=train_dataset,
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>)
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a># 开始训练
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>trainer.train()
+</code></pre></div>
+<p>50轮的训练开始。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/6f/95/6fce95a6570bf4a50da4b3c106c5f295.png?wh=1935x244" /></p>
+<p>训练50轮结束后，可以保存模型。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a># 创建保存模型的目录
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>import os
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>save_directory = &#39;Llama3-8B-Chat&#39;
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>os.makedirs(save_directory, exist_ok=True)
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a># 保存训练后的模型和配置文件
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>model.save_pretrained(save_directory)
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>tokenizer.save_pretrained(save_directory)
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a># 将配置文件下载到模型目录中
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>config = model.config.to_dict()
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>config_path = os.path.join(save_directory, &#39;config.json&#39;)
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>with open(config_path, &#39;w&#39;) as f:
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    json.dump(config, f, ensure_ascii=False, indent=4)
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>print(f&quot;Model and configuration saved to {save_directory}&quot;)
+</code></pre></div>
+<p>微调后的模型保存好之后，可以通过下面的代码来进行Inference，测试一下微调后的效果。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/3c/1a/3cb32f974310e7f6df2e5yyaf26ea51a.png?wh=337x183" /></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a># 导入所需的库
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>from transformers import AutoModelForCausalLM, AutoTokenizer
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>import torch
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a># 定义模型ID，这里使用我们微调过的Llama3-8B-Chat模型
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>model_id = &quot;./Llama3-8B-Chat&quot;
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a># 确保模型在单个设备上加载（如果有GPU，则使用GPU）
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>device = torch.device(&quot;cuda&quot; if torch.cuda.is_available() else &quot;cpu&quot;)
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a># 加载分词器和模型
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>model = AutoModelForCausalLM.from_pretrained(
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    model_id,
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    device_map=None,  # 不使用自动设备映射
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    trust_remote_code=True  # 允许加载远程代码
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>)
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a># 将模型设置为评估模式
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>model.eval()
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a># 定义测试样本
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>test_examples = [
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>    {
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>        &quot;instruction&quot;: &quot;使用中医知识正确回答适合这个病例的中成药。&quot;,
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>        &quot;input&quot;: &quot;我前几天吃了很多食物，但肚子总是不舒服，咕咕响，还经常嗳气反酸，大便不成形，脸色也差极了。&quot;
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>    },
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>    {
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>        &quot;instruction&quot;: &quot;使用中医知识正确回答适合这个病例的中成药。&quot;,
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>        &quot;input&quot;: &quot;肛门疼痛，痔疮，肛裂。&quot;
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>    },
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>    {
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>        &quot;instruction&quot;: &quot;使用中医知识正确回答适合这个病例的中成药。&quot;,
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>        &quot;input&quot;: &quot;有没有能够滋养肝肾、清热明目的中药。&quot;
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>    }
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>]
+<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>
+<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a># 对每个测试样本生成回答
+<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a>for example in test_examples:
+<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a>    # 构建输入文本，包括指令和输入内容
+<a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a>    context = f&quot;Instruction: {example[&#39;instruction&#39;]}\nInput: {example[&#39;input&#39;]}\nAnswer: &quot;
+<a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a>    # 对输入文本进行分词
+<a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a>    inputs = tokenizer(context, return_tensors=&quot;pt&quot;)
+<a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a>    # 将输入数据移动到模型所在的设备上
+<a id="__codelineno-7-45" name="__codelineno-7-45" href="#__codelineno-7-45"></a>    inputs = {key: value.to(model.device) for key, value in inputs.items()}
+<a id="__codelineno-7-46" name="__codelineno-7-46" href="#__codelineno-7-46"></a>
+<a id="__codelineno-7-47" name="__codelineno-7-47" href="#__codelineno-7-47"></a>    # 禁用FlashAttention以确保生成过程正常
+<a id="__codelineno-7-48" name="__codelineno-7-48" href="#__codelineno-7-48"></a>    with torch.no_grad():  # 不计算梯度，节省内存
+<a id="__codelineno-7-49" name="__codelineno-7-49" href="#__codelineno-7-49"></a>        outputs = model.generate(
+<a id="__codelineno-7-50" name="__codelineno-7-50" href="#__codelineno-7-50"></a>            inputs[&#39;input_ids&#39;],  # 输入的token ID
+<a id="__codelineno-7-51" name="__codelineno-7-51" href="#__codelineno-7-51"></a>            max_length=512,  # 最大生成长度
+<a id="__codelineno-7-52" name="__codelineno-7-52" href="#__codelineno-7-52"></a>            num_return_sequences=1,  # 只生成一个回答
+<a id="__codelineno-7-53" name="__codelineno-7-53" href="#__codelineno-7-53"></a>            no_repeat_ngram_size=2,  # 避免重复生成n-gram
+<a id="__codelineno-7-54" name="__codelineno-7-54" href="#__codelineno-7-54"></a>            use_cache=False  # 不使用缓存加速生成
+<a id="__codelineno-7-55" name="__codelineno-7-55" href="#__codelineno-7-55"></a>        )
+<a id="__codelineno-7-56" name="__codelineno-7-56" href="#__codelineno-7-56"></a>
+<a id="__codelineno-7-57" name="__codelineno-7-57" href="#__codelineno-7-57"></a>    # 解码生成的token ID，得到回答文本
+<a id="__codelineno-7-58" name="__codelineno-7-58" href="#__codelineno-7-58"></a>    answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
+<a id="__codelineno-7-59" name="__codelineno-7-59" href="#__codelineno-7-59"></a>    print(f&quot;Input: {example[&#39;input&#39;]}&quot;)
+<a id="__codelineno-7-60" name="__codelineno-7-60" href="#__codelineno-7-60"></a>    print(f&quot;Output: {answer}\n&quot;)
+</code></pre></div>
+<p>输出示例如下：</p>
+<blockquote>
+<p>Input: 我前几天吃了很多食物，但肚子总是不舒服，咕咕响，还经常嗳气反酸，大便不成形，脸色也差极了。<br />
+Output: Instruction: 使用中医知识正确回答适合这个病例的中成药。<br />
+Input: 我前几天吃了很多食物，但肚子总是不舒服，咕咕响，还经常嗳气反酸，大便不成形，脸色也差极了。<br />
+Answer: 该病人可能患有“食积不化”的中医学病症。中药可用“大黄”、“芍药”等清热解毒、消食化滞的药物来治疗。同时，也可以使用“半夏”和“干姜”来缓和中焦的热气，帮助消化。  </p>
+<p>Translation:<br />
+The patient may have “food stagnation” syndrome in traditional Chinese medicine. The medicine that can be used to treat this condition includes “Rhubarb” and “Peony” to clear heat, detoxify, and eliminate food stagnancy. Additionally, “Half-Cooked Ginger” can also be added to alleviate the heat in the middle jiao and facilitate digestion.  </p>
+<p>Note: In traditionalChinese medicine, the concept of “食積不 化” (shí jī bù huà) refers to a condition where food is not properly digested and absorbed, leading to symptoms such as abdominal discomfort, bloating, belching, nausea, vomiting, diarrhea, or constipation. This condition is often treated with herbs that have the functions of clearing heat and detoxifying, as well as those that help to eliminate stagnated food and promote digestion. “大黃” () is a type of rhubarb that is commonly used in Chinese herbal medicine to help eliminate stagnant food, while “芥藥”() is used for its anti-inflammatory and antibacterial properties. Meanwhile, “” and “” are used together to balance the body’s heat energy and alleviate digestive discomfort.</p>
+</blockquote>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/15/88/15da078yyef187211b575be97aac2088.png?wh=1603x577" /></p>
+<p>从输出看，Meta-Llama-3-8B-Instruct 这个模型比较贴心，不仅给出了中文指南，还特意翻译成了英文版。这体现出它作为一个中英文多语大模型的特色。虽然没有完全按照数据集的资料来回答，但是这是我微调的轮次少的原因，而且，答案中也体现出了“大黄”和“半夏”等数据集中指示的内容，说明微调对模型的知识产生了影响。</p>
+<h2 id="_1">总结时刻</h2>
+<p>这节课我们以Llama 3模型为例，深入剖析了LoRA和QLoRA的工作原理，并通过PEFT和bitsandbytes 进行了微调和量化。</p>
+<p>量化是一种常见的大模型压缩技术，特别是在部署到资源受限的设备上时，如手机或嵌入式系统。通过将模型中的数据类型从高精度（如32位浮点数，即float32）转换为低精度（如8位或4位整数，即int8或int4），可以显著降低模型的存储需求和计算复杂性。</p>
+<p>我们看到，LoRA利用低秩分解来近似适配增量，大大降低了微调开销，而我们通过QLoRA在此基础上应用动态量化，进一步为微调过程瘦身。</p>
+<p>不过，这里我需要说明一下，在这个示例中我们所做的QLoRA量化，仅仅是针对于LoRA增量矩阵而进行的，我们其实并没有改变模型原始权重矩阵的参数精度。如果你希望压缩整个模型，那么你需要使用PyTorch的quantize_dynamic包对模型做整体的量化。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>from torch.quantization import quantize_dynamic
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a># 假设 model 是微调后的模型
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>quantized_model = quantize_dynamic(
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    model, {torch.nn.Linear}, dtype=torch.qint8
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>)
+</code></pre></div>
+<p>除了PEFT和bitsandbytes工具之外，目前所流行的大模型微调和量化框架还包括微软推出的 <a href="https://github.com/microsoft/DeepSpeed">DeepSpeed</a>、北航推出的 <a href="https://github.com/hiyouga/LLaMA-Factory">Llama-Factory</a> 等，这些框架整合了各种开源的微调技术，能够一站式实现大语言模型参数高效微调和量化的全流程。这些框架的具体使用方式，你可以去它们的GitHub主页上学习和探索。</p>
+<p>此外，如何评估微调和量化后的模型效果，也是一个大课题。不同的任务，有不同的评估方法。对于较常见的问答式任务，具体的评估指标可以包括困惑度（Perplexity）、BLEU分数、ROUGE分数等。此外，人工评估也是必不可少的，可以邀请领域专家对模型生成的文本进行质量评估。</p>
+<p>微调和量化是大语言模型产业化落地的关键一环。随着开源模型逐渐强大，以及微调技术的发展，大型语言模型的边际成本正变得越来越低。这意味着构建一个高质量的定制化对话系统，已经不再是科技巨头和顶尖实验室的特权，每个有编程基础的开发者都可以参与其中，用丰富的开源资源打造专属于自己的AI助手。目前，开源社区正在加速大语言模型的民主化进程，让我们携手创造一个智能共生的未来！</p>
+<h2 id="_2">思考题</h2>
+<ol>
+<li>请你用本课介绍的微调和量化流程，来微调你自己的数据集（可以在网上搜索并下载，比如目前流行的中文大模型微调数据集“弱智吧”）和其它开源模型（比如ChatGLM3）。</li>
+<li>微调和量化是两个相当大的课题，我们这里只是走了一个完整流程，效果并不一定多好，你可否继续调整各种参数（比如轮次、精度），以提升微调效果，如果某些参数对微调效果产生了显著的影响，欢迎你进行分享。</li>
+<li>请你使用Llama-Factory、Deep-Speed等微调框架，来微调Llama 3模型，并分享你的经验。</li>
+</ol>
+<p>期待你的分享，欢迎与我交流。如果今天的内容让你有所收获，也欢迎你把这节课转发给有需要的朋友！我们下节课再见！</p>
 
 
 

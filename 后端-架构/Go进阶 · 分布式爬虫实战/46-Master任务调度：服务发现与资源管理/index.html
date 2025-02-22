@@ -2841,6 +2841,72 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Master服务发现">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#go-micro-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      深入go-micro registry接口
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worker" class="md-nav__link">
+    <span class="md-ellipsis">
+      维护Worker节点信息
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#master_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Master资源管理
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Master资源管理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#master_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      验证Master资源分配结果
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
 </li>
       
     </ul>
@@ -13364,6 +13430,72 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Master服务发现">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#go-micro-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      深入go-micro registry接口
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worker" class="md-nav__link">
+    <span class="md-ellipsis">
+      维护Worker节点信息
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#master_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Master资源管理
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Master资源管理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#master_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      验证Master资源分配结果
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
 </li>
       
     </ul>
@@ -13430,16 +13562,368 @@
 <a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>
 <a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>}
 </code></pre></div>
+<p>Master中的etcd registry对象是我们在初始化时注册到go-micro中的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>// cmd/master/master.go
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>reg := etcd.NewRegistry(registry.Addrs(sconfig.RegistryAddress))
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>master.New(
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    masterID,
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    master.WithLogger(logger.Named(&quot;master&quot;)),
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    master.WithGRPCAddress(GRPCListenAddress),
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    master.WithregistryURL(sconfig.RegistryAddress),
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    master.WithRegistry(reg),
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    master.WithSeeds(seeds),
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>)
+</code></pre></div>
+<h3 id="go-micro-registry">深入go-micro registry接口</h3>
+<p>go-micro提供的registry接口提供了诸多API，其结构如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>type Registry interface {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    Init(...Option) error
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    Options() Options
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    Register(*Service, ...RegisterOption) error
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    Deregister(*Service, ...DeregisterOption) error
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    GetService(string, ...GetOption) ([]*Service, error)
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    ListServices(...ListOption) ([]*Service, error)
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    Watch(...WatchOption) (Watcher, error)
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    String() string
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>}
+</code></pre></div>
+<p>对于Master的服务发现，我们借助了registry.Watch方法。Watch方法借助client.Watch实现了对特定Key的监听，并封装了client.Watch返回的结果。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>func (e *etcdRegistry) Watch(opts ...registry.WatchOption) (registry.Watcher, error) {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>   return newEtcdWatcher(e, e.options.Timeout, opts...)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>}
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>func newEtcdWatcher(r *etcdRegistry, timeout time.Duration, opts ...registry.WatchOption) (registry.Watcher, error) {
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>   var wo registry.WatchOptions
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>   for _, o := range opts {
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>      o(&amp;wo)
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>   }
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>   watchPath := prefix
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>   if len(wo.Service) &gt; 0 {
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>      watchPath = servicePath(wo.Service) + &quot;/&quot;
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>   }
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>   return &amp;etcdWatcher{
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>      stop:    stop,
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>      w:       r.client.Watch(ctx, watchPath, clientv3.WithPrefix(), clientv3.WithPrevKV()),
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>      client:  r.client,
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>      timeout: timeout,
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>   }, nil
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>}
+</code></pre></div>
+<p>registry.Watch方法返回了Watcher接口，Watcher接口中有Next方法用于完成事件的迭代。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>type Watcher interface {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>   // Next 堵塞调用
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>   Next() (*Result, error)
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>   Stop()
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>}
+</code></pre></div>
+<p>go-micro 的 etcd 插件库实现的 Next 方法也比较简单，只要监听client.Watch返回的通道，并将事件信息封装后返回即可。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>func (ew *etcdWatcher) Next() (*registry.Result, error) {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>   for wresp := range ew.w {
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>      if wresp.Err() != nil {
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>         return nil, wresp.Err()
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>      }
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>      if wresp.Canceled {
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>         return nil, errors.New(&quot;could not get next&quot;)
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>      }
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>      for _, ev := range wresp.Events {
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>         service := decode(ev.Kv.Value)
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>         var action string
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>         switch ev.Type {
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>         case clientv3.EventTypePut:
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>            if ev.IsCreate() {
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>               action = &quot;create&quot;
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>            } else if ev.IsModify() {
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>               action = &quot;update&quot;
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>            }
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>         case clientv3.EventTypeDelete:
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>            action = &quot;delete&quot;
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>            // get service from prevKv
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>            service = decode(ev.PrevKv.Value)
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>         }
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>         if service == nil {
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>            continue
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>         }
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>         return &amp;registry.Result{
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>            Action:  action,
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>            Service: service,
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>         }, nil
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>      }
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>   }
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>   return nil, errors.New(&quot;could not get next&quot;)
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>}
+</code></pre></div>
+<p>另外，Worker节点也利用了registry接口的Register方法实现了服务的注册。如下所示，Register方法最终调用了clientv3的Put方法，将包含节点信息的键值对写入了etcd中。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>func (e *etcdRegistry) Register(s *registry.Service, opts ...registry.RegisterOption) error {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    // register each node individually
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    for _, node := range s.Nodes {
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>        err := e.registerNode(s, node, opts...)
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        if err != nil {
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>            gerr = err
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        }
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    }
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    return gerr
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>}
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>func (e *etcdRegistry) registerNode(s *registry.Service, node *registry.Node, opts ...registry.RegisterOption) error {
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    service := &amp;registry.Service{
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>        Name:      s.Name,
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>        Version:   s.Version,
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>        Metadata:  s.Metadata,
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>        Endpoints: s.Endpoints,
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>        Nodes:     []*registry.Node{node},
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>    }
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>    ...
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>    // create an entry for the node
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>    if lgr != nil {
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>        _, err = e.client.Put(ctx, nodePath(service.Name, node.Id), encode(service), clientv3.WithLease(lgr.ID))
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>    } else {
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>        _, err = e.client.Put(ctx, nodePath(service.Name, node.Id), encode(service))
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>    }
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>    if err != nil {
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>        return err
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>    }
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>}
+</code></pre></div>
+<p>现在让我们来看一看服务发现的效果。首先，启动Master服务。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>» go run main.go master --id=2 --http=:8081  --grpc=:9091
+</code></pre></div>
+<p>接着启动Worker服务。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>» go run main.go worker --id=2 --http=:8079  --grpc=:9089
+</code></pre></div>
+<p>Worker启动后，在Master的日志中会看到变化的事件。其中，<code>"Action":"create"</code> 表明当前的事件为节点的注册。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>{&quot;level&quot;:&quot;INFO&quot;,&quot;ts&quot;:&quot;2022-12-12T16:55:42.798+0800&quot;,&quot;logger&quot;:&quot;master&quot;,&quot;caller&quot;:&quot;master/master.go:117&quot;,&quot;msg&quot;:&quot;watch worker change&quot;,&quot;worker:&quot;:{&quot;Action&quot;:&quot;create&quot;,&quot;Service&quot;:{&quot;name&quot;:&quot;go.micro.server.worker&quot;,&quot;version&quot;:&quot;latest&quot;,&quot;metadata&quot;:null,&quot;endpoints&quot;:[{&quot;name&quot;:&quot;Greeter.Hello&quot;,&quot;request&quot;:{&quot;name&quot;:&quot;Request&quot;,&quot;type&quot;:&quot;Request&quot;,&quot;values&quot;:[{&quot;name&quot;:&quot;name&quot;,&quot;type&quot;:&quot;string&quot;,&quot;values&quot;:null}]},&quot;response&quot;:{&quot;name&quot;:&quot;Response&quot;,&quot;type&quot;:&quot;Response&quot;,&quot;values&quot;:[{&quot;name&quot;:&quot;greeting&quot;,&quot;type&quot;:&quot;string&quot;,&quot;values&quot;:null}]},&quot;metadata&quot;:{&quot;endpoint&quot;:&quot;Greeter.Hello&quot;,&quot;handler&quot;:&quot;rpc&quot;,&quot;method&quot;:&quot;POST&quot;,&quot;path&quot;:&quot;/greeter/hello&quot;}}],&quot;nodes&quot;:[{&quot;id&quot;:&quot;go.micro.server.worker-2&quot;,&quot;address&quot;:&quot;192.168.0.107:9089&quot;,&quot;metadata&quot;:{&quot;broker&quot;:&quot;http&quot;,&quot;protocol&quot;:&quot;grpc&quot;,&quot;registry&quot;:&quot;etcd&quot;,&quot;server&quot;:&quot;grpc&quot;,&quot;transport&quot;:&quot;grpc&quot;}}]}}}
+</code></pre></div>
+<p>中止Worker节点后，我们还会看到Master的信息。其中，<code>"Action":"delete"</code> 表明当前的事件为节点的删除。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>{&quot;level&quot;:&quot;INFO&quot;,&quot;ts&quot;:&quot;2022-12-12T16:58:31.985+0800&quot;,&quot;logger&quot;:&quot;master&quot;,&quot;caller&quot;:&quot;master/master.go:117&quot;,&quot;msg&quot;:&quot;watch worker change&quot;,&quot;worker:&quot;:{&quot;Action&quot;:&quot;delete&quot;,&quot;Service&quot;:{&quot;name&quot;:&quot;go.micro.server.worker&quot;,&quot;version&quot;:&quot;latest&quot;,&quot;metadata&quot;:null,&quot;endpoints&quot;:[{&quot;name&quot;:&quot;Greeter.Hello&quot;,&quot;request&quot;:{&quot;name&quot;:&quot;Request&quot;,&quot;type&quot;:&quot;Request&quot;,&quot;values&quot;:[{&quot;name&quot;:&quot;name&quot;,&quot;type&quot;:&quot;string&quot;,&quot;values&quot;:null}]},&quot;response&quot;:{&quot;name&quot;:&quot;Response&quot;,&quot;type&quot;:&quot;Response&quot;,&quot;values&quot;:[{&quot;name&quot;:&quot;greeting&quot;,&quot;type&quot;:&quot;string&quot;,&quot;values&quot;:null}]},&quot;metadata&quot;:{&quot;endpoint&quot;:&quot;Greeter.Hello&quot;,&quot;handler&quot;:&quot;rpc&quot;,&quot;method&quot;:&quot;POST&quot;,&quot;path&quot;:&quot;/greeter/hello&quot;}}],&quot;nodes&quot;:[{&quot;id&quot;:&quot;go.micro.server.worker-2&quot;,&quot;address&quot;:&quot;192.168.0.107:9089&quot;,&quot;metadata&quot;:{&quot;broker&quot;:&quot;http&quot;,&quot;protocol&quot;:&quot;grpc&quot;,&quot;registry&quot;:&quot;etcd&quot;,&quot;server&quot;:&quot;grpc&quot;,&quot;transport&quot;:&quot;grpc&quot;}}]}}}
+</code></pre></div>
+<h3 id="worker">维护Worker节点信息</h3>
+<p>完成服务发现之后，让我们更进一步，维护Worker节点的信息。在updateWorkNodes函数中，我们利用registry.GetService方法获取当前集群中全量的Worker节点，并将它最新的状态保存起来。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>func (m *Master) Campaign() {
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    ...
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    workerNodeChange := m.WatchWorker()
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    for {
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>        select {
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>        ...
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>        case resp := &lt;-workerNodeChange:
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>            m.logger.Info(&quot;watch worker change&quot;, zap.Any(&quot;worker:&quot;, resp))
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>        }
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    }
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>}
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>type Master struct {
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>    ...
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    workNodes map[string]*registry.Node
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>}
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>func (m *Master) updateWorkNodes() {
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>    services, err := m.registry.GetService(worker.ServiceName)
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>    if err != nil {
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>        m.logger.Error(&quot;get service&quot;, zap.Error(err))
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>    }
+<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>
+<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>    nodes := make(map[string]*registry.Node)
+<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>    if len(services) &gt; 0 {
+<a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>        for _, spec := range services[0].Nodes {
+<a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>            nodes[spec.Id] = spec
+<a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>        }
+<a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a>    }
+<a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>
+<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a>    added, deleted, changed := workNodeDiff(m.workNodes, nodes)
+<a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a>    m.logger.Sugar().Info(&quot;worker joined: &quot;, added, &quot;, leaved: &quot;, deleted, &quot;, changed: &quot;, changed)
+<a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a>
+<a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a>    m.workNodes = nodes
+<a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a>
+<a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a>}
+</code></pre></div>
+<p>我们还可以使用 workNodeDiff 函数比较集群中新旧节点的变化。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>func workNodeDiff(old map[string]*registry.Node, new map[string]*registry.Node) ([]string, []string, []string) {
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    added := make([]string, 0)
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    deleted := make([]string, 0)
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    changed := make([]string, 0)
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    for k, v := range new {
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>        if ov, ok := old[k]; ok {
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>            if !reflect.DeepEqual(v, ov) {
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>                changed = append(changed, k)
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>            }
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>        } else {
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>            added = append(added, k)
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>        }
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>    }
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>    for k := range old {
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>        if _, ok := new[k]; !ok {
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>            deleted = append(deleted, k)
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>        }
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>    }
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>    return added, deleted, changed
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>}
+</code></pre></div>
+<p>当节点发生变化时，可以打印出日志。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>{&quot;level&quot;:&quot;INFO&quot;,&quot;ts&quot;:&quot;2022-12-12T16:55:42.810+0800&quot;,&quot;logger&quot;:&quot;master&quot;,&quot;caller&quot;:&quot;master/master.go:187&quot;,&quot;msg&quot;:&quot;worker joined: [go.micro.server.worker-2], leaved: [], changed: []&quot;}
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>{&quot;level&quot;:&quot;INFO&quot;,&quot;ts&quot;:&quot;2022-12-12T16:58:32.026+0800&quot;,&quot;logger&quot;:&quot;master&quot;,&quot;caller&quot;:&quot;master/master.go:187&quot;,&quot;msg&quot;:&quot;worker joined: [], leaved: [go.micro.server.worker-2], changed: []&quot;}
+</code></pre></div>
+<h2 id="master_1">Master资源管理</h2>
+<p>下一步，让我们来看看对爬虫任务的管理。</p>
+<p>爬虫任务也可以理解为一种资源。和Worker一样，Master中可以有一些初始化的爬虫任务存储在配置文件中。初始化时，程序通过读取配置文件将爬虫任务注入到Master中。这节课我们先将任务放置到配置文件中，下节课我们还会构建Master的API来完成任务的增删查改。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>seeds := worker.ParseTaskConfig(logger, nil, nil, tcfg)
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    master.New(
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>        masterID,
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>        master.WithLogger(logger.Named(&quot;master&quot;)),
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>        master.WithGRPCAddress(GRPCListenAddress),
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>        master.WithregistryURL(sconfig.RegistryAddress),
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>        master.WithRegistry(reg),
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>        master.WithSeeds(seeds),
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>    )
+</code></pre></div>
+<p>在初始化Master时，调用m.AddSeed函数完成资源的添加。m.AddSeed会首先调用etcdCli.Get方法，查看当前任务是否已经写入到了etcd中。如果没有，则调用m.AddResource将任务存储到etcd，存储在etcd中的任务的Key为 <code>/resources/xxxx</code>。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>func (m *Master) AddSeed() {
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    rs := make([]*ResourceSpec, 0, len(m.Seeds))
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    for _, seed := range m.Seeds {
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>        resp, err := m.etcdCli.Get(context.Background(), getResourcePath(seed.Name), clientv3.WithSerializable())
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>        if err != nil {
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>            m.logger.Error(&quot;etcd get faiiled&quot;, zap.Error(err))
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>            continue
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>        }
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>        if len(resp.Kvs) == 0 {
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>            r := &amp;ResourceSpec{
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>                Name: seed.Name,
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>            }
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>            rs = append(rs, r)
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>        }
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>    }
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>    m.AddResource(rs)
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>}
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>const (
+<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>    RESOURCEPATH = &quot;/resources&quot;
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>)
+<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a>
+<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a>func getResourcePath(name string) string {
+<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a>    return fmt.Sprintf(&quot;%s/%s&quot;, RESOURCEPATH, name)
+<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a>}
+</code></pre></div>
+<p>在添加资源的时候，我们可以设置资源的ID、创建时间等。在这里我借助了第三方库 <a href="https://github.com/bwmarrin/snowflake">Snowflake</a> ，使用雪花算法来为资源生成了一个单调递增的分布式ID。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>func (m *Master) AddResource(rs []*ResourceSpec) {
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>    for _, r := range rs {
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>        r.ID = m.IDGen.Generate().String()
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>        ns, err := m.Assign(r)
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>        if err != nil {
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>            m.logger.Error(&quot;assign failed&quot;, zap.Error(err))
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>            continue
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>        }
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>        r.AssignedNode = ns.Id + &quot;|&quot; + ns.Address
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>        r.CreationTime = time.Now().UnixNano()
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>        m.logger.Debug(&quot;add resource&quot;, zap.Any(&quot;specs&quot;, r))
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>        _, err = m.etcdCli.Put(context.Background(), getResourcePath(r.Name), encode(r))
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>        if err != nil {
+<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a>            m.logger.Error(&quot;put etcd failed&quot;, zap.Error(err))
+<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>            continue
+<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>        }
+<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>        m.resources[r.Name] = r
+<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>    }
+<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a>}
+</code></pre></div>
+<p>Snowflake 利用雪花算法生成了一个64位的唯一ID，其结构如下。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>+--------------------------------------------------------------------------+
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>| 1 Bit Unused | 41 Bit Timestamp |  10 Bit NodeID  |   12 Bit Sequence ID |
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>+--------------------------------------------------------------------------+
+</code></pre></div>
+<p>其中，41位用于存储时间戳；10位用于存储NodeID，在这里就是我们的Master ID；最后12位为序列号。如果我们的程序打算在同一个毫秒内生成多个ID，那么每生成一个新的ID，序列号会递增1，这意味着每个节点每毫秒最多能够产生4096个不同的ID，这已经能满足我们当前的场景了。雪花算法确保了我们生成的资源ID是全局唯一的。</p>
+<p>添加资源时，还有一步很重要，那就是调用m.Assign计算出当前的资源应该被分配到哪一个节点上。在这里，我们先用随机的方式选择一个节点，后面还会再优化调度逻辑。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>func (m *Master) Assign(r *ResourceSpec) (*registry.Node, error) {
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>    for _, n := range m.workNodes {
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>        return n, nil
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>    }
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    return nil, errors.New(&quot;no worker nodes&quot;)
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>}
+</code></pre></div>
+<p>设置好资源的ID信息、分配信息之后，调用etcdCli.Put，将资源的KV信息存储到etcd中。其中，存储到etcd中的Value需要是string类型，所以我们书写了JSON的序列化与反序列化函数，用于存储信息的序列化和反序列化。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>func encode(s *ResourceSpec) string {
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    b, _ := json.Marshal(s)
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>    return string(b)
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>}
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>func decode(ds []byte) (*ResourceSpec, error) {
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>    var s *ResourceSpec
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>    err := json.Unmarshal(ds, &amp;s)
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>    return s, err
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>}
+</code></pre></div>
+<p>最后一步，当Master成为新的Leader后，我们还要全量地获取一次etcd中当前最新的资源信息，并把它保存到内存中，核心逻辑位于loadResource函数中。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>func (m *Master) BecomeLeader() error {
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>    if err := m.loadResource(); err != nil {
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>        return fmt.Errorf(&quot;loadResource failed:%w&quot;, err)
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>    }
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>    atomic.StoreInt32(&amp;m.ready, 1)
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>    return nil
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>}
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>func (m *Master) loadResource() error {
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>    resp, err := m.etcdCli.Get(context.Background(), RESOURCEPATH, clientv3.WithSerializable())
+<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a>    if err != nil {
+<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>        return fmt.Errorf(&quot;etcd get failed&quot;)
+<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a>    }
+<a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a>
+<a id="__codelineno-20-15" name="__codelineno-20-15" href="#__codelineno-20-15"></a>    resources := make(map[string]*ResourceSpec)
+<a id="__codelineno-20-16" name="__codelineno-20-16" href="#__codelineno-20-16"></a>    for _, kv := range resp.Kvs {
+<a id="__codelineno-20-17" name="__codelineno-20-17" href="#__codelineno-20-17"></a>        r, err := decode(kv.Value)
+<a id="__codelineno-20-18" name="__codelineno-20-18" href="#__codelineno-20-18"></a>        if err == nil &amp;&amp; r != nil {
+<a id="__codelineno-20-19" name="__codelineno-20-19" href="#__codelineno-20-19"></a>            resources[r.Name] = r
+<a id="__codelineno-20-20" name="__codelineno-20-20" href="#__codelineno-20-20"></a>        }
+<a id="__codelineno-20-21" name="__codelineno-20-21" href="#__codelineno-20-21"></a>    }
+<a id="__codelineno-20-22" name="__codelineno-20-22" href="#__codelineno-20-22"></a>    m.logger.Info(&quot;leader init load resource&quot;, zap.Int(&quot;lenth&quot;, len(m.resources)))
+<a id="__codelineno-20-23" name="__codelineno-20-23" href="#__codelineno-20-23"></a>    m.resources = resources
+<a id="__codelineno-20-24" name="__codelineno-20-24" href="#__codelineno-20-24"></a>    return nil
+<a id="__codelineno-20-25" name="__codelineno-20-25" href="#__codelineno-20-25"></a>}
+</code></pre></div>
+<h3 id="master_2">验证Master资源分配结果</h3>
+<p>最后让我们实战验证一下 Master的资源分配结果。</p>
+<p>首先我们需要启动Worker。要注意的是，如果先启动了Master，初始的任务将会由于没有对应的Worker节点而添加失败。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>» go run main.go worker --id=2 --http=:8079  --grpc=:9089
+</code></pre></div>
+<p>接着启动Master服务。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>» go run main.go master --id=2 --http=:8081  --grpc=:9091
+</code></pre></div>
+<p>现在查看etcd的信息会发现，当前两个爬虫任务都已经设置到etcd中，并且Master为他们分配的Worker节点为"go.micro.server.worker-2|192.168.0.107:9089"，说明Master的资源分配成功了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>» docker exec etcd-gcr-v3.5.6 /bin/sh -c &quot;/usr/local/bin/etcdctl get --prefix /&quot;                                                                           jackson@bogon
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>/micro/registry/go.micro.server.master/go.micro.server.master-2
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>{&quot;name&quot;:&quot;go.micro.server.master&quot;,&quot;version&quot;:&quot;latest&quot;,&quot;metadata&quot;:null,&quot;endpoints&quot;:[{&quot;name&quot;:&quot;Greeter.Hello&quot;,&quot;request&quot;:{&quot;name&quot;:&quot;Request&quot;,&quot;type&quot;:&quot;Request&quot;,&quot;values&quot;:[{&quot;name&quot;:&quot;name&quot;,&quot;type&quot;:&quot;string&quot;,&quot;values&quot;:null}]},&quot;response&quot;:{&quot;name&quot;:&quot;Response&quot;,&quot;type&quot;:&quot;Response&quot;,&quot;values&quot;:[{&quot;name&quot;:&quot;greeting&quot;,&quot;type&quot;:&quot;string&quot;,&quot;values&quot;:null}]},&quot;metadata&quot;:{&quot;endpoint&quot;:&quot;Greeter.Hello&quot;,&quot;handler&quot;:&quot;rpc&quot;,&quot;method&quot;:&quot;POST&quot;,&quot;path&quot;:&quot;/greeter/hello&quot;}}],&quot;nodes&quot;:[{&quot;id&quot;:&quot;go.micro.server.master-2&quot;,&quot;address&quot;:&quot;192.168.0.107:9091&quot;,&quot;metadata&quot;:{&quot;broker&quot;:&quot;http&quot;,&quot;protocol&quot;:&quot;grpc&quot;,&quot;registry&quot;:&quot;etcd&quot;,&quot;server&quot;:&quot;grpc&quot;,&quot;transport&quot;:&quot;grpc&quot;}}]}
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>/micro/registry/go.micro.server.worker/go.micro.server.worker-2
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>{&quot;name&quot;:&quot;go.micro.server.worker&quot;,&quot;version&quot;:&quot;latest&quot;,&quot;metadata&quot;:null,&quot;endpoints&quot;:[{&quot;name&quot;:&quot;Greeter.Hello&quot;,&quot;request&quot;:{&quot;name&quot;:&quot;Request&quot;,&quot;type&quot;:&quot;Request&quot;,&quot;values&quot;:[{&quot;name&quot;:&quot;name&quot;,&quot;type&quot;:&quot;string&quot;,&quot;values&quot;:null}]},&quot;response&quot;:{&quot;name&quot;:&quot;Response&quot;,&quot;type&quot;:&quot;Response&quot;,&quot;values&quot;:[{&quot;name&quot;:&quot;greeting&quot;,&quot;type&quot;:&quot;string&quot;,&quot;values&quot;:null}]},&quot;metadata&quot;:{&quot;endpoint&quot;:&quot;Greeter.Hello&quot;,&quot;handler&quot;:&quot;rpc&quot;,&quot;method&quot;:&quot;POST&quot;,&quot;path&quot;:&quot;/greeter/hello&quot;}}],&quot;nodes&quot;:[{&quot;id&quot;:&quot;go.micro.server.worker-2&quot;,&quot;address&quot;:&quot;192.168.0.107:9089&quot;,&quot;metadata&quot;:{&quot;broker&quot;:&quot;http&quot;,&quot;protocol&quot;:&quot;grpc&quot;,&quot;registry&quot;:&quot;etcd&quot;,&quot;server&quot;:&quot;grpc&quot;,&quot;transport&quot;:&quot;grpc&quot;}}]}
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>/resources/douban_book_list
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>{&quot;ID&quot;:&quot;1602250527540776960&quot;,&quot;Name&quot;:&quot;douban_book_list&quot;,&quot;AssignedNode&quot;:&quot;go.micro.server.worker-2|192.168.0.107:9089&quot;,&quot;CreationTime&quot;:1670841268798763000}
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a>
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>/resources/election/3f3584fc571ae9d0
+<a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a>master2-192.168.0.107:9091
+<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a>
+<a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a>/resources/xxx
+<a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a>{&quot;ID&quot;:&quot;1602250527570137088&quot;,&quot;Name&quot;:&quot;xxx&quot;,&quot;AssignedNode&quot;:&quot;go.micro.server.worker-2|192.168.0.107:9089&quot;,&quot;CreationTime&quot;:1670841268805921000}
+</code></pre></div>
+<h2 id="_1">总结</h2>
+<p>这节课。我们实现了Master的两个重要功能：服务发现与资源管理。</p>
+<p>对于服务发现，我们借助了micro registry提供的接口，实现了节点的注册、发现和状态获取。micro的registry接口是一个插件，这意味着我们可以轻松使用不同插件与不同的注册中心交互。在这里我们使用的仍然是go-micro的etcd插件，借助etcd clientv3的API实现了服务发现与注册的相关功能。</p>
+<p>而对于资源管理，这节课我们为资源加上了必要的ID信息，我们使用了分布式的雪花算法来保证生成ID全局唯一。同时，我们用随机的方式为资源分配了其所属的Worker节点并验证了分配的效果。在下一节课程中，我们还会继续实现负载均衡的资源分配。</p>
+<h2 id="_2">课后题</h2>
+<p>学完这节课，给你留两道思考题。</p>
+<ol>
+<li>我们什么时候需要全量拉取资源？什么时候需要使用事件监听机制？你认为监听机制是可靠的吗？</li>
+<li>我们前面提到的 Snowflake 雪花算法生成的分布式ID，在什么场景下是不适用的？</li>
+</ol>
+<p>欢迎你在留言区与我交流讨论，我们下节课见。</p>
 <div><strong>精选留言（2）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/7f/d3/b5896293.jpg" width="30px"><span>Realm</span> 👍（1） 💬（0）<div>1 “当 Master 成为新的 Leader 后，我们还要全量地获取一次 etcd 中当前最新的资源信息，并把它保存到内存中”，
+<li><span>Realm</span> 👍（1） 💬（0）<div>1 “当 Master 成为新的 Leader 后，我们还要全量地获取一次 etcd 中当前最新的资源信息，并把它保存到内存中”，
 当添加单个task任务时，使用事件监听；
 事件监听机制在服务异常时可能丢信息？
 望勋哥指点.
 
 2 雪花算法生成的id有可能会出现重复。
 如一个节点时，把服务器时钟回拨的情况；
-多个节点时候，假如服务器的标志位一样，同一毫秒不同的节点可能产生的id相同；</div>2023-02-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/3a/de/ed40f1bb.jpg" width="30px"><span>胡军</span> 👍（0） 💬（0）<div>老师语速好快，都来不及思考和看文档😅</div>2023-02-02</li><br/>
+多个节点时候，假如服务器的标志位一样，同一毫秒不同的节点可能产生的id相同；</div>2023-02-01</li><br/><li><span>胡军</span> 👍（0） 💬（0）<div>老师语速好快，都来不及思考和看文档😅</div>2023-02-02</li><br/>
 </ul>
 
 

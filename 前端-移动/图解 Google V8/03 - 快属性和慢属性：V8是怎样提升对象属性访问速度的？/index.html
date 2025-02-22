@@ -2404,6 +2404,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      快属性和慢属性
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chrome" class="md-nav__link">
+    <span class="md-ellipsis">
+      实践：在Chrome中查看对象布局
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      其他属性
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4759,6 +4804,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      快属性和慢属性
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chrome" class="md-nav__link">
+    <span class="md-ellipsis">
+      实践：在Chrome中查看对象布局
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      其他属性
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4823,12 +4913,97 @@
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>index:C  value:bar-C
 </code></pre></div>
 <p>观察这段打印出来的数据，我们发现打印出来的属性顺序并不是我们设置的顺序，我们设置属性的时候是乱序设置的，比如开始先设置100，然后又设置了1，但是输出的内容却非常规律，总的来说体现在以下两点：</p>
-<div><strong>精选留言（30）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/17/0d/5e/abeeda12.jpg" width="30px"><span>伏枫</span> 👍（50） 💬（2）<div>https:&#47;&#47;www.cnblogs.com&#47;chargeworld&#47;p&#47;12236848.html
-找到了一篇博客，应该能帮助一些同学解惑</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/e2/03/47d42c86.jpg" width="30px"><span>try-catch</span> 👍（16） 💬（1）<div>执行完例子后有些疑惑，找到了v8引擎原博客 https:&#47;&#47;v8.dev&#47;blog&#47;fast-properties 中找到了答案：
+<li>设置的数字属性被最先打印出来了，并且是按照数字大小的顺序打印的；</li>
+<li>设置的字符串属性依然是按照之前的设置顺序打印的，比如我们是按照B、A、C的顺序设置的，打印出来依然是这个顺序。</li>
+</ul>
+<p>之所以出现这样的结果，是因为在ECMAScript规范中定义了<strong>数字属性应该按照索引值大小升序排列，字符串属性根据创建时的顺序升序排列。</strong></p>
+<p>在这里我们把对象中的数字属性称为<strong>排序属性</strong>，在V8中被称为<strong>elements</strong>，字符串属性就被称为<strong>常规属性</strong>，在V8中被称为<strong>properties</strong>。</p>
+<p>在V8内部，为了有效地提升存储和访问这两种属性的性能，分别使用了两个<strong>线性数据结构</strong>来分别保存排序属性和常规属性，具体结构如下图所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/af/75/af2654db3d3a2e0b9a9eaa25e862cc75.jpg?wh=1142%2A846" title="V8内部的对象构造" /></p>
+<p>通过上图我们可以发现，bar对象包含了两个隐藏属性：elements属性和properties属性，elements属性指向了elements对象，在elements对象中，会按照顺序存放排序属性，properties属性则指向了properties对象，在properties对象中，会按照创建时的顺序保存了常规属性。</p>
+<p>分解成这两种线性数据结构之后，如果执行索引操作，那么V8会先从elements属性中按照顺序读取所有的元素，然后再在properties属性中读取所有的元素，这样就完成一次索引操作。</p>
+<h2 id="_1">快属性和慢属性</h2>
+<p>将不同的属性分别保存到elements属性和properties属性中，无疑简化了程序的复杂度，但是在查找元素时，却多了一步操作，比如执行 <code>bar.B</code>这个语句来查找B的属性值，那么在V8会先查找出properties属性所指向的对象properties，然后再在properties对象中查找B属性，这种方式在查找过程中增加了一步操作，因此会影响到元素的查找效率。</p>
+<p>基于这个原因，V8采取了一个权衡的策略以加快查找属性的效率，这个策略是将部分常规属性直接存储到对象本身，我们把这称为<strong>对象内属性(in-object properties)。</strong>对象在内存中的展现形式你可以参看下图：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/f1/3e/f12b4c6f6e631ce51d5b4f288dbfb13e.jpg?wh=1142%2A490" title="对象内属性" /></p>
+<p>采用对象内属性之后，常规属性就被保存到bar对象本身了，这样当再次使用<code>bar.B</code>来查找B的属性值时，V8就可以直接从bar对象本身去获取该值就可以了，这种方式减少查找属性值的步骤，增加了查找效率。</p>
+<p>不过对象内属性的数量是固定的，默认是10个，如果添加的属性超出了对象分配的空间，则它们将被保存在常规属性存储中。虽然属性存储多了一层间接层，但可以自由地扩容。</p>
+<p>通常，我们将保存在线性数据结构中的属性称之为“快属性”，因为线性数据结构中只需要通过索引即可以访问到属性，虽然访问线性结构的速度快，但是如果从线性结构中添加或者删除大量的属性时，则执行效率会非常低，这主要因为会产生大量时间和内存开销。</p>
+<p>因此，如果一个对象的属性过多时，V8就会采取另外一种存储策略，那就是“慢属性”策略，但慢属性的对象内部会有独立的非线性数据结构(词典)作为属性存储容器。所有的属性元信息不再是线性存储的，而是直接保存在属性字典中。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/e8/17/e8ce990dce53295a414ce79e38149917.jpg?wh=1142%2A876" title="慢属性是如何存储的" /></p>
+<h2 id="chrome">实践：在Chrome中查看对象布局</h2>
+<p>现在我们知道了V8是怎么存储对象的了，接下来我们来结合Chrome中的内存快照，来看看对象在内存中是如何布局的？</p>
+<p>你可以打开Chrome开发者工具，先选择控制台标签，然后在控制台中执行以下代码查看内存快照：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>function Foo(property_num,element_num) {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    //添加可索引属性
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    for (let i = 0; i &lt; element_num; i++) {
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        this[i] = `element${i}`
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    }
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    //添加常规属性
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    for (let i = 0; i &lt; property_num; i++) {
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        let ppt = `property${i}`
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        this[ppt] = ppt
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    }
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>}
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>var bar = new Foo(10,10)
+</code></pre></div>
+<p>上面我们创建了一个构造函数，可以利用该构造函数创建了新的对象，我给该构造函数设置了两个参数property_num、element_num，分别代表创建常规属性的个数和排序属性的个数，我们先将这两种类型的个数都设置为10个，然后利用该构造函数创建了一个新的bar对象。</p>
+<p>创建了函数对象，接下来我们就来看看构造函数和对象在内存中的状态。你可以将Chrome开发者工具切换到Memory标签，然后点击左侧的小圆圈就可以捕获当前的内存快照，最终截图如下所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/d2/d3/d2a123d127a2895d9f0d09be61cc55d3.png?wh=1142%2A693" title="V8内存快照截图" /></p>
+<p>上图就是收集了当前内存快照的界面，要想查找我们刚才创建的对象，你可以在搜索框里面输入构造函数Foo，Chrome会列出所有经过构造函数Foo创建的对象，如下图所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/2b/89/2b4ee447d061f72026ca38d6dfc25389.png?wh=1142%2A772" title="从内存快照搜索构造函数" /></p>
+<p>观察上图，我们搜索出来了所有经过构造函数Foo创建的对象，点开Foo的那个下拉列表，第一个就是刚才创建的bar对象，我们可以看到bar对象有一个elements属性，这里面就包含我们创造的所有的排序属性，那么怎么没有常规属性对象呢？</p>
+<p>这是因为只创建了10个常规属性，所以V8将这些常规属性直接做成了bar对象的对象内属性。</p>
+<p>所以这时候的数据内存布局是这样的：</p>
+<ul>
+<li>10个常规属性作为对象内属性，存放在bar函数内部；</li>
+<li>10个排序属性存放在elements中。</li>
+</ul>
+<p>接下来我们可以将创建的对象属性的个数调整到20个，你可以在控制台执行下面这段代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>var bar2 = new Foo(20,10)
+</code></pre></div>
+<p>然后我们再重新生成内存快照，再来看看生成的图片：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ef/6e/ef117bbc99504f1daea52a0831a5756e.png?wh=1142%2A536" title="利用构造函数生成的对象" /></p>
+<p>我们可以看到，构造函数Foo下面已经有了两个对象了，其中一个bar，另外一个是bar2，我们点开第一个bar2对象，内容如下所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/49/86/49c1f8e735e5b7772f3d54fb53eae386.png?wh=1142%2A1096" title="查看对象属性" /></p>
+<p>由于创建的常用属性超过了10个，所以另外10个常用属性就被保存到properties中了，注意因为properties中只有10个属性，所以依然是线性的数据结构，我们可以看其都是按照创建时的顺序来排列的。</p>
+<p>所以这时候属性的内存布局是这样的：</p>
+<ul>
+<li>10属性直接存放在bar2的对象内;</li>
+<li>10个常规属性以线性数据结构的方式存放在properties属性里面;</li>
+<li>10个数字属性存放在elements属性里面。</li>
+</ul>
+<p>如果常用属性太多了，比如创建了100个，那么我们再来看看其内存分布，你可以执行下面这段代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>var bar3 = new Foo(100,10)
+</code></pre></div>
+<p>然后以同样的方式打开bar3，查看其内存布局，最终如下图所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/da/69/dab6d6e2291117781e4294f27113d469.png?wh=1142%2A955" title="利用字典存放常规元素" /></p>
+<p>结合上图，我们可以看到，这时候的properties属性里面的数据并不是线性存储的，而是以非线性的字典形式存储的，所以这时候属性的内存布局是这样的：</p>
+<ul>
+<li>10属性直接存放在bar3的对象内;</li>
+<li>90个常规属性以非线性字典的这种数据结构方式存放在properties属性里面;</li>
+<li>10个数字属性存放在elements属性里面。</li>
+</ul>
+<h2 id="_2">其他属性</h2>
+<p>好了，现在我们知道V8是怎么存储对象的了，不过这里还有几个重要的隐藏属性我还没有介绍，下面我们就来简单地看下。你可以先看下图：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/82/4d/82463f4c1a4bf5fb8920b0099284e84d.png?wh=1142%2A341" title="其他隐藏属性" /></p>
+<p>观察上图，除了elements和properties属性，V8还为每个对象实现了map属性和__proto__属性。__proto__属性就是原型，是用来实现JavaScript继承的，我们会在下一节来介绍；而map则是隐藏类，我们会在《<a href="https://time.geekbang.org/column/article/226417">15 | 隐藏类：如何在内存中快速查找对象属性？</a>》这一节中介绍其工作机制。</p>
+<h2 id="_3">总结</h2>
+<p>好了，本节的内容就介绍到这里，下面我来总结下本文的主要内容：</p>
+<p>本文我们的主要目标是介绍V8内部是如何存储对象的，因为JavaScript中的对象是由一组组属性和值组成的，所以最简单的方式是使用一个字典来保存属性和值，但是由于字典是非线性结构，所以如果使用字典，读取效率会大大降低。</p>
+<p>为了提升查找效率，V8在对象中添加了两个隐藏属性，排序属性和常规属性，element属性指向了elements对象，在elements对象中，会按照顺序存放排序属性。properties属性则指向了properties对象，在properties对象中，会按照创建时的顺序保存常规属性。</p>
+<p>通过引入这两个属性，加速了V8查找属性的速度，为了更加进一步提升查找效率，V8还实现了内置内属性的策略，当常规属性少于一定数量时，V8就会将这些常规属性直接写进对象中，这样又节省了一个中间步骤。</p>
+<p>但是如果对象中的属性过多时，或者存在反复添加或者删除属性的操作，那么V8就会将线性的存储模式降级为非线性的字典存储模式，这样虽然降低了查找速度，但是却提升了修改对象的属性的速度。</p>
+<h2 id="_4">思考题</h2>
+<p>通常，我们不建议使用delete来删除属性，你能结合文中介绍的快属性和慢属性，给出不建议使用delete的原因吗？欢迎你在留言区与我分享讨论。</p>
+<p>感谢你的阅读，如果你觉得这一讲的内容对你有所启发，也欢迎把它分享给你的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>伏枫</span> 👍（50） 💬（2）<div>https:&#47;&#47;www.cnblogs.com&#47;chargeworld&#47;p&#47;12236848.html
+找到了一篇博客，应该能帮助一些同学解惑</div>2020-03-23</li><br/><li><span>try-catch</span> 👍（16） 💬（1）<div>执行完例子后有些疑惑，找到了v8引擎原博客 https:&#47;&#47;v8.dev&#47;blog&#47;fast-properties 中找到了答案：
 &quot;The number of in-object properties is predetermined by the initial size of the object&quot;
-in-object properties size 取决于初始化对象的大小。</div>2020-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a3/ea/53333dd5.jpg" width="30px"><span>HoSalt</span> 👍（1） 💬（2）<div>词典和字典是怎样的数据结构，类似于树？</div>2020-04-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/0e/94/4a2bb019.jpg" width="30px"><span>Lorin</span> 👍（1） 💬（2）<div>老师，hash表和js中对象是什么关系？我感觉对象就是哈希表，但是我看哈希表的定义里面key会经过哈希函数进行编码，这之间有什么区别呢？</div>2020-03-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c1/10/28d5a686.jpg" width="30px"><span>Longerian</span> 👍（0） 💬（6）<div>我在chrome里执行查看内存对象布局，搜索 Foo ，过滤出来的是空列表，这是为啥</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ec/13/49e98289.jpg" width="30px"><span>neohope</span> 👍（70） 💬（0）<div>1、chrome显示
+in-object properties size 取决于初始化对象的大小。</div>2020-03-24</li><br/><li><span>HoSalt</span> 👍（1） 💬（2）<div>词典和字典是怎样的数据结构，类似于树？</div>2020-04-24</li><br/><li><span>Lorin</span> 👍（1） 💬（2）<div>老师，hash表和js中对象是什么关系？我感觉对象就是哈希表，但是我看哈希表的定义里面key会经过哈希函数进行编码，这之间有什么区别呢？</div>2020-03-25</li><br/><li><span>Longerian</span> 👍（0） 💬（6）<div>我在chrome里执行查看内存对象布局，搜索 Foo ，过滤出来的是空列表，这是为啥</div>2020-03-23</li><br/><li><span>neohope</span> 👍（70） 💬（0）<div>1、chrome显示
 不要关心一级目录上是否存在某个element或property，为了调试方便，chrome应该是无论如何存储，都会输出来。
 直接去看elements和properties内存储的内容，更准确一些。
 
@@ -4852,7 +5027,7 @@ hash表要解决key冲突问题，一般会用list存储多个冲突的key，所
 在数据量小的时候，也慢于链表的顺序访问。
 
 6、hash表如何存储property顺序？
-再用一个链表记录插入属性就好了，类似于Java中的 LinkedHashMap ，就可以解决问题</div>2020-07-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d6/43/0704d7db.jpg" width="30px"><span>cc</span> 👍（22） 💬（10）<div>有个疑问，properties在元素较少的时候使用链表存储的吗？在元素较多的时候换成查找树？
+再用一个链表记录插入属性就好了，类似于Java中的 LinkedHashMap ，就可以解决问题</div>2020-07-21</li><br/><li><span>cc</span> 👍（22） 💬（10）<div>有个疑问，properties在元素较少的时候使用链表存储的吗？在元素较多的时候换成查找树？
 properties存的属性key是字符串，应该不可能是数组存。要不就是链表，要不就是hash表。如果是hash表，那就没有必要切换成查找树，性能改变微乎其微，最多也就是把hash表里由于冲突导致的过长链表换成查找树。
 
 对文章里所说的非线性结构和线性结构感到很困惑，比如链表和数组的查找性能就有很大区别，但又都是线性结构。所以为啥不直接说具体是数组还是链表？
@@ -4861,45 +5036,20 @@ properties存的属性key是字符串，应该不可能是数组存。要不就�
 这节看下来这真是一头雾水。
 
 
-</div>2020-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/18/65/35361f02.jpg" width="30px"><span>潇潇雨歇</span> 👍（18） 💬（5）<div>使用delete删除属性：
+</div>2020-03-22</li><br/><li><span>潇潇雨歇</span> 👍（18） 💬（5）<div>使用delete删除属性：
 如果删除属性在线性结构中，删除后需要移动元素，开销较大，而且可能需要将慢属性重排到快属性。
-如果删除属性在properties对象中，查找开销较大。</div>2020-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/29/92/076e0f61.jpg" width="30px"><span>Silence</span> 👍（11） 💬（10）<div>老师，我的 Chrome 版本是 80 的，看 memory 面板好像和你讲的不太一样。
+如果删除属性在properties对象中，查找开销较大。</div>2020-03-22</li><br/><li><span>Silence</span> 👍（11） 💬（10）<div>老师，我的 Chrome 版本是 80 的，看 memory 面板好像和你讲的不太一样。
 当有 20 个常规属性时，properties 中有 10 个，但是20 个都在 bar 对象内。
 当有 100 个常规属性时，properties 就更诡异了，每个都有 2 个，共 200 个，bar 对象上有 100 个。
 而且每次都是刷新浏览器后试的，这是什么情况？
-评论区没办法截图。</div>2020-03-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e6/50/656a0012.jpg" width="30px"><span>王楚然</span> 👍（8） 💬（0）<div>有几个问题没有弄懂：
+评论区没办法截图。</div>2020-03-21</li><br/><li><span>王楚然</span> 👍（8） 💬（0）<div>有几个问题没有弄懂：
 1. element（排序属性）是否也有内置，快属性，慢属性三种？不会是一直线性存储吧？
 2. 在properties（字符串属性）很多的时候，会大部分存储成字典结构，具体是什么样的字典结构呢？如何按照ECMA标准保证属性依据创建顺序排序呢？
-3. 还有针对原文“线性的存储模式降级为非线性的字典存储模式，这样虽然降低了查找速度，但是却提升了修改对象的属性的速度。”这句话，线性存储模式是链表吗？字典存储是什么呢？修改的流程，应该也是先查找后修改吧？为什么后者会降低查找速度却能提高修改速度呢？</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/1b/a6/6373416f.jpg" width="30px"><span>青史成灰</span> 👍（6） 💬（0）<div>老师，这里的线形、非线形数据结构，能否说的具体点，是数组，链表，红黑树还是啥的</div>2020-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/a0/59/86073794.jpg" width="30px"><span>Hello,Tomrrow</span> 👍（5） 💬（1）<div>在最新版的chrome版本中（V98)，对象内属性的数量没有限制了</div>2022-03-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c3/b8/892ab974.jpg" width="30px"><span>Geek_6zjb9f</span> 👍（4） 💬（0）<div>这个快属性的数量和平台相关么？ mac 平台 chrome 尝试这个代码，会把所有 properties elements 添加为快属性。 
+3. 还有针对原文“线性的存储模式降级为非线性的字典存储模式，这样虽然降低了查找速度，但是却提升了修改对象的属性的速度。”这句话，线性存储模式是链表吗？字典存储是什么呢？修改的流程，应该也是先查找后修改吧？为什么后者会降低查找速度却能提高修改速度呢？</div>2020-03-23</li><br/><li><span>青史成灰</span> 👍（6） 💬（0）<div>老师，这里的线形、非线形数据结构，能否说的具体点，是数组，链表，红黑树还是啥的</div>2020-03-24</li><br/><li><span>Hello,Tomrrow</span> 👍（5） 💬（1）<div>在最新版的chrome版本中（V98)，对象内属性的数量没有限制了</div>2022-03-07</li><br/><li><span>Geek_6zjb9f</span> 👍（4） 💬（0）<div>这个快属性的数量和平台相关么？ mac 平台 chrome 尝试这个代码，会把所有 properties elements 添加为快属性。 
 
 不建议 delete 可能会影响性能的地方:
   1.如果删除排序属性，线性存储结构会有个O(n)复杂度的移动。
-  2.如果删除常规属性，可能会重新计算并添加快属性。</div>2020-03-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/b0/2f/e2096905.jpg" width="30px"><span>马成</span> 👍（4） 💬（3）<div>老师，字典结构为什么读取效率比线性结构低。如果都是数字索引的话，线性结构很快，但是字符串属性只能遍历呀，怎么会比字典快呢？</div>2020-03-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/a2/89/7098b532.jpg" width="30px"><span>wilson</span> 👍（3） 💬（1）<div>这个课程是太老的缘故吗？3年前的课程了，今天来看，Chrome打印出来的内存结果和课程例子不一样。</div>2023-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/ad/d3/171f4a5b.jpg" width="30px"><span>Hyhang</span> 👍（3） 💬（0）<div> inobject properties 的数量是有上限的，其计算过程大致是：
-
-&#47;&#47; 为了方便计算，这里把涉及到的常量定义从源码各个文件中摘出后放到了一起
-#if V8_HOST_ARCH_64_BIT
-constexpr int kSystemPointerSizeLog2 = 3;
-#endif
-constexpr int kTaggedSizeLog2 = kSystemPointerSizeLog2;
-constexpr int kSystemPointerSize = sizeof(void*);
-
-static const int kJSObjectHeaderSize = 3 * kApiTaggedSize;
-STATIC_ASSERT(kHeaderSize == Internals::kJSObjectHeaderSize);
-
-constexpr int kTaggedSize = kSystemPointerSize;
-static const int kMaxInstanceSize = 255 * kTaggedSize;
-static const int kMaxInObjectProperties = (kMaxInstanceSize - kHeaderSize) &gt;&gt; kTaggedSizeLog2;
-根据上面的定义，在 64bit 系统上、未开启指针压缩的情况下，最大数量是 252 = (255 * 8 - 3 * 8) &#47; 8</div>2022-01-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（3） 💬（0）<div>关于常规属性过多时候的表现我这里有2个问题想请教一下：
-1、我这里和老师实验结果不一样：我这里利用 Chrome 创建了 30个常规属性，我看了一下是没有使用对象内属性的，30 个属性以字典的形式保存的 properties 属性对象中
-2、当转化为字典后，properties 对象是怎么生成的，每个属性的值为什么会出现2次，那个属性的值的 key 是怎么生成的
-(判断属性是否过多是以 25为界限的)</div>2020-03-21</li><br/><li><img src="" width="30px"><span>Geek_7bd92b</span> 👍（2） 💬（1）<div>读着像天书，新手误入</div>2021-12-13</li><br/><li><img src="" width="30px"><span>焦焦</span> 👍（2） 💬（1）<div>不建议使用delete来删除属性的话，推荐使用什么来完成这个操作呢</div>2021-11-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/52/0e/c5ff46d2.jpg" width="30px"><span>CondorHero</span> 👍（2） 💬（0）<div>看完快属性慢属性、隐藏类、内联缓存，对对象是非常的了解了，但是对 ES6 的 Map 和 Set 疑问就来了，它们很快，但是为什么快呢。
-
-希望老师加餐🌝</div>2021-09-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/49/e4/fb47bfcd.jpg" width="30px"><span>dellyoung</span> 👍（2） 💬（2）<div>排查内存泄露也需要用到，Memory，李大大能后边补充一节如何排查内存泄露吗，感觉挺常用，面试中也经常被问到，感谢！！！</div>2020-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/47/5d/9afdf648.jpg" width="30px"><span>Link</span> 👍（2） 💬（0）<div>在 Chrome 开发者工具中实践时，发现了一个问题：在当前这个页面，打开开发者工具，在 Console 中执行代码后，在 Memory 中生成快照，但是在快照中未找到 Foo，并且快照只有 761KB。此时，在保持开发者工具打开的状态下刷新页面，在 Memeory 中再次生成快照，这时在快照中找到了 Foo，并且快照有 77.1MB。老师能否解释下这个现象😄</div>2020-03-21</li><br/><li><img src="" width="30px"><span>Geek_7bd92b</span> 👍（1） 💬（0）<div>讲的一般般</div>2021-12-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（1） 💬（0）<div>老师有个疑问就是：当常规属性的数量大于对象内属性的数量10限制后，就会按照创建顺序先把常规属性放到对象内属性中，然后再把剩余的常规属性放到 properties 属性中，这样的话。当我查询一个常规属性的时候，就需要查询两次：先查询对象内属性，没有的话在查询 properties 属性。
-
-这里多查询了一次，为什么不这样设计呢？ 当常规属性的数量大于对象内属性的数量10限制后就不使用对象内属性了，直接使用properties 属性，这样不就会减少一次查询吗？</div>2020-03-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（1） 💬（0）<div>字典存储模式，这样虽然降低了查找速度，但是却提升了修改对象的属性的速度。
------------------------------------------
-字段存储为了降低了查找效率呢？ 字典不是 O(1), 直接就可以索引到的，是因为字段的 key 的 hash 有可能冲突吗？然后退化成链表？</div>2020-03-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/38/e4/8f/c741dcb8.jpg" width="30px"><span>wsun</span> 👍（0） 💬（0）<div>为什么我的chrome把所有的properties属性都放在了最外层，properties中的属性是外层减去前10个？</div>2023-12-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/b5/de/3eda6c48.jpg" width="30px"><span>是叶子吖</span> 👍（0） 💬（0）<div>console.log 的顺序跟 V8 里的排序有没有关系？</div>2023-07-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/b5/de/3eda6c48.jpg" width="30px"><span>是叶子吖</span> 👍（0） 💬（0）<div>console.log 的顺序跟 V8 里的排序有没有关系？</div>2023-07-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/05/93/3c3f2a6d.jpg" width="30px"><span>安石</span> 👍（0） 💬（0）<div>所以快属性=内属性？</div>2023-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/3c/88/6bef27d6.jpg" width="30px"><span>大神博士</span> 👍（0） 💬（0）<div>for key in obj
-输出顺序，也是这个原因吗</div>2023-03-05</li><br/>
+  2.如果删除常规属性，可能会重新计算并添加快属性。</div>2020-03-21</li><br/><li><span>马成</span> 👍（4） 💬（3）<div>老师，字典结构为什么读取效率比线性结构低。如果都是数字索引的话，线性结构很快，但是字符串属性只能遍历呀，怎么会比字典快呢？</div>2020-03-21</li><br/><li><span>wilson</span> 👍（3） 💬（1）<div>这个课程是太老的缘故吗？3年前的课程了，今天来看，Chrome打印出来的内存结果和课程例子不一样。</div>2023-03-01</li><br/>
 </ul>
 
 

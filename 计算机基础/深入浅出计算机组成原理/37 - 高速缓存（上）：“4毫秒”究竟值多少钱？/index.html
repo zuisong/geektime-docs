@@ -3637,6 +3637,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache的数据结构和读取过程是什么样的？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      减少4毫秒，公司挣了多少钱?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结延伸
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      推荐阅读
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5780,6 +5825,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache的数据结构和读取过程是什么样的？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      减少4毫秒，公司挣了多少钱?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结延伸
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      推荐阅读
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5821,9 +5911,63 @@
 <p>为什么会有这15%的差异呢？这和我们今天要讲的CPU Cache有关。之前我们看到了内存和硬盘之间存在的巨大性能差异。在CPU眼里，内存也慢得不行。于是，聪明的工程师们就在CPU里面嵌入了CPU Cache（高速缓存），来解决这一问题。</p>
 <h2 id="_1">我们为什么需要高速缓存?</h2>
 <p>按照<a href="https://zh.wikipedia.org/wiki/%E6%91%A9%E5%B0%94%E5%AE%9A%E5%BE%8B">摩尔定律</a>，CPU的访问速度每18个月便会翻一番，相当于每年增长60%。内存的访问速度虽然也在不断增长，却远没有这么快，每年只增长7%左右。而这两个增长速度的差异，使得CPU性能和内存访问性能的差距不断拉大。到今天来看，一次内存的访问，大约需要120个CPU Cycle，这也意味着，在今天，CPU和内存的访问速度已经有了120倍的差距。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>如果拿我们现实生活来打个比方的话，CPU的速度好比风驰电掣的高铁，每小时350公里，然而，它却只能等着旁边腿脚不太灵便的老太太，也就是内存，以每小时3公里的速度缓慢步行。因为CPU需要执行的指令、需要访问的数据，都在这个速度不到自己1%的内存里。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/4f/4b/4fc459f42a67d3949402865a998bf34b.png?wh=1142%2A607" /></p>
+<p>随着时间变迁，CPU和内存之间的性能差距越来越大</p>
+<p>为了弥补两者之间的性能差异，我们能真实地把CPU的性能提升用起来，而不是让它在那儿空转，我们在现代CPU中引入了高速缓存。</p>
+<p>从CPU Cache被加入到现有的CPU里开始，内存中的指令、数据，会被加载到L1-L3 Cache中，而不是直接由CPU访问内存去拿。在95%的情况下，CPU都只需要访问L1-L3 Cache，从里面读取指令和数据，而无需访问内存。要注意的是，这里我们说的CPU Cache或者L1/L3 Cache，不是一个单纯的、概念上的缓存（比如之前我们说的拿内存作为硬盘的缓存），而是指特定的由SRAM组成的物理芯片。</p>
+<p>这里是一张Intel CPU的放大照片。这里面大片的长方形芯片，就是这个CPU使用的20MB的L3 Cache。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c1/15/c1dc0e3453f469fc4607557dab9d5215.jpg?wh=1142%2A1147" /></p>
+<p>现代CPU中大量的空间已经被SRAM占据，图中用红色框出的部分就是CPU的L3 Cache芯片</p>
+<p>在这一讲一开始的程序里，运行程序的时间主要花在了将对应的数据从内存中读取出来，加载到CPU Cache里。CPU从内存中读取数据到CPU Cache的过程中，是一小块一小块来读取数据的，而不是按照单个数组元素来读取数据的。这样一小块一小块的数据，在CPU Cache里面，我们把它叫作Cache Line（缓存块）。</p>
+<p>在我们日常使用的Intel服务器或者PC里，Cache Line的大小通常是64字节。而在上面的循环2里面，我们每隔16个整型数计算一次，16个整型数正好是64个字节。于是，循环1和循环2，需要把同样数量的Cache Line数据从内存中读取到CPU Cache中，最终两个程序花费的时间就差别不大了。</p>
+<p>知道了为什么需要CPU Cache，接下来，我们就来看一看，CPU究竟是如何访问CPU Cache的，以及CPU Cache是如何组织数据，使得CPU可以找到自己想要访问的数据的。因为Cache作为“缓存”的意思，在很多别的存储设备里面都会用到。为了避免你混淆，在表示抽象的“缓存“概念时，用中文的“缓存”；如果是CPU Cache，我会用“高速缓存“或者英文的“Cache”，来表示。</p>
+<h2 id="cache">Cache的数据结构和读取过程是什么样的？</h2>
+<p>现代CPU进行数据读取的时候，无论数据是否已经存储在Cache中，CPU始终会首先访问Cache。只有当CPU在Cache中找不到数据的时候，才会去访问内存，并将读取到的数据写入Cache之中。当时间局部性原理起作用后，这个最近刚刚被访问的数据，会很快再次被访问。而Cache的访问速度远远快于内存，这样，CPU花在等待内存访问上的时间就大大变短了。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/3a/cc/3a6fcfd1155e03f4f2781dbb6ddaf6cc.png?wh=1142%2A579" /></p>
+<p>这样的访问机制，和我们自己在开发应用系统的时候，“使用内存作为硬盘的缓存”的逻辑是一样的。在各类基准测试（Benchmark）和实际应用场景中，CPU Cache的命中率通常能达到95%以上。</p>
+<p>问题来了，CPU如何知道要访问的内存数据，存储在Cache的哪个位置呢？接下来，我就从最基本的<strong>直接映射Cache</strong>（Direct Mapped Cache）说起，带你来看整个Cache的数据结构和访问逻辑。</p>
+<p>在开头的3行小程序里我说过，CPU访问内存数据，是一小块一小块数据来读取的。对于读取内存中的数据，我们首先拿到的是数据所在的<strong>内存块</strong>（Block）的地址。而直接映射Cache采用的策略，就是确保任何一个内存块的地址，始终映射到一个固定的CPU Cache地址（Cache Line）。而这个映射关系，通常用mod运算（求余运算）来实现。下面我举个例子帮你理解一下。</p>
+<p>比如说，我们的主内存被分成0～31号这样32个块。我们一共有8个缓存块。用户想要访问第21号内存块。如果21号内存块内容在缓存块中的话，它一定在5号缓存块（21 mod 8 = 5）中。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/52/22/522eade51bbfad19fd25eb4f3ce80f22.png?wh=1142%2A793" /></p>
+<p>Cache采用mod的方式，把内存块映射到对应的CPU Cache中</p>
+<p>实际计算中，有一个小小的技巧，通常我们会把缓存块的数量设置成2的N次方。这样在计算取模的时候，可以直接取地址的低N位，也就是二进制里面的后几位。比如这里的8个缓存块，就是2的3次方。那么，在对21取模的时候，可以对21的2进制表示10101取地址的低三位，也就是101，对应的5，就是对应的缓存块地址。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ca/80/caadd2728b5cfcd2bd704103570f3a80.png?wh=1142%2A762" /></p>
+<p>取Block地址的低位，就能得到对应的Cache Line地址，除了21号内存块外，13号、5号等很多内存块的数据，都对应着5号缓存块中。既然如此，假如现在CPU想要读取21号内存块，在读取到5号缓存块的时候，我们怎么知道里面的数据，究竟是不是21号对应的数据呢？同样，建议你借助现有知识，先自己思考一下，然后再看我下面的分析，这样会印象比较深刻。</p>
+<p>这个时候，在对应的缓存块中，我们会存储一个<strong>组标记</strong>（Tag）。这个组标记会记录，当前缓存块内存储的数据对应的内存块，而缓存块本身的地址表示访问地址的低N位。就像上面的例子，21的低3位101，缓存块本身的地址已经涵盖了对应的信息、对应的组标记，我们只需要记录21剩余的高2位的信息，也就是10就可以了。</p>
+<p>除了组标记信息之外，缓存块中还有两个数据。一个自然是从主内存中加载来的实际存放的数据，另一个是<strong>有效位</strong>（valid bit）。啥是有效位呢？它其实就是用来标记，对应的缓存块中的数据是否是有效的，确保不是机器刚刚启动时候的空数据。如果有效位是0，无论其中的组标记和Cache Line里的数据内容是什么，CPU都不会管这些数据，而要直接访问内存，重新加载数据。</p>
+<p>CPU在读取数据的时候，并不是要读取一整个Block，而是读取一个他需要的数据片段。这样的数据，我们叫作CPU里的一个字（Word）。具体是哪个字，就用这个字在整个Block里面的位置来决定。这个位置，我们叫作偏移量（Offset）。</p>
+<p>总结一下，<strong>一个内存的访问地址，最终包括高位代表的组标记、低位代表的索引，以及在对应的Data Block中定位对应字的位置偏移量。</strong></p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/13/d4/1313fe1e4eb3b5c949284c8b215af8d4.png?wh=1142%2A638" /></p>
+<p>内存地址到Cache Line的关系</p>
+<p>而内存地址对应到Cache里的数据结构，则多了一个有效位和对应的数据，由“<strong>索引 + 有效位</strong> <strong>+ 组标记 + 数据</strong>”组成。如果内存中的数据已经在CPU Cache里了，那一个内存地址的访问，就会经历这样4个步骤：</p>
+<ol>
+<li>根据内存地址的低位，计算在Cache中的索引；</li>
+<li>判断有效位，确认Cache中的数据是有效的；</li>
+<li>对比内存访问地址的高位，和Cache中的组标记，确认Cache中的数据就是我们要访问的内存数据，从Cache Line中读取到对应的数据块（Data Block）；</li>
+<li>根据内存地址的Offset位，从Data Block中，读取希望读取到的字。</li>
+</ol>
+<p>如果在2、3这两个步骤中，CPU发现，Cache中的数据并不是要访问的内存地址的数据，那CPU就会访问内存，并把对应的Block Data更新到Cache Line中，同时更新对应的有效位和组标记的数据。</p>
+<p>好了，讲到这里，相信你明白现代CPU，是如何通过直接映射Cache，来定位一个内存访问地址在Cache中的位置了。其实，除了直接映射Cache之外，我们常见的缓存放置策略还有全相连Cache（Fully Associative Cache）、组相连Cache（Set Associative Cache）。这几种策略的数据结构都是相似的，理解了最简单的直接映射Cache，其他的策略你很容易就能理解了。</p>
+<h2 id="4">减少4毫秒，公司挣了多少钱?</h2>
+<p>刚才我花了很多篇幅，讲了CPU和内存之间的性能差异，以及我们如何通过CPU Cache来尽可能解决这两者之间的性能鸿沟。你可能要问了，这样做的意义和价值究竟是什么？毕竟，一次内存的访问，只不过需要100纳秒而已。1秒钟时间内，足有1000万个100纳秒。别着急，我们先来看一个故事。</p>
+<p>2008年，一家叫作Spread Networks的通信公司花费3亿美元，做了一个光缆建设项目。目标是建设一条从芝加哥到新泽西，总长1331公里的光缆线路。建设这条线路的目的，其实是为了将两地之间原有的网络访问延时，从17毫秒降低到13毫秒。</p>
+<p>你可能会说，仅仅缩短了4毫秒时间啊，却花费3个亿，真的值吗？为这4毫秒时间买单的，其实是一批高频交易公司。它们以5年1400万美元的价格，使用这条线路。利用这短短的4毫秒的时间优势，这些公司通过高性能的计算机程序，在芝加哥和新泽西两地的交易所进行高频套利，以获得每年以10亿美元计的利润。现在你还觉得这个不值得吗？</p>
+<p>其实，只要350微秒的差异，就足够高频交易公司用来进行无风险套利了。而350微秒，如果用来进行100纳秒一次的内存访问，大约只够进行3500次。而引入CPU Cache之后，我们可以进行的数据访问次数，提升了数十倍，使得各种交易策略成为可能。</p>
+<h2 id="_2">总结延伸</h2>
+<p>很多时候，程序的性能瓶颈，来自使用DRAM芯片的内存访问速度。</p>
+<p>根据摩尔定律，自上世纪80年代以来，CPU和内存的性能鸿沟越拉越大。于是，现代CPU的设计者们，直接在CPU中嵌入了使用更高性能的SRAM芯片的Cache，来弥补这一性能差异。通过巧妙地将内存地址，拆分成“索引+组标记+偏移量”的方式，使得我们可以将很大的内存地址，映射到很小的CPU Cache地址里。而CPU Cache带来的毫秒乃至微秒级别的性能差异，又能带来巨大的商业利益，十多年前的高频交易行业就是最好的例子。</p>
+<p>在搞清楚从内存加载数据到Cache，以及从Cache里读取到想要的数据之后，我们又要面临一个新的挑战了。CPU不仅要读数据，还需要写数据，我们不能只把数据写入到Cache里面就结束了。下一讲，我们就来仔细讲讲，CPU要写入数据的时候，怎么既不牺牲性能，又能保证数据的一致性。</p>
+<h2 id="_3">推荐阅读</h2>
+<p>如果你学有余力，这里有两篇文章推荐给你阅读。</p>
+<p>如果想深入了解CPU和内存之间的访问性能，你可以阅读<a href="https://people.freebsd.org/~lstewart/articles/cpumemory.pdf">What Every Programmer Should Know About Memory</a>。</p>
+<p>现代CPU已经很少使用直接映射Cache了，通常用的是组相连Cache（set associative cache），想要了解组相连Cache，你可以阅读《计算机组成与设计：硬件/软件接口》的5.4.1小节。</p>
+<h2 id="_4">课后思考</h2>
+<p>对于二维数组的访问，按行迭代和按列迭代的访问性能是一样的吗？你可以写一个程序测试一下，并思考一下原因。</p>
+<p>欢迎把你思考的结果写在留言区。如果觉得有收获，你也可以把这篇文章分享给你的朋友，和他一起讨论和学习。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/19/69/bf/58f70a2a.jpg" width="30px"><span>程序员花卷</span> 👍（66） 💬（4）<div>我的电脑测试的结果
+<li><span>程序员花卷</span> 👍（66） 💬（4）<div>我的电脑测试的结果
  int[][] arr = new int[10000][10000];
 按行迭代——
 280毫秒
@@ -5836,9 +5980,9 @@
 2、根据老师讲的，CPU从内存读取数据到CPU Cache ，是按照一小块一小块的方式读取的，它的物理内存是连续的，几乎是同行不同列，如果说我们是按照列来迭代的话，那么就会导致存储快无法使用，我们就不得不从内存中读取数据，而在内存中直接读取数据和从高速缓存中直接读取数据的效率那可不是一般的差距，所以说按照行来迭代话，我们就可以很好的利用的数据块，从高速缓存中来读取数据，从而所花费的时间也就比按照列来迭代所花费的时间少！
 
 这是我的见解，有不对的地方，还望老师指正！
-</div>2019-12-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/19/ee/e395a35e.jpg" width="30px"><span>小先生</span> 👍（8） 💬（3）<div>我有个疑问：
+</div>2019-12-23</li><br/><li><span>小先生</span> 👍（8） 💬（3）<div>我有个疑问：
 内存中读取数据，也是按照一块一块来的。
-那一个内存地址是怎么存储对应字的位置偏移量。那它得存多少偏移量啊？</div>2019-09-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/0d/40/f70e5653.jpg" width="30px"><span>前端西瓜哥</span> 👍（7） 💬（1）<div>有点像哈希表。那如果读取的多个内存数据的地址都指向同一个缓存块怎么办？直接覆盖掉？</div>2019-09-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/56/c6/0b449bc6.jpg" width="30px"><span>斐波那契</span> 👍（30） 💬（1）<div>一般二维数组在内存中存放是按行优先存放的 所以在加载数据时候就会把一行数据加载进cache里 这样cache的命中率就大大提高 如果按列迭代 cache就很难名字从而cpu就要经常从内存中读数据 如果数据量不大的话两种方式可能没什么感觉 一旦数据量很大的话按行迭代的速度就能感觉出来了</div>2019-07-19</li><br/><li><img src="" width="30px"><span>尼古拉斯</span> 👍（4） 💬（0）<div>8个缓存块 应该是cake line 0 到cake line 7 途中多了一个cake line 8</div>2020-10-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/f3/129d6dfe.jpg" width="30px"><span>李二木</span> 👍（3） 💬（0）<div>我们为什么需要高速缓存?
+那一个内存地址是怎么存储对应字的位置偏移量。那它得存多少偏移量啊？</div>2019-09-19</li><br/><li><span>前端西瓜哥</span> 👍（7） 💬（1）<div>有点像哈希表。那如果读取的多个内存数据的地址都指向同一个缓存块怎么办？直接覆盖掉？</div>2019-09-27</li><br/><li><span>斐波那契</span> 👍（30） 💬（1）<div>一般二维数组在内存中存放是按行优先存放的 所以在加载数据时候就会把一行数据加载进cache里 这样cache的命中率就大大提高 如果按列迭代 cache就很难名字从而cpu就要经常从内存中读数据 如果数据量不大的话两种方式可能没什么感觉 一旦数据量很大的话按行迭代的速度就能感觉出来了</div>2019-07-19</li><br/><li><span>尼古拉斯</span> 👍（4） 💬（0）<div>8个缓存块 应该是cake line 0 到cake line 7 途中多了一个cake line 8</div>2020-10-27</li><br/><li><span>李二木</span> 👍（3） 💬（0）<div>我们为什么需要高速缓存?
 CPU 的速度好比风驰电掣的高铁，而内存像脚不太灵便的老太太，速度不匹配
 Cache 的数据结构和读取过程是什么样的
    现代 CPU 进行数据读取的时候，无论数据是否已经存储在 Cache 中，CPU 始终会首先访问 Cache。只有当 CPU 在 Cache 中找不到数据的时候，才会去访问内存，并将读取到的数据写入 Cache 之中
@@ -5852,7 +5996,7 @@ Cache 的数据结构和读取过程是什么样的
 2) 全相连 Cache（Fully Associative Cache）、
  一个快可以放置在cache中的任何位置，但是在检索cache中所有项，为了使检索更加有效，它是由一个与cache中每个项都相关的比较器并行完成，这些比较器加大了硬件开下，因而全相连只适合块较少的cache
 3) 组相连 Cache（Set Associative Cache）
-     介于直接映射和全相连之间的设计是组相连，在组相连cache中，每个块可被放置的位置数是固定的。每个块有n个位置可放的cache被称作为n路组相连cache。一个n路组相联cache由很多个组构成，每个组中有n块，根据索引域，存储器中的每个块对应到cache中唯一组，并且可以放在这个组中的任何一个位置上。</div>2021-03-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/5b/83a35681.jpg" width="30px"><span>Monday</span> 👍（3） 💬（0）<div>细细品来，真有味</div>2020-06-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/26/1b/4caf36bd.jpg" width="30px"><span>coldpark</span> 👍（3） 💬（1）<div>请问如果5号高速缓存块要同时存储5和21号内存的数据，组标记怎么填写呢？</div>2019-10-03</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q3auHgzwzM7PaRy6SKSiceZInFq5da0FqsO0N7qPRnAZ6bFwbyooZfWvyugy3EriccOC8Pdq42OtwBj6Mu5H3bhw/132" width="30px"><span>Geek_JaneJane</span> 👍（3） 💬（4）<div>请问徐老师，为什么我在Python上执行3行小程序不是那个效果呢？
+     介于直接映射和全相连之间的设计是组相连，在组相连cache中，每个块可被放置的位置数是固定的。每个块有n个位置可放的cache被称作为n路组相连cache。一个n路组相联cache由很多个组构成，每个组中有n块，根据索引域，存储器中的每个块对应到cache中唯一组，并且可以放在这个组中的任何一个位置上。</div>2021-03-17</li><br/><li><span>Monday</span> 👍（3） 💬（0）<div>细细品来，真有味</div>2020-06-13</li><br/><li><span>coldpark</span> 👍（3） 💬（1）<div>请问如果5号高速缓存块要同时存储5和21号内存的数据，组标记怎么填写呢？</div>2019-10-03</li><br/><li><span>Geek_JaneJane</span> 👍（3） 💬（4）<div>请问徐老师，为什么我在Python上执行3行小程序不是那个效果呢？
 ```
 import time
 
@@ -5871,143 +6015,7 @@ print &#39;2,&#39;, int(time.time()*1000) - start
 1, 11804
 2, 538
 
-```</div>2019-07-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/68/ef/6264ca3d.jpg" width="30px"><span>Magic</span> 👍（2） 💬（0）<div>按行迭代刚好匹配空间局部性原理，因此性能更好</div>2020-10-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/88/18/a88cdaf5.jpg" width="30px"><span>alexgzh</span> 👍（2） 💬（1）<div>分語言, 有的語言二維數組按照行來存, 例如C++ A[2][2] 存放是A[0][0] A[0][1] 存第一行。A[1][0] A[1][1] 存第二行，按照行迭代的方式快。Fortran按照列來存，按照列迭代快。</div>2019-07-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/39/fa/a7edbc72.jpg" width="30px"><span>安排</span> 👍（2） 💬（0）<div>cache和mmu位置关系是怎么样的？哪个在前哪个在后？</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/7d/a6/15798bf2.jpg" width="30px"><span>温雅小公子</span> 👍（1） 💬（0）<div>为了解决cpu和内存数据交换速度不匹配的问题，有一些内存优化策略，比如使用多模块存储器的多体并行存储器、单体多字存储器。以多体并行存储器为例，存取周期为T，除了包括存取时间为t，其中很大一部分时间是用来恢复数据的（因为RAM是易失性存储器，当被读取后电荷丧失，需要重新充电恢复）。这时取T&#47;t个存储体，每个存储体赋予相同的容量、读写控制电路、MAR、MDR等，将内存地址的低n位作为存储体号，即低位交叉编址。这样访问连续的内存单元时可以在多个存储体之间跳跃，避免等待同一个存储体的恢复时间，既能并行工作，也能交叉工作。</div>2022-11-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/7d/a6/15798bf2.jpg" width="30px"><span>温雅小公子</span> 👍（1） 💬（0）<div>老师，这是映射的地址是虚拟地址还是物理地址啊。</div>2022-11-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/38/69/864569a4.jpg" width="30px"><span>devil</span> 👍（1） 💬（3）<div>cache line映射是根据物理地址还是虚拟地址？</div>2020-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/87/62/f99b5b05.jpg" width="30px"><span>曙光</span> 👍（1） 💬（1）<div>&quot;Cache Line 的大小通常是 64 字节。而在上面的循环 2 里面，我们每隔 16 个整型数计算一次，16 个整型数正好是 64 个字节。于是，循环 1 和循环 2，需要把同样数量的 Cache Line 数据从内存中读取到 CPU Cache 中，最终两个程序花费的时间就差别不大了。&quot;
--------------------------
-Cache 里的数据结构，多了一个有效位和对应的数据，由“索引 + 有效位 + 组标记 + 数据”，如果说cache line内保存64字节都是数据，“索引 ”是cache line的索引，那“有效位 + 组标记 ”存放在哪呢？是不是说一个cache line不能存放64字节的数据？ 
-我的理解是64字节是data block的大小，所以一个cache line会大于64字节</div>2020-05-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c0/6c/29be1864.jpg" width="30px"><span>随心而至</span> 👍（1） 💬（1）<div>讲的非常透彻赞。
-课后习题，由于二维数组在内存中是按照行存放的。按行遍历，下一条数据大概率在Cache line中，因而耗时较短。
-public class ArrCacheLineTest {
-    public static void main(String[] args){
-        int[][] arr = new int[6400][6400];
-        long start = System.currentTimeMillis();
-        int sum = 0;
-        for(int i=0; i&lt;arr.length; i++){
-            for(int j=0; j&lt;arr[i].length; j++){
-               sum += arr[i][j];
-            }
-        }
-        &#47;&#47;31ms, 由于数据是按照行放的，按行遍历，下一条数据大概在Cache line中，因而耗时较短。
-        System.out.println(&quot;sum &quot;+ sum  +&quot; time =&quot;+(System.currentTimeMillis() - start));
-        for(int i=0; i&lt;arr.length; i++){
-            for(int j=0; j&lt;arr[i].length; j++){
-                sum += arr[j][i];
-            }
-        }
-        &#47;&#47;1610
-        System.out.println(&quot;sum &quot;+ sum  +&quot; time =&quot;+(System.currentTimeMillis() - start));
-    }
-}</div>2019-10-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（1） 💬（3）<div>老师 那volatile的作用 是不是就是把cache中的有效位 置为0了呢？ 
-
-恳请老师解答！ 谢谢老师！</div>2019-10-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ce/4f/3a89d29a.jpg" width="30px"><span>J.D.Chi</span> 👍（1） 💬（3）<div>图里 Cache Line 0 ~ Cache Line 8 不是 9 个内存块吗？</div>2019-10-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/8d/a7/2176bbc5.jpg" width="30px"><span>Giacomo</span> 👍（1） 💬（2）<div>老师我想问一下，我记得之前我们学过，内存里有分段和分页，那这里的分块和之前的页有没有什么关系？</div>2019-08-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9b/ba/333b59e5.jpg" width="30px"><span>Linuxer</span> 👍（1） 💬（0）<div>一行一行处理，高速缓存命中率更高吧</div>2019-07-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/81/e9/d131dd81.jpg" width="30px"><span>Mamba</span> 👍（0） 💬（0）<div>import numpy as np
-import time
-
-# 创建一个较大的二维数组
-array_size = (10000, 10000)
-array = np.random.rand(*array_size)
-
-# 按行迭代访问数据的时间
-start_time_row_access = time.time()
-for row in array:
-    for value in row:
-        _ = value
-end_time_row_access = time.time()
-
-# 按列迭代访问数据的时间
-start_time_col_access = time.time()
-for col in array.T:  # array.T 获取数组的转置，即按列进行迭代
-    for value in col:
-        _ = value
-end_time_col_access = time.time()
-
-row_access_time_only = end_time_row_access - start_time_row_access
-col_access_time_only = end_time_col_access - start_time_col_access
-
-row_access_time_only, col_access_time_only
-
-结果：
-(8.78434157371521, 10.23575496673584)
-
-这表明在这个测试中，按行迭代访问数据比按列迭代访问数据要快一些。
-
-这种性能差异主要是由于内存访问模式的影响。在按行迭代时，数据是连续存储在内存中的，因此每次内存访问都是连续的，这有利于CPU缓存的利用。而在按列迭代时，虽然数组在逻辑上是按列访问的，但实际上在内存中是按行存储的，这意味着按列访问会导致非连续的内存访问，从而可能降低缓存效率。因此，按列迭代通常会比按行迭代慢一些。</div>2024-09-03</li><br/><li><img src="" width="30px"><span>Geek_88604f</span> 👍（0） 💬（0）<div>1.现代 CPU 进行数据读取的时候，无论数据是否已经存储在 Cache 中，CPU 始终会首先访问 Cache。只有当 CPU 在 Cache 中找不到数据的时候，才会去访问内存，并将读取到的数据写入 Cache 之中。
-    2.CPU 如何知道要访问的内存数据，存储在 Cache 的哪个位置呢？答案是内存映射 Cache
-    3.直接映射 Cache 采用的策略，就是确保任何一个内存块的地址，始终映射到一个固定的 CPU Cache 地址（Cache Line）。这个映射关系，通常用 mod 运算（求余运算）来实现。
-    4.现代 CPU 已经很少使用直接映射 Cache 了，通常用的是组相连 Cache（set associative cache），想要了解组相连 Cache</div>2024-01-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/7d/a6/15798bf2.jpg" width="30px"><span>温雅小公子</span> 👍（0） 💬（0）<div>根据局部性原理，当数组按行存储时，先遍历 i 再遍历 j 每次移动的步长为1， 可以达到很好的空间局部性；而反过来先遍历 j 后遍历 i ，步长为 n ( len(array) )，空间局部性极差。所以按行迭代比按列迭代的访问性能更好，代码入下：（另，用go实现了专栏开始的程序，没能达到理想的效果，为什么呢？）
-``` go
-package main
-
-import (
-    &quot;fmt&quot;
-    &quot;time&quot;
-)
-
-func main() {
-    {
-        var a[64 * 1024 * 1024]int
-        start1 := time.Now()
-        for i := 0; i &lt; len(a); i = i + 1 {
-            a[i] *= 3
-        }
-        cost1 := time.Since(start1)
-        fmt.Println(cost1) &#47;&#47; 237.5362ms
-
-        start2 := time.Now()
-        for i := 0; i &lt; len(a); i = i + 16 {
-            a[i] *= 3
-        }
-        cost2 := time.Since(start2)
-        fmt.Println(cost2) &#47;&#47; 31.3095ms
-    }
-
-    {
-        var arr [1024][1024]int
-        start3 := time.Now()
-        for i := 0; i &lt; len(arr); i++ {
-            for j := 0; j &lt; len(arr[i]); j++ {
-                arr[i][j] *= 3
-            }
-        }
-        cost3 := time.Since(start3)
-        fmt.Println(cost3) &#47;&#47; 0s
-
-        start4 := time.Now()
-        for j := 0; j &lt; len(arr[0]); j ++ {
-            for i := 0; i &lt; len(arr); i++ {
-                arr[i][j] *= 3
-            }
-        }
-        cost4 := time.Since(start4)
-        fmt.Println(cost4) &#47;&#47; 20.4887ms
-    }
-}
-
-```</div>2022-11-01</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epZFcPycr00N0OqicmnhvESmxG9n8icZJwFRd7QJLRkxYJlRSiaXr6xSsIo8b9OyhoickRUqA2aKspH7Q/132" width="30px"><span>Geek_beb011</span> 👍（0） 💬（0）<div>Cache Line的内存大小应该要等于Block吧？</div>2022-09-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/95/2f/d88950a1.jpg" width="30px"><span>颜如玉</span> 👍（0） 💬（0）<div>Cache缓存的如果是地址，那么不是同样需要访问内存嘛？这样Cache快在哪里呢？
-</div>2021-12-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2a/2a/c9/52bbbfc7.jpg" width="30px"><span>赵旭圆</span> 👍（0） 💬（0）<div>对比内存访问地址的高位，和 Cache 中的组标记，确认 Cache 中的数据就是我们要访问的内存数据，从 Cache Line 中读取到对应的数据块（Data Block）
-cache line 64kb 中找不到要偏移的数据怎么处理？</div>2021-10-24</li><br/><li><img src="" width="30px"><span>Geek_f4fb8b</span> 👍（0） 💬（0）<div>func TestIterateArr(t *testing.T) {
-    arr := new([10000][10000]int)
-
-    ret := 0
-    start := time.Now()
-    for i, _ := range arr {
-        for j, _ := range arr[i] {
-            ret += arr[i][j]
-        }
-    }
-    fmt.Printf(&quot;line time spent:%f\n&quot;, time.Since(start).Seconds())
-
-    start2 := time.Now()
-    for i, _ := range arr {
-        for j, _ := range arr[i] {
-            ret += arr[j][i]
-        }
-    }
-    fmt.Printf(&quot;column time spent:%f\n&quot;, time.Since(start2).Seconds())
-}
-=== RUN   TestIterateArr
-line time spent:0.027328
-column time spent:0.026382
---- PASS: TestIterateArr (0.06s)
-差别不大?</div>2021-09-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/d2/0f/8f14c85b.jpg" width="30px"><span>红薯板栗</span> 👍（0） 💬（0）<div>数组在内存中按行连续存储，从内存中读取数据到cpu cache按block读取。如果是按行迭代能增加CPU cache的命中率，空间局部利用率高</div>2021-02-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/e1/d2/42ad2c87.jpg" width="30px"><span>今夜秋风和</span> 👍（0） 💬（0）<div>cacheline 的有效位指的是当前每个所加载的内存块的数据是否有效的码，如果有多个内存块，则每个内存块都有自己的有效位标记</div>2021-01-11</li><br/>
+```</div>2019-07-20</li><br/><li><span>Magic</span> 👍（2） 💬（0）<div>按行迭代刚好匹配空间局部性原理，因此性能更好</div>2020-10-09</li><br/><li><span>alexgzh</span> 👍（2） 💬（1）<div>分語言, 有的語言二維數組按照行來存, 例如C++ A[2][2] 存放是A[0][0] A[0][1] 存第一行。A[1][0] A[1][1] 存第二行，按照行迭代的方式快。Fortran按照列來存，按照列迭代快。</div>2019-07-20</li><br/><li><span>安排</span> 👍（2） 💬（0）<div>cache和mmu位置关系是怎么样的？哪个在前哪个在后？</div>2019-07-19</li><br/><li><span>温雅小公子</span> 👍（1） 💬（0）<div>为了解决cpu和内存数据交换速度不匹配的问题，有一些内存优化策略，比如使用多模块存储器的多体并行存储器、单体多字存储器。以多体并行存储器为例，存取周期为T，除了包括存取时间为t，其中很大一部分时间是用来恢复数据的（因为RAM是易失性存储器，当被读取后电荷丧失，需要重新充电恢复）。这时取T&#47;t个存储体，每个存储体赋予相同的容量、读写控制电路、MAR、MDR等，将内存地址的低n位作为存储体号，即低位交叉编址。这样访问连续的内存单元时可以在多个存储体之间跳跃，避免等待同一个存储体的恢复时间，既能并行工作，也能交叉工作。</div>2022-11-02</li><br/><li><span>温雅小公子</span> 👍（1） 💬（0）<div>老师，这是映射的地址是虚拟地址还是物理地址啊。</div>2022-11-01</li><br/><li><span>devil</span> 👍（1） 💬（3）<div>cache line映射是根据物理地址还是虚拟地址？</div>2020-05-13</li><br/>
 </ul>
 
 

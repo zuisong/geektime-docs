@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -8881,6 +8886,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    07   JVM是如何实现反射的？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -8890,6 +8906,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      反射调用的实现
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      反射调用的开销
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结与实践
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      附录：反射API简介
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -12994,6 +13063,50 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      反射调用的实现
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      反射调用的开销
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结与实践
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      附录：反射API简介
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -13026,115 +13139,394 @@
 <p>（图中eclipse的自动提示使用了反射）</p>
 <p>在Web开发中，我们经常能够接触到各种可配置的通用框架。为了保证框架的可扩展性，它们往往借助Java的反射机制，根据配置文件来加载不同的类。举例来说，Spring框架的依赖反转（IoC），便是依赖于反射机制。</p>
 <p>然而，我相信不少开发人员都嫌弃反射机制比较慢。甚至是甲骨文关于反射的教学网页[1]，也强调了反射性能开销大的缺点。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>今天我们便来了解一下反射的实现机制，以及它性能糟糕的原因。如果你对反射API不是特别熟悉的话，你可以查阅我放在文稿末尾的附录。</p>
+<h2 id="_1">反射调用的实现</h2>
+<p>首先，我们来看看方法的反射调用，也就是Method.invoke，是怎么实现的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>public final class Method extends Executable {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  ...
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  public Object invoke(Object obj, Object... args) throws ... {
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    ... // 权限检查
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    MethodAccessor ma = methodAccessor;
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    if (ma == null) {
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>      ma = acquireMethodAccessor();
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    }
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    return ma.invoke(obj, args);
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>  }
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>}
+</code></pre></div>
+<p>如果你查阅Method.invoke的源代码，那么你会发现，它实际上委派给MethodAccessor来处理。MethodAccessor是一个接口，它有两个已有的具体实现：一个通过本地方法来实现反射调用，另一个则使用了委派模式。为了方便记忆，我便用“本地实现”和“委派实现”来指代这两者。</p>
+<p>每个Method实例的第一次反射调用都会生成一个委派实现，它所委派的具体实现便是一个本地实现。本地实现非常容易理解。当进入了Java虚拟机内部之后，我们便拥有了Method实例所指向方法的具体地址。这时候，反射调用无非就是将传入的参数准备好，然后调用进入目标方法。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>// v0版本
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>import java.lang.reflect.Method;
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>public class Test {
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  public static void target(int i) {
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    new Exception(&quot;#&quot; + i).printStackTrace();
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  }
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>  public static void main(String[] args) throws Exception {
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    Class&lt;?&gt; klass = Class.forName(&quot;Test&quot;);
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    Method method = klass.getMethod(&quot;target&quot;, int.class);
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    method.invoke(null, 0);
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>  }
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>}
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a># 不同版本的输出略有不同，这里我使用了Java 10。
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>$ java Test
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>java.lang.Exception: #0
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>        at Test.target(Test.java:5)
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl .invoke0(Native Method)
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a> a      t java.base/jdk.internal.reflect.NativeMethodAccessorImpl. .invoke(NativeMethodAccessorImpl.java:62)
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a> t       java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.i .invoke(DelegatingMethodAccessorImpl.java:43)
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>        java.base/java.lang.reflect.Method.invoke(Method.java:564)
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>  t        Test.main(Test.java:131
+</code></pre></div>
+<p>为了方便理解，我们可以打印一下反射调用到目标方法时的栈轨迹。在上面的v0版本代码中，我们获取了一个指向Test.target方法的Method对象，并且用它来进行反射调用。在Test.target中，我会打印出栈轨迹。</p>
+<p>可以看到，反射调用先是调用了Method.invoke，然后进入委派实现（DelegatingMethodAccessorImpl），再然后进入本地实现（NativeMethodAccessorImpl），最后到达目标方法。</p>
+<p>这里你可能会疑问，为什么反射调用还要采取委派实现作为中间层？直接交给本地实现不可以么？</p>
+<p>其实，Java的反射调用机制还设立了另一种动态生成字节码的实现（下称动态实现），直接使用invoke指令来调用目标方法。之所以采用委派实现，便是为了能够在本地实现以及动态实现中切换。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>// 动态实现的伪代码，这里只列举了关键的调用逻辑，其实它还包括调用者检测、参数检测的字节码。
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>package jdk.internal.reflect;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>public class GeneratedMethodAccessor1 extends ... {
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  @Overrides    
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  public Object invoke(Object obj, Object[] args) throws ... {
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    Test.target((int) args[0]);
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    return null;
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>  }
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>}
+</code></pre></div>
+<p>动态实现和本地实现相比，其运行效率要快上20倍 [2] 。这是因为动态实现无需经过Java到C++再到Java的切换，但由于生成字节码十分耗时，仅调用一次的话，反而是本地实现要快上3到4倍 [3]。</p>
+<p>考虑到许多反射调用仅会执行一次，Java虚拟机设置了一个阈值15（可以通过-Dsun.reflect.inflationThreshold=来调整），当某个反射调用的调用次数在15之下时，采用本地实现；当达到15时，便开始动态生成字节码，并将委派实现的委派对象切换至动态实现，这个过程我们称之为Inflation。</p>
+<p>为了观察这个过程，我将刚才的例子更改为下面的v1版本。它会将反射调用循环20次。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>// v1版本
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>import java.lang.reflect.Method;
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>public class Test {
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  public static void target(int i) {
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    new Exception(&quot;#&quot; + i).printStackTrace();
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>  }
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>  public static void main(String[] args) throws Exception {
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    Class&lt;?&gt; klass = Class.forName(&quot;Test&quot;);
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    Method method = klass.getMethod(&quot;target&quot;, int.class);
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    for (int i = 0; i &lt; 20; i++) {
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>      method.invoke(null, i);
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    }
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>  }
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>}
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a># 使用-verbose:class打印加载的类
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>$ java -verbose:class Test
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>...
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>java.lang.Exception: #14
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>        at Test.target(Test.java:5)
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl .invoke0(Native Method)
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl .invoke(NativeMethodAccessorImpl.java:62)
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl .invoke(DelegatingMethodAccessorImpl.java:43)
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>        at java.base/java.lang.reflect.Method.invoke(Method.java:564)
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>        at Test.main(Test.java:12)
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>[0.158s][info][class,load] ...
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>...
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>[0.160s][info][class,load] jdk.internal.reflect.GeneratedMethodAccessor1 source: __JVM_DefineClass__
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>java.lang.Exception: #15
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>       at Test.target(Test.java:5)
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>       at java.base/jdk.internal.reflect.NativeMethodAccessorImpl .invoke0(Native Method)
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>       at java.base/jdk.internal.reflect.NativeMethodAccessorImpl .invoke(NativeMethodAccessorImpl.java:62)
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>       at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl .invoke(DelegatingMethodAccessorImpl.java:43)
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>       at java.base/java.lang.reflect.Method.invoke(Method.java:564)
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>       at Test.main(Test.java:12)
+<a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>java.lang.Exception: #16
+<a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>       at Test.target(Test.java:5)
+<a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>       at jdk.internal.reflect.GeneratedMethodAccessor1 .invoke(Unknown Source)
+<a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>       at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl .invoke(DelegatingMethodAccessorImpl.java:43)
+<a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>       at java.base/java.lang.reflect.Method.invoke(Method.java:564)
+<a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a>       at Test.main(Test.java:12)
+<a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a>...
+</code></pre></div>
+<p>可以看到，在第15次（从0开始数）反射调用时，我们便触发了动态实现的生成。这时候，Java虚拟机额外加载了不少类。其中，最重要的当属GeneratedMethodAccessor1（第30行）。并且，从第16次反射调用开始，我们便切换至这个刚刚生成的动态实现（第40行）。</p>
+<p>反射调用的Inflation机制是可以通过参数（-Dsun.reflect.noInflation=true）来关闭的。这样一来，在反射调用一开始便会直接生成动态实现，而不会使用委派实现或者本地实现。</p>
+<h2 id="_2">反射调用的开销</h2>
+<p>下面，我们便来拆解反射调用的性能开销。</p>
+<p>在刚才的例子中，我们先后进行了Class.forName，Class.getMethod以及Method.invoke三个操作。其中，Class.forName会调用本地方法，Class.getMethod则会遍历该类的公有方法。如果没有匹配到，它还将遍历父类的公有方法。可想而知，这两个操作都非常费时。</p>
+<p>值得注意的是，以getMethod为代表的查找方法操作，会返回查找得到结果的一份拷贝。因此，我们应当避免在热点代码中使用返回Method数组的getMethods或者getDeclaredMethods方法，以减少不必要的堆空间消耗。</p>
+<p>在实践中，我们往往会在应用程序中缓存Class.forName和Class.getMethod的结果。因此，下面我就只关注反射调用本身的性能开销。</p>
+<p>为了比较直接调用和反射调用的性能差距，我将前面的例子改为下面的v2版本。它会将反射调用循环二十亿次。此外，它还将记录下每跑一亿次的时间。</p>
+<p>我将取最后五个记录的平均值，作为预热后的峰值性能。（注：这种性能评估方式并不严谨，我会在专栏的第三部分介绍如何用JMH来测性能。）</p>
+<p>在我这个老笔记本上，一亿次直接调用耗费的时间大约在120ms。这和不调用的时间是一致的。其原因在于这段代码属于热循环，同样会触发即时编译。并且，即时编译会将对Test.target的调用内联进来，从而消除了调用的开销。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>// v2版本
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>mport java.lang.reflect.Method;
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>public class Test {
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  public static void target(int i) {
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    // 空方法
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>  }
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>  public static void main(String[] args) throws Exception {
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    Class&lt;?&gt; klass = Class.forName(&quot;Test&quot;);
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    Method method = klass.getMethod(&quot;target&quot;, int.class);
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    long current = System.currentTimeMillis();
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    for (int i = 1; i &lt;= 2_000_000_000; i++) {
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>      if (i % 100_000_000 == 0) {
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>        long temp = System.currentTimeMillis();
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>        System.out.println(temp - current);
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>        current = temp;
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>      }
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>      method.invoke(null, 128);
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    }
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>  }
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>}
+</code></pre></div>
+<p>下面我将以120ms作为基准，来比较反射调用的性能开销。</p>
+<p>由于目标方法Test.target接收一个int类型的参数，因此我传入128作为反射调用的参数，测得的结果约为基准的2.7倍。我们暂且不管这个数字是高是低，先来看看在反射调用之前字节码都做了什么。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>   59: aload_2                         // 加载Method对象
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>   60: aconst_null                     // 反射调用的第一个参数null
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>   61: iconst_1
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>   62: anewarray Object                // 生成一个长度为1的Object数组
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>   65: dup
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>   66: iconst_0
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>   67: sipush 128
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>   70: invokestatic Integer.valueOf    // 将128自动装箱成Integer
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>   73: aastore                         // 存入Object数组中
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>   74: invokevirtual Method.invoke     // 反射调用
+</code></pre></div>
+<p>这里我截取了循环中反射调用编译而成的字节码。可以看到，这段字节码除了反射调用外，还额外做了两个操作。</p>
+<p>第一，由于Method.invoke是一个变长参数方法，在字节码层面它的最后一个参数会是Object数组（感兴趣的同学私下可以用javap查看）。Java编译器会在方法调用处生成一个长度为传入参数数量的Object数组，并将传入参数一一存储进该数组中。</p>
+<p>第二，由于Object数组不能存储基本类型，Java编译器会对传入的基本类型参数进行自动装箱。</p>
+<p>这两个操作除了带来性能开销外，还可能占用堆内存，使得GC更加频繁。（如果你感兴趣的话，可以用虚拟机参数-XX:+PrintGC试试。）那么，如何消除这部分开销呢？</p>
+<p>关于第二个自动装箱，Java缓存了[-128, 127]中所有整数所对应的Integer对象。当需要自动装箱的整数在这个范围之内时，便返回缓存的Integer，否则需要新建一个Integer对象。</p>
+<p>因此，我们可以将这个缓存的范围扩大至覆盖128（对应参数<br />
+-Djava.lang.Integer.IntegerCache.high=128），便可以避免需要新建Integer对象的场景。</p>
+<p>或者，我们可以在循环外缓存128自动装箱得到的Integer对象，并且直接传入反射调用中。这两种方法测得的结果差不多，约为基准的1.8倍。</p>
+<p>现在我们再回来看看第一个因变长参数而自动生成的Object数组。既然每个反射调用对应的参数个数是固定的，那么我们可以选择在循环外新建一个Object数组，设置好参数，并直接交给反射调用。改好的代码可以参照文稿中的v3版本。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>// v3版本
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>import java.lang.reflect.Method;
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>public class Test {
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>  public static void target(int i) {
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    // 空方法
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>  }
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>  public static void main(String[] args) throws Exception {
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    Class&lt;?&gt; klass = Class.forName(&quot;Test&quot;);
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    Method method = klass.getMethod(&quot;target&quot;, int.class);
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    Object[] arg = new Object[1]; // 在循环外构造参数数组
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    arg[0] = 128;
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    long current = System.currentTimeMillis();
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>    for (int i = 1; i &lt;= 2_000_000_000; i++) {
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>      if (i % 100_000_000 == 0) {
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>        long temp = System.currentTimeMillis();
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>        System.out.println(temp - current);
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>        current = temp;
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>      }
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>      method.invoke(null, arg);
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>    }
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>  }
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>}
+</code></pre></div>
+<p>测得的结果反而更糟糕了，为基准的2.9倍。这是为什么呢？</p>
+<p>如果你在上一步解决了自动装箱之后查看运行时的GC状况，你会发现这段程序并不会触发GC。其原因在于，原本的反射调用被内联了，从而使得即时编译器中的逃逸分析将原本新建的Object数组判定为不逃逸的对象。</p>
+<p>如果一个对象不逃逸，那么即时编译器可以选择栈分配甚至是虚拟分配，也就是不占用堆空间。具体我会在本专栏的第二部分详细解释。</p>
+<p>如果在循环外新建数组，即时编译器无法确定这个数组会不会中途被更改，因此无法优化掉访问数组的操作，可谓是得不偿失。</p>
+<p>到目前为止，我们的最好记录是1.8倍。那能不能再进一步提升呢？</p>
+<p>刚才我曾提到，可以关闭反射调用的Inflation机制，从而取消委派实现，并且直接使用动态实现。此外，每次反射调用都会检查目标方法的权限，而这个检查同样可以在Java代码里关闭，在关闭了这两项机制之后，也就得到了我们的v4版本，它测得的结果约为基准的1.3倍。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>// v4版本
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>import java.lang.reflect.Method;
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>// 在运行指令中添加如下两个虚拟机参数：
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>// -Djava.lang.Integer.IntegerCache.high=128
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>// -Dsun.reflect.noInflation=true
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>public class Test {
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>  public static void target(int i) {
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    // 空方法
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>  }
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>  public static void main(String[] args) throws Exception {
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    Class&lt;?&gt; klass = Class.forName(&quot;Test&quot;);
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    Method method = klass.getMethod(&quot;target&quot;, int.class);
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    method.setAccessible(true);  // 关闭权限检查
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>    long current = System.currentTimeMillis();
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>    for (int i = 1; i &lt;= 2_000_000_000; i++) {
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>      if (i % 100_000_000 == 0) {
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>        long temp = System.currentTimeMillis();
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>        System.out.println(temp - current);
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>        current = temp;
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>      }
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>      method.invoke(null, 128);
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>    }
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>  }
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>}
+</code></pre></div>
+<p>到这里，我们基本上把反射调用的水分都榨干了。接下来，我来把反射调用的性能开销给提回去。</p>
+<p>首先，在这个例子中，之所以反射调用能够变得这么快，主要是因为即时编译器中的方法内联。在关闭了Inflation的情况下，内联的瓶颈在于Method.invoke方法中对MethodAccessor.invoke方法的调用。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/93/b5/93dec45b7af7951a2b6daeb01941b9b5.png?wh=1862%2A584" /></p>
+<p>我会在后面的文章中介绍方法内联的具体实现，这里先说个结论：在生产环境中，我们往往拥有多个不同的反射调用，对应多个GeneratedMethodAccessor，也就是动态实现。</p>
+<p>由于Java虚拟机的关于上述调用点的类型profile（注：对于invokevirtual或者invokeinterface，Java虚拟机会记录下调用者的具体类型，我们称之为类型profile）无法同时记录这么多个类，因此可能造成所测试的反射调用没有被内联的情况。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>// v5版本
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>import java.lang.reflect.Method;
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>public class Test {
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>  public static void target(int i) {
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    // 空方法
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>  }
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>  public static void main(String[] args) throws Exception {
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    Class&lt;?&gt; klass = Class.forName(&quot;Test&quot;);
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    Method method = klass.getMethod(&quot;target&quot;, int.class);
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    method.setAccessible(true);  // 关闭权限检查
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    polluteProfile();
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    long current = System.currentTimeMillis();
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    for (int i = 1; i &lt;= 2_000_000_000; i++) {
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>      if (i % 100_000_000 == 0) {
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>        long temp = System.currentTimeMillis();
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>        System.out.println(temp - current);
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>        current = temp;
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>      }
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>      method.invoke(null, 128);
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>    }
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>  }
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>  public static void polluteProfile() throws Exception {
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>    Method method1 = Test.class.getMethod(&quot;target1&quot;, int.class);
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>    Method method2 = Test.class.getMethod(&quot;target2&quot;, int.class);
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>    for (int i = 0; i &lt; 2000; i++) {
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>      method1.invoke(null, 0);
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>      method2.invoke(null, 0);
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>    }
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>  }
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a>  public static void target1(int i) { }
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>  public static void target2(int i) { }
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a>}
+</code></pre></div>
+<p>在上面的v5版本中，我在测试循环之前调用了polluteProfile的方法。该方法将反射调用另外两个方法，并且循环上2000遍。</p>
+<p>而测试循环则保持不变。测得的结果约为基准的6.7倍。也就是说，只要误扰了Method.invoke方法的类型profile，性能开销便会从1.3倍上升至6.7倍。</p>
+<p>之所以这么慢，除了没有内联之外，另外一个原因是逃逸分析不再起效。这时候，我们便可以采用刚才v3版本中的解决方案，在循环外构造参数数组，并直接传递给反射调用。这样子测得的结果约为基准的5.2倍。</p>
+<p>除此之外，我们还可以提高Java虚拟机关于每个调用能够记录的类型数目（对应虚拟机参数-XX:TypeProfileWidth，默认值为2，这里设置为3）。最终测得的结果约为基准的2.8倍，尽管它和原本的1.3倍还有一定的差距，但总算是比6.7倍好多了。</p>
+<h2 id="_3">总结与实践</h2>
+<p>今天我介绍了Java里的反射机制。</p>
+<p>在默认情况下，方法的反射调用为委派实现，委派给本地实现来进行方法调用。在调用超过15次之后，委派实现便会将委派对象切换至动态实现。这个动态实现的字节码是自动生成的，它将直接使用invoke指令来调用目标方法。</p>
+<p>方法的反射调用会带来不少性能开销，原因主要有三个：变长参数方法导致的Object数组，基本类型的自动装箱、拆箱，还有最重要的方法内联。</p>
+<p>今天的实践环节，你可以将最后一段代码中polluteProfile方法的两个Method对象，都改成获取名字为“target”的方法。请问这两个获得的Method对象是同一个吗（==）？他们equal吗（.equals(…)）？对我们的运行结果有什么影响？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>import java.lang.reflect.Method;
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>public class Test {
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  public static void target(int i) {
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    // 空方法
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  }
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>  public static void main(String[] args) throws Exception {
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    Class&lt;?&gt; klass = Class.forName(&quot;Test&quot;);
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    Method method = klass.getMethod(&quot;target&quot;, int.class);
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    method.setAccessible(true);  // 关闭权限检查
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    polluteProfile();
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    long current = System.currentTimeMillis();
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    for (int i = 1; i &lt;= 2_000_000_000; i++) {
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>      if (i % 100_000_000 == 0) {
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>        long temp = System.currentTimeMillis();
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>        System.out.println(temp - current);
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>        current = temp;
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>      }
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>      method.invoke(null, 128);
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>    }
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>  }
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>  public static void polluteProfile() throws Exception {
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>    Method method1 = Test.class.getMethod(&quot;target&quot;, int.class);
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>    Method method2 = Test.class.getMethod(&quot;target&quot;, int.class);
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>    for (int i = 0; i &lt; 2000; i++) {
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>      method1.invoke(null, 0);
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>      method2.invoke(null, 0);
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>    }
+<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>  }
+<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>  public static void target1(int i) { }
+<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>  public static void target2(int i) { }
+<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a>}
+</code></pre></div>
+<h2 id="api">附录：反射API简介</h2>
+<p>通常来说，使用反射API的第一步便是获取Class对象。在Java中常见的有这么三种。</p>
+<ol>
+<li>使用静态方法Class.forName来获取。</li>
+<li>调用对象的getClass()方法。</li>
+<li>直接用类名+“.class”访问。对于基本类型来说，它们的包装类型（wrapper classes）拥有一个名为“TYPE”的final静态字段，指向该基本类型对应的Class对象。</li>
+</ol>
+<p>例如，Integer.TYPE指向int.class。对于数组类型来说，可以使用类名+“[ ].class”来访问，如int[ ].class。</p>
+<p>除此之外，Class类和java.lang.reflect包中还提供了许多返回Class对象的方法。例如，对于数组类的Class对象，调用Class.getComponentType()方法可以获得数组元素的类型。</p>
+<p>一旦得到了Class对象，我们便可以正式地使用反射功能了。下面我列举了较为常用的几项。</p>
+<ol>
+<li>使用newInstance()来生成一个该类的实例。它要求该类中拥有一个无参数的构造器。</li>
+<li>使用isInstance(Object)来判断一个对象是否该类的实例，语法上等同于instanceof关键字（JIT优化时会有差别，我会在本专栏的第二部分详细介绍）。</li>
+<li>使用Array.newInstance(Class,int)来构造该类型的数组。</li>
+<li>使用getFields()/getConstructors()/getMethods()来访问该类的成员。除了这三个之外，Class类还提供了许多其他方法，详见[4]。需要注意的是，方法名中带Declared的不会返回父类的成员，但是会返回私有成员；而不带Declared的则相反。</li>
+</ol>
+<p>当获得了类成员之后，我们可以进一步做如下操作。</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/eb/1a/579c941e.jpg" width="30px"><span>志远</span> 👍（116） 💬（7）<div>老师您好，提个建议，您讲课过程中经常提到一些概念名词，您讲课总是预设了一个前提，就是假设我们已经知道那个概念，然而并不清楚。比如本文中被不断提到的内联，什么是内联呢？</div>2018-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/37/30/bbf76b79.jpg" width="30px"><span>xiaguangme</span> 👍（62） 💬（1）<div>开发人员日常接触到的 Java 集成开发环境（IDE）便运用了这一功能：每当我们敲入点号时，IDE 便会根据点号前的内容，动态展示可以访问的字段或者方法。&#47;&#47;这个应该是不完全正确的，大部分应该是靠语法树来实现的。</div>2018-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/04/9a/f2c0a206.jpg" width="30px"><span>ext4</span> 👍（26） 💬（1）<div>雨迪您好，我有两个问题：
+<li>使用Constructor/Field/Method.setAccessible(true)来绕开Java语言的访问限制。</li>
+<li>使用Constructor.newInstance(Object[])来生成该类的实例。</li>
+<li>使用Field.get/set(Object)来访问字段的值。</li>
+<li>使用Method.invoke(Object, Object[])来调用方法。</li>
+</ul>
+<p>有关反射API的其他用法，可以参考reflect包的javadoc [5] ，这里就不详细展开了。</p>
+<p>[1] : <a href="https://docs.oracle.com/javase/tutorial/reflect/">https://docs.oracle.com/javase/tutorial/reflect/</a><br />
+[2]: <a href="http://hg.openjdk.java.net/jdk10/jdk10/jdk/file/777356696811/src/java.base/share/classes/jdk/internal/reflect/ReflectionFactory.java#l80">http://hg.openjdk.java.net/jdk10/jdk10/jdk/file/777356696811/src/java.base/share/classes/jdk/internal/reflect/ReflectionFactory.java#l80</a><br />
+[3]: <a href="http://hg.openjdk.java.net/jdk10/jdk10/jdk/file/777356696811/src/java.base/share/classes/jdk/internal/reflect/ReflectionFactory.java#l78">http://hg.openjdk.java.net/jdk10/jdk10/jdk/file/777356696811/src/java.base/share/classes/jdk/internal/reflect/ReflectionFactory.java#l78</a><br />
+[4]: <a href="https://docs.oracle.com/javase/tutorial/reflect/class/classMembers.html">https://docs.oracle.com/javase/tutorial/reflect/class/classMembers.html</a><br />
+[5]: <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/reflect/package-summary.html">https://docs.oracle.com/javase/10/docs/api/java/lang/reflect/package-summary.html</a></p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>志远</span> 👍（116） 💬（7）<div>老师您好，提个建议，您讲课过程中经常提到一些概念名词，您讲课总是预设了一个前提，就是假设我们已经知道那个概念，然而并不清楚。比如本文中被不断提到的内联，什么是内联呢？</div>2018-08-06</li><br/><li><span>xiaguangme</span> 👍（62） 💬（1）<div>开发人员日常接触到的 Java 集成开发环境（IDE）便运用了这一功能：每当我们敲入点号时，IDE 便会根据点号前的内容，动态展示可以访问的字段或者方法。&#47;&#47;这个应该是不完全正确的，大部分应该是靠语法树来实现的。</div>2018-08-06</li><br/><li><span>ext4</span> 👍（26） 💬（1）<div>雨迪您好，我有两个问题：
 
 一是我自己的测试结果和文章中有些出入。在我自己的mac+jdk10环境中，v3版本的代码和v2版本性能是差不多的，多次测试看v3还略好一些。从v2的GC log来看for循环的每一亿次iteration中间都会有GC发生，似乎说明这里的escape analysis并没有做到allocation on stack。您能想到这是什么原因么？另有个小建议就是文章中提到测试结果时，注明一下您的环境。
 
 另一个问题是在您v5版本的代码中，您故意用method1和method2两个对象霸占了2个ProfileType的位子，导致被测的反射操作性能很低。这是因为此处invoke方法的inline是压根儿就没有做呢？还是因为inline是依据target1或者target2来做的，而实际运行时发现类型不一致又触发了deoptimization呢？
 
-望解答，谢谢~</div>2018-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/03/90/2312c3fb.jpg" width="30px"><span>夜空</span> 👍（16） 💬（3）<div>当某个反射调用的调用次数在 15 之下时，采用本地实现；当达到 15 时，便开始动态生成字节码...
-———可以认为第16次反射调用时的耗时是最长的吗？</div>2018-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/86/a8/427879a9.jpg" width="30px"><span>搬砖匠</span> 👍（15） 💬（3）<div>请教一个问题，本地实现可以用java来替代c++的实现方式吗？这样就可以避过C++的额外开销？</div>2018-09-08</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTK9RytLsauRVYGjupDIaibibAK5iaicEicONrMFc0O3icAGf5mD1buxoQ2ePPn9YurFhRbuf3AR1qJDy0GQ/132" width="30px"><span>星文友</span> 👍（14） 💬（3）<div>给大家讲个笑话：
-我负责的项目中有大量动态生成的类，这些类实例的调用原本都是通过反射去完成，后来我觉得反射效率低，就为每个动态类的每个方法在动态生成一个代理类，这个代理类就是进行类型强转然后直接调用。后来在压测环境进行测试，发现并无卵用，早点开到这篇文章我就不用做这么多无用功了。特么的JVM已经有这个功能了啊</div>2018-11-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fe/15/ccda05bb.jpg" width="30px"><span>Kisho</span> 👍（14） 💬（1）<div>郑老师，你好,
-       “动态实现无需经过Java到C++再到Java的切换”,这句话没太明白，能在解释下么？</div>2018-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/70/fc/77f60338.jpg" width="30px"><span>Stephen</span> 👍（12） 💬（1）<div>老师，有三个知识点不太明白，分别是:内联、逃逸分析以及inflation机制</div>2018-11-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/dc/65/3da02c30.jpg" width="30px"><span>once</span> 👍（10） 💬（1）<div>请问老师 是不是本地方法的性能一般都不是很好呢</div>2018-09-07</li><br/><li><img src="" width="30px"><span>Scott</span> 👍（7） 💬（1）<div>有两个问题：
+望解答，谢谢~</div>2018-08-06</li><br/><li><span>夜空</span> 👍（16） 💬（3）<div>当某个反射调用的调用次数在 15 之下时，采用本地实现；当达到 15 时，便开始动态生成字节码...
+———可以认为第16次反射调用时的耗时是最长的吗？</div>2018-08-06</li><br/><li><span>搬砖匠</span> 👍（15） 💬（3）<div>请教一个问题，本地实现可以用java来替代c++的实现方式吗？这样就可以避过C++的额外开销？</div>2018-09-08</li><br/><li><span>星文友</span> 👍（14） 💬（3）<div>给大家讲个笑话：
+我负责的项目中有大量动态生成的类，这些类实例的调用原本都是通过反射去完成，后来我觉得反射效率低，就为每个动态类的每个方法在动态生成一个代理类，这个代理类就是进行类型强转然后直接调用。后来在压测环境进行测试，发现并无卵用，早点开到这篇文章我就不用做这么多无用功了。特么的JVM已经有这个功能了啊</div>2018-11-02</li><br/><li><span>Kisho</span> 👍（14） 💬（1）<div>郑老师，你好,
+       “动态实现无需经过Java到C++再到Java的切换”,这句话没太明白，能在解释下么？</div>2018-08-06</li><br/><li><span>Stephen</span> 👍（12） 💬（1）<div>老师，有三个知识点不太明白，分别是:内联、逃逸分析以及inflation机制</div>2018-11-03</li><br/><li><span>once</span> 👍（10） 💬（1）<div>请问老师 是不是本地方法的性能一般都不是很好呢</div>2018-09-07</li><br/><li><span>Scott</span> 👍（7） 💬（1）<div>有两个问题：
 1.v3版本中，确定不逃逸的数组可以优化访问，这个是怎么做的？
-2.v5版本中，为啥逃逸分析会失效，明明都封闭在循环里的？</div>2018-08-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/eb/1a/579c941e.jpg" width="30px"><span>志远</span> 👍（7） 💬（1）<div>文章中“一亿次直接调用耗费的时间大约在 120ms。这和不调用的时间是一致的。”这句话是不是病句啊？不调用指的是什么？指的是直接调用吗？</div>2018-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（5） 💬（2）<div>老师请教个问题，如果手动修改某个Java字节码文件，如果JVM不重新加载此文件，有什么方式能让JVM识别并执行修改的内容呢？
-如果一定需要JVM加载后才能识别并执行，有什么好的手动触发的方法呢？</div>2018-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/35/2c/429323f3.jpg" width="30px"><span>姬野用菜刀</span> 👍（3） 💬（1）<div>因此，我们应当避免在热点代码中使用返回 Method 数组的 getMethods 或者 getDeclaredMethods 方法，以减少不必要的堆空间消耗。
+2.v5版本中，为啥逃逸分析会失效，明明都封闭在循环里的？</div>2018-08-15</li><br/><li><span>志远</span> 👍（7） 💬（1）<div>文章中“一亿次直接调用耗费的时间大约在 120ms。这和不调用的时间是一致的。”这句话是不是病句啊？不调用指的是什么？指的是直接调用吗？</div>2018-08-06</li><br/><li><span>钱</span> 👍（5） 💬（2）<div>老师请教个问题，如果手动修改某个Java字节码文件，如果JVM不重新加载此文件，有什么方式能让JVM识别并执行修改的内容呢？
+如果一定需要JVM加载后才能识别并执行，有什么好的手动触发的方法呢？</div>2018-08-06</li><br/><li><span>姬野用菜刀</span> 👍（3） 💬（1）<div>因此，我们应当避免在热点代码中使用返回 Method 数组的 getMethods 或者 getDeclaredMethods 方法，以减少不必要的堆空间消耗。
 
-这个地方没有太明白，老师能帮忙在细讲一下嘛？</div>2018-08-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/7f/2f/b4a925bd.jpg" width="30px"><span>阿康</span> 👍（3） 💬（1）<div>请问，反射第16次生成字节码的用的什么方式阿？和asm有什么区别呢？</div>2018-08-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/eb/63/09e7f442.jpg" width="30px"><span>溯雪</span> 👍（2） 💬（1）<div>啊，不知道这么久了，老师还会不会回复
+这个地方没有太明白，老师能帮忙在细讲一下嘛？</div>2018-08-14</li><br/><li><span>阿康</span> 👍（3） 💬（1）<div>请问，反射第16次生成字节码的用的什么方式阿？和asm有什么区别呢？</div>2018-08-09</li><br/><li><span>溯雪</span> 👍（2） 💬（1）<div>啊，不知道这么久了，老师还会不会回复
 
 说起变长数组，我发现jdk9新增的Set.of方法重载了许多:
 
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>static &amp;lt;E&amp;gt; Set&amp;lt;E&amp;gt; of(E e1) {
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>        return new ImmutableCollections.Set12&amp;lt;&amp;gt;(e1);
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    }
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>static &amp;lt;E&amp;gt; Set&amp;lt;E&amp;gt; of(E e1, E e2) {
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        return new ImmutableCollections.Set12&amp;lt;&amp;gt;(e1, e2);
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    }
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>   static &amp;lt;E&amp;gt; Set&amp;lt;E&amp;gt; of(E e1, E e2, E e3) {
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        return new ImmutableCollections.SetN&amp;lt;&amp;gt;(e1, e2, e3);
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    }
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>&amp;#47;&amp;#47;&amp;#47;&amp;#47;&amp;#47;一直到10个参数
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    static &amp;lt;E&amp;gt; Set&amp;lt;E&amp;gt; of(E... elements) {
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        switch (elements.length) { &amp;#47;&amp;#47; implicit null check of elements
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>            case 0:
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>                return ImmutableCollections.emptySet();
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>            case 1:
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>                return new ImmutableCollections.Set12&amp;lt;&amp;gt;(elements[0]);
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>            case 2:
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>                return new ImmutableCollections.Set12&amp;lt;&amp;gt;(elements[0], elements[1]);
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>            default:
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>                return new ImmutableCollections.SetN&amp;lt;&amp;gt;(elements);
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>        }
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    }
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>static &amp;lt;E&amp;gt; Set&amp;lt;E&amp;gt; of(E e1) {
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>        return new ImmutableCollections.Set12&amp;lt;&amp;gt;(e1);
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    }
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>static &amp;lt;E&amp;gt; Set&amp;lt;E&amp;gt; of(E e1, E e2) {
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        return new ImmutableCollections.Set12&amp;lt;&amp;gt;(e1, e2);
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    }
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>   static &amp;lt;E&amp;gt; Set&amp;lt;E&amp;gt; of(E e1, E e2, E e3) {
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>        return new ImmutableCollections.SetN&amp;lt;&amp;gt;(e1, e2, e3);
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    }
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>&amp;#47;&amp;#47;&amp;#47;&amp;#47;&amp;#47;一直到10个参数
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    static &amp;lt;E&amp;gt; Set&amp;lt;E&amp;gt; of(E... elements) {
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>        switch (elements.length) { &amp;#47;&amp;#47; implicit null check of elements
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>            case 0:
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>                return ImmutableCollections.emptySet();
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>            case 1:
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>                return new ImmutableCollections.Set12&amp;lt;&amp;gt;(elements[0]);
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>            case 2:
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>                return new ImmutableCollections.Set12&amp;lt;&amp;gt;(elements[0], elements[1]);
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>            default:
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>                return new ImmutableCollections.SetN&amp;lt;&amp;gt;(elements);
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>        }
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>    }
 </code></pre></div>
-然而ImmutableCollections.SetN又是个变长数组，那么重载的1~10个参数方法是图个啥。。</div>2018-11-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d9/c6/a295275b.jpg" width="30px"><span>o</span> 👍（2） 💬（2）<div>请问，这个15次，他是怎么记录的呢？是否仍然占用jvm的内存，如果占用是属于那个区域呢？麻烦您可以给讲讲吗？谢谢</div>2018-08-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f6/e3/e4bcd69e.jpg" width="30px"><span>沉淀的梦想</span> 👍（1） 💬（2）<div>在v5版本中，为什么我设置TypeProfileWidth为3，速度并没有变快呢？</div>2018-08-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c0/71/c83d8b15.jpg" width="30px"><span>一个坏人</span> 👍（1） 💬（1）<div>老师好，请教一个问题。当某个反射调用的调用次数在 15 之下时，采用本地实现；当达到 15 时，便开始动态生成字节码...
-———可以认为第16次反射调用时的耗时是最长的吗？如果刚好只调用16次是不是就不划算了？</div>2018-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/75/65/2a7f8212.jpg" width="30px"><span>小明</span> 👍（26） 💬（3）<div>可以看看这篇博客 有详细的生成动态调用的解释  
-http:&#47;&#47;rednaxelafx.iteye.com&#47;blog&#47;548536</div>2018-08-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（25） 💬（2）<div>小结
-1:反射机制是Java语言的一个非常重要的特性，通过这个特性，我们能够动态的监控、调用、修改类的行为，许多的框架实现就用到了Java语言反射的机制
-
-2:使用反射挺好的，但它也是不完美的，复杂的操作往往更耗时间和精力，使用反射也是一样，性能低下是她所被人诟病的一个地方，那为什么方法的反射如此耗费性能呐？它的性能耗在那里呢？方法的反射调用会带来不少性能开销，原因主要有三个：变长参数方法导致的 Object 数组，基本类型的自动装箱、拆箱，还有最重要的方法内联。</div>2018-08-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/49/df/abb7bfe3.jpg" width="30px"><span>且听风吟</span> 👍（20） 💬（8）<div>看到inflation这块还是比较有深刻感触的。一次线上环境发现metasapce周期性打爆导致full GC，后来根据dump分析到，由于引入了一些中间件的关系，很多实用代理反射的方式生成了很多字节码，后来把inflation阈值调整到int.max就没问题了</div>2019-10-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fd/08/c039f840.jpg" width="30px"><span>小鳄鱼</span> 👍（9） 💬（0）<div>不是同个对象，但equal。老师说了，返回的是目标方法的一份拷贝</div>2018-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/70/fc/77f60338.jpg" width="30px"><span>Stephen</span> 👍（7） 💬（2）<div>老师，有三个知识点不太明白:内联、逃逸分析以及inflation机制</div>2018-11-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/08/4e/87e40222.jpg" width="30px"><span>Yoph</span> 👍（4） 💬（1）<div>MethodAccessor实例创建在ReflectionFactory中，如下代码：
-public class ReflectionFactory {  
-    private static boolean noInflation        = false;  
-    private static int     inflationThreshold = 15;  
-
-    public MethodAccessor newMethodAccessor(Method method) {  
-        checkInitted();  
-        if (noInflation) {  
-            return new MethodAccessorGenerator().  
-                generateMethod(method.getDeclaringClass(),  
-                               method.getName(),  
-                               method.getParameterTypes(),  
-                               method.getReturnType(),  
-                               method.getExceptionTypes(),  
-                               method.getModifiers());  
-        } else {  
-            NativeMethodAccessorImpl acc =  
-                new NativeMethodAccessorImpl(method);  
-            DelegatingMethodAccessorImpl res =  
-                new DelegatingMethodAccessorImpl(acc);  
-            acc.setParent(res);  
-            return res;  
-        }  
-    }  
-}  
-
-实际的MethodAccessor实现有两个版本，一个是Java实现的，另一个是native code实现的。</div>2018-11-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/66/75/54bb858e.jpg" width="30px"><span>life is short, enjoy more.</span> 👍（3） 💬（0）<div>总结一下
-反射有两种实现方式：
-
-本地方法调用（就是字节码中已经定义好的方法）
-
-动态生成字节码
-
-
-两者有什么区别？
-
-动态生成字节码（以下简称动态实现），生成字节码的过程很慢（类似于准备工作），但是执行效率高。
-
-本地方法调用，不用生成字节码，直接调用本地方法。所以准备工作几乎没有，很快。但是执行效率就差很多。
-
-
-JVM如何做决定选择哪种实现方式？
-
-通过反射执行的次数来决定，默认值是15。15次之前直接本地调用，之后动态实现。
-
-
-JVM为啥分两种实现方式？
-
-本地实现的调用流程复杂。而在执行多次的情况下，复杂意味着性能损耗，所以有一种适合多次执行的解决方案，就是动态生成字节码。
-
-</div>2018-10-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/22/aa/c7725dd8.jpg" width="30px"><span>Ennis LM</span> 👍（2） 💬（0）<div>最后的问题，==是false，equals是true，对性能的影响我不知道怎么看。。。</div>2018-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（2） 💬（1）<div>JVM加载了一个Java字节码文件，在不停止JVM的情况下能再次的加载同一个Java字节码文件吗？如果能是覆盖了原来的那个Java字节码文件还是怎么着了呢？
-在IDE中是可以直接修改Java源代码的，然后可以手动触发Java源代码的编译和重新加载，请问老师知道IDE是怎么实现的吗？</div>2018-08-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0c/52/f25c3636.jpg" width="30px"><span>长脖子树</span> 👍（1） 💬（0）<div>为什么不用 native 方法, 而使用java代码实现? 
-跨越native边界会对优化有阻碍作用，它就像个黑箱一样让虚拟机难以分析也将其内联，于是运行时间长了之后反而是托管版本的代码更快些。
-参考: R大博客 http:&#47;&#47;rednaxelafx.iteye.com&#47;blog&#47;548536
-</div>2020-05-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/13/8c/c86340ca.jpg" width="30px"><span>巴西</span> 👍（1） 💬（0）<div>有点难啊</div>2019-11-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0c/52/f25c3636.jpg" width="30px"><span>长脖子树</span> 👍（1） 💬（0）<div>经过 polluteProfile 之后的代码
-在参数 -XX:TypeProfileWidth=3 -Dsun.reflect.noInflation=true 条件下
-jdk 1.8.0_212-release 上最后5次平均 732ms
-openjdk11 (build 11+28) 上最后5次平均 269ms 
-差距还是很大的, 大家记得认准版本号啊
-</div>2019-11-01</li><br/>
+然而ImmutableCollections.SetN又是个变长数组，那么重载的1~10个参数方法是图个啥。。</div>2018-11-15</li><br/>
 </ul>
 
 

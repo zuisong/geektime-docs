@@ -4205,6 +4205,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      负载均衡
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dns_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      示例：DNS访问数据中心中对象存储上的静态资源
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5567,6 +5594,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      负载均衡
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dns_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      示例：DNS访问数据中心中对象存储上的静态资源
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5615,21 +5669,62 @@
 <li>权威DNS服务器查询后将对应的IP地址X.X.X.X告诉本地DNS。</li>
 <li>本地DNS再将IP地址返回客户端，客户端和目标建立连接。</li>
 </ol>
-<div><strong>精选留言（30）</strong></div>
+<p>至此，我们完成了DNS的解析过程。现在总结一下，整个过程我画成了一个图。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/71/e8/718e3a1a1a7927302b6a0f836409e8e8.jpg?wh=1456%2A1212" /></p>
+<h2 id="_1">负载均衡</h2>
+<p>站在客户端角度，这是一次<strong>DNS递归查询过程。因为本地DNS全权为它效劳，它只要坐等结果即可。在这个过程中，DNS除了可以通过名称映射为IP地址，它还可以做另外一件事，就是负载均衡</strong>。</p>
+<p>还是以访问“外婆家”为例，还是我们开头的“外婆家”，但是，它可能有很多地址，因为它在杭州可以有很多家。所以，如果一个人想去吃“外婆家”，他可以就近找一家店，而不用大家都去同一家，这就是负载均衡。</p>
+<p>DNS首先可以做<strong>内部负载均衡</strong>。</p>
+<p>例如，一个应用要访问数据库，在这个应用里面应该配置这个数据库的IP地址，还是应该配置这个数据库的域名呢？显然应该配置域名，因为一旦这个数据库，因为某种原因，换到了另外一台机器上，而如果有多个应用都配置了这台数据库的话，一换IP地址，就需要将这些应用全部修改一遍。但是如果配置了域名，则只要在DNS服务器里，将域名映射为新的IP地址，这个工作就完成了，大大简化了运维。</p>
+<p>在这个基础上，我们可以再进一步。例如，某个应用要访问另外一个应用，如果配置另外一个应用的IP地址，那么这个访问就是一对一的。但是当被访问的应用撑不住的时候，我们其实可以部署多个。但是，访问它的应用，如何在多个之间进行负载均衡？只要配置成为域名就可以了。在域名解析的时候，我们只要配置策略，这次返回第一个IP，下次返回第二个IP，就可以实现负载均衡了。</p>
+<p>另外一个更加重要的是，DNS还可以做<strong>全局负载均衡</strong>。</p>
+<p>为了保证我们的应用高可用，往往会部署在多个机房，每个地方都会有自己的IP地址。当用户访问某个域名的时候，这个IP地址可以轮询访问多个数据中心。如果一个数据中心因为某种原因挂了，只要在DNS服务器里面，将这个数据中心对应的IP地址删除，就可以实现一定的高可用。</p>
+<p>另外，我们肯定希望北京的用户访问北京的数据中心，上海的用户访问上海的数据中心，这样，客户体验就会非常好，访问速度就会超快。这就是全局负载均衡的概念。</p>
+<h2 id="dns_2">示例：DNS访问数据中心中对象存储上的静态资源</h2>
+<p>我们通过DNS访问数据中心中对象存储上的静态资源为例，看一看整个过程。</p>
+<p>假设全国有多个数据中心，托管在多个运营商，每个数据中心三个可用区（Available Zone）。对象存储通过跨可用区部署，实现高可用性。在每个数据中心中，都至少部署两个内部负载均衡器，内部负载均衡器后面对接多个对象存储的前置服务器（Proxy-server）。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/0b/b6/0b241afef775a1c942c5728364b302b6.jpg?wh=2200%2A2262" /></p>
+<ol>
+<li>当一个客户端要访问object.yourcompany.com的时候，需要将域名转换为IP地址进行访问，所以它要请求本地DNS解析器。</li>
+<li>本地DNS解析器先查看看本地的缓存是否有这个记录。如果有则直接使用，因为上面的过程太复杂了，如果每次都要递归解析，就太麻烦了。</li>
+<li>如果本地无缓存，则需要请求本地的DNS服务器。</li>
+<li>本地的DNS服务器一般部署在你的数据中心或者你所在的运营商的网络中，本地DNS服务器也需要看本地是否有缓存，如果有则返回，因为它也不想把上面的递归过程再走一遍。</li>
+<li>至 7. 如果本地没有，本地DNS才需要递归地从根DNS服务器，查到.com的顶级域名服务器，最终查到 yourcompany.com 的权威DNS服务器，给本地DNS服务器，权威DNS服务器按说会返回真实要访问的IP地址。</li>
+</ol>
+<p>对于不需要做全局负载均衡的简单应用来讲，yourcompany.com的权威DNS服务器可以直接将 object.yourcompany.com这个域名解析为一个或者多个IP地址，然后客户端可以通过多个IP地址，进行简单的轮询，实现简单的负载均衡。</p>
+<p>但是对于复杂的应用，尤其是跨地域跨运营商的大型应用，则需要更加复杂的全局负载均衡机制，因而需要专门的设备或者服务器来做这件事情，这就是<strong>全局负载均衡器</strong>（<strong>GSLB</strong>，<strong>Global Server Load Balance</strong>）。</p>
+<p>在yourcompany.com的DNS服务器中，一般是通过配置CNAME的方式，给 object.yourcompany.com起一个别名，例如 object.vip.yourcomany.com，然后告诉本地DNS服务器，让它请求GSLB解析这个域名，GSLB就可以在解析这个域名的过程中，通过自己的策略实现负载均衡。</p>
+<p>图中画了两层的GSLB，是因为分运营商和地域。我们希望不同运营商的客户，可以访问相同运营商机房中的资源，这样不跨运营商访问，有利于提高吞吐量，减少时延。</p>
+<ol>
+<li>第一层GSLB，通过查看请求它的本地DNS服务器所在的运营商，就知道用户所在的运营商。假设是移动，通过CNAME的方式，通过另一个别名 object.yd.yourcompany.com，告诉本地DNS服务器去请求第二层的GSLB。</li>
+<li>第二层GSLB，通过查看请求它的本地DNS服务器所在的地址，就知道用户所在的地理位置，然后将距离用户位置比较近的Region里面，六个<strong>内部负载均衡</strong>（<strong>SLB</strong>，S<strong>erver Load Balancer</strong>）的地址，返回给本地DNS服务器。</li>
+<li>本地DNS服务器将结果返回给本地DNS解析器。</li>
+<li>本地DNS解析器将结果缓存后，返回给客户端。</li>
+<li>客户端开始访问属于相同运营商的距离较近的Region 1中的对象存储，当然客户端得到了六个IP地址，它可以通过负载均衡的方式，随机或者轮询选择一个可用区进行访问。对象存储一般会有三个备份，从而可以实现对存储读写的负载均衡。</li>
+</ol>
+<h2 id="_2">小结</h2>
+<p>好了，这节内容就到这里了，我们来总结一下：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/6a/a8/ee414a25.jpg" width="30px"><span>公告-SRE运维实践</span> 👍（113） 💬（6）<div>分地址和运营商主要是为了返回最优的ip，也就是离用户最近的ip，提高用户访问的速度，分运营商也是返回最快的一条路径。gslb失灵一般是因为一个ns请求gslb的时候，看不到用户真实的ip，从而不一定是最优的，而且这个返回的结果可能给一个用户或者一万个用户，可以通过流量监测来缓解。</div>2018-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f2/46/09c457eb.jpg" width="30px"><span>Garwen</span> 👍（36） 💬（3）<div>刘超老师，根域名服务器的访问不还是无法逃离高并发访问的场景吗，虽说本地的DNS已经可以解决80%请求的地址解析，但还是会有极其庞大数量的访问需要去找根域名服务器的吧，这里的根域名服务器的高并发场景不比12306小吧，是如何解决的呢？</div>2019-05-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/78/ac/e5e6e7f3.jpg" width="30px"><span>古夜</span> 👍（14） 💬（1）<div>这一课看懂了，还联想到了ping百度域名有时候返回ip不一样的问题，感谢</div>2019-04-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/67/61/ea54229a.jpg" width="30px"><span>jim</span> 👍（14） 💬（3）<div>浏览器，路由器也有缓存吧？</div>2018-11-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/88/18/a88cdaf5.jpg" width="30px"><span>alexgzh</span> 👍（13） 💬（1）<div>以前只知道DNS是方便記憶。今天學到了DNS其實是解耦應用和被訪問應用的IP地址，還有局部負載均衡和全局負載均衡的功能, 學到了！！</div>2019-07-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/e2/58/8c8897c8.jpg" width="30px"><span>杨春鹏</span> 👍（11） 💬（3）<div>当访问网站的时候，是先去访问host文件还是，本地DNS缓存？</div>2018-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/51/d2/dddffa12.jpg" width="30px"><span>胸怀宇宙瓜皮李</span> 👍（8） 💬（1）<div>确实不是很理解为什么需要两次的全局负载均衡？为什么不在第一次的负载均衡中，直接获取DNS服务器所在地址和DNS服务提供商？</div>2019-07-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/42/52/19553613.jpg" width="30px"><span>刘培培</span> 👍（6） 💬（1）<div>1. 不同地区和运营商之间延迟不同，所以优先选择同运营商、同地区服务
+<li>DNS是网络世界的地址簿，可以通过域名查地址，因为域名服务器是按照树状结构组织的，因而域名查找是使用递归的方法，并通过缓存的方式增强性能；</li>
+<li>在域名和IP的映射过程中，给了应用基于域名做负载均衡的机会，可以是简单的负载均衡，也可以根据地址和运营商做全局的负载均衡。</li>
+</ul>
+<p>最后，给你留两个思考题：</p>
+<ol>
+<li>全局负载均衡为什么要分地址和运营商呢？</li>
+<li>全局负载均衡使用过程中，常常遇到失灵的情况，你知道具体有哪些情况吗？对应应该怎么来解决呢？</li>
+</ol>
+<p>我们的专栏更新过半了，不知你掌握得如何？每节课后我留的思考题，你都有没有认真思考，并在留言区写下答案呢？我会从<strong>已发布的文章中选出一批认真留言的同学</strong>，赠送**学习奖励礼券<strong>和我整理的</strong>独家网络协议知识图谱**。</p>
+<p>欢迎你留言和我讨论。趣谈网络协议，我们下期见！</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>公告-SRE运维实践</span> 👍（113） 💬（6）<div>分地址和运营商主要是为了返回最优的ip，也就是离用户最近的ip，提高用户访问的速度，分运营商也是返回最快的一条路径。gslb失灵一般是因为一个ns请求gslb的时候，看不到用户真实的ip，从而不一定是最优的，而且这个返回的结果可能给一个用户或者一万个用户，可以通过流量监测来缓解。</div>2018-08-19</li><br/><li><span>Garwen</span> 👍（36） 💬（3）<div>刘超老师，根域名服务器的访问不还是无法逃离高并发访问的场景吗，虽说本地的DNS已经可以解决80%请求的地址解析，但还是会有极其庞大数量的访问需要去找根域名服务器的吧，这里的根域名服务器的高并发场景不比12306小吧，是如何解决的呢？</div>2019-05-05</li><br/><li><span>古夜</span> 👍（14） 💬（1）<div>这一课看懂了，还联想到了ping百度域名有时候返回ip不一样的问题，感谢</div>2019-04-19</li><br/><li><span>jim</span> 👍（14） 💬（3）<div>浏览器，路由器也有缓存吧？</div>2018-11-28</li><br/><li><span>alexgzh</span> 👍（13） 💬（1）<div>以前只知道DNS是方便記憶。今天學到了DNS其實是解耦應用和被訪問應用的IP地址，還有局部負載均衡和全局負載均衡的功能, 學到了！！</div>2019-07-20</li><br/><li><span>杨春鹏</span> 👍（11） 💬（3）<div>当访问网站的时候，是先去访问host文件还是，本地DNS缓存？</div>2018-09-12</li><br/><li><span>胸怀宇宙瓜皮李</span> 👍（8） 💬（1）<div>确实不是很理解为什么需要两次的全局负载均衡？为什么不在第一次的负载均衡中，直接获取DNS服务器所在地址和DNS服务提供商？</div>2019-07-14</li><br/><li><span>刘培培</span> 👍（6） 💬（1）<div>1. 不同地区和运营商之间延迟不同，所以优先选择同运营商、同地区服务
 
-2. GLSB 挂掉了，客户端地址、运营商变更了，缓存未及时更新。</div>2019-08-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7f/0c/2ebdc487.jpg" width="30px"><span>魔兽rpg足球</span> 👍（6） 💬（7）<div>引用原文中的话：
+2. GLSB 挂掉了，客户端地址、运营商变更了，缓存未及时更新。</div>2019-08-27</li><br/><li><span>魔兽rpg足球</span> 👍（6） 💬（7）<div>引用原文中的话：
 “在 yourcompany.com 的 DNS 服务器中，一般是通过配置 CNAME 的方式，给
 object.yourcompany.com 起一个别名，例如 object.vip.yourcomany.com，然后告诉本地 DNS
 服务器，让它请求 GSLB 解析这个域名，GSLB 就可以在解析这个域名的过程中，通过自己的策略实
 现负载均衡”
-这里有一句没明白，告诉本地服务器，让object.vip.yourcomany.com域名去GSLB解析，这个应该如何告诉呢</div>2019-06-17</li><br/><li><img src="" width="30px"><span>起风了001</span> 👍（4） 💬（2）<div>好像设置GSLB是通过添加NS记录实现的, 不是CNAME呀.</div>2019-05-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/ec/2a/b11d5ad8.jpg" width="30px"><span>曾经瘦过</span> 👍（4） 💬（3）<div>报名太晚了 不知道是否还可以获得独家网络知识图谱和学习奖励券</div>2018-10-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d6/53/f5b4d2f0.jpg" width="30px"><span>或燃</span> 👍（2） 💬（2）<div>“在 yourcompany.com 的 DNS 服务器中，一般是通过配置 CNAME 的方式，给 object.yourcompany.com 起一个别”    请问一下老师这里说的DNS服务器是指域名解析里的配置吗？像阿里云买的域名里的：云解析DNS&#47;域名解析&#47;解析设置，记录类型选择CNAME，记录值是：object.vip.yourcomany.com，另外这个域名是第一层 GSLB的域名吗？</div>2019-08-07</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/wYPdGBibR1FJWWMzFzYBy4tNTd22rMgtlYTgR7wuicFLQjiaozuRWM2VSMFxPYjVdkLJLGvMav2icH3icgz07hmDsDw/132" width="30px"><span>dayspring</span> 👍（2） 💬（2）<div>老师，有一个问题请教一下本地dns，是怎么知道本地dns server的ip地址的？同理本地dns server是怎么知道根dns server的ip地址的？他们之间的访问有负载均衡吗？</div>2019-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5f/e8/94365887.jpg" width="30px"><span>ieo</span> 👍（2） 💬（1）<div>刘老师，dns服务器请求权威dns后，怎么请求到全局负载均衡服务器的，这块没怎么看懂，是权威dns告诉本地dns的难道是全局负载均衡的ip吗？</div>2019-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d3/b4/bb883fc8.jpg" width="30px"><span>pana@</span> 👍（2） 💬（1）<div>本地DNS服务器在请求object.vip.yourcompany.com这个域名时，是不是也要走一遍dns解析流程才能到gslb?gslb还能解析域名？应该只能根据域名通过某些策略返回IP吧?</div>2019-01-17</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/6LaITPQ4Lk5fZn8ib1tfsPW8vI9icTuSwAddiajVfibPDiaDvMU2br6ZT7K0LWCKibSQuicT7sIEVmY4K7ibXY0T7UQEiag/132" width="30px"><span>尔东橙</span> 👍（1） 💬（2）<div>为什么本地dns不直接访问顶级dns</div>2019-08-12</li><br/><li><img src="" width="30px"><span>陈耀</span> 👍（1） 💬（1）<div>关于客户端的dns的查询有部分是错误的，浏览器到本地dns（甚至运营商dns）使用的是递归查询，而向根域服务器、顶级域服务器、权威域服务器 使用的是迭代查询。</div>2019-04-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1f/3f/c9f7e73c.jpg" width="30px"><span>风中拾遗</span> 👍（1） 💬（1）<div>老师，这个域名绑定的ip应该是公网的ip吧？不然会发生冲突，但如果是公网的ip，那个数就那么多，总有一天会不够用的。</div>2019-03-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/75/00/618b20da.jpg" width="30px"><span>徐海浪</span> 👍（0） 💬（1）<div>1 首先是就近访问，其次是避免跨运营商。
-2 DNS解析有时效问题。</div>2020-06-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/4a/34/1faac99b.jpg" width="30px"><span>夕林语</span> 👍（0） 💬（1）<div>思考题：
-1.分地址和运营商是为了让用户有更快的访问速度和更好的体验
-2.浏览器的缓存或者本地dns的缓存</div>2020-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/be/05/55b72986.jpg" width="30px"><span>shaukin</span> 👍（0） 💬（1）<div>从权威域名服务器返回给本地DNS服务器不是返回IP地址了吗，那怎么还要去返回GLSB实现负载均衡呢</div>2020-06-03</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIjUDIRQ0gRiciax3Wo78c5rVjuWDiaw4ibcCiby8xiaMXJh5ibjU5242vfCGOK4ehibe1IKyxex2A4IX4XSA/132" width="30px"><span>追风者</span> 👍（0） 💬（1）<div>当一个权限域名服务器还不能直接给出最后的查询结果时，就会告诉发出查询的DNS客户，下一步应当找哪一个权限域名服务器。
-老师，应该如何理解这句话？一次DNS解析中，本地服务器会向权限域名服务器发送多次请求？我在书上看到说查询www.abc.xyz.com本地DNS会发送4次查询请求。困扰已久！</div>2019-08-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d0/f1/432e0476.jpg" width="30px"><span>X</span> 👍（0） 💬（2）<div>xxxx could not be resolved (110: Operation timed out)
-我在一个项目中要使用http协议去请求其他N个域名，每次请求都会有DNS解析这一步。刚开始时，DNS解析正常，没有超时，但是过一会，DNS解析超时越来越多。单独拿出服务中解析超时的域名，使用linux命令dig，全部正常，ping，也全部正常。我的nginx.conf配置中，resolver_timeout 60s（默认30s）,resolver 8.8.8.8。请问是哪里的问题？我需要怎么去排查？</div>2019-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/6d/1c/10d5c280.jpg" width="30px"><span>哈哈</span> 👍（0） 💬（1）<div>有个问题想问下，如果权威域名服务器没有分多个运营商的话，从权威域名服务器dns解析到gslb过程的不是会很慢么？ 还是说从根开始每个都是gslb这种模式，或者还是权威域名服务器都部署在主干网所以很快</div>2019-02-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/f9/90/f90903e5.jpg" width="30px"><span>菜菜</span> 👍（0） 💬（2）<div>老师，通过负载均衡，客户端拿到假如说6和ip，通过轮询的话，如果是tcp连接的话，每次都要新建一个tcp连接吗？这样会不会又增加负担……</div>2019-02-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e0/99/5d603697.jpg" width="30px"><span>MJ</span> 👍（0） 💬（1）<div>本地DNS服务器访问GLSB的时候，如何做到把原域名改为别名来访问呢？</div>2018-11-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/6f/63/abb7bfe3.jpg" width="30px"><span>扬～</span> 👍（0） 💬（1）<div>疑问，为什么要把6个proxy的IP都发给客户端呢?这样不会侵入代码吗，这不应该是服务端的责任吗，不需要对客户端透明吗?</div>2018-11-05</li><br/><li><img src="" width="30px"><span>Tom</span> 👍（0） 💬（1）<div>本地DNS不是本地局域网的吧？本机io配置中的DNS就是本地局域网吧？</div>2018-10-19</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJJJdibLfaPjOqvgdRSn11JhwdqaI2KiaUdkeA9cwQ5btpnFX00V0rpFXlksKfBtaArprs7DN2ybFug/132" width="30px"><span>逍遥夏末</span> 👍（0） 💬（1）<div>刘老师，dns服务器是由运营商维护吗，也就是服务器所有者维护，GSLB是由我们需要访问的网址服务器维护吗，比如访问163.com，是不是网易给运营商一个规则，说来访问我的服务器都给我指定到我的GSLB服务器上来，我自己做全局负载均衡，我来返回用户最优访问的ip。请刘老师指正。</div>2018-09-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/45/be/494010aa.jpg" width="30px"><span>zcpromising</span> 👍（0） 💬（1）<div>老师，dns解析为啥没讲迭代解析呢</div>2018-07-03</li><br/>
+这里有一句没明白，告诉本地服务器，让object.vip.yourcomany.com域名去GSLB解析，这个应该如何告诉呢</div>2019-06-17</li><br/><li><span>起风了001</span> 👍（4） 💬（2）<div>好像设置GSLB是通过添加NS记录实现的, 不是CNAME呀.</div>2019-05-22</li><br/><li><span>曾经瘦过</span> 👍（4） 💬（3）<div>报名太晚了 不知道是否还可以获得独家网络知识图谱和学习奖励券</div>2018-10-18</li><br/><li><span>或燃</span> 👍（2） 💬（2）<div>“在 yourcompany.com 的 DNS 服务器中，一般是通过配置 CNAME 的方式，给 object.yourcompany.com 起一个别”    请问一下老师这里说的DNS服务器是指域名解析里的配置吗？像阿里云买的域名里的：云解析DNS&#47;域名解析&#47;解析设置，记录类型选择CNAME，记录值是：object.vip.yourcomany.com，另外这个域名是第一层 GSLB的域名吗？</div>2019-08-07</li><br/><li><span>dayspring</span> 👍（2） 💬（2）<div>老师，有一个问题请教一下本地dns，是怎么知道本地dns server的ip地址的？同理本地dns server是怎么知道根dns server的ip地址的？他们之间的访问有负载均衡吗？</div>2019-05-13</li><br/><li><span>ieo</span> 👍（2） 💬（1）<div>刘老师，dns服务器请求权威dns后，怎么请求到全局负载均衡服务器的，这块没怎么看懂，是权威dns告诉本地dns的难道是全局负载均衡的ip吗？</div>2019-05-08</li><br/><li><span>pana@</span> 👍（2） 💬（1）<div>本地DNS服务器在请求object.vip.yourcompany.com这个域名时，是不是也要走一遍dns解析流程才能到gslb?gslb还能解析域名？应该只能根据域名通过某些策略返回IP吧?</div>2019-01-17</li><br/>
 </ul>
 
 

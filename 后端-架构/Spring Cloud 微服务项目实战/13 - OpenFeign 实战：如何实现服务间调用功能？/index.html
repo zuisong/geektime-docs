@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#template" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -4398,6 +4403,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    13   OpenFeign 实战：如何实现服务间调用功能？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -4407,6 +4423,68 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#template" class="md-nav__link">
+    <span class="md-ellipsis">
+      改造Template远程调用
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#calculation" class="md-nav__link">
+    <span class="md-ellipsis">
+      改造Calculation远程调用
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#openfeign" class="md-nav__link">
+    <span class="md-ellipsis">
+      配置OpenFeign的加载路径
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -12889,6 +12967,59 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#template" class="md-nav__link">
+    <span class="md-ellipsis">
+      改造Template远程调用
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#calculation" class="md-nav__link">
+    <span class="md-ellipsis">
+      改造Calculation远程调用
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#openfeign" class="md-nav__link">
+    <span class="md-ellipsis">
+      配置OpenFeign的加载路径
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -12924,18 +13055,126 @@
 </code></pre></div>
 <p>在上面的代码中，你并不需要指定组件的版本号，因为我们在顶层项目中定义的spring-cloud-dependencies依赖项中已经定义了各个Spring Cloud的版本号，它们会随着Maven项目的继承关系传递到子模块中。</p>
 <p>添加好依赖项之后，我们就可以进行大刀阔斧的OpenFeign改造了。在coupon-customer-impl子模块下的CouponCustomerServiceImpl类中，我们通过WebClient分别调用了template和calculation的服务。这节课我先来带你对template的远程调用过程进行改造，将其替换为OpenFeign风格的调用。</p>
-<div><strong>精选留言（17）</strong></div>
+<h2 id="template">改造Template远程调用</h2>
+<p>通过上节课的内容我们了解到，OpenFeign组件通过接口代理的方式发起远程调用，那么我们改造过程的第一步就是要定义一个OpenFeign接口。</p>
+<p>我在coupon-customer-impl项目下创建了一个package，它的路径是com.geekbang.coupon.customer.feign。在这个路径下我定义了一个叫做TemplateService的Interface，用来实现对coupon-template-serv的远程调用代理。我们来看一下这个接口的源代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>@FeignClient(value = &quot;coupon-template-serv&quot;, path = &quot;/template&quot;)
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>public interface TemplateService {
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    // 读取优惠券
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    @GetMapping(&quot;/getTemplate&quot;)
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    CouponTemplateInfo getTemplate(@RequestParam(&quot;id&quot;) Long id);
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    // 批量获取
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    @GetMapping(&quot;/getBatch&quot;)
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    Map&lt;Long, CouponTemplateInfo&gt; getTemplateInBatch(@RequestParam(&quot;ids&quot;) Collection&lt;Long&gt; ids);
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>}
+</code></pre></div>
+<p>在上面的代码中，我们在接口上声明了一个FeignClient注解，它专门用来标记被OpenFeign托管的接口。</p>
+<p>在FeignClient注解中声明的value属性是目标服务的名称，在代码中我指定了coupon-template-serv，你需要确保这里的服务名称和Nacos服务器上显示的服务注册名称是一样的。</p>
+<p>此外，FeignClient注解中的path属性是一个可选项，如果你要调用的目标服务有一个统一的前置访问路径，比如coupon-template-serv所有接口的访问路径都以/template开头，那么你可以通过path属性来声明这个前置路径，这样一来，你就不用在每一个方法名上的注解中带上前置Path了。</p>
+<p>在项目的启动阶段，OpenFeign会查找所有被FeignClient注解修饰的接口，并代理该接口的所有方法调用。当我们调用接口方法的时候，OpenFeign就会根据方法上定义的注解自动拼装HTTP请求路径和参数，并向目标服务发起真实调用。</p>
+<p>因此，我们还需要在方法上定义spring-web注解（如GetMapping、PostMapping），让OpenFeign拼装出正确的Request URL和请求参数。这时你要注意，<strong>OpenFeign接口中定义的路径和参数必须与你要调用的目标服务中的保持一致</strong>。</p>
+<p>完成了Feign接口的定义，接下来你就可以替换CouponCustomerServiceImpl中的业务逻辑调用了。</p>
+<p>首先，我们在CouponCustomerServiceImpl接口中注入刚才定义的TemplateService接口。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>@Autowired
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>private TemplateService templateService;
+</code></pre></div>
+<p>被FeignClient注解修饰的对象，也会被添加到Spring上下文中。因此我们可以通过Autowired注入的方式来使用这些接口。</p>
+<p>然后，我们就可以对具体的业务逻辑进行替换了。以CouponCustomerServiceImpl类中的placeOrder下单接口为例，其中有一步是调用coupon-template-serv获取优惠券模板数据，这个服务请求是使用WebClient发起的，我们来看一下改造之前的方法实现。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>webClientBuilder.build().get()
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    .uri(&quot;http://coupon-template-serv/template/getTemplate?id=&quot; + templateId)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    .retrieve()
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    .bodyToMono(CouponTemplateInfo.class)
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    .block();        
+</code></pre></div>
+<p>从上面的代码中你可以看出，我们写了一大长串的代码，只为了发起一次服务请求。如果使用<strong>OpenFeign接口</strong>来替换，那画风就不一样了，我们看一下改造后的服务调用过程。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>templateService.getTemplate(couponInfo.getTemplateId())
+</code></pre></div>
+<p>你可以看到，使用OpenFeign接口发起远程调用就像使用本地服务一样简单。和WebClient的调用方式相比，<strong>OpenFeign组件不光可以提高代码可读性和可维护性，还降低了远程调用的Coding成本</strong>。</p>
+<p>在CouponCustomerServiceImpl类中的findCoupon方法里，我们调用了coupon-template-serv的批量查询接口获取模板信息，这个过程也可以使用OpenFeign接口实现，下面是具体的实现代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>// 获取这些优惠券的模板ID
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>List&lt;Long&gt; templateIds = coupons.stream()
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        .map(Coupon::getTemplateId)
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        .distinct()
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        .collect(Collectors.toList());
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>// 发起请求批量查询券模板
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>Map&lt;Long, CouponTemplateInfo&gt; templateMap = templateService
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        .getTemplateInBatch(templateIds);
+</code></pre></div>
+<p>到这里，我们已经把template服务的远程调用改成了OpenFeign接口调用的方式，那么接下来让我们趁热打铁，去搞定calculation服务的远程调用。</p>
+<h2 id="calculation">改造Calculation远程调用</h2>
+<p>首先，我们在TemplateService同样的目录下创建一个新的接口，名字是CalculationService，后面你会使用它作为coupon-calculation-serv的代理接口。我们来看一下这个接口的源码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>@FeignClient(value = &quot;coupon-calculation-serv&quot;, path = &quot;/calculator&quot;)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>public interface CalculationService {
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    // 订单结算
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    @PostMapping(&quot;/checkout&quot;)
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    ShoppingCart checkout(ShoppingCart settlement);
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    // 优惠券试算
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    @PostMapping(&quot;/simulate&quot;)
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    SimulationResponse simulate(SimulationOrder simulator);
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>}
+</code></pre></div>
+<p>我在接口类之上声明了一个FeignClient注解，指向了coupon-calculation-serv服务，并且在path属性中注明了服务访问的前置路径是/calculator。</p>
+<p>在接口中我还定义了两个方法，分别指向checkout用户下单接口和simulate优惠券试算接口，这两个接口的访问路径和coupon-calculation-serv中定义的路径是一模一样的。</p>
+<p>有了前面template服务的改造经验，相信你应该很轻松就能搞定calculation服务调用的改造。首先，我们需要把刚才定义的CalculationService注入到CouponCustomerServiceImpl中。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>@Autowired
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>private CalculationService calculationService;
+</code></pre></div>
+<p>然后，你只用在调用coupon-calculation-serv服务的地方，将WebClient调用替换成下面这种OpenFeign调用的方式就可以了，是不是很简单呢？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>// order清算
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>ShoppingCart checkoutInfo = calculationService.checkout(order);
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>// order试算
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>calculationService.simulate(order)
+</code></pre></div>
+<p>到这里，我们就完成了template和calculation服务调用过程的改造。在我们启动项目来验证改造成果之前，还有最为关键的一步需要完成，那就是配置OpenFeign的加载路径。</p>
+<h2 id="openfeign">配置OpenFeign的加载路径</h2>
+<p>我们打开coupon-customer-serv项目的启动类，你可以通过在类名之上添加一个EnableFeignClients注解的方式定义OpenFeign接口的加载路径，你可以参考以下代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>// 省略其他无关注解
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>@EnableFeignClients(basePackages = {&quot;com.geekbang&quot;})
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>public class Application {
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>}
+</code></pre></div>
+<p>在这段代码中，我们在EnableFeignClients注解的basePackages属性中定义了一个com.geekbang的包名，这个注解就会告诉OpenFeign在启动项目的时候做一件事儿：找到所有位于com.geekbang包路径（包括子package）之下使用FeignClient修饰的接口，然后生成相关的代理类并添加到Spring的上下文中。这样一来，我们才能够在项目中用Autowired注解注入OpenFeign接口。</p>
+<p>如果你忘记声明EnableFeignClients注解了呢？那么启动项目的时候，你就会收到一段异常，告诉你目标服务在Spring上下文中未找到。我把具体的报错信息贴在了这里，你可以参考一下。如果碰到这类启动异常，你就可以先去查看启动类上有没有定义EnableFeignClients注解。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>Field templateService in com.geekbang.coupon.customer.service.CouponCustomerServiceImpl 
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>required a bean of type &#39;com.geekbang.coupon.customer.feign.TemplateService&#39; that could not be found.
+</code></pre></div>
+<p>上面就是使用包路径扫描的方式来加载FeignClient接口。除此之外，你还可以通过直接加载指定FeignClient接口类的方式，或者从指定类所在的目录进行扫包的方式来加载FeignClient接口。我把这两种加载方式的代码写在了下面，你可以参考一下。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>// 通过指定Client类来加载
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>@EnableFeignClients(clients = {TemplateService.class, CalculationService.class})
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>// 扫描特定类所在的包路径下的FeignClient
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>@EnableFeignClients(basePackageClasses = {TemplateService.class})
+</code></pre></div>
+<p>在这三种加载方式中，我比较推荐你在项目中使用一劳永逸的“包路径”加载的方式。因为不管以后你添加了多少新的FeignClient接口，只要这些接口位于com.geekbang包路径之下，你就不用操心加载路径的配置。</p>
+<p>到这里，我们就完成了OpenFeign的实战项目改造，你可以在本地启动项目来验证改造后的程序是否可以正常工作。</p>
+<h2 id="_1">总结</h2>
+<p>现在，我们来回顾一下这节课的重点内容。今天我们使用OpenFeign替代了项目中的WebClient组件，实现了跨服务的远程调用。在这个过程中有两个重要步骤。</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/15/7e/29/2fc94ee7.jpg" width="30px"><span>金灶沐</span> 👍（29） 💬（4）<div>服务提供方提取一层接口出来， 由服务提供方维护请求路径，    服务消费方，直接声明一个接口extends消费方的接口， 加上@FeignClients即可
-</div>2022-01-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/1e/cf/97cd8be1.jpg" width="30px"><span>so long</span> 👍（15） 💬（2）<div>每个服务提供方单独添加一个openfeign的模块，服务调用方添加对应的openfeign模块即可</div>2022-01-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/1e/cf/97cd8be1.jpg" width="30px"><span>so long</span> 👍（8） 💬（1）<div>老师，我用spring cloud alibaba搭建了公司的一个项目，服务启动后，接口的首次请求需要2-3秒钟，后续请求都在100ms左右，请问有哪些优化措施可以提高首次接口请求速度？之前使用ribbon可是设置为饿汉式加载，但是spring cloud loadbalancer好像没有饿汉式加载的配置。</div>2022-01-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/bd/f6/558bb119.jpg" width="30px"><span>ᯤ⁵ᴳ</span> 👍（6） 💬（1）<div>请求异常，多次重试等使用Webclient会比较方便，@FeignClient 如何处理呢</div>2022-01-11</li><br/><li><img src="" width="30px"><span>Geek_e93c48</span> 👍（6） 💬（1）<div>关于老师的思考题：
+<li><strong>FeignClient</strong>：使用该注解修饰OpenFeign的代理接口，你需要确保接口中每个方法的寻址路径和你要调用的目标服务保持一致。除此之外，FeignClient中指定的服务名称也要和Nacos服务端中的服务注册名称保持一致；</li>
+<li><strong>EnableFeignClients</strong>：在启动类上声明EnableFeignClients注解，使用本课程中学习的三种扫包方式的任意一种加载FeignClient接口，这样OpenFeign组件才能在你的程序启动之后对FeignClient接口进行初始化和动态代理。</li>
+</ul>
+<p>通过这节课的学习，相信你已经能够掌握Spring Cloud体系下的微服务远程调用的方法了。在后面的课程中，我将带你进一步了解OpenFeign组件的其他高级玩法。</p>
+<h2 id="_2">思考题</h2>
+<p>在这节课中，我把OpenFeign接口定义在了调用方这一端。如果你的服务需要暴露给很多业务方使用，每个业务方都要维护一套独立的OpenFeign接口似乎也不太方便，你能想到什么更好的接口管理办法吗？欢迎在留言区写下自己的思考，与我一起讨论。</p>
+<p>好啦，这节课就结束啦。欢迎你把这节课分享给更多对Spring Cloud感兴趣的朋友。我是姚秋辰，我们下节课再见！</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>金灶沐</span> 👍（29） 💬（4）<div>服务提供方提取一层接口出来， 由服务提供方维护请求路径，    服务消费方，直接声明一个接口extends消费方的接口， 加上@FeignClients即可
+</div>2022-01-10</li><br/><li><span>so long</span> 👍（15） 💬（2）<div>每个服务提供方单独添加一个openfeign的模块，服务调用方添加对应的openfeign模块即可</div>2022-01-10</li><br/><li><span>so long</span> 👍（8） 💬（1）<div>老师，我用spring cloud alibaba搭建了公司的一个项目，服务启动后，接口的首次请求需要2-3秒钟，后续请求都在100ms左右，请问有哪些优化措施可以提高首次接口请求速度？之前使用ribbon可是设置为饿汉式加载，但是spring cloud loadbalancer好像没有饿汉式加载的配置。</div>2022-01-10</li><br/><li><span>ᯤ⁵ᴳ</span> 👍（6） 💬（1）<div>请求异常，多次重试等使用Webclient会比较方便，@FeignClient 如何处理呢</div>2022-01-11</li><br/><li><span>Geek_e93c48</span> 👍（6） 💬（1）<div>关于老师的思考题：
 做成将提供方的OpenFeign做成中间件抽离出来。
-个人建议：老师是否可以在后边的文章中不仅仅讲技术落地，加入一些使用该技术在生产上的遇到的问题和排查思路，这些才是我们需要的（手动滑稽）</div>2022-01-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/b1/4f/61a98c13.jpg" width="30px"><span>欢沁</span> 👍（4） 💬（1）<div>老师你好，微服务的数据库分库后，如果A服务要展示的数据需要和B数据库的表关联，微服务划分后，数据库层面就没法做join操作，企业现在通用的方式是怎么处理的。我目前的解决方法是通过feign来调用其他服务获取数据，再插到A服务的对象中，如果遇到关联的表多，就需要feign调用多次，我不认为这是一个好的解决方法，这样的话代码量会堆积非常多，如果没有划分数据库的话，只要通过join就解决问题了。
+个人建议：老师是否可以在后边的文章中不仅仅讲技术落地，加入一些使用该技术在生产上的遇到的问题和排查思路，这些才是我们需要的（手动滑稽）</div>2022-01-10</li><br/><li><span>欢沁</span> 👍（4） 💬（1）<div>老师你好，微服务的数据库分库后，如果A服务要展示的数据需要和B数据库的表关联，微服务划分后，数据库层面就没法做join操作，企业现在通用的方式是怎么处理的。我目前的解决方法是通过feign来调用其他服务获取数据，再插到A服务的对象中，如果遇到关联的表多，就需要feign调用多次，我不认为这是一个好的解决方法，这样的话代码量会堆积非常多，如果没有划分数据库的话，只要通过join就解决问题了。
 
 
-所以概括就是，我需要关联到其他服务的数据库的表，没法join，我应该怎么做，谢谢老师。</div>2022-02-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/d7/9a/38d14e5f.jpg" width="30px"><span>mars</span> 👍（4） 💬（3）<div>老师，能问下微服务下调用其他服务，其他服务是其他厂商的web接口，只提供过输入输出和请求地址这种，注册中心也不在一个，这种常规的http请求在微服务架构下的最佳调用实践是咋样的呢？还是继续open feign做url吗？</div>2022-02-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5c/c5/1231d633.jpg" width="30px"><span>梁中华</span> 👍（3） 💬（1）<div>要加自定义的header头怎么办？</div>2022-02-09</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/ib7ymR5sdB4GVSx3DBHV0fpDP877zs3ia0ia0j0DAI9UDuZtxssgknyyUgmgfmqnXJdMVCkA5ll6NZvIl0w4NmZ7g/132" width="30px"><span>Geek_a5c816</span> 👍（2） 💬（1）<div>这种原始openFegin的实现消费者调用提供者的时候,无法传递headers中的参数,怎么处理呢?</div>2022-03-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eou1BMETumU21ZI4yiaLenOMSibzkAgkw944npIpsJRicmdicxlVQcgibyoQ00rdGk9Htp1j0dM5CP2Fibw/132" width="30px"><span>寥若晨星</span> 👍（1） 💬（1）<div>为啥不可以直接在服务实现的接口上加@FeignClient注解呢</div>2022-03-11</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/3icaaUibVCz5gYiaj5gZ4wV8ick5RhEMpe47XKkdK1nAhA9qic6rwhSrpiasDSQYAwfiaIulhE4YKsbwoOXUfvL76EPSw/132" width="30px"><span>Geek_f76b23</span> 👍（1） 💬（1）<div>cusmter服务通过openFeign调用template提供的服务，@FeignClient(value = &quot;coupon-template-serv&quot;), @FeignClient的value指定了调用服务的名称？
+所以概括就是，我需要关联到其他服务的数据库的表，没法join，我应该怎么做，谢谢老师。</div>2022-02-25</li><br/><li><span>mars</span> 👍（4） 💬（3）<div>老师，能问下微服务下调用其他服务，其他服务是其他厂商的web接口，只提供过输入输出和请求地址这种，注册中心也不在一个，这种常规的http请求在微服务架构下的最佳调用实践是咋样的呢？还是继续open feign做url吗？</div>2022-02-07</li><br/><li><span>梁中华</span> 👍（3） 💬（1）<div>要加自定义的header头怎么办？</div>2022-02-09</li><br/><li><span>Geek_a5c816</span> 👍（2） 💬（1）<div>这种原始openFegin的实现消费者调用提供者的时候,无法传递headers中的参数,怎么处理呢?</div>2022-03-18</li><br/><li><span>寥若晨星</span> 👍（1） 💬（1）<div>为啥不可以直接在服务实现的接口上加@FeignClient注解呢</div>2022-03-11</li><br/><li><span>Geek_f76b23</span> 👍（1） 💬（1）<div>cusmter服务通过openFeign调用template提供的服务，@FeignClient(value = &quot;coupon-template-serv&quot;), @FeignClient的value指定了调用服务的名称？
 
-如果我把项目里的template-serv复制一份命名为template-serv-copy,用来模拟集群，这个时候copy的服务名称也要叫coupon-template-serv</div>2022-02-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/23/96/fb/af39abb1.jpg" width="30px"><span>黄叶</span> 👍（1） 💬（2）<div>老师，命名方面，我喜欢写成TestServiceFeign进行命名（方面我知道这是个Feign远程调用接口），但看老师是TestService来命名，想请问 这两种方式那种更好</div>2022-01-16</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/cjichzNjhghHD9DJEXCBrh1PqmmlfBwC84NKbn9obLYEGCBDiaqufEArL26Qy0YiaibVbhcnYON7oqh7v6HgCjmk3g/132" width="30px"><span>Geek_eca226</span> 👍（0） 💬（2）<div>openfeign是rpc框架吗，和dubbo那个用的多呢</div>2022-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/14/85/73e55be5.jpg" width="30px"><span>~</span> 👍（0） 💬（1）<div>思考题：既然每个业务方都要自行维护一套 OpenFeign 接口，还容易出现沟通不利接口出错的问题，不如业务提供方自行创建一套 OpenFeign 接口，单独抽出作为一个依赖，调用方只需要依赖这个就可以调用了。以后业务有改动也可以提供方自行维护，有变动或者需求更改直接给通知就可以了
-但是一旦是重大的 bug 需要改动已经被多个调用方使用的依赖，会不会通知起来很麻烦，配合改动也很麻烦？这样改动也不是直接删除吧，新添加一个，之前的改为不建议使用就可以了吧</div>2022-01-14</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/45iaRt3S6936b6KLRgpHnonnxXW4vbdMdJdgJX1TAKaN1Xv3GV0ziaN0hHRBicU6FcPKicnZd2M75ViaWqZ3Fjr6Wsw/132" width="30px"><span>tornado</span> 👍（0） 💬（3）<div>能讲讲feign的负载均衡么？查了一下了解的是feign集成了robbin？那robbin和LoadBalancer之间有什么关系呢？</div>2022-01-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/e2/2b/5eab1490.jpg" width="30px"><span>会飞的鱼</span> 👍（0） 💬（1）<div>老师，这个课程啥时候可以全部更新完咧，有点着急。。。</div>2022-01-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/fd/58/1af629c7.jpg" width="30px"><span>6点无痛早起学习的和尚</span> 👍（0） 💬（0）<div>由服务提供者，把自己的服务接口封装成一个 jar 包，把 jar 提供给调用方使用即可</div>2022-01-11</li><br/>
+如果我把项目里的template-serv复制一份命名为template-serv-copy,用来模拟集群，这个时候copy的服务名称也要叫coupon-template-serv</div>2022-02-27</li><br/><li><span>黄叶</span> 👍（1） 💬（2）<div>老师，命名方面，我喜欢写成TestServiceFeign进行命名（方面我知道这是个Feign远程调用接口），但看老师是TestService来命名，想请问 这两种方式那种更好</div>2022-01-16</li><br/><li><span>Geek_eca226</span> 👍（0） 💬（2）<div>openfeign是rpc框架吗，和dubbo那个用的多呢</div>2022-07-18</li><br/><li><span>~</span> 👍（0） 💬（1）<div>思考题：既然每个业务方都要自行维护一套 OpenFeign 接口，还容易出现沟通不利接口出错的问题，不如业务提供方自行创建一套 OpenFeign 接口，单独抽出作为一个依赖，调用方只需要依赖这个就可以调用了。以后业务有改动也可以提供方自行维护，有变动或者需求更改直接给通知就可以了
+但是一旦是重大的 bug 需要改动已经被多个调用方使用的依赖，会不会通知起来很麻烦，配合改动也很麻烦？这样改动也不是直接删除吧，新添加一个，之前的改为不建议使用就可以了吧</div>2022-01-14</li><br/><li><span>tornado</span> 👍（0） 💬（3）<div>能讲讲feign的负载均衡么？查了一下了解的是feign集成了robbin？那robbin和LoadBalancer之间有什么关系呢？</div>2022-01-10</li><br/>
 </ul>
 
 

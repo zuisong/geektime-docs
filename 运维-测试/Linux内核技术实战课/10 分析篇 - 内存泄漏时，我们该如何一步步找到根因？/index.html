@@ -1980,6 +1980,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何去分析进程的内存泄漏原因？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后作业
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5233,6 +5260,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何去分析进程的内存泄漏原因？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后作业
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5267,33 +5321,181 @@
 <p>/proc/meminfo中的项目很多，我们没必要全部都背下来，不过有些项是相对容易出问题的，也是你在遇到内存相关的问题时，需要重点去排查的。我将这些项列了一张表格，也给出了每一项有异常时的排查思路。</p>
 <p><img alt="" src="https://static001.geekbang.org/resource/image/a4/30/a48d1c573d19e30ecee8dc6f6fdd3930.jpg?wh=4215%2A3139" /></p>
 <p>总之，如果进程的内存有问题，那使用top就可以观察出来；如果进程的内存没有问题，那你可以从/proc/meminfo入手来一步步地去深入分析。</p>
-<div><strong>精选留言（13）</strong></div>
+<p>接下来，我们分析一个实际的案例，来看看如何分析进程内存泄漏是什么原因导致的。</p>
+<h2 id="_2">如何去分析进程的内存泄漏原因？</h2>
+<p>这是我多年以前帮助一个小伙伴分析的内存泄漏问题。这个小伙伴已经使用top排查出了业务进程的内存异常，但是不清楚该如何去进一步分析。</p>
+<p>他遇到的这个异常是，业务进程的虚拟地址空间（VIRT）被消耗很大，但是物理内存（RES）使用得却很少，所以他怀疑是进程的虚拟地址空间有内存泄漏。</p>
+<p>我们在“<a href="https://time.geekbang.org/column/article/280455">06讲</a>”中也讲过，出现该现象时，可以用top命令观察（这是当时保存的生产环境信息，部分信息做了脱敏处理）：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND                                                                     
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>31108 app      20   0  285g 4.0g  19m S 60.6 12.7  10986:15 app_server  
+</code></pre></div>
+<p>可以看到app_server这个程序的虚拟地址空间（VIRT这一项）很大，有285GB。</p>
+<p>那该如何追踪app_server究竟是哪里存在问题呢？</p>
+<p>我们可以用pidstat命令（关于该命令，你可以<a href="https://linux.die.net/man/1/pidstat">man pidstat</a>）来追踪下该进程的内存行为，看看能够发现什么现象。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ pidstat -r -p 31108  1
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>04:47:00 PM     31108    353.00      0.00 299029776 4182152  12.73  app_server
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>...
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>04:47:59 PM     31108    149.00      0.00 299029776 4181052  12.73  app_server
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>04:48:00 PM     31108    191.00      0.00 299040020 4181188  12.73  app_server
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>...
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>04:48:59 PM     31108    179.00      0.00 299040020 4181400  12.73  app_server
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>04:49:00 PM     31108    183.00      0.00 299050264 4181524  12.73  app_server
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>...
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>04:49:59 PM     31108    157.00      0.00 299050264 4181456  12.73  app_server
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>04:50:00 PM     31108    207.00      0.00 299060508 4181560  12.73  app_server
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>...
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>04:50:59 PM     31108    127.00      0.00 299060508 4180816  12.73  app_server
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>04:51:00 PM     31108    172.00      0.00 299070752 4180956  12.73  app_server
+</code></pre></div>
+<p>如上所示，在每个整分钟的时候，VSZ会增大10244KB，这看起来是一个很有规律的现象。然后，我们再来看下增大的这个内存区域到底是什么，你可以通过/proc/PID/smaps来看（关于/proc提供的信息，你可以回顾我们课程的“<a href="https://time.geekbang.org/column/article/279307">05讲</a>”）：</p>
+<p>增大的内存区域，具体如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ cat /proc/31108/smaps 
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>...
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>7faae0e49000-7faae1849000 rw-p 00000000 00:00 0 
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>Size:              10240 kB
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>Rss:                  80 kB
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>Pss:                  80 kB
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>Shared_Clean:          0 kB
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>Shared_Dirty:          0 kB
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>Private_Clean:         0 kB
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>Private_Dirty:        80 kB
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>Referenced:           60 kB
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>Anonymous:            80 kB
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>AnonHugePages:         0 kB
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>Swap:                  0 kB
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>KernelPageSize:        4 kB
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>MMUPageSize:           4 kB
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>7faae1849000-7faae184a000 ---p 00000000 00:00 0 
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>Size:                  4 kB
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>Rss:                   0 kB
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>Pss:                   0 kB
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>Shared_Clean:          0 kB
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>Shared_Dirty:          0 kB
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>Private_Clean:         0 kB
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>Private_Dirty:         0 kB
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>Referenced:            0 kB
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>Anonymous:             0 kB
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>AnonHugePages:         0 kB
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>Swap:                  0 kB
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>KernelPageSize:        4 kB
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>MMUPageSize:           4 kB
+</code></pre></div>
+<p>可以看到，它包括：一个私有地址空间，这从rw-p这个属性中的private可以看出来；以及一个保护页 ，这从—p这个属性可以看出来，即进程无法访问。对于有经验的开发者而言，从这个4K的保护页就可以猜测出应该跟线程栈有关了。</p>
+<p>然后我们跟踪下进程申请这部分地址空间的目的是什么，通过strace命令来跟踪系统调用就可以了。因为VIRT的增加，它的系统调用函数无非是mmap或者brk，那么我们只需要strace的结果来看下mmap或brk就可以了。</p>
+<p>用strace跟踪如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ strace -t -f -p 31108 -o 31108.strace
+</code></pre></div>
+<p>线程数较多，如果使用-f来跟踪线程，跟踪的信息量也很大，逐个搜索日志里面的mmap或者brk真是眼花缭乱， 所以我们来grep一下这个大小(10489856即10244KB)，然后过滤下就好了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ cat 31108.strace | grep 10489856    
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>31152 23:00:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>31151 23:01:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>31157 23:02:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>31158 23:03:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>31165 23:04:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>31163 23:05:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>31153 23:06:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>31155 23:07:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>31149 23:08:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>31147 23:09:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>31159 23:10:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>31157 23:11:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>31148 23:12:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>31150 23:13:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>31173 23:14:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+</code></pre></div>
+<p>从这个日志我们可以看到，出错的是mmap()这个系统调用，那我们再来看下mmap这个内存的目的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>31151 23:01:00 mmap(NULL, 10489856, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 &lt;unfinished ...&gt;
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>31151 23:01:00 mprotect(0x7fa94bbc0000, 4096, PROT_NONE &lt;unfinished ...&gt;   &lt;&lt;&lt; 创建一个保护页  
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>31151 23:01:00 clone( &lt;unfinished ...&gt;   &lt;&lt;&lt; 创建线程
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>31151 23:01:00 &lt;... clone resumed&gt; child_stack=0x7fa94c5afe50, flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>|CLONE_CHILD_CLEARTID, parent_tidptr=0x7fa94c5c09d0, tls=0x7fa94c5c0700, child_tidptr=0x7fa94c5c09d0) = 20610
+</code></pre></div>
+<p>可以看出，这是在clone时申请的线程栈。到这里你可能会有一个疑问：既然线程栈消耗了这么多的内存，那理应有很多才对啊？</p>
+<p>但是实际上，系统中并没有很多app_server的线程，那这是为什么呢？答案其实比较简单：线程短暂执行完毕后就退出了，可是mmap的线程栈却没有被释放。</p>
+<p>我们来写一个简单的程序复现这个现象，问题的复现是很重要的，如果很复杂的问题可以用简单的程序来复现，那就是最好的结果了。</p>
+<p>如下是一个简单的复现程序：mmap一个40K的线程栈，然后线程简单执行一下就退出。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>#include &lt;stdio.h&gt;
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>#include &lt;unistd.h&gt;
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>#include &lt;sys/mman.h&gt;
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>#include &lt;sys/types.h&gt;
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>#include &lt;sys/wait.h&gt;
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>#define _SCHED_H 
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>#define __USE_GNU 
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>#include &lt;bits/sched.h&gt;
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>#define STACK_SIZE 40960
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>int func(void *arg)
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>{
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    printf(&quot;thread enter.\n&quot;);
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    sleep(1);
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    printf(&quot;thread exit.\n&quot;);
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>    return 0;
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>}
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>int main()
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>{
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>    int thread_pid;
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>    int status;
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>    int w;
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>    while (1) {
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>        void *addr = mmap(NULL, STACK_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0);
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>        if (addr == NULL) {
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>            perror(&quot;mmap&quot;);
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>            goto error;
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>        }
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a>        printf(&quot;creat new thread...\n&quot;);
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a>        thread_pid = clone(&amp;func, addr + STACK_SIZE, CLONE_SIGHAND|CLONE_FS|CLONE_VM|CLONE_FILES, NULL);
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a>        printf(&quot;Done! Thread pid: %d\n&quot;, thread_pid);
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a>        if (thread_pid != -1) {
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>            do {
+<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a>                w = waitpid(-1, NULL, __WCLONE | __WALL);
+<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>                if (w == -1) {
+<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a>                    perror(&quot;waitpid&quot;);
+<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a>                    goto error;
+<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a>                }
+<a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a>            } while (!WIFEXITED(status) &amp;&amp; !WIFSIGNALED(status));
+<a id="__codelineno-6-45" name="__codelineno-6-45" href="#__codelineno-6-45"></a>        }
+<a id="__codelineno-6-46" name="__codelineno-6-46" href="#__codelineno-6-46"></a>        sleep(10);
+<a id="__codelineno-6-47" name="__codelineno-6-47" href="#__codelineno-6-47"></a>   }
+<a id="__codelineno-6-48" name="__codelineno-6-48" href="#__codelineno-6-48"></a>
+<a id="__codelineno-6-49" name="__codelineno-6-49" href="#__codelineno-6-49"></a> error:
+<a id="__codelineno-6-50" name="__codelineno-6-50" href="#__codelineno-6-50"></a>    return 0;
+<a id="__codelineno-6-51" name="__codelineno-6-51" href="#__codelineno-6-51"></a>}
+</code></pre></div>
+<p>然后我们用pidstat观察该进程的执行，可以发现它的现象跟生产环境中的问题是一致的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$ pidstat -r -p 535 5
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>11:56:51 PM   UID       PID  minflt/s  majflt/s     VSZ    RSS   %MEM  Command
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>11:56:56 PM     0       535      0.20      0.00    4364    360   0.00  a.out
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>11:57:01 PM     0       535      0.00      0.00    4364    360   0.00  a.out
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>11:57:06 PM     0       535      0.20      0.00    4404    360   0.00  a.out
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>11:57:11 PM     0       535      0.00      0.00    4404    360   0.00  a.out
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>11:57:16 PM     0       535      0.20      0.00    4444    360   0.00  a.out
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>11:57:21 PM     0       535      0.00      0.00    4444    360   0.00  a.out
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>11:57:26 PM     0       535      0.20      0.00    4484    360   0.00  a.out
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>11:57:31 PM     0       535      0.00      0.00    4484    360   0.00  a.out
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>11:57:36 PM     0       535      0.20      0.00    4524    360   0.00  a.out
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>^C
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>Average:        0       535      0.11      0.00    4435    360   0.00  a.out
+</code></pre></div>
+<p>你可以看到，VSZ每10s增大40K，但是增加的那个线程只存在了1s就消失了。</p>
+<p>至此我们就可以推断出app_server的代码哪里有问题了，然后小伙伴去修复该代码Bug，很快就把该问题给解决了。</p>
+<p>当然了，应用程序的内存泄漏问题其实是千奇百怪的，分析方法也不尽相同，我们讲述这个案例的目的是为了告诉你一些通用的分析技巧。我们掌握了这些通用分析技巧，很多时候就可以以不变来应万变了。</p>
+<h2 id="_3">课堂总结</h2>
+<p>这节课我们讲述了系统性分析Linux上内存泄漏问题的分析方法，要点如下：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/1b/30/85/14c2f16c.jpg" width="30px"><span>石小</span> 👍（12） 💬（1）<div>“对于有经验的开发者而言，从这个 4K 的保护页就可以猜测出应该跟线程栈有关了。” 请问老师怎么理解这局话？</div>2021-04-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/12/5e/77b67a85.jpg" width="30px"><span>飘云</span> 👍（5） 💬（2）<div>写应用层代码的时候会用到clone么，不都用pthread么？ 用pthread不会出现例子中的问题吧。 
-另外，内存泄露很多时候是malloc了内存但是没有free，有什么好的方法快速定位是哪儿分配的内存忘了free呢？</div>2020-10-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/17/96/a10524f5.jpg" width="30px"><span>蓬蒿</span> 👍（5） 💬（1）<div>老师好，这个案例讲的是虚拟内存泄露，我想问一下:虚拟内存分配后在使用前不会真正的分配物理内存，那这个案例是不是仅仅是进程的虚拟内存存在问题？整个Linux系统的内存应该没有异常对不对？</div>2020-10-29</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83epUBQibdMCca340MFZOe5I1GwZ0PosPIzA0TPCNzibgH00w45Zmv4jmL0mFRHMUM9FuKiclKOCBjSmsw/132" width="30px"><span>Geek_circle</span> 👍（3） 💬（1）<div>老师好，当系统内存不足,发现kswapd0进程持续运行，使用率超过90%多,load过百,但是系统日志中并没有记录到oom killer 。想知道系统内存不足时，启动kswapd和oom killer条件和优先级是什么样的呢？</div>2020-09-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTINb3EmV5q6ytNWclxke1OicbEAw4ZSmibSCrNGZPDCnAjsGDwG3jJQcuEwAcFRffBQouXFEaERQbfw/132" width="30px"><span>dpzain</span> 👍（2） 💬（1）<div>现在生产环境 是jvm 程序 跑在docker容器， jvm 堆内内存 监控一切正常，但是每隔半个月 mem从50%到90% ，按照上面的方法发现确实有对外内存在缓慢的泄漏   非常慢（没5s - 20s 增加几kb甚至  几十个byte ）找不出任何规律 怎么破；</div>2020-11-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5a/56/115c6433.jpg" width="30px"><span>jssfy</span> 👍（2） 💬（0）<div>问题分析过程很赞，开头的总结性图表也很赞！</div>2020-09-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/37/38/b7/f61cd004.jpg" width="30px"><span>蔡奇</span> 👍（0） 💬（0）<div>老师好，我现在碰到一个问题，首先，我使用一个接口创建的全局指针，中间也多次使用了该全局变量，最后，退出前也释放了。但是，发现使用asan检查出了该接口的内存溢出问题，这个要怎么分析哈。</div>2024-03-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/de/c3/e0a4c93f.jpg" width="30px"><span>mong</span> 👍（0） 💬（1）<div>老师, 看了你的这些文章, 对线上内存的定位也有一些思路, 我正面临的一个Java应用程序内存有问题的, VIRT, RSS的内存很高, 用&#47;proc&#47;pid&#47;smaps, 发现有很多64M的内存申请,占了将近3个G 如下:
-7fe698000000-7fe69bffa000 rw-p 00000000 00:00 0 
-Size:              65512 kB
-KernelPageSize:        4 kB
-MMUPageSize:           4 kB
-Rss:               62456 kB
-Pss:               62456 kB
-Shared_Clean:          0 kB
-Shared_Dirty:          0 kB
-Private_Clean:         0 kB
-Private_Dirty:     62456 kB
-Referenced:        62448 kB
-Anonymous:         62456 kB
-LazyFree:              0 kB
-AnonHugePages:         0 kB
-ShmemPmdMapped:        0 kB
-Shared_Hugetlb:        0 kB
-Private_Hugetlb:       0 kB
-Swap:                  0 kB
-SwapPss:               0 kB
-Locked:                0 kB
-VmFlags: rd wr mr mw me nr 
-但到这一步我无法继续的下去, 我用gdp dump了这段的地址的bin下来, 打开文件都Null, 所以我的java内存的堆的内存通过监控看也比较稳定, 所以目前没有什么头绪, 所以相让你指点一点, 接下来应该从哪里继续的排查;</div>2022-09-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/cd/db/7467ad23.jpg" width="30px"><span>Bachue Zhou</span> 👍（0） 💬（0）<div>不太懂，smaps 的内容这么多，如何找到出问题的部分？是多次 cat smaps 然后做 diff 吗？</div>2022-06-05</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJAWUhO0xSjD6wbGScY5WOujAE94vNYWlWmsVdibb0IWbXzSSNXJHp0lqfWVq8ZicKBsEY1EuAWArew/132" width="30px"><span>Felix</span> 👍（0） 💬（0）<div>真是读书万卷，其意自现</div>2022-05-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/ed/91/1d332031.jpg" width="30px"><span>我能走多远</span> 👍（0） 💬（0）<div>对底层的基础理论不牢靠，原来定位问题有这么多的方法。学习了</div>2020-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5e/96/a03175bc.jpg" width="30px"><span>莫名</span> 👍（0） 💬（0）<div>赞，之前有过比较类似的排查思路。</div>2020-10-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/e7/8b/7baca523.jpg" width="30px"><span>吃苹果的考拉</span> 👍（0） 💬（0）<div>曲径通幽，豁然开朗。基础要扎实，但工具也要熟啊</div>2020-09-10</li><br/>
+<li>top工具和/proc/meminfo文件是分析Linux上内存泄漏问题，甚至是所有内存问题的第一步，我们先找出来哪个进程或者哪一项有异常，然后再针对性地分析；</li>
+<li>应用程序的内存泄漏千奇百怪，所以你需要掌握一些通用的分析技巧，掌握了这些技巧很多时候就可以以不变应万变。但是，这些技巧的掌握，是建立在你的基础知识足够扎实的基础上。你需要熟练掌握我们这个系列课程讲述的这些基础知识，熟才能生巧。</li>
 </ul>
+<h2 id="_4">课后作业</h2>
+<p>请写一个内存泄漏的程序，然后观察/proc/[pid]/maps以及smaps的变化（pid即内存泄漏的程序的pid）。欢迎你在留言区与我讨论。</p>
+<p>感谢你的阅读，如果你认为这节课的内容有收获，也欢迎把它分享给你的朋友，我们下一讲见。</p>
 
 
 

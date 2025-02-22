@@ -3415,6 +3415,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#token_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      验证Token
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      登录认证
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      用户鉴权
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13030,6 +13075,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#token_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      验证Token
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      登录认证
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      用户鉴权
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13065,9 +13155,199 @@
 <p><img alt="" src="https://static001.geekbang.org/resource/image/2b/da/2b08510cae1b9446918329388223edda.jpg?wh=1900x922" /></p>
 <p>你或许注意到了，在JWT.encode函数中只传入了payload部分。这是因为在使用JWT.encode函数时，会自动根据默认算法生成Header部分，并将Header和Payload部分进行签名生成最终的Token字符串。我们需要手动指定Payload部分。</p>
 <p>具体生成Token的实现代码是后面这样，你可以参考一下。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span> <span class="nn">time</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">import</span> <span class="nn">datetime</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">import</span> <span class="nn">jwt</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">current_app</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="kn">from</span> <span class="nn">api</span> <span class="kn">import</span> <span class="n">redis_store</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="kn">from</span> <span class="nn">api.models.user</span> <span class="kn">import</span> <span class="n">UserLogin</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="kn">from</span> <span class="nn">api.utils</span> <span class="kn">import</span> <span class="n">constants</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="kn">from</span> <span class="nn">api.utils.response_utils</span> <span class="kn">import</span> <span class="n">error</span><span class="p">,</span> <span class="n">HttpCode</span><span class="p">,</span> <span class="n">success</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="kn">from</span> <span class="nn">config.config</span> <span class="kn">import</span> <span class="n">Config</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="k">class</span> <span class="nc">Auth</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="nd">@staticmethod</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="c1"># 声明为静态方法</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="k">def</span> <span class="nf">encode_auth_token</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">login_time</span><span class="p">):</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="sd">        生成认证Token</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="sd">        :param user_id: int</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="sd">        :param login_time: int(timestamp)</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="sd">        :return: string</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>            <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>                <span class="s1">&#39;exp&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span> <span class="o">+</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>                <span class="s1">&#39;iat&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">(),</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>                <span class="s1">&#39;iss&#39;</span><span class="p">:</span> <span class="s1">&#39;Barry&#39;</span><span class="p">,</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>                <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>                    <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>                    <span class="s1">&#39;login_time&#39;</span><span class="p">:</span> <span class="n">login_time</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>                <span class="p">}</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>            <span class="p">}</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>            <span class="k">return</span> <span class="n">jwt</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>                <span class="n">payload</span><span class="p">,</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>                <span class="n">Config</span><span class="o">.</span><span class="n">SECRET_KEY</span><span class="p">,</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>                <span class="n">algorithm</span><span class="o">=</span><span class="s1">&#39;HS256&#39;</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>            <span class="p">)</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>            <span class="k">return</span> <span class="n">error</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">auth_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="s1">&#39;没有生成对应的token&#39;</span><span class="p">)</span>
+</code></pre></div>
+<p>接下来，我们一起来解读一下这段代码。函数前的@staticmethod装饰器，我们将该方法声明为静态方法，也就是类的方法可以直接调用，而不需要再创建该类的实例。</p>
+<p>紧接着我们在encode_auth_token函数中传入两个参数，分别是用户的user_id和用户登录时间login_time，用户登录时间用于检查Token是否过期，保证时效性。然后是Token的有效负载payload，其中主要包括Token的过期时间、签发时间、发行人和自定义数据。在自定义数据中两个参数是用户ID和登录时间。</p>
+<p>其中的payload为字典类型，以便作为参数传入encode函数中。这里使用Config.SECRET_KEY作为加密用的密钥，采用HS256算法对JWT进行加密。HS256算法是一种基于哈希函数的对称加密算法。如果生成过程出现异常，则返回一个错误消息。这里的auth_error是我们上节课自定义的HTTP状态函数。</p>
+<h2 id="token_1">验证Token</h2>
+<p>生成Token的下一步就是Token的验证。方法就是借助JWT扩展的decode函数，将客户端发送的Token进行解码。我们还是结合代码来理解。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nd">@staticmethod</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">def</span> <span class="nf">decode_auth_token</span><span class="p">(</span><span class="n">auth_token</span><span class="p">):</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="sd">    验证Token</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="sd">    :param auth_token:</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="sd">    :return: integer|string</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        <span class="c1"># payload = jwt.decode(auth_token, Config.SECRET_KEY, leeway=datetime.timedelta(days=1))</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>        <span class="c1"># 取消过期时间验证</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        <span class="n">payload</span> <span class="o">=</span> <span class="n">jwt</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">auth_token</span><span class="p">,</span> <span class="n">Config</span><span class="o">.</span><span class="n">SECRET_KEY</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;verify_exp&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>        <span class="c1"># options，不要执行过期时间验证</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        <span class="k">if</span> <span class="s1">&#39;data&#39;</span> <span class="ow">in</span> <span class="n">payload</span> <span class="ow">and</span> <span class="s1">&#39;id&#39;</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]:</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>            <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">ok</span><span class="p">,</span> <span class="n">payload</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>            <span class="k">raise</span> <span class="nb">dict</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">auth_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="n">jwt</span><span class="o">.</span><span class="n">InvalidTokenError</span><span class="p">)</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    <span class="k">except</span> <span class="n">jwt</span><span class="o">.</span><span class="n">ExpiredSignatureError</span><span class="p">:</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">auth_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="s1">&#39;Token过期&#39;</span><span class="p">)</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    <span class="k">except</span> <span class="n">jwt</span><span class="o">.</span><span class="n">InvalidTokenError</span><span class="p">:</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">auth_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="s1">&#39;无效Token&#39;</span><span class="p">)</span>
+</code></pre></div>
+<p>上面代码同样是一个静态方法，主要用于验证JWT token的有效性。首先从传入的auth_token参数中解码token，使用保存在配置文件中的SECRET_KEY来解码，options选项表示在验证token的过期时间时，不要执行过期时间验证。</p>
+<p>随后要验证auth_token 中是否包含有效的数据，这里要分三种情况考虑。</p>
+<ul>
+<li>如果包含有效数据，则返回一个字典，其中 code 为 HttpCode.ok，表示请求成功，payload 为解码后的数据。</li>
+<li>如果不包含有效数据或者解码失败，则抛出 InvalidTokenError，表示 Token 验证失败，并返回相应的错误信息。</li>
+<li>如果 auth_token 中包含有效数据但是 Token 已经过期，则抛出 ExpiredSignatureError，表示 Token 已经失效，并返回相应的错误信息。</li>
+</ul>
+<p>虽然代码中取消了过期时间验证，但是在后面依旧会抛出 ExpiredSignatureError，提示Token过期，所以我们需要把异常处理情况涵盖得更全。</p>
+<h2 id="_1">登录认证</h2>
+<p>搞定了生成Token和对Token认证的代码后，下一步，我们就需要对用户登录进行认证。登录认证成功即可给客户端返回Token，下次向服务端请求资源的时候，必须带着服务端签发的 Token，才能实现对用户信息的认证。</p>
+<p>实现用户登录的代码是后面这样。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">def</span> <span class="nf">authenticate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mobile</span><span class="p">,</span> <span class="n">password</span><span class="p">):</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="sd">    用户登录，登录成功返回token，写将登录时间写入数据库；登录失败返回失败原因</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="sd">    :param password:</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="sd">    :return: json</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">user</span> <span class="o">=</span> <span class="n">UserLogin</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">mobile</span><span class="o">=</span><span class="n">mobile</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="p">:</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="k">return</span> <span class="n">error</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">auth_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="s1">&#39;请求的用户不存在&#39;</span><span class="p">)</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        <span class="k">if</span> <span class="n">user</span><span class="o">.</span><span class="n">check_password</span><span class="p">(</span><span class="n">password</span><span class="p">):</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>            <span class="n">login_time</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>            <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>                <span class="n">user</span><span class="o">.</span><span class="n">last_login_stamp</span> <span class="o">=</span> <span class="n">login_time</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>                <span class="n">user</span><span class="o">.</span><span class="n">last_login</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>                <span class="n">user</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>                <span class="n">current_app</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>                <span class="k">return</span> <span class="n">error</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">db_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="s1">&#39;登录时间查询失败&#39;</span><span class="p">)</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>            <span class="n">token</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encode_auth_token</span><span class="p">(</span><span class="n">user</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span> <span class="n">login_time</span><span class="p">)</span>  <span class="c1"># bytes</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>            <span class="n">token</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>            <span class="n">user_id</span> <span class="o">=</span> <span class="n">user</span><span class="o">.</span><span class="n">user_id</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>            <span class="c1"># 存储到redis中</span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>            <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>                <span class="n">redis_store</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;jwt_token:</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">constants</span><span class="o">.</span><span class="n">JWT_TOKEN_REDIS_EXPIRES</span><span class="p">)</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>            <span class="c1"># 设置过期时间为常量JWT_TOKEN_REDIS_EXPIRES（86400秒，即24小时）</span>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>                <span class="n">current_app</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>                <span class="k">return</span> <span class="n">error</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">db_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="s2">&quot;token保存redis失败&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>            <span class="kn">from</span> <span class="nn">api.modules.video.views</span> <span class="kn">import</span> <span class="n">user_action_log</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>            <span class="n">user_action_log</span><span class="o">.</span><span class="n">warning</span><span class="p">({</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>                <span class="s1">&#39;user_id&#39;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>                <span class="s1">&#39;url&#39;</span><span class="p">:</span> <span class="s1">&#39;/passport/login&#39;</span><span class="p">,</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>                <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="s1">&#39;post&#39;</span><span class="p">,</span>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>                <span class="s1">&#39;msg&#39;</span><span class="p">:</span> <span class="s1">&#39;login&#39;</span><span class="p">,</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>                <span class="s1">&#39;event&#39;</span><span class="p">:</span> <span class="s1">&#39;login&#39;</span><span class="p">,</span>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>            <span class="p">})</span>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>            <span class="k">return</span> <span class="n">success</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="s1">&#39;用户登录成功&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">token</span><span class="p">,</span> <span class="s2">&quot;user_id&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">})</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a>            <span class="k">return</span> <span class="n">error</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">parmas_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="s1">&#39;用户登录密码输入错误&#39;</span><span class="p">)</span>
+</code></pre></div>
+<p>上面代码整体实现流程是，首先要做的就是接收用户输入的手机号码和密码，然后利用手机号码查询数据库中是，否存在该用户。如果不存在，则返回错误信息。如果存在，使用在数据库表中定义的函数check_password来，检查密码是否正确。</p>
+<p>如果密码错误，则返回错误信息。如果密码正确则记录用户的登录时间和日期，使用当前用户的user_id和登录时间戳作为参数，调用encode_auth_token()方法生成一个token，再使用redis_store.set()方法将生成的token存储在redis中，并设置过期时间。</p>
+<p>如果存储失败，则将该错误信息存入应用日志中，以便于后续的调试和问题排查。如果所有条件都满足，最后返回成功信息和token以及用户ID。</p>
+<p>这里还调用了video模块中的user_action_log。user_action_log用来记录出现的异常等信息。具体代码是后面这样。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span> <span class="nn">api.utils.log_utils</span> <span class="kn">import</span> <span class="n">json_log</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">json_log</span><span class="p">(</span><span class="s1">&#39;user_action&#39;</span><span class="p">,</span> <span class="s1">&#39;logs/user_action.log&#39;</span><span class="p">)</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">user_action_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;user_action&#39;</span><span class="p">)</span>
+</code></pre></div>
+<p>这里调用了log_utils中的json_log函数，使用 <code>json_log</code> 函数来创建一个名为 <code>user_action_log</code> 的日志记录器对象，并将其指向 <code>logs/user_action.log</code> 路径的文件，这样记录用户操作的相关信息会更方便。</p>
+<h2 id="_2">用户鉴权</h2>
+<p>接下来的环节就是在请求时获取用户的登录信息，并进行鉴权。如果用户没有相应的权限，则返回相应的错误信息。具体实现代码是后面这样。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">def</span> <span class="nf">identify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="sd">    用户鉴权</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="sd">    :return: list</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="n">auth_header</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Authorization&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="k">if</span> <span class="n">auth_header</span><span class="p">:</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        <span class="n">auth_token_arr</span> <span class="o">=</span> <span class="n">auth_header</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        <span class="c1"># 分成列表，含有两个元素</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">auth_token_arr</span> <span class="ow">or</span> <span class="n">auth_token_arr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;JWT&#39;</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">auth_token_arr</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>            <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">auth_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="s1">&#39;请求未携带认证信息，认证失败&#39;</span><span class="p">)</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>            <span class="n">auth_token</span> <span class="o">=</span> <span class="n">auth_token_arr</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>            <span class="c1"># 将JWT令牌的字符串值给auth_token</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>            <span class="n">payload_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode_auth_token</span><span class="p">(</span><span class="n">auth_token</span><span class="p">)</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>            <span class="k">if</span> <span class="s1">&#39;payload&#39;</span> <span class="ow">in</span> <span class="n">payload_dict</span> <span class="ow">and</span> <span class="n">payload_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;code&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">200</span><span class="p">:</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>                <span class="n">payload</span> <span class="o">=</span> <span class="n">payload_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;payload&#39;</span><span class="p">)</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>                <span class="n">user_id</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;data&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">)</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>                <span class="n">login_time</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;data&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;login_time&#39;</span><span class="p">)</span>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>                <span class="c1"># print(&#39;👉👉   解析出的时间戳&#39;, login_time)</span>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>                <span class="n">user</span> <span class="o">=</span> <span class="n">UserLogin</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="n">user_id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>                <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="p">:</span>  <span class="c1"># 未在请求中找到对应的用户</span>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>                    <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">auth_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="s1">&#39;用户不存在，查无此用户&#39;</span><span class="p">)</span>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>                <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>                    <span class="c1"># 通过user取出redis中的token</span>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>                    <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>                        <span class="c1"># print(user_id)</span>
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>                        <span class="n">redis_jwt_token</span> <span class="o">=</span> <span class="n">redis_store</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;jwt_token:</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">user_id</span><span class="p">)</span>
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>                        <span class="c1"># print(&#39;👈redis&#39;, redis_jwt_token)</span>
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>                        <span class="n">current_app</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>                        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">db_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="s2">&quot;redis查询token失败&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>                    <span class="k">if</span> <span class="ow">not</span> <span class="n">redis_jwt_token</span> <span class="ow">or</span> <span class="n">redis_jwt_token</span> <span class="o">!=</span> <span class="n">auth_token</span><span class="p">:</span>
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>                        <span class="c1"># print(&#39;👉👉   解析出来的token&#39;, auth_token)</span>
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>                        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">auth_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="s2">&quot;jwt-token失效&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>                    <span class="c1"># print(type(user.last_login_stamp), type(login_time))</span>
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>                    <span class="c1"># print(user.last_login_stamp, login_time)</span>
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>                    <span class="k">if</span> <span class="n">user</span><span class="o">.</span><span class="n">last_login_stamp</span> <span class="o">==</span> <span class="n">login_time</span><span class="p">:</span>
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>                        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">ok</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="s1">&#39;用户认证成功&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;user_id&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">user_id</span><span class="p">})</span>
+<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>                    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>                        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">auth_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="s1">&#39;用户认证失败，需要再次登录&#39;</span><span class="p">)</span>
+<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>            <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>                <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">auth_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="n">payload_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;msg&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="s1">&#39;用户认证失败，携带认证参数不合法&#39;</span><span class="p">)</span>
+<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a>        <span class="k">return</span> <span class="n">dic在代码中</span><span class="err">，</span><span class="n">t</span><span class="p">(</span><span class="n">code主要</span><span class="o">=</span><span class="n">HttpCode</span><span class="o">.</span><span class="n">auth_error</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="s1">&#39;用户认证失败,请求未携带对应认证信息&#39;</span><span class="p">)</span>
+</code></pre></div>
+<p>用户鉴权函数主要用于验证用户的身份是否合法。首先通过request.headers获取请求头中的Authorization字段，如果不存在，说明用户未携带对应认证信息，返回包含错误信息的字典。</p>
+<p>如果存在该字段，就按照空格将其分割成一个列表，列表中包含两个元素，第一个元素为JWT，第二个元素为JWT令牌的字符串值。如果auth_token_arr为空，那么auth_token_arr第一个元素不包含 “JWT” 字符串，或者分割后的auth_token_arr长度不为2，这就证明JWT令牌格式不正确，需要返回认证失败的信息。</p>
+<p>这一步如果通过的话，我们再将auth_token_arr列表中的第二个值，也就是JWT令牌的字符串值赋给auth_token，并将解码结果赋值payload_dict。</p>
+<p>下一步就是判断payload_dict中是否有payload字段，且code字段的值是否为200。不符合判断条件同样要返回错误信息，说明携带认证参数不合法。如果符合条件，就从payload中把用户ID、登录时间和payload信息取出来，并根据用户ID在用户登录表中完成查询。</p>
+<p>如果不存在该用户同样要返回错误。如果用户存在，则从 Redis内存中，获取以 user_id 为键的jwt_token，赋给redis_jwt_token。如果内存中取不出来该值，这时候就返回错误。</p>
+<p>紧接着会再次做条件判断，如果请求中解析出的JWT令牌的字符串值，跟之前存储在内存中的不相符合，同样要返回错误。最后，验证该token对应的登录时间戳是否与数据库中最近一次登录时间戳一致。如果一致，则表示认证通过，否则表示需要重新登录。</p>
+<p>在实操环节我们知道Token的认证流程是当用户在进行首次登录，服务器会使用密钥和加密算法，生成Token，发送给客户端，由客户端自己进行存储。等再次登录时，客户端携带Token请求资源，服务器会进行Token的认证，完成一系列验证（如Token是否过期，JWT令牌的格式是否正确等），通过异常处理的把控来保证Token认证的安全和稳定性。</p>
+<h2 id="_3">总结</h2>
+<p>又到了课程的尾声，我们来回顾总结一下。</p>
+<p>这节课，我们主要是通过项目实战来强化对认证机制的应用。在项目中应用也是一样的认证流程，我们先要生成Token，借助Flask的扩展Flask-JWT来生成Token。你需要掌握生成Token的代码，理解它的生成过程。</p>
+<p>之后就是Token验证和认证阶段，Token的验证就是借助JWT扩展的decode函数，将客户端发送的Token进行解码。我们重点要关注登录认证成功的前提下，客户端接收Token以后，下次向服务端请求资源的时候，<strong>必须带着服务端签发的 Token</strong>，这样才能实现对用户信息的认证。</p>
+<p>用户鉴权函数主要用于验证用户的身份是否合法。鉴定方法就是通过request.headers请求头中的Authorization字段来判断：如果该字段不存在，说明用户未携带对应认证信息；如果存在则需要我们验证内部参数来判定。</p>
+<p>通过这节课的实操练习，相信你会对认证机制的应用得更加熟练。课程里有很多的代码，一定在课后自己多实践。下节课我们即将开启功能接口的实战，不见不散。</p>
+<h2 id="_4">思考题</h2>
+<p>前面的课程里，我们讲到了current_app，session，request，你知道他们有什么区别么？</p>
+<p>欢迎你在留言区和我交流互动，如果这节课对你有启发，也推荐你把这节课分享给更多朋友。</p>
 <div><strong>精选留言（3）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/30/ec/58/7948ea79.jpg" width="30px"><span>胡歌衡阳分歌</span> 👍（1） 💬（3）<div>这个教程是相当的不完整啊，看的心烦</div>2023-09-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4d/24/6c621045.jpg" width="30px"><span>石佛慈悲</span> 👍（0） 💬（1）<div>token存在redis里的意义是啥呢，为啥还要校验redis的token，不是解码比对都已经校验了吗？为了控制token失效？</div>2023-12-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/25/87/f3a69d1b.jpg" width="30px"><span>peter</span> 👍（0） 💬（1）<div>请教老师两个问题：
+<li><span>胡歌衡阳分歌</span> 👍（1） 💬（3）<div>这个教程是相当的不完整啊，看的心烦</div>2023-09-29</li><br/><li><span>石佛慈悲</span> 👍（0） 💬（1）<div>token存在redis里的意义是啥呢，为啥还要校验redis的token，不是解码比对都已经校验了吗？为了控制token失效？</div>2023-12-05</li><br/><li><span>peter</span> 👍（0） 💬（1）<div>请教老师两个问题：
 Q1：Config.SECRET_KEY是系统自带的吗？
 Q2：token放在http的header中的Authorization字段，Authorization字段是http固有的字段吗？记不清楚了，好像应该是自定义字段？</div>2023-06-27</li><br/>
 </ul>

@@ -4073,6 +4073,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      设计的整体思路
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python" class="md-nav__link">
+    <span class="md-ellipsis">
+      核心Python代码
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5696,6 +5732,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      设计的整体思路
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python" class="md-nav__link">
+    <span class="md-ellipsis">
+      核心Python代码
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5726,9 +5798,114 @@
 <h2 id="movielens">MovieLens数据集</h2>
 <p>在开始之前，我们先来认识一个知名的数据集，MovieLens。你可以在它的<a href="http://files.grouplens.org/datasets/movielens/">主页</a>查看详细的信息。这个数据集最核心的内容是多位用户对不同电影的评分，此外，它也包括了一些电影和用户的属性信息，便于我们研究推荐结果是不是合理。因此，这个数据集经常用来做推荐系统、或者其他机器学习算法的测试集。</p>
 <p>时至今日，这个数据集已经延伸出几个不同的版本，有不同的数据规模和更新日期。我这里使用的是一个最新的小规模数据集，包含了600位用户对于9000部电影的约10万条评分，最后更新于2018年9月。你可以在这里下载：<a href="http://files.grouplens.org/datasets/movielens/ml-latest-small.zip">http://files.grouplens.org/datasets/movielens/ml-latest-small.zip</a>。</p>
+<p>解压了这个zip压缩包之后，你会看到readme文件和四个csv文件（ratings、movies、links和tags）。其中最重要的是ratings，它包含了10万条评分，每条记录有4个字段，包括userId、movieId、rating、timestamp。userId表示每位用户的id，movieId是每部电影的ID，rating是这位用户对这部电影的评分，取值为0-5分。timestamp是时间戳。而movies包含了电影的主要属性信息，title和genres分别表示电影的标题和类型，一部电影可以属于多种类型。links和tags则包含了电影的其他属性信息。我们的实验主要使用ratings和movies里的数据。</p>
+<h2 id="_1">设计的整体思路</h2>
+<p>有了用于实验的数据，接下来就要开始考虑如何设计这个推荐系统。我在第38期讲解了什么是协同过滤推荐算法、基于用户的协同过滤和基于物品的协同过滤。这一节我们就以协同过滤为基础，分别实现基于用户和物品的过滤。</p>
+<p>根据协同过滤算法的核心思想，整个系统可以分为三个大的步骤。</p>
+<p>第一步，用户评分的标准化。因为有些用户的打分比较宽松，而有些用户打分则比较挑剔。所以，我们需要使用标准化或者归一化，让不同用户的打分具有可比性，这里我会使用<strong>z分数</strong>标准化。</p>
+<p>第二步，衡量和其他用户或者物品之间的相似度。我们这里的物品就是电影。在基于用户的过滤中，我们要找到相似的用户。在基于物品的过滤中，我们要找到相似的电影。我这里列出计算用户之间相似度$us$和物品之间相似度$is$的公式。之前我们讲过，这些都可以通过矩阵操作来实现。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/8e/ec/8e002cc0e287f675221e42df5c249fec.png?wh=794%2A158" /><img alt="" src="https://static001.geekbang.org/resource/image/3c/2b/3c04082d6f87f9268eceb65cb624892b.png?wh=812%2A154" /></p>
+<p>我们以基于用户的过滤为例。假设我们使用夹角余弦来衡量相似度，那么我们就可以采用用户评分的矩阵点乘自身的转置来计算余弦夹角。用户评分的矩阵$X$中，每一行是某位用户的行向量，每个分量表示这位用户对某部电影的打分。而矩阵$X’$的每一列是某个用户的列向量，每个分量表示用户对某部电影的打分。</p>
+<p>我们假设$XX’$的结果为矩阵$Y$，那么$y_{i,j}$就表示用户$i$和用户$j$这两者喜好度向量的点乘结果，它就是夹角余弦公式中的分子。如果$i$等于$j$，那么这个计算值也是夹角余弦公式分母的一部分。从矩阵的角度来看，$Y$中任何一个元素都可能用于夹角余弦公式的分子，而对角线上的值会用于夹角余弦公式的分母。因此，我们可以利用$Y$来计算任何两个用户之间的相似度。</p>
+<p>之前我们使用了一个示例讲解过对于基于用户的协同过滤，如何计算矩阵$Y$，以及如何使用$Y$来计算余弦夹角，我这里列出来给你参考。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/79/2b/79e7065dade1b1a4d38639bb9d2cea2b.png?wh=984%2A964" /><img alt="" src="https://static001.geekbang.org/resource/image/9d/42/9ddfe8b7874d9d708fa367ccca967942.png?wh=1768%2A1028" /></p>
+<p>第三步，根据相似的用户或物品，给出预测的得分p。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/0a/29/0ace6bd5295a83ab6da8f5357a755929.png?wh=306%2A210" /><img alt="" src="https://static001.geekbang.org/resource/image/8e/23/8e170042ec88bdf48908ea0bdc2d7423.png?wh=282%2A200" /></p>
+<p>之前我们也解释过如何使用矩阵操作来实现这一步。还是以基于用户的过滤为例。假设通过第二步，我们已经得到用户相似度矩阵$US$，$US$和评分矩阵$X$的点乘结果为矩阵$USP$。沿用前面的示例，结果就是下面这样。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/65/1f/65ff214ce18ccc12193bf17cd1ec201f.png?wh=1108%2A468" /></p>
+<p>然后对$US$按行求和，获得矩阵$USR$。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/28/0e/28c5469d3fcacda96604f66dfc883a0e.png?wh=852%2A330" /></p>
+<p>最终，我们使用$USP$和$USR$的元素对应除法，就可以求得任意用户对任意电影的评分矩阵$P$。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/eb/c8/eba06795db612c7be96118b9fa93cfc8.png?wh=1452%2A592" /></p>
+<p>有了这个设计的思路，下面我们就可以使用Python进行实践了。</p>
+<h2 id="python">核心Python代码</h2>
+<p>在实现上述设计的三个主要步骤之前，我们还需要把解压后的csv文件加载到数组，并转为矩阵。下面我列出了主要的步骤和注释。需要注意的是，由于这个数据集中的用户和电影ID都是从1开始而不是从0开始，所以需要减去1，才能和Python数组中的索引一致。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>import pandas as pd
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>from numpy import *
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a># 加载用户对电影的评分数据
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>df = pd.read_csv(&quot;/Users/shenhuang/Data/ml-latest-small/ratings.csv&quot;)
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a># 获取用户的数量和电影的数量
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>user_num = df[&quot;userId&quot;].max()
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>movie_num = df[&quot;movieId&quot;].max()
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a># 构造用户对电影的二元关系矩阵
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>user_rating = [[0.0] * movie_num for i in range(user_num)]
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>i = 0
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>for index, row in df.iterrows():   # 获取每行的index、row
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>  # 由于用户和电影的ID都是从1开始，为了和Python的索引一致，减去1
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>  userId = int(row[&quot;userId&quot;]) - 1
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>  movieId = int(row[&quot;movieId&quot;]) - 1
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>  # 设置用户对电影的评分
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>  user_rating[userId][movieId] = row[&quot;rating&quot;]
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>  # 显示进度
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>  i += 1
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>  if i % 10000 == 0:
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>    print(i)
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a># 把二维数组转化为矩阵
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>x = mat(user_rating)
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>print(x)
+</code></pre></div>
+<p>加载了数据之后，第一步就是对矩阵中的数据，以行为维度，进行标准化。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a># 标准化每位用户的评分数据
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>from sklearn.preprocessing import scale
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a># 对每一行的数据，进行标准化
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>x_s = scale(x, with_mean=True, with_std=True, axis=1)
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>print(&quot;标准化后的矩阵：&quot;, x_s)
+</code></pre></div>
+<p>第二步是计算表示用户之间相似度的矩阵US。其中，y变量保存了矩阵X左乘转置矩阵X’的结果。而利用y变量中的元素，我们很容易就可以得到不同向量之间的夹角余弦。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a># 获取XX&#39;
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>y = x_s.dot(x_s.transpose())
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>print(&quot;XX&#39;的结果是&#39;：&quot;, y)
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a># 获得用户相似度矩阵US
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>us = [[0.0] * user_num for i in range(user_num)]
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>for userId1 in range(user_num):
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    for userId2 in range(user_num):
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        # 通过矩阵Y中的元素，计算夹角余弦
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        us[userId1][userId2] = y[userId1][userId2] / sqrt((y[userId1][userId1] * y[userId2][userId2]))
+</code></pre></div>
+<p>在最后一步中，我们就可以进行基于用户的协同过滤推荐了。需要注意的是，我们还需要使用元素对应的除法来实现归一化。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a># 通过用户之间的相似度，计算USP矩阵
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>usp = mat(us).dot(x_s)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a># 求用于归一化的分母
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>usr = [0.0] * user_num
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>for userId in range(user_num):
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    usr[userId] = sum(us[userId])
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a># 进行元素对应的除法，完成归一化
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>p = divide(usp, mat(usr).transpose())
+</code></pre></div>
+<p>我们可以来看一个展示推荐效果的例子。在原始的评分数据中，我们看到ID为1的用户并没有对ID为2的电影进行评分。而在最终的矩阵P中，我们可以看出系统对用户1给电影2的评分做出了较高的预测，换句话说，系统认为用户1很可能会喜好电影2。进一步研究电影的标题和类型，我们会发现用户1对《玩具总动员》（1995年）这类冒险类和动作类的题材更感兴趣，所以推荐电影2《勇敢者的游戏》（1995年）也是合理的。</p>
+<h2 id="_2">总结</h2>
+<p>在今天的内容中，我通过一个常用的实验数据，设计并实现了最简单的基于用户的协同过滤。我们最关心的是这个数据中，用户对电影的评分。有了这种二元关系，我们就能构建矩阵，并通过矩阵的操作来发现用户或物品之间的相似度，并进行基于用户或者物品的协同过滤。对于最终的计算结果，你可以尝试分析针对不同用户的推荐，看看协同过滤推荐的效果是不是合理。</p>
+<p>在你分析推荐结果的时候，可能会参考movie.csv这个文件中所描述的电影类型。这些电影类型都是一开始人工标注好的。那么，有没有可能在没有这种标注数据的情况下，在一定程度上自动分析哪些电影属于同一个或者近似的类型呢？如果可以，有没有可能在这种自动划分电影类型的基础之上，给出电影的推荐呢？下一节，我会通过SVD奇异值分解，来进行这个方向的尝试。</p>
+<h2 id="_3">思考题</h2>
+<p>今天我使用Python代码实现了基于用户的协同过滤。类似地，我们也可以采用矩阵操作来实现基于物品的协同过滤，请使用你擅长的语言来实现试试。</p>
+<p>欢迎留言和我分享，也欢迎你在留言区写下今天的学习笔记。你可以点击“请朋友读”，把今天的内容分享给你的好友，和他一起精进。</p>
 <div><strong>精选留言（6）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/13/18/d0/49b06424.jpg" width="30px"><span>qinggeouye</span> 👍（9） 💬（1）<div># 优化了一下，运行时间减少一半以上
+<li><span>qinggeouye</span> 👍（9） 💬（1）<div># 优化了一下，运行时间减少一半以上
 # https:&#47;&#47;github.com&#47;qinggeouye&#47;GeekTime&#47;blob&#47;master&#47;MathematicProgrammer&#47;49_recommendSystem&#47;lesson49_2.py
 
 import numpy as np
@@ -5786,7 +5963,7 @@ print(p)
 print(np.shape(p))
 
 print(&quot;程序运行耗时：&quot;, time_end - time_start)
-</div>2019-04-21</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83erIBYBQl9STN6IENoMFcMibp9cP4PeeRjIzO3J45rXoTfWor9NwmicC075mut1gVe47Wic0JScNY54Qg/132" width="30px"><span>呵呵</span> 👍（2） 💬（1）<div>不太理解USP这个矩阵的具体意义是什么，黄老师能不能给解释一下</div>2021-10-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/7c/af/52643b27.jpg" width="30px"><span>冄～</span> 👍（0） 💬（2）<div>老师好，感觉按照公式来看，USR作为分母，第一行应该是US的第一行元素求和（1+0.482+0.671＋0＝2.153），而不是USP的第一行求和（0.500+0.790+0.496=1.786）。否则会像文中一样，p矩阵每行求和为1也是因为USR这样计算导致的。代码部分usr[userId] = sum(us[userId])应该是对的。不知我理解得对不对？</div>2019-04-28</li><br/><li><img src="" width="30px"><span>013923</span> 👍（1） 💬（0）<div>推荐系统1学习</div>2022-09-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/51/86/b5fd8dd8.jpg" width="30px"><span>建强</span> 👍（0） 💬（0）<div>思考题：
+</div>2019-04-21</li><br/><li><span>呵呵</span> 👍（2） 💬（1）<div>不太理解USP这个矩阵的具体意义是什么，黄老师能不能给解释一下</div>2021-10-21</li><br/><li><span>冄～</span> 👍（0） 💬（2）<div>老师好，感觉按照公式来看，USR作为分母，第一行应该是US的第一行元素求和（1+0.482+0.671＋0＝2.153），而不是USP的第一行求和（0.500+0.790+0.496=1.786）。否则会像文中一样，p矩阵每行求和为1也是因为USR这样计算导致的。代码部分usr[userId] = sum(us[userId])应该是对的。不知我理解得对不对？</div>2019-04-28</li><br/><li><span>013923</span> 👍（1） 💬（0）<div>推荐系统1学习</div>2022-09-23</li><br/><li><span>建强</span> 👍（0） 💬（0）<div>思考题：
 基于物品的协同过滤的代码实现：
 
 # 前面的初始化步骤和评分标准化步骤和老师写的基于用户的协同过滤一致，不再重复
@@ -5818,7 +5995,7 @@ for movieId in range(movie_num):
 
 # 进行元素对应的除法，完成归一化
 p = divide(ISP, mat(ISR))
-print(p)</div>2021-01-03</li><br/><li><img src="" width="30px"><span>Paul Shan</span> 👍（0） 💬（0）<div>原始推荐数据可以找出用户之间的相似度，再求出所有用户对任意电影的评价，进而补上那些原始推荐数据中没有的配对。</div>2019-10-18</li><br/>
+print(p)</div>2021-01-03</li><br/><li><span>Paul Shan</span> 👍（0） 💬（0）<div>原始推荐数据可以找出用户之间的相似度，再求出所有用户对任意电影的评价，进而补上那些原始推荐数据中没有的配对。</div>2019-10-18</li><br/>
 </ul>
 
 

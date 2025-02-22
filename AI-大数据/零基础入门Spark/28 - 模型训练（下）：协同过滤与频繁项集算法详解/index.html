@@ -1676,6 +1676,8 @@
       
         
       
+        
+      
     
     
       
@@ -5062,6 +5064,48 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="电影推荐场景">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      协同过滤
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      频繁项集
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      每课一练
+    </span>
+  </a>
+  
 </li>
       
     </ul>
@@ -6117,6 +6161,48 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="电影推荐场景">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      协同过滤
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      频繁项集
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      每课一练
+    </span>
+  </a>
+  
 </li>
       
     </ul>
@@ -6153,9 +6239,187 @@
 <p><img alt="图片" src="https://static001.geekbang.org/resource/image/dd/9f/ddb19aa4974092047yyc287929953b9f.jpg?wh=1648x710" title="ratings.csv样本示例" /></p>
 <p>其中第一列userId为用户ID，movieId表示电影ID，而rating就是用户对于电影的评分。像这样，同时存有用户与物品（电影）信息的二维表，我们把它们统称为“交互矩阵”，或是“共现矩阵”。你可能会疑惑，通过这么一份简单的二维表，我们能干些什么呢？</p>
 <p>可别小瞧这份数据，与合适的模型算法搭配在一起，我就能根据它们构建初具模样的推荐引擎。在Spark MLlib框架下，至少有两种模型算法可以做到这一点，一个是协同过滤（Collaborative Filtering），另一个是频繁项集（Frequency Patterns）。其中，前者天生就是用来做推荐用的，而后者是一种常规的非监督学习算法，你可以结合数据特点，把这个算法灵活运用于推荐场景。</p>
+<h3 id="_2">协同过滤</h3>
+<p>我们先说协同过滤，从字面上来说，“过滤”是目的，而“协同”是方式、方法。简单地说，协同过滤的目标，就是从物品集合（比如完整的电影候选集）中，“过滤”出那些用户可能感兴趣的物品子集。而“协同”，它指的是，利用群体行为（全部用户与全部物品的交互历史）来实现过滤。</p>
+<p>这样说有些绕，实际上，协同过滤的核心思想很简单，就是“<strong>相似的人倾向于喜好相似的物品集</strong>”。</p>
+<p>交互矩阵看上去简单，但其中隐含着大量的相似性信息，只要利用合适的模型算法，我们就能挖掘出用户与用户之间的相似性、物品与物品之间的相似性，以及用户与物品之间的相似性。一旦这些相似性可以被量化，我们自然就可以基于相似性去做推荐了。思路是不是很简单？</p>
+<p>那么问题来了，这些相似性，该怎么量化呢？答案是：矩阵分解。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/ef/9b/efe96d5b4869b57c55b6aa7b1fc11a9b.jpg?wh=1920x635" title="交互矩阵、用户矩阵与物品矩阵" /></p>
+<p>在数学上，给定维度为（M，N）的交互矩阵C，我们可以把它分解为两个矩阵U与I的乘积。其中，我们可以把U称作“用户矩阵”，它的维度为（M，K）；而I可以看作是“物品矩阵”，它的维度是（K，N）。</p>
+<p>在用户矩阵与物品矩阵中，K是超参数，它是由开发者人为设定的。不难发现，对于用户矩阵U中的每一行， 都可以看作是用户的Embedding，也即刻画用户的特征向量。同理，物品矩阵中的每一列，也都可以看作是物品的Embedding，也即刻画物品的特征向量。</p>
+<p>正所谓，万物皆可Embedding。对于任何事物，一旦它们被映射到同一个向量空间，我们就可以使用欧氏距离或是余弦夹角等方法，来计算他们向量之间的相似度，从而实现上述各种相似性（用户与用户、物品与物品、用户与物品）的量化。</p>
+<p>基于相似度计算，我们就可以翻着花样地去实现各式各样的推荐。比方说，对于用户A来说，首先搜索与他/她最相似的前5个用户，然后把这些用户喜欢过的物品（电影）推荐给用户A，这样的推荐方式，又叫基于用户相似度的推荐。</p>
+<p>再比如，对于用户A喜欢过的物品，我们搜索与这些物品最相似的前5个物品，然后把这些搜索到的物品，再推荐给用户A，这叫做基于物品相似度的推荐。</p>
+<p>甚至，在一些情况下，我们还可以直接计算用户A与所有物品之间的相似度，然后把排名靠前的5个物品，直接推荐给用户A。</p>
+<p>基于上述逻辑，我们还可以反其道而行之，从物品的视角出发，给物品（电影）推荐用户。不难发现，一旦完成Embedding的转换过程，我们就可以根据相似度计算来灵活地设计推荐系统。</p>
+<p>那么，接下来的问题是，在Spark MLlib的框架下，我们具体要怎么做，才能从原始的互动矩阵，获得分解之后的用户矩阵、物品矩阵，进而获取到用户与物品的Embedding，并最终设计出简易的推荐引擎呢？</p>
+<p>按照惯例，我们还是先上代码，用代码来演示这个过程。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">import</span><span class="w"> </span><span class="nn">org</span><span class="p">.</span><span class="nn">apache</span><span class="p">.</span><span class="nn">spark</span><span class="p">.</span><span class="nn">sql</span><span class="p">.</span><span class="nc">DataFrame</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w"> </span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1">// rootPath表示数据集根目录</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="kd">val</span><span class="w"> </span><span class="n">rootPath</span><span class="p">:</span><span class="w"> </span><span class="nc">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">_</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="kd">val</span><span class="w"> </span><span class="n">filePath</span><span class="p">:</span><span class="w"> </span><span class="nc">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">s&quot;</span><span class="si">${</span><span class="n">rootPath</span><span class="si">}</span><span class="s">/ratings.csv&quot;</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w"> </span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="kd">var</span><span class="w"> </span><span class="n">data</span><span class="p">:</span><span class="w"> </span><span class="nc">DataFrame</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">spark</span><span class="p">.</span><span class="n">read</span><span class="p">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;csv&quot;</span><span class="p">).</span><span class="n">option</span><span class="p">(</span><span class="s">&quot;header&quot;</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">).</span><span class="n">load</span><span class="p">(</span><span class="n">filePath</span><span class="p">)</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w"> </span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1">// 类型转换</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="k">import</span><span class="w"> </span><span class="nn">org</span><span class="p">.</span><span class="nn">apache</span><span class="p">.</span><span class="nn">spark</span><span class="p">.</span><span class="nn">sql</span><span class="p">.</span><span class="nn">types</span><span class="p">.</span><span class="nc">IntegerType</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="k">import</span><span class="w"> </span><span class="nn">org</span><span class="p">.</span><span class="nn">apache</span><span class="p">.</span><span class="nn">spark</span><span class="p">.</span><span class="nn">sql</span><span class="p">.</span><span class="nn">types</span><span class="p">.</span><span class="nc">FloatType</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w"> </span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="c1">// 把ID类字段转换为整型，把Rating转换为Float类型</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">.</span><span class="n">withColumn</span><span class="p">(</span><span class="s">s&quot;userIdInt&quot;</span><span class="p">,</span><span class="n">col</span><span class="p">(</span><span class="s">&quot;userId&quot;</span><span class="p">).</span><span class="n">cast</span><span class="p">(</span><span class="nc">IntegerType</span><span class="p">)).</span><span class="n">drop</span><span class="p">(</span><span class="s">&quot;userId&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">.</span><span class="n">withColumn</span><span class="p">(</span><span class="s">s&quot;movieIdInt&quot;</span><span class="p">,</span><span class="n">col</span><span class="p">(</span><span class="s">&quot;movieId&quot;</span><span class="p">).</span><span class="n">cast</span><span class="p">(</span><span class="nc">IntegerType</span><span class="p">)).</span><span class="n">drop</span><span class="p">(</span><span class="s">&quot;movieId&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">.</span><span class="n">withColumn</span><span class="p">(</span><span class="s">s&quot;ratingFloat&quot;</span><span class="p">,</span><span class="n">col</span><span class="p">(</span><span class="s">&quot;rating&quot;</span><span class="p">).</span><span class="n">cast</span><span class="p">(</span><span class="nc">IntegerType</span><span class="p">)).</span><span class="n">drop</span><span class="p">(</span><span class="s">&quot;rating&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w"> </span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="c1">// 切割训练与验证数据集</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="kd">val</span><span class="w"> </span><span class="nc">Array</span><span class="p">(</span><span class="n">trainingData</span><span class="p">,</span><span class="w"> </span><span class="n">testData</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">.</span><span class="n">randomSplit</span><span class="p">(</span><span class="nc">Array</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,</span><span class="w"> </span><span class="mf">0.2</span><span class="p">))</span>
+</code></pre></div>
+<p>第一步，还是准备训练样本，我们从ratings.csv创建DataFrame，然后对相应字段做类型转换，以备后面使用。第二步，我们定义并拟合模型，完成协同过滤中的矩阵分解。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">import</span><span class="w"> </span><span class="nn">org</span><span class="p">.</span><span class="nn">apache</span><span class="p">.</span><span class="nn">spark</span><span class="p">.</span><span class="nn">ml</span><span class="p">.</span><span class="nn">recommendation</span><span class="p">.</span><span class="nc">ALS</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w"> </span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1">// 基于ALS（Alternative Least Squares，交替最小二乘）构建模型，完成矩阵分解</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="kd">val</span><span class="w"> </span><span class="n">als</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nc">ALS</span><span class="p">()</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">.</span><span class="n">setUserCol</span><span class="p">(</span><span class="s">&quot;userIdInt&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">.</span><span class="n">setItemCol</span><span class="p">(</span><span class="s">&quot;movieIdInt&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">.</span><span class="n">setRatingCol</span><span class="p">(</span><span class="s">&quot;ratingFloat&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="p">.</span><span class="n">setMaxIter</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w"> </span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="kd">val</span><span class="w"> </span><span class="n">alsModel</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">als</span><span class="p">.</span><span class="n">fit</span><span class="p">(</span><span class="n">trainingData</span><span class="p">)</span>
+</code></pre></div>
+<p>值得一提的是，在Spark MLlib的框架下，对于协同过滤的实现，Spark并没有采用解析解的方式（数学上严格的矩阵分解），而是用了一种近似的方式来去近似矩阵分解。这种方式，就是ALS（Alternative Least Squares，交替最小二乘）。</p>
+<p>具体来说，给定交互矩阵C，对于用户矩阵U与物品矩阵I，Spark先给U设定一个初始值，然后假设U是不变的，在这种情况下，Spark把物品矩阵I的优化，转化为回归问题，不停地去拟合I，直到收敛。然后，固定住物品矩阵I，再用回归的思路去优化用户矩阵U，直至收敛。如此反复交替数次，U和I都逐渐收敛到最优解，Spark即宣告训练过程结束。</p>
+<p>因为Spark把矩阵分解转化成了回归问题，所以我们可以用回归相关的度量指标来衡量ALS模型的训练效果，如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">import</span><span class="w"> </span><span class="nn">org</span><span class="p">.</span><span class="nn">apache</span><span class="p">.</span><span class="nn">spark</span><span class="p">.</span><span class="nn">ml</span><span class="p">.</span><span class="nn">evaluation</span><span class="p">.</span><span class="nc">RegressionEvaluator</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w"> </span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kd">val</span><span class="w"> </span><span class="n">evaluator</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nc">RegressionEvaluator</span><span class="p">()</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">// 设定度量指标为RMSE</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="p">.</span><span class="n">setMetricName</span><span class="p">(</span><span class="s">&quot;rmse&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="p">.</span><span class="n">setLabelCol</span><span class="p">(</span><span class="s">&quot;ratingFloat&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="p">.</span><span class="n">setPredictionCol</span><span class="p">(</span><span class="s">&quot;prediction&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w"> </span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="kd">val</span><span class="w"> </span><span class="n">predictions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">alsModel</span><span class="p">.</span><span class="n">transform</span><span class="p">(</span><span class="n">trainingData</span><span class="p">)</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1">// 计算RMSE</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="kd">val</span><span class="w"> </span><span class="n">rmse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">evaluator</span><span class="p">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">predictions</span><span class="p">)</span>
+</code></pre></div>
+<p>验证过模型效果之后，接下来，我们就可以放心地从模型当中，去获取训练好的用户矩阵U和物品矩阵I。这两个矩阵中，保存的正是用户Embedding与物品Embedding。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">alsModel</span><span class="p">.</span><span class="n">userFactors</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1">// org.apache.spark.sql.DataFrame = [id: int, features: array&lt;float&gt;]</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w"> </span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">alsModel</span><span class="p">.</span><span class="n">userFactors</span><span class="p">.</span><span class="n">show</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="cm">/** 结果打印</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="cm">+---+--------------------+</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="cm">| id| features|</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="cm">+---+--------------------+</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="cm">| 10|[0.53652495, -1.0...|</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="cm">+---+--------------------+</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="cm">*/</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w"> </span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="n">alsModel</span><span class="p">.</span><span class="n">itemFactors</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="c1">// org.apache.spark.sql.DataFrame = [id: int, features: array&lt;float&gt;]</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="w"> </span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="n">alsModel</span><span class="p">.</span><span class="n">itemFactors</span><span class="p">.</span><span class="n">show</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="cm">/** 结果打印</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="cm">+---+--------------------+</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="cm">| id| features|</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="cm">+---+--------------------+</span>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="cm">| 10|[1.1281404, -0.59...|</span>
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a><span class="cm">+---+--------------------+</span>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="cm">*/</span>
+</code></pre></div>
+<p>就像我们之前说的，有了用户与物品的Embedding，我们就可以灵活地设计推荐引擎。如果我们想偷懒的话，还可以利用Spark MLlib提供的API来做推荐。具体来说，我们可以通过调用ALS Model的相关方法，来实现向用户推荐物品，或是向物品推荐用户，如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1">// 为所有用户推荐10部电影</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kd">val</span><span class="w"> </span><span class="n">userRecs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">alsModel</span><span class="p">.</span><span class="n">recommendForAllUsers</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w"> </span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1">// 为每部电影推荐10个用户</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="kd">val</span><span class="w"> </span><span class="n">movieRecs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">alsModel</span><span class="p">.</span><span class="n">recommendForAllItems</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w"> </span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1">// 为指定用户推荐10部电影</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="kd">val</span><span class="w"> </span><span class="n">users</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">.</span><span class="n">select</span><span class="p">(</span><span class="n">als</span><span class="p">.</span><span class="n">getUserCol</span><span class="p">).</span><span class="n">distinct</span><span class="p">().</span><span class="n">limit</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="kd">val</span><span class="w"> </span><span class="n">userSubsetRecs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">alsModel</span><span class="p">.</span><span class="n">recommendForUserSubset</span><span class="p">(</span><span class="n">users</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w"> </span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="c1">// 为指定电影推荐10个用户</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="kd">val</span><span class="w"> </span><span class="n">movies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">.</span><span class="n">select</span><span class="p">(</span><span class="n">als</span><span class="p">.</span><span class="n">getItemCol</span><span class="p">).</span><span class="n">distinct</span><span class="p">().</span><span class="n">limit</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="kd">val</span><span class="w"> </span><span class="n">movieSubSetRecs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">alsModel</span><span class="p">.</span><span class="n">recommendForItemSubset</span><span class="p">(</span><span class="n">movies</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">)</span>
+</code></pre></div>
+<p>好啦，到此为止，我们介绍了协同过滤的核心思想与工作原理，并使用Spark MLlib提供的ALS算法，实现了一个简单的电影推荐引擎。接下来，我们再来想一想，还有没有其他的思路来打造一个不一样的推荐引擎。</p>
+<h3 id="_3">频繁项集</h3>
+<p>频繁项集（Frequency Patterns），是一种经典的数据挖掘算法，我们可以把它归类到非监督学习的范畴。频繁项集可以挖掘数据集中那些经常“成群结队”出现的数据项，并尝试在它们之间建立关联规则（Association Rules），从而为决策提供支持。</p>
+<p>举例来说，基于对上百万条交易记录的统计分析，蔬果超市发现（“葱”，“姜”，“蒜”）这三种食材经常一起出现。换句话说，购买了“葱”、“姜”的人，往往也会再买上几头蒜，或是买了大葱的人，结账前还会再把姜、蒜也捎上。</p>
+<p>在这个购物篮的例子中，（“葱”，“姜”，“蒜”）就是频繁项（Frequency Itemset），也即经常一起共现的数据项集合。而像（“葱”、“姜”-&gt;“蒜”）和（“葱”-&gt;“姜”、“蒜”）这样的关联关系，就叫做关联规则。</p>
+<p>不难发现，基于频繁项与关联规则，我们能够提供简单的推荐能力。以刚刚的（“葱”，“姜”，“蒜”）为例，对于那些手中提着大葱、准备结账的人，精明的导购员完全可以向他/她推荐超市新上的河北白皮蒜或是山东大生姜。</p>
+<p>回到电影推荐的场景，我们同样可以基于历史，挖掘出频繁项和关联规则。比方说，电影（“八佰”、“金刚川”、“长津湖”）是频繁项，而（“八佰”、“金刚川”-&gt;“长津湖”）之间存在着关联关系。那么，对于看过“八佰”和“金刚川”的人，我们更倾向于判断他/她大概率也会喜欢“长津湖”，进而把这部电影推荐给他/她。</p>
+<p>那么，基于MovieLens数据集，在Spark MLlib的开发框架下，我们该如何挖掘其中的频繁项与关联规则呢？</p>
+<p>首先第一步，是数据准备。在蔬果超市的例子中，超市需要以交易为单位，收集顾客曾经一起购买过的各种蔬果。为了在MovieLens数据集上计算频繁项集，我们也需要以用户为粒度，收集同一个用户曾经看过的所有电影集合，如下图所示。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/3b/7b/3b867c7444ce801676ac9418980a247b.jpg?wh=1920x625" title="数据转换示意图" /></p>
+<p>要完成这样的转换，我们只需要一行代码即可搞定。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// data是从ratings.csv创建的DataFrame</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kd">val</span><span class="w"> </span><span class="n">movies</span><span class="p">:</span><span class="w"> </span><span class="nc">DataFrame</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1">// 按照用户分组</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="p">.</span><span class="n">groupBy</span><span class="p">(</span><span class="s">&quot;userId&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1">// 收集该用户看过的所有电影，把新的集合列命名为movieSeq</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="p">.</span><span class="n">agg</span><span class="p">(</span><span class="n">collect_list</span><span class="p">(</span><span class="s">&quot;movieId&quot;</span><span class="p">).</span><span class="n">alias</span><span class="p">(</span><span class="s">&quot;movieSeq&quot;</span><span class="p">))</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1">// 只保留movieSeq这一列，去掉其他列</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="p">.</span><span class="n">select</span><span class="p">(</span><span class="s">&quot;movieSeq&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w"> </span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1">// movies: org.apache.spark.sql.DataFrame = [movieSeq: array&lt;string&gt;]</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w"> </span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="n">movies</span><span class="p">.</span><span class="n">show</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="cm">/** 结果打印</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="cm">+--------------------+</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="cm">| movieSeq|</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="cm">+--------------------+</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="cm">|[151, 172, 236, 2...|</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="cm">+--------------------+</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="cm">*/</span>
+</code></pre></div>
+<p>数据准备好之后，接下来，我们就可以借助Spark MLlib框架来完成频繁项集的计算。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">import</span><span class="w"> </span><span class="nn">org</span><span class="p">.</span><span class="nn">apache</span><span class="p">.</span><span class="nn">spark</span><span class="p">.</span><span class="nn">ml</span><span class="p">.</span><span class="nn">fpm</span><span class="p">.</span><span class="nc">FPGrowth</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w"> </span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kd">val</span><span class="w"> </span><span class="n">fpGrowth</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nc">FPGrowth</span><span class="p">()</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1">// 指定输入列</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="p">.</span><span class="n">setItemsCol</span><span class="p">(</span><span class="s">&quot;movieSeq&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1">// 超参数，频繁项最小支持系数</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="p">.</span><span class="n">setMinSupport</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="c1">// 超参数，关联规则最小信心系数</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="p">.</span><span class="n">setMinConfidence</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w"> </span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="kd">val</span><span class="w"> </span><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fpGrowth</span><span class="p">.</span><span class="n">fit</span><span class="p">(</span><span class="n">movies</span><span class="p">)</span>
+</code></pre></div>
+<p>可以看到，定义并拟合频繁项集模型，还是比较简单的，用法上与其他模型算法大同小异。不过，这里有两个超参数需要特别关注，一个是由setMinSupport设置的最小支持系数，另一个是由setMinConfidence指定的最小信心系数。</p>
+<p>最小支持系数，它用来设定频繁项的“选拔阈值”，这里我们把它设置为0.1。这是什么意思呢？</p>
+<p>举例来说，在MovieLens数据集中，总共有7120个用户，相应地，movies这个DataFrame中，就有7120条电影集合数据。对于（“八佰”、“金刚川”、“长津湖”）这个组合来说，当且仅当它出现的次数大于712（7120 * 0.1），这个组合才会被算法判定为频繁项。换句话说，<strong>最小支持系数越高，算法挖掘出的频繁项越少、越可靠，反之越多</strong>。</p>
+<p>相应地，最小信心系数，是用来约束关联规则的，例子中的取值也是0.1。我们再来举例说明，假设在7120条电影集合数据中，（“八佰”、“金刚川”）这对组合一起出现过1000次，那么要想（“八佰”、“金刚川”-&gt;“长津湖”）这条关联规则成立，则（“八佰”、“金刚川”、“长津湖”）这个组合必须至少出现过100次（1000 * 0.1）。同理，<strong>最小信心系数越高，算法挖掘出的关联规则越少、越可靠，反之越多</strong>。</p>
+<p>模型训练好之后，我们就可以从中获取经常出现的频繁项与关联规则，如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">model</span><span class="p">.</span><span class="n">freqItemsets</span><span class="p">.</span><span class="n">show</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="cm">/** 结果打印</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="cm">+--------------------+----+</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="cm">| items|freq|</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="cm">+--------------------+----+</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="cm">|[318, 593, 356, 296]|1465|</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="cm">+--------------------+----+</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="cm">*/</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w"> </span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="n">model</span><span class="p">.</span><span class="n">associationRules</span><span class="p">.</span><span class="n">show</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="cm">/** 结果打印</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="cm">+--------------------+----------+------------------+</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="cm">| antecedent|consequent| confidence|</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="cm">+--------------------+----------+------------------+</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="cm">|[592, 780, 480, 593]| [296]|0.8910463861920173|</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="cm">+--------------------+----------+------------------+</span>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="cm">*/</span>
+</code></pre></div>
+<p>基于关联规则，我们就可以提供初步的推荐功能。比方说，对于看过（592、780、480、593）这四部电影的用户，我们可以把ID为296的电影推荐给他/她。</p>
+<h2 id="_4">重点回顾</h2>
+<p>好啦，到此为止，模型训练的上、中、下三讲，我们就全部讲完啦！这三讲的内容较多，涉及的算法也很多，为了让你对他们有一个整体的把握，我把这些算法的分类、原理、特点与适用场景，都整理到了如下的表格中，供你随时回顾。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/96/66/963eacyy5e34355bdc7c18edd7a95a66.jpg?wh=1920x1281" /></p>
+<p>不难发现，机器学习的场景众多，不同的场景下，又有多种不同的算法供我们选择。掌握这些算法的原理与特性，有利于我们高效地进行模型选型与模型训练，从而去解决不同场景下的特定问题。</p>
+<p>对于算法的调优与应用，还需要你结合日常的实践去进一步验证、巩固，也欢迎你在留言区分享你的心得与体会，让我们一起加油！</p>
+<h2 id="_5">每课一练</h2>
+<p>对于本讲介绍的两种推荐思路（协同过滤与频繁项集），你能说说他们各自的优劣势吗？</p>
+<p>你有什么学习收获或者疑问，都可以跟我交流，咱们留言区见。</p>
 <div><strong>精选留言（1）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/27/bd/95/882bd4e0.jpg" width="30px"><span>Abigail</span> 👍（3） 💬（1）<div>协同过滤算法本身其实对于推荐什么物品是一点都不关心的，所有的推荐机制都是基于用户对物品的行为来制定的, 优点基于用户行为，因此对推荐内容无需先验知识；只需要用户和商品的关联矩阵即可，结构简单；在用户行为丰富的情况下，效果好。 当然如此一来，缺点也非常明显：需要大量的显性&#47;隐形的用户行为数据，有冷启动问题；需要通过完全相同的商品关联，相似的不行 aka 同义词问题；在数据稀疏的情况下易受影响。
+<li><span>Abigail</span> 👍（3） 💬（1）<div>协同过滤算法本身其实对于推荐什么物品是一点都不关心的，所有的推荐机制都是基于用户对物品的行为来制定的, 优点基于用户行为，因此对推荐内容无需先验知识；只需要用户和商品的关联矩阵即可，结构简单；在用户行为丰富的情况下，效果好。 当然如此一来，缺点也非常明显：需要大量的显性&#47;隐形的用户行为数据，有冷启动问题；需要通过完全相同的商品关联，相似的不行 aka 同义词问题；在数据稀疏的情况下易受影响。
 频繁项集它暗示了某些事物之间总是结伴或成对出现。本质上来说，不管是因果关系还是相关关系，都是共现关系。理论上所有机器学习算法都可以暴力搜索，也就不需要承担启发式搜索带来的局部优化损失问题，估计现在很少有人这么做了。FP-growth算法只需要对数据库进行两次扫描，同Aprion相比压缩度更高，不过对内存开销大，而且只能用于挖掘单维的布尔关联规则。理论上一般建议使用Apriori算法进行关联分析，用FP-growth算法来高效发现频繁项集。当然实际工程还是要根据数据的质量和目标需求以及运营成本来调整。</div>2021-11-17</li><br/>
 </ul>
 

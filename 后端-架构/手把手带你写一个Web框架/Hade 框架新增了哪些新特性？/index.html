@@ -7911,6 +7911,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#safegoandwait" class="md-nav__link">
+    <span class="md-ellipsis">
+      SafeGoAndWait
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13162,6 +13171,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#safegoandwait" class="md-nav__link">
+    <span class="md-ellipsis">
+      SafeGoAndWait
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13194,6 +13212,550 @@
 <p>所以，我为Hade框架增加了2个方法：goroutine.SafeGo和goroutine.SafeGoAndWait。</p>
 <h2 id="safego">SafeGo</h2>
 <p>SafeGo这个函数是一个安全的goroutine启动函数，主要用于包装普通的goroutine，增加了错误恢复（panic recovery）和日志记录功能。它主要适用于业务中需要开启异步goroutine业务逻辑调用的场景。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>// SafeGo 进行安全的goroutine调用
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>// 第一个参数是context接口，如果还实现了Container接口，且绑定了日志服务，则使用日志服务
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>// 第二个参数是匿名函数handler, 进行最终的业务逻辑
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>// SafeGo 函数并不会返回error，panic都会进入hade的日志服务
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>func SafeGo(ctx context.Context, handler func())
+</code></pre></div>
+<p>它的使用场景参考如下代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>func TestSafeGo(t *testing.T) {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    container := tests.InitBaseContainer()
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    container.Bind(&amp;log.HadeTestingLogProvider{})
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    goroutine.SafeGo(ctx, func() {
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        time.Sleep(1 * time.Second)
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        return
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    })
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    t.Log(&quot;safe go main start&quot;)
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    time.Sleep(2 * time.Second)
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    t.Log(&quot;safe go main end&quot;)
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    goroutine.SafeGo(ctx, func() {
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>        time.Sleep(1 * time.Second)
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>        panic(&quot;safe go test panic&quot;)
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    })
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    t.Log(&quot;safe go2 main start&quot;)
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    time.Sleep(2 * time.Second)
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    t.Log(&quot;safe go2 main end&quot;)
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>}
+</code></pre></div>
+<h2 id="safegoandwait">SafeGoAndWait</h2>
+<p>SafeGoAndWait函数的名称暗示了它的主要功能：安全地执行多个goroutine并等待它们全部完成。</p>
+<p>这个函数在需要并行处理多个任务，同时又需要等待所有任务完成并获取执行结果的场景下特别有用，它提供了一个安全、可靠的并发处理方案。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>// SafeGoAndWait 进行并发安全并行调用
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>// 第一个参数是context接口，如果还实现了Container接口，且绑定了日志服务，则使用日志服务
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>// 第二个参数是匿名函数handlers数组, 进行最终的业务逻辑
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>// 返回handlers中任何一个错误（如果handlers中有业务逻辑返回错误）
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>func SafeGoAndWait(ctx context.Context, handlers ...func() error) error
+</code></pre></div>
+<p>它的使用方式如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>func TestSafeGoAndWait(t *testing.T) {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    container := tests.InitBaseContainer()
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    container.Bind(&amp;log.HadeTestingLogProvider{})
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    errStr := &quot;safe go test error&quot;
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    t.Log(&quot;safe go and wait start&quot;, time.Now().String())
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    err := goroutine.SafeGoAndWait(ctx, func() error {
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        time.Sleep(1 * time.Second)
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>        return errors.New(errStr)
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    }, func() error {
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>        time.Sleep(2 * time.Second)
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>        return nil
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    }, func() error {
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>        time.Sleep(3 * time.Second)
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>        return nil
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    })
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    t.Log(&quot;safe go and wait end&quot;, time.Now().String())
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>    if err == nil {
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>        t.Error(&quot;err not be nil&quot;)
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>    } else if err.Error() != errStr {
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>        t.Error(&quot;err content not same&quot;)
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>    }
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>    // panic error
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>    err = goroutine.SafeGoAndWait(ctx, func() error {
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>        time.Sleep(1 * time.Second)
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>        return errors.New(errStr)
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>    }, func() error {
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>        time.Sleep(2 * time.Second)
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>        panic(&quot;test2&quot;)
+<a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>    }, func() error {
+<a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>        time.Sleep(3 * time.Second)
+<a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>        return nil
+<a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>    })
+<a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>    if err == nil {
+<a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a>        t.Error(&quot;err not be nil&quot;)
+<a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a>    } else if err.Error() != errStr {
+<a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a>        t.Error(&quot;err content not same&quot;)
+<a id="__codelineno-3-46" name="__codelineno-3-46" href="#__codelineno-3-46"></a>    }
+<a id="__codelineno-3-47" name="__codelineno-3-47" href="#__codelineno-3-47"></a>}
+</code></pre></div>
+<p>通过这段代码，我们可以看到goroutine.SafeGoAndWait的使用方式：它接受多个并发任务函数，并在所有任务完成后返回第一个发生的错误。如果某个任务触发panic，也会被捕获并返回为错误。</p>
+<h1 id="model-api">数据库表自动生成 model 和 api 代码命令</h1>
+<p>在Web开发中，我们大多数时间都在与数据库进行交互。通常，我们会根据数据库表结构生成相应的模型代码和API代码。然而，我们发现大部分情况下，这些工作都是在重复生成类似的模型和API代码。实际上，这些模型和API代码是有一定模式和套路的。因此，如果有一个命令能够根据数据表自动生成模型代码和API代码，将会大大节省我们的时间。</p>
+<p>这正是“model”系列命令的初衷。</p>
+<h2 id="_1">命令展示</h2>
+<p>./hade model由3个命令组成：</p>
+<ul>
+<li>./hade model api通过数据表自动生成api代码</li>
+<li>./hade model gen通过数据表自动生成model代码</li>
+<li>./hade model test测试某个数据库是否可以连接</li>
+</ul>
+<p>下面我一一描述这些命令的作用。</p>
+<p>首先是./hade model test。当你想测试某个配置好的数据库是否能连接上，都有哪些表的时候，这个命令能帮助你。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>&gt; ./hade model test --database=&quot;database.default&quot;
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>数据库连接：database.default成功
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>一共存在1张表
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>student
+</code></pre></div>
+<p>其次是./hade model gen，这个命令帮助你生成数据表对应的gorm的model。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>&gt; ./hade model gen
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>Error: required flag(s) &quot;output&quot; not set
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>Usage:
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>  hade model gen [flags]
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>Flags:
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>  -d, --database string   模型连接的数据库 (default &quot;database.default&quot;)
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>  -h, --help              help for gen
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>  -o, --output string     模型输出地址
+</code></pre></div>
+<p>其中接受两个参数：</p>
+<ul>
+<li>database这个参数可选，用来表示模型连接的数据库配置地址。默认是database.default，表示config目录下的{env}目录下的database.yaml中的default配置。</li>
+<li>output这个参数必填，用来表示模型文件的输出地址。如果填写相对路径，系统会在前面填充当前执行路径，将其补充为绝对路径。</li>
+</ul>
+<p>最后是./hade model api命令。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>&gt; ./hade model api 
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>  --database=database.default 
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>  --output=/Users/jianfengye/Documents/workspace/gohade/hade/app/http/module/student/
+</code></pre></div>
+<p>它的参数和./hade model gen类似，接受database和output参数，最终能生成包含增删改查的5个api接口（查分为查单个和查多个）。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/ae/44/ae78de3928d5645b310a3ec10795c944.png?wh=1920x549" /></p>
+<h2 id="_2">原理说明</h2>
+<p>接下来，我们详细说一下最复杂的 model API 命令的具体实现原理，其他命令的实现你可以阅读Hade框架源码。</p>
+<p>首先，我们明确一下目标：已知一个数据表，生成相应的 API 代码。就像将大象放进冰箱需要三步，我们实现这个目标也需要三步：</p>
+<ul>
+<li>理解数据表，解析其中的每个字段，并将其存储在命令中的一个Go内存结构中。</li>
+<li>使用这个内存结构生成一段Go代码。</li>
+<li>将这个逻辑封装为一个命令。</li>
+</ul>
+<p>下面，我们逐一详细说明。</p>
+<h3 id="_3">怎么获取一个表的所有字段</h3>
+<p>我们可以用gorm获取一个表的所有字段到一个map[string]string中，具体使用的SQL语句是：SHOW COLUMNS FROM student。</p>
+<p>然后，我们可以使用GORM的Raw方法和Scan方法，将SHOW COLUMNS FROM语句查询到的结果解析为一个map类型。具体的代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>// 定义一个用于存储字段名和字段类型的结构体
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>type Column struct {
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    Field string `gorm:&quot;column:Field&quot;`
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    Type  string `gorm:&quot;column:Type&quot;`
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>}
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>// 定义一个map类型，用于存储字段名和字段类型
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>columns := make(map[string]string)
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>// 执行原始的SQL语句
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>rows, err := db.Raw(&quot;SHOW COLUMNS FROM student&quot;).Rows()
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>if err != nil {
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    // 处理错误
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>}
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>// 逐行解析查询结果
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>for rows.Next() {
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>    var column Column
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>    if err := db.ScanRows(rows, &amp;column); err != nil {
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>        // 处理错误
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>    }
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>    columns[column.Field] = column.Type
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>}
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>// 输出结果
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>fmt.Println(columns)
+</code></pre></div>
+<p>在上述代码中，首先定义了一个结构体Column，用于存储每个字段的名称和类型。接着定义了一个map[string]string类型的变量columns，用于存储所有字段的名称和类型。</p>
+<p>然后，使用Raw方法执行原始的SQL语句SHOW COLUMNS FROM student，并通过Rows方法获取查询结果的行数据。对于每一行数据，使用ScanRows方法将其解析为一个Column结构体，再将结构体中的Field字段作为columns的键，Type字段作为columns的值，存储到columns变量中。</p>
+<p>最后，输出columns变量的内容，即可得到包含所有字段名称和类型的Map。注意，在使用完查询结果之后，需要及时关闭rows，避免资源泄露。我们可以在循环结束后，通过调用rows.Close()来关闭rows。</p>
+<p>上述代码中的columns是一个map[string]string类型的变量，用于存储所有字段的名称和类型。它的输出结果类似下面这样：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>map[id:uint name:string age:uint class_id:uint]
+</code></pre></div>
+<p>输出结果中的map表示这是一个Map类型的变量，而id、name、age和class_id则是这个map中的键，它们的值分别是uint和string类型，表示对应字段的数据类型。注意，输出结果中各个键值对的顺序可能会因为内部实现原因而不同。</p>
+<p>尝试了一下确实可行，但是在Hade中一切皆接口，于是我修改了之前orm的接口协议。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>type TableColumn struct {
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a> Field   string `gorm:&quot;column:Field&quot;`
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a> Type    string `gorm:&quot;column:Type&quot;`
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a> Null    string `gorm:&quot;column:Null&quot;`
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a> Key     string `gorm:&quot;column:key&quot;`
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a> Default string `gorm:&quot;column:Default&quot;`
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a> Extra   string `gorm:&quot;column:Extra&quot;`
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>}
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>// ORMService 表示传入的参数
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>type ORMService interface {
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>   // GetDB  获取某个db
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>   GetDB(option ...DBOption) (*gorm.DB, error)
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>   // CanConnect 是否可以连接
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>   CanConnect(ctx context.Context, db *gorm.DB) (bool, error)
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>   // Table 相关
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>   GetTables(ctx context.Context, db *gorm.DB) ([]string, error)
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>   HasTable(ctx context.Context, db *gorm.DB, table string) (bool, error)
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>   GetTableColumns(ctx context.Context, db *gorm.DB, table string) ([]TableColumn, error)
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>}
+</code></pre></div>
+<p>增加了如下命令：</p>
+<ul>
+<li>CanConnect：用ping方法测试数据库是否可连接</li>
+<li>GetTables：获取一个DB的所有表格</li>
+<li>HasTable：判断一个表名是否存在这个DB中</li>
+<li>GetTableColumns：获取一个表的所有字段</li>
+</ul>
+<p>它们的实现原理其实很简单：</p>
+<ul>
+<li>CanConnect本质是使用ping命令。</li>
+<li>GetTables是使用SQL语句“SELECT TABLE_NAME FROM information_schema.tables”。</li>
+<li>HasTable就是在GetTables取回的所有表名中查找是否有目标表名。</li>
+<li>GetTableColumns是使用SQL语句“SHOW COLUMNS FROM TABLE”。</li>
+</ul>
+<h3 id="gogo">怎么用Go生成一段Go代码</h3>
+<p>一般来说，用Go生成Go代码有三种方式。</p>
+<p>首先，可以使用text/template或html/template库。这两个库可以根据模板生成代码。模板中包含占位符，可以在运行时将占位符替换成具体的值，从而生成代码。使用模板生成代码比较方便，但需要学习模板语法。</p>
+<p>其次，可以使用代码生成工具。Go中有一些代码生成工具，比如go generate、go tool yacc、go tool cgo等，这些工具可以根据特定的规则自动生成代码。这种方式比较高效，但需要熟悉工具的使用方法和规则。</p>
+<p>最后，可以使用代码生成库。Go中有一些代码生成库，比如go/ast、github.com/dave/jennifer、github.com/gobuffalo/flect等，这些库可以根据Go语法树或其他方式生成代码。这种方式比较灵活，可以直接生成Go代码，不需要使用模板或手动拼接字符串。</p>
+<p>之前Hade也使用过第一种方式，即通过模板生成代码，但后来发现这种方式并不优雅。因为这种方式不够灵活，比如在定义一个包含很多字段的Go数据结构时，只能通过拼接字符串来完成。</p>
+<p>对于第二种方式，我经过调研后发现需要附带很多工具，更适合在编译期添加某些代码的场景。因此，我决定使用第三种方式来实现自动生成 API 的功能。</p>
+<p>实际上，第三种方式也有很多库可供选择。我尝试了一下Go原生的ast库和jennifer库，发现它们都比较麻烦。即使是生成一段只有几行的Go代码，也需要写出类似下面这样复杂的代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>jen.Id(&quot;logger&quot;).Op(&quot;:=&quot;).Id(&quot;c&quot;).Dot(&quot;MustMakeLog&quot;).Call(),
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>  jen.Var().Id(table).Qual(&quot;&quot;, tableModel),
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>  jen.If(
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>   jen.Err().Op(&quot;:=&quot;).Id(&quot;c&quot;).Dot(&quot;BindJSON&quot;).Call(jen.Op(&quot;&amp;&quot;).Id(table)),
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>   jen.Err().Op(&quot;!=&quot;).Nil(),
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>  ).Block(
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>   jen.Id(&quot;c&quot;).Dot(&quot;JSON&quot;).Call(jen.Lit(400), jen.Op(&quot;&amp;&quot;).Qual(&quot;github.com/gohade/hade/framework/gin&quot;, &quot;H&quot;).Values(jen.Dict{
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    jen.Lit(&quot;code&quot;): jen.Lit(&quot;Invalid parameter&quot;),
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>   })),
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>   jen.Return(),
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>  ),
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>  jen.Var().Id(&quot;db&quot;).Op(&quot;*&quot;).Qual(&quot;gorm.io/gorm&quot;, &quot;DB&quot;),
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>  jen.Var().Err().Error(),
+</code></pre></div>
+<p>因此，尽管之前进行了调研，但这个功能一直没有动手实现。直到最近GPT变得非常流行，我才想到，是否可以将一段代码交给GPT，让它使用某个库来实现这个功能。</p>
+<p>于是，我先编写了一段接口代码，然后使用以下提示输入到GPT中：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>请使用github.com/dave/jennifer 库来写一段代码，能产出下列文本代码：
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>func (api *StudentApi) Create(c *gin.Context) {
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a> logger := c.MustMakeLog()
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a> // 绑定JSON数据到student结构体中
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a> var student StudentModel
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a> if err := c.BindJSON(&amp;student); err != nil {
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>  c.JSON(400, gin.H{&quot;error&quot;: &quot;Invalid JSON&quot;})
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>  return
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a> }
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a> // 初始化一个orm.DB
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a> gormService := c.MustMake(contract.ORMKey).(contract.ORMService)
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a> db, err := gormService.GetDB(orm.WithConfigPath(&quot;database.default&quot;))
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a> if err != nil {
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>  logger.Error(c, err.Error(), nil)
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>  _ = c.AbortWithError(50001, err)
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>  return
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a> }
+<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>
+<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>
+<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a> // 向数据库中添加新的学生模型
+<a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a> if err := db.Create(&amp;student).Error; err != nil {
+<a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>  c.JSON(500, gin.H{&quot;error&quot;: &quot;Server error&quot;})
+<a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>  return
+<a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a> }
+<a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>
+<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a>
+<a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a> // 返回新创建的学生模型
+<a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a> c.JSON(200, student)
+<a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a>}
+</code></pre></div>
+<p>这样，GPT就把最繁琐又重复的部分给我生成出来了。按照这个思路，我把delete/list/show/update/model/router都用这种方式实现。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/7d/c6/7d8ed33deac3f537f2ab4907707be0c6.png?wh=638x412" /></p>
+<p>其中每个接口具体的GPT的实现逻辑你都可以在<a href="https://github.com/gohade/hade/blob/main/framework/command/model/api_gen.go">Hade的GitHub项目</a>中找到源码，如果你有兴趣可以点击过去看看。</p>
+<p>当然，在这个过程中，GPT生成的代码并不是0 Bug的，也需要人工一个个语句确认，不过AI已经节省了我不少的工作量。</p>
+<p>现在，最繁琐的工作在GPT的帮助下，就这样快乐地完成了。</p>
+<h3 id="_4">命令编写</h3>
+<p>有了数据表的读取能力，也有了GO代码自动生成能力，后续写命令的逻辑其实就是粘合的工作了。为了易用性，整个命令还是设计为交互式。</p>
+<p>第一步，自动检测配置的数据库是否有错误。如果没有错误，弹出数据库的所有表，让用户主动选择一个表。第二步，告知用户会做如下操作。这个操作列表要展示出来，是会新建一个文件还是替换原有的问题。第三步，就是真正去生成文件了。最终的效果如图所示：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/94/yy/9427c0yy8f58f892b8d4c7b934b410yy.png?wh=1920x540" /></p>
+<p>至此，我们就完成了model api的编写。</p>
+<h1 id="grpc">gRPC 的支持</h1>
+<p>除了上述功能，我们还在 Hade 框架中增加了对gRPC（Google Remote Procedure Call）的支持。gRPC是一个高性能且开源的远程过程调用（RPC）框架，广泛用于构建分布式系统和微服务架构。随着微服务架构的普及，服务间通信变得越来越重要。相比传统的 HTTP/REST 接口，gRPC 带来了许多令人兴奋的优势。</p>
+<p>首先是其出色的性能表现。gRPC 采用了 Protocol Buffers 这种轻量级的数据序列化方式，比传统的 JSON 更加高效。再加上它基于 HTTP/2 协议，实现了多路复用和二进制传输，使得通信效率得到了显著提升。</p>
+<p>其次，gRPC 在开发体验上也非常友好。通过编写 .proto 文件来定义服务接口，可以自动生成客户端和服务端的代码，避免了大量重复性的手工编码工作，从而大大提升了开发效率。</p>
+<p>基于这些优势，我们在 Hade 框架中集成了 gRPC 功能，使开发者能够更轻松地构建高性能的微服务应用。</p>
+<p>总的来说，Hade 框架依赖于 gRPC 的 Go 语言官方实现库 google.golang.org/grpc，并提供了以下命令行工具：</p>
+<ul>
+<li>hade grpc start是启动gRPC服务</li>
+<li>hade grpc stop是停止gRPC服务</li>
+<li>hade grpc restart是重启gRPC服务</li>
+<li>hade grpc state是查看gRPC服务状态</li>
+</ul>
+<p>下面，我将结合一个例子，为你展示这些命令的使用。</p>
+<h2 id="_5">命令展示</h2>
+<p>我们用Hade创建一个gRPC服务，步骤如下：</p>
+<ul>
+<li>创建proto文件</li>
+<li>生成Go文件</li>
+<li>创建服务</li>
+<li>注册服务</li>
+<li>启动服务</li>
+</ul>
+<p>下面，我们展开来讲。</p>
+<p>首先，<strong>我们在项目的app/grpc/proto/目录下创建一个proto文件</strong>，例如：proto/helloworld.proto，内容如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>syntax = &quot;proto3&quot;;
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>option go_package = &quot;examples/helloworld&quot;;
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>option java_multiple_files = true;
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>option java_package = &quot;io.grpc.examples.helloworld&quot;;
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>option java_outer_classname = &quot;HelloWorldProto&quot;;
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>package helloworld;
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>// The greeting service definition.
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>service Greeter {
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>    // Sends a greeting
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>    rpc SayHello (HelloRequest) returns (HelloReply) {}
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>}
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>// The request message containing the user&#39;s name.
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>message HelloRequest {
+<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a>    string name = 1;
+<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a>}
+<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a>
+<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a>
+<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a>// The response message containing the greetings
+<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a>message HelloReply {
+<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a>    string message = 1;
+<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a>}
+</code></pre></div>
+<p>这一个proto就是标准的proto3的gRPC语法。</p>
+<p>然后，<strong>我们使用gRPC官网提供的proto工具生成对应的Go文件</strong>。关于proto工具的使用，网上有很多文章了，所以这里就简要列下Mac端的安装命令。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>brew install protobuf
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>go install google.golang.org/protobuf/cmd/protoc-gen-go
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
+</code></pre></div>
+<p>生成Go文件的命令如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>protoc --go_out=./app/grpc/proto/ --go-grpc_out=./app/grpc/proto/ ./app/grpc/proto/helloworld.proto
+</code></pre></div>
+<p>我们可以看到，在目录<code>app/grpc/proto/</code>下生成了文件：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>examples/helloworld/helloworld.pb.go
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>examples/helloworld/helloworld_grpc.pb.go
+</code></pre></div>
+<p>接着，<strong>我们要实现proto文件中定义的这个服务：helloworld.GreeterServer</strong>。在app/grpc/service/目录下创建一个文件：app/grpc/service/helloworld/service.go，内容如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>package helloworld
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>import (
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    &quot;context&quot;
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    &quot;log&quot;
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>    pb &quot;github.com/gohade/hade/app/grpc/proto/examples/helloworld&quot;
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>)
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>// Server is used to implement helloworld.GreeterServer.
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>type Server struct {
+<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a>    pb.UnimplementedGreeterServer
+<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>}
+<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>
+<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>
+<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>// SayHello implements helloworld.GreeterServer
+<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a>func (s *Server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
+<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a>    log.Printf(&quot;Received: %v&quot;, in.GetName())
+<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a>    return &amp;pb.HelloReply{Message: &quot;Hello &quot; + in.GetName()}, nil
+<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a>}
+</code></pre></div>
+<p>下一步就是<strong>在app/grpc/kernel.go文件中注册服务</strong>：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>package grpc
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>import (
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    helloworldgen &quot;github.com/gohade/hade/app/grpc/proto/examples/helloworld&quot;
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    &quot;github.com/gohade/hade/app/grpc/service/helloworld&quot;
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    &quot;github.com/gohade/hade/framework&quot;
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>    pkggrpc &quot;google.golang.org/grpc&quot;
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>    &quot;google.golang.org/grpc/reflection&quot;
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>)
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>// NewGrpcEngine 创建了一个绑定了路由的Web引擎
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>func NewGrpcEngine(container framework.Container) (*pkggrpc.Server, error) {
+<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>
+<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>
+<a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a>    s := pkggrpc.NewServer()
+<a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a>
+<a id="__codelineno-17-19" name="__codelineno-17-19" href="#__codelineno-17-19"></a>
+<a id="__codelineno-17-20" name="__codelineno-17-20" href="#__codelineno-17-20"></a>    // 这里进行服务注册
+<a id="__codelineno-17-21" name="__codelineno-17-21" href="#__codelineno-17-21"></a>    helloworldgen.RegisterGreeterServer(s, &amp;helloworld.Server{})
+<a id="__codelineno-17-22" name="__codelineno-17-22" href="#__codelineno-17-22"></a>    reflection.Register(s)
+<a id="__codelineno-17-23" name="__codelineno-17-23" href="#__codelineno-17-23"></a>
+<a id="__codelineno-17-24" name="__codelineno-17-24" href="#__codelineno-17-24"></a>
+<a id="__codelineno-17-25" name="__codelineno-17-25" href="#__codelineno-17-25"></a>    return s, nil
+<a id="__codelineno-17-26" name="__codelineno-17-26" href="#__codelineno-17-26"></a>}
+</code></pre></div>
+<p>这里我们不仅注册了服务，还注册了反射服务，这样就可以使用grpcurl工具来测试我们的gRPC服务了。</p>
+<p>最后，我们编译自身项目hade build self，在项目根目录下执行命令：hade grpc start，<strong>启动gRPC服务</strong>。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>➜  hade git:(dev/feature-grpc) ✗ ./hade grpc start
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>成功启动进程: hade grpc
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>进程pid: 96290
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>监听地址: grpc://localhost:8888
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>基础路径: /Users/jianfengye/Documents/workspace/gohade/hade/
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>日志路径: /Users/jianfengye/Documents/workspace/gohade/hade/storage/log
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>运行路径: /Users/jianfengye/Documents/workspace/gohade/hade/storage/runtime
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>配置路径: /Users/jianfengye/Documents/workspace/gohade/hade/config
+</code></pre></div>
+<p>你也可以通过命令hade grpc start -d启动服务，这样服务会在后台运行。默认端口是8888，你可以通过命令行参数 --address来指定端口。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>hade git:(dev/feature-grpc) ✗ ./hade grpc start --address=:8777 -d
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>成功启动进程: hade grpc
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>进程pid: 97685
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>监听地址: grpc://localhost:8777
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>基础路径: /Users/jianfengye/Documents/workspace/gohade/hade/
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>日志路径: /Users/jianfengye/Documents/workspace/gohade/hade/storage/log
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>运行路径: /Users/jianfengye/Documents/workspace/gohade/hade/storage/runtime
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>配置路径: /Users/jianfengye/Documents/workspace/gohade/hade/config
+</code></pre></div>
+<p>如果你还想了解更多关于gRPC的操作，可以参考<a href="https://hade.funaio.cn/guide/grpc.html#_7-%E6%9F%A5%E7%9C%8Bgrpc%E6%9C%8D%E5%8A%A1%E7%8A%B6%E6%80%81">Hade的官网</a>，这里就不继续展开了。</p>
+<h2 id="_6">原理说明</h2>
+<p>我们知道，gRPC的底层协议主要基于HTTP/2和Protocol Buffers（Protobuf），和我们专栏中描述的实现HTTP协议服务的逻辑类似。</p>
+<p>现在，我们要实现gRPC服务器，并不需要从TCP底层开始实现gRPC的解析，因为Google封装的google.golang.org/grpc已经实现了底层协议的封装。我们要做的就是将这个包融合进Hade框架。</p>
+<p>首先，使用gRPC库来启动一个服务器，最核心的代码其实就下面两行：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>s := grpc.NewServer()
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>s.Serve()
+</code></pre></div>
+<p>以上代码主要是用来创建一个服务器对象，再启动服务器。而创建服务器对象的步骤，我们可以放到main函数中。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>func main() {
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>    // 初始化服务容器
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>    container := framework.NewHadeContainer()
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    ...
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>    if engine, err := grpc.NewGrpcEngine(container); err == nil {
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>        kernelProvider.GrpcEngine = engine
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>    }
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>    _ = container.Bind(kernelProvider)
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>    ...
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>}
+</code></pre></div>
+<p>对应的 NewGrpcEngine 的方法实现如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>// NewGrpcEngine 创建了一个绑定了路由的Web引擎
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>func NewGrpcEngine(container framework.Container) (*pkggrpc.Server, error) {
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>    s := pkggrpc.NewServer()
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>    // 这里进行服务注册
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>    helloworldgen.RegisterGreeterServer(s, &amp;helloworld.Server{})
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a>    reflection.Register(s)
+<a id="__codelineno-22-11" name="__codelineno-22-11" href="#__codelineno-22-11"></a>
+<a id="__codelineno-22-12" name="__codelineno-22-12" href="#__codelineno-22-12"></a>
+<a id="__codelineno-22-13" name="__codelineno-22-13" href="#__codelineno-22-13"></a>    return s, nil
+<a id="__codelineno-22-14" name="__codelineno-22-14" href="#__codelineno-22-14"></a>}
+</code></pre></div>
+<p>在main函数中，我们将gRPC生成的服务器对象称为GrpcEngine，并存储在kernelProvider这个服务提供者中。如果你不记得provider在Hade框架中的含义，可以回顾专栏<a href="https://time.geekbang.org/column/article/424529">第10节</a>和<a href="https://time.geekbang.org/column/article/425093">第11节</a>。</p>
+<p>注意，和HTTP服务不同的是，在创建gRPC的服务对象时，我们要将我们的业务服务，即gRPC工具生成的Go代码注册进入，也就是helloworldgen.RegisterGreeterServer这行代码的含义。</p>
+<p>那么接下来我们在哪里调用呢？代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>s.Serve()
+</code></pre></div>
+<p>然后，我们可以在./hade grpc start 的命令中真正启动服务。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/af/80/af68bcc3ef11dcf101e659d94bd05280.png?wh=444x376" /></p>
+<p>我们定义了一个gRPC二级命令， 以及start、state、stop和restart这四个三级命令。具体的命令行实现还比较繁琐，我们这里也不追溯了，可以参考专栏<a href="https://time.geekbang.org/column/article/426765">第13节</a>。</p>
+<p>在这几个命令中，最重要的就是启动start命令，它最重要的是调用了如下函数：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>// 启动AppServer, 这个函数会将当前goroutine阻塞
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>func startAppServe(ctx context.Context, server *grpc.Server, lis net.Listener, c framework.Container) error {
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>    logger := c.MustMake(contract.LogKey).(contract.Log)
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>    // 这个goroutine是启动服务的goroutine
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>    goroutine.SafeGo(ctx, func() {
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>        if err := server.Serve(lis); err != nil {
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>            logger.Error(ctx, &quot;grpc serve error&quot;, map[string]interface{}{
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a>                &quot;error&quot;: err.Error(),
+<a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a>            })
+<a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a>        }
+<a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a>    })
+<a id="__codelineno-24-14" name="__codelineno-24-14" href="#__codelineno-24-14"></a>
+<a id="__codelineno-24-15" name="__codelineno-24-15" href="#__codelineno-24-15"></a>
+<a id="__codelineno-24-16" name="__codelineno-24-16" href="#__codelineno-24-16"></a>    // 当前的goroutine等待信号量
+<a id="__codelineno-24-17" name="__codelineno-24-17" href="#__codelineno-24-17"></a>    quit := make(chan os.Signal)
+<a id="__codelineno-24-18" name="__codelineno-24-18" href="#__codelineno-24-18"></a>    // 监控信号：SIGINT, SIGTERM, SIGQUIT
+<a id="__codelineno-24-19" name="__codelineno-24-19" href="#__codelineno-24-19"></a>    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+<a id="__codelineno-24-20" name="__codelineno-24-20" href="#__codelineno-24-20"></a>    // 这里会阻塞当前goroutine等待信号
+<a id="__codelineno-24-21" name="__codelineno-24-21" href="#__codelineno-24-21"></a>    &lt;-quit
+<a id="__codelineno-24-22" name="__codelineno-24-22" href="#__codelineno-24-22"></a>
+<a id="__codelineno-24-23" name="__codelineno-24-23" href="#__codelineno-24-23"></a>
+<a id="__codelineno-24-24" name="__codelineno-24-24" href="#__codelineno-24-24"></a>    configService := c.MustMake(contract.ConfigKey).(contract.Config)
+<a id="__codelineno-24-25" name="__codelineno-24-25" href="#__codelineno-24-25"></a>
+<a id="__codelineno-24-26" name="__codelineno-24-26" href="#__codelineno-24-26"></a>
+<a id="__codelineno-24-27" name="__codelineno-24-27" href="#__codelineno-24-27"></a>    // 默认是grace stop
+<a id="__codelineno-24-28" name="__codelineno-24-28" href="#__codelineno-24-28"></a>    forceStop := false
+<a id="__codelineno-24-29" name="__codelineno-24-29" href="#__codelineno-24-29"></a>    // 调用Server.Shutdown graceful结束
+<a id="__codelineno-24-30" name="__codelineno-24-30" href="#__codelineno-24-30"></a>    if configService.IsExist(&quot;grpc.force_stop&quot;) {
+<a id="__codelineno-24-31" name="__codelineno-24-31" href="#__codelineno-24-31"></a>        forceStop = configService.GetBool(&quot;grpc.force_stop&quot;)
+<a id="__codelineno-24-32" name="__codelineno-24-32" href="#__codelineno-24-32"></a>    }
+<a id="__codelineno-24-33" name="__codelineno-24-33" href="#__codelineno-24-33"></a>
+<a id="__codelineno-24-34" name="__codelineno-24-34" href="#__codelineno-24-34"></a>
+<a id="__codelineno-24-35" name="__codelineno-24-35" href="#__codelineno-24-35"></a>    if forceStop {
+<a id="__codelineno-24-36" name="__codelineno-24-36" href="#__codelineno-24-36"></a>        server.Stop()
+<a id="__codelineno-24-37" name="__codelineno-24-37" href="#__codelineno-24-37"></a>    } else {
+<a id="__codelineno-24-38" name="__codelineno-24-38" href="#__codelineno-24-38"></a>        server.GracefulStop()
+<a id="__codelineno-24-39" name="__codelineno-24-39" href="#__codelineno-24-39"></a>    }
+<a id="__codelineno-24-40" name="__codelineno-24-40" href="#__codelineno-24-40"></a>    return nil
+<a id="__codelineno-24-41" name="__codelineno-24-41" href="#__codelineno-24-41"></a>}
+</code></pre></div>
+<p>这里，我们使用上了最开始讲的goroutine.SafeGo封装函数，通过它在一个goroutine中调用 server.Serve(lis)。然后在主线程中使用signal.Notify来监听信号量，并且阻塞主线程。</p>
+<p>当监听到结束的信号量时，我们在主线程中调用server.Stop() 或者 server.GracefulStop() 就能结束goroutine.SafeGo 中调用的gRPC服务了。</p>
+<p>至此，Hade框架对于gRPC服务的融合就完成了。</p>
+<h1 id="_7">总结</h1>
+<p>这一节我们详细介绍了Hade框架的三个重要进展。</p>
+<p>首先是goroutine的安全管理机制，通过SafeGo封装函数优雅地处理了panic的情况，使得程序更加健壮和可靠。这种设计不仅提高了系统的稳定性，还为开发者提供了更好的错误追踪能力。</p>
+<p>其次是根据数据表自动生成model代码和api接口代码，这个功能的使用和原理。这个功能极大地提高了开发效率，通过简单的命令，就能根据数据库表结构自动生成标准的model层代码和对应的 API 接口。</p>
+<p>最后，我们详细阐述了如何将gRPC服务优雅地集成到Hade框架中。通过精心设计的服务启动和关闭机制，结合信号处理和优雅退出策略，确保了gRPC服务能够稳定可靠地运行在Had 框架之上。</p>
+<p>这些进展充分展示了Hade框架在不断演进和完善的过程中，始终注重实用性、可靠性和开发体验。通过这些改进，Hade框架正在成为一个更加成熟和强大的Go语言开发框架。</p>
+<p>好了，今天的内容就到这里，如果你觉得有收获，也欢迎你把它分享给身边的朋友，我们下一节见。</p>
 
 
 

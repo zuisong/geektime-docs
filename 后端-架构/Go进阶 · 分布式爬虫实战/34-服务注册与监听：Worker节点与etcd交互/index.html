@@ -2591,6 +2591,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#go-micro-grpc-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      go-micro 与GRPC-gateway
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#etcd" class="md-nav__link">
+    <span class="md-ellipsis">
+      注册中心与etcd
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13366,6 +13402,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#go-micro-grpc-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      go-micro 与GRPC-gateway
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#etcd" class="md-nav__link">
+    <span class="md-ellipsis">
+      注册中心与etcd
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13408,13 +13480,388 @@
 <li>有良好的向后和向前兼容性。</li>
 </ul>
 <p>Protocol buffers 将接口语言定义在以 .proto为后缀的文件中，之后 proto 编译器结合特定语言的运行库生成特定的SDK。这个SDK文件有助于我们在Client端访问，也有助于我们生成GRPC Server。</p>
+<p>现在让我们来实战一下Protocol buffers 协议。</p>
+<p><strong>第一步，</strong>书写一个简单的文件hello.proto：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>syntax = &quot;proto3&quot;;
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>option go_package = &quot;proto/greeter&quot;;
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>service Greeter {
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    rpc Hello(Request) returns (Response) {}
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>}
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>message Request {
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    string name = 1;
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>}
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>message Response {
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    string greeting = 2;
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>}
+</code></pre></div>
+<p>proto协议很容易理解：</p>
+<ul>
+<li><code>syntax = "proto3";</code> 标识我们协议的版本，每个版本的语言可能会有所不同，目前最新的使用最多的版本是proto3，它的语法你可以查看<a href="https://developers.google.com/protocol-buffers/docs/proto3">官方文档</a>；</li>
+<li>option go_package 定义生成的 Go 的 package 名；</li>
+<li>service Greeter 定义了一个服务Greeter，它的远程方法为Hello，Hello参数为结构体Request，返回值为结构体Response。</li>
+</ul>
+<p>要根据这个proto文件生成Go对应的协议文件，我们需要做一下前置的工作：下载 proto 的编译器protoc，安装 protoc 指定版本的方式可以查看<a href="https://grpc.io/docs/protoc-installation/">官方的安装文档</a>。</p>
+<p>同时，我们还需要安装 protoc 的Go语言的插件。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+</code></pre></div>
+<p><strong>第二步，</strong>输入命令protoc进行编译，编译完成后生成了hello.pb.go与hello_grpc.pb.go两个协议文件。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>protoc -I $GOPATH/src  -I . --go_out=.  --go-grpc_out=.  hello.proto
+</code></pre></div>
+<p>在hello_grpc.pb.go中，我们会看到生成的文件为我们自动生成了GreeterServer接口，接口中有Hello方法。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>type GreeterServer interface {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    Hello(context.Context, *Request) (*Response, error)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>}
+</code></pre></div>
+<p><strong>第三步，</strong>在我们的main函数中生成结构体Greeter，实现GreeterServer接口，然后调用生成协议文件中的pb.RegisterGreeterServer，将Greeter注册到GRPC server中。代码如下所示。要注意的是，xxx/proto/greeter需要替换为你自己的项目中协议文件的位置。</p>
+<p>至此，我们就生成了一个GRPC服务了，该服务提供了Hello方法。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>package main
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>import (
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    pb &quot;xxx/proto/greeter&quot;
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    &quot;log&quot;
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    &quot;net&quot;
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    &quot;google.golang.org/grpc&quot;
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>)
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>type Greeter struct {
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    pb.UnimplementedGreeterServer
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>}
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>func (g *Greeter) Hello(ctx context.Context, req *pb.Request) (rsp *pb.Response, err error) {
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    rsp.Greeting = &quot;Hello &quot; + req.Name
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    return rsp, nil
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>}
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>func main() {
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    println(&quot;gRPC server tutorial in Go&quot;)
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    listener, err := net.Listen(&quot;tcp&quot;, &quot;:9000&quot;)
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    if err != nil {
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>        panic(err)
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>    }
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>    s := grpc.NewServer()
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>    pb.RegisterGreeterServer(s, &amp;Greeter{})
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>    if err := s.Serve(listener); err != nil {
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>        log.Fatalf(&quot;failed to serve: %v&quot;, err)
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>    }
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>}
+</code></pre></div>
+<h2 id="go-micro-grpc-gateway">go-micro 与GRPC-gateway</h2>
+<p>刚才我们看到了原生的生成GRPC服务器的方法。不过在我们的项目中，我打算用另一个目前微服务领域比较流行的框架go-micro来实现我们的GRPC服务器。</p>
+<p>相比原生的方式，go-micro拥有更丰富的生态和功能，更方便的工具和API。例如，在go-micro中，服务注册可以方便地切换到etcd、ZooKeeper、Gossip、NATS等注册中心，方便我们实现服务注册功能。Server端也同时支持GRPC、HTTP等多种协议。</p>
+<p>要在go-micro中实现GRPC服务器，我们同样需要利用前面的 proto文件生成的协议文件。不过，go-micro在此基础上进行了扩展，我们需要下载protoc-gen-micro插件来生成micro适用的协议文件。这个插件的版本需要和我们使用的go-micro版本相同。目前，最新的 go-micro版本为v4，我们这个项目就用最新的版本来开发。所以，我们需要先下载protoc-gen-micro v4版本：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>go install github.com/asim/go-micro/cmd/protoc-gen-micro/v4@latest
+</code></pre></div>
+<p>接着输入如下命名，生成一个新的文件hello.pb.micro.go：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>protoc -I $GOPATH/src  -I .  --micro_out=. --go_out=.  --go-grpc_out=.  hello.proto
+</code></pre></div>
+<p>在hello.pb.micro.go中，micro生成了一个接口GreeterHandler，所以我们需要在代码中实现这个新的接口：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>type GreeterHandler interface {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    Hello(context.Context, *Request, *Response) error
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>}
+</code></pre></div>
+<p>用 go-micro 生成GRPC服务器的代码如下，Greeter结构体实现了GreeterHandler接口。代码调用pb.RegisterGreeterHandler将Greeter注册到micro生成的GRPC server中。另外如果要查看使用go-micro的样例，可以查看<a href="https://github.com/go-micro/examples">example库</a>。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>package main
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>import (
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    pb &quot;xxx/proto/greeter&quot;
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    &quot;log&quot;
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    &quot;context&quot;
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>   &quot;go-micro.dev/v4&quot;
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    &quot;google.golang.org/grpc&quot;
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>)
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>type Greeter struct{}
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>func (g *Greeter) Hello(ctx context.Context, req *pb.Request, rsp *pb.Response) error {
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    rsp.Greeting = &quot;Hello &quot; + req.Name
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    return nil
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>}
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>func main() {
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>    service := micro.NewService(
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>        micro.Name(&quot;helloworld&quot;),
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>    )
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>    service.Init()
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>    pb.RegisterGreeterHandler(service.Server(), new(Greeter))
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>    if err := service.Run(); err != nil {
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>        log.Fatal(err)
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>    }
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>}
+</code></pre></div>
+<p>但到这里我们还不满足。GRPC在调试的时候比HTTP协议要繁琐，而且有些外部服务可能不支持使用GRPC协议，为了解决这些问题，我们可以让服务同时具备 GRPC 与 HTTP 的能力。</p>
+<p>要实现这一目的，我们需要借助一个第三方库：<a href="https://github.com/grpc-ecosystem/grpc-gateway">grpc-gateway</a>。grpc-gateway的功能就是生成一个HTTP的代理服务，然后这个HTTP代理服务会将HTTP请求转换为GRPC的协议，并转发到GRPC服务器中。从而实现了服务同时暴露HTTP接口与GRPC接口的目的。</p>
+<p>要实现grpc-gateway的能力，我们需要对proto文件进行改造：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>syntax = &quot;proto3&quot;;
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>option go_package = &quot;proto/greeter&quot;;
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>import &quot;google/api/annotations.proto&quot;;
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>service Greeter {
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    rpc Hello(Request) returns (Response) {
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>        option (google.api.http) = {
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>            post: &quot;/greeter/hello&quot;
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>            body: &quot;*&quot;
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>        };
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    }
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>}
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>message Request {
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    string name = 1;
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>}
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>message Response {
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>    string greeting = 2;
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>}
+</code></pre></div>
+<p>这里我们引入了一个依赖google/api/annotations.proto，并且加入了自定义的option选项，grpc-gateway的插件会识别到这个自定义选项，并为我们生成HTTP代理服务。</p>
+<p>要生成指定的协议文件，我们需要先安装grpc-gateway的插件：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@latest
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
+</code></pre></div>
+<p>同时，提前下载依赖文件：google/api/annotations.proto。在这里，我手动下载了依赖文件并放入到了GOPATH中：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>git clone git@github.com:googleapis/googleapis.git
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>mv googleapis/google  $(go env GOPATH)/src/google
+</code></pre></div>
+<p>最后，利用下面的指令将proto文件生成协议文件。要注意的是，这里我们同时加入了go-micro的插件和grpc-gateway的插件，两个插件之间可能存在命名冲突。所以我指定了grpc-gateway的选项 register_func_suffix 为 Gw，它能够让生成的函数名包含该Gw前缀，这就解决了命名冲突问题。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>protoc -I $GOPATH/src  -I .  --micro_out=. --go_out=.  --go-grpc_out=.  --grpc-gateway_out=logtostderr=true,register_func_suffix=Gw:. hello.proto
+</code></pre></div>
+<p>这样我们就生成了4个文件，分别是hello.pb.go、hello.pb.gw.go、hello.pb.micro.go和hello_grpc.pb.go。 其中，hello.pb.gw.go就是 grpc-gateway 插件生成的文件。</p>
+<p>接下来我们借助 go-micro 与 grpc-gateway 为项目生成具备GRPC与HTTP能力的服务器，代码如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>package main
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>import (
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    &quot;context&quot;
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    &quot;fmt&quot;
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    pb &quot;xxx/proto/greeter&quot;
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    gs &quot;github.com/go-micro/plugins/v4/server/grpc&quot;
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    &quot;github.com/grpc-ecosystem/grpc-gateway/v2/runtime&quot;
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    &quot;go-micro.dev/v4&quot;
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    &quot;go-micro.dev/v4/registry&quot;
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>    &quot;go-micro.dev/v4/server&quot;
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    &quot;google.golang.org/grpc&quot;
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    &quot;log&quot;
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>    &quot;net/http&quot;
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>)
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>type Greeter struct{}
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>func (g *Greeter) Hello(ctx context.Context, req *pb.Request, rsp *pb.Response) error {
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>    rsp.Greeting = &quot;Hello &quot; + req.Name
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>    return nil
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>}
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>func main() {
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>    // http proxy
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>    go HandleHTTP()
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>
+<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a>  // grpc server 
+<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>    service := micro.NewService(
+<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a>        micro.Server(gs.NewServer()),
+<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a>        micro.Address(&quot;:9090&quot;),
+<a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a>        micro.Name(&quot;go.micro.server.worker&quot;),
+<a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a>    )
+<a id="__codelineno-13-34" name="__codelineno-13-34" href="#__codelineno-13-34"></a>
+<a id="__codelineno-13-35" name="__codelineno-13-35" href="#__codelineno-13-35"></a>    service.Init()
+<a id="__codelineno-13-36" name="__codelineno-13-36" href="#__codelineno-13-36"></a>
+<a id="__codelineno-13-37" name="__codelineno-13-37" href="#__codelineno-13-37"></a>    pb.RegisterGreeterHandler(service.Server(), new(Greeter))
+<a id="__codelineno-13-38" name="__codelineno-13-38" href="#__codelineno-13-38"></a>
+<a id="__codelineno-13-39" name="__codelineno-13-39" href="#__codelineno-13-39"></a>    if err := service.Run(); err != nil {
+<a id="__codelineno-13-40" name="__codelineno-13-40" href="#__codelineno-13-40"></a>        log.Fatal(err)
+<a id="__codelineno-13-41" name="__codelineno-13-41" href="#__codelineno-13-41"></a>    }
+<a id="__codelineno-13-42" name="__codelineno-13-42" href="#__codelineno-13-42"></a>}
+<a id="__codelineno-13-43" name="__codelineno-13-43" href="#__codelineno-13-43"></a>
+<a id="__codelineno-13-44" name="__codelineno-13-44" href="#__codelineno-13-44"></a>func HandleHTTP() {
+<a id="__codelineno-13-45" name="__codelineno-13-45" href="#__codelineno-13-45"></a>    ctx := context.Background()
+<a id="__codelineno-13-46" name="__codelineno-13-46" href="#__codelineno-13-46"></a>    ctx, cancel := context.WithCancel(ctx)
+<a id="__codelineno-13-47" name="__codelineno-13-47" href="#__codelineno-13-47"></a>    defer cancel()
+<a id="__codelineno-13-48" name="__codelineno-13-48" href="#__codelineno-13-48"></a>
+<a id="__codelineno-13-49" name="__codelineno-13-49" href="#__codelineno-13-49"></a>    mux := runtime.NewServeMux()
+<a id="__codelineno-13-50" name="__codelineno-13-50" href="#__codelineno-13-50"></a>    opts := []grpc.DialOption{grpc.WithInsecure()}
+<a id="__codelineno-13-51" name="__codelineno-13-51" href="#__codelineno-13-51"></a>
+<a id="__codelineno-13-52" name="__codelineno-13-52" href="#__codelineno-13-52"></a>    err := pb.RegisterGreeterGwFromEndpoint(ctx, mux, &quot;localhost:9090&quot;, opts)
+<a id="__codelineno-13-53" name="__codelineno-13-53" href="#__codelineno-13-53"></a>    if err != nil {
+<a id="__codelineno-13-54" name="__codelineno-13-54" href="#__codelineno-13-54"></a>        fmt.Println(err)
+<a id="__codelineno-13-55" name="__codelineno-13-55" href="#__codelineno-13-55"></a>    }
+<a id="__codelineno-13-56" name="__codelineno-13-56" href="#__codelineno-13-56"></a>
+<a id="__codelineno-13-57" name="__codelineno-13-57" href="#__codelineno-13-57"></a>    http.ListenAndServe(&quot;:8080&quot;, mux)
+<a id="__codelineno-13-58" name="__codelineno-13-58" href="#__codelineno-13-58"></a>}
+</code></pre></div>
+<p>其中，HandleHTTP 函数生成 HTTP 服务器，监听8080端口。同时，我们利用了 grpc-gateway 生成的 RegisterGreeterGwFromEndpoint 方法，指定了要转发到哪一个GRPC服务器。当访问该HTTP接口后，该代理服务器会将请求转发到GRPC服务器。</p>
+<p>现在让我们来验证一下功能，我们使用HTTP协议去访问服务：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>curl -H &quot;content-type: application/json&quot; -d &#39;{&quot;name&quot;: &quot;john&quot;}&#39; http://localhost:8080/greeter/hello
+</code></pre></div>
+<p>返回结果如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>{
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    &quot;greeting&quot;: &quot;Hello &quot;
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>}
+</code></pre></div>
+<p>这就表明我们已经成功地使用HTTP请求访问到了GRPC服务器。</p>
+<h2 id="etcd">注册中心与etcd</h2>
+<p>刚才，我们将Worker变成了GRPC服务器，也看到了go-micro的使用方式，接下来让我们看看如何用go-micro完成服务的注册。</p>
+<p>在go-micro中使用micro.NewService生成一个service。其中，service可以用option的模式注入参数。而 micro.NewService 有许多默认的option，默认情况下生成的服务器并不是GRPC类型的。为了生成GRPC服务器，我们需要导入go-micro的 <a href="https://github.com/go-micro/plugins/v4/server/grpc">GRPC插件库</a>，生成一个GRPC server注入到 micro.NewService 中。同时，micro.Address指定了服务器监听的地址，而micro.Name表示服务器的名字。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>import (
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>  &quot;go-micro.dev/v4&quot;
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>  &quot;github.com/go-micro/plugins/v4/server/grpc&quot;
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>)
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>func main() {
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>    ...
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>  // grpc server 
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>    service := micro.NewService(
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>        micro.Server(gs.NewServer()),
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>        micro.Address(&quot;:9090&quot;),
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>        micro.Name(&quot;go.micro.server.worker&quot;),
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>    )
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>}
+</code></pre></div>
+<p>在micro.NewService中还可以注入register模块，用于指定使用哪一个注册中心。我们的项目中将使用etcd作为注册中心。为了在go-micro v4中使用etcd作为注册中心，我们需要导入<a href="https://github.com/go-micro/plugins/v4/registry/etcd">etcd插件库</a>，如下所示。这里的etcd注册模块仍然使用了option模式，registry.Addrs指定了当前etcd的地址。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>import (
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>    etcdReg &quot;github.com/go-micro/plugins/v4/registry/etcd&quot;
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>)
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>func main() {
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    ...
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    reg := etcdReg.NewRegistry(
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>            registry.Addrs(&quot;:2379&quot;),
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>        )
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>    service := micro.NewService(
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>            micro.Server(gs.NewServer()),
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>            micro.Address(&quot;:9090&quot;),
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>            micro.Registry(reg),
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>            micro.Name(&quot;go.micro.server&quot;),
+<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>        )
+<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>}
+</code></pre></div>
+<p>接下来，让我们首先启动etcd服务器。启动服务器的方式有很多种，你可以参考<a href="https://github.com/etcd-io/etcd/releases/">官方文档</a>。这里我利用Docker来启动一个etcd的服务器（关于Docker，我们在之后的章节会详细介绍）：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>rm -rf /tmp/etcd-data.tmp &amp;&amp; mkdir -p /tmp/etcd-data.tmp &amp;&amp; \\
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>  docker rmi gcr.io/etcd-development/etcd:v3.5.6 || true &amp;&amp; \\
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>  docker run \\
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>  -p 2379:2379 \\
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>  -p 2380:2380 \\
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>  --mount type=bind,source=/tmp/etcd-data.tmp,destination=/etcd-data \\
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>  --name etcd-gcr-v3.5.6 \\
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>  gcr.io/etcd-development/etcd:v3.5.6 \\
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>  /usr/local/bin/etcd \\
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>  --name s1 \\
+<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>  --data-dir /etcd-data \\
+<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>  --listen-client-urls &lt;http://0.0.0.0:2379&gt; \\
+<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>  --advertise-client-urls &lt;http://0.0.0.0:2379&gt; \\
+<a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a>  --listen-peer-urls &lt;http://0.0.0.0:2380&gt; \\
+<a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>  --initial-advertise-peer-urls &lt;http://0.0.0.0:2380&gt; \\
+<a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a>  --initial-cluster s1=http://0.0.0.0:2380 \\
+<a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a>  --initial-cluster-token tkn \\
+<a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a>  --initial-cluster-state new \\
+<a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a>  --log-level info \\
+<a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a>  --logger zap \\
+<a id="__codelineno-18-21" name="__codelineno-18-21" href="#__codelineno-18-21"></a>  --log-outputs stderr
+</code></pre></div>
+<p>要验证用Dokcer启动etcd服务器是否成功，功能是否正常，我们可以使用下面几条命令。这些命令会打印etcd的版本，并用一个简单的Key-Value值验证出put与get功能是正常的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>docker exec etcd-gcr-v3.5.6 /bin/sh -c &quot;/usr/local/bin/etcd --version&quot;
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>docker exec etcd-gcr-v3.5.6 /bin/sh -c &quot;/usr/local/bin/etcdctl version&quot;
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>docker exec etcd-gcr-v3.5.6 /bin/sh -c &quot;/usr/local/bin/etcdctl endpoint health&quot;
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>docker exec etcd-gcr-v3.5.6 /bin/sh -c &quot;/usr/local/bin/etcdctl put foo bar&quot;
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>docker exec etcd-gcr-v3.5.6 /bin/sh -c &quot;/usr/local/bin/etcdctl get foo&quot;
+</code></pre></div>
+<p>接下来，让我们启动go-micro构建的的GRPC服务器，服务的信息会注册到etcd中，并且会定时发送自己的健康状况用于保活。</p>
+<p>下面让我们验证一下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>» docker exec etcd-gcr-v3.5.6 /bin/sh -c &quot;/usr/local/bin/etcdctl get --prefix /&quot;                                                            jackson@jacksondeMacBook-Pro
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>/micro/registry/go.micro.server/go.micro.server-707c1d61-2c20-42b4-95a0-6d3e8473727e
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>{&quot;name&quot;:&quot;go.micro.server&quot;,&quot;version&quot;:&quot;latest&quot;,&quot;metadata&quot;:null,&quot;endpoints&quot;:[{&quot;name&quot;:&quot;Say.Hello&quot;,&quot;request&quot;:{&quot;name&quot;:&quot;Request&quot;,&quot;type&quot;:&quot;Request&quot;,&quot;values&quot;:[{&quot;name&quot;:&quot;name&quot;,&quot;type&quot;:&quot;string&quot;,&quot;values&quot;:null}]},&quot;response&quot;:{&quot;name&quot;:&quot;Response&quot;,&quot;type&quot;:&quot;Response&quot;,&quot;values&quot;:[{&quot;name&quot;:&quot;msg&quot;,&quot;type&quot;:&quot;string&quot;,&quot;values&quot;:null}]},&quot;metadata&quot;:{}}],&quot;nodes&quot;:[{&quot;id&quot;:&quot;go.micro.server-707c1d61-2c20-42b4-95a0-6d3e8473727e&quot;,&quot;address&quot;:&quot;192.168.0.107:9090&quot;,&quot;metadata&quot;:{&quot;broker&quot;:&quot;http&quot;,&quot;protocol&quot;:&quot;grpc&quot;,&quot;registry&quot;:&quot;etcd&quot;,&quot;server&quot;:&quot;grpc&quot;,&quot;transport&quot;:&quot;grpc&quot;}}]}
+</code></pre></div>
+<p>这里，命令 <code>get --prefix /</code> 表示获取前缀为/的Key。 我们会发现，go-micro注册到etcd中的Key为 <code>/micro/registry/c/go.micro.server-707c1d61-2c20-42b4-95a0-6d3e8473727e</code>，其中go.micro.server是服务的名字，最后的一串ID是随机字符。</p>
+<p>我们可以通过在生成server时指定特殊的ID来替换掉随机的ID，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>func main(){
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>    ...
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>    service := micro.NewService(
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>        micro.Server(gs.NewServer(
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>            server.Id(&quot;1&quot;),
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>        )),
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>        micro.Address(&quot;:9090&quot;),
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>        micro.Registry(reg),
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>        micro.Name(&quot;go.micro.server.worker&quot;),
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>    )
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>}
+</code></pre></div>
+<p>这时会发现注册到etcd服务中的Key已经发生了变化：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>» docker exec etcd-gcr-v3.5.6 /bin/sh -c &quot;/usr/local/bin/etcdctl get --prefix /&quot;                                                            jackson@jacksondeMacBook-Pro
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>/micro/registry/go.micro.server.worker/go.micro.server.worker-1
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>{&quot;name&quot;:&quot;go.micro.server.worker&quot;,&quot;version&quot;:&quot;latest&quot;,&quot;metadata&quot;:null,&quot;endpoints&quot;:[{&quot;name&quot;:&quot;Say.Hello&quot;,&quot;request&quot;:{&quot;name&quot;:&quot;Request&quot;,&quot;type&quot;:&quot;Request&quot;,&quot;values&quot;:[{&quot;name&quot;:&quot;name&quot;,&quot;type&quot;:&quot;string&quot;,&quot;values&quot;:null}]},&quot;response&quot;:{&quot;name&quot;:&quot;Response&quot;,&quot;type&quot;:&quot;Response&quot;,&quot;values&quot;:[{&quot;name&quot;:&quot;msg&quot;,&quot;type&quot;:&quot;string&quot;,&quot;values&quot;:null}]},&quot;metadata&quot;:{}}],&quot;nodes&quot;:[{&quot;id&quot;:&quot;go.micro.server.worker-1&quot;,&quot;address&quot;:&quot;192.168.0.107:9090&quot;,&quot;metadata&quot;:{&quot;broker&quot;:&quot;http&quot;,&quot;protocol&quot;:&quot;grpc&quot;,&quot;registry&quot;:&quot;etcd&quot;,&quot;server&quot;:&quot;grpc&quot;,&quot;transport&quot;:&quot;grpc&quot;}}]}
+</code></pre></div>
+<p>上述完整的代码位于<a href="https://github.com/dreamerjackson/crawler">v0.3.0</a>中。<br />
+最后，我们也可以用一个GRPC的客户端去访问我们的服务器：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>import (
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>    grpccli &quot;github.com/go-micro/plugins/v4/client/grpc&quot;
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>    &quot;go-micro.dev/v4&quot;
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>    &quot;go-micro.dev/v4/registry&quot;
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>    pb &quot;xxx/proto/greeter&quot;
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>}
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>func main() {
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>    reg := etcdReg.NewRegistry(
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a>        registry.Addrs(&quot;:2379&quot;),
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>    )
+<a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a>    // create a new service
+<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a>    service := micro.NewService(
+<a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a>        micro.Registry(reg),
+<a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a>        micro.Client(grpccli.NewClient()),
+<a id="__codelineno-23-16" name="__codelineno-23-16" href="#__codelineno-23-16"></a>    )
+<a id="__codelineno-23-17" name="__codelineno-23-17" href="#__codelineno-23-17"></a>
+<a id="__codelineno-23-18" name="__codelineno-23-18" href="#__codelineno-23-18"></a>    // parse command line flags
+<a id="__codelineno-23-19" name="__codelineno-23-19" href="#__codelineno-23-19"></a>    service.Init()
+<a id="__codelineno-23-20" name="__codelineno-23-20" href="#__codelineno-23-20"></a>
+<a id="__codelineno-23-21" name="__codelineno-23-21" href="#__codelineno-23-21"></a>    // Use the generated client stub
+<a id="__codelineno-23-22" name="__codelineno-23-22" href="#__codelineno-23-22"></a>    cl := pb.NewGreeterService(&quot;go.micro.server.worker&quot;, service.Client())
+<a id="__codelineno-23-23" name="__codelineno-23-23" href="#__codelineno-23-23"></a>
+<a id="__codelineno-23-24" name="__codelineno-23-24" href="#__codelineno-23-24"></a>    // Make request
+<a id="__codelineno-23-25" name="__codelineno-23-25" href="#__codelineno-23-25"></a>    rsp, err := cl.Hello(context.Background(), &amp;pb.Request{
+<a id="__codelineno-23-26" name="__codelineno-23-26" href="#__codelineno-23-26"></a>        Name: &quot;John&quot;,
+<a id="__codelineno-23-27" name="__codelineno-23-27" href="#__codelineno-23-27"></a>    })
+<a id="__codelineno-23-28" name="__codelineno-23-28" href="#__codelineno-23-28"></a>    if err != nil {
+<a id="__codelineno-23-29" name="__codelineno-23-29" href="#__codelineno-23-29"></a>        fmt.Println(err)
+<a id="__codelineno-23-30" name="__codelineno-23-30" href="#__codelineno-23-30"></a>        return
+<a id="__codelineno-23-31" name="__codelineno-23-31" href="#__codelineno-23-31"></a>    }
+<a id="__codelineno-23-32" name="__codelineno-23-32" href="#__codelineno-23-32"></a>
+<a id="__codelineno-23-33" name="__codelineno-23-33" href="#__codelineno-23-33"></a>    fmt.Println(rsp.Greeting)
+<a id="__codelineno-23-34" name="__codelineno-23-34" href="#__codelineno-23-34"></a>}
+</code></pre></div>
+<p>这里 pb.NewGreeterService 的第一个参数代表服务器的注册名。如果运行后能够正常地返回结果，代表GRPC客户端访问GRPC服务器成功了。GRPC返回的结果如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>» go run main.go     
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>Hello John
+</code></pre></div>
+<h2 id="_1">总结</h2>
+<p>好了，总结一下。这节课，我们为Worker服务构建了GRPC服务器和HTTP服务器。其中，HTTP服务器是用grpc-gateway生成的一个代理，它最终也会访问GRPC服务器。构建GRPC服务器需要安装一些必要的依赖，还要书写定义接口行为的proto文件。</p>
+<p>在这节课的例子中，我们使用了go-micro微服务框架实现了GRPC服务器，它为微服务提供了比较丰富的能力，然后我们使用go-micro的插件将服务注册到了etcd注册中心当中。客户端可以通过服务器注册的服务名找到该服务并完成调用。如果同一个服务名找到了多个服务器，go-micro会默认使用负载均衡机制保障公平性。</p>
+<h2 id="_2">课后题</h2>
+<p>这节课，我们用HTTP POST请求访问了HTTP代理服务服务器：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>curl -H &quot;content-type: application/json&quot; -d &#39;{&quot;name&quot;: &quot;john&quot;}&#39; http://localhost:8080/greeter/hello
+</code></pre></div>
+<p>返回结果如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>{
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>    &quot;greeting&quot;: &quot;Hello &quot;
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>}
+</code></pre></div>
+<p>但是不知道你注意到没有，我们预期返回的信息应该是：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>{
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>    &quot;greeting&quot;: &quot;Hello john&quot;
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>}
+</code></pre></div>
+<p>你知道是哪个地方出现了问题吗？</p>
+<p>欢迎你跟我交流讨论，我们也会在后面修复这一问题。下节课见！</p>
 <div><strong>精选留言（5）</strong></div>
 <ul>
-<li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83ep075ibtmxMf3eOYlBJ96CE9TEelLUwePaLqp8M75gWHEcM3za0voylA0oe9y3NiaboPB891rypRt7w/132" width="30px"><span>shuff1e</span> 👍（0） 💬（1）<div>mux := runtime.NewServeMux()
-看起来是HandleHTTP没指定路由？name是从body取，还是从query参数取，也没指定？</div>2022-12-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/8c/7d/cae6b979.jpg" width="30px"><span>出云</span> 👍（1） 💬（2）<div>回答一下结尾问题：按文中的写法其实不会出现只返回“Hello”的情况。检查了下代码仓库v3.0.0版本。hello.proto文件中hello方法的option注解少了body字段。按这种写法生成proto文件再次运行，才复现了文末说的问题，所以问题就是出在少了一行`body:  &quot;*&quot;`。
+<li><span>shuff1e</span> 👍（0） 💬（1）<div>mux := runtime.NewServeMux()
+看起来是HandleHTTP没指定路由？name是从body取，还是从query参数取，也没指定？</div>2022-12-27</li><br/><li><span>出云</span> 👍（1） 💬（2）<div>回答一下结尾问题：按文中的写法其实不会出现只返回“Hello”的情况。检查了下代码仓库v3.0.0版本。hello.proto文件中hello方法的option注解少了body字段。按这种写法生成proto文件再次运行，才复现了文末说的问题，所以问题就是出在少了一行`body:  &quot;*&quot;`。
 
-（另外，给protoc安装grpc-gateway的两个插件后，生成的hello.pb.micro.go文件中的NewGreeterEndpoints()函数中返回的api.Endpoint对象会多一个不存在的Body字段，需要删掉才能正常编译。）</div>2023-03-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/8c/7d/cae6b979.jpg" width="30px"><span>出云</span> 👍（0） 💬（0）<div>产生多余Body字段的原因也找到了。是因为按文中给的包路径安装不到最新的protoc-gen-micro插件。根据go-micro的官方repo，该插件目前的包路径是` github.com&#47;go-micro&#47;generator&#47;cmd&#47;protoc-gen-micro@latest `。 去$GOPATH&#47;bin 把旧的可执行文件删了，执行`go install 新路径`，再重新生成pb文件即可解决问题。 </div>2023-03-17</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/qCv5IcP1lkO2jicrTic9KicycZXZ7WylG49GZHJCibuFQfBlJMsCpVHARuaLxIB23f3enRL4ls6EOr9wxu40K0Hl8Q/132" width="30px"><span>tcyi</span> 👍（0） 💬（0）<div>google&#47;api&#47;annotations.proto 报错，按照老师提供的方法 不能成功，win10环境
-</div>2023-02-20</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKgz63XQKh9eI5vEicMY27siaoAPubmWr33XNBYic1rvFX0bFNUF6obpKpEEZgzcAtNX1nQiartf8icvdQ/132" width="30px"><span>viclilei</span> 👍（0） 💬（1）<div>docker etcd error</div>2023-01-11</li><br/>
+（另外，给protoc安装grpc-gateway的两个插件后，生成的hello.pb.micro.go文件中的NewGreeterEndpoints()函数中返回的api.Endpoint对象会多一个不存在的Body字段，需要删掉才能正常编译。）</div>2023-03-17</li><br/><li><span>出云</span> 👍（0） 💬（0）<div>产生多余Body字段的原因也找到了。是因为按文中给的包路径安装不到最新的protoc-gen-micro插件。根据go-micro的官方repo，该插件目前的包路径是` github.com&#47;go-micro&#47;generator&#47;cmd&#47;protoc-gen-micro@latest `。 去$GOPATH&#47;bin 把旧的可执行文件删了，执行`go install 新路径`，再重新生成pb文件即可解决问题。 </div>2023-03-17</li><br/><li><span>tcyi</span> 👍（0） 💬（0）<div>google&#47;api&#47;annotations.proto 报错，按照老师提供的方法 不能成功，win10环境
+</div>2023-02-20</li><br/><li><span>viclilei</span> 👍（0） 💬（1）<div>docker etcd error</div>2023-01-11</li><br/>
 </ul>
 
 

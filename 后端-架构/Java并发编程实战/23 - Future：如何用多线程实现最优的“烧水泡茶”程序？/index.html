@@ -2673,6 +2673,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      实现最优的“烧水泡茶”程序
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13219,6 +13246,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      实现最优的“烧水泡茶”程序
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13259,9 +13313,168 @@
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  submit(Runnable task, T result);
 </code></pre></div>
 <p>你会发现它们的返回值都是Future接口，Future接口有5个方法，我都列在下面了，它们分别是<strong>取消任务的方法cancel()、判断任务是否已取消的方法isCancelled()、判断任务是否已结束的方法isDone()以及2个获得任务执行结果的get()和get(timeout, unit)</strong>，其中最后一个get(timeout, unit)支持超时机制。通过Future接口的这5个方法你会发现，我们提交的任务不但能够获取任务执行结果，还可以取消任务。不过需要注意的是：这两个get()方法都是阻塞式的，如果被调用的时候，任务还没有执行完，那么调用get()方法的线程会阻塞，直到任务执行完才会被唤醒。</p>
-<div><strong>精选留言（30）</strong></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>// 取消任务
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>boolean cancel(
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  boolean mayInterruptIfRunning);
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>// 判断任务是否已取消  
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>boolean isCancelled();
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>// 判断任务是否已结束
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>boolean isDone();
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>// 获得任务执行结果
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>get();
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>// 获得任务执行结果，支持超时
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>get(long timeout, TimeUnit unit);
+</code></pre></div>
+<p>这3个submit()方法之间的区别在于方法参数不同，下面我们简要介绍一下。</p>
+<ol>
+<li>提交Runnable任务 <code>submit(Runnable task)</code> ：这个方法的参数是一个Runnable接口，Runnable接口的run()方法是没有返回值的，所以 <code>submit(Runnable task)</code> 这个方法返回的Future仅可以用来断言任务已经结束了，类似于Thread.join()。</li>
+<li>提交Callable任务 <code>submit(Callable&lt;T&gt; task)</code>：这个方法的参数是一个Callable接口，它只有一个call()方法，并且这个方法是有返回值的，所以这个方法返回的Future对象可以通过调用其get()方法来获取任务的执行结果。</li>
+<li>提交Runnable任务及结果引用 <code>submit(Runnable task, T result)</code>：这个方法很有意思，假设这个方法返回的Future对象是f，f.get()的返回值就是传给submit()方法的参数result。这个方法该怎么用呢？下面这段示例代码展示了它的经典用法。需要你注意的是Runnable接口的实现类Task声明了一个有参构造函数 <code>Task(Result r)</code> ，创建Task对象的时候传入了result对象，这样就能在类Task的run()方法中对result进行各种操作了。result相当于主线程和子线程之间的桥梁，通过它主子线程可以共享数据。</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ExecutorService executor 
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  = Executors.newFixedThreadPool(1);
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>// 创建Result对象r
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>Result r = new Result();
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>r.setAAA(a);
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>// 提交任务
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>Future&lt;Result&gt; future = 
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  executor.submit(new Task(r), r);  
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>Result fr = future.get();
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>// 下面等式成立
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>fr === r;
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>fr.getAAA() === a;
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>fr.getXXX() === x
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>class Task implements Runnable{
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>  Result r;
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>  //通过构造函数传入result
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>  Task(Result r){
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>    this.r = r;
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>  }
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>  void run() {
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>    //可以操作result
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    a = r.getAAA();
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    r.setXXX(x);
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>  }
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>}
+</code></pre></div>
+<p>下面我们再来介绍FutureTask工具类。前面我们提到的Future是一个接口，而FutureTask是一个实实在在的工具类，这个工具类有两个构造函数，它们的参数和前面介绍的submit()方法类似，所以这里我就不再赘述了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>FutureTask(Callable&lt;V&gt; callable);
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>FutureTask(Runnable runnable, V result);
+</code></pre></div>
+<p>那如何使用FutureTask呢？其实很简单，FutureTask实现了Runnable和Future接口，由于实现了Runnable接口，所以可以将FutureTask对象作为任务提交给ThreadPoolExecutor去执行，也可以直接被Thread执行；又因为实现了Future接口，所以也能用来获得任务的执行结果。下面的示例代码是将FutureTask对象提交给ThreadPoolExecutor去执行。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>// 创建FutureTask
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>FutureTask&lt;Integer&gt; futureTask
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  = new FutureTask&lt;&gt;(()-&gt; 1+2);
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>// 创建线程池
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>ExecutorService es = 
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>  Executors.newCachedThreadPool();
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>// 提交FutureTask 
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>es.submit(futureTask);
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>// 获取计算结果
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>Integer result = futureTask.get();
+</code></pre></div>
+<p>FutureTask对象直接被Thread执行的示例代码如下所示。相信你已经发现了，利用FutureTask对象可以很容易获取子线程的执行结果。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>// 创建FutureTask
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>FutureTask&lt;Integer&gt; futureTask
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  = new FutureTask&lt;&gt;(()-&gt; 1+2);
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>// 创建并启动线程
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>Thread T1 = new Thread(futureTask);
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>T1.start();
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>// 获取计算结果
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>Integer result = futureTask.get();
+</code></pre></div>
+<h2 id="_2">实现最优的“烧水泡茶”程序</h2>
+<p>记得以前初中语文课文里有一篇著名数学家华罗庚先生的文章《统筹方法》，这篇文章里介绍了一个烧水泡茶的例子，文中提到最优的工序应该是下面这样：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/86/ce/86193a2dba88dd15562118cce6d786ce.png?wh=1142%2A567" /></p>
+<p>烧水泡茶最优工序</p>
+<p>下面我们用程序来模拟一下这个最优工序。我们专栏前面曾经提到，并发编程可以总结为三个核心问题：分工、同步和互斥。编写并发程序，首先要做的就是分工，所谓分工指的是如何高效地拆解任务并分配给线程。对于烧水泡茶这个程序，一种最优的分工方案可以是下图所示的这样：用两个线程T1和T2来完成烧水泡茶程序，T1负责洗水壶、烧开水、泡茶这三道工序，T2负责洗茶壶、洗茶杯、拿茶叶三道工序，其中T1在执行泡茶这道工序时需要等待T2完成拿茶叶的工序。对于T1的这个等待动作，你应该可以想出很多种办法，例如Thread.join()、CountDownLatch，甚至阻塞队列都可以解决，不过今天我们用Future特性来实现。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/9c/8e/9cf7d188af9119a5e76788466b453d8e.png?wh=1142%2A617" /></p>
+<p>烧水泡茶最优分工方案</p>
+<p>下面的示例代码就是用这一章提到的Future特性来实现的。首先，我们创建了两个FutureTask——ft1和ft2，ft1完成洗水壶、烧开水、泡茶的任务，ft2完成洗茶壶、洗茶杯、拿茶叶的任务；这里需要注意的是ft1这个任务在执行泡茶任务前，需要等待ft2把茶叶拿来，所以ft1内部需要引用ft2，并在执行泡茶之前，调用ft2的get()方法实现等待。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>// 创建任务T2的FutureTask
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>FutureTask&lt;String&gt; ft2
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>  = new FutureTask&lt;&gt;(new T2Task());
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>// 创建任务T1的FutureTask
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>FutureTask&lt;String&gt; ft1
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>  = new FutureTask&lt;&gt;(new T1Task(ft2));
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>// 线程T1执行任务ft1
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>Thread T1 = new Thread(ft1);
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>T1.start();
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>// 线程T2执行任务ft2
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>Thread T2 = new Thread(ft2);
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>T2.start();
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>// 等待线程T1执行结果
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>System.out.println(ft1.get());
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>// T1Task需要执行的任务：
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>// 洗水壶、烧开水、泡茶
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>class T1Task implements Callable&lt;String&gt;{
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>  FutureTask&lt;String&gt; ft2;
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>  // T1任务需要T2任务的FutureTask
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>  T1Task(FutureTask&lt;String&gt; ft2){
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>    this.ft2 = ft2;
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>  }
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>  @Override
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>  String call() throws Exception {
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>    System.out.println(&quot;T1:洗水壶...&quot;);
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>    TimeUnit.SECONDS.sleep(1);
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>    System.out.println(&quot;T1:烧开水...&quot;);
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>    TimeUnit.SECONDS.sleep(15);
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>    // 获取T2线程的茶叶  
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>    String tf = ft2.get();
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>    System.out.println(&quot;T1:拿到茶叶:&quot;+tf);
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a>
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a>    System.out.println(&quot;T1:泡茶...&quot;);
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a>    return &quot;上茶:&quot; + tf;
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a>  }
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>}
+<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a>// T2Task需要执行的任务:
+<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>// 洗茶壶、洗茶杯、拿茶叶
+<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a>class T2Task implements Callable&lt;String&gt; {
+<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a>  @Override
+<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a>  String call() throws Exception {
+<a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a>    System.out.println(&quot;T2:洗茶壶...&quot;);
+<a id="__codelineno-6-45" name="__codelineno-6-45" href="#__codelineno-6-45"></a>    TimeUnit.SECONDS.sleep(1);
+<a id="__codelineno-6-46" name="__codelineno-6-46" href="#__codelineno-6-46"></a>
+<a id="__codelineno-6-47" name="__codelineno-6-47" href="#__codelineno-6-47"></a>    System.out.println(&quot;T2:洗茶杯...&quot;);
+<a id="__codelineno-6-48" name="__codelineno-6-48" href="#__codelineno-6-48"></a>    TimeUnit.SECONDS.sleep(2);
+<a id="__codelineno-6-49" name="__codelineno-6-49" href="#__codelineno-6-49"></a>
+<a id="__codelineno-6-50" name="__codelineno-6-50" href="#__codelineno-6-50"></a>    System.out.println(&quot;T2:拿茶叶...&quot;);
+<a id="__codelineno-6-51" name="__codelineno-6-51" href="#__codelineno-6-51"></a>    TimeUnit.SECONDS.sleep(1);
+<a id="__codelineno-6-52" name="__codelineno-6-52" href="#__codelineno-6-52"></a>    return &quot;龙井&quot;;
+<a id="__codelineno-6-53" name="__codelineno-6-53" href="#__codelineno-6-53"></a>  }
+<a id="__codelineno-6-54" name="__codelineno-6-54" href="#__codelineno-6-54"></a>}
+<a id="__codelineno-6-55" name="__codelineno-6-55" href="#__codelineno-6-55"></a>// 一次执行结果：
+<a id="__codelineno-6-56" name="__codelineno-6-56" href="#__codelineno-6-56"></a>T1:洗水壶...
+<a id="__codelineno-6-57" name="__codelineno-6-57" href="#__codelineno-6-57"></a>T2:洗茶壶...
+<a id="__codelineno-6-58" name="__codelineno-6-58" href="#__codelineno-6-58"></a>T1:烧开水...
+<a id="__codelineno-6-59" name="__codelineno-6-59" href="#__codelineno-6-59"></a>T2:洗茶杯...
+<a id="__codelineno-6-60" name="__codelineno-6-60" href="#__codelineno-6-60"></a>T2:拿茶叶...
+<a id="__codelineno-6-61" name="__codelineno-6-61" href="#__codelineno-6-61"></a>T1:拿到茶叶:龙井
+<a id="__codelineno-6-62" name="__codelineno-6-62" href="#__codelineno-6-62"></a>T1:泡茶...
+<a id="__codelineno-6-63" name="__codelineno-6-63" href="#__codelineno-6-63"></a>上茶:龙井
+</code></pre></div>
+<h2 id="_3">总结</h2>
+<p>利用Java并发包提供的Future可以很容易获得异步任务的执行结果，无论异步任务是通过线程池ThreadPoolExecutor执行的，还是通过手工创建子线程来执行的。Future可以类比为现实世界里的提货单，比如去蛋糕店订生日蛋糕，蛋糕店都是先给你一张提货单，你拿到提货单之后，没有必要一直在店里等着，可以先去干点其他事，比如看场电影；等看完电影后，基本上蛋糕也做好了，然后你就可以凭提货单领蛋糕了。</p>
+<p>利用多线程可以快速将一些串行的任务并行化，从而提高性能；如果任务之间有依赖关系，比如当前任务依赖前一个任务的执行结果，这种问题基本上都可以用Future来解决。在分析这种问题的过程中，建议你用有向图描述一下任务之间的依赖关系，同时将线程的分工也做好，类似于烧水泡茶最优分工方案那幅图。对照图来写代码，好处是更形象，且不易出错。</p>
+<h2 id="_4">课后思考</h2>
+<p>不久前听说小明要做一个询价应用，这个应用需要从三个电商询价，然后保存在自己的数据库里。核心示例代码如下所示，由于是串行的，所以性能很慢，你来试着优化一下吧。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>// 向电商S1询价，并保存
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>r1 = getPriceByS1();
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>save(r1);
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>// 向电商S2询价，并保存
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>r2 = getPriceByS2();
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>save(r2);
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>// 向电商S3询价，并保存
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>r3 = getPriceByS3();
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>save(r3);
+</code></pre></div>
+<p>欢迎在留言区与我分享你的想法，也欢迎你在留言区记录你的思考过程。感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/9e/24/0d6a7987.jpg" width="30px"><span>aroll</span> 👍（107） 💬（14）<div>建议并发编程课程中的Demo代码，尽量少使用System.out.println, 因为其实现有使用隐式锁，一些情况还会有锁粗化产生</div>2019-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a5/f0/8648c464.jpg" width="30px"><span>Joker</span> 👍（19） 💬（5）<div>```
+<li><span>aroll</span> 👍（107） 💬（14）<div>建议并发编程课程中的Demo代码，尽量少使用System.out.println, 因为其实现有使用隐式锁，一些情况还会有锁粗化产生</div>2019-04-20</li><br/><li><span>Joker</span> 👍（19） 💬（5）<div>```
 java
 ExecutorService futuresPool = Executors.newFixedThreadPool(3);
         Future&lt;Price&gt; future1 = futuresPool.submit(this::getPriceByS1);
@@ -13303,7 +13516,7 @@ ExecutorService futuresPool = Executors.newFixedThreadPool(3);
         });
 ```
 
-用三个线程把这个并行执行，麻烦老师看看，谢谢</div>2019-11-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/8b/ec/dc03f5ad.jpg" width="30px"><span>张天屹</span> 👍（10） 💬（4）<div>我不知道是不是理解错老师意思了，先分析依赖有向图，可以看到三条线，没有入度&gt;1的节点
+用三个线程把这个并行执行，麻烦老师看看，谢谢</div>2019-11-06</li><br/><li><span>张天屹</span> 👍（10） 💬（4）<div>我不知道是不是理解错老师意思了，先分析依赖有向图，可以看到三条线，没有入度&gt;1的节点
 那么启动三个线程即可。
 图：
 s1询价 -&gt; s1保存  
@@ -13322,7 +13535,7 @@ s3询价 -&gt; s3保存
             r3 = getPriceByS3();
             save(r3);
         }).start();
-我觉得这里不需要future,除非询价和保存之间还有别的计算工作</div>2019-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/6d/df/dd536ff5.jpg" width="30px"><span>魏斌斌</span> 👍（9） 💬（3）<div>老师，我看了下futruerask的源码，当调用futrue.get()方法，其实最终会调用unsafe方法是当前线程阻塞。但是我不太理解线程阻塞到哪去了，也没看到锁。</div>2019-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/7c/b5/4a7a2bd4.jpg" width="30px"><span>Sunqc</span> 👍（6） 💬（1）<div>老师，你所说的订蛋糕，我这样理解对吗，把任务提交给线程池就是让蛋糕店做蛋糕；去看电影就是主线程做其他事，提货单是对应调用future的get</div>2019-04-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/65/23/b42f102c.jpg" width="30px"><span>the only Mia’s</span> 👍（3） 💬（1）<div>老师，jdk 8提供的CompletableFuture，以后异步处理是不是可以直接用此替代</div>2020-07-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/4e/3a/86196508.jpg" width="30px"><span>linqw</span> 👍（3） 💬（2）<div>课后习题，老师帮忙看下哦
+我觉得这里不需要future,除非询价和保存之间还有别的计算工作</div>2019-04-20</li><br/><li><span>魏斌斌</span> 👍（9） 💬（3）<div>老师，我看了下futruerask的源码，当调用futrue.get()方法，其实最终会调用unsafe方法是当前线程阻塞。但是我不太理解线程阻塞到哪去了，也没看到锁。</div>2019-06-17</li><br/><li><span>Sunqc</span> 👍（6） 💬（1）<div>老师，你所说的订蛋糕，我这样理解对吗，把任务提交给线程池就是让蛋糕店做蛋糕；去看电影就是主线程做其他事，提货单是对应调用future的get</div>2019-04-30</li><br/><li><span>the only Mia’s</span> 👍（3） 💬（1）<div>老师，jdk 8提供的CompletableFuture，以后异步处理是不是可以直接用此替代</div>2020-07-25</li><br/><li><span>linqw</span> 👍（3） 💬（2）<div>课后习题，老师帮忙看下哦
 public class ExecutorExample {
 private static final ExecutorService executor;
     static {executor = new ThreadPoolExecutor(4, 8, 1, TimeUnit.SECONDS, new ArrayBlockingQueue&lt;Runnable&gt;(1000), runnable -&gt; null, (r, executor) -&gt; {&#47;&#47;根据业务降级策略});
@@ -13357,7 +13570,7 @@ static class S1Task implements Callable&lt;String&gt; {
         &#47;&#47;save data to db
     }
     public static void main(String[] args) {
-        S1Task s1Task = new S1Task();FutureTask&lt;String&gt; st1 = new FutureTask&lt;&gt;(s1Task);S2Task s2Task = new S2Task();FutureTask&lt;String&gt; st2 = new FutureTask&lt;&gt;(s2Task);S3Task s3Task = new S3Task();FutureTask&lt;String&gt; st3 = new FutureTask&lt;&gt;(s3Task);List&lt;FutureTask&lt;String&gt;&gt; futureTasks = Lists.&lt;FutureTask&lt;String&gt;&gt;newArrayList(st1, st2, st3);FutureTask&lt;Boolean&gt; saveTask = new FutureTask&lt;&gt;(new SaveTask(futureTasks));executor.submit(st1);executor.submit(st2);executor.submit(st3);executor.submit(saveTask);}}</div>2019-04-22</li><br/><li><img src="http://thirdqq.qlogo.cn/qqapp/101418266/D6DD8CB1004D442B48914656340277F3/100" width="30px"><span>henry</span> 👍（3） 💬（1）<div>现在是在主线程串行完成3个询价的任务，执行第一个任务，其它2个任务只能等待执行，如果要提高效率，这个地方需要改进，可以用老师今天讲的futuretask，三个询价任务改成futuretask并行执行，效率会提高</div>2019-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d0/69/5dbdc245.jpg" width="30px"><span>张德</span> 👍（2） 💬（1）<div>我也同意张天屹同学的观点   这个询价操作如果之间没有联系的话  直接起三个线程就可以了 老师能不能讲一下 用线程池怎么就有关联了？</div>2019-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/8a/e3/c967e11a.jpg" width="30px"><span>near</span> 👍（1） 💬（1）<div>老师，有问题问一下：1.在泡茶的例子中，如果使用线程池创建线程，假设有很多个泡茶任务都要反复调用线程池中的线程，那么在T2提前完成任务，T1获取T2的结果前，T2这个线程会不会被线程池回收？2.假设T1在T2前完成，当T1要获取T2结果时，T1中的代码是阻塞的状态吗？</div>2020-10-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7b/57/a9b04544.jpg" width="30px"><span>QQ怪</span> 👍（1） 💬（1）<div>老师，在提交 Runnable 任务及结果引用的例子里面的x变量是什么?</div>2019-04-20</li><br/><li><img src="" width="30px"><span>Geek_31594d</span> 👍（0） 💬（1）<div>老师，有个一直比较疑虑的地方，future.get获取返回值是去阻塞，如果get使用太多，那么阻塞的地方就会感觉有问题</div>2021-09-08</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/LPnuO9GleKEwso2rSbibmbEwn49hnGl9qTQDBv2xLOOWOflQsc9oVEEuZgNBt7TrqRKvk8CX7Tc8iakhEicBCCfFg/132" width="30px"><span>盛权_vinc</span> 👍（0） 💬（1）<div>老师，你这个泡茶例子，看你最终的执行结果，洗水壶和洗茶壶并行了，然后才开始烧水洗茶杯，这好像有点违背了最优分工方案的图和现实？</div>2020-10-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/ce/c3/688b8bf9.jpg" width="30px"><span>是我！</span> 👍（0） 💬（1）<div>老师您好：请问这样是否有问题？  
+        S1Task s1Task = new S1Task();FutureTask&lt;String&gt; st1 = new FutureTask&lt;&gt;(s1Task);S2Task s2Task = new S2Task();FutureTask&lt;String&gt; st2 = new FutureTask&lt;&gt;(s2Task);S3Task s3Task = new S3Task();FutureTask&lt;String&gt; st3 = new FutureTask&lt;&gt;(s3Task);List&lt;FutureTask&lt;String&gt;&gt; futureTasks = Lists.&lt;FutureTask&lt;String&gt;&gt;newArrayList(st1, st2, st3);FutureTask&lt;Boolean&gt; saveTask = new FutureTask&lt;&gt;(new SaveTask(futureTasks));executor.submit(st1);executor.submit(st2);executor.submit(st3);executor.submit(saveTask);}}</div>2019-04-22</li><br/><li><span>henry</span> 👍（3） 💬（1）<div>现在是在主线程串行完成3个询价的任务，执行第一个任务，其它2个任务只能等待执行，如果要提高效率，这个地方需要改进，可以用老师今天讲的futuretask，三个询价任务改成futuretask并行执行，效率会提高</div>2019-04-20</li><br/><li><span>张德</span> 👍（2） 💬（1）<div>我也同意张天屹同学的观点   这个询价操作如果之间没有联系的话  直接起三个线程就可以了 老师能不能讲一下 用线程池怎么就有关联了？</div>2019-04-21</li><br/><li><span>near</span> 👍（1） 💬（1）<div>老师，有问题问一下：1.在泡茶的例子中，如果使用线程池创建线程，假设有很多个泡茶任务都要反复调用线程池中的线程，那么在T2提前完成任务，T1获取T2的结果前，T2这个线程会不会被线程池回收？2.假设T1在T2前完成，当T1要获取T2结果时，T1中的代码是阻塞的状态吗？</div>2020-10-13</li><br/><li><span>QQ怪</span> 👍（1） 💬（1）<div>老师，在提交 Runnable 任务及结果引用的例子里面的x变量是什么?</div>2019-04-20</li><br/><li><span>Geek_31594d</span> 👍（0） 💬（1）<div>老师，有个一直比较疑虑的地方，future.get获取返回值是去阻塞，如果get使用太多，那么阻塞的地方就会感觉有问题</div>2021-09-08</li><br/><li><span>盛权_vinc</span> 👍（0） 💬（1）<div>老师，你这个泡茶例子，看你最终的执行结果，洗水壶和洗茶壶并行了，然后才开始烧水洗茶杯，这好像有点违背了最优分工方案的图和现实？</div>2020-10-20</li><br/><li><span>是我！</span> 👍（0） 💬（1）<div>老师您好：请问这样是否有问题？  
 public static void main(String[] args) throws Exception {
         FutureTask t1 = new FutureTask(new Callable() {
             @Override
@@ -13381,55 +13594,7 @@ public static void main(String[] args) throws Exception {
 
     private static void save(String ss) {
         System.out.println(&quot;保存&quot; + ss);
-    }</div>2019-11-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/db/18/245f8558.jpg" width="30px"><span>爱上丘比特</span> 👍（0） 💬（1）<div>老师，既然get是阻塞方法，那应该何时调用呢？或者说在哪种场景调用避免阻塞主线程？</div>2019-06-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e5/42/fbe890c0.jpg" width="30px"><span>vector</span> 👍（59） 💬（0）<div>最近使用CompletableFuture工具方法以及lamda表达式比较多，语言语法的变化带来编码效率的提升真的很大。</div>2019-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4f/78/c3d8ecb0.jpg" width="30px"><span>undifined</span> 👍（43） 💬（2）<div>课后题：
-可以用 Future
-        ExecutorService threadPoolExecutor = Executors.newFixedThreadPool(3);
-        Future&lt;R&gt; future1 = threadPoolExecutor.submit(Test::getPriceByS1);
-        Future&lt;R&gt; future2 = threadPoolExecutor.submit(Test::getPriceByS2);
-        Future&lt;R&gt; future3 = threadPoolExecutor.submit(Test::getPriceByS3);
-        R r1 = future1.get();
-        R r2 = future2.get();
-        R r3 = future3.get();
-
-也可以用 CompletableFuture
-        CompletableFuture&lt;R&gt; completableFuture1 = CompletableFuture.supplyAsync(Test::getPriceByS1);
-        CompletableFuture&lt;R&gt; completableFuture2 = CompletableFuture.supplyAsync(Test::getPriceByS2);
-        CompletableFuture&lt;R&gt; completableFuture3 = CompletableFuture.supplyAsync(Test::getPriceByS3);
-        CompletableFuture.allOf(completableFuture1, completableFuture2, completableFuture3)
-                         .thenAccept(System.out::println);
- 老师这样理解对吗 谢谢老师</div>2019-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/56/90/be01bb8d.jpg" width="30px"><span>Asanz</span> 👍（23） 💬（8）<div>不是不建议使用 Executors 创建线程池了吗？？？
-</div>2019-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ed/d2/e3ae7ddd.jpg" width="30px"><span>三木禾</span> 👍（6） 💬（0）<div>这个可以用生产消费者模式啊</div>2019-05-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJOBwR7MCVqwZbPA5RQ2mjUjd571jUXUcBCE7lY5vSMibWn8D5S4PzDZMaAhRPdnRBqYbVOBTJibhJg/132" width="30px"><span>ヾ(◍°∇°◍)ﾉﾞ</span> 👍（5） 💬（0）<div>分别提交三个futuretask给线程池，然后最后分别get出结果，统一进行保存数据库</div>2019-04-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0f/9f/f4b06bd5.jpg" width="30px"><span>见南山</span> 👍（2） 💬（0）<div>给最后问题再加一步，询价后，得到最小的一家。题就比较好了</div>2020-04-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/75/bc/664bbdf7.jpg" width="30px"><span>女巫在寒江</span> 👍（2） 💬（0）<div>        ExecutorService executor = Executors.newFixedThreadPool(3);
-
-        executor.submit(new Task1());
-        executor.submit(new Task2());
-        executor.submit(new Task3());
-
-        class Task1  implement Runnable {
-            void run(){
-                r = getPriceByS1();
-                save(r);
-            }
-        }
-
-        class Task2  implement Runnable {
-            void run(){
-                r = getPriceByS2();
-                save(r);
-            }
-        }
-
-        class Task3  implement Runnable {
-            void run(){
-                r = getPriceByS3();
-                save(r);
-            }
-        }</div>2020-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/37/0c/c623649c.jpg" width="30px"><span>稚者</span> 👍（2） 💬（3）<div>烧水泡茶的Demo有点小问题，Task2的启动时间应该在Task1的洗茶壶之后开始，现在的代码是一起开始。</div>2019-11-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e7/04/ba949d78.jpg" width="30px"><span>圆圜</span> 👍（2） 💬（0）<div>你这个不对啊，应该是executeservice.submit t2furturetask，不能直接提交t2</div>2019-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/96/63/7eb32c9b.jpg" width="30px"><span>捞鱼的搬砖奇</span> 👍（2） 💬（1）<div>Future的get()是拿到任务的执行结果不吧。为什么又说是拿到方法的入参了。</div>2019-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7b/57/a9b04544.jpg" width="30px"><span>QQ怪</span> 👍（2） 💬（0）<div>在实际项目中应用已经应用到了Feture,但没有使用线程池，没有那么优雅，所以算是get到了👍</div>2019-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/52/3c/d6fcb93a.jpg" width="30px"><span>张三</span> 👍（2） 💬（0）<div>打卡。感觉很神奇，之前完全不会用。学的知识太陈旧了，继续学习。</div>2019-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/01/b9/73435279.jpg" width="30px"><span>学习学个屁</span> 👍（1） 💬（0）<div>1 三个可以异步执行
-2 利用countdownlact 计数 三个线程(or线程池)去处理
-3 使用CompletableFuture去处理</div>2022-05-16</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTL77I4uYg4oBMiclTFdMdcwNiaPXzwNZWvGr9Vpl84wKdEiaHGTZuAFkscS8mItthOEa12p5wLicJb5lg/132" width="30px"><span>Geek_96a4cb</span> 👍（1） 💬（0）<div>课后思考题:
-Executor executor = Executors.newFixedThreadPool(3);
-executor.submit(()-&gt;save(getPriceByS1()));
-executor.submit(()-&gt;save(getPriceByS2()));
-executor.submit(()-&gt;save(getPriceByS3()));</div>2022-03-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f7/9d/be04b331.jpg" width="30px"><span>落叶飞逝的恋</span> 👍（1） 💬（0）<div>我觉得最后一题完全可以做三个不同功能接口，不能为了多线程而多线程。因为三个又没交集。各自处理好了。</div>2021-05-11</li><br/>
+    }</div>2019-11-30</li><br/><li><span>爱上丘比特</span> 👍（0） 💬（1）<div>老师，既然get是阻塞方法，那应该何时调用呢？或者说在哪种场景调用避免阻塞主线程？</div>2019-06-26</li><br/>
 </ul>
 
 

@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -4314,6 +4319,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    33   字符设备（下）：如何建立直销模式？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -4323,6 +4339,41 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -5933,6 +5984,32 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -6018,9 +6095,457 @@
 <p>这里的返回值有三种：IRQ_NONE表示不是我的中断，不归我管；IRQ_HANDLED表示处理完了的中断；IRQ_WAKE_THREAD表示有一个进程正在等待这个中断，中断处理完了，应该唤醒它。</p>
 <p>上面的例子中，logibm_interrupt这个中断处理函数，先是获取了x和y的移动坐标，以及左中右的按键，上报上去，然后返回IRQ_HANDLED，这表示处理完毕。</p>
 <p>其实，写一个真正生产用的中断处理程序还是很复杂的。当一个中断信号A触发后，正在处理的过程中，这个中断信号A是应该暂时关闭的，这样是为了防止再来一个中断信号A，在当前的中断信号A的处理过程中插一杠子。但是，这个暂时关闭的时间应该多长呢？</p>
-<div><strong>精选留言（17）</strong></div>
+<p>如果太短了，应该原子化处理完毕的没有处理完毕，又被另一个中断信号A中断了，很多操作就不正确了；如果太长了，一直关闭着，新的中断信号A进不来，系统就显得很慢。所以，很多中断处理程序将整个中断要做的事情分成两部分，称为上半部和下半部，或者成为关键处理部分和延迟处理部分。在中断处理函数中，仅仅处理关键部分，完成了就将中断信号打开，使得新的中断可以进来，需要比较长时间处理的部分，也即延迟部分，往往通过工作队列等方式慢慢处理。</p>
+<p>这个写起来可以是一本书了，推荐你好好读一读《Linux Device Drivers》这本书，这里我就不详细介绍了。</p>
+<p>有了中断处理函数，接下来要调用request_irq来注册这个中断处理函数。request_irq有这样几个参数：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/16/11/e7/044a9a6c.jpg" width="30px"><span>book尾汁</span> 👍（3） 💬（1）<div>总结下:
+<li>unsigned int irq是中断信号；</li>
+<li>irq_handler_t handler是中断处理函数；</li>
+<li>unsigned long flags是一些标识位；</li>
+<li>const char *name是设备名称；</li>
+<li>void *dev这个通用指针应该和中断处理函数的void *dev相对应。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>static inline int __must_check
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>request_irq(unsigned int irq, irq_handler_t handler, unsigned long flags, const char *name, void *dev)
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>{
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    return request_threaded_irq(irq, handler, NULL, flags, name, dev);
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>}
+</code></pre></div>
+<p>中断处理函数被注册到哪里去呢？让我们沿着request_irq看下去。request_irq调用的是request_threaded_irq。代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>int request_threaded_irq(unsigned int irq, irq_handler_t handler,
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>             irq_handler_t thread_fn, unsigned long irqflags,
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>             const char *devname, void *dev_id)
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>{
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    struct irqaction *action;
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    struct irq_desc *desc;
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    int retval;
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>......
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    desc = irq_to_desc(irq);
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>......
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    action = kzalloc(sizeof(struct irqaction), GFP_KERNEL);
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    action-&gt;handler = handler;
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    action-&gt;thread_fn = thread_fn;
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    action-&gt;flags = irqflags;
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    action-&gt;name = devname;
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    action-&gt;dev_id = dev_id;
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>......
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    retval = __setup_irq(irq, desc, action);
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>......
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>}
+</code></pre></div>
+<p>对于每一个中断，都有一个对中断的描述结构struct irq_desc。它有一个重要的成员变量是struct irqaction，用于表示处理这个中断的动作。如果我们仔细看这个结构，会发现，它里面有next指针，也就是说，这是一个链表，对于这个中断的所有处理动作，都串在这个链表上。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>struct irq_desc {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>......
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    struct irqaction    *action;    /* IRQ action list */
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>......
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    struct module       *owner;
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    const char      *name;
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>};
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>/**
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a> * struct irqaction - per interrupt action descriptor
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a> * @handler:    interrupt handler function
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a> * @name:   name of the device
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a> * @dev_id: cookie to identify the device
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a> * @percpu_dev_id:  cookie to identify the device
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a> * @next:   pointer to the next irqaction for shared interrupts
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a> * @irq:    interrupt number
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a> * @flags:  flags (see IRQF_* above)
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a> * @thread_fn:  interrupt handler function for threaded interrupts
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a> * @thread: thread pointer for threaded interrupts
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a> * @secondary:  pointer to secondary irqaction (force threading)
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a> * @thread_flags:   flags related to @thread
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a> * @thread_mask:    bitmask for keeping track of @thread activity
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a> * @dir:    pointer to the proc/irq/NN/name entry
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a> */
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>struct irqaction {
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>    irq_handler_t       handler;
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>    void            *dev_id;
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>    void __percpu       *percpu_dev_id;
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>    struct irqaction    *next;
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>    irq_handler_t       thread_fn;
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>    struct task_struct  *thread;
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>    struct irqaction    *secondary;
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>    unsigned int        irq;
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>    unsigned int        flags;
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>    unsigned long       thread_flags;
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>    unsigned long       thread_mask;
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>    const char      *name;
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>    struct proc_dir_entry   *dir;
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>};
+</code></pre></div>
+<p>每一个中断处理动作的结构struct irqaction，都有以下成员：</p>
+<ul>
+<li>中断处理函数handler；</li>
+<li>void *dev_id为设备id；</li>
+<li>irq为中断信号；</li>
+<li>如果中断处理函数在单独的线程运行，则有thread_fn是线程的执行函数，thread是线程的task_struct。</li>
+</ul>
+<p>在request_threaded_irq函数中，irq_to_desc根据中断信号查找中断描述结构。如何查找呢？这就要区分情况。一般情况下，所有的struct irq_desc都放在一个数组里面，我们直接按下标查找就可以了。如果配置了CONFIG_SPARSE_IRQ，那中断号是不连续的，就不适合用数组保存了，</p>
+<p>我们可以放在一棵基数树上。我们不是第一次遇到这个数据结构了。这种结构对于从某个整型key找到value速度很快，中断信号irq是这个整数。通过它，我们很快就能定位到对应的struct irq_desc。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>#ifdef CONFIG_SPARSE_IRQ
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>static RADIX_TREE(irq_desc_tree, GFP_KERNEL);
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>struct irq_desc *irq_to_desc(unsigned int irq)
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>{
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    return radix_tree_lookup(&amp;irq_desc_tree, irq);
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>}
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>#else /* !CONFIG_SPARSE_IRQ */
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>struct irq_desc irq_desc[NR_IRQS] __cacheline_aligned_in_smp = {
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    [0 ... NR_IRQS-1] = {
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    }
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>};
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>struct irq_desc *irq_to_desc(unsigned int irq)
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>{
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    return (irq &lt; NR_IRQS) ? irq_desc + irq : NULL;
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>}
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>#endif /* !CONFIG_SPARSE_IRQ */
+</code></pre></div>
+<p>为什么中断信号会有稀疏，也就是不连续的情况呢？这里需要说明一下，这里的irq并不是真正的、物理的中断信号，而是一个抽象的、虚拟的中断信号。因为物理的中断信号和硬件关联比较大，中断控制器也是各种各样的。</p>
+<p>作为内核，我们不可能写程序的时候，适配各种各样的硬件中断控制器，因而就需要有一层中断抽象层。这里虚拟中断信号到中断描述结构的映射，就是抽象中断层的主要逻辑。</p>
+<p>下面我们讲真正中断响应的时候，会涉及物理中断信号。可以想象，如果只有一个CPU，一个中断控制器，则基本能够保证从物理中断信号到虚拟中断信号的映射是线性的，这样用数组表示就没啥问题，但是如果有多个CPU，多个中断控制器，每个中断控制器各有各的物理中断信号，就没办法保证虚拟中断信号是连续的，所以就要用到基数树了。</p>
+<p>接下来，request_threaded_irq函数分配了一个struct irqaction，并且初始化它，接着调用__setup_irq。在这个函数里面，如果struct irq_desc里面已经有struct irqaction了，我们就将新的struct irqaction挂在链表的末端。如果设定了以单独的线程运行中断处理函数，setup_irq_thread就会创建这个内核线程，wake_up_process会唤醒它。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>static int
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>__setup_irq(unsigned int irq, struct irq_desc *desc, struct irqaction *new)
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>{
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    struct irqaction *old, **old_ptr;
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    unsigned long flags, thread_mask = 0;
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    int ret, nested, shared = 0;
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>......
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    new-&gt;irq = irq;
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>......
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    /*
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>     * Create a handler thread when a thread function is supplied
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>     * and the interrupt does not nest into another interrupt
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>     * thread.
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>     */
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    if (new-&gt;thread_fn &amp;&amp; !nested) {
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>        ret = setup_irq_thread(new, irq, false);
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>    }
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>......
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>    old_ptr = &amp;desc-&gt;action;
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>    old = *old_ptr;
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>    if (old) {
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>        /* add new interrupt at end of irq queue */
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>        do {
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>            thread_mask |= old-&gt;thread_mask;
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>            old_ptr = &amp;old-&gt;next;
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>            old = *old_ptr;
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>        } while (old);
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>    }
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>......
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>    *old_ptr = new;
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>......
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>    if (new-&gt;thread)
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>        wake_up_process(new-&gt;thread);
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a>......
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a>}
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a>
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a>
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>static int
+<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a>setup_irq_thread(struct irqaction *new, unsigned int irq, bool secondary)
+<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>{
+<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a>    struct task_struct *t;
+<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a>    struct sched_param param = {
+<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a>        .sched_priority = MAX_USER_RT_PRIO/2,
+<a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a>    };
+<a id="__codelineno-6-45" name="__codelineno-6-45" href="#__codelineno-6-45"></a>
+<a id="__codelineno-6-46" name="__codelineno-6-46" href="#__codelineno-6-46"></a>
+<a id="__codelineno-6-47" name="__codelineno-6-47" href="#__codelineno-6-47"></a>    t = kthread_create(irq_thread, new, &quot;irq/%d-%s&quot;, irq, new-&gt;name);
+<a id="__codelineno-6-48" name="__codelineno-6-48" href="#__codelineno-6-48"></a>    sched_setscheduler_nocheck(t, SCHED_FIFO, &amp;param);
+<a id="__codelineno-6-49" name="__codelineno-6-49" href="#__codelineno-6-49"></a>    get_task_struct(t);
+<a id="__codelineno-6-50" name="__codelineno-6-50" href="#__codelineno-6-50"></a>    new-&gt;thread = t;
+<a id="__codelineno-6-51" name="__codelineno-6-51" href="#__codelineno-6-51"></a>......
+<a id="__codelineno-6-52" name="__codelineno-6-52" href="#__codelineno-6-52"></a>    return 0;
+</code></pre></div>
+<p>至此为止，request_irq完成了它的使命。总结来说，它就是根据中断信号irq，找到基数树上对应的irq_desc，然后将新的irqaction挂在链表上。</p>
+<p>接下来，我们就来看，真正中断来了的时候，会发生一些什么。</p>
+<p>真正中断的发生还是要从硬件开始。这里面有四个层次。</p>
+<ul>
+<li>第一个层次是外部设备给中断控制器发送物理中断信号。</li>
+<li>第二个层次是中断控制器将物理中断信号转换成为中断向量interrupt vector，发给各个CPU。</li>
+<li>第三个层次是每个CPU都会有一个中断向量表，根据interrupt vector调用一个IRQ处理函数。注意这里的IRQ处理函数还不是咱们上面指定的irq_handler_t，到这一层还是CPU硬件的要求。</li>
+<li>第四个层次是在IRQ处理函数中，将interrupt vector转化为抽象中断层的中断信号irq，调用中断信号irq对应的中断描述结构里面的irq_handler_t。</li>
+</ul>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/dd/13/dd492efdcf956cb22ce3d51592cdc113.png?wh=2074%2A1063" /></p>
+<p>在这里，我们不解析硬件的部分，我们从CPU收到中断向量开始分析。</p>
+<p>CPU收到的中断向量是什么样的呢？这个定义在文件arch/x86/include/asm/irq_vectors.h中。这里面的注释非常好，建议你仔细阅读。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>/*
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a> * Linux IRQ vector layout.
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a> *
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a> * There are 256 IDT entries (per CPU - each entry is 8 bytes) which can
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a> * be defined by Linux. They are used as a jump table by the CPU when a
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a> * given vector is triggered - by a CPU-external, CPU-internal or
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a> * software-triggered event.
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a> *
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a> * Linux sets the kernel code address each entry jumps to early during
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a> * bootup, and never changes them. This is the general layout of the
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a> * IDT entries:
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a> *
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a> *  Vectors   0 ...  31 : system traps and exceptions - hardcoded events
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a> *  Vectors  32 ... 127 : device interrupts
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a> *  Vector  128         : legacy int80 syscall interface
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a> *  Vectors 129 ... INVALIDATE_TLB_VECTOR_START-1 except 204 : device interrupts
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a> *  Vectors INVALIDATE_TLB_VECTOR_START ... 255 : special interrupts
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a> *
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a> * 64-bit x86 has per CPU IDT tables, 32-bit has one shared IDT table.
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a> *
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a> * This file enumerates the exact layout of them:
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a> */
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>#define FIRST_EXTERNAL_VECTOR       0x20
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>#define IA32_SYSCALL_VECTOR     0x80
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>#define NR_VECTORS           256
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>#define FIRST_SYSTEM_VECTOR     NR_VECTORS
+</code></pre></div>
+<p>通过这些注释，我们可以看出，CPU能够处理的中断总共256个，用宏NR_VECTOR或者FIRST_SYSTEM_VECTOR表示。</p>
+<p>为了处理中断，CPU硬件要求每一个CPU都有一个中断向量表，通过load_idt加载，里面记录着每一个中断对应的处理方法，这个中断向量表定义在文件arch/x86/kernel/traps.c中。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>gate_desc idt_table[NR_VECTORS] __page_aligned_bss;
+</code></pre></div>
+<p>对于一个CPU可以处理的中断被分为几个部分，第一部分0到31的前32位是系统陷入或者系统异常，这些错误无法屏蔽，一定要处理。</p>
+<p>这些中断的处理函数在系统初始化的时候，在start_kernel函数中调用过trap_init()。这个咱们讲系统初始化和系统调用的时候，都大概讲过这个函数，这里还需要仔细看一下。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>void __init trap_init(void)
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>{
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    int i;
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>...
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    set_intr_gate(X86_TRAP_DE, divide_error);
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>//各种各样的set_intr_gate，不都贴在这里了，只贴一头一尾
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>...
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    set_intr_gate(X86_TRAP_XF, simd_coprocessor_error);
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    /* Reserve all the builtin and the syscall vector: */
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    for (i = 0; i &lt; FIRST_EXTERNAL_VECTOR; i++)
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>        set_bit(i, used_vectors);
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>#ifdef CONFIG_X86_32
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>    set_system_intr_gate(IA32_SYSCALL_VECTOR, entry_INT80_32);
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>    set_bit(IA32_SYSCALL_VECTOR, used_vectors);
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>#endif
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>    /*
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>     * Set the IDT descriptor to a fixed read-only location, so that the
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>     * &quot;sidt&quot; instruction will not leak the location of the kernel, and
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>     * to defend the IDT against arbitrary memory write vulnerabilities.
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>     * It will be reloaded in cpu_init() */
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>    __set_fixmap(FIX_RO_IDT, __pa_symbol(idt_table), PAGE_KERNEL_RO);
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>    idt_descr.address = fix_to_virt(FIX_RO_IDT);
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>......
+</code></pre></div>
+<p>我这里贴的代码省略了很多，在trap_init函数的一开始，调用了大量的set_intr_gate，最终都会调用_set_gate，代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>static inline void _set_gate(int gate, unsigned type, void *addr,
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>                 unsigned dpl, unsigned ist, unsigned seg)
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>{
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    gate_desc s;
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    pack_gate(&amp;s, type, (unsigned long)addr, dpl, ist, seg);
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    write_idt_entry(idt_table, gate, &amp;s);
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>}
+</code></pre></div>
+<p>从代码可以看出，set_intr_gate其实就是将每个中断都设置了中断处理函数，放在中断向量表idt_table中。</p>
+<p>在trap_init中，由于set_intr_gate调用的太多，容易让人眼花缭乱。其实arch/x86/include/asm/traps.h文件中，早就定义好了前32个中断。如果仔细对比一下，你会发现，这些都在trap_init中使用set_intr_gate设置过了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>/* Interrupts/Exceptions */
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>enum {
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    X86_TRAP_DE = 0,    /*  0, Divide-by-zero */
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    X86_TRAP_DB,        /*  1, Debug */
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    X86_TRAP_NMI,       /*  2, Non-maskable Interrupt */
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    X86_TRAP_BP,        /*  3, Breakpoint */
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    X86_TRAP_OF,        /*  4, Overflow */
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    X86_TRAP_BR,        /*  5, Bound Range Exceeded */
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    X86_TRAP_UD,        /*  6, Invalid Opcode */
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    X86_TRAP_NM,        /*  7, Device Not Available */
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    X86_TRAP_DF,        /*  8, Double Fault */
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>    X86_TRAP_OLD_MF,    /*  9, Coprocessor Segment Overrun */
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>    X86_TRAP_TS,        /* 10, Invalid TSS */
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>    X86_TRAP_NP,        /* 11, Segment Not Present */
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>    X86_TRAP_SS,        /* 12, Stack Segment Fault */
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    X86_TRAP_GP,        /* 13, General Protection Fault */
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>    X86_TRAP_PF,        /* 14, Page Fault */
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>    X86_TRAP_SPURIOUS,  /* 15, Spurious Interrupt */
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>    X86_TRAP_MF,        /* 16, x87 Floating-Point Exception */
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>    X86_TRAP_AC,        /* 17, Alignment Check */
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>    X86_TRAP_MC,        /* 18, Machine Check */
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>    X86_TRAP_XF,        /* 19, SIMD Floating-Point Exception */
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>    X86_TRAP_IRET = 32, /* 32, IRET Exception */
+<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>};
+</code></pre></div>
+<p>我们回到trap_init中，当前32个中断都用set_intr_gate设置完毕。在中断向量表idt_table中填完了之后，接下来的for循环，for (i = 0; i &lt; FIRST_EXTERNAL_VECTOR; i++)，将前32个中断都在used_vectors中标记为1，表示这些都设置过中断处理函数了。</p>
+<p>接下来，trap_init单独调用set_intr_gate来设置32位系统调用的中断。IA32_SYSCALL_VECTOR，也即128，单独将used_vectors中的第128位标记为1。</p>
+<p>在trap_init的最后，我们将idt_table放在一个固定的虚拟地址上。trap_init结束后，中断向量表中已经填好了前32位，外加一位32位系统调用，其他的都是用于设备中断。</p>
+<p>在start_kernel调用完毕trap_init之后，还会调用init_IRQ()来初始化其他的设备中断，最终会调用到native_init_IRQ。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>void __init native_init_IRQ(void)
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>{
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    int i;
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    i = FIRST_EXTERNAL_VECTOR;
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>#ifndef CONFIG_X86_LOCAL_APIC
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>#define first_system_vector NR_VECTORS
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>#endif
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    for_each_clear_bit_from(i, used_vectors, first_system_vector) {
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>        /* IA32_SYSCALL_VECTOR could be used in trap_init already. */
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>        set_intr_gate(i, irq_entries_start +
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>                8 * (i - FIRST_EXTERNAL_VECTOR));
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>    }
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>......
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>}
+</code></pre></div>
+<p>这里面从第32个中断开始，到最后NR_VECTORS为止，对于used_vectors中没有标记为1的位置，都会调用set_intr_gate设置中断向量表。</p>
+<p>其实used_vectors中没有标记为1的，都是设备中断的部分。</p>
+<p>也即所有的设备中断的中断处理函数，在中断向量表里面都会设置为从irq_entries_start开始，偏移量为i - FIRST_EXTERNAL_VECTOR的一项。</p>
+<p>看来中断处理函数是定义在irq_entries_start这个表里面的，我们在arch\x86\entry\entry_32.S和arch\x86\entry\entry_64.S都能找到这个函数表的定义。</p>
+<p>这又是汇编语言，不需要完全看懂，但是我们还是能看出来，这里面定义了FIRST_SYSTEM_VECTOR - FIRST_EXTERNAL_VECTOR项。每一项都是中断处理函数，会跳到common_interrupt去执行。这里会最终调用do_IRQ，调用完毕后，就从中断返回。这里我们需要区分返回用户态还是内核态。这里会有一个机会触发抢占，咱们讲进程切换的时候讲过的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>ENTRY(irq_entries_start)
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    vector=FIRST_EXTERNAL_VECTOR
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    .rept (FIRST_SYSTEM_VECTOR - FIRST_EXTERNAL_VECTOR)
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    pushl   $(~vector+0x80)         /* Note: always in signed byte range */
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    vector=vector+1
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    jmp common_interrupt /* 会调用到do_IRQ */
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    .align  8
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    .endr
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>END(irq_entries_start)
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>common_interrupt:
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    ASM_CLAC
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>    addq    $-0x80, (%rsp)          /* Adjust vector to [-256, -1] range */
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>    interrupt do_IRQ
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>    /* 0(%rsp): old RSP */
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>ret_from_intr:
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>......
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>    /* Interrupt came from user space */
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>GLOBAL(retint_user)
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>......
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>/* Returning to kernel space */
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>retint_kernel:
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>......
+</code></pre></div>
+<p>这样任何一个中断向量到达任何一个CPU，最终都会走到do_IRQ。我们来看do_IRQ的实现。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>/*
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a> * do_IRQ handles all normal device IRQ&#39;s (the special
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a> * SMP cross-CPU interrupts have their own specific
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a> * handlers).
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a> */
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>__visible unsigned int __irq_entry do_IRQ(struct pt_regs *regs)
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>{
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    struct pt_regs *old_regs = set_irq_regs(regs);
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>    struct irq_desc * desc;
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>    /* high bit used in ret_from_ code  */
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>    unsigned vector = ~regs-&gt;orig_ax;
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>......
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>    desc = __this_cpu_read(vector_irq[vector]);
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>    if (!handle_irq(desc, regs)) {
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>......
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>    }
+<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>......
+<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>    set_irq_regs(old_regs);
+<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>    return 1;
+<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a>}
+</code></pre></div>
+<p>在这里面，从AX寄存器里面拿到了中断向量vector，但是别忘了中断控制器发送给每个CPU的中断向量都是每个CPU局部的，而抽象中断处理层的虚拟中断信号irq以及它对应的中断描述结构irq_desc是全局的，也即这个CPU的200号的中断向量和另一个CPU的200号中断向量对应的虚拟中断信号irq和中断描述结构irq_desc可能不一样，这就需要一个映射关系。这个映射关系放在Per CPU变量vector_irq里面。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>DECLARE_PER_CPU(vector_irq_t, vector_irq);
+</code></pre></div>
+<p>在系统初始化的时候，我们会调用__assign_irq_vector，将虚拟中断信号irq分配到某个CPU上的中断向量。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>static int __assign_irq_vector(int irq, struct apic_chip_data *d,
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>                   const struct cpumask *mask,
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>                   struct irq_data *irqdata)
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>{
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    static int current_vector = FIRST_EXTERNAL_VECTOR + VECTOR_OFFSET_START;
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    static int current_offset = VECTOR_OFFSET_START % 16;
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>    int cpu, vector;
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>......
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>    while (cpu &lt; nr_cpu_ids) {
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>        int new_cpu, offset;
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>......
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>        vector = current_vector;
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>        offset = current_offset;
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>next:
+<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a>        vector += 16;
+<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>        if (vector &gt;= first_system_vector) {
+<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>            offset = (offset + 1) % 16;
+<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>            vector = FIRST_EXTERNAL_VECTOR + offset;
+<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>        }
+<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a>
+<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a>
+<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a>        /* If the search wrapped around, try the next cpu */
+<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a>        if (unlikely(current_vector == vector))
+<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a>            goto next_cpu;
+<a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a>
+<a id="__codelineno-16-26" name="__codelineno-16-26" href="#__codelineno-16-26"></a>
+<a id="__codelineno-16-27" name="__codelineno-16-27" href="#__codelineno-16-27"></a>
+<a id="__codelineno-16-28" name="__codelineno-16-28" href="#__codelineno-16-28"></a>
+<a id="__codelineno-16-29" name="__codelineno-16-29" href="#__codelineno-16-29"></a>        if (test_bit(vector, used_vectors))
+<a id="__codelineno-16-30" name="__codelineno-16-30" href="#__codelineno-16-30"></a>            goto next;
+<a id="__codelineno-16-31" name="__codelineno-16-31" href="#__codelineno-16-31"></a>
+<a id="__codelineno-16-32" name="__codelineno-16-32" href="#__codelineno-16-32"></a>
+<a id="__codelineno-16-33" name="__codelineno-16-33" href="#__codelineno-16-33"></a>......
+<a id="__codelineno-16-34" name="__codelineno-16-34" href="#__codelineno-16-34"></a>        /* Found one! */
+<a id="__codelineno-16-35" name="__codelineno-16-35" href="#__codelineno-16-35"></a>        current_vector = vector;
+<a id="__codelineno-16-36" name="__codelineno-16-36" href="#__codelineno-16-36"></a>        current_offset = offset;
+<a id="__codelineno-16-37" name="__codelineno-16-37" href="#__codelineno-16-37"></a>        /* Schedule the old vector for cleanup on all cpus */
+<a id="__codelineno-16-38" name="__codelineno-16-38" href="#__codelineno-16-38"></a>        if (d-&gt;cfg.vector)
+<a id="__codelineno-16-39" name="__codelineno-16-39" href="#__codelineno-16-39"></a>            cpumask_copy(d-&gt;old_domain, d-&gt;domain);
+<a id="__codelineno-16-40" name="__codelineno-16-40" href="#__codelineno-16-40"></a>        for_each_cpu(new_cpu, vector_searchmask)
+<a id="__codelineno-16-41" name="__codelineno-16-41" href="#__codelineno-16-41"></a>            per_cpu(vector_irq, new_cpu)[vector] = irq_to_desc(irq);
+<a id="__codelineno-16-42" name="__codelineno-16-42" href="#__codelineno-16-42"></a>        goto update;
+<a id="__codelineno-16-43" name="__codelineno-16-43" href="#__codelineno-16-43"></a>
+<a id="__codelineno-16-44" name="__codelineno-16-44" href="#__codelineno-16-44"></a>
+<a id="__codelineno-16-45" name="__codelineno-16-45" href="#__codelineno-16-45"></a>next_cpu:
+<a id="__codelineno-16-46" name="__codelineno-16-46" href="#__codelineno-16-46"></a>        cpumask_or(searched_cpumask, searched_cpumask, vector_cpumask);
+<a id="__codelineno-16-47" name="__codelineno-16-47" href="#__codelineno-16-47"></a>        cpumask_andnot(vector_cpumask, mask, searched_cpumask);
+<a id="__codelineno-16-48" name="__codelineno-16-48" href="#__codelineno-16-48"></a>        cpu = cpumask_first_and(vector_cpumask, cpu_online_mask);
+<a id="__codelineno-16-49" name="__codelineno-16-49" href="#__codelineno-16-49"></a>        continue;
+<a id="__codelineno-16-50" name="__codelineno-16-50" href="#__codelineno-16-50"></a>    }
+<a id="__codelineno-16-51" name="__codelineno-16-51" href="#__codelineno-16-51"></a>....
+</code></pre></div>
+<p>在这里，一旦找到某个向量，就将CPU的此向量对应的向量描述结构irq_desc，设置为虚拟中断信号irq对应的向量描述结构irq_to_desc(irq)。</p>
+<p>这样do_IRQ会根据中断向量vector得到对应的irq_desc，然后调用handle_irq。handle_irq会调用generic_handle_irq_desc，里面调用irq_desc的handle_irq。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>static inline void generic_handle_irq_desc(struct irq_desc *desc)
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>{
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    desc-&gt;handle_irq(desc);
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>}
+</code></pre></div>
+<p>这里的handle_irq，最终会调用__handle_irq_event_percpu。代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>irqreturn_t __handle_irq_event_percpu(struct irq_desc *desc, unsigned int *flags)
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>{
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>    irqreturn_t retval = IRQ_NONE;
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>    unsigned int irq = desc-&gt;irq_data.irq;
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    struct irqaction *action;
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>    record_irq_time(desc);
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>
+<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>    for_each_action_of_desc(desc, action) {
+<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>        irqreturn_t res;
+<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>        res = action-&gt;handler(irq, action-&gt;dev_id);
+<a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a>        switch (res) {
+<a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>        case IRQ_WAKE_THREAD:
+<a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a>            __irq_wake_thread(desc, action);
+<a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a>        case IRQ_HANDLED:
+<a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a>            *flags |= action-&gt;flags;
+<a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a>            break;
+<a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a>        default:
+<a id="__codelineno-18-21" name="__codelineno-18-21" href="#__codelineno-18-21"></a>            break;
+<a id="__codelineno-18-22" name="__codelineno-18-22" href="#__codelineno-18-22"></a>        }
+<a id="__codelineno-18-23" name="__codelineno-18-23" href="#__codelineno-18-23"></a>        retval |= res;
+<a id="__codelineno-18-24" name="__codelineno-18-24" href="#__codelineno-18-24"></a>    }
+<a id="__codelineno-18-25" name="__codelineno-18-25" href="#__codelineno-18-25"></a>    return retval;
+</code></pre></div>
+<p>__handle_irq_event_percpu里面调用了irq_desc里每个hander，这些hander是我们在所有action列表中注册的，这才是我们设置的那个中断处理函数。如果返回值是IRQ_HANDLED，就说明处理完毕；如果返回值是IRQ_WAKE_THREAD就唤醒线程。</p>
+<p>至此，中断的整个过程就结束了。</p>
+<h2 id="_1">总结时刻</h2>
+<p>这一节，我们讲了中断的整个处理过程。中断是从外部设备发起的，会形成外部中断。外部中断会到达中断控制器，中断控制器会发送中断向量Interrupt Vector给CPU。</p>
+<p>对于每一个CPU，都要求有一个idt_table，里面存放了不同的中断向量的处理函数。中断向量表中已经填好了前32位，外加一位32位系统调用，其他的都是用于设备中断。</p>
+<p>硬件中断的处理函数是do_IRQ进行统一处理，在这里会让中断向量，通过vector_irq映射为irq_desc。</p>
+<p>irq_desc是一个用于描述用户注册的中断处理函数的结构，为了能够根据中断向量得到irq_desc结构，会把这些结构放在一个基数树里面，方便查找。</p>
+<p>irq_desc里面有一个成员是irqaction，指向设备驱动程序里面注册的中断处理函数。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/26/8f/26bde4fa2279f66098856c5b2b6d308f.png?wh=2563%2A2233" /></p>
+<h2 id="_2">课堂练习</h2>
+<p>你知道如何查看每个CPU都收到了哪些中断吗？</p>
+<p>欢迎留言和我分享你的疑惑和见解 ，也欢迎可以收藏本节内容，反复研读。你也可以把今天的内容分享给你的朋友，和他一起学习和进步。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/8c/37/8c0a95fa07a8b9a1abfd394479bdd637.jpg?wh=1110%2A659" /></p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>book尾汁</span> 👍（3） 💬（1）<div>总结下:
 系统有256个中断向量,定义在中断向量表中,其中前32位[0-31]用于系统自身的内部中断,第32位用于32位中断(?),剩余用以设备中断,这是硬件的中断向量表,表里面是中断信号与其对应的中断处理函数,最终都会走到do_irq
 对于每个cpu来说会有一层虚拟中断层,因为对于多核系统,多个中断处理器,每个cpu会有自己的中断映射表来讲硬件的中断向量对应于虚拟中断向量,其实就是将中断向量表中对应的中断向量描述结构设置为虚拟中断信号的中断描述结构.
 中断描述结构比较重要,其成员有中断处理的动作结构链表,设备的名字.
@@ -6028,9 +6553,9 @@
 
 中断的流程:
 当系统收到中断物理信号,会由中断控制器将物理信号转化为中断向量,然后发送给各个cpu
-各个cpu通过硬件的中断向量表调用对应的中断处理函数,在中断处理函数中会把物理中断信号转化为虚拟中断信号,然后调用中断信号的中断处理函数(通过中断映射表里对应的中断描述结构来找到对应的中断处理函数)</div>2020-04-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/1c/6f/3ea2a599.jpg" width="30px"><span>嘉木</span> 👍（2） 💬（1）<div>这样 do_IRQ 会根据中断向量 vector 得到对应的irq_desc，然后调用 handle_irq。handle_irq 会调用 generic_handle_irq_desc，里面调用 irq_desc 的 handle_irq
+各个cpu通过硬件的中断向量表调用对应的中断处理函数,在中断处理函数中会把物理中断信号转化为虚拟中断信号,然后调用中断信号的中断处理函数(通过中断映射表里对应的中断描述结构来找到对应的中断处理函数)</div>2020-04-26</li><br/><li><span>嘉木</span> 👍（2） 💬（1）<div>这样 do_IRQ 会根据中断向量 vector 得到对应的irq_desc，然后调用 handle_irq。handle_irq 会调用 generic_handle_irq_desc，里面调用 irq_desc 的 handle_irq
 
-老师这个地方绕不出来了。。。handle_irq最后又调用到handle_irq？</div>2019-08-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/a6/43/cb6ab349.jpg" width="30px"><span>Spring</span> 👍（2） 💬（1）<div>老师，每个CPU的中断向量表只有256项，留给设备的只有剩下的223项，请问是最多能处理223个不同设备的中断吗？中断向量表中的每一项跟设备之间是什么关系呢？</div>2019-06-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/88/18/a88cdaf5.jpg" width="30px"><span>alexgzh</span> 👍（2） 💬（1）<div>老师, system call, interrup和exception处理的相同点和不同点能讲一下吗？</div>2019-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/25/4b/4cbd001e.jpg" width="30px"><span>佳俊</span> 👍（1） 💬（1）<div>每一个cpu都会有一个中断向量表，都是一样的吗？如果一个控制器中断来了之后，他会把中断给哪个cpu呢?</div>2020-05-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/39/fa/a7edbc72.jpg" width="30px"><span>安排</span> 👍（1） 💬（2）<div>每个CPU的前32个中断也会调用到do_IRQ吗？</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4a/2c/f8451d77.jpg" width="30px"><span>石维康</span> 👍（15） 💬（1）<div>cat &#47;proc&#47;interrupts</div>2019-06-12</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLh73kPzAKhz7YxUribqF6QKFiahhVAbwpgVLSRicA68c6ZFA7vUBJY1ves3LVvibrypROyI7awv47eSA/132" width="30px"><span>ZYecho</span> 👍（10） 💬（1）<div>老师您好，第二个层次是中断控制器将物理中断信号转换成为中断向量 int发送给各个cpu，想请教一下 如果这个地方每个cpu都收到中断后，如果保证这个中断只会被处理一次？</div>2019-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/f2/c0/bf148d4f.jpg" width="30px"><span>西山薄凉</span> 👍（6） 💬（1）<div>课代表在这里。
+老师这个地方绕不出来了。。。handle_irq最后又调用到handle_irq？</div>2019-08-03</li><br/><li><span>Spring</span> 👍（2） 💬（1）<div>老师，每个CPU的中断向量表只有256项，留给设备的只有剩下的223项，请问是最多能处理223个不同设备的中断吗？中断向量表中的每一项跟设备之间是什么关系呢？</div>2019-06-23</li><br/><li><span>alexgzh</span> 👍（2） 💬（1）<div>老师, system call, interrup和exception处理的相同点和不同点能讲一下吗？</div>2019-06-15</li><br/><li><span>佳俊</span> 👍（1） 💬（1）<div>每一个cpu都会有一个中断向量表，都是一样的吗？如果一个控制器中断来了之后，他会把中断给哪个cpu呢?</div>2020-05-22</li><br/><li><span>安排</span> 👍（1） 💬（2）<div>每个CPU的前32个中断也会调用到do_IRQ吗？</div>2019-06-12</li><br/><li><span>石维康</span> 👍（15） 💬（1）<div>cat &#47;proc&#47;interrupts</div>2019-06-12</li><br/><li><span>ZYecho</span> 👍（10） 💬（1）<div>老师您好，第二个层次是中断控制器将物理中断信号转换成为中断向量 int发送给各个cpu，想请教一下 如果这个地方每个cpu都收到中断后，如果保证这个中断只会被处理一次？</div>2019-09-12</li><br/><li><span>西山薄凉</span> 👍（6） 💬（1）<div>课代表在这里。
 - 设备中断处理
     - 定义中断处理函数:irq_handler_t
         - 函数入参
@@ -6067,7 +6592,7 @@
         - 中断控制器将物理中断信号转换成为中断向量 interrupt vector，发给各个 CPU
         - 每个 CPU 都会有一个中断向量表，根据 interrupt vector 调用一个 IRQ 处理函数。注意这里的 IRQ 处理函数还不是咱们上面指定的 irq_handler_t，到这一层还是 CPU 硬件的要求
         - 在 IRQ 处理函数中，将 interrupt vector 转化为抽象中断层的中断信号 irq，调用中断信号 irq 对应的中断描述结构里面的 irq_handler_t
-    </div>2020-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/f2/c0/bf148d4f.jpg" width="30px"><span>西山薄凉</span> 👍（4） 💬（0）<div>下半部分-----
+    </div>2020-03-01</li><br/><li><span>西山薄凉</span> 👍（4） 💬（0）<div>下半部分-----
 - 硬件 中断处理
         - CPU 能够处理的中断总共 256 个，用宏 NR_VECTOR 或者 FIRST_SYSTEM_VECTOR 表示
         - CPU 硬件要求每一个 CPU 都有一个中断向量表 idt_table，通过 load_idt 加载，里面记录着每一个中断对应的处理函数
@@ -6075,11 +6600,10 @@
             - 0 到 31 的前 32 位是系统陷入或者系统异常，这些错误无法屏蔽，一定要处理；中断向量表中已经填好了前 32 位，外加一位 32 位系统调用
             - 其他的都是用于设备中断
         - 硬件中断的处理函数是 do_IRQ 进行统一处理，在这里会让中断向量，通过 vector_irq 映射为 irq_desc
-        - 找到注册的中断处理 action 并执行</div>2020-03-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/9b/a8/6a391c66.jpg" width="30px"><span>geraltlaush</span> 👍（2） 💬（0）<div>中断注册，中断处理，有点类似于rpc框架调用，具体的请求通过事先注册的函数查找，然后返回结果给调用方</div>2019-06-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/fd/08/c039f840.jpg" width="30px"><span>小鳄鱼</span> 👍（0） 💬（0）<div>这，明显看出来命令模式！就像这个模式的demo说的厨师做菜，我不需要知道到底是谁能响应这个中断，只要下令处理这个中断即可！</div>2022-05-23</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKkzrezV2dOBAgickt9DLzabz3dNFYyDEVXENMQ5ibrWhFbFqXIOia3ZaR21pozvB7UfoxJx4Ar688sA/132" width="30px"><span>开心</span> 👍（0） 💬（0）<div>1. 也即这个 CPU 的 200 号的中断向量和另一个 CPU 的 200 号中断向量对应的虚拟中断信号 irq 和中断描述结构 irq_desc 可能不一样？？？
+        - 找到注册的中断处理 action 并执行</div>2020-03-01</li><br/><li><span>geraltlaush</span> 👍（2） 💬（0）<div>中断注册，中断处理，有点类似于rpc框架调用，具体的请求通过事先注册的函数查找，然后返回结果给调用方</div>2019-06-12</li><br/><li><span>小鳄鱼</span> 👍（0） 💬（0）<div>这，明显看出来命令模式！就像这个模式的demo说的厨师做菜，我不需要知道到底是谁能响应这个中断，只要下令处理这个中断即可！</div>2022-05-23</li><br/><li><span>开心</span> 👍（0） 💬（0）<div>1. 也即这个 CPU 的 200 号的中断向量和另一个 CPU 的 200 号中断向量对应的虚拟中断信号 irq 和中断描述结构 irq_desc 可能不一样？？？
 具体能举个例子么。
-2. 这个200号要怎么映射成虚拟中断信号？有什么规则么</div>2021-06-30</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/NyFOEueITjaGLpakMEuWAqVQjo1uDIXlpDdpCxXGfaWiaXzibLQ3WgOFCe8D9FvCmyjsGT7jDsLUbkt8jt2aVs9g/132" width="30px"><span>geek</span> 👍（0） 💬（1）<div>为什么一个irq_desc中可能会有多个irqaction呢？一个中断信号会对应多个处理函数吗</div>2021-04-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/0e/40/49a71ed8.jpg" width="30px"><span>八戒</span> 👍（0） 💬（0）<div>vector_irq[]与基数树irq_desc有什么关系？
-看图好像有关系，但又不清楚什么关系</div>2021-03-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/90/8f/9c691a5f.jpg" width="30px"><span>奔跑的码仔</span> 👍（0） 💬（0）<div>老师，x86架构下，物理中断信号如何与虚拟中断信号进行映射呢？哪里进行映射呢？</div>2019-09-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/90/8f/9c691a5f.jpg" width="30px"><span>奔跑的码仔</span> 👍（0） 💬（0）<div>&quot;为了处理中断，CPU 硬件要求每一个 CPU 都有一个中断向量表，通过 load_idt 加载，里面记录着
-每一个中断对应的处理方法，这个中断向量表定义在文件 arch&#47;x86&#47;kernel&#47;traps.c 中。&quot;，在arch&#47;x86&#47;include&#47;asm&#47;irq_vectors.h的注释里，“64-bit x86 has per CPU IDT tables, 32-bit has one shared IDT table.”，所以这里是不是该注明在64-bit x86架构下，每个CPU必须都有一个中断向量表，IDT？</div>2019-09-23</li><br/>
+2. 这个200号要怎么映射成虚拟中断信号？有什么规则么</div>2021-06-30</li><br/><li><span>geek</span> 👍（0） 💬（1）<div>为什么一个irq_desc中可能会有多个irqaction呢？一个中断信号会对应多个处理函数吗</div>2021-04-11</li><br/><li><span>八戒</span> 👍（0） 💬（0）<div>vector_irq[]与基数树irq_desc有什么关系？
+看图好像有关系，但又不清楚什么关系</div>2021-03-30</li><br/>
 </ul>
 
 

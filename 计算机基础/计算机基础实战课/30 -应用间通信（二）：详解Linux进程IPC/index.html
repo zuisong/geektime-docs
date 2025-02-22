@@ -4150,6 +4150,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      共享内存
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5675,6 +5702,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      共享内存
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5709,11 +5763,252 @@
 <p>接下来的问题就是，谁有权操作这个消息队列？答案是对这个消息队列有写权限的进程可以向其中插入新的消息；对消息队列有读权限的进程，则可以从其中读出消息。逻辑结构如下图所示：</p>
 <p><img alt="图片" src="https://static001.geekbang.org/resource/image/a8/6c/a8817f5ce2b227894a784fb97c546b6c.jpg?wh=1920x782" /></p>
 <p>Linux采用消息队列来实现消息传递，新的消息总是放在队列的末尾，但接收的时候通常是从队列头开始，也可以从中间抽取。发送消息的方式可以是同步的，也可以是异步的。在同步方式的情况下，发送方在消息队列为满时，要进入等待状态。接收方在消息队列为空时，也要进入等待状态；而异步方式中，发送方和接收方都不必等待，而是直接返回。</p>
+<p>Linux系统下进程间传输消息要分三步走：建立消息队列、发送消息、接收消息。</p>
+<p>我猜，聪明的你已经发现了，这三步正好就对应着三个接口函数， 代码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>//获取已经存在的消息队列，或者建立一个新的消息队列
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>// __key是一个整数，可以自己定义
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>// __msgflg是建立消息队列的标志和权限
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>//返回-1 表示失败，其他正整数为消息队列标识，像文件句柄一样
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>int msgget (key_t __key, int __msgflg);
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>//向__msqid表示的消息队列，发送一个新的消息
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>// __msqid表示消息队列
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>// __msgp表示消息结构
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>// __msgsz表示消息大小
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>// __msgflg同步、异步等标志
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>//返回-1 表示失败，其他表示发送成功
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>int msgsnd (int __msqid, const void *__msgp, size_t __msgsz, int __msgflg);
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>//在__msqid表示的消息队列，接收消息
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>// __msqid表示消息队列
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>// __msgp表示消息结构，用于接收消息内容
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>// __msgsz表示接收消息大小
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>// __msgtyp表示接收消息类型
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>// __msgflg同步、异步等标志
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>//返回-1 表示失败，其他表示成功接收消息的大小
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>ssize_t msgrcv (int __msqid, void *__msgp, size_t __msgsz, long int __msgtyp, int __msgflg);
+</code></pre></div>
+<p>Linux内核运行过程中缓存了所有的消息队列，这也是为什么msgget函数能打开一个已经存在的消息队列。只有在Linux内核重启或者显示删除一个消息队列时，这个消息队列才会真正被删除。记录消息队列的数据结构（struct ipc_ids）位于Linux内核中，Linux系统中的所有消息队列都能在该结构中访问。</p>
+<p>在最新版本（2.6以上的版本）的Linux中，ipc_ids包含在ipc_namespace结构体中，而且Linux又定义了一个ipc_namespace结构的全局变量init_ipc_ns，用来保存ipc_namespace结构的实例。这里我就不再往下展开了，你有兴趣可以自行研究。</p>
+<p>现在我们结合实战练练手，试着用Linux消息队列机制，建立一个“自说自话”的聊天软件。这个聊天软件是这样设计的：首先在主进程中建立一个消息队列；然后建立一个子进程，在子进程中等待主进程发过来的消息，并显示出来；最后，主进程等待用户输入消息，并将消息发送给消息队列。</p>
+<p>按照这个设计，看上去要分成这样三步去实现：首先我们需要建立消息队列。具体就是调用msgget函数，还要提供一个消息队列的键，这个键用于表示该消息队列的唯一名字。当这个键对应的消息队列存在的时候，msgget函数将返回该消息队列的标识；如果这个队列不存在，就创建一个消息队列，然后返回这个消息队列的标识。</p>
+<p>代码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>//消息类型
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>#define MSG_TYPE (041375)
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>//消息队列键
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>#define MSG_KEY (752364)
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>//消息大小
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>#define MSG_SIZE (256)
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>int main()
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>{
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    pid_t pid;
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    msgid = msgget(MSG_KEY, IPC_CREAT | 0666);
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    if (msgid &lt; 0)
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    {
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        perror(&quot;建立消息队列出错\n&quot;);
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    }
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    // 建立子进程
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    pid = fork();
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    if (pid &gt; 0)
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    {
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    }
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    else if (pid == 0)
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    {
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    }
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    return 0;
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>}
+</code></pre></div>
+<p>结合代码我们可以看到，msgget函数的__mflg参数是IPC_CREAT | 0666，其中的IPC_CREAT表示没有MSG_KEY对应的消息队列就新建一个，0666则表示该消息队列对应的权限，即所有用户可读写。</p>
+<p>接着是第二步实现，成功建立消息队列后，开始调用fork函数建立子进程。在子进程里什么也没干，我们这就来写写子进程的代码，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>//消息体
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>typedef struct Msg
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>{
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    long type;
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    char body[MSG_SIZE];
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>} msg_t;
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>//子进程运行的函数 用于接收消息
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>int receive_main(int mid)
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>{
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    msg_t msg;
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    while (1)
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    {
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        ssize_t sz = msgrcv(mid, &amp;msg, MSG_SIZE, MSG_TYPE, MSG_NOERROR);
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        if (sz &lt; 0)
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>        {
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>            perror(&quot;获取消息失败&quot;);
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>        }
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>        printf(&quot;新消息:%s\n&quot;, msg.body);
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>        //判断是exit就退出
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>        if (strncmp(&quot;exit&quot;, msg.body, 4) == 0)
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>        {
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>            printf(&quot;结束聊天\n&quot;);
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>            exit(0);
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>        }
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    }
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>    return 0;
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>}
+</code></pre></div>
+<p>我来描述一下这段代码的内容。子进程中，在一个循环里调用了msgrcv函数，接收mid标识的消息队列中的消息，存放在msg结构体中，消息的大小和类型都与发送消息一样，MSG_NOERROR表示消息太大也不会出错。随后打印出消息内容，如果是exit的消息内容，则结束子进程。</p>
+<p>最后，我们来完成第三步，有了接收消息的代码，还得有发送代码的程序，我们马上写好它，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>int send_main(int mid)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>{
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    msg_t msg;
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    while (1)
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    {
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        // 设置消息类型
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        msg.type = MSG_TYPE;
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        // 获取用户输入并放在消息体中
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        scanf(&quot;%[^\n]%*c&quot;, msg.body);
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        // 发送消息
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        msgsnd(mid, &amp;msg, MSG_SIZE, 0);
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        //判断是exit就退出
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>        if (strncmp(&quot;exit&quot;, msg.body, 4) == 0)
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>        {
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>            return 0;
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>        }
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    }
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    return 0;
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>}
+</code></pre></div>
+<p>对照代码可以看到，发送代码的就是send_main函数，这个函数由主进程调用，它会在一个循环中设置消息类型后，获取用户输入的消息内容并放入msg消息结构体中。然后，调用msgsnd函数向mid标识的消息队列发送消息，消息来自于msg结构体变量，指定MSG_SIZE为消息大小，并且以同步方式发送消息。</p>
+<p>现在我们调试一下，如下图所示：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/fa/76/fac58c4379cfaf7cbe01634504ec8276.jpg?wh=1920x1042" /></p>
+<p>你也可以动手验证一下，如果出现跟我截图中相同的结果，就说明调试成功。</p>
+<p>这就是Linux系统提供给消息队列机制，其作用就是方便进程之间通信，让我们轻松地实现一个简单的聊天软件。不过，聊天是一种特例，更多的时候是进程互相发送消息，通知对方记录数据或者要求对方完成某些工作。</p>
+<p>现在，我们已经明白了消息队列机制是怎么回事，Linux的进程间通信机制中还有共享内存这种机制，我们继续往下看。</p>
+<h3 id="_2">共享内存</h3>
+<p>进程间通信实则是进程间传输数据，为了实现更高效率的通信，Linux实现了共享内存这一机制。</p>
+<p>共享内存其实是<strong>把同一块物理内存映射到不同进程的虚拟地址空间当中</strong>，不同的进程直接通过修改各自虚拟地址空间当中的内容，就可以完成通信。共享内存几乎不需要进行内存数据拷贝就能实现，即数据从进程A的虚拟内存空间中写入数据，立即就能被进程B感知。其它的进程间通信机制，需要经过Linux内核这种中转站进行多次的数据拷贝操作才可以。因此，使用共享内存通信比较高效。</p>
+<p>Linux内核提供了两种共享内存的实现，一种是基于物理内存映射，另一种是基于mmap文件映射，这个mmap函数我们在前面的课程中多次见过了，你可以回顾之前的课程。</p>
+<p>这里，我们仅仅讨论基于物理内存映射的实现，它与消息队列很像。Linux内核会建立一个shmid_kernel结构，通过ipc_namespace结构的全局变量init_ipc_ns结构，就能找到系统中所有的shmid_kernel结构。该shmid_kernel结构会关联到一组物理内存页面，最后这组物理内存页面，会映射到各自进程虚拟内存空间中的相关区域。</p>
+<p>基于物理内存映射的实现方式，大致逻辑如下图所示：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/d1/21/d1af46a7e78b83b516d8d40652e27321.jpg?wh=1920x706" /></p>
+<p>Linux系统下进程间共享内存也分两步：分别是建立共享内存区和绑定进程内存区，然后就可以读写共享内存了。</p>
+<p>这两步对应两个接口函数，代码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>//获取已经存在的共享内存，或者建立一个新的共享内存
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>// __key是一个整数可以自己定义
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>// __size是建立共享内存的大小
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>// __shmflg是建立共享内存的标志和权限
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>//返回-1 表示失败，其他正整数为共享内存标识，像文件句柄一样
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>int shmget (key_t __key, size_t __size, int __shmflg);
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>// 绑定进程内存地址到__shmid的共享内存
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>// __shmid表示建立的共享内存
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>// __shmaddr绑定的地址，传NULL则系统自动分配
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>// __shmflg是绑定地址区间的读写权限
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>// 返回-1,表示失败，其它是成功绑定的地址
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>void *shmat (int __shmid, const void *__shmaddr, int __shmflg);
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>// 解除绑定内存地址
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>// __shmaddr为之前绑定的地址
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>// 返回-1,表示失败
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>int shmdt (const void *__shmaddr)；
+</code></pre></div>
+<p>有了几个接口，我们就来写代码测试一下。我们依然采用建立两个进程的方式，在主进程中写入共享内存，在子进程中读取共享内存，但是我们首先要在主进程中建立共享内存。</p>
+<p>我们马上写代码实现它们，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>#define SHM_KEY (752364)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>#define SHM_BODY_SIZE (4096-8)
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>#define SHM_STATUS (SHM_BODY_SIZE)
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>typedef struct SHM
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>{
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    long status;
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    char body[SHM_BODY_SIZE];
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>} shm_t;
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>int main()
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>{
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    pid_t pid;
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    // 建立共享内存
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    shmid = shmget(SHM_KEY, sizeof(shm_t), IPC_CREAT | 0666);
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    if (shmid &lt; 0)
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    {
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>        perror(&quot;建立共享内存出错\n&quot;);
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    }
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    // 建立子进程
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>    pid = fork();
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>    if (pid &gt; 0)
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>    {
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>        // 主进程
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>        send_main(shmid);
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>    }
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>    else if (pid == 0)
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>    {
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>        // 新的子进程
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>        receive_main(shmid);
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>    }
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>    return 0;
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>}
+</code></pre></div>
+<p>上述代码中调用了shmget函数传入了IPC_CREAT，表示没有SHM_KEY对应的共享内存，就建立一块共享内存，大小为shm结构体的大小。</p>
+<p>建立好共享内存就可以开始创建子进程了，创建成功后主进程开始执行send_main函数，子进程运行receive_main函数。下面我们开始编写这两个函数：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>int receive_main(int mid)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>{
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    // 绑定共享内存
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    int ok = 0;
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    shm_t* addr = shmat(mid, NULL, 0);
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    if ((long)addr &lt; 0)
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    {
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        perror(&quot;绑定共享内存失败\n&quot;);
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    }
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    printf(&quot;子进程访问共享内存的地址:%p\n&quot;, addr);
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    while (1)
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    {
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>        if(addr-&gt;status == SHM_STATUS)
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>        {
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>            for (int i = 0; i &lt; SHM_BODY_SIZE; i++)
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>            {
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>                if (addr-&gt;body[i] != (char)0xff)
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>                {
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>                    printf(&quot;检查共享数据失败:%x\n&quot;, addr-&gt;body[i]);
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>                }
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>                else
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>                {
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>                    ok++;
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>                }
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>            }
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>            printf(&quot;检查共享数据成功:%d\n&quot;, ok);
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>            return 0;
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>        }
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>        sleep(2);
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>    }
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>    return 0;
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>}
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a>int send_main(int mid)
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a>{
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a>    // 绑定共享内存
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a>    shm_t* addr = shmat(mid, NULL, 0);
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>    if ((long)addr &lt; 0)
+<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a>    {
+<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>        perror(&quot;绑定共享内存失败\n&quot;);
+<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a>    }
+<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a>    printf(&quot;主进程访问共享内存的地址:%p\n&quot;, addr);
+<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a>    memset(addr, 0xff, sizeof(shm_t));
+<a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a>    // 相当于同步通知子进程数据已经写入
+<a id="__codelineno-6-45" name="__codelineno-6-45" href="#__codelineno-6-45"></a>    addr-&gt;status = SHM_STATUS;
+<a id="__codelineno-6-46" name="__codelineno-6-46" href="#__codelineno-6-46"></a>    // 等待子进程退出
+<a id="__codelineno-6-47" name="__codelineno-6-47" href="#__codelineno-6-47"></a>    wait(NULL);
+<a id="__codelineno-6-48" name="__codelineno-6-48" href="#__codelineno-6-48"></a>    return 0;
+<a id="__codelineno-6-49" name="__codelineno-6-49" href="#__codelineno-6-49"></a>}
+</code></pre></div>
+<p>对照代码可以看到，两个函数都是调用shmat函数，它们为各自进程绑定了一个虚拟内存地址，并基于该地址访问共享内存。</p>
+<p>在send_main函数中，先把共享的内存写入0xff。最后，设置 status 字段用来同步，因为Linux对共享不提供任何同步机制，所以需要我们自己处理。receive_main函数中会循环检查status 字段，如果是SHM_STATUS，就对addr-&gt;body中的数据进行一个个检查，并且记录检查结果。</p>
+<p>我们来看看执行结果，如下图所示：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/b6/0e/b6d459bd163cc5d42cb7b4afb5e23a0e.jpg?wh=1920x1042" /></p>
+<p>上图中的结果证明了我们的设计和预期相符，我们只要往共享内存中写入数据，其它进程立马就感知到了，并且得到了数据。</p>
+<p>这就是共享内存的妙处，通过把物理内存页面映射到多个进程的虚拟内存中，使其访问相同的物理内存，数据不需要在各进程之间复制，这是一种性能非常高的进程间通信机制。</p>
+<h3 id="_3">重点回顾</h3>
+<p>课程告一段落，我们做个总结。</p>
+<p>进程之间要协作，就需要进程之间可以进行通信。为此Linux实现了多种通信机制，这节课我们主要探讨了消息队列和共享内存。</p>
+<p>消息队列能使进程之间互相发送消息，这些消息的形式格式可以随意设定。从数据结构的角度看，消息队列其实是一个挂载消息的链表。发送消息的进程把消息插入链表，接收消息的进程则从链表上获取消息。同步手段由内核提供，即消息链表空了则接收进程休眠，消息链表满了发送进程就会休眠。</p>
+<p>共享内存的实现是把同一块物理内存页面，映射到不同进程的虚拟地址空间当中，进程之间直接通过修改各自虚拟地址空间当中的内容，就能完成数据的瞬间传送。一个进程写入修改了共享内存，另一个进程马上就可以感知到。</p>
+<p>不知道你是不是已经发现了一个问题，这些进程通信方式，只能用于本机进程间通信，不能用于远程通信，如果需要让计算机之间的进程远程通信，就需要使用套接字。套接字是一种网络通信编程接口，有兴趣的同学可以自己了解一下。</p>
+<p>这节课的导图如下，供你参考：<br />
+<img alt="图片" src="https://static001.geekbang.org/resource/image/83/58/8333fca97e4accb11b4a91ca59804458.jpg?wh=1920x1687" /></p>
+<p>好，今天的课程讲完了，我们下一次再见。</p>
+<h3 id="_4">思考题</h3>
+<p>进程间通信哪些是同步的，哪些是异步的？</p>
+<p>期待你在留言区跟我交流互动，也推荐你把这节课分享给更多朋友，共同进步。</p>
 <div><strong>精选留言（2）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/25/87/f3a69d1b.jpg" width="30px"><span>peter</span> 👍（1） 💬（2）<div>请教老师一个问题：
+<li><span>peter</span> 👍（1） 💬（2）<div>请教老师一个问题：
 Q1：消息类型和键的数值有什么含义？
-文中消息队列的代码中，“消息类型#define MSG_TYPE (041375)；消息队列键#define MSG_KEY (752364)”，这两个数字有特别含义吗？ 还是随机定义的？</div>2022-10-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/d4/4b/ec621442.jpg" width="30px"><span>范廷东</span> 👍（0） 💬（0）<div>请问老师，像rabbitMQ这类软件实现的消息队列，算是哪一种类型呢？ 微服务架构中的消息总线服务算是哪一种机制呢？</div>2023-10-05</li><br/>
+文中消息队列的代码中，“消息类型#define MSG_TYPE (041375)；消息队列键#define MSG_KEY (752364)”，这两个数字有特别含义吗？ 还是随机定义的？</div>2022-10-11</li><br/><li><span>范廷东</span> 👍（0） 💬（0）<div>请问老师，像rabbitMQ这类软件实现的消息队列，算是哪一种类型呢？ 微服务架构中的消息总线服务算是哪一种机制呢？</div>2023-10-05</li><br/>
 </ul>
 
 

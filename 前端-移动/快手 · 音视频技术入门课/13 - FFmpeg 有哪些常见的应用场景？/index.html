@@ -2794,6 +2794,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#transcoding" class="md-nav__link">
+    <span class="md-ellipsis">
+      Transcoding
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      推流
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4612,6 +4648,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#transcoding" class="md-nav__link">
+    <span class="md-ellipsis">
+      Transcoding
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      推流
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4651,15 +4723,300 @@
 <p>下面，我们逐步剖析一下。</p>
 <p>初始化操作部分的代码大概会使用这些函数。</p>
 <p>使用avformat_open_input、avformat_find_stream_info来打开输入文件，并根据输入文件中的音视频流信息建立音视频流，也就是AVStreams。</p>
+<p>使用avformat_alloc_output_context2、avformat_new_stream和avformat_write_header 来打开输出文件，并建立音视频流，输出文件会用到AVOutputFormat，并建立封装格式操作的AVFormatContext，作为操作上下文的结构体，并且会尝试写入输出文件的封装格式头部信息。</p>
+<p>从输入文件中读取音视频数据包，将音视频数据包写入输出文件会使用av_read_frame 函数，从输入文件中读取AVPacket音视频数据包，还会使用av_interleaved_write_frame函数，将读取到的音视频数据包写入输出文件。</p>
+<p>然后是关闭输出文件和输入文件，使用av_write_trailer函数，在关闭输出文件之前做写封装收尾工作。使用avformat_free_context函数关闭输出文件，并释放因操作输出文件封装格式申请的资源。最后使用avformat_close_input关闭输入文件并释放相关的资源。</p>
+<p>当然，除了以上这些操作之外，还有一些API是我们可以根据自己的需要使用的。详细的内容你可以看一下<a href="https://ffmpeg.org/doxygen/trunk/remuxing_8c-example.html">示例代码</a>。其实在日常操作时，<strong>做remux主要还是用于收录一些音视频内容的场景中，用得更多的还是编码或者转码的操作。</strong>因为音视频的编码数据格式比较多，需要统一转成相同的编码，换句话说，就是将输入的音视频内容转成统一规格输出的场景，比收录场景更常见，下面我们来看一下转码场景的代码用例。</p>
+<h2 id="transcoding">Transcoding</h2>
+<p>转码操作与转封装操作类似，就是多了解码和编码步骤，并且大多数情况下需要自己制定输出的编码参数与编码规格。和之前一样，我们先梳理一下转码的流程。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/a1/46/a1051608199e8a3e8fc860b884f1c146.png?wh=1808x1234" /></p>
+<p>打开文件的操作，可以定义为open_input_file，这样将输入文件操作相关的代码放在一个函数里面比较清晰。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>static int open_input_file(const char *filename)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>{
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    int ret;
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    unsigned int i;
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    ifmt_ctx = NULL;
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    if ((ret = avformat_open_input(&amp;ifmt_ctx, filename, NULL, NULL)) &lt; 0) {
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        av_log(NULL, AV_LOG_ERROR, &quot;Cannot open input file\n&quot;);
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        return ret;
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    }
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    if ((ret = avformat_find_stream_info(ifmt_ctx, NULL)) &lt; 0) {
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        av_log(NULL, AV_LOG_ERROR, &quot;Cannot find stream information\n&quot;);
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        return ret;
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    }
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    stream_ctx = av_calloc(ifmt_ctx-&gt;nb_streams, sizeof(*stream_ctx));
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    if (!stream_ctx)
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>        return AVERROR(ENOMEM);
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    for (i = 0; i &lt; ifmt_ctx-&gt;nb_streams; i++) {
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>        AVStream *stream = ifmt_ctx-&gt;streams[i];
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>        const AVCodec *dec = avcodec_find_decoder(stream-&gt;codecpar-&gt;codec_id);
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>        AVCodecContext *codec_ctx;
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>        if (!dec) {
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>            av_log(NULL, AV_LOG_ERROR, &quot;Failed to find decoder for stream #%u\n&quot;, i);
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>            return AVERROR_DECODER_NOT_FOUND;
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>        }
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>        codec_ctx = avcodec_alloc_context3(dec);
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>        if (!codec_ctx) {
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>            av_log(NULL, AV_LOG_ERROR, &quot;Failed to allocate the decoder context for stream #%u\n&quot;, i);
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>            return AVERROR(ENOMEM);
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>        }
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>        ret = avcodec_parameters_to_context(codec_ctx, stream-&gt;codecpar);
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>        if (ret &lt; 0) {
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>            av_log(NULL, AV_LOG_ERROR, &quot;Failed to copy decoder parameters to input decoder context &quot;
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>                   &quot;for stream #%u\n&quot;, i);
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>            return ret;
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>        }
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>        /* Reencode video &amp; audio and remux subtitles etc. */
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>        if (codec_ctx-&gt;codec_type == AVMEDIA_TYPE_VIDEO
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>                || codec_ctx-&gt;codec_type == AVMEDIA_TYPE_AUDIO) {
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>            if (codec_ctx-&gt;codec_type == AVMEDIA_TYPE_VIDEO)
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>                codec_ctx-&gt;framerate = av_guess_frame_rate(ifmt_ctx, stream, NULL);
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>            /* Open decoder */
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>            ret = avcodec_open2(codec_ctx, dec, NULL);
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>            if (ret &lt; 0) {
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>                av_log(NULL, AV_LOG_ERROR, &quot;Failed to open decoder for stream #%u\n&quot;, i);
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>                return ret;
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>            }
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>        }
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>        stream_ctx[i].dec_ctx = codec_ctx;
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>        stream_ctx[i].dec_frame = av_frame_alloc();
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>        if (!stream_ctx[i].dec_frame)
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>            return AVERROR(ENOMEM);
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>    }
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a>
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a>    av_dump_format(ifmt_ctx, 0, filename, 0);
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>    return 0;
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a>}
+</code></pre></div>
+<p>从代码中可以看到，除了在Remuxing中见过的函数之外，这里还使用了avcodec_find_decoder，通过CODECID查找要使用的解码器，当然，这里如果自己已经确定好音视频流是什么编码的话，也可以通过avcodec_find_decoder_by_name来指定解码器的名字。</p>
+<p>然后用avcodec_alloc_context3申请AVCodecContext上下文，用avcodec_parameters_to_context将解析到的AVStream流信息中的AVCodecParameter复制到AVCodecContext对应字段中，方便后面解码的时候用。</p>
+<p>使用avcodec_open2打开解码器，因为没有需要传的option，所以这里的avcodec_open2的option字段设置的是NULL，然后申请一个AVFrame，用来存储解码后的AVFrame数据。</p>
+<p>然后是打开输出文件，这部分的代码也可以封装到一个函数里面，整体看上去会清晰很多。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>static int open_output_file(const char *filename)
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>{
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    AVStream *out_stream;
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    AVStream *in_stream;
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    AVCodecContext *dec_ctx, *enc_ctx;
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    const AVCodec *encoder;
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    int ret;
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    unsigned int i;
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    ofmt_ctx = NULL;
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    avformat_alloc_output_context2(&amp;ofmt_ctx, NULL, NULL, filename);
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    if (!ofmt_ctx) {
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        av_log(NULL, AV_LOG_ERROR, &quot;Could not create output context\n&quot;);
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        return AVERROR_UNKNOWN;
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    }
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    for (i = 0; i &lt; ifmt_ctx-&gt;nb_streams; i++) {
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>        out_stream = avformat_new_stream(ofmt_ctx, NULL);
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>        if (!out_stream) {
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>            av_log(NULL, AV_LOG_ERROR, &quot;Failed allocating output stream\n&quot;);
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>            return AVERROR_UNKNOWN;
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>        }
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>        in_stream = ifmt_ctx-&gt;streams[i];
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>        dec_ctx = stream_ctx[i].dec_ctx;
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>        if (dec_ctx-&gt;codec_type == AVMEDIA_TYPE_VIDEO
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>                || dec_ctx-&gt;codec_type == AVMEDIA_TYPE_AUDIO) {
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>            /* in this example, we choose transcoding to same codec */
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>            encoder = avcodec_find_encoder(dec_ctx-&gt;codec_id);
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>            if (!encoder) {
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>                av_log(NULL, AV_LOG_FATAL, &quot;Necessary encoder not found\n&quot;);
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>                return AVERROR_INVALIDDATA;
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>            }
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>            enc_ctx = avcodec_alloc_context3(encoder);
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>            if (!enc_ctx) {
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>                av_log(NULL, AV_LOG_FATAL, &quot;Failed to allocate the encoder context\n&quot;);
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a>                return AVERROR(ENOMEM);
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>            }
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a>
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>            /* In this example, we transcode to same properties (picture size,
+<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a>             * sample rate etc.). These properties can be changed for output
+<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a>             * streams easily using filters */
+<a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a>            if (dec_ctx-&gt;codec_type == AVMEDIA_TYPE_VIDEO) {
+<a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a>                enc_ctx-&gt;height = dec_ctx-&gt;height;
+<a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a>                enc_ctx-&gt;width = dec_ctx-&gt;width;
+<a id="__codelineno-1-49" name="__codelineno-1-49" href="#__codelineno-1-49"></a>                enc_ctx-&gt;sample_aspect_ratio = dec_ctx-&gt;sample_aspect_ratio;
+<a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a>                /* take first format from list of supported formats */
+<a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a>                if (encoder-&gt;pix_fmts)
+<a id="__codelineno-1-52" name="__codelineno-1-52" href="#__codelineno-1-52"></a>                    enc_ctx-&gt;pix_fmt = encoder-&gt;pix_fmts[0];
+<a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a>                else
+<a id="__codelineno-1-54" name="__codelineno-1-54" href="#__codelineno-1-54"></a>                    enc_ctx-&gt;pix_fmt = dec_ctx-&gt;pix_fmt;
+<a id="__codelineno-1-55" name="__codelineno-1-55" href="#__codelineno-1-55"></a>                /* video time_base can be set to whatever is handy and supported by encoder */
+<a id="__codelineno-1-56" name="__codelineno-1-56" href="#__codelineno-1-56"></a>                enc_ctx-&gt;time_base = av_inv_q(dec_ctx-&gt;framerate);
+<a id="__codelineno-1-57" name="__codelineno-1-57" href="#__codelineno-1-57"></a>            } else {
+<a id="__codelineno-1-58" name="__codelineno-1-58" href="#__codelineno-1-58"></a>                enc_ctx-&gt;sample_rate = dec_ctx-&gt;sample_rate;
+<a id="__codelineno-1-59" name="__codelineno-1-59" href="#__codelineno-1-59"></a>                ret = av_channel_layout_copy(&amp;enc_ctx-&gt;ch_layout, &amp;dec_ctx-&gt;ch_layout);
+<a id="__codelineno-1-60" name="__codelineno-1-60" href="#__codelineno-1-60"></a>                if (ret &lt; 0)
+<a id="__codelineno-1-61" name="__codelineno-1-61" href="#__codelineno-1-61"></a>                    return ret;
+<a id="__codelineno-1-62" name="__codelineno-1-62" href="#__codelineno-1-62"></a>                /* take first format from list of supported formats */
+<a id="__codelineno-1-63" name="__codelineno-1-63" href="#__codelineno-1-63"></a>                enc_ctx-&gt;sample_fmt = encoder-&gt;sample_fmts[0];
+<a id="__codelineno-1-64" name="__codelineno-1-64" href="#__codelineno-1-64"></a>                enc_ctx-&gt;time_base = (AVRational){1, enc_ctx-&gt;sample_rate};
+<a id="__codelineno-1-65" name="__codelineno-1-65" href="#__codelineno-1-65"></a>            }
+<a id="__codelineno-1-66" name="__codelineno-1-66" href="#__codelineno-1-66"></a>
+<a id="__codelineno-1-67" name="__codelineno-1-67" href="#__codelineno-1-67"></a>            if (ofmt_ctx-&gt;oformat-&gt;flags &amp; AVFMT_GLOBALHEADER)
+<a id="__codelineno-1-68" name="__codelineno-1-68" href="#__codelineno-1-68"></a>                enc_ctx-&gt;flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+<a id="__codelineno-1-69" name="__codelineno-1-69" href="#__codelineno-1-69"></a>
+<a id="__codelineno-1-70" name="__codelineno-1-70" href="#__codelineno-1-70"></a>            /* Third parameter can be used to pass settings to encoder */
+<a id="__codelineno-1-71" name="__codelineno-1-71" href="#__codelineno-1-71"></a>            ret = avcodec_open2(enc_ctx, encoder, NULL);
+<a id="__codelineno-1-72" name="__codelineno-1-72" href="#__codelineno-1-72"></a>            if (ret &lt; 0) {
+<a id="__codelineno-1-73" name="__codelineno-1-73" href="#__codelineno-1-73"></a>                av_log(NULL, AV_LOG_ERROR, &quot;Cannot open video encoder for stream #%u\n&quot;, i);
+<a id="__codelineno-1-74" name="__codelineno-1-74" href="#__codelineno-1-74"></a>                return ret;
+<a id="__codelineno-1-75" name="__codelineno-1-75" href="#__codelineno-1-75"></a>            }
+<a id="__codelineno-1-76" name="__codelineno-1-76" href="#__codelineno-1-76"></a>            ret = avcodec_parameters_from_context(out_stream-&gt;codecpar, enc_ctx);
+<a id="__codelineno-1-77" name="__codelineno-1-77" href="#__codelineno-1-77"></a>            if (ret &lt; 0) {
+<a id="__codelineno-1-78" name="__codelineno-1-78" href="#__codelineno-1-78"></a>                av_log(NULL, AV_LOG_ERROR, &quot;Failed to copy encoder parameters to output stream #%u\n&quot;, i);
+<a id="__codelineno-1-79" name="__codelineno-1-79" href="#__codelineno-1-79"></a>                return ret;
+<a id="__codelineno-1-80" name="__codelineno-1-80" href="#__codelineno-1-80"></a>            }
+<a id="__codelineno-1-81" name="__codelineno-1-81" href="#__codelineno-1-81"></a>
+<a id="__codelineno-1-82" name="__codelineno-1-82" href="#__codelineno-1-82"></a>            out_stream-&gt;time_base = enc_ctx-&gt;time_base;
+<a id="__codelineno-1-83" name="__codelineno-1-83" href="#__codelineno-1-83"></a>            stream_ctx[i].enc_ctx = enc_ctx;
+<a id="__codelineno-1-84" name="__codelineno-1-84" href="#__codelineno-1-84"></a>        } else if (dec_ctx-&gt;codec_type == AVMEDIA_TYPE_UNKNOWN) {
+<a id="__codelineno-1-85" name="__codelineno-1-85" href="#__codelineno-1-85"></a>            av_log(NULL, AV_LOG_FATAL, &quot;Elementary stream #%d is of unknown type, cannot proceed\n&quot;, i);
+<a id="__codelineno-1-86" name="__codelineno-1-86" href="#__codelineno-1-86"></a>            return AVERROR_INVALIDDATA;
+<a id="__codelineno-1-87" name="__codelineno-1-87" href="#__codelineno-1-87"></a>        } else {
+<a id="__codelineno-1-88" name="__codelineno-1-88" href="#__codelineno-1-88"></a>            /* if this stream must be remuxed */
+<a id="__codelineno-1-89" name="__codelineno-1-89" href="#__codelineno-1-89"></a>            ret = avcodec_parameters_copy(out_stream-&gt;codecpar, in_stream-&gt;codecpar);
+<a id="__codelineno-1-90" name="__codelineno-1-90" href="#__codelineno-1-90"></a>            if (ret &lt; 0) {
+<a id="__codelineno-1-91" name="__codelineno-1-91" href="#__codelineno-1-91"></a>                av_log(NULL, AV_LOG_ERROR, &quot;Copying parameters for stream #%u failed\n&quot;, i);
+<a id="__codelineno-1-92" name="__codelineno-1-92" href="#__codelineno-1-92"></a>                return ret;
+<a id="__codelineno-1-93" name="__codelineno-1-93" href="#__codelineno-1-93"></a>            }
+<a id="__codelineno-1-94" name="__codelineno-1-94" href="#__codelineno-1-94"></a>            out_stream-&gt;time_base = in_stream-&gt;time_base;
+<a id="__codelineno-1-95" name="__codelineno-1-95" href="#__codelineno-1-95"></a>        }
+<a id="__codelineno-1-96" name="__codelineno-1-96" href="#__codelineno-1-96"></a>
+<a id="__codelineno-1-97" name="__codelineno-1-97" href="#__codelineno-1-97"></a>    }
+<a id="__codelineno-1-98" name="__codelineno-1-98" href="#__codelineno-1-98"></a>    av_dump_format(ofmt_ctx, 0, filename, 1);
+<a id="__codelineno-1-99" name="__codelineno-1-99" href="#__codelineno-1-99"></a>
+<a id="__codelineno-1-100" name="__codelineno-1-100" href="#__codelineno-1-100"></a>    if (!(ofmt_ctx-&gt;oformat-&gt;flags &amp; AVFMT_NOFILE)) {
+<a id="__codelineno-1-101" name="__codelineno-1-101" href="#__codelineno-1-101"></a>        ret = avio_open(&amp;ofmt_ctx-&gt;pb, filename, AVIO_FLAG_WRITE);
+<a id="__codelineno-1-102" name="__codelineno-1-102" href="#__codelineno-1-102"></a>        if (ret &lt; 0) {
+<a id="__codelineno-1-103" name="__codelineno-1-103" href="#__codelineno-1-103"></a>            av_log(NULL, AV_LOG_ERROR, &quot;Could not open output file &#39;%s&#39;&quot;, filename);
+<a id="__codelineno-1-104" name="__codelineno-1-104" href="#__codelineno-1-104"></a>            return ret;
+<a id="__codelineno-1-105" name="__codelineno-1-105" href="#__codelineno-1-105"></a>        }
+<a id="__codelineno-1-106" name="__codelineno-1-106" href="#__codelineno-1-106"></a>    }
+<a id="__codelineno-1-107" name="__codelineno-1-107" href="#__codelineno-1-107"></a>
+<a id="__codelineno-1-108" name="__codelineno-1-108" href="#__codelineno-1-108"></a>    /* init muxer, write output file header */
+<a id="__codelineno-1-109" name="__codelineno-1-109" href="#__codelineno-1-109"></a>    ret = avformat_write_header(ofmt_ctx, NULL);
+<a id="__codelineno-1-110" name="__codelineno-1-110" href="#__codelineno-1-110"></a>    if (ret &lt; 0) {
+<a id="__codelineno-1-111" name="__codelineno-1-111" href="#__codelineno-1-111"></a>        av_log(NULL, AV_LOG_ERROR, &quot;Error occurred when opening output file\n&quot;);
+<a id="__codelineno-1-112" name="__codelineno-1-112" href="#__codelineno-1-112"></a>        return ret;
+<a id="__codelineno-1-113" name="__codelineno-1-113" href="#__codelineno-1-113"></a>    }
+<a id="__codelineno-1-114" name="__codelineno-1-114" href="#__codelineno-1-114"></a>
+<a id="__codelineno-1-115" name="__codelineno-1-115" href="#__codelineno-1-115"></a>    return 0;
+<a id="__codelineno-1-116" name="__codelineno-1-116" href="#__codelineno-1-116"></a>}
+</code></pre></div>
+<p>输出部分的话，需要设置的不是解码器，而是编码器，所以调用的是avcodec_find_encoder，然后设置编码器的AVCodecContext上下文，打开编码器。</p>
+<p>因为是例子，所以这里大多数参数是从输入的AVStream的AVCodecParameter和AVCodecContext里面拿到的，相当于复制到输出的AVStream里面了。然后通过avio_open打开输出的AVFormatContext的pb句柄，也就是AVIOContext。然后在初始化操作的时候，写一下输出文件的文件头。</p>
+<p>接着，设置原始数据操作相关的滤镜初始化，例如调色、调音色、放大、缩小等操作，这些操作可以在自己拿到解码后的数据后，用OpenGL等强大的库来完成，这里就不展开介绍了。</p>
+<p>接下来就是循环操作：拿到AVPacket、解码、取原始数据、编码，再拿到AVPacket、再解码、再取原始数据、再编码，直到遇到退出相关的条件为止。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>static int encode_write_frame(unsigned int stream_index, int flush)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>{
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    StreamContext *stream = &amp;stream_ctx[stream_index];
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    FilteringContext *filter = &amp;filter_ctx[stream_index];
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    AVFrame *filt_frame = flush ? NULL : filter-&gt;filtered_frame;
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    AVPacket *enc_pkt = filter-&gt;enc_pkt;
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    int ret;
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    av_log(NULL, AV_LOG_INFO, &quot;Encoding frame\n&quot;);
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    /* encode filtered frame */
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    av_packet_unref(enc_pkt);
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    ret = avcodec_send_frame(stream-&gt;enc_ctx, filt_frame);
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    if (ret &lt; 0)
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>        return ret;
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    while (ret &gt;= 0) {
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>        ret = avcodec_receive_packet(stream-&gt;enc_ctx, enc_pkt);
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>            return 0;
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>        /* prepare packet for muxing */
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>        enc_pkt-&gt;stream_index = stream_index;
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>        av_packet_rescale_ts(enc_pkt,
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>                             stream-&gt;enc_ctx-&gt;time_base,
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>                             ofmt_ctx-&gt;streams[stream_index]-&gt;time_base);
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>        av_log(NULL, AV_LOG_DEBUG, &quot;Muxing frame\n&quot;);
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>        /* mux encoded frame */
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>        ret = av_interleaved_write_frame(ofmt_ctx, enc_pkt);
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>    }
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>    return ret;
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>}
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a>while (1) {
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a>        if ((ret = av_read_frame(ifmt_ctx, packet)) &lt; 0)
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a>            break;
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a>        stream_index = packet-&gt;stream_index;
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a>        av_log(NULL, AV_LOG_DEBUG, &quot;Demuxer gave frame of stream_index %u\n&quot;,
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a>                stream_index);
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a>
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a>        if (filter_ctx[stream_index].filter_graph) {
+<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a>            StreamContext *stream = &amp;stream_ctx[stream_index];
+<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a>
+<a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a>            av_packet_rescale_ts(packet,
+<a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a>                                 ifmt_ctx-&gt;streams[stream_index]-&gt;time_base,
+<a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a>                                 stream-&gt;dec_ctx-&gt;time_base);
+<a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a>            ret = avcodec_send_packet(stream-&gt;dec_ctx, packet);
+<a id="__codelineno-2-54" name="__codelineno-2-54" href="#__codelineno-2-54"></a>            if (ret &lt; 0) {
+<a id="__codelineno-2-55" name="__codelineno-2-55" href="#__codelineno-2-55"></a>                av_log(NULL, AV_LOG_ERROR, &quot;Decoding failed\n&quot;);
+<a id="__codelineno-2-56" name="__codelineno-2-56" href="#__codelineno-2-56"></a>                break;
+<a id="__codelineno-2-57" name="__codelineno-2-57" href="#__codelineno-2-57"></a>            }
+<a id="__codelineno-2-58" name="__codelineno-2-58" href="#__codelineno-2-58"></a>
+<a id="__codelineno-2-59" name="__codelineno-2-59" href="#__codelineno-2-59"></a>            while (ret &gt;= 0) {
+<a id="__codelineno-2-60" name="__codelineno-2-60" href="#__codelineno-2-60"></a>                ret = avcodec_receive_frame(stream-&gt;dec_ctx, stream-&gt;dec_frame);
+<a id="__codelineno-2-61" name="__codelineno-2-61" href="#__codelineno-2-61"></a>                if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN))
+<a id="__codelineno-2-62" name="__codelineno-2-62" href="#__codelineno-2-62"></a>                    break;
+<a id="__codelineno-2-63" name="__codelineno-2-63" href="#__codelineno-2-63"></a>                else if (ret &lt; 0)
+<a id="__codelineno-2-64" name="__codelineno-2-64" href="#__codelineno-2-64"></a>                    goto end;
+<a id="__codelineno-2-65" name="__codelineno-2-65" href="#__codelineno-2-65"></a>
+<a id="__codelineno-2-66" name="__codelineno-2-66" href="#__codelineno-2-66"></a>                stream-&gt;dec_frame-&gt;pts = stream-&gt;dec_frame-&gt;best_effort_timestamp;
+<a id="__codelineno-2-67" name="__codelineno-2-67" href="#__codelineno-2-67"></a>                ret = encode_write_frame(stream-&gt;dec_frame, stream_index);
+<a id="__codelineno-2-68" name="__codelineno-2-68" href="#__codelineno-2-68"></a>                if (ret &lt; 0)
+<a id="__codelineno-2-69" name="__codelineno-2-69" href="#__codelineno-2-69"></a>                    goto end;
+<a id="__codelineno-2-70" name="__codelineno-2-70" href="#__codelineno-2-70"></a>            }
+<a id="__codelineno-2-71" name="__codelineno-2-71" href="#__codelineno-2-71"></a>        }
+<a id="__codelineno-2-72" name="__codelineno-2-72" href="#__codelineno-2-72"></a>        av_packet_unref(packet);
+<a id="__codelineno-2-73" name="__codelineno-2-73" href="#__codelineno-2-73"></a>    }
+</code></pre></div>
+<p>从代码里可以看到，通过av_read_frame循环读取AVPacket，然后调用avcodec_send_packet将AVPacket发送给解码器做解码，通过avcodec_receive_frame拿到解码后的AVFrame数据，然后通过编码器给AVFrame的数据编码，再写到输出文件里。这时候，写编码后的AVPacket数据用的是交错的方式。最后千万别忘了收尾工作，不然内存就泄露了。</p>
+<p>关于转码相关的操作也有代码示例，通过访问<a href="https://ffmpeg.org/doxygen/trunk/transcoding_8c-example.html">官方文档转码示例</a>就可以看到对应代码的完整版。到这里，Remuxing、Transcoding都介绍完了，如果想试试RTMP推流的话，我们可以继续看一下Muxing的例子，自己造一个数据，编码之后推流。</p>
+<h2 id="_1">推流</h2>
+<p>因为前面两个例子涵盖了API的大部分接口了，其实做推流的话也比较简单，可以任选Remuxing或者Transcoding里的任何一个例子。</p>
+<p>设置输出文件的时候，有一个avformat_alloc_output_context2操作，从我们Remuxing例子中可以看到，最后一个字段是输出文件名，这里可以改成RTMP的URL地址，关于URL的地址，我们<a href="https://time.geekbang.org/column/article/546485">第5节课</a>讲过，这里就不再介绍了。</p>
+<p>有一点需要注意，因为是推RTMP的直播流，所以输出格式要设置成FLV，否则会报错，报错内容是这样的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>[NULL @ 0x3dc1900] Unable to find a suitable output format for &#39;rtmp://127.0.0.1/live/stream&#39;
+</code></pre></div>
+<p>它提示找不到适合这个URL的输出格式，也就是说，我们需要指定输出格式，RTMP对应的输出格式是FLV，所以最后avformat_alloc_output_context2的第一个参数是输出的AVFormatContext，第二个参数可以设置成NULL交给FFmpeg自动查找，第三个参数设置为"flv"字符串，第四个参数就是我们输出的URL地址。</p>
+<p>为了控制节奏，我们可以在循环av_read_frame操作的时候，在av_read_frame的下一句加上usleep(40000)来控制节奏，也就是sleep 40毫秒。最后，别忘了在头文件声明部分加上#include &lt;unistd.h&gt;，不然编译会报错。</p>
+<h2 id="_2">小结</h2>
+<p>最后，我们来复习一下这节课的主要内容。</p>
+<p>这节课，我们通过不转码只转封装、转码转封装和直播推流三个场景案例，详细地了解了FFmpeg中API的使用方法。现在我们可以在视频内容收录的场景中，使用API来自己独立实现收录音视频内容。如果需要将音视频文件或者直播流转一下码再输出的话，也可以通过转码的例子来完成。</p>
+<p>灵活运用今天学到的这三个例子，基本上就可以满足大部分的场景了。当然，这些还是远远不够的，就像上节课说的，还是要从FFmpeg源代码的doc/examples目录下提供的例子入手，多改、多看、多学习，必要的话，以examples代码为入口跟踪代码进行学习，你会对FFmpeg的API有更深刻的理解的。</p>
+<h2 id="_3">思考题</h2>
+<p>讲了这么多，你可以思考这么一个问题，如果想通过Remuxing将一个视频编码是H.264，音频编码是AAC编码的直播流，收录为MP4文件，并且MP4文件是moov在mdat的前面的话，该怎么改Remuxing这段代码呢？</p>
 <div><strong>精选留言（3）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/25/87/f3a69d1b.jpg" width="30px"><span>peter</span> 👍（1） 💬（1）<div>请教老师两个问题：
+<li><span>peter</span> 👍（1） 💬（1）<div>请教老师两个问题：
 Q1：双声道合并单声道，还能听到两个声道，有什么意义？
 用这个命令：ffmpeg -i input.aac -ac 1 output.aac，可以把双声道合并为单声道，但是，合并后的文件，还是能听到两个声道的声音，怎么能算是“单声道”呢？
 用命令“ffmpeg -i jixiaolan_aac.aac -map_channel 0.0.0 left.aac -map_channel 0.0.1 right.aac”生成的两个文件，无论是left.aac还是right.aac ,两个耳机都能听到，为什么？
 
 这个问题是看书《FFmpeg从入门到精通》遇到的。
-Q2：文中的代码，应该是C代码。这些代码可以下载并执行吗？ （比如：从github上下载，然后编译、执行，能看到结果）。如果有一个完整的步骤，能操作成功并看到结果就更好了。</div>2022-08-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/20/de/bf/259d4570.jpg" width="30px"><span>Amos</span> 👍（0） 💬（1）<div>请教老师个问题：如果将视频文件的码率下降一半，其他编码参数不变，视频文件的大小也应该下降一半吧？</div>2023-09-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2023-12-31</li><br/>
+Q2：文中的代码，应该是C代码。这些代码可以下载并执行吗？ （比如：从github上下载，然后编译、执行，能看到结果）。如果有一个完整的步骤，能操作成功并看到结果就更好了。</div>2022-08-23</li><br/><li><span>Amos</span> 👍（0） 💬（1）<div>请教老师个问题：如果将视频文件的码率下降一半，其他编码参数不变，视频文件的大小也应该下降一半吧？</div>2023-09-21</li><br/><li><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2023-12-31</li><br/>
 </ul>
 
 

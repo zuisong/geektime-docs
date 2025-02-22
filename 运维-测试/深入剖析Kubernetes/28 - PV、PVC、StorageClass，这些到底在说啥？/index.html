@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -4061,6 +4066,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    28   PV、PVC、StorageClass，这些到底在说啥？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -4070,6 +4086,41 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -5827,6 +5878,32 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -5872,9 +5949,234 @@
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    path: &quot;/&quot;
 </code></pre></div>
 <p>而<strong>PVC描述的，则是Pod所希望使用的持久化存储的属性</strong>。比如，Volume存储的大小、可读写权限等等。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>PVC对象通常由开发人员创建；或者以PVC模板的方式成为StatefulSet的一部分，然后由StatefulSet控制器负责创建带编号的PVC。</p>
+<p>比如，开发人员可以声明一个1 GiB大小的PVC，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>apiVersion: v1
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kind: PersistentVolumeClaim
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>metadata:
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  name: nfs
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>spec:
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  accessModes:
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    - ReadWriteMany
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>  storageClassName: manual
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>  resources:
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    requests:
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>      storage: 1Gi
+</code></pre></div>
+<p>而用户创建的PVC要真正被容器使用起来，就必须先和某个符合条件的PV进行绑定。这里要检查的条件，包括两部分：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/4c/49/125f5adc.jpg" width="30px"><span>mazhen</span> 👍（358） 💬（17）<div>容器持久化存储涉及的概念比较多，试着总结一下整体流程。
+<li>第一个条件，当然是PV和PVC的spec字段。比如，PV的存储（storage）大小，就必须满足PVC的要求。</li>
+<li>而第二个条件，则是PV和PVC的storageClassName字段必须一样。这个机制我会在本篇文章的最后一部分专门介绍。</li>
+</ul>
+<p>在成功地将PVC和PV进行绑定之后，Pod就能够像使用hostPath等常规类型的Volume一样，在自己的YAML文件里声明使用这个PVC了，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>apiVersion: v1
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kind: Pod
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>metadata:
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  labels:
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    role: web-frontend
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>spec:
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>  containers:
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  - name: web
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    image: nginx
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    ports:
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>      - name: web
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>        containerPort: 80
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    volumeMounts:
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        - name: nfs
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>          mountPath: &quot;/usr/share/nginx/html&quot;
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>  volumes:
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>  - name: nfs
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    persistentVolumeClaim:
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>      claimName: nfs
+</code></pre></div>
+<p>可以看到，Pod需要做的，就是在volumes字段里声明自己要使用的PVC名字。接下来，等这个Pod创建之后，kubelet就会把这个PVC所对应的PV，也就是一个NFS类型的Volume，挂载在这个Pod容器内的目录上。</p>
+<p>不难看出，<strong>PVC和PV的设计，其实跟“面向对象”的思想完全一致。</strong></p>
+<p>PVC可以理解为持久化存储的“接口”，它提供了对某种持久化存储的描述，但不提供具体的实现；而这个持久化存储的实现部分则由PV负责完成。</p>
+<p>这样做的好处是，作为应用开发者，我们只需要跟PVC这个“接口”打交道，而不必关心具体的实现是NFS还是Ceph。毕竟这些存储相关的知识太专业了，应该交给专业的人去做。</p>
+<p>而在上面的讲述中，其实还有一个比较棘手的情况。</p>
+<p>比如，你在创建Pod的时候，系统里并没有合适的PV跟它定义的PVC绑定，也就是说此时容器想要使用的Volume不存在。这时候，Pod的启动就会报错。</p>
+<p>但是，过了一会儿，运维人员也发现了这个情况，所以他赶紧创建了一个对应的PV。这时候，我们当然希望Kubernetes能够再次完成PVC和PV的绑定操作，从而启动Pod。</p>
+<p>所以在Kubernetes中，实际上存在着一个专门处理持久化存储的控制器，叫作Volume Controller。这个Volume Controller维护着多个控制循环，其中有一个循环，扮演的就是撮合PV和PVC的“红娘”的角色。它的名字叫作PersistentVolumeController。</p>
+<p>PersistentVolumeController会不断地查看当前每一个PVC，是不是已经处于Bound（已绑定）状态。如果不是，那它就会遍历所有的、可用的PV，并尝试将其与这个“单身”的PVC进行绑定。这样，Kubernetes就可以保证用户提交的每一个PVC，只要有合适的PV出现，它就能够很快进入绑定状态，从而结束“单身”之旅。</p>
+<p>而所谓将一个PV与PVC进行“绑定”，其实就是将这个PV对象的名字，填在了PVC对象的spec.volumeName字段上。所以，接下来Kubernetes只要获取到这个PVC对象，就一定能够找到它所绑定的PV。</p>
+<p>那么，这个PV对象，又是如何变成容器里的一个持久化存储的呢？</p>
+<p>我在前面讲解容器基础的时候，已经为你详细剖析了容器Volume的挂载机制。用一句话总结，<strong>所谓容器的Volume，其实就是将一个宿主机上的目录，跟一个容器里的目录绑定挂载在了一起。</strong>（你可以借此机会，再回顾一下专栏的第8篇文章<a href="https://time.geekbang.org/column/article/18119">《白话容器基础（四）：重新认识Docker容器》</a>中的相关内容）</p>
+<p><strong>而所谓的“持久化Volume”，指的就是这个宿主机上的目录，具备“持久性”</strong>。即：这个目录里面的内容，既不会因为容器的删除而被清理掉，也不会跟当前的宿主机绑定。这样，当容器被重启或者在其他节点上重建出来之后，它仍然能够通过挂载这个Volume，访问到这些内容。</p>
+<p>显然，我们前面使用的hostPath和emptyDir类型的Volume并不具备这个特征：它们既有可能被kubelet清理掉，也不能被“迁移”到其他节点上。</p>
+<p>所以，大多数情况下，持久化Volume的实现，往往依赖于一个远程存储服务，比如：远程文件存储（比如，NFS、GlusterFS）、远程块存储（比如，公有云提供的远程磁盘）等等。</p>
+<p>而Kubernetes需要做的工作，就是使用这些存储服务，来为容器准备一个持久化的宿主机目录，以供将来进行绑定挂载时使用。而所谓“持久化”，指的是容器在这个目录里写入的文件，都会保存在远程存储中，从而使得这个目录具备了“持久性”。</p>
+<p><strong>这个准备“持久化”宿主机目录的过程，我们可以形象地称为“两阶段处理”。</strong></p>
+<p>接下来，我通过一个具体的例子为你说明。</p>
+<p>当一个Pod调度到一个节点上之后，kubelet就要负责为这个Pod创建它的Volume目录。默认情况下，kubelet为Volume创建的目录是如下所示的一个宿主机上的路径：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>/var/lib/kubelet/pods/&lt;Pod的ID&gt;/volumes/kubernetes.io~&lt;Volume类型&gt;/&lt;Volume名字&gt;
+</code></pre></div>
+<p>接下来，kubelet要做的操作就取决于你的Volume类型了。</p>
+<p>如果你的Volume类型是远程块存储，比如Google Cloud的Persistent Disk（GCE提供的远程磁盘服务），那么kubelet就需要先调用Goolge Cloud的API，将它所提供的Persistent Disk挂载到Pod所在的宿主机上。</p>
+<blockquote>
+<p>备注：你如果不太了解块存储的话，可以直接把它理解为：一块<strong>磁盘</strong>。</p>
+</blockquote>
+<p>这相当于执行：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ gcloud compute instances attach-disk &lt;虚拟机名字&gt; --disk &lt;远程磁盘名字&gt;
+</code></pre></div>
+<p>这一步<strong>为虚拟机挂载远程磁盘的操作，对应的正是“两阶段处理”的第一阶段。在Kubernetes中，我们把这个阶段称为Attach。</strong></p>
+<p>Attach阶段完成后，为了能够使用这个远程磁盘，kubelet还要进行第二个操作，即：格式化这个磁盘设备，然后将它挂载到宿主机指定的挂载点上。不难理解，这个挂载点，正是我在前面反复提到的Volume的宿主机目录。所以，这一步相当于执行：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a># 通过lsblk命令获取磁盘设备ID
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>$ sudo lsblk
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a># 格式化成ext4格式
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>$ sudo mkfs.ext4 -m 0 -F -E lazy_itable_init=0,lazy_journal_init=0,discard /dev/&lt;磁盘设备ID&gt;
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a># 挂载到挂载点
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>$ sudo mkdir -p /var/lib/kubelet/pods/&lt;Pod的ID&gt;/volumes/kubernetes.io~&lt;Volume类型&gt;/&lt;Volume名字&gt;
+</code></pre></div>
+<p>这个<strong>将磁盘设备格式化并挂载到Volume宿主机目录的操作，对应的正是“两阶段处理”的第二个阶段，我们一般称为：Mount。</strong></p>
+<p>Mount阶段完成后，这个Volume的宿主机目录就是一个“持久化”的目录了，容器在它里面写入的内容，会保存在Google Cloud的远程磁盘中。</p>
+<p>而如果你的Volume类型是远程文件存储（比如NFS）的话，kubelet的处理过程就会更简单一些。</p>
+<p>因为在这种情况下，kubelet可以跳过“第一阶段”（Attach）的操作，这是因为一般来说，远程文件存储并没有一个“存储设备”需要挂载在宿主机上。</p>
+<p>所以，kubelet会直接从“第二阶段”（Mount）开始准备宿主机上的Volume目录。</p>
+<p>在这一步，kubelet需要作为client，将远端NFS服务器的目录（比如：“/”目录），挂载到Volume的宿主机目录上，即相当于执行如下所示的命令：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$ mount -t nfs &lt;NFS服务器地址&gt;:/ /var/lib/kubelet/pods/&lt;Pod的ID&gt;/volumes/kubernetes.io~&lt;Volume类型&gt;/&lt;Volume名字&gt; 
+</code></pre></div>
+<p>通过这个挂载操作，Volume的宿主机目录就成为了一个远程NFS目录的挂载点，后面你在这个目录里写入的所有文件，都会被保存在远程NFS服务器上。所以，我们也就完成了对这个Volume宿主机目录的“持久化”。</p>
+<p><strong>到这里，你可能会有疑问，Kubernetes又是如何定义和区分这两个阶段的呢？</strong></p>
+<p>其实很简单，在具体的Volume插件的实现接口上，Kubernetes分别给这两个阶段提供了两种不同的参数列表：</p>
+<ul>
+<li>对于“第一阶段”（Attach），Kubernetes提供的可用参数是nodeName，即宿主机的名字。</li>
+<li>而对于“第二阶段”（Mount），Kubernetes提供的可用参数是dir，即Volume的宿主机目录。</li>
+</ul>
+<p>所以，作为一个存储插件，你只需要根据自己的需求进行选择和实现即可。在后面关于编写存储插件的文章中，我会对这个过程做深入讲解。</p>
+<p>而经过了“两阶段处理”，我们就得到了一个“持久化”的Volume宿主机目录。所以，接下来，kubelet只要把这个Volume目录通过CRI里的Mounts参数，传递给Docker，然后就可以为Pod里的容器挂载这个“持久化”的Volume了。其实，这一步相当于执行了如下所示的命令：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$ docker run -v /var/lib/kubelet/pods/&lt;Pod的ID&gt;/volumes/kubernetes.io~&lt;Volume类型&gt;/&lt;Volume名字&gt;:/&lt;容器内的目标目录&gt; 我的镜像 ...
+</code></pre></div>
+<p>以上，就是Kubernetes处理PV的具体原理了。</p>
+<blockquote>
+<p>备注：对应地，在删除一个PV的时候，Kubernetes也需要Unmount和Dettach两个阶段来处理。这个过程我就不再详细介绍了，执行“反向操作”即可。</p>
+</blockquote>
+<p>实际上，你可能已经发现，这个PV的处理流程似乎跟Pod以及容器的启动流程没有太多的耦合，只要kubelet在向Docker发起CRI请求之前，确保“持久化”的宿主机目录已经处理完毕即可。</p>
+<p>所以，在Kubernetes中，上述<strong>关于PV的“两阶段处理”流程，是靠独立于kubelet主控制循环（Kubelet Sync Loop）之外的两个控制循环来实现的。</strong></p>
+<p>其中，“第一阶段”的Attach（以及Dettach）操作，是由Volume Controller负责维护的，这个控制循环的名字叫作：<strong>AttachDetachController</strong>。而它的作用，就是不断地检查每一个Pod对应的PV，和这个Pod所在宿主机之间挂载情况。从而决定，是否需要对这个PV进行Attach（或者Dettach）操作。</p>
+<p>需要注意，作为一个Kubernetes内置的控制器，Volume Controller自然是kube-controller-manager的一部分。所以，AttachDetachController也一定是运行在Master节点上的。当然，Attach操作只需要调用公有云或者具体存储项目的API，并不需要在具体的宿主机上执行操作，所以这个设计没有任何问题。</p>
+<p>而“第二阶段”的Mount（以及Unmount）操作，必须发生在Pod对应的宿主机上，所以它必须是kubelet组件的一部分。这个控制循环的名字，叫作：<strong>VolumeManagerReconciler</strong>，它运行起来之后，是一个独立于kubelet主循环的Goroutine。</p>
+<p>通过这样将Volume的处理同kubelet的主循环解耦，Kubernetes就避免了这些耗时的远程挂载操作拖慢kubelet的主控制循环，进而导致Pod的创建效率大幅下降的问题。实际上，<strong>kubelet的一个主要设计原则，就是它的主控制循环绝对不可以被block</strong>。这个思想，我在后续的讲述容器运行时的时候还会提到。</p>
+<p>在了解了Kubernetes的Volume处理机制之后，我再来为你介绍这个体系里最后一个重要概念：StorageClass。</p>
+<p>我在前面介绍PV和PVC的时候，曾经提到过，PV这个对象的创建，是由运维人员完成的。但是，在大规模的生产环境里，这其实是一个非常麻烦的工作。</p>
+<p>这是因为，一个大规模的Kubernetes集群里很可能有成千上万个PVC，这就意味着运维人员必须得事先创建出成千上万个PV。更麻烦的是，随着新的PVC不断被提交，运维人员就不得不继续添加新的、能满足条件的PV，否则新的Pod就会因为PVC绑定不到PV而失败。在实际操作中，这几乎没办法靠人工做到。</p>
+<p>所以，Kubernetes为我们提供了一套可以自动创建PV的机制，即：Dynamic Provisioning。</p>
+<p>相比之下，前面人工管理PV的方式就叫作Static Provisioning。</p>
+<p>Dynamic Provisioning机制工作的核心，在于一个名叫StorageClass的API对象。</p>
+<p><strong>而StorageClass对象的作用，其实就是创建PV的模板。</strong></p>
+<p>具体地说，StorageClass对象会定义如下两个部分内容：</p>
+<ul>
+<li>第一，PV的属性。比如，存储类型、Volume的大小等等。</li>
+<li>第二，创建这种PV需要用到的存储插件。比如，Ceph等等。</li>
+</ul>
+<p>有了这样两个信息之后，Kubernetes就能够根据用户提交的PVC，找到一个对应的StorageClass了。然后，Kubernetes就会调用该StorageClass声明的存储插件，创建出需要的PV。</p>
+<p>举个例子，假如我们的Volume的类型是GCE的Persistent Disk的话，运维人员就需要定义一个如下所示的StorageClass：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>apiVersion: storage.k8s.io/v1
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kind: StorageClass
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>metadata:
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  name: block-service
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>provisioner: kubernetes.io/gce-pd
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>parameters:
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>  type: pd-ssd
+</code></pre></div>
+<p>在这个YAML文件里，我们定义了一个名叫block-service的StorageClass。</p>
+<p>这个StorageClass的provisioner字段的值是：<code>kubernetes.io/gce-pd</code>，这正是Kubernetes内置的GCE PD存储插件的名字。</p>
+<p>而这个StorageClass的parameters字段，就是PV的参数。比如：上面例子里的type=pd-ssd，指的是这个PV的类型是“SSD格式的GCE远程磁盘”。</p>
+<p>需要注意的是，由于需要使用GCE Persistent Disk，上面这个例子只有在GCE提供的Kubernetes服务里才能实践。如果你想使用我们之前部署在本地的Kubernetes集群以及Rook存储服务的话，你的StorageClass需要使用如下所示的YAML文件来定义：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>apiVersion: ceph.rook.io/v1beta1
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>kind: Pool
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>metadata:
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  name: replicapool
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>  namespace: rook-ceph
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>spec:
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>  replicated:
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    size: 3
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>---
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>apiVersion: storage.k8s.io/v1
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>kind: StorageClass
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>metadata:
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>  name: block-service
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>provisioner: ceph.rook.io/block
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>parameters:
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>  pool: replicapool
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>  #The value of &quot;clusterNamespace&quot; MUST be the same as the one in which your rook cluster exist
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>  clusterNamespace: rook-ceph
+</code></pre></div>
+<p>在这个YAML文件中，我们定义的还是一个名叫block-service的StorageClass，只不过它声明使的存储插件是由Rook项目。</p>
+<p>有了StorageClass的YAML文件之后，运维人员就可以在Kubernetes里创建这个StorageClass了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$ kubectl create -f sc.yaml
+</code></pre></div>
+<p>这时候，作为应用开发者，我们只需要在PVC里指定要使用的StorageClass名字即可，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>apiVersion: v1
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>kind: PersistentVolumeClaim
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>metadata:
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>  name: claim1
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>spec:
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>  accessModes:
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    - ReadWriteOnce
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>  storageClassName: block-service
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>  resources:
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    requests:
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>      storage: 30Gi
+</code></pre></div>
+<p>可以看到，我们在这个PVC里添加了一个叫作storageClassName的字段，用于指定该PVC所要使用的StorageClass的名字是：block-service。</p>
+<p>以Google Cloud为例。</p>
+<p>当我们通过kubectl create创建上述PVC对象之后，Kubernetes就会调用Google Cloud的API，创建出一块SSD格式的Persistent Disk。然后，再使用这个Persistent Disk的信息，自动创建出一个对应的PV对象。</p>
+<p>我们可以一起来实践一下这个过程（如果使用Rook的话下面的流程也是一样的，只不过Rook创建出的是Ceph类型的PV）：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$ kubectl create -f pvc.yaml
+</code></pre></div>
+<p>可以看到，我们创建的PVC会绑定一个Kubernetes自动创建的PV，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>$ kubectl describe pvc claim1
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>Name:           claim1
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>Namespace:      default
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>StorageClass:   block-service
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>Status:         Bound
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>Volume:         pvc-e5578707-c626-11e6-baf6-08002729a32b
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>Labels:         &lt;none&gt;
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>Capacity:       30Gi
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>Access Modes:   RWO
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>No Events.
+</code></pre></div>
+<p>而且，通过查看这个自动创建的PV的属性，你就可以看到它跟我们在PVC里声明的存储的属性是一致的，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>$ kubectl describe pv pvc-e5578707-c626-11e6-baf6-08002729a32b
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>Name:            pvc-e5578707-c626-11e6-baf6-08002729a32b
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>Labels:          &lt;none&gt;
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>StorageClass:    block-service
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>Status:          Bound
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>Claim:           default/claim1
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>Reclaim Policy:  Delete
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>Access Modes:    RWO
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>Capacity:        30Gi
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>...
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>No events.
+</code></pre></div>
+<p>此外，你还可以看到，这个自动创建出来的PV的StorageClass字段的值，也是block-service。<strong>这是因为，Kubernetes只会将StorageClass相同的PVC和PV绑定起来。</strong></p>
+<p>有了Dynamic Provisioning机制，运维人员只需要在Kubernetes集群里创建出数量有限的StorageClass对象就可以了。这就好比，运维人员在Kubernetes集群里创建出了各种各样的PV模板。这时候，当开发人员提交了包含StorageClass字段的PVC之后，Kubernetes就会根据这个StorageClass创建出对应的PV。</p>
+<blockquote>
+<p><a href="https://kubernetes.io/docs/concepts/storage/storage-classes/#provisioner">Kubernetes的官方文档</a>里已经列出了默认支持Dynamic Provisioning的内置存储插件。而对于不在文档里的插件，比如NFS，或者其他非内置存储插件，你其实可以通过<a href="https://github.com/kubernetes-incubator/external-storage">kubernetes-incubator/external-storage</a>这个库来自己编写一个外部插件完成这个工作。像我们之前部署的Rook，已经内置了external-storage的实现，所以Rook是完全支持Dynamic Provisioning特性的。</p>
+</blockquote>
+<p>需要注意的是，<strong>StorageClass并不是专门为了Dynamic Provisioning而设计的。</strong></p>
+<p>比如，在本篇一开始的例子里，我在PV和PVC里都声明了storageClassName=manual。而我的集群里，实际上并没有一个名叫manual的StorageClass对象。这完全没有问题，这个时候Kubernetes进行的是Static Provisioning，但在做绑定决策的时候，它依然会考虑PV和PVC的StorageClass定义。</p>
+<p>而这么做的好处也很明显：这个PVC和PV的绑定关系，就完全在我自己的掌控之中。</p>
+<p>这里，你可能会有疑问，我在之前讲解StatefulSet存储状态的例子时，好像并没有声明StorageClass啊？</p>
+<p>实际上，如果你的集群已经开启了名叫DefaultStorageClass的Admission Plugin，它就会为PVC和PV自动添加一个默认的StorageClass；<strong>否则，PVC的storageClassName的值就是“”，这也意味着它只能够跟storageClassName也是“”的PV进行绑定。</strong></p>
+<h2 id="_1">总结</h2>
+<p>在今天的分享中，我为你详细解释了PVC和PV的设计与实现原理，并为你阐述了StorageClass到底是干什么用的。这些概念之间的关系，可以用如下所示的一幅示意图描述：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/e8/d9/e8b2586e4e14eb54adf8ff95c5c18cd9.png?wh=968%2A679" /><br />
+从图中我们可以看到，在这个体系中：</p>
+<ul>
+<li>PVC描述的，是Pod想要使用的持久化存储的属性，比如存储的大小、读写权限等。</li>
+<li>PV描述的，则是一个具体的Volume的属性，比如Volume的类型、挂载目录、远程存储服务器地址等。</li>
+<li>而StorageClass的作用，则是充当PV的模板。并且，只有同属于一个StorageClass的PV和PVC，才可以绑定在一起。</li>
+</ul>
+<p>当然，StorageClass的另一个重要作用，是指定PV的Provisioner（存储插件）。这时候，如果你的存储插件支持Dynamic Provisioning的话，Kubernetes就可以自动为你创建PV了。</p>
+<p>基于上述讲述，为了统一概念和方便叙述，在本专栏中，我以后凡是提到“Volume”，指的就是一个远程存储服务挂载在宿主机上的持久化目录；而“PV”，指的是这个Volume在Kubernetes里的API对象。</p>
+<p>需要注意的是，这套容器持久化存储体系，完全是Kubernetes项目自己负责管理的，并不依赖于docker volume命令和Docker的存储插件。当然，这套体系本身就比docker volume命令的诞生时间还要早得多。</p>
+<h2 id="_2">思考题</h2>
+<p>在了解了PV、PVC的设计和实现原理之后，你是否依然觉得它有“过度设计”的嫌疑？或者，你是否有更加简单、足以解决你90%需求的Volume的用法？</p>
+<p>感谢你的收听，欢迎你给我留言，也欢迎分享给更多的朋友一起阅读。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>mazhen</span> 👍（358） 💬（17）<div>容器持久化存储涉及的概念比较多，试着总结一下整体流程。
 
 用户提交请求创建pod，Kubernetes发现这个pod声明使用了PVC，那就靠PersistentVolumeController帮它找一个PV配对。
 
@@ -5884,109 +6186,10 @@
 第一阶段由运行在master上的AttachDetachController负责，为这个PV完成 Attach 操作，为宿主机挂载远程磁盘；
 第二阶段是运行在每个节点上kubelet组件的内部，把第一步attach的远程磁盘 mount 到宿主机目录。这个控制循环叫VolumeManagerReconciler，运行在独立的Goroutine，不会阻塞kubelet主循环。
 
-完成这两步，PV对应的“持久化 Volume”就准备好了，POD可以正常启动，将“持久化 Volume”挂载在容器内指定的路径。</div>2018-10-26</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLbswPFgMWmE28MQvjBHpAKg2Ny426dqRCgzp0ibyh0rr3nySEF621bWicySpAjATVEVyoibqloPqeLw/132" width="30px"><span>Geek_e2f5e1</span> 👍（40） 💬（1）<div>老师，如果我原先存储上就有数据需要挂载进去，那格式化操作岂不是不能满足我的需求？</div>2019-04-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/98/37/7f575aec.jpg" width="30px"><span>vx:jiancheng_goon</span> 👍（33） 💬（1）<div>张老师，问一个比较空泛的问题。您之前是做paas平台的，今后的pass平台的发展方向是什么呢？当前做paas平台，最大的阻碍是什么？最大的价值又是什么呢？</div>2018-10-27</li><br/><li><img src="" width="30px"><span>tuxknight</span> 👍（22） 💬（1）<div>在公有云上使用 PV&#47;PVC 有个很重要的限制：块存储设备必须和实例在同一个可用区。在 Pod 没被创建的时候是不确定会被调度到哪个可用区，从而无法动态的创建出PV。这种问题要怎么处理？</div>2018-10-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/84/c1/dfcad82a.jpg" width="30px"><span>Acter</span> 👍（17） 💬（3）<div>“所谓将一个 PV 与 PVC 进行“绑定”，其实就是将这个 PV 对象的名字，填在了 PVC 对象的 spec.volumeName 字段上。” 
-请问老师为什么在pvc的yaml文件中看不到这个字段呢？</div>2018-10-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6c/ea/ce9854a5.jpg" width="30px"><span>坤</span> 👍（10） 💬（1）<div>如果采用ceph  rbd StorageClass，Pod所在的node宕机后，在调度到另外一台Node上，这个过程中，k8s是会新node上重新创建PV吗？</div>2020-03-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b4/0c/93fd5c51.jpg" width="30px"><span>jkmzg</span> 👍（7） 💬（1）<div>请问下从同一个pod spec 创建出来的不同pod中，pvc相同，会不会冲突？k8s的机制是什么呢？</div>2018-11-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7d/75/c812597b.jpg" width="30px"><span>yuliz</span> 👍（7） 💬（3）<div>你好，我想请教下实际中的疑问点，如果我使用NFS作为共享存储，两个集群中的PV绑定NFS的同一目录，且这两个PV被pvc绑定，最终pod绑定pvc,当第二个pod绑定时会格式化nfs的目录，导致之前的pod数据丢失么？两个集群的pv能共用一个nfs目录和同一rbd么？</div>2018-10-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5a/56/115c6433.jpg" width="30px"><span>jssfy</span> 👍（6） 💬（1）<div>请问
+完成这两步，PV对应的“持久化 Volume”就准备好了，POD可以正常启动，将“持久化 Volume”挂载在容器内指定的路径。</div>2018-10-26</li><br/><li><span>Geek_e2f5e1</span> 👍（40） 💬（1）<div>老师，如果我原先存储上就有数据需要挂载进去，那格式化操作岂不是不能满足我的需求？</div>2019-04-09</li><br/><li><span>vx:jiancheng_goon</span> 👍（33） 💬（1）<div>张老师，问一个比较空泛的问题。您之前是做paas平台的，今后的pass平台的发展方向是什么呢？当前做paas平台，最大的阻碍是什么？最大的价值又是什么呢？</div>2018-10-27</li><br/><li><span>tuxknight</span> 👍（22） 💬（1）<div>在公有云上使用 PV&#47;PVC 有个很重要的限制：块存储设备必须和实例在同一个可用区。在 Pod 没被创建的时候是不确定会被调度到哪个可用区，从而无法动态的创建出PV。这种问题要怎么处理？</div>2018-10-28</li><br/><li><span>Acter</span> 👍（17） 💬（3）<div>“所谓将一个 PV 与 PVC 进行“绑定”，其实就是将这个 PV 对象的名字，填在了 PVC 对象的 spec.volumeName 字段上。” 
+请问老师为什么在pvc的yaml文件中看不到这个字段呢？</div>2018-10-29</li><br/><li><span>坤</span> 👍（10） 💬（1）<div>如果采用ceph  rbd StorageClass，Pod所在的node宕机后，在调度到另外一台Node上，这个过程中，k8s是会新node上重新创建PV吗？</div>2020-03-04</li><br/><li><span>jkmzg</span> 👍（7） 💬（1）<div>请问下从同一个pod spec 创建出来的不同pod中，pvc相同，会不会冲突？k8s的机制是什么呢？</div>2018-11-13</li><br/><li><span>yuliz</span> 👍（7） 💬（3）<div>你好，我想请教下实际中的疑问点，如果我使用NFS作为共享存储，两个集群中的PV绑定NFS的同一目录，且这两个PV被pvc绑定，最终pod绑定pvc,当第二个pod绑定时会格式化nfs的目录，导致之前的pod数据丢失么？两个集群的pv能共用一个nfs目录和同一rbd么？</div>2018-10-30</li><br/><li><span>jssfy</span> 👍（6） 💬（1）<div>请问
 1. 同一集群的多个pod可否同时挂载同一个pv的同一个subpath
-2. 如果pv写满了如何扩容</div>2018-11-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f5/a5/f8210f04.jpg" width="30px"><span>夕月</span> 👍（6） 💬（1）<div>所谓将一个 PV 与 PVC 进行“绑定”，其实就是将这个PV 对象的名字，填在了 PVC 对象的 spec.volumeName 字段上，这个好像在yaml文件里没有提现啊，只有storageClassName是一样的</div>2018-11-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/bc/08/c43f85d9.jpg" width="30px"><span>IOVE.-Minn</span> 👍（5） 💬（1）<div>请问，现在的NFS也是有storageclass也是可以动态配置pv的啊，但是在官方，体现的是没有的啊？这个是第三方开发的么？provisioner: fuseim.pri&#47;ifs</div>2018-10-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e9/91/4219d305.jpg" width="30px"><span>初学者</span> 👍（2） 💬（3）<div>文中提到attach 阶段是将远程盘挂载到宿主机上，这个操作不是应该在node 上做更合适吗？为啥会放在AD controller 中？</div>2018-12-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/99/b1/5aab73b3.jpg" width="30px"><span>阿川</span> 👍（2） 💬（1）<div>老师有一个问题需要请教，1、比如创建一个nfs的pv，但是nfs服务器不存在，此时pv也能创建成功。2、创建pvc也能跟pv关联。3、在真实创建pod使用该pvc会报错。这种情况有什么办法避免吗，比如在创建pv时就发现后端存储不存在</div>2018-11-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/86/63/0112cc96.jpg" width="30px"><span>hhhhhh</span> 👍（2） 💬（1）<div>老师好，如果第二阶段肯定会格式化，那之前存储在volume中的数据不就丢失了？ </div>2018-11-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/4f/61/00083e41.jpg" width="30px"><span>小白</span> 👍（1） 💬（1）<div>老师，scheduler里的volumezonechecker规则谷歌不到，可以贴个学习地址吗</div>2018-11-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/94/47/75875257.jpg" width="30px"><span>虎虎❤️</span> 👍（1） 💬（1）<div>文章中为GCE 块存储 准备持久化目录第二阶段的挂载命令是不是应该用mount。创建目录不是之前kubelet已经做过了？</div>2018-10-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0f/70/cdef7a3d.jpg" width="30px"><span>Joe Black</span> 👍（0） 💬（1）<div>老师，现在这个方式其实要求Pod的存储信息在创建前就确定了，1.12的k8s说是支持挂载信息在宿主机和Pod，甚至Pod间互相感知，这个特性可信赖吗？</div>2018-10-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/f0/9e/cf6570f7.jpg" width="30px"><span>耀</span> 👍（21） 💬（0）<div>没有过度设计，如果没有PVC，那么用户声明就会有涉及到具体的存储类型；存储类型一旦变化了所有的微服务都要跟着变化，所以PVC和PV要分离。如果没有storageclass,那么PVC和PV的绑定就需要完全有人工去指定，这将会成为整个集群最重复而低效的事情之一，所以这种设计是刚好的设计。</div>2019-12-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/99/66/e283b8b2.jpg" width="30px"><span>GR</span> 👍（8） 💬（6）<div>一个pv可以对应几个pvc，一对一吗？
-可以创建一个大的pv然后每个应用有自己的pvc，存储路径通过subpath来区分，是否可行呢？</div>2018-10-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/eb/77/ffd16123.jpg" width="30px"><span>重洋</span> 👍（4） 💬（0）<div>持久化存储的控制器 Volume Controller，kube-controller-manager 的一部分，运行在 master节点。其中包括控制循环 PersistentVolumeController、AttachDetachController。
-
-PV、PVC匹配控制器 PersistentVolumeController ：执行控制循环，为每一个 PVC 遍历挑选可用的的 PV 进行绑定。
-绑定：将 PV 对象的名字，填在 PVC 对象的 spec.volumeName 字段上。
-匹配条件：
-1.spec字段符合要求。
-2.storageClassName一致。
-
-Volume 类型是远程存储时：
-一、远程存储挂载至宿主机(PV的准备流程)，分为两阶段：
-第一阶段（Attach）（挂载磁盘）：AttachDetachController 不断地检查每一个 Pod 对应的 PV 和这个 Pod 所在宿主机之间挂载情况。从而决定，是否需要对这个 PV 进行 Attach（或者 Dettach）操作，为虚拟机挂载远程磁盘。Kubernetes 提供的可用参数是 nodeName，即宿主机的名字。
-第二阶段（Mount）（mount至宿主机）：VolumeManagerReconciler，执行mount操作（必须发生再Pod宿主机上，所以是 kubelet 组件的一部分），将磁盘设备格式化并挂载到 Volume 宿主机目录。Kubernetes 提供的可用参数是 dir，即 Volume 的宿主机目录。
-$ mount -t nfs &lt;NFS服务器地址&gt;:&#47; &#47;var&#47;lib&#47;kubelet&#47;pods&#47;&lt;Pod的ID&gt;&#47;volumes&#47;kubernetes.io~&lt;Volume类型&gt;&#47;&lt;Volume名字&gt; 
-
-二、Pod 与持久化Volume宿主机目录挂载：
-kubelet 为 Volume 创建的默认宿主机目录：&#47;var&#47;lib&#47;kubelet&#47;pods&#47;&lt;Pod的ID&gt;&#47;volumes&#47;kubernetes.io~&lt;Volume类型&gt;&#47;&lt;Volume名字&gt;
-kubelet 把 Volume 目录通过 CRI 里的 Mounts 参数，传递给 Docker，为 Pod 里的容器挂载这个“持久化”的 Volume 。
-$ docker run -v &#47;var&#47;lib&#47;kubelet&#47;pods&#47;&lt;Pod的ID&gt;&#47;volumes&#47;kubernetes.io~&lt;Volume类型&gt;&#47;&lt;Volume名字&gt;:&#47;&lt;容器内的目标目录&gt; 我的镜像 ...
-
-
-Static Provisioning：手动创建 PV 与 PVC，StorageClassName 仅作为匹配字段。
-Dynamic Provisioning：通过 StorageClass 自动创建 PV、自动绑定 PV 与 PVC。
-StorageClass 定义插件、PV 属性，k8s根据 PVC 寻找 StorageClass，StorageClass 创建 PV。
-PVC——StorageClass——PV。
-
-
-Local Persistent Volume：Volume直接使用本地磁盘。
-优点：本地磁盘读写性能更好。
-缺点：宕机数据丢失，需要恢复机制与定期备份。
-
-先准备好本地磁盘，然后延迟绑定。
-延迟绑定：StorageClass volumeBindingMode: WaitForFirstConsumer，将 PV、PVC 的绑定推迟到 Pod 调度的时候，从而保证绑定结果不会影响 Pod 的正常调度。
-1.PersistentVolumeController 遍历发现通过 StorageClass 关联的可以与 PVC 绑定的 PV；
-2.第一个声明使用该 PVC 的 Pod 出现在调度器之后，调度器综合考虑这个 PVC 跟哪个 PV 绑定。
-</div>2021-11-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a5/ff/6201122c.jpg" width="30px"><span>Geek_89bbab</span> 👍（4） 💬（6）<div> kubectl describe persistentvolumeclaim&#47;claim1
-Name:          claim1
-Namespace:     default
-StorageClass:  block-service
-Status:        Pending
-Volume:        
-Labels:        &lt;none&gt;
-Annotations:   .......
-Events:
-  Type     Reason              Age                 From                                                                                         Message
-  ----     ------              ----                ----                                                                                         -------
-  Warning  ProvisioningFailed  10m (x13 over 23m)  ceph.rook.io&#47;block rook-ceph-operator-5bfbf654db-ncgdf 97142e78-de86-11e8-a7d1-e6678be2ea25  Failed to provision volume with StorageClass &quot;block-service&quot;: Failed to create rook block image replicapool&#47;pvc-5b68d13b-e501-11e8-8b01-00163e0cf240: failed to create image pvc-5b68d13b-e501-11e8-8b01-00163e0cf240 in pool replicapool of size 2147483648: Failed to complete &#39;&#39;: exit status 2. rbd: error opening pool &#39;replicapool&#39;: (2) No such file or directory
-. output:
-  Normal  Provisioning          5m (x15 over 23m)   ceph.rook.io&#47;block rook-ceph-operator-5bfbf654db-ncgdf 97142e78-de86-11e8-a7d1-e6678be2ea25  External provisioner is provisioning volume for claim &quot;default&#47;claim1&quot;
-  Normal  ExternalProvisioning  2m (x331 over 23m)  persistentvolume-controller                                                                  waiting for a volume to be created, either by external provisioner &quot;ceph.rook.io&#47;block&quot; or manually created by system administrator
-
-老师，这个是什么原因导致的？ 没有这个文件或者目录?</div>2018-11-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/72/3e/534db55d.jpg" width="30px"><span>huan</span> 👍（4） 💬（1）<div>老师的问题的思考，90%都是动态申请存储的，所以我觉得pv和pvc都去掉，只有storage class和必要的参数（空间大小和读写属性 ）放在pod中即可</div>2018-10-28</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q3auHgzwzM6GcSnUMzR0H9haiaAxssjibGLQMLAsPKonh50g9W2Iz38LcZNGH39HPaANLtovXTp1YvsINIZoH6F0iaSGuxJMXZS/132" width="30px"><span>Geek_10d981</span> 👍（2） 💬（0）<div>其实老师最后的提问仅仅是让大家深入思考的，没有固定的解答。我尝试理解：这种分层的概念其实在高端存储用的很多，比如IBM的SVC,HDS的LUSE，EMC的TIRE，很多存储厂家的THIN PROVISION都是分层的概念，中端的NETAPP也是类似的技术（NETAPP横着切 一刀，竖着再切一刀，IBM DS7000，,8000系列也是这样，HP 3PAR也是彻底分层），当然，分层的时候要考虑SAN的结构和MULTIPATH。分层的好处很多，不仅仅只是解耦，也是对磁盘的利用率，动态调节，性能诊断更灵活。还有，HDS,EMC等厂家可以详细的性能诊断，因为高端存储都有自己的高速缓存（32G-128G，还有CROSS BAR技术），很多存储的高级功能必须是要分层才能实现的。</div>2020-04-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/96/ec/5c53f9e5.jpg" width="30px"><span>小熹</span> 👍（2） 💬（0）<div>用CSI标准实现第三方存储，把存储卷的管理全部托付给第三方，就不用自己纠结pv pvc的概念了</div>2018-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a5/ff/6201122c.jpg" width="30px"><span>Geek_89bbab</span> 👍（2） 💬（0）<div>有人执行pvc有遇到这样的错误吗？
-Failed to provision volume with StorageClass &quot;rook-ceph-block&quot;: Failed to create rook block image replicapool&#47;pvc-0574eb19-e58c-11e8-8b01-00163e0cf240: failed to create image pvc-0574eb19-e58c-11e8-8b01-00163e0cf240 in pool replicapool of size 2147483648: Failed to complete &#39;&#39;: exit status 2. rbd: error opening pool &#39;replicapool&#39;: (2) No such file or directory
-</div>2018-11-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/94/47/75875257.jpg" width="30px"><span>虎虎❤️</span> 👍（2） 💬（0）<div>@GR 是一一对应的关系，可以创建一个大的pvc共用，用子目录区别开。前提是在一个namespace下。
-也可以开发插件，支持动态创建pv</div>2018-10-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/3a/b0/a4e4c5d1.jpg" width="30px"><span>然谛</span> 👍（1） 💬（0）<div>如何理解读写模式ReadWriteMany,ReadWriteOnce,ReadOnlyMany，这块有点混乱，涉及的场景有哪些</div>2021-05-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c7/05/19c5c255.jpg" width="30px"><span>微末凡尘</span> 👍（1） 💬（0）<div>pvc是接口，不负责具体的实现
-pv是具体的实现，存储分为很多种，nfs，cefh等等
-storageClass负责自动化创建pv</div>2021-03-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c1/93/e8bfb26e.jpg" width="30px"><span>Dem</span> 👍（1） 💬（0）<div>直接使用范例中的web-frontend的yaml进行kubectl apply -f的时候会遇到报错：
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>error: error when retrieving current configuration of:
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>Resource: &amp;quot;&amp;#47;v1, Resource=pods&amp;quot;, GroupVersionKind: &amp;quot;&amp;#47;v1, Kind=Pod&amp;quot;
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>Name: &amp;quot;&amp;quot;, Namespace: &amp;quot;default&amp;quot;
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>Object: &amp;amp;{map[&amp;quot;apiVersion&amp;quot;:&amp;quot;v1&amp;quot; &amp;quot;kind&amp;quot;:&amp;quot;Pod&amp;quot; &amp;quot;metadata&amp;quot;:map[&amp;quot;annotations&amp;quot;:map[&amp;quot;kubectl.kubernetes.io&amp;#47;last-applied-configuration&amp;quot;:&amp;quot;&amp;quot;] &amp;quot;labels&amp;quot;:map[&amp;quot;role&amp;quot;:&amp;quot;web-frontend&amp;quot;] &amp;quot;namespace&amp;quot;:&amp;quot;default&amp;quot;] &amp;quot;spec&amp;quot;:map[&amp;quot;containers&amp;quot;:[map[&amp;quot;image&amp;quot;:&amp;quot;nginx&amp;quot; &amp;quot;name&amp;quot;:&amp;quot;web&amp;quot; &amp;quot;ports&amp;quot;:[map[&amp;quot;containerPort&amp;quot;:&amp;#39;P&amp;#39; &amp;quot;name&amp;quot;:&amp;quot;web&amp;quot;]] &amp;quot;volumeMounts&amp;quot;:[map[&amp;quot;mountPath&amp;quot;:&amp;quot;&amp;#47;usr&amp;#47;share&amp;#47;nginx&amp;#47;html&amp;quot; &amp;quot;name&amp;quot;:&amp;quot;nfs&amp;quot;]]]] &amp;quot;volumes&amp;quot;:[map[&amp;quot;name&amp;quot;:&amp;quot;nfs&amp;quot; &amp;quot;persistentVolumeClaim&amp;quot;:map[&amp;quot;claimName&amp;quot;:&amp;quot;nfs&amp;quot;]]]]]}
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>from server for: &amp;quot;test-pod-pvc.yaml&amp;quot;: resource name may not be empty
-</code></pre></div>
-需要给metadata加一个name，例如：
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>apiVersion: v1
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kind: Pod
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>metadata:
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  labels:
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    role: web-frontend
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  name: web-frontend
-</code></pre></div>
-不知道是不是kubernetes版本的差异。</div>2019-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/96/a6/32a286e0.jpg" width="30px"><span>大雄</span> 👍（0） 💬（0）<div>我通过cephamd部署的ceph集群，k8s版本是1.27，ceph是12.2.7 ，ceph-csi是3.11,通过storageclass自动创建pv，nginx-pod和pvc一直处于pending。。ceph集群是正常，存储pool也存在。试过手动pv正常。看了好几天完全没思路。
- kubectl get pod nginx-pod
-NAME        READY   STATUS    RESTARTS   AGE
-nginx-pod   0&#47;1     Pending   0          22m
-[root@k8s-205 new]# kubectl get pvc
-NAME        STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
-nginx-pvc   Pending                                      ceph-rbd       3d2h
-[root@k8s-205 new]# kubectl get storageclass
-NAME       PROVISIONER    RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
-ceph-rbd   ceph.com&#47;rbd   Delete          Immediate           false                  23m
-
-ceph -s
-  cluster:
-    id:     ecdb563e-e05e-11ee-b9a4-525400e890d6
-    health: HEALTH_OK
-
-  services:
-    mon: 3 daemons, quorum ceph-01,ceph-02,ceph-03 (age 38h)
-    mgr: ceph-03.snrxzu(active, since 6d), standbys: ceph-02.tvgjga, ceph-01.hbmhpm
-    osd: 3 osds: 3 up (since 6d), 3 in (since 5w)
-    rgw: 3 daemons active (3 hosts, 1 zones)
-
-  data:
-    pools:   6 pools, 137 pgs
-    objects: 243 objects, 1.3 MiB
-    usage:   1.4 GiB used, 299 GiB &#47; 300 GiB avail
-    pgs:     137 active+clean
-
-</div>2024-04-22</li><br/>
+2. 如果pv写满了如何扩容</div>2018-11-25</li><br/><li><span>夕月</span> 👍（6） 💬（1）<div>所谓将一个 PV 与 PVC 进行“绑定”，其实就是将这个PV 对象的名字，填在了 PVC 对象的 spec.volumeName 字段上，这个好像在yaml文件里没有提现啊，只有storageClassName是一样的</div>2018-11-25</li><br/><li><span>IOVE.-Minn</span> 👍（5） 💬（1）<div>请问，现在的NFS也是有storageclass也是可以动态配置pv的啊，但是在官方，体现的是没有的啊？这个是第三方开发的么？provisioner: fuseim.pri&#47;ifs</div>2018-10-26</li><br/><li><span>初学者</span> 👍（2） 💬（3）<div>文中提到attach 阶段是将远程盘挂载到宿主机上，这个操作不是应该在node 上做更合适吗？为啥会放在AD controller 中？</div>2018-12-08</li><br/><li><span>阿川</span> 👍（2） 💬（1）<div>老师有一个问题需要请教，1、比如创建一个nfs的pv，但是nfs服务器不存在，此时pv也能创建成功。2、创建pvc也能跟pv关联。3、在真实创建pod使用该pvc会报错。这种情况有什么办法避免吗，比如在创建pv时就发现后端存储不存在</div>2018-11-04</li><br/><li><span>hhhhhh</span> 👍（2） 💬（1）<div>老师好，如果第二阶段肯定会格式化，那之前存储在volume中的数据不就丢失了？ </div>2018-11-03</li><br/><li><span>小白</span> 👍（1） 💬（1）<div>老师，scheduler里的volumezonechecker规则谷歌不到，可以贴个学习地址吗</div>2018-11-01</li><br/>
 </ul>
 
 

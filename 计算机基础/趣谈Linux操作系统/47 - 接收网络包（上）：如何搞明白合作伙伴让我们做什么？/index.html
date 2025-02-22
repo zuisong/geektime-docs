@@ -4677,6 +4677,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      网络协议栈的二层逻辑
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ip" class="md-nav__link">
+    <span class="md-ellipsis">
+      网络协议栈的IP层
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5990,6 +6026,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      网络协议栈的二层逻辑
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ip" class="md-nav__link">
+    <span class="md-ellipsis">
+      网络协议栈的IP层
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6021,10 +6093,414 @@
 <p>网卡作为一个硬件，接收到网络包，应该怎么通知操作系统，这个网络包到达了呢？咱们学习过输入输出设备和中断。没错，我们可以触发一个中断。但是这里有个问题，就是网络包的到来，往往是很难预期的。网络吞吐量比较大的时候，网络包的到达会十分频繁。这个时候，如果非常频繁地去触发中断，想想就觉得是个灾难。</p>
 <p>比如说，CPU正在做某个事情，一些网络包来了，触发了中断，CPU停下手里的事情，去处理这些网络包，处理完毕按照中断处理的逻辑，应该回去继续处理其他事情。这个时候，另一些网络包又来了，又触发了中断，CPU手里的事情还没捂热，又要停下来去处理网络包。能不能大家要来的一起来，把网络包好好处理一把，然后再回去集中处理其他事情呢？</p>
 <p>网络包能不能一起来，这个我们没法儿控制，但是我们可以有一种机制，就是当一些网络包到来触发了中断，内核处理完这些网络包之后，我们可以先进入主动轮询poll网卡的方式，主动去接收到来的网络包。如果一直有，就一直处理，等处理告一段落，就返回干其他的事情。当再有下一批网络包到来的时候，再中断，再轮询poll。这样就会大大减少中断的数量，提升网络处理的效率，这种处理方式我们称为<strong>NAPI</strong>。</p>
-<div><strong>精选留言（18）</strong></div>
+<p>为了帮你了解设备驱动层的工作机制，我们还是以上一节发送网络包时的网卡drivers/net/ethernet/intel/ixgb/ixgb_main.c为例子，来进行解析。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>static struct pci_driver ixgb_driver = {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    .name     = ixgb_driver_name,
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    .id_table = ixgb_pci_tbl,
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    .probe    = ixgb_probe,
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    .remove   = ixgb_remove,
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    .err_handler = &amp;ixgb_err_handler
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>};
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>MODULE_AUTHOR(&quot;Intel Corporation, &lt;linux.nics@intel.com&gt;&quot;);
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>MODULE_DESCRIPTION(&quot;Intel(R) PRO/10GbE Network Driver&quot;);
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>MODULE_LICENSE(&quot;GPL&quot;);
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>MODULE_VERSION(DRV_VERSION);
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>/**
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a> * ixgb_init_module - Driver Registration Routine
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a> *
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a> * ixgb_init_module is the first routine called when the driver is
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a> * loaded. All it does is register with the PCI subsystem.
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a> **/
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>static int __init
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>ixgb_init_module(void)
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>{
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    pr_info(&quot;%s - version %s\n&quot;, ixgb_driver_string, ixgb_driver_version);
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    pr_info(&quot;%s\n&quot;, ixgb_copyright);
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>    return pci_register_driver(&amp;ixgb_driver);
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>}
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>module_init(ixgb_init_module);
+</code></pre></div>
+<p>在网卡驱动程序初始化的时候，我们会调用ixgb_init_module，注册一个驱动ixgb_driver，并且调用它的probe函数ixgb_probe。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>static int
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>ixgb_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>{
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    struct net_device *netdev = NULL;
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    struct ixgb_adapter *adapter;
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>......
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    netdev = alloc_etherdev(sizeof(struct ixgb_adapter));
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    SET_NETDEV_DEV(netdev, &amp;pdev-&gt;dev);
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    pci_set_drvdata(pdev, netdev);
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    adapter = netdev_priv(netdev);
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    adapter-&gt;netdev = netdev;
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    adapter-&gt;pdev = pdev;
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    adapter-&gt;hw.back = adapter;
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    adapter-&gt;msg_enable = netif_msg_init(debug, DEFAULT_MSG_ENABLE);
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    adapter-&gt;hw.hw_addr = pci_ioremap_bar(pdev, BAR_0);
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>......
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    netdev-&gt;netdev_ops = &amp;ixgb_netdev_ops;
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    ixgb_set_ethtool_ops(netdev);
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    netdev-&gt;watchdog_timeo = 5 * HZ;
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    netif_napi_add(netdev, &amp;adapter-&gt;napi, ixgb_clean, 64);
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    strncpy(netdev-&gt;name, pci_name(pdev), sizeof(netdev-&gt;name) - 1);
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>    adapter-&gt;bd_number = cards_found;
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>    adapter-&gt;link_speed = 0;
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    adapter-&gt;link_duplex = 0;
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>......
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>}
+</code></pre></div>
+<p>在ixgb_probe中，我们会创建一个struct net_device表示这个网络设备，并且netif_napi_add函数为这个网络设备注册一个轮询poll函数ixgb_clean，将来一旦出现网络包的时候，就是要通过它来轮询了。</p>
+<p>当一个网卡被激活的时候，我们会调用函数ixgb_open-&gt;ixgb_up，在这里面注册一个硬件的中断处理函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>int
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>ixgb_up(struct ixgb_adapter *adapter)
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>{
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    struct net_device *netdev = adapter-&gt;netdev;
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>......
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    err = request_irq(adapter-&gt;pdev-&gt;irq, ixgb_intr, irq_flags,
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>                      netdev-&gt;name, netdev);
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>......
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>}
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>/**
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a> * ixgb_intr - Interrupt Handler
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a> * @irq: interrupt number
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a> * @data: pointer to a network interface device structure
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a> **/
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>static irqreturn_t
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>ixgb_intr(int irq, void *data)
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>{
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    struct net_device *netdev = data;
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    struct ixgb_adapter *adapter = netdev_priv(netdev);
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>    struct ixgb_hw *hw = &amp;adapter-&gt;hw;
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>......
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    if (napi_schedule_prep(&amp;adapter-&gt;napi)) {
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>        IXGB_WRITE_REG(&amp;adapter-&gt;hw, IMC, ~0);
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>        __napi_schedule(&amp;adapter-&gt;napi);
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>    }
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>    return IRQ_HANDLED;
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>}
+</code></pre></div>
+<p>如果一个网络包到来，触发了硬件中断，就会调用ixgb_intr，这里面会调用__napi_schedule。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>/**
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a> * __napi_schedule - schedule for receive
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a> * @n: entry to schedule
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a> *
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a> * The entry&#39;s receive function will be scheduled to run.
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a> * Consider using __napi_schedule_irqoff() if hard irqs are masked.
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a> */
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>void __napi_schedule(struct napi_struct *n)
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>{
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    unsigned long flags;
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    local_irq_save(flags);
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    ____napi_schedule(this_cpu_ptr(&amp;softnet_data), n);
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    local_irq_restore(flags);
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>}
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>static inline void ____napi_schedule(struct softnet_data *sd,
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>                     struct napi_struct *napi)
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>{
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    list_add_tail(&amp;napi-&gt;poll_list, &amp;sd-&gt;poll_list);
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    __raise_softirq_irqoff(NET_RX_SOFTIRQ);
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>}
+</code></pre></div>
+<p>__napi_schedule是处于中断处理的关键部分，在他被调用的时候，中断是暂时关闭的，但是处理网络包是个复杂的过程，需要到延迟处理部分，所以____napi_schedule将当前设备放到struct softnet_data结构的poll_list里面，说明在延迟处理部分可以接着处理这个poll_list里面的网络设备。</p>
+<p>然后____napi_schedule触发一个软中断NET_RX_SOFTIRQ，通过软中断触发中断处理的延迟处理部分，也是常用的手段。</p>
+<p>上一节，我们知道，软中断NET_RX_SOFTIRQ对应的中断处理函数是net_rx_action。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>static __latent_entropy void net_rx_action(struct softirq_action *h)
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>{
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    struct softnet_data *sd = this_cpu_ptr(&amp;softnet_data);
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    LIST_HEAD(list);
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    list_splice_init(&amp;sd-&gt;poll_list, &amp;list);
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>......
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    for (;;) {
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        struct napi_struct *n;
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>......
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        n = list_first_entry(&amp;list, struct napi_struct, poll_list);
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        budget -= napi_poll(n, &amp;repoll);
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    }
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>......
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>}
+</code></pre></div>
+<p>在net_rx_action中，会得到struct softnet_data结构，这个结构在发送的时候我们也遇到过。当时它的output_queue用于网络包的发送，这里的poll_list用于网络包的接收。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>struct softnet_data {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    struct list_head    poll_list;
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>......
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    struct Qdisc        *output_queue;
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    struct Qdisc        **output_queue_tailp;
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>......
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>}
+</code></pre></div>
+<p>在net_rx_action中，接下来是一个循环，在poll_list里面取出网络包到达的设备，然后调用napi_poll来轮询这些设备，napi_poll会调用最初设备初始化的时候，注册的poll函数，对于ixgb_driver，对应的函数是ixgb_clean。</p>
+<p>ixgb_clean会调用ixgb_clean_rx_irq。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>static bool
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>ixgb_clean_rx_irq(struct ixgb_adapter *adapter, int *work_done, int work_to_do)
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>{
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    struct ixgb_desc_ring *rx_ring = &amp;adapter-&gt;rx_ring;
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    struct net_device *netdev = adapter-&gt;netdev;
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    struct pci_dev *pdev = adapter-&gt;pdev;
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    struct ixgb_rx_desc *rx_desc, *next_rxd;
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    struct ixgb_buffer *buffer_info, *next_buffer, *next2_buffer;
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    u32 length;
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    unsigned int i, j;
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    int cleaned_count = 0;
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    bool cleaned = false;
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    i = rx_ring-&gt;next_to_clean;
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    rx_desc = IXGB_RX_DESC(*rx_ring, i);
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    buffer_info = &amp;rx_ring-&gt;buffer_info[i];
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>    while (rx_desc-&gt;status &amp; IXGB_RX_DESC_STATUS_DD) {
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>        struct sk_buff *skb;
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>        u8 status;
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>        status = rx_desc-&gt;status;
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>        skb = buffer_info-&gt;skb;
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>        buffer_info-&gt;skb = NULL;
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>        prefetch(skb-&gt;data - NET_IP_ALIGN);
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>        if (++i == rx_ring-&gt;count)
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>            i = 0;
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>        next_rxd = IXGB_RX_DESC(*rx_ring, i);
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>        prefetch(next_rxd);
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>        j = i + 1;
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a>        if (j == rx_ring-&gt;count)
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a>            j = 0;
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a>        next2_buffer = &amp;rx_ring-&gt;buffer_info[j];
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a>        prefetch(next2_buffer);
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>
+<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a>        next_buffer = &amp;rx_ring-&gt;buffer_info[i];
+<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>......
+<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a>        length = le16_to_cpu(rx_desc-&gt;length);
+<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a>        rx_desc-&gt;length = 0;
+<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a>......
+<a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a>        ixgb_check_copybreak(&amp;adapter-&gt;napi, buffer_info, length, &amp;skb);
+<a id="__codelineno-6-45" name="__codelineno-6-45" href="#__codelineno-6-45"></a>
+<a id="__codelineno-6-46" name="__codelineno-6-46" href="#__codelineno-6-46"></a>        /* Good Receive */
+<a id="__codelineno-6-47" name="__codelineno-6-47" href="#__codelineno-6-47"></a>        skb_put(skb, length);
+<a id="__codelineno-6-48" name="__codelineno-6-48" href="#__codelineno-6-48"></a>
+<a id="__codelineno-6-49" name="__codelineno-6-49" href="#__codelineno-6-49"></a>        /* Receive Checksum Offload */
+<a id="__codelineno-6-50" name="__codelineno-6-50" href="#__codelineno-6-50"></a>        ixgb_rx_checksum(adapter, rx_desc, skb);
+<a id="__codelineno-6-51" name="__codelineno-6-51" href="#__codelineno-6-51"></a>
+<a id="__codelineno-6-52" name="__codelineno-6-52" href="#__codelineno-6-52"></a>        skb-&gt;protocol = eth_type_trans(skb, netdev);
+<a id="__codelineno-6-53" name="__codelineno-6-53" href="#__codelineno-6-53"></a>
+<a id="__codelineno-6-54" name="__codelineno-6-54" href="#__codelineno-6-54"></a>        netif_receive_skb(skb);
+<a id="__codelineno-6-55" name="__codelineno-6-55" href="#__codelineno-6-55"></a>......
+<a id="__codelineno-6-56" name="__codelineno-6-56" href="#__codelineno-6-56"></a>        /* use prefetched values */
+<a id="__codelineno-6-57" name="__codelineno-6-57" href="#__codelineno-6-57"></a>        rx_desc = next_rxd;
+<a id="__codelineno-6-58" name="__codelineno-6-58" href="#__codelineno-6-58"></a>        buffer_info = next_buffer;
+<a id="__codelineno-6-59" name="__codelineno-6-59" href="#__codelineno-6-59"></a>    }
+<a id="__codelineno-6-60" name="__codelineno-6-60" href="#__codelineno-6-60"></a>
+<a id="__codelineno-6-61" name="__codelineno-6-61" href="#__codelineno-6-61"></a>    rx_ring-&gt;next_to_clean = i;
+<a id="__codelineno-6-62" name="__codelineno-6-62" href="#__codelineno-6-62"></a>......
+<a id="__codelineno-6-63" name="__codelineno-6-63" href="#__codelineno-6-63"></a>}
+</code></pre></div>
+<p>在网络设备的驱动层，有一个用于接收网络包的rx_ring。它是一个环，从网卡硬件接收的包会放在这个环里面。这个环里面的buffer_info[]是一个数组，存放的是网络包的内容。i和j是这个数组的下标，在ixgb_clean_rx_irq里面的while循环中，依次处理环里面的数据。在这里面，我们看到了i和j加一之后，如果超过了数组的大小，就跳回下标0，就说明这是一个环。</p>
+<p>ixgb_check_copybreak函数将buffer_info里面的内容，拷贝到struct sk_buff *skb，从而可以作为一个网络包进行后续的处理，然后调用netif_receive_skb。</p>
+<h2 id="_2">网络协议栈的二层逻辑</h2>
+<p>从netif_receive_skb函数开始，我们就进入了内核的网络协议栈。</p>
+<p>接下来的调用链为：netif_receive_skb-&gt;netif_receive_skb_internal-&gt;__netif_receive_skb-&gt;__netif_receive_skb_core。</p>
+<p>在__netif_receive_skb_core中，我们先是处理了二层的一些逻辑。例如，对于VLAN的处理，接下来要想办法交给第三层。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>{
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    struct packet_type *ptype, *pt_prev;
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>......
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    type = skb-&gt;protocol;
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>......
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    deliver_ptype_list_skb(skb, &amp;pt_prev, orig_dev, type,
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>                   &amp;orig_dev-&gt;ptype_specific);
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    if (pt_prev) {
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>        ret = pt_prev-&gt;func(skb, skb-&gt;dev, pt_prev, orig_dev);
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    }
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>......
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>}
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>static inline void deliver_ptype_list_skb(struct sk_buff *skb,
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>                      struct packet_type **pt,
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>                      struct net_device *orig_dev,
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>                      __be16 type,
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>                      struct list_head *ptype_list)
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>{
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>    struct packet_type *ptype, *pt_prev = *pt;
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>    list_for_each_entry_rcu(ptype, ptype_list, list) {
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>        if (ptype-&gt;type != type)
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>            continue;
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>        if (pt_prev)
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>            deliver_skb(skb, pt_prev, orig_dev);
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>        pt_prev = ptype;
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>    }
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>    *pt = pt_prev;
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>}
+</code></pre></div>
+<p>在网络包struct sk_buff里面，二层的头里面有一个protocol，表示里面一层，也即三层是什么协议。deliver_ptype_list_skb在一个协议列表中逐个匹配。如果能够匹配到，就返回。</p>
+<p>这些协议的注册在网络协议栈初始化的时候， inet_init函数调用dev_add_pack(&amp;ip_packet_type)，添加IP协议。协议被放在一个链表里面。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>void dev_add_pack(struct packet_type *pt)
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>{
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    struct list_head *head = ptype_head(pt);
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    list_add_rcu(&amp;pt-&gt;list, head);
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>}
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>static inline struct list_head *ptype_head(const struct packet_type *pt)
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>{
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    if (pt-&gt;type == htons(ETH_P_ALL))
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>        return pt-&gt;dev ? &amp;pt-&gt;dev-&gt;ptype_all : &amp;ptype_all;
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    else
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>        return pt-&gt;dev ? &amp;pt-&gt;dev-&gt;ptype_specific : &amp;ptype_base[ntohs(pt-&gt;type) &amp; PTYPE_HASH_MASK];
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>}
+</code></pre></div>
+<p>假设这个时候的网络包是一个IP包，则在这个链表里面一定能够找到ip_packet_type，在__netif_receive_skb_core中会调用ip_packet_type的func函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>static struct packet_type ip_packet_type __read_mostly = {
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    .type = cpu_to_be16(ETH_P_IP),
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    .func = ip_rcv,
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>};
+</code></pre></div>
+<p>从上面的定义我们可以看出，接下来，ip_rcv会被调用。</p>
+<h2 id="ip">网络协议栈的IP层</h2>
+<p>从ip_rcv函数开始，我们的处理逻辑就从二层到了三层，IP层。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>int ip_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt, struct net_device *orig_dev)
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>{
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    const struct iphdr *iph;
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    struct net *net;
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    u32 len;
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>......
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    net = dev_net(dev);
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>......
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    iph = ip_hdr(skb);
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    len = ntohs(iph-&gt;tot_len);
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    skb-&gt;transport_header = skb-&gt;network_header + iph-&gt;ihl*4;
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>......
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>    return NF_HOOK(NFPROTO_IPV4, NF_INET_PRE_ROUTING,
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>               net, NULL, skb, dev, NULL,
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>               ip_rcv_finish);
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>......
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>}
+</code></pre></div>
+<p>在ip_rcv中，得到IP头，然后又遇到了我们见过多次的NF_HOOK，这次因为是接收网络包，第一个hook点是NF_INET_PRE_ROUTING，也就是iptables的PREROUTING链。如果里面有规则，则执行规则，然后调用ip_rcv_finish。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>static int ip_rcv_finish(struct net *net, struct sock *sk, struct sk_buff *skb)
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>{
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    const struct iphdr *iph = ip_hdr(skb);
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    struct net_device *dev = skb-&gt;dev;
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    struct rtable *rt;
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    int err;
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>......
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    rt = skb_rtable(skb);
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>.....
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    return dst_input(skb);
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>}
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>static inline int dst_input(struct sk_buff *skb)
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>{
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>    return skb_dst(skb)-&gt;input(skb);
+</code></pre></div>
+<p>ip_rcv_finish得到网络包对应的路由表，然后调用dst_input，在dst_input中，调用的是struct rtable的成员的dst的input函数。在rt_dst_alloc中，我们可以看到，input函数指向的是ip_local_deliver。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>int ip_local_deliver(struct sk_buff *skb)
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>{
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    /*
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>     *  Reassemble IP fragments.
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>     */
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    struct net *net = dev_net(skb-&gt;dev);
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    if (ip_is_fragment(ip_hdr(skb))) {
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>        if (ip_defrag(net, skb, IP_DEFRAG_LOCAL_DELIVER))
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>            return 0;
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>    }
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>    return NF_HOOK(NFPROTO_IPV4, NF_INET_LOCAL_IN,
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>               net, NULL, skb, skb-&gt;dev, NULL,
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>               ip_local_deliver_finish);
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>}
+</code></pre></div>
+<p>在ip_local_deliver函数中，如果IP层进行了分段，则进行重新的组合。接下来就是我们熟悉的NF_HOOK。hook点在NF_INET_LOCAL_IN，对应iptables里面的INPUT链。在经过iptables规则处理完毕后，我们调用ip_local_deliver_finish。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>static int ip_local_deliver_finish(struct net *net, struct sock *sk, struct sk_buff *skb)
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>{
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    __skb_pull(skb, skb_network_header_len(skb));
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    int protocol = ip_hdr(skb)-&gt;protocol;
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    const struct net_protocol *ipprot;
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    ipprot = rcu_dereference(inet_protos[protocol]);
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    if (ipprot) {
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>        int ret;
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>        ret = ipprot-&gt;handler(skb);
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>......
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    }
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>......
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>}
+</code></pre></div>
+<p>在IP头中，有一个字段protocol用于指定里面一层的协议，在这里应该是TCP协议。于是，从inet_protos数组中，找出TCP协议对应的处理函数。这个数组的定义如下，里面的内容是struct net_protocol。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>struct net_protocol __rcu *inet_protos[MAX_INET_PROTOS] __read_mostly;
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>int inet_add_protocol(const struct net_protocol *prot, unsigned char protocol)
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>{
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>......
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    return !cmpxchg((const struct net_protocol **)&amp;inet_protos[protocol],
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>            NULL, prot) ? 0 : -1;
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>}
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>static int __init inet_init(void)
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>{
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>......
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>    if (inet_add_protocol(&amp;udp_protocol, IPPROTO_UDP) &lt; 0)
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>        pr_crit(&quot;%s: Cannot add UDP protocol\n&quot;, __func__);
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>    if (inet_add_protocol(&amp;tcp_protocol, IPPROTO_TCP) &lt; 0)
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>        pr_crit(&quot;%s: Cannot add TCP protocol\n&quot;, __func__);
+<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>......
+<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>}
+<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>
+<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a>static struct net_protocol tcp_protocol = {
+<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a>    .early_demux    =   tcp_v4_early_demux,
+<a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a>    .early_demux_handler =  tcp_v4_early_demux,
+<a id="__codelineno-14-23" name="__codelineno-14-23" href="#__codelineno-14-23"></a>    .handler    =   tcp_v4_rcv,
+<a id="__codelineno-14-24" name="__codelineno-14-24" href="#__codelineno-14-24"></a>    .err_handler    =   tcp_v4_err,
+<a id="__codelineno-14-25" name="__codelineno-14-25" href="#__codelineno-14-25"></a>    .no_policy  =   1,
+<a id="__codelineno-14-26" name="__codelineno-14-26" href="#__codelineno-14-26"></a>    .netns_ok   =   1,
+<a id="__codelineno-14-27" name="__codelineno-14-27" href="#__codelineno-14-27"></a>    .icmp_strict_tag_validation = 1,
+<a id="__codelineno-14-28" name="__codelineno-14-28" href="#__codelineno-14-28"></a>};
+<a id="__codelineno-14-29" name="__codelineno-14-29" href="#__codelineno-14-29"></a>
+<a id="__codelineno-14-30" name="__codelineno-14-30" href="#__codelineno-14-30"></a>static struct net_protocol udp_protocol = {
+<a id="__codelineno-14-31" name="__codelineno-14-31" href="#__codelineno-14-31"></a>    .early_demux =  udp_v4_early_demux,
+<a id="__codelineno-14-32" name="__codelineno-14-32" href="#__codelineno-14-32"></a>    .early_demux_handler =  udp_v4_early_demux,
+<a id="__codelineno-14-33" name="__codelineno-14-33" href="#__codelineno-14-33"></a>    .handler =  udp_rcv,
+<a id="__codelineno-14-34" name="__codelineno-14-34" href="#__codelineno-14-34"></a>    .err_handler =  udp_err,
+<a id="__codelineno-14-35" name="__codelineno-14-35" href="#__codelineno-14-35"></a>    .no_policy =    1,
+<a id="__codelineno-14-36" name="__codelineno-14-36" href="#__codelineno-14-36"></a>    .netns_ok = 1,
+<a id="__codelineno-14-37" name="__codelineno-14-37" href="#__codelineno-14-37"></a>};
+</code></pre></div>
+<p>在系统初始化的时候，网络协议栈的初始化调用的是inet_init，它会调用inet_add_protocol，将TCP协议对应的处理函数tcp_protocol、UDP协议对应的处理函数udp_protocol，放到inet_protos数组中。</p>
+<p>在上面的网络包的接收过程中，会取出TCP协议对应的处理函数tcp_protocol，然后调用handler函数，也即tcp_v4_rcv函数。</p>
+<h2 id="_3">总结时刻</h2>
+<p>这一节我们讲了接收网络包的上半部分，分以下几个层次。</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/ba/a0/f03d20cd.jpg" width="30px"><span>likun</span> 👍（8） 💬（3）<div>老师 一直有个疑问 网络报数据从进入内存后在cpu的参与下进行了几次内存拷贝呢？
-目前我的理解是两次：DMA将数据从网卡接收到内存的网卡环形缓冲区后，cpu进行第一次的内存数据拷贝，生成sk_buff, 内核处理完成后交给应用层，cpu又会经过一次拷贝，获取到用户空间表示的数据。同理，发送的时候，cpu将用户空间数据拷贝到内核空间分配sk_buff,后续设备驱动层cpu将sk_buff的数据拷贝到网卡的环形发送缓冲区，然后发起dma传输指令，dma将数据从内存发送到网卡。不知道这个过程我理解的对不对，请老师指正。以前总是理解为一次的用户空间和内核空间的数据拷贝，后续cpu发起d ma传输指令，dma直接将sk_buff的数据发送到网卡，现在根据老师讲解，这样似乎有问题。</div>2020-05-17</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLTFKH3aA1FVyz7VvAIlISibAPbmiaAyQ5fAK3ElyEcXuRmsmicAefXxkhbC11icjBgfbXPXkHHt5O0xw/132" width="30px"><span>羊仔爸比</span> 👍（1） 💬（1）<div>老师我想问一下，因为我看网络发送和接收两章iptables规则都是在内核中IP层生效的，像配置和端口相关的iptables规则是在哪里生效的？</div>2019-09-10</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/uG2kliaKAroGkNaXSwFNEmVz8xM6srw7OEHBMSBbPibuXQMctibLyuQEpRVmOth8sdojb3u5VUEjWm2D2lzRGuMDA/132" width="30px"><span>Geek_ae11ce</span> 👍（0） 💬（1）<div>网络包的接收过程，写成结束了。一个小的笔误。</div>2024-06-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5e/96/a03175bc.jpg" width="30px"><span>莫名</span> 👍（0） 💬（1）<div>流程图很赞</div>2019-08-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/b4/94/2796de72.jpg" width="30px"><span>追风筝的人</span> 👍（0） 💬（3）<div>好复杂呀  头疼</div>2019-08-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4d/fd/0aa0e39f.jpg" width="30px"><span>许童童</span> 👍（0） 💬（1）<div>VLAN 的原理有些忘了，希望老师可以在答疑中给我们答疑一下。</div>2019-07-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a2/b5/4dc0c109.jpg" width="30px"><span>Cyril</span> 👍（13） 💬（0）<div>老师能否详细写一点关于 smp 相关的知识，比如多 cpu 如何处理网卡过来的中断，多 cpu 如何进程调度，多 cpu 又是如何解决共享变量访问冲突的问题，对这一部分知识点一直比较模糊</div>2019-07-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/90/8f/9c691a5f.jpg" width="30px"><span>奔跑的码仔</span> 👍（8） 💬（0）<div>https:&#47;&#47;baijiahao.baidu.com&#47;s?id=1628398215665219628&amp;wfr=spider&amp;for=pc该文章很好的讲解了VLAN的基本原理和各种使用方式，推荐给大家。</div>2019-10-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/44/a7/171c1e86.jpg" width="30px"><span>啦啦啦</span> 👍（5） 💬（1）<div>我好像听到了错了重新读，哈哈，这么逗比的吗</div>2019-09-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/39/fa/a7edbc72.jpg" width="30px"><span>安排</span> 👍（2） 💬（0）<div>牛</div>2019-07-15</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/AkO5s3tJhibth9nelCNdU5qD4J3aEn8OpBhOHluicWgEj1SbcGC6e9rccK8DrfJtRibJT5g6iamfIibt5xX7ketDF6w/132" width="30px"><span>Penn</span> 👍（1） 💬（0）<div>和Cyril提到的问题一样，老师能否介绍下smp，网卡多队列的收包后，进入内核的处理流程</div>2019-07-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/5e/5b/c7e9fa5f.jpg" width="30px"><span>ABC</span> 👍（0） 💬（0）<div>原文：“ixgb_check_copybreak 函数将 buffer_info 里面的内容，拷贝到 struct sk_buff *skb，从而可以作为一个网络包进行后续的处理，然后调用 netif_receive_skb。”
+<li>硬件网卡接收到网络包之后，通过DMA技术，将网络包放入Ring Buffer。</li>
+<li>硬件网卡通过中断通知CPU新的网络包的到来。</li>
+<li>网卡驱动程序会注册中断处理函数ixgb_intr。</li>
+<li>中断处理函数处理完需要暂时屏蔽中断的核心流程之后，通过软中断NET_RX_SOFTIRQ触发接下来的处理过程。</li>
+<li>NET_RX_SOFTIRQ软中断处理函数net_rx_action，net_rx_action会调用napi_poll，进而调用ixgb_clean_rx_irq，从Ring Buffer中读取数据到内核struct sk_buff。</li>
+<li>调用netif_receive_skb进入内核网络协议栈，进行一些关于VLAN的二层逻辑处理后，调用ip_rcv进入三层IP层。</li>
+<li>在IP层，会处理iptables规则，然后调用ip_local_deliver，交给更上层TCP层。</li>
+<li>在TCP层调用tcp_v4_rcv。</li>
+</ul>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/a5/37/a51af8ada1135101e252271626669337.png?wh=1543%2A1873" /></p>
+<h2 id="_4">课堂练习</h2>
+<p>我们没有仔细分析对于二层VLAN的处理，请你研究一下VLAN的原理，然后在代码中看一下对于VLAN的处理过程，这是一项重要的网络基础知识。</p>
+<p>欢迎留言和我分享你的疑惑和见解 ，也欢迎可以收藏本节内容，反复研读。你也可以把今天的内容分享给你的朋友，和他一起学习和进步。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/8c/37/8c0a95fa07a8b9a1abfd394479bdd637.jpg?wh=1110%2A659" /></p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>likun</span> 👍（8） 💬（3）<div>老师 一直有个疑问 网络报数据从进入内存后在cpu的参与下进行了几次内存拷贝呢？
+目前我的理解是两次：DMA将数据从网卡接收到内存的网卡环形缓冲区后，cpu进行第一次的内存数据拷贝，生成sk_buff, 内核处理完成后交给应用层，cpu又会经过一次拷贝，获取到用户空间表示的数据。同理，发送的时候，cpu将用户空间数据拷贝到内核空间分配sk_buff,后续设备驱动层cpu将sk_buff的数据拷贝到网卡的环形发送缓冲区，然后发起dma传输指令，dma将数据从内存发送到网卡。不知道这个过程我理解的对不对，请老师指正。以前总是理解为一次的用户空间和内核空间的数据拷贝，后续cpu发起d ma传输指令，dma直接将sk_buff的数据发送到网卡，现在根据老师讲解，这样似乎有问题。</div>2020-05-17</li><br/><li><span>羊仔爸比</span> 👍（1） 💬（1）<div>老师我想问一下，因为我看网络发送和接收两章iptables规则都是在内核中IP层生效的，像配置和端口相关的iptables规则是在哪里生效的？</div>2019-09-10</li><br/><li><span>Geek_ae11ce</span> 👍（0） 💬（1）<div>网络包的接收过程，写成结束了。一个小的笔误。</div>2024-06-18</li><br/><li><span>莫名</span> 👍（0） 💬（1）<div>流程图很赞</div>2019-08-11</li><br/><li><span>追风筝的人</span> 👍（0） 💬（3）<div>好复杂呀  头疼</div>2019-08-05</li><br/><li><span>许童童</span> 👍（0） 💬（1）<div>VLAN 的原理有些忘了，希望老师可以在答疑中给我们答疑一下。</div>2019-07-15</li><br/><li><span>Cyril</span> 👍（13） 💬（0）<div>老师能否详细写一点关于 smp 相关的知识，比如多 cpu 如何处理网卡过来的中断，多 cpu 如何进程调度，多 cpu 又是如何解决共享变量访问冲突的问题，对这一部分知识点一直比较模糊</div>2019-07-15</li><br/><li><span>奔跑的码仔</span> 👍（8） 💬（0）<div>https:&#47;&#47;baijiahao.baidu.com&#47;s?id=1628398215665219628&amp;wfr=spider&amp;for=pc该文章很好的讲解了VLAN的基本原理和各种使用方式，推荐给大家。</div>2019-10-18</li><br/><li><span>啦啦啦</span> 👍（5） 💬（1）<div>我好像听到了错了重新读，哈哈，这么逗比的吗</div>2019-09-27</li><br/><li><span>安排</span> 👍（2） 💬（0）<div>牛</div>2019-07-15</li><br/><li><span>Penn</span> 👍（1） 💬（0）<div>和Cyril提到的问题一样，老师能否介绍下smp，网卡多队列的收包后，进入内核的处理流程</div>2019-07-15</li><br/><li><span>ABC</span> 👍（0） 💬（0）<div>原文：“ixgb_check_copybreak 函数将 buffer_info 里面的内容，拷贝到 struct sk_buff *skb，从而可以作为一个网络包进行后续的处理，然后调用 netif_receive_skb。”
 我看了下3.10.14版本的内核，总觉得这里有些奇怪。从函数看，这里长度大于256的直接返回，无需执行下面的copy啊。按照原文来说，从网卡队列DMA到内存环形队列，然后再copy一份，这等于内存里有两份报文数据了，不合常理吧。
 static void ixgb_check_copybreak(struct net_device *netdev,
                  struct ixgb_buffer *buffer_info,
@@ -6045,9 +6521,7 @@ static void ixgb_check_copybreak(struct net_device *netdev,
     &#47;* save the skb in buffer_info as good *&#47;
     buffer_info-&gt;skb = *skb;
     *skb = new_skb;
-}</div>2021-06-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/79/14/dc3e49d1.jpg" width="30px"><span>Geek_29c23f</span> 👍（0） 💬（0）<div>napi方式接收网络数据包时，关闭中断一直轮询，假如这个时候又有中断进来，不是没法响应了？</div>2021-03-16</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqyicZYyW7ahaXgXUD8ZAS8x0t8jx5rYLhwbUCJiawRepKIZfsLdkxdQ9XQMo99c1UDibmNVfFnAqwPg/132" width="30px"><span>程序水果宝</span> 👍（0） 💬（0）<div>tcp_protocol和udp_protocol这两个结构体中为啥只有收包的函数没有对应的发包函数</div>2020-02-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/90/8f/9c691a5f.jpg" width="30px"><span>奔跑的码仔</span> 👍（0） 💬（0）<div>ixgb_probe函数的调用时机是，设备也就是网卡和驱动程序匹配之后，才会调用的吧。</div>2019-10-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/73/b3/d9310de9.jpg" width="30px"><span>重</span> 👍（0） 💬（0）<div>厉害</div>2019-10-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d5/3f/80bf4841.jpg" width="30px"><span>文竹</span> 👍（0） 💬（3）<div>网络协议栈是运行在用户进程还是内核进程？</div>2019-10-05</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLTFKH3aA1FVyz7VvAIlISibAPbmiaAyQ5fAK3ElyEcXuRmsmicAefXxkhbC11icjBgfbXPXkHHt5O0xw/132" width="30px"><span>羊仔爸比</span> 👍（0） 💬（0）<div>老师我想问一下，因为我看网络发送和接收两章iptables规则都是在内核中IP层生效的，像配置和端口相关的iptables规则是在哪里生效的？
-作者回复: 也是在这里的
-这里也就是说内核代码这块也会查看传输层的头的port对吧</div>2019-09-10</li><br/>
+}</div>2021-06-30</li><br/><li><span>Geek_29c23f</span> 👍（0） 💬（0）<div>napi方式接收网络数据包时，关闭中断一直轮询，假如这个时候又有中断进来，不是没法响应了？</div>2021-03-16</li><br/><li><span>程序水果宝</span> 👍（0） 💬（0）<div>tcp_protocol和udp_protocol这两个结构体中为啥只有收包的函数没有对应的发包函数</div>2020-02-02</li><br/><li><span>奔跑的码仔</span> 👍（0） 💬（0）<div>ixgb_probe函数的调用时机是，设备也就是网卡和驱动程序匹配之后，才会调用的吧。</div>2019-10-18</li><br/>
 </ul>
 
 

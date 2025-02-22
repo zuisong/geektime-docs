@@ -2652,6 +2652,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#java" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何使用Java中的线程池
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用线程池要注意些什么
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13219,6 +13255,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#java" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何使用Java中的线程池
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用线程池要注意些什么
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13258,10 +13330,125 @@
 </code></pre></div>
 <h2 id="-">线程池是一种生产者-消费者模式</h2>
 <p>为什么线程池没有采用一般意义上池化资源的设计方法呢？如果线程池采用一般意义上池化资源的设计方法，应该是下面示例代码这样。你可以来思考一下，假设我们获取到一个空闲线程T1，然后该如何使用T1呢？你期望的可能是这样：通过调用T1的execute()方法，传入一个Runnable对象来执行具体业务逻辑，就像通过构造函数Thread(Runnable target)创建线程一样。可惜的是，你翻遍Thread对象的所有方法，都不存在类似execute(Runnable target)这样的公共方法。</p>
-<div><strong>精选留言（30）</strong></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>//采用一般意义上池化资源的设计方法
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>class ThreadPool{
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  // 获取空闲线程
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  Thread acquire() {
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  }
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  // 释放线程
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  void release(Thread t){
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>  }
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>} 
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>//期望的使用
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>ThreadPool pool；
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>Thread T1=pool.acquire();
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>//传入Runnable对象
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>T1.execute(()-&gt;{
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>  //具体业务逻辑
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>  ......
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>});
+</code></pre></div>
+<p>所以，线程池的设计，没有办法直接采用一般意义上池化资源的设计方法。那线程池该如何设计呢？目前业界线程池的设计，普遍采用的都是<strong>生产者-消费者模式</strong>。线程池的使用方是生产者，线程池本身是消费者。在下面的示例代码中，我们创建了一个非常简单的线程池MyThreadPool，你可以通过它来理解线程池的工作原理。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>//简化的线程池，仅用来说明工作原理
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>class MyThreadPool{
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  //利用阻塞队列实现生产者-消费者模式
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  BlockingQueue&lt;Runnable&gt; workQueue;
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  //保存内部工作线程
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  List&lt;WorkerThread&gt; threads 
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    = new ArrayList&lt;&gt;();
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  // 构造方法
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>  MyThreadPool(int poolSize, 
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    BlockingQueue&lt;Runnable&gt; workQueue){
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    this.workQueue = workQueue;
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    // 创建工作线程
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    for(int idx=0; idx&lt;poolSize; idx++){
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>      WorkerThread work = new WorkerThread();
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>      work.start();
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>      threads.add(work);
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    }
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>  }
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>  // 提交任务
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>  void execute(Runnable command){
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    workQueue.put(command);
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>  }
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>  // 工作线程负责消费任务，并执行任务
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>  class WorkerThread extends Thread{
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    public void run() {
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>      //循环取任务并执行
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>      while(true){ ①
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>        Runnable task = workQueue.take();
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>        task.run();
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>      } 
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>    }
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>  }  
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>}
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>/** 下面是使用示例 **/
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>// 创建有界阻塞队列
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>BlockingQueue&lt;Runnable&gt; workQueue = 
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>  new LinkedBlockingQueue&lt;&gt;(2);
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>// 创建线程池  
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a>MyThreadPool pool = new MyThreadPool(
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a>  10, workQueue);
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a>// 提交任务  
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a>pool.execute(()-&gt;{
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a>    System.out.println(&quot;hello&quot;);
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a>});
+</code></pre></div>
+<p>在MyThreadPool的内部，我们维护了一个阻塞队列workQueue和一组工作线程，工作线程的个数由构造函数中的poolSize来指定。用户通过调用execute()方法来提交Runnable任务，execute()方法的内部实现仅仅是将任务加入到workQueue中。MyThreadPool内部维护的工作线程会消费workQueue中的任务并执行任务，相关的代码就是代码①处的while循环。线程池主要的工作原理就这些，是不是还挺简单的？</p>
+<h2 id="java">如何使用Java中的线程池</h2>
+<p>Java并发包里提供的线程池，远比我们上面的示例代码强大得多，当然也复杂得多。Java提供的线程池相关的工具类中，最核心的是<strong>ThreadPoolExecutor</strong>，通过名字你也能看出来，它强调的是Executor，而不是一般意义上的池化资源。</p>
+<p>ThreadPoolExecutor的构造函数非常复杂，如下面代码所示，这个最完备的构造函数有7个参数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ThreadPoolExecutor(
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  int corePoolSize,
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  int maximumPoolSize,
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  long keepAliveTime,
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  TimeUnit unit,
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>  BlockingQueue&lt;Runnable&gt; workQueue,
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>  ThreadFactory threadFactory,
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>  RejectedExecutionHandler handler) 
+</code></pre></div>
+<p>下面我们一一介绍这些参数的意义，你可以<strong>把线程池类比为一个项目组，而线程就是项目组的成员</strong>。</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/b7/c2/196932c7.jpg" width="30px"><span>南琛一梦</span> 👍（132） 💬（6）<div>回答下Lrwin和张天屹同学的问题：当线程池中无可用线程，且阻塞队列已满，那么此时就会触发拒绝策略。对于采用何种策略，具体要看执行的任务重要程度。如果是一些不重要任务，可以选择直接丢弃。但是如果为重要任务，可以采用降级处理，例如将任务信息插入数据库或者消息队列，启用一个专门用作补偿的线程池去进行补偿。所谓降级就是在服务无法正常提供功能的情况下，采取的补救措施。具体采用何种降级手段，这也是要看具体场景。技术的世界里没有一尘不变的方案。另外，看到很多同学都提到让老师多讲讲源码，其实我觉得真没必要，老师目前的思路起到提纲契领的作用，让我们有大的思路，有全局观，具体细节我觉得大家私下去研究更合适。小弟不才，可以加微信（SevenBlue）一起讨论。</div>2019-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/89/b0/988921fe.jpg" width="30px"><span>随风🐿</span> 👍（95） 💬（8）<div>老师，有个问题一直不是很明确，①一个项目中如果多个业务需要用到线程池，是定义一个公共的线程池比较好，还是按照业务定义各自不同的线程池？②如果定义一个公共的线程池那里面的线程数的理论值应该是按照老师前面章节讲的去计算吗？还是按照如果有多少个业务就分别去计算他们各自创建线程池线程数的加和?③如果不同的业务各自定义不同的线程池，那线程数的理论值也是按照前面的去计算吗？</div>2019-04-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/4d/87/57236a2d.jpg" width="30px"><span>木卫六</span> 👍（44） 💬（2）<div>guava的ThreadFactoryBuilder.setNameFormat可以指定一个前缀，使用%d表示序号；
-或者自己实现ThreadFactory并制定给线程池，在实现的ThreadFactory中设定计数和调用Thread.setName</div>2019-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/8b/ec/dc03f5ad.jpg" width="30px"><span>张天屹</span> 👍（34） 💬（5）<div>老师你好，使用有界队列虽然避免了OOM  但是如果请求量太大，我又不想丢弃和异常的情况下一般怎么实践呢。我对降级这一块没经验，我能直观想到的就是存放在缓存，如果缓存内存也不够了就只能持久化了</div>2019-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/25/7f/473d5a77.jpg" width="30px"><span>曾轼麟</span> 👍（27） 💬（2）<div>public class ReNameThreadFactory implements ThreadFactory {
+<li><strong>corePoolSize</strong>：表示线程池保有的最小线程数。有些项目很闲，但是也不能把人都撤了，至少要留corePoolSize个人坚守阵地。</li>
+<li><strong>maximumPoolSize</strong>：表示线程池创建的最大线程数。当项目很忙时，就需要加人，但是也不能无限制地加，最多就加到maximumPoolSize个人。当项目闲下来时，就要撤人了，最多能撤到corePoolSize个人。</li>
+<li><strong>keepAliveTime &amp; unit</strong>：上面提到项目根据忙闲来增减人员，那在编程世界里，如何定义忙和闲呢？很简单，一个线程如果在一段时间内，都没有执行任务，说明很闲，keepAliveTime 和 unit 就是用来定义这个“一段时间”的参数。也就是说，如果一个线程空闲了<code>keepAliveTime &amp; unit</code>这么久，而且线程池的线程数大于 corePoolSize ，那么这个空闲的线程就要被回收了。</li>
+<li><strong>workQueue</strong>：工作队列，和上面示例代码的工作队列同义。</li>
+<li><strong>threadFactory</strong>：通过这个参数你可以自定义如何创建线程，例如你可以给线程指定一个有意义的名字。</li>
+<li>
+<p><strong>handler</strong>：通过这个参数你可以自定义任务的拒绝策略。如果线程池中所有的线程都在忙碌，并且工作队列也满了（前提是工作队列是有界队列），那么此时提交任务，线程池就会拒绝接收。至于拒绝的策略，你可以通过handler这个参数来指定。ThreadPoolExecutor已经提供了以下4种策略。</p>
+</li>
+<li>
+<p>CallerRunsPolicy：提交任务的线程自己去执行该任务。</p>
+</li>
+<li>AbortPolicy：默认的拒绝策略，会throws RejectedExecutionException。</li>
+<li>DiscardPolicy：直接丢弃任务，没有任何异常抛出。</li>
+<li>DiscardOldestPolicy：丢弃最老的任务，其实就是把最早进入工作队列的任务丢弃，然后把新任务加入到工作队列。</li>
+</ul>
+<p>Java在1.6版本还增加了 allowCoreThreadTimeOut(boolean value) 方法，它可以让所有线程都支持超时，这意味着如果项目很闲，就会将项目组的成员都撤走。</p>
+<h2 id="_1">使用线程池要注意些什么</h2>
+<p>考虑到ThreadPoolExecutor的构造函数实在是有些复杂，所以Java并发包里提供了一个线程池的静态工厂类Executors，利用Executors你可以快速创建线程池。不过目前大厂的编码规范中基本上都不建议使用Executors了，所以这里我就不再花篇幅介绍了。</p>
+<p>不建议使用Executors的最重要的原因是：Executors提供的很多方法默认使用的都是无界的LinkedBlockingQueue，高负载情境下，无界队列很容易导致OOM，而OOM会导致所有请求都无法处理，这是致命问题。所以<strong>强烈建议使用有界队列</strong>。</p>
+<p>使用有界队列，当任务过多时，线程池会触发执行拒绝策略，线程池默认的拒绝策略会throw RejectedExecutionException 这是个运行时异常，对于运行时异常编译器并不强制catch它，所以开发人员很容易忽略。因此<strong>默认拒绝策略要慎重使用</strong>。如果线程池处理的任务非常重要，建议自定义自己的拒绝策略；并且在实际工作中，自定义的拒绝策略往往和降级策略配合使用。</p>
+<p>使用线程池，还要注意异常处理的问题，例如通过ThreadPoolExecutor对象的execute()方法提交任务时，如果任务在执行的过程中出现运行时异常，会导致执行任务的线程终止；不过，最致命的是任务虽然异常了，但是你却获取不到任何通知，这会让你误以为任务都执行得很正常。虽然线程池提供了很多用于异常处理的方法，但是最稳妥和简单的方案还是捕获所有异常并按需处理，你可以参考下面的示例代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>try {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  //业务逻辑
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>} catch (RuntimeException x) {
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  //按需处理
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>} catch (Throwable x) {
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>  //按需处理
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>} 
+</code></pre></div>
+<h2 id="_2">总结</h2>
+<p>线程池在Java并发编程领域非常重要，很多大厂的编码规范都要求必须通过线程池来管理线程。线程池和普通的池化资源有很大不同，线程池实际上是生产者-消费者模式的一种实现，理解生产者-消费者模式是理解线程池的关键所在。</p>
+<p>创建线程池设置合适的线程数非常重要，这部分内容，你可以参考<a href="https://time.geekbang.org/column/article/86666">《10 | Java线程（中）：创建多少线程才是合适的？》</a>的内容。另外<a href="time://mall?url=https%3A%2F%2Fh5.youzan.com%2Fv2%2Fgoods%2F2758xqdzr6uuw">《Java并发编程实战》</a>的第7章《取消与关闭》的7.3节“处理非正常的线程终止” 详细介绍了异常处理的方案，第8章《线程池的使用》对线程池的使用也有更深入的介绍，如果你感兴趣或有需要的话，建议你仔细阅读。</p>
+<h2 id="_3">课后思考</h2>
+<p>使用线程池，默认情况下创建的线程名字都类似<code>pool-1-thread-2</code>这样，没有业务含义。而很多情况下为了便于诊断问题，都需要给线程赋予一个有意义的名字，那你知道有哪些办法可以给线程池里的线程指定名字吗？</p>
+<p>欢迎在留言区与我分享你的想法，也欢迎你在留言区记录你的思考过程。感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>南琛一梦</span> 👍（132） 💬（6）<div>回答下Lrwin和张天屹同学的问题：当线程池中无可用线程，且阻塞队列已满，那么此时就会触发拒绝策略。对于采用何种策略，具体要看执行的任务重要程度。如果是一些不重要任务，可以选择直接丢弃。但是如果为重要任务，可以采用降级处理，例如将任务信息插入数据库或者消息队列，启用一个专门用作补偿的线程池去进行补偿。所谓降级就是在服务无法正常提供功能的情况下，采取的补救措施。具体采用何种降级手段，这也是要看具体场景。技术的世界里没有一尘不变的方案。另外，看到很多同学都提到让老师多讲讲源码，其实我觉得真没必要，老师目前的思路起到提纲契领的作用，让我们有大的思路，有全局观，具体细节我觉得大家私下去研究更合适。小弟不才，可以加微信（SevenBlue）一起讨论。</div>2019-04-22</li><br/><li><span>随风🐿</span> 👍（95） 💬（8）<div>老师，有个问题一直不是很明确，①一个项目中如果多个业务需要用到线程池，是定义一个公共的线程池比较好，还是按照业务定义各自不同的线程池？②如果定义一个公共的线程池那里面的线程数的理论值应该是按照老师前面章节讲的去计算吗？还是按照如果有多少个业务就分别去计算他们各自创建线程池线程数的加和?③如果不同的业务各自定义不同的线程池，那线程数的理论值也是按照前面的去计算吗？</div>2019-04-29</li><br/><li><span>木卫六</span> 👍（44） 💬（2）<div>guava的ThreadFactoryBuilder.setNameFormat可以指定一个前缀，使用%d表示序号；
+或者自己实现ThreadFactory并制定给线程池，在实现的ThreadFactory中设定计数和调用Thread.setName</div>2019-04-18</li><br/><li><span>张天屹</span> 👍（34） 💬（5）<div>老师你好，使用有界队列虽然避免了OOM  但是如果请求量太大，我又不想丢弃和异常的情况下一般怎么实践呢。我对降级这一块没经验，我能直观想到的就是存放在缓存，如果缓存内存也不够了就只能持久化了</div>2019-04-18</li><br/><li><span>曾轼麟</span> 👍（27） 💬（2）<div>public class ReNameThreadFactory implements ThreadFactory {
     &#47;**
      * 线程池编号（static修饰）(容器里面所有线程池的数量)
      *&#47;
@@ -13311,14 +13498,14 @@
         }
         return t;
     }
-}</div>2019-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/ff/80/382e46b6.jpg" width="30px"><span>Red Cape</span> 👍（25） 💬（6）<div>请问老师，有界队列的长度怎么确定呢</div>2019-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d9/93/098e5ef5.jpg" width="30px"><span>海鸿</span> 👍（21） 💬（1）<div>1.利用guava的ThreadFactoryBuilder
-2.自己实现ThreadFactory</div>2019-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/84/47/1b8b376e.jpg" width="30px"><span>Uncle Drew</span> 👍（20） 💬（4）<div>老师请教一下，如果线上系统宕机了，线程池中的阻塞队列怎么处理才能保证任务不丢失</div>2019-12-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（15） 💬（1）<div>老师，有一个问题想问一下:
+}</div>2019-04-21</li><br/><li><span>Red Cape</span> 👍（25） 💬（6）<div>请问老师，有界队列的长度怎么确定呢</div>2019-04-22</li><br/><li><span>海鸿</span> 👍（21） 💬（1）<div>1.利用guava的ThreadFactoryBuilder
+2.自己实现ThreadFactory</div>2019-04-18</li><br/><li><span>Uncle Drew</span> 👍（20） 💬（4）<div>老师请教一下，如果线上系统宕机了，线程池中的阻塞队列怎么处理才能保证任务不丢失</div>2019-12-06</li><br/><li><span>yang</span> 👍（15） 💬（1）<div>老师，有一个问题想问一下:
 
 如果corePoolSize为10，maxinumPoolSize为20，而此时线程池中有15个线程在运行，过了一段时间后，其中有3个线程处于等待状态的时间超过keepAliveTime指定的时间，则结束这3个线程，此时线程池中则还有12个线程正在运行；若有六个线程处于等待状态的时间超过keepAliveTime指定的时间，则只会结束5个线程，此时线程池中则还有10个线程，即核心线程数。
 
-是这样吗？</div>2019-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/3a/f8/c1a939e7.jpg" width="30px"><span>君哥聊技术</span> 👍（14） 💬（1）<div>我们项目中用了guava的new ThreadFactoryBuilder().setNameFormat()
+是这样吗？</div>2019-04-22</li><br/><li><span>君哥聊技术</span> 👍（14） 💬（1）<div>我们项目中用了guava的new ThreadFactoryBuilder().setNameFormat()
 
-老师，请教个问题，在工程中，线程池的定义一般是在全局还是局部呢？如果全局的话，是不用shutdown吗？不关闭线程池有没有问题呢？</div>2019-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/37/8e/cf0b4575.jpg" width="30px"><span>郑晨Cc</span> 👍（9） 💬（2）<div>可参照SDK中的 DefaultThreadFactory 自定义DYIThreadFactory
+老师，请教个问题，在工程中，线程池的定义一般是在全局还是局部呢？如果全局的话，是不用shutdown吗？不关闭线程池有没有问题呢？</div>2019-04-18</li><br/><li><span>郑晨Cc</span> 👍（9） 💬（2）<div>可参照SDK中的 DefaultThreadFactory 自定义DYIThreadFactory
 static class DIYThreadFactory implements ThreadFactory {
         private static final AtomicInteger poolNumber = new AtomicInteger(1);
         private final ThreadGroup group;
@@ -13345,19 +13532,7 @@ static class DIYThreadFactory implements ThreadFactory {
         }
     }
 
-    ExecutorService executor = Executors.newFixedThreadPool(4,new DIYThreadFactory(&quot;xxx&quot;));</div>2019-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/33/0b/fd18c8ab.jpg" width="30px"><span>大胖子呀、</span> 👍（7） 💬（2）<div>请教一下大家，线程池执行数据更新任务，还能简单的使用事务注解来回滚事务吗？</div>2020-08-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/4e/3a/86196508.jpg" width="30px"><span>linqw</span> 👍（7） 💬（1）<div>最近打算分析下Executor系列源码，先分析了下FutureTask源码，https:&#47;&#47;juejin.im&#47;post&#47;5d08be8ce51d455d6c0ad925，老师有空帮忙看下哦</div>2019-06-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ed/4d/1d1a1a00.jpg" width="30px"><span>magict4</span> 👍（4） 💬（1）<div>老师您好，请问有什么推荐的替代 Executors 的方案吗？</div>2019-04-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/9c/53/ade0afb0.jpg" width="30px"><span>ub8</span> 👍（3） 💬（2）<div>老师您好，在我们使用线程池时候，如果队列中还有任务未执行，此时重启了服务，那队列中的任务是否会丢。像这样的场景线程池配置的策略应该是什么样的呢</div>2021-08-30</li><br/><li><img src="" width="30px"><span>崛起的小强</span> 👍（3） 💬（1）<div>老师有个问题请教下您。我们一个项目包含若干个业务模块，其中好几个模块都会用到线程池，那使用的时候只创建一个线程池好还是根据项目模块创建多个不同的线程池呢？各个模块的任务也都是各不相同的，有cpu密集型的，有io密集型的，还有rpc调用耗时较长的任务。</div>2019-06-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/15/01/927d96e5.jpg" width="30px"><span>随风而逝</span> 👍（3） 💬（1）<div>老师，这里的线程池，和Disruptor是一样的吗？</div>2019-05-05</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJ4vhMGnAfWK7EaNx6lgDAfqLxafxKQoXOgNVfhNxpNMkCL5WQdRlWHicjIqfvY2tvs3gZpicp4lTeQ/132" width="30px"><span>程文</span> 👍（1） 💬（2）<div>老师，线程池创建之后是否有必要关闭</div>2019-08-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0c/c2/bad34a50.jpg" width="30px"><span>张洋</span> 👍（1） 💬（2）<div>老师，我如果要对线程池进行异常处理比如异步任务异常，发送email这种。需要怎么对线程池进行异常的处理呢，线程池提交任务的时候现在代码中都是 submit()进行提交的。
-</div>2019-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/ff/0a/12faa44e.jpg" width="30px"><span>晓杰</span> 👍（1） 💬（1）<div>请问老师linkedBlockQueue默认是无界的，那如果构造函数带上初始容量是不是变成有界的</div>2019-04-19</li><br/><li><img src="" width="30px"><span>Geek_ebabb4</span> 👍（0） 💬（1）<div>我在某个黄色大马褂的IT大厂，公司基础平台部封装了一个线程池管理中心，可以实现在线实时配置线程池的参数，代码只有一行api就可以获取线程池，方便是方便，但也要努力学习原理啊</div>2022-08-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/4c/dd/c6035349.jpg" width="30px"><span>Bumblebee</span> 👍（0） 💬（1）<div>老师我想问个问题，同一个服务下面，不同业务进行线程池隔离这样做，能提升性能吗？我认为不能（因为机器的cpu数量是固定的，假设有一台4核的机器，那么最多同时运行4个线程）这样理解的话不论线程池怎么隔离同时最多也就4个线程同时运行。</div>2022-03-05</li><br/><li><img src="" width="30px"><span>Akane</span> 👍（0） 💬（1）<div>老师，请教一下，简化线程池代码中
-&#47;&#47;保存内部工作线程 
-List threads = new ArrayList&lt;&gt;();
-保存内部工作线程有什么作用呀？
-后续也只是在构造方法中初始化的时候将线程放到list中，然后就没有对该list做操作了，不太理解</div>2022-02-17</li><br/><li><img src="" width="30px"><span>poordickey</span> 👍（0） 💬（1）<div>老师真的太适合讲课了   思路清奇    有种相见恨晚的感觉</div>2020-12-28</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83erPMtAfnQdpx1yOZQ2ic7icqUs3tvibEjUXQMUXKiaakyuIho6k6vmdl46nrdWjXIjPIRg9Pmco00tR5w/132" width="30px"><span>小氘</span> 👍（0） 💬（1）<div>我在项目中遇到了线程任务抛出空指针异常但没有任何提示我以为任务执行正常但实际却终止了的情况，看完这篇下周上班按规范都catch上运行时异常。</div>2019-12-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5c/8f/551b5624.jpg" width="30px"><span>小可</span> 👍（0） 💬（4）<div>老师好
-Springboot中
-使用ThreadPoolExecutor创建线程池
- corePoolSize＝4
- maximumPoolSize＝8
-发布到4核服务器上
-Jmeter压测，看日志线程最多是4个
-不管修改corePoolSize，maximumPoolSize为多少，线程数最多等于corePoolSize，这会是什么原因呢？</div>2019-08-22</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJwQvLGE4dMsF4JU0svW3DtGbodpjskbY65FdwF13JdtBYZfgL2IXHlHrdejWzHdjT0RibEIfib4QYA/132" width="30px"><span>知行合一</span> 👍（0） 💬（1）<div>请问老师，自定义线程池，最大线程数设置多少合适呢</div>2019-08-07</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/6LaITPQ4Lk5fZn8ib1tfsPW8vI9icTuSwAddiajVfibPDiaDvMU2br6ZT7K0LWCKibSQuicT7sIEVmY4K7ibXY0T7UQEiag/132" width="30px"><span>尔东橙</span> 👍（0） 💬（1）<div>老师，如果队列中任务很少，请问while（true）一句是不是有问题了</div>2019-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/dc/65/3da02c30.jpg" width="30px"><span>once</span> 👍（0） 💬（1）<div>老师你好,这里感觉还是没有说清楚为什么线程池不采用一般的池化资源的方法? </div>2019-06-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/6d/df/dd536ff5.jpg" width="30px"><span>魏斌斌</span> 👍（0） 💬（1）<div>老师，线程池里面用到了阻塞队列，当队列满的时候提交任务，不是会挂起生产者线程吗？</div>2019-06-13</li><br/>
+    ExecutorService executor = Executors.newFixedThreadPool(4,new DIYThreadFactory(&quot;xxx&quot;));</div>2019-04-18</li><br/><li><span>大胖子呀、</span> 👍（7） 💬（2）<div>请教一下大家，线程池执行数据更新任务，还能简单的使用事务注解来回滚事务吗？</div>2020-08-05</li><br/><li><span>linqw</span> 👍（7） 💬（1）<div>最近打算分析下Executor系列源码，先分析了下FutureTask源码，https:&#47;&#47;juejin.im&#47;post&#47;5d08be8ce51d455d6c0ad925，老师有空帮忙看下哦</div>2019-06-19</li><br/><li><span>magict4</span> 👍（4） 💬（1）<div>老师您好，请问有什么推荐的替代 Executors 的方案吗？</div>2019-04-18</li><br/><li><span>ub8</span> 👍（3） 💬（2）<div>老师您好，在我们使用线程池时候，如果队列中还有任务未执行，此时重启了服务，那队列中的任务是否会丢。像这样的场景线程池配置的策略应该是什么样的呢</div>2021-08-30</li><br/>
 </ul>
 
 

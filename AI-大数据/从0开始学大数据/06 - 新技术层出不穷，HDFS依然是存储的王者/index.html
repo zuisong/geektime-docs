@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -1671,6 +1676,8 @@
       
         
       
+        
+      
     
     
       
@@ -2824,6 +2831,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    06   新技术层出不穷，HDFS依然是存储的王者
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -2833,6 +2851,41 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -6251,6 +6304,32 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -6279,83 +6358,62 @@
 <p>为什么HDFS的地位如此稳固呢？在整个大数据体系里面，最宝贵、最难以代替的资产就是数据，大数据所有的一切都要围绕数据展开。HDFS作为最早的大数据存储系统，存储着宝贵的数据资产，各种新的算法、框架要想得到人们的广泛使用，必须支持HDFS才能获取已经存储在里面的数据。所以大数据技术越发展，新技术越多，HDFS得到的支持越多，我们越离不开HDFS。<strong>HDFS也许不是最好的大数据存储技术，但依然最重要的大数据存储技术</strong>。</p>
 <p>那我们就从HDFS的原理说起，今天我们来聊聊HDFS是如何实现大数据高速、可靠的存储和访问的。</p>
 <p>Hadoop分布式文件系统HDFS的设计目标是管理数以千计的服务器、数以万计的磁盘，将这么大规模的服务器计算资源当作一个单一的存储系统进行管理，对应用程序提供数以PB计的存储容量，让应用程序像使用普通文件系统一样存储大规模的文件数据。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>如何设计这样一个分布式文件系统？其实思路很简单。</p>
+<p>我们先复习一下专栏上一期，我讲了RAID磁盘阵列存储，RAID将数据分片后在多块磁盘上并发进行读写访问，从而提高了存储容量、加快了访问速度，并通过数据的冗余校验提高了数据的可靠性，即使某块磁盘损坏也不会丢失数据。将RAID的设计理念扩大到整个分布式服务器集群，就产生了分布式文件系统，Hadoop分布式文件系统的核心原理就是如此。</p>
+<p>和RAID在多个磁盘上进行文件存储及并行读写的思路一样，HDFS是在一个大规模分布式服务器集群上，对数据分片后进行并行读写及冗余存储。因为HDFS可以部署在一个比较大的服务器集群上，集群中所有服务器的磁盘都可供HDFS使用，所以整个HDFS的存储空间可以达到PB级容量。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/65/d7/65efd126cbcf3930a706f64c6e6457d7.jpg?wh=1920%2A1142" /></p>
+<p>上图是HDFS的架构图，从图中你可以看到HDFS的关键组件有两个，一个是DataNode，一个是NameNode。</p>
+<p><strong>DataNode负责文件数据的存储和读写操作，HDFS将文件数据分割成若干数据块（Block），每个DataNode存储一部分数据块，这样文件就分布存储在整个HDFS服务器集群中</strong>。应用程序客户端（Client）可以并行对这些数据块进行访问，从而使得HDFS可以在服务器集群规模上实现数据并行访问，极大地提高了访问速度。</p>
+<p>在实践中，HDFS集群的DataNode服务器会有很多台，一般在几百台到几千台这样的规模，每台服务器配有数块磁盘，整个集群的存储容量大概在几PB到数百PB。</p>
+<p><strong>NameNode负责整个分布式文件系统的元数据（MetaData）管理，也就是文件路径名、数据块的ID以及存储位置等信息，相当于操作系统中文件分配表（FAT）的角色</strong>。HDFS为了保证数据的高可用，会将一个数据块复制为多份（缺省情况为3份），并将多份相同的数据块存储在不同的服务器上，甚至不同的机架上。这样当有磁盘损坏，或者某个DataNode服务器宕机，甚至某个交换机宕机，导致其存储的数据块不能访问的时候，客户端会查找其备份的数据块进行访问。</p>
+<p>下面这张图是数据块多份复制存储的示意，图中对于文件/users/sameerp/data/part-0，其复制备份数设置为2，存储的BlockID分别为1、3。Block1的两个备份存储在DataNode0和DataNode2两个服务器上，Block3的两个备份存储DataNode4和DataNode6两个服务器上，上述任何一台服务器宕机后，每个数据块都至少还有一个备份存在，不会影响对文件/users/sameerp/data/part-0的访问。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/6f/ac/6f2faa48524251ad77e55e3565095bac.jpg?wh=720%2A404" /></p>
+<p>和RAID一样，数据分成若干数据块后存储到不同服务器上，可以实现数据大容量存储，并且不同分片的数据可以并行进行读/写操作，进而实现数据的高速访问。你可以看到，HDFS的大容量存储和高速访问相对比较容易实现，但是HDFS是如何保证存储的高可用性呢？</p>
+<p>我们尝试从不同层面来讨论一下HDFS的高可用设计。</p>
+<p>1.数据存储故障容错</p>
+<p>磁盘介质在存储过程中受环境或者老化影响，其存储的数据可能会出现错乱。HDFS的应对措施是，对于存储在DataNode上的数据块，计算并存储校验和（CheckSum）。在读取数据的时候，重新计算读取出来的数据的校验和，如果校验不正确就抛出异常，应用程序捕获异常后就到其他DataNode上读取备份数据。</p>
+<p>2.磁盘故障容错</p>
+<p>如果DataNode监测到本机的某块磁盘损坏，就将该块磁盘上存储的所有BlockID报告给NameNode，NameNode检查这些数据块还在哪些DataNode上有备份，通知相应的DataNode服务器将对应的数据块复制到其他服务器上，以保证数据块的备份数满足要求。</p>
+<p>3.DataNode故障容错</p>
+<p>DataNode会通过心跳和NameNode保持通信，如果DataNode超时未发送心跳，NameNode就会认为这个DataNode已经宕机失效，立即查找这个DataNode上存储的数据块有哪些，以及这些数据块还存储在哪些服务器上，随后通知这些服务器再复制一份数据块到其他服务器上，保证HDFS存储的数据块备份数符合用户设置的数目，即使再出现服务器宕机，也不会丢失数据。</p>
+<p>4.NameNode故障容错</p>
+<p>NameNode是整个HDFS的核心，记录着HDFS文件分配表信息，所有的文件路径和数据块存储信息都保存在NameNode，如果NameNode故障，整个HDFS系统集群都无法使用；如果NameNode上记录的数据丢失，整个集群所有DataNode存储的数据也就没用了。</p>
+<p>所以，NameNode高可用容错能力非常重要。NameNode采用主从热备的方式提供高可用服务，请看下图。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/7c/89/7cb2668644c32364beab0b69e60b3689.png?wh=722%2A470" /></p>
+<p>集群部署两台NameNode服务器，一台作为主服务器提供服务，一台作为从服务器进行热备，两台服务器通过ZooKeeper选举，主要是通过争夺znode锁资源，决定谁是主服务器。而DataNode则会向两个NameNode同时发送心跳数据，但是只有主NameNode才能向DataNode返回控制信息。</p>
+<p>正常运行期间，主从NameNode之间通过一个共享存储系统shared edits来同步文件系统的元数据信息。当主NameNode服务器宕机，从NameNode会通过ZooKeeper升级成为主服务器，并保证HDFS集群的元数据信息，也就是文件分配表信息完整一致。</p>
+<p>对于一个软件系统而言，性能差一点，用户也许可以接受；使用体验差，也许也能忍受。但是如果可用性差，经常出故障导致不可用，那就比较麻烦了；如果出现重要数据丢失，那开发工程师绝对是摊上大事了。</p>
+<p>而分布式系统可能出故障地方又非常多，内存、CPU、主板、磁盘会损坏，服务器会宕机，网络会中断，机房会停电，所有这些都可能会引起软件系统的不可用，甚至数据永久丢失。</p>
+<p>所以在设计分布式系统的时候，软件工程师一定要绷紧可用性这根弦，思考在各种可能的故障情况下，如何保证整个软件系统依然是可用的。</p>
+<p>根据我的经验，一般说来，常用的保证系统可用性的策略有冗余备份、失效转移和降级限流。虽然这3种策略你可能早已耳熟能详，但还是有一些容易被忽略的地方。</p>
+<p>比如<strong>冗余备份</strong>，任何程序、任何数据，都至少要有一个备份，也就是说程序至少要部署到两台服务器，数据至少要备份到另一台服务器上。此外，稍有规模的互联网企业都会建设多个数据中心，数据中心之间互相进行备份，用户请求可能会被分发到任何一个数据中心，即所谓的异地多活，在遭遇地域性的重大故障和自然灾害的时候，依然保证应用的高可用。</p>
+<p>当要访问的程序或者数据无法访问时，需要将访问请求转移到备份的程序或者数据所在的服务器上，这也就是<strong>失效转移</strong>。失效转移你应该注意的是失效的鉴定，像NameNode这样主从服务器管理同一份数据的场景，如果从服务器错误地以为主服务器宕机而接管集群管理，会出现主从服务器一起对DataNode发送指令，进而导致集群混乱，也就是所谓的“脑裂”。这也是这类场景选举主服务器时，引入ZooKeeper的原因。ZooKeeper的工作原理，我将会在后面专门分析。</p>
+<p>当大量的用户请求或者数据处理请求到达的时候，由于计算资源有限，可能无法处理如此大量的请求，进而导致资源耗尽，系统崩溃。这种情况下，可以拒绝部分请求，即进行<strong>限流</strong>；也可以关闭部分功能，降低资源消耗，即进行<strong>降级</strong>。限流是互联网应用的常备功能，因为超出负载能力的访问流量在何时会突然到来，你根本无法预料，所以必须提前做好准备，当遇到突发高峰流量时，就可以立即启动限流。而降级通常是为可预知的场景准备的，比如电商的“双十一”促销，为了保障促销活动期间应用的核心功能能够正常运行，比如下单功能，可以对系统进行降级处理，关闭部分非重要功能，比如商品评价功能。</p>
+<h2 id="_1">小结</h2>
+<p>我们小结一下，看看HDFS是如何通过大规模分布式服务器集群实现数据的大容量、高速、可靠存储、访问的。</p>
+<p>1.文件数据以数据块的方式进行切分，数据块可以存储在集群任意DataNode服务器上，所以HDFS存储的文件可以非常大，一个文件理论上可以占据整个HDFS服务器集群上的所有磁盘，实现了大容量存储。</p>
+<p>2.HDFS一般的访问模式是通过MapReduce程序在计算时读取，MapReduce对输入数据进行分片读取，通常一个分片就是一个数据块，每个数据块分配一个计算进程，这样就可以同时启动很多进程对一个HDFS文件的多个数据块进行并发访问，从而实现数据的高速访问。关于MapReduce的具体处理过程，我们会在专栏后面详细讨论。</p>
+<p>3.DataNode存储的数据块会进行复制，使每个数据块在集群里有多个备份，保证了数据的可靠性，并通过一系列的故障容错手段实现HDFS系统中主要组件的高可用，进而保证数据和整个系统的高可用。</p>
+<h2 id="_2">思考题</h2>
+<p>今天留一道有意思的思考题，你可以先想象一个场景，我们想利用全世界的个人电脑、手机、平板上的空闲存储空间，构成一个可以付费共享的分布式文件系统，希望用户可以安装一个App在自己的个人设备上，将个人资料安全地存储到这个分布式文件系统中，并支付一定费用；用户也可以用这个App将自己设备上的空闲存储空间共享出去，成为这个分布式文件系统存储的一部分，并收取一定费用。</p>
+<p>我想问你的是，如果是你来设计这个分布式文件系统，你是怎么思考的？你的设计方案是什么？</p>
+<p>欢迎你写下自己的思考或疑问，与我和其他同学一起讨论。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/f9/aa/65e78697.jpg" width="30px"><span>上个纪元的赵天师</span> 👍（120） 💬（4）<div>听过本期音频，我想，在现实的条件下，实现这样的设想非常困难，例如：【1】用户空间（尤其是手机，iPad）不能保障高可用的性能，随时被访问被验证；【2】网络条件要求过高，尤其是被需求或者需要均衡时频繁的文件迁移；【3】要验证HDFS所有备份块的可用性，因此个人中端上不能过多不同用户，过碎的数据块；【4】为了保证系统的高效一般一块数据不会过小，要不然会浪费过多的计算资源（进程），如果单块数据在128M左右，自然会受到终端存储规模的制约【5】等等诸多隐患。因此，稳定的分布式端点还是必要的，不然文件将在诸多节点中频繁移动浪费大量的网络资源。【补】过于复杂的架构网络，对验证的响应延时也造成了麻烦。边走边打字暂时先想到这些😬</div>2018-11-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/d0/5d/9f9d73fe.jpg" width="30px"><span>文大头</span> 👍（43） 💬（1）<div>1、互联网上用户交分散，需要用CDN的模式，分层分区域部署NameNode，NameNode上数据汇总到上级，上级数据按需分发到下级。同一个区域的用户（DataNode）分配到同一个NameNode
+<li><span>上个纪元的赵天师</span> 👍（120） 💬（4）<div>听过本期音频，我想，在现实的条件下，实现这样的设想非常困难，例如：【1】用户空间（尤其是手机，iPad）不能保障高可用的性能，随时被访问被验证；【2】网络条件要求过高，尤其是被需求或者需要均衡时频繁的文件迁移；【3】要验证HDFS所有备份块的可用性，因此个人中端上不能过多不同用户，过碎的数据块；【4】为了保证系统的高效一般一块数据不会过小，要不然会浪费过多的计算资源（进程），如果单块数据在128M左右，自然会受到终端存储规模的制约【5】等等诸多隐患。因此，稳定的分布式端点还是必要的，不然文件将在诸多节点中频繁移动浪费大量的网络资源。【补】过于复杂的架构网络，对验证的响应延时也造成了麻烦。边走边打字暂时先想到这些😬</div>2018-11-10</li><br/><li><span>文大头</span> 👍（43） 💬（1）<div>1、互联网上用户交分散，需要用CDN的模式，分层分区域部署NameNode，NameNode上数据汇总到上级，上级数据按需分发到下级。同一个区域的用户（DataNode）分配到同一个NameNode
 2、用户DataNode机器可用性极差，按10%算，平均一个数据需要10个备份。不过可以有一定策略改进，比如让用户活跃时间跟用户等级挂钩，等级跟功能挂钩，以鼓励用户增加在线时间；存储数据可以分级别，高级别数据备份更多，可用性安全性速度更高，级别低备份少。
 3、安全性考虑，其他用户存储在NameNode上的数据，不能被宿主机破解查看和修改
-暂时想了这些，感觉再想下去要变成百度网盘或者迅雷了</div>2018-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/fa/72/5c801d71.jpg" width="30px"><span>牛油果</span> 👍（15） 💬（1）<div>讲技术不讲技术脉络的也都是流氓啊。那些去中心化存储的区块链项目，就没谁写出去中心存储应是借鉴或发展于hdfs等分布式存储方案。raid到hdfs立马好理解多了。我是看过ipfs，storj，sia等几个去中心化的存储方案。通过看今天的内容，我突然感觉开窍了，他们整得太复杂了，基于hdfs加上存储时空证明就能实现去中心化存储，实现高可用的技术细节考虑的当然不同了，而存储时空权益就把终端的高可用工作分散到具体用户了。当然，namenode是中心化部署还是代理节点部署还是要考虑一下。另，通过用户贡献的存储时长和空间换来的受益，这对用户的约束可能会随时间变化而减少，进而存储的可用性是不稳定的，但这里我想了两个方案:1，用户贡献出来的资源是为了储值的，获得权益是要零存整取，加大惩罚成本(这个估计他们实际做的会想到，我当时看时反正没看到)；2，整个分布式系统加一套蓝光备份系统，这种低成本数据存储方案是对要求高可用数据的备选项。</div>2018-11-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/87/cf/7bec93d8.jpg" width="30px"><span>朱国伟</span> 👍（11） 💬（2）<div>关于DataNode 故障容错感觉处理起来好复杂啊 假设numReplicas=2 由于机器故障导致DataNode 1宕机 此时为了保证numReplicas=2会复制数据 像下面的情况怎么处理呢
+暂时想了这些，感觉再想下去要变成百度网盘或者迅雷了</div>2018-11-12</li><br/><li><span>牛油果</span> 👍（15） 💬（1）<div>讲技术不讲技术脉络的也都是流氓啊。那些去中心化存储的区块链项目，就没谁写出去中心存储应是借鉴或发展于hdfs等分布式存储方案。raid到hdfs立马好理解多了。我是看过ipfs，storj，sia等几个去中心化的存储方案。通过看今天的内容，我突然感觉开窍了，他们整得太复杂了，基于hdfs加上存储时空证明就能实现去中心化存储，实现高可用的技术细节考虑的当然不同了，而存储时空权益就把终端的高可用工作分散到具体用户了。当然，namenode是中心化部署还是代理节点部署还是要考虑一下。另，通过用户贡献的存储时长和空间换来的受益，这对用户的约束可能会随时间变化而减少，进而存储的可用性是不稳定的，但这里我想了两个方案:1，用户贡献出来的资源是为了储值的，获得权益是要零存整取，加大惩罚成本(这个估计他们实际做的会想到，我当时看时反正没看到)；2，整个分布式系统加一套蓝光备份系统，这种低成本数据存储方案是对要求高可用数据的备选项。</div>2018-11-21</li><br/><li><span>朱国伟</span> 👍（11） 💬（2）<div>关于DataNode 故障容错感觉处理起来好复杂啊 假设numReplicas=2 由于机器故障导致DataNode 1宕机 此时为了保证numReplicas=2会复制数据 像下面的情况怎么处理呢
 - 等全部复制完了  DataNode1重启了 那此时numReplicas=3 这种情况会处理吗？
 - 或者复制到一半（即有些Block还没来得及复制） DataNode1重启了 这种情况又怎么办
 - 或者集群勉强够用 实在没有多余的机器来复制DataNode1对应的数据了 又该如何
 
 并且要是掉电或是网络异常 可能不是一个DataNode宕机 可能是怎个机架整个机房的DataNode的都宕机了 
 
-</div>2018-11-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c0/c4/dfbad982.jpg" width="30px"><span>张晓生</span> 👍（10） 💬（1）<div>如果在一台nameNode服务器元数据有修改但是还没来得及热备到从nameNode服务器，这个时候刚好主nameNode服务器挂了，zookeeper选举出新的主服务器(之前的从节点)，就会造成当前的主nameNode节点数据不正确。请问这种问题怎么解决呢？</div>2019-01-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/53/d4/2ed767ea.jpg" width="30px"><span>wmg</span> 👍（7） 💬（1）<div>类似于hdfs的机制，只不过将用户设备作为datanode，namenode是中心化的（否则和区块链就比较类似）。有几个问题需要考虑：1.用户设备存储空间有限，所以block的大小不能太大；2.由于block不能太大所以元数据会比较大，对namenode存储空间要求较高；3.由于datanode是不可信的，所以需要对datanode设计身份识别机制，存储的数据也必须是加密，副本数量也要设置的多一些；4.由于所有的datanode都需要和namenode通信，所以datanode的数量会有限制，这样就限制了整个集群的存储空间，可以考虑多集群的方式，用户注册的时候利用负载平衡算法将用户划分到其中一个集群。暂时想到这么多，请老师指教。</div>2018-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（7） 💬（1）<div>这个思考题的实现思路是和IPFS的实现思路应该一样的</div>2018-11-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/63/53/b4590ccc.jpg" width="30px"><span>阿文</span> 👍（3） 💬（1）<div>请问下，数据报错转到其他 DataNode 上读取备份数据。这个过程需要 经过 NameNode 吗？</div>2021-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/fc/1e/1e48fd05.jpg" width="30px"><span>极无宪</span> 👍（3） 💬（1）<div>如果 DataNode 监测到本机的某块磁盘损坏，就将该块磁盘上存储的所有 BlockID 报告给 NameNode？
-如果已经损坏了，DataNode怎么获取到BlockID的，BlockID与数据不是存在一起的吗？</div>2020-01-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/54/de/fabe5f93.jpg" width="30px"><span>谢烟客</span> 👍（3） 💬（1）<div>既然 DataNode 已经完成了冗余备份了，是不是我们就可以在 DataNode 节点的存储选用上使用 raid0 提升一下性能呢？</div>2018-11-15</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/F9CTB6Fkv6pyaP3iaYkSDC6ksv0GXsZOXyzeudxPDiczxuAibQNNibNXc4HRScMQyrSoZ4b2cEfkNlO6uM7hhJyURg/132" width="30px"><span>龙儿快看我的大雕</span> 👍（2） 💬（1）<div>老师，您说hadoop的hdfs是依赖zookeeper实现的，但是我在网上跟着集群搭建的步骤来弄，都没看到要安装zookeeper，这是咋回事？</div>2020-02-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/12/c7/a7a5df8b.jpg" width="30px"><span>达子不一般</span> 👍（2） 💬（1）<div>dataNode1应该是返回客户端写成功之后然后再异步复制到其他dataNode2上吧？这个时候如果dataNode1宕机了怎么办？</div>2019-10-10</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83ep8ibEQqN1Slfh9Vg0YJcXcico7NKfl9evCeMpNKZCVE2KWtz3f404LejIsGFFzcubpW5WvhC9ibYevQ/132" width="30px"><span>子榕</span> 👍（2） 💬（2）<div>老师请问下hdfs一般集群规模都会上百吗？那像我们小公司是不是没有意义啦，我们现在每天日志量100g左右，适合用hdfs来存储吗？单机采购什么规格的合适（几核几g多少t存储）？</div>2019-05-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/49/a5/e4c1c2d4.jpg" width="30px"><span>小文同学</span> 👍（2） 💬（1）<div>关于分布式文件系统，我想向老师提个问题：
+</div>2018-11-10</li><br/><li><span>张晓生</span> 👍（10） 💬（1）<div>如果在一台nameNode服务器元数据有修改但是还没来得及热备到从nameNode服务器，这个时候刚好主nameNode服务器挂了，zookeeper选举出新的主服务器(之前的从节点)，就会造成当前的主nameNode节点数据不正确。请问这种问题怎么解决呢？</div>2019-01-16</li><br/><li><span>wmg</span> 👍（7） 💬（1）<div>类似于hdfs的机制，只不过将用户设备作为datanode，namenode是中心化的（否则和区块链就比较类似）。有几个问题需要考虑：1.用户设备存储空间有限，所以block的大小不能太大；2.由于block不能太大所以元数据会比较大，对namenode存储空间要求较高；3.由于datanode是不可信的，所以需要对datanode设计身份识别机制，存储的数据也必须是加密，副本数量也要设置的多一些；4.由于所有的datanode都需要和namenode通信，所以datanode的数量会有限制，这样就限制了整个集群的存储空间，可以考虑多集群的方式，用户注册的时候利用负载平衡算法将用户划分到其中一个集群。暂时想到这么多，请老师指教。</div>2018-11-12</li><br/><li><span>奕</span> 👍（7） 💬（1）<div>这个思考题的实现思路是和IPFS的实现思路应该一样的</div>2018-11-10</li><br/><li><span>阿文</span> 👍（3） 💬（1）<div>请问下，数据报错转到其他 DataNode 上读取备份数据。这个过程需要 经过 NameNode 吗？</div>2021-06-29</li><br/><li><span>极无宪</span> 👍（3） 💬（1）<div>如果 DataNode 监测到本机的某块磁盘损坏，就将该块磁盘上存储的所有 BlockID 报告给 NameNode？
+如果已经损坏了，DataNode怎么获取到BlockID的，BlockID与数据不是存在一起的吗？</div>2020-01-14</li><br/><li><span>谢烟客</span> 👍（3） 💬（1）<div>既然 DataNode 已经完成了冗余备份了，是不是我们就可以在 DataNode 节点的存储选用上使用 raid0 提升一下性能呢？</div>2018-11-15</li><br/><li><span>龙儿快看我的大雕</span> 👍（2） 💬（1）<div>老师，您说hadoop的hdfs是依赖zookeeper实现的，但是我在网上跟着集群搭建的步骤来弄，都没看到要安装zookeeper，这是咋回事？</div>2020-02-10</li><br/><li><span>达子不一般</span> 👍（2） 💬（1）<div>dataNode1应该是返回客户端写成功之后然后再异步复制到其他dataNode2上吧？这个时候如果dataNode1宕机了怎么办？</div>2019-10-10</li><br/><li><span>子榕</span> 👍（2） 💬（2）<div>老师请问下hdfs一般集群规模都会上百吗？那像我们小公司是不是没有意义啦，我们现在每天日志量100g左右，适合用hdfs来存储吗？单机采购什么规格的合适（几核几g多少t存储）？</div>2019-05-12</li><br/><li><span>小文同学</span> 👍（2） 💬（1）<div>关于分布式文件系统，我想向老师提个问题：
 DataNode的备份在同步过程中假如出现了错误，NameNode在读取时校验后放弃某个DataNode的数据块，那么会重新为DataNode的那块数据生成新的备份么？
-这些极端的情况，分布式文件系统是不是也无法百分百顾及，在设计上还是会保留容忍么？</div>2018-11-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e1/19/c756aaed.jpg" width="30px"><span>鸠摩智</span> 👍（2） 💬（1）<div>如果hdfs的元数据信息超过了单台namenode的存储上限，要怎么解决呢？</div>2018-11-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/61/35/114c045d.jpg" width="30px"><span>BW-Panda</span> 👍（1） 💬（1）<div>思考题答案就是现在IPFS的实现吧</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f0/68/afb36ef6.jpg" width="30px"><span>iWill</span> 👍（0） 💬（1）<div>如果有多个从NameNode， DataNode 也会向所有的从NameNode上报数据吗？</div>2020-06-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/41/27/3ff1a1d6.jpg" width="30px"><span>hua168</span> 👍（0） 💬（1）<div>HDFS块大小是M，如200M，电商类文件小而多，请求多，用hadoop合适吗？反应慢怎么解决，每台机子放少点？有直接监控hadoop的工具吗？</div>2018-11-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/a3/d1/a30a4d06.jpg" width="30px"><span>张闯</span> 👍（0） 💬（1）<div>将用户设备作为DataNodes，平台部署服务器作为NameNode。为提高文件访问性能，一方面，用户数据块优先存储一份在自己的设备上。另一方面，用户设备也同时作为微型NameNode，缓存当前用户自己的数据块信息。仅在写入新数据时需要访问中心NameNode，并通过中心服务器传输数据块到其他用户的设备。</div>2018-11-10</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/hEOjv6QSUzoksATK55ib2ORZURG4s8oVlI6CTH2TLXkqVHwLeMRpLBmUYOKib6WrrboU8LSklUFWBvR59Dmmu79A/132" width="30px"><span>胡杨</span> 👍（0） 💬（1）<div>这个问题更像区块链的设计，可以说每个设备都可以成为数据中心</div>2018-11-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/10/3a/053852ee.jpg" width="30px"><span>张小喵</span> 👍（22） 💬（1）<div>西电bbs，西电睿思就是使用这个原理，睿思上有庞大的数据，比如上万部电影，电视剧，学习资料，等等，都是分布式存储在睿思用户的本地pc上的，使用的是uTorrrent客户端，每次下载都是从在线的同学的pc上并行下载，下载速度很快，由于校园网内部之间走的流量是不计费的，所以在费用上面没有任何制约，本地存储的数据被他人下载的越多，会赢得更多的金币，使用金币可以去下载资源，以及“炫富”，伸手党如果总是关闭本地共享存储客户端，没有流量，那么他们能下载的资源会越来越有限，最后只能下载免费资源。金币奖励机制保证了平台的良性发展。很nice。 移动端作为共享存储客户端的话，我觉得流量费是个很大的限制，没有人想被在不知情的情况下被消费自己的移动流量，毕竟不是免费的。而且可恶的三大运营商还会限速.....我觉得，如果什么时候本地存储足够多了，流量足够便宜了，网速足够快了，客户端安全做的足够好了 那么这种共享存储的模式才会全面推广。</div>2019-11-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c2/2c/900cb4f0.jpg" width="30px"><span>方得始终</span> 👍（22） 💬（1）<div>最近两大Hadoop发行商Cloudera 和Hortonworksg合并,网上包括极客时间也报道过HDFS跟云端对象存储系统已没有性能和价格上的优势.在我工作实践中也碰见过HDFS上存储的文件丢失,虽然只是一个机架(rack)断电.请问老师对此有何看法?</div>2018-11-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/64/86/f5a9403a.jpg" width="30px"><span>yang</span> 👍（15） 💬（0）<div>老师、我想提一个问题： 主NameNode 向 Sared Edits 写数据的过程中、主Namenade 没洗完的数据是不是会丢失？ 那这样 从NameNode被选举为主NameNode 后，是不是会有一部分数据找不见存在哪个DataNode上了？ 大家都可以回答哈 另外 一个数据块 在什么情况下、不是一个分区？</div>2018-11-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f7/9d/be04b331.jpg" width="30px"><span>落叶飞逝的恋</span> 👍（9） 💬（1）<div>关于思考题的想法:首先这个就是各大厂商的提出的云服务的概念。而对于手机、ipad的这些设备作为分布式容器的一部分，是不可取的。首先不能不确保手机的网速的可用性，而且三大运营商都有流量这个概念。第二，手机无法实时的给NameNode进行发送心跳，因为用户可以主动关闭网络，或者用户在无网区域。</div>2018-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/e1/19/c756aaed.jpg" width="30px"><span>鸠摩智</span> 👍（8） 💬（0）<div>如果在hdfs上存储了大量的小文件，每个文件都不到一个块（128M）大小。而每个文件确实是单独的，比如一张张图片，不能把它们合并为一个大文件，这样即使一个文件namenode只存储几字节的元数据，是不是也有可能超出namenode单台机器限制了呢？</div>2018-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/52/3e/a0614b62.jpg" width="30px"><span>Jack Zhu</span> 👍（4） 💬（2）<div>“如果 DataNode 监测到本机的某块磁盘损坏，就将该块磁盘上存储的所有 BlockID 报告给NameNode。”
-有个疑问，望解答:磁盘损坏，怎么获得BlockID，BlockID存在哪？</div>2018-11-24</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/WN351R6WwfnlILLdnH4xsUTJCG2mYFRuibdNHBJFicTHXGiaR3lxBYGmagJhicibRWFPB7fGYnDrtV9GFQtwDo1d73A/132" width="30px"><span>黄谦敏</span> 👍（3） 💬（0）<div>主要解决问题
-
-  1如何管理这样一个超大规模的分布式文件系统？
-
-    1.1DataNode的大小不一、性能不一、网络状况不一。
-
-    1.2DataNode注销频繁
-
-    1.3DataNode上可能出现的影响可用性的问题
-
-      1.3.1文件被修改（人为删除，恶意修改）
-
-      1.3.2 DataNode完全不可用（网络问题、用户直接卸载、刷机）
-
-      1.3.3 占用设备过多存储空间，影响设备正常使用（定位是利用闲置空间，不能影响其他功能）
-
-      1.3.4 占用设备过多网络资源，影响设备正常使用。
-
-    1.4对NameNode的处理能力要求超高
-
-    1.5网络交换问题
-
-    1.6数据安全问题
-
-    1.7 进行高效的读写
-
-  2如何向使用方收取费用
-
-  3如何向服务方支付费用
-
-解决方案
-
-  从基础的HDFS架构出发
-
-  1.1客户端注册为集群DataNode时，需要向NameNode提交可提供的存储大小。集群在收到注册请求后，向客户端发送一些测试数据，以检测DataNode的处理能力，并对处理能力进行评级。并向DataNode返回结果——注册成功或不成功。
-
-  1.2对于正常注销，NameNode收到注销请求后，查找该DataNode有哪些数据块，分配任务给具有相同数据块的DataNode，并让其再备份一份数据到其他DataNode。
-
-  1.3.1对于存储在 DataNode 上的数据块，计算并存储校验和（CheckSum）。在读取数据的时候，重新计算读取出来的数据的校验和，如果校验不正确就抛出异常，应用程序捕获异常后就到其他 DataNode 上读取备份数据。——抄的。
-
-  每次DataNode的异常都把情况记录在DataNode。对于频繁出现异常的DataNode，通过客户端向对其使用者进行提醒并指导处理方法，并提示可能被取消资格的风险。对于指导后可用性依然很差的DataNode，注销其资格，转移备份并结算费用。
-
-  1.3.2心跳通信，如果超时为发送，以宕机处理，频繁宕机的设备需要降级处理。
-
-  1.3.3DataNode提供修改闲置空间的功能，如果需要减少闲置空间，分析新闲置空间下，需要删除数据块，并告知NameNode，NameNode进行记录，并返回新DataNode地址，旧DataNode把数据块发向新DataNode。完成后删除旧DataNode中的传输出去的数据块。
-
-  1.3.4DataNode在客户端设置闲置带宽，并告知NameNode，NameNode对DataNode进行降级。如果实在不能再降，则劝退DataNode。
-
-  1.4把NameNode从服务器上升为集群，即有两个NameNode集群，通过ZooKeeper选举主NameNode集群。全球的DataNode的元数据信息分布式地存储在NameNode的集群当中。（自认为这点还是有点创新，也有点套娃。）
-
-  1.5依旧是对DataNode进行评级
-
-  1.6依旧是对DataNode进行评级，传输的文件进行加密处理（本人加密门外汉）
-
-  1.7 通过DataNode评级。在高等级DataNode中存储高访问频率数据，高等级用户的数据。评级低的DataNode存储不常访问的数据、或注销资格。
-
-  2.根据需要的网络传输级别、实际使用的空间大小、实际使用的时长，支付费用。
-
-  3.根据服务能力评级、实际支出空间大小、实际使用时长，收取费用。
-
-写的有点多。</div>2021-12-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/10/3a/053852ee.jpg" width="30px"><span>张小喵</span> 👍（3） 💬（0）<div>补充一点，西电睿思平台的 也有“冗余备份“的思想，学生使用ut客户端下载了电影、学习资料等文件到本地pc，那么这个pc就是一个DataNode，一个电影肯定会有很多人下载，那么这些所有下载了这个电影的同学的pc中的下载数据就形成了“冗余备份”</div>2019-11-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d8/c6/1f471053.jpg" width="30px"><span>姜文</span> 👍（3） 💬（0）<div>首先要部署个name node存储元数据，记录用户数据存储的位置，为保证name node的高可用，必须做备份，通过zookeeper选举主 name node，data node就是全世界的移动设备，用户的数据要做备份，至少三份，用户的app必须和name node的主备服务器做心跳，用于移动设备故障时能主动上报或者name node能及时发现保证数据可用。用户如果要存储数据必须通知name node做好元数据记录及datanode的数据备份。第一次回答，请老师指教。</div>2018-11-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/3f/2f/8513c4d3.jpg" width="30px"><span>a(๑≖ิټ≖ิ)✌</span> 👍（2） 💬（0）<div>IPFS和迅雷的玩客云不都是这样设计的吗，涉及到很多用户的话，肯定要多冗余一些备份，这样挂掉一堆依然保证可用；为了保证速度，用户在首次取数据时把数据存在本地和周边用户节点上，下次查询就会很快了。这个系统最重要的问题是成本问题吧</div>2020-10-09</li><br/>
+这些极端的情况，分布式文件系统是不是也无法百分百顾及，在设计上还是会保留容忍么？</div>2018-11-14</li><br/><li><span>鸠摩智</span> 👍（2） 💬（1）<div>如果hdfs的元数据信息超过了单台namenode的存储上限，要怎么解决呢？</div>2018-11-10</li><br/>
 </ul>
 
 

@@ -2629,6 +2629,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#influxdb-vs-mysql" class="md-nav__link">
+    <span class="md-ellipsis">
+      取长补短之 InfluxDB vs MySQL
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#elasticsearch-vs-mysql" class="md-nav__link">
+    <span class="md-ellipsis">
+      取长补短之 Elasticsearch vs MySQL
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nosqlmysql" class="md-nav__link">
+    <span class="md-ellipsis">
+      结合NoSQL和MySQL应对高并发的复合数据库架构
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考与讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13156,6 +13201,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#influxdb-vs-mysql" class="md-nav__link">
+    <span class="md-ellipsis">
+      取长补短之 InfluxDB vs MySQL
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#elasticsearch-vs-mysql" class="md-nav__link">
+    <span class="md-ellipsis">
+      取长补短之 Elasticsearch vs MySQL
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nosqlmysql" class="md-nav__link">
+    <span class="md-ellipsis">
+      结合NoSQL和MySQL应对高并发的复合数据库架构
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考与讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13188,19 +13278,503 @@
 <h2 id="redis-vs-mysql">取长补短之 Redis vs MySQL</h2>
 <p>Redis是一款设计简洁的缓存数据库，数据都保存在内存中，所以读写单一Key的性能非常高。</p>
 <p>我们来做一个简单测试，分别填充10万条数据到Redis和MySQL中。MySQL中的name字段做了索引，相当于Redis的Key，data字段为100字节的数据，相当于Redis的Value：</p>
-<div><strong>精选留言（19）</strong></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>@SpringBootApplication
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>@Slf4j
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>public class CommonMistakesApplication {
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    //模拟10万条数据存到Redis和MySQL
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    public static final int ROWS = 100000;
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    public static final String PAYLOAD = IntStream.rangeClosed(1, 100).mapToObj(__ -&gt; &quot;a&quot;).collect(Collectors.joining(&quot;&quot;));
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    @Autowired
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    private StringRedisTemplate stringRedisTemplate;
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    @Autowired
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    private JdbcTemplate jdbcTemplate;
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    @Autowired
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    private StandardEnvironment standardEnvironment;
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    public static void main(String[] args) {
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        SpringApplication.run(CommonMistakesApplication.class, args);
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    }
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    @PostConstruct
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    public void init() {
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>        //使用-Dspring.profiles.active=init启动程序进行初始化
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>        if (Arrays.stream(standardEnvironment.getActiveProfiles()).anyMatch(s -&gt; s.equalsIgnoreCase(&quot;init&quot;))) {
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>            initRedis();
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>            initMySQL();
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>        }
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>    }
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    //填充数据到MySQL
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    private void initMySQL() {
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>        //删除表
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>        jdbcTemplate.execute(&quot;DROP TABLE IF EXISTS `r`;&quot;);
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>        //新建表，name字段做了索引
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>        jdbcTemplate.execute(&quot;CREATE TABLE `r` (\n&quot; +
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>                &quot;  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n&quot; +
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>                &quot;  `data` varchar(2000) NOT NULL,\n&quot; +
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>                &quot;  `name` varchar(20) NOT NULL,\n&quot; +
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>                &quot;  PRIMARY KEY (`id`),\n&quot; +
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>                &quot;  KEY `name` (`name`) USING BTREE\n&quot; +
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>                &quot;) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;&quot;);
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>        //批量插入数据
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>        String sql = &quot;INSERT INTO `r` (`data`,`name`) VALUES (?,?)&quot;;
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>        jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>            @Override
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>            public void setValues(PreparedStatement preparedStatement, int i) throws SQLException {
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>                preparedStatement.setString(1, PAYLOAD);
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>                preparedStatement.setString(2, &quot;item&quot; + i);
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>            }
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>            @Override
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>            public int getBatchSize() {
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>                return ROWS;
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>            }
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>        });
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>        log.info(&quot;init mysql finished with count {}&quot;, jdbcTemplate.queryForObject(&quot;SELECT COUNT(*) FROM `r`&quot;, Long.class));
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>    }
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a>
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a>    //填充数据到Redis
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>    private void initRedis() {
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a>        IntStream.rangeClosed(1, ROWS).forEach(i -&gt; stringRedisTemplate.opsForValue().set(&quot;item&quot; + i, PAYLOAD));
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a>        log.info(&quot;init redis finished with count {}&quot;, stringRedisTemplate.keys(&quot;item*&quot;));
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a>    }
+<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a>}
+</code></pre></div>
+<p>启动程序后，输出了如下日志，数据全部填充完毕：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>[14:22:47.195] [main] [INFO ] [o.g.t.c.n.r.CommonMistakesApplication:80  ] - init redis finished with count 100000
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>[14:22:50.030] [main] [INFO ] [o.g.t.c.n.r.CommonMistakesApplication:74  ] - init mysql finished with count 100000
+</code></pre></div>
+<p>然后，比较一下从MySQL和Redis随机读取单条数据的性能。“公平”起见，像Redis那样，我们使用MySQL时也根据Key来查Value，也就是根据name字段来查data字段，并且我们给name字段做了索引：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>@Autowired
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>private JdbcTemplate jdbcTemplate;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>@Autowired
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>private StringRedisTemplate stringRedisTemplate;
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>@GetMapping(&quot;redis&quot;)
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>public void redis() {
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    //使用随机的Key来查询Value，结果应该等于PAYLOAD
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    Assert.assertTrue(stringRedisTemplate.opsForValue().get(&quot;item&quot; + (ThreadLocalRandom.current().nextInt(CommonMistakesApplication.ROWS) + 1)).equals(CommonMistakesApplication.PAYLOAD));
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>}
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>@GetMapping(&quot;mysql&quot;)
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>public void mysql() {
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    //根据随机name来查data，name字段有索引，结果应该等于PAYLOAD
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    Assert.assertTrue(jdbcTemplate.queryForObject(&quot;SELECT data FROM `r` WHERE name=?&quot;, new Object[]{(&quot;item&quot; + (ThreadLocalRandom.current().nextInt(CommonMistakesApplication.ROWS) + 1))}, String.class)
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>            .equals(CommonMistakesApplication.PAYLOAD));
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>}
+</code></pre></div>
+<p>在我的电脑上，使用wrk 加10个线程50个并发连接做压测。可以看到，MySQL 90%的请求需要61ms，QPS为1460；<strong>而Redis 90%的请求在5ms左右，QPS达到了14008，几乎是MySQL的十倍</strong>：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/2d/4e/2d289cc94097c2e62aa97a6602d0554e.png?wh=1670%2A1072" /></p>
+<p>但Redis薄弱的地方是，不擅长做Key的搜索。对MySQL，我们可以使用LIKE操作前匹配走B+树索引实现快速搜索；但对Redis，我们使用Keys命令对Key的搜索，其实相当于在MySQL里做全表扫描。</p>
+<p>我写一段代码来对比一下性能：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>@GetMapping(&quot;redis2&quot;)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>public void redis2() {
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    Assert.assertTrue(stringRedisTemplate.keys(&quot;item71*&quot;).size() == 1111);
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>}
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>@GetMapping(&quot;mysql2&quot;)
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>public void mysql2() {
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    Assert.assertTrue(jdbcTemplate.queryForList(&quot;SELECT name FROM `r` WHERE name LIKE &#39;item71%&#39;&quot;, String.class).size() == 1111);
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>}
+</code></pre></div>
+<p>可以看到，在QPS方面，<strong>MySQL的QPS达到了Redis的157倍；在延迟方面，MySQL的延迟只有Redis的十分之一。</strong></p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/5d/e8/5de7a4a7bf27f8736b0ac09ba0dd1fe8.png?wh=1606%2A1104" /></p>
+<p>Redis慢的原因有两个：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/13/71/05/db554eba.jpg" width="30px"><span>👽</span> 👍（30） 💬（1）<div>其实，具体使用何种数据库，如果了解其原理，那就很容易弄懂了。
+<li>Redis的Keys命令是O(n)时间复杂度。如果数据库中Key的数量很多，就会非常慢。</li>
+<li>Redis是单线程的，对于慢的命令如果有并发，串行执行就会非常耗时。</li>
+</ul>
+<p>一般而言，我们使用Redis都是针对某一个Key来使用，而不能在业务代码中使用Keys命令从Redis中“搜索数据”，因为这不是Redis的擅长。对于Key的搜索，我们可以先通过关系型数据库进行，然后再从Redis存取数据（如果实在需要搜索Key可以使用SCAN命令）。在生产环境中，我们一般也会配置Redis禁用类似Keys这种比较危险的命令，你可以<a href="https://redis.io/topics/security">参考这里</a>。</p>
+<p>总结一下，正如“<a href="https://time.geekbang.org/column/article/231501">缓存设计</a>”一讲中提到的，对于业务开发来说，大多数业务场景下Redis是作为关系型数据库的辅助用于缓存的，我们一般不会把它当作数据库独立使用。</p>
+<p>此外值得一提的是，Redis提供了丰富的数据结构（Set、SortedSet、Hash、List），并围绕这些数据结构提供了丰富的API。如果我们好好利用这个特点的话，可以直接在Redis中完成一部分服务端计算，避免“读取缓存-&gt;计算数据-&gt;保存缓存”三部曲中的读取和保存缓存的开销，进一步提高性能。</p>
+<h2 id="influxdb-vs-mysql">取长补短之 InfluxDB vs MySQL</h2>
+<p>InfluxDB是一款优秀的时序数据库。在“<a href="https://time.geekbang.org/column/article/231568">生产就绪</a>”这一讲中，我们就是使用InfluxDB来做的Metrics打点。时序数据库的优势，在于处理指标数据的聚合，并且读写效率非常高。</p>
+<p>同样的，我们使用一些测试来对比下InfluxDB和MySQL的性能。</p>
+<p>在如下代码中，我们分别填充了1000万条数据到MySQL和InfluxDB中。其中，每条数据只有ID、时间戳、10000以内的随机值这3列信息，对于MySQL我们把时间戳列做了索引：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>@SpringBootApplication
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>@Slf4j
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>public class CommonMistakesApplication {
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    public static void main(String[] args) {
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        SpringApplication.run(CommonMistakesApplication.class, args);
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    }
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    //测试数据量
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    public static final int ROWS = 10000000;
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    @Autowired
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    private JdbcTemplate jdbcTemplate;
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    @Autowired
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    private StandardEnvironment standardEnvironment;
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    @PostConstruct
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    public void init() {
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>        //使用-Dspring.profiles.active=init启动程序进行初始化
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>        if (Arrays.stream(standardEnvironment.getActiveProfiles()).anyMatch(s -&gt; s.equalsIgnoreCase(&quot;init&quot;))) {
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>            initInfluxDB();
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>            initMySQL();
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>        }
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>    }
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>    //初始化MySQL
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>    private void initMySQL() {
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>        long begin = System.currentTimeMillis();
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>        jdbcTemplate.execute(&quot;DROP TABLE IF EXISTS `m`;&quot;);
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>        //只有ID、值和时间戳三列
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>        jdbcTemplate.execute(&quot;CREATE TABLE `m` (\n&quot; +
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>                &quot;  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n&quot; +
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>                &quot;  `value` bigint NOT NULL,\n&quot; +
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>                &quot;  `time` timestamp NOT NULL,\n&quot; +
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>                &quot;  PRIMARY KEY (`id`),\n&quot; +
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>                &quot;  KEY `time` (`time`) USING BTREE\n&quot; +
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>                &quot;) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;&quot;);
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>        String sql = &quot;INSERT INTO `m` (`value`,`time`) VALUES (?,?)&quot;;
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>        //批量插入数据
+<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>        jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>            @Override
+<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>            public void setValues(PreparedStatement preparedStatement, int i) throws SQLException {
+<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>                preparedStatement.setLong(1, ThreadLocalRandom.current().nextInt(10000));
+<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a>                preparedStatement.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now().minusSeconds(5 * i)));
+<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a>            }
+<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a>
+<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a>            @Override
+<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a>            public int getBatchSize() {
+<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a>                return ROWS;
+<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a>            }
+<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a>        });
+<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a>        log.info(&quot;init mysql finished with count {} took {}ms&quot;, jdbcTemplate.queryForObject(&quot;SELECT COUNT(*) FROM `m`&quot;, Long.class), System.currentTimeMillis()-begin);
+<a id="__codelineno-4-54" name="__codelineno-4-54" href="#__codelineno-4-54"></a>    }
+<a id="__codelineno-4-55" name="__codelineno-4-55" href="#__codelineno-4-55"></a>
+<a id="__codelineno-4-56" name="__codelineno-4-56" href="#__codelineno-4-56"></a>    //初始化InfluxDB
+<a id="__codelineno-4-57" name="__codelineno-4-57" href="#__codelineno-4-57"></a>    private void initInfluxDB() {
+<a id="__codelineno-4-58" name="__codelineno-4-58" href="#__codelineno-4-58"></a>        long begin = System.currentTimeMillis();
+<a id="__codelineno-4-59" name="__codelineno-4-59" href="#__codelineno-4-59"></a>        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient().newBuilder()
+<a id="__codelineno-4-60" name="__codelineno-4-60" href="#__codelineno-4-60"></a>                .connectTimeout(1, TimeUnit.SECONDS)
+<a id="__codelineno-4-61" name="__codelineno-4-61" href="#__codelineno-4-61"></a>                .readTimeout(10, TimeUnit.SECONDS)
+<a id="__codelineno-4-62" name="__codelineno-4-62" href="#__codelineno-4-62"></a>                .writeTimeout(10, TimeUnit.SECONDS);
+<a id="__codelineno-4-63" name="__codelineno-4-63" href="#__codelineno-4-63"></a>        try (InfluxDB influxDB = InfluxDBFactory.connect(&quot;http://127.0.0.1:8086&quot;, &quot;root&quot;, &quot;root&quot;, okHttpClientBuilder)) {
+<a id="__codelineno-4-64" name="__codelineno-4-64" href="#__codelineno-4-64"></a>            String db = &quot;performance&quot;;
+<a id="__codelineno-4-65" name="__codelineno-4-65" href="#__codelineno-4-65"></a>            influxDB.query(new Query(&quot;DROP DATABASE &quot; + db));
+<a id="__codelineno-4-66" name="__codelineno-4-66" href="#__codelineno-4-66"></a>            influxDB.query(new Query(&quot;CREATE DATABASE &quot; + db));
+<a id="__codelineno-4-67" name="__codelineno-4-67" href="#__codelineno-4-67"></a>            //设置数据库
+<a id="__codelineno-4-68" name="__codelineno-4-68" href="#__codelineno-4-68"></a>            influxDB.setDatabase(db);
+<a id="__codelineno-4-69" name="__codelineno-4-69" href="#__codelineno-4-69"></a>            //批量插入，10000条数据刷一次，或1秒刷一次
+<a id="__codelineno-4-70" name="__codelineno-4-70" href="#__codelineno-4-70"></a>            influxDB.enableBatch(BatchOptions.DEFAULTS.actions(10000).flushDuration(1000));
+<a id="__codelineno-4-71" name="__codelineno-4-71" href="#__codelineno-4-71"></a>            IntStream.rangeClosed(1, ROWS).mapToObj(i -&gt; Point
+<a id="__codelineno-4-72" name="__codelineno-4-72" href="#__codelineno-4-72"></a>                    .measurement(&quot;m&quot;)
+<a id="__codelineno-4-73" name="__codelineno-4-73" href="#__codelineno-4-73"></a>                    .addField(&quot;value&quot;, ThreadLocalRandom.current().nextInt(10000))
+<a id="__codelineno-4-74" name="__codelineno-4-74" href="#__codelineno-4-74"></a>                    .time(LocalDateTime.now().minusSeconds(5 * i).toInstant(ZoneOffset.UTC).toEpochMilli(), TimeUnit.MILLISECONDS).build())
+<a id="__codelineno-4-75" name="__codelineno-4-75" href="#__codelineno-4-75"></a>                    .forEach(influxDB::write);
+<a id="__codelineno-4-76" name="__codelineno-4-76" href="#__codelineno-4-76"></a>            influxDB.flush();
+<a id="__codelineno-4-77" name="__codelineno-4-77" href="#__codelineno-4-77"></a>            log.info(&quot;init influxdb finished with count {} took {}ms&quot;, influxDB.query(new Query(&quot;SELECT COUNT(*) FROM m&quot;)).getResults().get(0).getSeries().get(0).getValues().get(0).get(1), System.currentTimeMillis()-begin);
+<a id="__codelineno-4-78" name="__codelineno-4-78" href="#__codelineno-4-78"></a>        }
+<a id="__codelineno-4-79" name="__codelineno-4-79" href="#__codelineno-4-79"></a>    }
+<a id="__codelineno-4-80" name="__codelineno-4-80" href="#__codelineno-4-80"></a>}
+</code></pre></div>
+<p>启动后，程序输出了如下日志：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>[16:08:25.062] [main] [INFO ] [o.g.t.c.n.i.CommonMistakesApplication:104 ] - init influxdb finished with count 1.0E7 took 54280ms
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>[16:11:50.462] [main] [INFO ] [o.g.t.c.n.i.CommonMistakesApplication:80  ] - init mysql finished with count 10000000 took 205394ms
+</code></pre></div>
+<p>InfluxDB批量插入1000万条数据仅用了54秒，相当于每秒插入18万条数据，速度相当快；MySQL的批量插入，速度也挺快达到了每秒4.8万。</p>
+<p>接下来，我们测试一下。</p>
+<p>对这1000万数据进行一个统计，查询最近60天的数据，按照1小时的时间粒度聚合，统计value列的最大值、最小值和平均值，并将统计结果绘制成曲线图：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>@Autowired
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>private JdbcTemplate jdbcTemplate;
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>@GetMapping(&quot;mysql&quot;)
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>public void mysql() {
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    long begin = System.currentTimeMillis();
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    //使用SQL从MySQL查询，按照小时分组
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    Object result = jdbcTemplate.queryForList(&quot;SELECT date_format(time,&#39;%Y%m%d%H&#39;),max(value),min(value),avg(value) FROM m WHERE time&gt;now()- INTERVAL 60 DAY GROUP BY date_format(time,&#39;%Y%m%d%H&#39;)&quot;);
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    log.info(&quot;took {} ms result {}&quot;, System.currentTimeMillis() - begin, result);
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>}
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>@GetMapping(&quot;influxdb&quot;)
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>public void influxdb() {
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    long begin = System.currentTimeMillis();
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    try (InfluxDB influxDB = InfluxDBFactory.connect(&quot;http://127.0.0.1:8086&quot;, &quot;root&quot;, &quot;root&quot;)) {
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>        //切换数据库
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>        influxDB.setDatabase(&quot;performance&quot;);
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>        //InfluxDB的查询语法InfluxQL类似SQL
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>        Object result = influxDB.query(new Query(&quot;SELECT MEAN(value),MIN(value),MAX(value) FROM m WHERE time &gt; now() - 60d GROUP BY TIME(1h)&quot;));
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>        log.info(&quot;took {} ms result {}&quot;, System.currentTimeMillis() - begin, result);
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>    }
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>}
+</code></pre></div>
+<p>因为数据量非常大，单次查询就已经很慢了，所以这次我们不进行压测。分别调用两个接口，可以看到<strong>MySQL查询一次耗时29秒左右，而InfluxDB耗时980ms</strong>：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>[16:19:26.562] [http-nio-45678-exec-1] [INFO ] [o.g.t.c.n.i.PerformanceController:31  ] - took 28919 ms result [{date_format(time,&#39;%Y%m%d%H&#39;)=2019121308, max(value)=9993, min(value)=4, avg(value)=5129.5639}, {date_format(time,&#39;%Y%m%d%H&#39;)=2019121309, max(value)=9990, min(value)=12, avg(value)=4856.0556}, {date_format(time,&#39;%Y%m%d%H&#39;)=2019121310, max(value)=9998, min(value)=8, avg(value)=4948.9347}, {date_format(time,&#39;%Y%m%d%H&#39;)...
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>[16:20:08.170] [http-nio-45678-exec-6] [INFO ] [o.g.t.c.n.i.PerformanceController:40  ] - took 981 ms result QueryResult [results=[Result [series=[Series [name=m, tags=null, columns=[time, mean, min, max], values=[[2019-12-13T08:00:00Z, 5249.2468619246865, 21.0, 9992.0],...
+</code></pre></div>
+<p>在按照时间区间聚合的案例上，我们看到了InfluxDB的性能优势。但，我们<strong>肯定不能把InfluxDB当作普通数据库</strong>，原因是：</p>
+<ul>
+<li>InfluxDB不支持数据更新操作，毕竟时间数据只能随着时间产生新数据，肯定无法对过去的数据做修改；</li>
+<li>从数据结构上说，时间序列数据数据没有单一的主键标识，必须包含时间戳，数据只能和时间戳进行关联，不适合普通业务数据。</li>
+</ul>
+<p><strong>此外需要注意，即便只是使用InfluxDB保存和时间相关的指标数据，我们也要注意不能滥用tag</strong>。</p>
+<p>InfluxDB提供的tag功能，可以为每一个指标设置多个标签，并且tag有索引，可以对tag进行条件搜索或分组。但是，tag只能保存有限的、可枚举的标签，不能保存URL等信息，否则可能会出现<a href="https://docs.influxdata.com/influxdb/v1.7/concepts/schema_and_data_layout/#don-t-have-too-many-serieshigh%20series%20cardinality">high series cardinality问题</a>，导致占用大量内存，甚至是OOM。你可以点击<a href="https://docs.influxdata.com/influxdb/v1.7/guides/hardware_sizing/">这里</a>，查看series和内存占用的关系。对于InfluxDB，我们无法把URL这种原始数据保存到数据库中，只能把数据进行归类，形成有限的tag进行保存。</p>
+<p>总结一下，对于MySQL而言，针对大量的数据使用全表扫描的方式来聚合统计指标数据，性能非常差，一般只能作为临时方案来使用。此时，引入InfluxDB之类的时间序列数据库，就很有必要了。时间序列数据库可以作为特定场景（比如监控、统计）的主存储，也可以和关系型数据库搭配使用，作为一个辅助数据源，保存业务系统的指标数据。</p>
+<h2 id="elasticsearch-vs-mysql">取长补短之 Elasticsearch vs MySQL</h2>
+<p>Elasticsearch（以下简称ES），是目前非常流行的分布式搜索和分析数据库，独特的倒排索引结构尤其适合进行全文搜索。</p>
+<p>简单来讲，倒排索引可以认为是一个Map，其Key是分词之后的关键字，Value是文档ID/片段ID的列表。我们只要输入需要搜索的单词，就可以直接在这个Map中得到所有包含这个单词的文档ID/片段ID列表，然后再根据其中的文档ID/片段ID查询出实际的文档内容。</p>
+<p>我们来测试一下，对比下使用ES进行关键字全文搜索、在MySQL中使用LIKE进行搜索的效率差距。</p>
+<p>首先，定义一个实体News，包含新闻分类、标题、内容等字段。这个实体同时会用作Spring Data JPA和Spring Data Elasticsearch的实体：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>@Entity
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>@Document(indexName = &quot;news&quot;, replicas = 0) //@Document注解定义了这是一个ES的索引，索引名称news，数据不需要冗余
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>@Table(name = &quot;news&quot;, indexes = {@Index(columnList = &quot;cateid&quot;)}) //@Table注解定义了这是一个MySQL表，表名news，对cateid列做索引
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>@Data
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>@AllArgsConstructor
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>@NoArgsConstructor
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>@DynamicUpdate
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>public class News {
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    @Id
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    private long id;
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    @Field(type = FieldType.Keyword)
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    private String category;//新闻分类名称
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    private int cateid;//新闻分类ID
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    @Column(columnDefinition = &quot;varchar(500)&quot;)//@Column注解定义了在MySQL中字段，比如这里定义title列的类型是varchar(500)
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    @Field(type = FieldType.Text, analyzer = &quot;ik_max_word&quot;, searchAnalyzer = &quot;ik_smart&quot;)//@Field注解定义了ES字段的格式，使用ik分词器进行分词
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    private String title;//新闻标题
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>    @Column(columnDefinition = &quot;text&quot;)
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>    @Field(type = FieldType.Text, analyzer = &quot;ik_max_word&quot;, searchAnalyzer = &quot;ik_smart&quot;)
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>    private String content;//新闻内容
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>}
+</code></pre></div>
+<p>接下来，我们实现主程序。在启动时，我们会从一个csv文件中加载4000条新闻数据，然后复制100份，拼成40万条数据，分别写入MySQL和ES：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>@SpringBootApplication
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>@Slf4j
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>@EnableElasticsearchRepositories(includeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = NewsESRepository.class)) //明确设置哪个是ES的Repository
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>@EnableJpaRepositories(excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = NewsESRepository.class)) //其他的是MySQL的Repository
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>public class CommonMistakesApplication {
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    public static void main(String[] args) {
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>        Utils.loadPropertySource(CommonMistakesApplication.class, &quot;es.properties&quot;);
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>        SpringApplication.run(CommonMistakesApplication.class, args);
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    }
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    @Autowired
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    private StandardEnvironment standardEnvironment;
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    @Autowired
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    private NewsESRepository newsESRepository;
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>    @Autowired
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>    private NewsMySQLRepository newsMySQLRepository;
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>    @PostConstruct
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>    public void init() {
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>        //使用-Dspring.profiles.active=init启动程序进行初始化
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>        if (Arrays.stream(standardEnvironment.getActiveProfiles()).anyMatch(s -&gt; s.equalsIgnoreCase(&quot;init&quot;))) {
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>            //csv中的原始数据只有4000条
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>            List&lt;News&gt; news = loadData();
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>            AtomicLong atomicLong = new AtomicLong();
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>            news.forEach(item -&gt; item.setTitle(&quot;%%&quot; + item.getTitle()));
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>            //我们模拟100倍的数据量，也就是40万条
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>            IntStream.rangeClosed(1, 100).forEach(repeat -&gt; {
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>                news.forEach(item -&gt; {
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>                    //重新设置主键ID
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>                    item.setId(atomicLong.incrementAndGet());
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>                    //每次复制数据稍微改一下title字段，在前面加上一个数字，代表这是第几次复制
+<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>                    item.setTitle(item.getTitle().replaceFirst(&quot;%%&quot;, String.valueOf(repeat)));
+<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>                });
+<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>                initMySQL(news, repeat == 1);
+<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a>                log.info(&quot;init MySQL finished for {}&quot;, repeat);
+<a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a>                initES(news, repeat == 1);
+<a id="__codelineno-9-38" name="__codelineno-9-38" href="#__codelineno-9-38"></a>                log.info(&quot;init ES finished for {}&quot;, repeat);
+<a id="__codelineno-9-39" name="__codelineno-9-39" href="#__codelineno-9-39"></a>            });
+<a id="__codelineno-9-40" name="__codelineno-9-40" href="#__codelineno-9-40"></a>
+<a id="__codelineno-9-41" name="__codelineno-9-41" href="#__codelineno-9-41"></a>        }
+<a id="__codelineno-9-42" name="__codelineno-9-42" href="#__codelineno-9-42"></a>    }
+<a id="__codelineno-9-43" name="__codelineno-9-43" href="#__codelineno-9-43"></a>
+<a id="__codelineno-9-44" name="__codelineno-9-44" href="#__codelineno-9-44"></a>    //从news.csv中解析得到原始数据
+<a id="__codelineno-9-45" name="__codelineno-9-45" href="#__codelineno-9-45"></a>    private List&lt;News&gt; loadData() {
+<a id="__codelineno-9-46" name="__codelineno-9-46" href="#__codelineno-9-46"></a>        //使用jackson-dataformat-csv实现csv到POJO的转换
+<a id="__codelineno-9-47" name="__codelineno-9-47" href="#__codelineno-9-47"></a>        CsvMapper csvMapper = new CsvMapper();
+<a id="__codelineno-9-48" name="__codelineno-9-48" href="#__codelineno-9-48"></a>        CsvSchema schema = CsvSchema.emptySchema().withHeader();
+<a id="__codelineno-9-49" name="__codelineno-9-49" href="#__codelineno-9-49"></a>        ObjectReader objectReader = csvMapper.readerFor(News.class).with(schema);
+<a id="__codelineno-9-50" name="__codelineno-9-50" href="#__codelineno-9-50"></a>        ClassLoader classLoader = getClass().getClassLoader();
+<a id="__codelineno-9-51" name="__codelineno-9-51" href="#__codelineno-9-51"></a>        File file = new File(classLoader.getResource(&quot;news.csv&quot;).getFile());
+<a id="__codelineno-9-52" name="__codelineno-9-52" href="#__codelineno-9-52"></a>        try (Reader reader = new FileReader(file)) {
+<a id="__codelineno-9-53" name="__codelineno-9-53" href="#__codelineno-9-53"></a>            return objectReader.&lt;News&gt;readValues(reader).readAll();
+<a id="__codelineno-9-54" name="__codelineno-9-54" href="#__codelineno-9-54"></a>        } catch (Exception e) {
+<a id="__codelineno-9-55" name="__codelineno-9-55" href="#__codelineno-9-55"></a>            e.printStackTrace();
+<a id="__codelineno-9-56" name="__codelineno-9-56" href="#__codelineno-9-56"></a>        }
+<a id="__codelineno-9-57" name="__codelineno-9-57" href="#__codelineno-9-57"></a>        return null;
+<a id="__codelineno-9-58" name="__codelineno-9-58" href="#__codelineno-9-58"></a>    }
+<a id="__codelineno-9-59" name="__codelineno-9-59" href="#__codelineno-9-59"></a>
+<a id="__codelineno-9-60" name="__codelineno-9-60" href="#__codelineno-9-60"></a>    //把数据保存到ES中
+<a id="__codelineno-9-61" name="__codelineno-9-61" href="#__codelineno-9-61"></a>    private void initES(List&lt;News&gt; news, boolean clear) {
+<a id="__codelineno-9-62" name="__codelineno-9-62" href="#__codelineno-9-62"></a>        if (clear) {
+<a id="__codelineno-9-63" name="__codelineno-9-63" href="#__codelineno-9-63"></a>            //首次调用的时候先删除历史数据
+<a id="__codelineno-9-64" name="__codelineno-9-64" href="#__codelineno-9-64"></a>            newsESRepository.deleteAll();
+<a id="__codelineno-9-65" name="__codelineno-9-65" href="#__codelineno-9-65"></a>        }
+<a id="__codelineno-9-66" name="__codelineno-9-66" href="#__codelineno-9-66"></a>        newsESRepository.saveAll(news);
+<a id="__codelineno-9-67" name="__codelineno-9-67" href="#__codelineno-9-67"></a>    }
+<a id="__codelineno-9-68" name="__codelineno-9-68" href="#__codelineno-9-68"></a>
+<a id="__codelineno-9-69" name="__codelineno-9-69" href="#__codelineno-9-69"></a>    //把数据保存到MySQL中
+<a id="__codelineno-9-70" name="__codelineno-9-70" href="#__codelineno-9-70"></a>    private void initMySQL(List&lt;News&gt; news, boolean clear) {
+<a id="__codelineno-9-71" name="__codelineno-9-71" href="#__codelineno-9-71"></a>        if (clear) {
+<a id="__codelineno-9-72" name="__codelineno-9-72" href="#__codelineno-9-72"></a>            //首次调用的时候先删除历史数据
+<a id="__codelineno-9-73" name="__codelineno-9-73" href="#__codelineno-9-73"></a>            newsMySQLRepository.deleteAll();
+<a id="__codelineno-9-74" name="__codelineno-9-74" href="#__codelineno-9-74"></a>        }
+<a id="__codelineno-9-75" name="__codelineno-9-75" href="#__codelineno-9-75"></a>        newsMySQLRepository.saveAll(news);
+<a id="__codelineno-9-76" name="__codelineno-9-76" href="#__codelineno-9-76"></a>    }
+<a id="__codelineno-9-77" name="__codelineno-9-77" href="#__codelineno-9-77"></a>}
+</code></pre></div>
+<p>由于我们使用了Spring Data，直接定义两个Repository，然后直接定义查询方法，无需实现任何逻辑即可实现查询，Spring Data会根据方法名生成相应的SQL语句和ES查询DSL，其中ES的翻译逻辑<a href="https://docs.spring.io/spring-data/elasticsearch/docs/current/reference/html/#elasticsearch.query-methods.criterions">详见这里</a>。</p>
+<p>在这里，我们定义一个countByCateidAndContentContainingAndContentContaining方法，代表查询条件是：搜索分类等于cateid参数，且内容同时包含关键字keyword1和keyword2，计算符合条件的新闻总数量：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>@Repository
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>public interface NewsMySQLRepository extends JpaRepository&lt;News, Long&gt; {
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    //JPA：搜索分类等于cateid参数，且内容同时包含关键字keyword1和keyword2，计算符合条件的新闻总数量
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    long countByCateidAndContentContainingAndContentContaining(int cateid, String keyword1, String keyword2);
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>}
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>@Repository
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>public interface NewsESRepository extends ElasticsearchRepository&lt;News, Long&gt; {
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    //ES：搜索分类等于cateid参数，且内容同时包含关键字keyword1和keyword2，计算符合条件的新闻总数量
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    long countByCateidAndContentContainingAndContentContaining(int cateid, String keyword1, String keyword2);
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>}
+</code></pre></div>
+<p>对于ES和MySQL，我们使用相同的条件进行搜索，搜素分类是1，关键字是社会和苹果，然后输出搜索结果和耗时：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>//测试MySQL搜索，最后输出耗时和结果
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>@GetMapping(&quot;mysql&quot;)
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>public void mysql(@RequestParam(value = &quot;cateid&quot;, defaultValue = &quot;1&quot;) int cateid,
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>                  @RequestParam(value = &quot;keyword1&quot;, defaultValue = &quot;社会&quot;) String keyword1,
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>                  @RequestParam(value = &quot;keyword2&quot;, defaultValue = &quot;苹果&quot;) String keyword2) {
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    long begin = System.currentTimeMillis();
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    Object result = newsMySQLRepository.countByCateidAndContentContainingAndContentContaining(cateid, keyword1, keyword2);
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    log.info(&quot;took {} ms result {}&quot;, System.currentTimeMillis() - begin, result);
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>}
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>//测试ES搜索，最后输出耗时和结果
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>@GetMapping(&quot;es&quot;)
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>public void es(@RequestParam(value = &quot;cateid&quot;, defaultValue = &quot;1&quot;) int cateid,
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>               @RequestParam(value = &quot;keyword1&quot;, defaultValue = &quot;社会&quot;) String keyword1,
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>               @RequestParam(value = &quot;keyword2&quot;, defaultValue = &quot;苹果&quot;) String keyword2) {
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>    long begin = System.currentTimeMillis();
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    Object result = newsESRepository.countByCateidAndContentContainingAndContentContaining(cateid, keyword1, keyword2);
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>    log.info(&quot;took {} ms result {}&quot;, System.currentTimeMillis() - begin, result);
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>}
+</code></pre></div>
+<p>分别调用接口可以看到，<strong>ES耗时仅仅48ms，MySQL耗时6秒多是ES的100倍</strong>。很遗憾，虽然新闻分类ID已经建了索引，但是这个索引只能起到加速过滤分类ID这一单一条件的作用，对于文本内容的全文搜索，B+树索引无能为力。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>[22:04:00.951] [http-nio-45678-exec-6] [INFO ] [o.g.t.c.n.esvsmyql.PerformanceController:48  ] - took 48 ms result 2100
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>Hibernate: select count(news0_.id) as col_0_0_ from news news0_ where news0_.cateid=? and (news0_.content like ? escape ?) and (news0_.content like ? escape ?)
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>[22:04:11.946] [http-nio-45678-exec-7] [INFO ] [o.g.t.c.n.esvsmyql.PerformanceController:39  ] - took 6637 ms result 2100
+</code></pre></div>
+<p>但ES这种以索引为核心的数据库，也不是万能的，频繁更新就是一个大问题。</p>
+<p>MySQL可以做到仅更新某行数据的某个字段，但ES里每次数据字段更新都相当于整个文档索引重建。即便ES提供了文档部分更新的功能，但本质上只是节省了提交文档的网络流量，以及减少了更新冲突，其内部实现还是文档删除后重新构建索引。因此，如果要在ES中保存一个类似计数器的值，要实现不断更新，其执行效率会非常低。</p>
+<p>我们来验证下，分别使用JdbcTemplate+SQL语句、ElasticsearchTemplate+自定义UpdateQuery，实现部分更新MySQL表和ES索引的一个字段，每个方法都是循环更新1000次：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>@GetMapping(&quot;mysql2&quot;)
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>public void mysql2(@RequestParam(value = &quot;id&quot;, defaultValue = &quot;400000&quot;) long id) {
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    long begin = System.currentTimeMillis();
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    //对于MySQL，使用JdbcTemplate+SQL语句，实现直接更新某个category字段，更新1000次
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    IntStream.rangeClosed(1, 1000).forEach(i -&gt; {
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>        jdbcTemplate.update(&quot;UPDATE `news` SET category=? WHERE id=?&quot;, new Object[]{&quot;test&quot; + i, id});
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    });
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    log.info(&quot;mysql took {} ms result {}&quot;, System.currentTimeMillis() - begin, newsMySQLRepository.findById(id));
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>}
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>@GetMapping(&quot;es2&quot;)
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>public void es(@RequestParam(value = &quot;id&quot;, defaultValue = &quot;400000&quot;) long id) {
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    long begin = System.currentTimeMillis();
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>    IntStream.rangeClosed(1, 1000).forEach(i -&gt; {
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>        //对于ES，通过ElasticsearchTemplate+自定义UpdateQuery，实现文档的部分更新
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>        UpdateQuery updateQuery = null;
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>        try {
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>            updateQuery = new UpdateQueryBuilder()
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>                    .withIndexName(&quot;news&quot;)
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>                    .withId(String.valueOf(id))
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>                    .withType(&quot;_doc&quot;)
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>                    .withUpdateRequest(new UpdateRequest().doc(
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>                            jsonBuilder()
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>                                    .startObject()
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>                                    .field(&quot;category&quot;, &quot;test&quot; + i)
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>                                    .endObject()))
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>                    .build();
+<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a>        } catch (IOException e) {
+<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>            e.printStackTrace();
+<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a>        }
+<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a>        elasticsearchTemplate.update(updateQuery);
+<a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a>    });
+<a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a>    log.info(&quot;es took {} ms result {}&quot;, System.currentTimeMillis() - begin, newsESRepository.findById(id).get());
+<a id="__codelineno-13-34" name="__codelineno-13-34" href="#__codelineno-13-34"></a>}
+</code></pre></div>
+<p>可以看到，<strong>MySQL耗时仅仅1.5秒，而ES耗时6.8秒</strong>：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/63/02/63a583a0bced67a3f7cf0eb32e644802.png?wh=3060%2A950" /></p>
+<p>ES是一个分布式的全文搜索数据库，所以与MySQL相比的优势在于文本搜索，而且因为其分布式的特性，可以使用一个大ES集群处理大规模数据的内容搜索。但，由于ES的索引是文档维度的，所以不适用于频繁更新的OLTP业务。</p>
+<p>一般而言，我们会把ES和MySQL结合使用，MySQL直接承担业务系统的增删改操作，而ES作为辅助数据库，直接扁平化保存一份业务数据，用于复杂查询、全文搜索和统计。接下来，我也会继续和你分析这一点。</p>
+<h2 id="nosqlmysql">结合NoSQL和MySQL应对高并发的复合数据库架构</h2>
+<p>现在，我们通过一些案例看到了Redis、InfluxDB、ES这些NoSQL数据库，都有擅长和不擅长的场景。那么，有没有全能的数据库呢？</p>
+<p>我认为没有。每一个存储系统都有其独特的数据结构，数据结构的设计就决定了其擅长和不擅长的场景。</p>
+<p>比如，MySQL InnoDB引擎的B+树对排序和范围查询友好，频繁数据更新的代价不是太大，因此适合OLTP（On-Line Transaction Processing）。</p>
+<p>又比如，ES的Lucene采用了FST（Finite State Transducer）索引+倒排索引，空间效率高，适合对变动不频繁的数据做索引，实现全文搜索。存储系统本身不可能对一份数据使用多种数据结构保存，因此不可能适用于所有场景。</p>
+<p>虽然在大多数业务场景下，MySQL的性能都不算太差，但对于数据量大、访问量大、业务复杂的互联网应用来说，MySQL因为实现了ACID（原子性、一致性、隔离性、持久性）会比较重，而且横向扩展能力较差、功能单一，无法扛下所有数据量和流量，无法应对所有功能需求。因此，我们需要通过架构手段，来组合使用多种存储系统，取长补短，实现1+1&gt;2的效果。</p>
+<p>我来举个例子。我们设计了一个<strong>包含多个数据库系统的、能应对各种高并发场景的一套数据服务的系统架构</strong>，其中包含了同步写服务、异步写服务和查询服务三部分，分别实现主数据库写入、辅助数据库写入和查询路由。</p>
+<p>我们按照服务来依次分析下这个架构。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/bb/38/bbbcdbd74308de6b8fda04b34ed07e38.png?wh=1886%2A1626" /></p>
+<p>首先要明确的是，重要的业务主数据只能保存在MySQL这样的关系型数据库中，原因有三点：</p>
+<ul>
+<li>RDBMS经过了几十年的验证，已经非常成熟；</li>
+<li>RDBMS的用户数量众多，Bug修复快、版本稳定、可靠性很高；</li>
+<li>RDBMS强调ACID，能确保数据完整。</li>
+</ul>
+<p>有两种类型的查询任务可以交给MySQL来做，性能会比较好，这也是MySQL擅长的地方：</p>
+<ul>
+<li>按照主键ID的查询。直接查询聚簇索引，其性能会很高。但是单表数据量超过亿级后，性能也会衰退，而且单个数据库无法承受超大的查询并发，因此我们可以把数据表进行Sharding操作，均匀拆分到多个数据库实例中保存。我们把这套数据库集群称作Sharding集群。</li>
+<li>按照各种条件进行范围查询，查出主键ID。对二级索引进行查询得到主键，只需要查询一棵B+树，效率同样很高。但索引的值不宜过大，比如对varchar(1000)进行索引不太合适，而索引外键（一般是int或bigint类型）性能就会比较好。因此，我们可以在MySQL中建立一张“索引表”，除了保存主键外，主要是保存各种关联表的外键，以及尽可能少的varchar类型的字段。这张索引表的大部分列都可以建上二级索引，用于进行简单搜索，搜索的结果是主键的列表，而不是完整的数据。由于索引表字段轻量并且数量不多（一般控制在10个以内），所以即便索引表没有进行Sharding拆分，问题也不会很大。</li>
+</ul>
+<p>如图上蓝色线所示，写入两种MySQL数据表和发送MQ消息的这三步，我们用一个<strong>同步写服务</strong>完成了。我在“<a href="https://time.geekbang.org/column/article/234928">异步处理</a>”中提到，所有异步流程都需要补偿，这里的异步流程同样需要。只不过为了简洁，我在这里省略了补偿流程。</p>
+<p>然后，如图中绿色线所示，有一个<strong>异步写服务</strong>，监听MQ的消息，继续完成辅助数据的更新操作。这里我们选用了ES和InfluxDB这两种辅助数据库，因此整个异步写数据操作有三步：</p>
+<ol>
+<li>MQ消息不一定包含完整的数据，甚至可能只包含一个最新数据的主键ID，我们需要根据ID从查询服务查询到完整的数据。</li>
+<li>写入InfluxDB的数据一般可以按时间间隔进行简单聚合，定时写入InfluxDB。因此，这里会进行简单的客户端聚合，然后写入InfluxDB。</li>
+<li>ES不适合在各索引之间做连接（Join）操作，适合保存扁平化的数据。比如，我们可以把订单下的用户、商户、商品列表等信息，作为内嵌对象嵌入整个订单JSON，然后把整个扁平化的JSON直接存入ES。</li>
+</ol>
+<p>对于数据写入操作，我们认为操作返回的时候同步数据一定是写入成功的，但是由于各种原因，异步数据写入无法确保立即成功，会有一定延迟，比如：</p>
+<ul>
+<li>异步消息丢失的情况，需要补偿处理；</li>
+<li>写入ES的索引操作本身就会比较慢；</li>
+<li>写入InfluxDB的数据需要客户端定时聚合。</li>
+</ul>
+<p>因此，对于<strong>查询服务</strong>，如图中红色线所示，我们需要根据一定的上下文条件（比如查询一致性要求、时效性要求、搜索的条件、需要返回的数据字段、搜索时间区间等）来把请求路由到合适的数据库，并且做一些聚合处理：</p>
+<ul>
+<li>需要根据主键查询单条数据，可以从MySQL Sharding集群或Redis查询，如果对实时性要求不高也可以从ES查询。</li>
+<li>按照多个条件搜索订单的场景，可以从MySQL索引表查询出主键列表，然后再根据主键从MySQL Sharding集群或Redis获取数据详情。</li>
+<li>各种后台系统需要使用比较复杂的搜索条件，甚至全文搜索来查询订单数据，或是定时分析任务需要一次查询大量数据，这些场景对数据实时性要求都不高，可以到ES进行搜索。此外，MySQL中的数据可以归档，我们可以在ES中保留更久的数据，而且查询历史数据一般并发不会很大，可以统一路由到ES查询。</li>
+<li>监控系统或后台报表系统需要呈现业务监控图表或表格，可以把请求路由到InfluxDB查询。</li>
+</ul>
+<h2 id="_1">重点回顾</h2>
+<p>今天，我通过三个案例分别对比了缓存数据库Redis、时间序列数据库InfluxDB、搜索数据库ES和MySQL的性能。我们看到：</p>
+<ul>
+<li>Redis对单条数据的读取性能远远高于MySQL，但不适合进行范围搜索。</li>
+<li>InfluxDB对于时间序列数据的聚合效率远远高于MySQL，但因为没有主键，所以不是一个通用数据库。</li>
+<li>ES对关键字的全文搜索能力远远高于MySQL，但是字段的更新效率较低，不适合保存频繁更新的数据。</li>
+</ul>
+<p>最后，我们给出了一个混合使用MySQL + Redis + InfluxDB + ES的架构方案，充分发挥了各种数据库的特长，相互配合构成了一个可以应对各种复杂查询，以及高并发读写的存储架构。</p>
+<ul>
+<li>主数据由两种MySQL数据表构成，其中索引表承担简单条件的搜索来得到主键，Sharding表承担大并发的主键查询。主数据由同步写服务写入，写入后发出MQ消息。</li>
+<li>辅助数据可以根据需求选用合适的NoSQL，由单独一个或多个异步写服务监听MQ后异步写入。</li>
+<li>由统一的查询服务，对接所有查询需求，根据不同的查询需求路由查询到合适的存储，确保每一个存储系统可以根据场景发挥所长，并分散各数据库系统的查询压力。</li>
+</ul>
+<p>今天用到的代码，我都放在了GitHub上，你可以点击<a href="https://github.com/JosephZhu1983/java-common-mistakes">这个链接</a>查看。</p>
+<h2 id="_2">思考与讨论</h2>
+<ol>
+<li>我们提到，InfluxDB不能包含太多tag。你能写一段测试代码，来模拟这个问题，并观察下InfluxDB的内存使用情况吗？</li>
+<li>文档数据库MongoDB，也是一种常用的NoSQL。你觉得MongoDB的优势和劣势是什么呢？它适合用在什么场景下呢？</li>
+</ol>
+<p>关于数据存储，你还有其他心得吗？我是朱晔，欢迎在评论区与我留言分享你的想法，也欢迎你把今天的内容分享给你的朋友或同事，一起交流。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>👽</span> 👍（30） 💬（1）<div>其实，具体使用何种数据库，如果了解其原理，那就很容易弄懂了。
 我就说说ES，
 ES，因为其本身全文索引，和复杂查询的高性能，最主要还是依赖于其分词之后简历的映射表。基本可以理解为类似数据库索引一样的存在。索引的弊端，也就是ES的弊端。
 索引，基本目的是空间换时间，用一些冗余的节点数据来优化查询性能。但是带来的问题，一方面是空间的占用，以及维护索引所需要的成本。因为需要维护索引，所以删改数据时性能较差。
 ES的索引又更加过分，几乎是针对单个文章的全部内容，建立了分词映射，修改一篇文章内容，可能会大幅度修改映射内容。所以不适合频繁修改的数据。
-</div>2020-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/79/01/e71510dc.jpg" width="30px"><span>hellojd</span> 👍（22） 💬（1）<div>老师没说mongo数据库，我的理解是如果不是acid要求特别高的地方，都可以将mysql替换为mongo.不知道理解对不对。</div>2020-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/13/87/73a17c60.jpg" width="30px"><span>似曾相识</span> 👍（8） 💬（1）<div>老师 Infludb,和es 这些数据库做辅助数据库，需要保存全量数据吗？还是根据业务保存部分字段？</div>2020-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/74/8a/d5b0cf30.jpg" width="30px"><span>kyl</span> 👍（6） 💬（2）<div>说一下我对mongodb的理解，望老师指正。mongodb因为是文档型数据库以json格式存储，所以可以很方便的存储各种类型的数据，同时mongodb横向扩展只需增加分片比MySQL更加方便，数据量很大的场景下感觉性能优于MySQL。但是mongodb对事务支持比较差，虽然4.0引入了事务，但是可能有坑，另外mongodb不支持表的关联查询，所以还是要根据实际业务场景进行选择。</div>2020-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/9c/c6/05a6798f.jpg" width="30px"><span>苗</span> 👍（5） 💬（1）<div>MongoDB 4.2.x提供了相当于关系数据库RR的事务隔离级别；好像也能用于交易数据强acid的需求。感觉用数组字段处理简单的一对多关系很方便。</div>2020-09-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1c/6e/6c5f5734.jpg" width="30px"><span>终结者999号</span> 👍（5） 💬（1）<div>老师，我想问一下对于一个高并发的系统，索引库您们保存多长时间呢？没有夜维清理吗？</div>2020-05-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/24/2a/33441e2b.jpg" width="30px"><span>汝林外史</span> 👍（5） 💬（1）<div>又是干货满满，很多新接触的东西，感谢老师。
+</div>2020-05-15</li><br/><li><span>hellojd</span> 👍（22） 💬（1）<div>老师没说mongo数据库，我的理解是如果不是acid要求特别高的地方，都可以将mysql替换为mongo.不知道理解对不对。</div>2020-05-18</li><br/><li><span>似曾相识</span> 👍（8） 💬（1）<div>老师 Infludb,和es 这些数据库做辅助数据库，需要保存全量数据吗？还是根据业务保存部分字段？</div>2020-05-14</li><br/><li><span>kyl</span> 👍（6） 💬（2）<div>说一下我对mongodb的理解，望老师指正。mongodb因为是文档型数据库以json格式存储，所以可以很方便的存储各种类型的数据，同时mongodb横向扩展只需增加分片比MySQL更加方便，数据量很大的场景下感觉性能优于MySQL。但是mongodb对事务支持比较差，虽然4.0引入了事务，但是可能有坑，另外mongodb不支持表的关联查询，所以还是要根据实际业务场景进行选择。</div>2020-05-14</li><br/><li><span>苗</span> 👍（5） 💬（1）<div>MongoDB 4.2.x提供了相当于关系数据库RR的事务隔离级别；好像也能用于交易数据强acid的需求。感觉用数组字段处理简单的一对多关系很方便。</div>2020-09-09</li><br/><li><span>终结者999号</span> 👍（5） 💬（1）<div>老师，我想问一下对于一个高并发的系统，索引库您们保存多长时间呢？没有夜维清理吗？</div>2020-05-22</li><br/><li><span>汝林外史</span> 👍（5） 💬（1）<div>又是干货满满，很多新接触的东西，感谢老师。
 对于Mysql擅长的地方的第二点不是很理解：
    1.不是不建议设置外键吗？ 
    2.专门弄个索引表放主键与外键的关联关系，那岂不是每张表都要配这么一个索引表，这不浪费内存吗？
    3.主键跟关联表是一对多的关系，那这个索引表相对数据表的数据量岂不是几倍的关系，性能能好了吗？
-还请老师指教。</div>2020-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/96/b5/d09a53c7.jpg" width="30px"><span>永夜</span> 👍（2） 💬（1）<div>老师你好，我们这边主要做一些交互式数据可视化系统，目前用的主要是postgres数据库，但是一旦数据量比较大，几百万条的数据的一些过滤统计都会比较慢，需要20~30s，我们也需要用到数组，json这样的特殊类型，不知道有没有其它的数据库或者框架能提高这种场景下的效率问题。</div>2020-05-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/7a/b9/c3d3a92f.jpg" width="30px"><span>G小调</span> 👍（2） 💬（2）<div>老师 有个疑问❓ 你图里写的mysql索引库 是指表上建立了索引的库吗</div>2020-05-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/8f/cf/890f82d6.jpg" width="30px"><span>那时刻</span> 👍（1） 💬（1）<div>请问老师，文章提到的多数据库系统例子里，redis写入是怎么实现的呢？</div>2020-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/8f/cf/890f82d6.jpg" width="30px"><span>那时刻</span> 👍（9） 💬（3）<div>我说说个人对于MongoDB的理解，它的优势：
+还请老师指教。</div>2020-05-14</li><br/><li><span>永夜</span> 👍（2） 💬（1）<div>老师你好，我们这边主要做一些交互式数据可视化系统，目前用的主要是postgres数据库，但是一旦数据量比较大，几百万条的数据的一些过滤统计都会比较慢，需要20~30s，我们也需要用到数组，json这样的特殊类型，不知道有没有其它的数据库或者框架能提高这种场景下的效率问题。</div>2020-05-20</li><br/><li><span>G小调</span> 👍（2） 💬（2）<div>老师 有个疑问❓ 你图里写的mysql索引库 是指表上建立了索引的库吗</div>2020-05-18</li><br/><li><span>那时刻</span> 👍（1） 💬（1）<div>请问老师，文章提到的多数据库系统例子里，redis写入是怎么实现的呢？</div>2020-05-14</li><br/><li><span>那时刻</span> 👍（9） 💬（3）<div>我说说个人对于MongoDB的理解，它的优势：
 1.schema free，不需要额外定义列名，每个文档的key需要一致。
 2.对于json结构存储和读取方便，比如取json某个key的value比较方便。相对于mysql存储json需要序列化和反序列化操作。
 3.查询来看，3.0之后的mongo采用了B+树和LSM两种方式，来优化读多写少和写多读少情况。
@@ -13208,13 +13782,9 @@ ES的索引又更加过分，几乎是针对单个文章的全部内容，建立
 劣势：
 1. schema free，是双刃剑，如果某个字段并不是所有文档里存在，查询是个麻烦事。
 2.不支持事务
-3.为了向RDBMS靠拢，通过冗余字段来实现。实践起来不是很方便。</div>2020-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/87/a4/bd373a4a.jpg" width="30px"><span>fly12580</span> 👍（6） 💬（0）<div>redis还可以用来做分布式并发锁。</div>2020-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/10/bb/f1061601.jpg" width="30px"><span>Demon.Lee</span> 👍（6） 💬（6）<div>现在公司的业务对ACID没有那么高的要求，已经全部换成了NoSQL，主要就是MongoDB+Redis+ES，自从用了MongoDB，我感觉解脱了，再也不用去设计一堆关联的表了，字段的扩充或变化都没有什么影响，字段取值的检验全部在应用程序中解决，有点不爽是，写各种复杂查询和统计时没有写rdms的sql那么溜。另外就是，我们使用了Keys去redis查询所有相关的数据，一般数据量不大，但是我一直想优化下，今天老师又提了，必须优化了。</div>2020-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/1c/74/eb472cc3.jpg" width="30px"><span>海强</span> 👍（1） 💬（0）<div>做的一个政府项目，权限要求严格，数据权限采用行级白名单机制(名单是系统根据各种条件自动维护的)，白名单里面又涉及角色，个人和群组。用户和数据量都挺大的时候，白名单表特别大。列表查询(需要权限过滤)时候走数据库，各种索引和优化性能仍然达不到要求。
+3.为了向RDBMS靠拢，通过冗余字段来实现。实践起来不是很方便。</div>2020-05-14</li><br/><li><span>fly12580</span> 👍（6） 💬（0）<div>redis还可以用来做分布式并发锁。</div>2020-05-14</li><br/><li><span>Demon.Lee</span> 👍（6） 💬（6）<div>现在公司的业务对ACID没有那么高的要求，已经全部换成了NoSQL，主要就是MongoDB+Redis+ES，自从用了MongoDB，我感觉解脱了，再也不用去设计一堆关联的表了，字段的扩充或变化都没有什么影响，字段取值的检验全部在应用程序中解决，有点不爽是，写各种复杂查询和统计时没有写rdms的sql那么溜。另外就是，我们使用了Keys去redis查询所有相关的数据，一般数据量不大，但是我一直想优化下，今天老师又提了，必须优化了。</div>2020-05-14</li><br/><li><span>海强</span> 👍（1） 💬（0）<div>做的一个政府项目，权限要求严格，数据权限采用行级白名单机制(名单是系统根据各种条件自动维护的)，白名单里面又涉及角色，个人和群组。用户和数据量都挺大的时候，白名单表特别大。列表查询(需要权限过滤)时候走数据库，各种索引和优化性能仍然达不到要求。
 后面换成在es里面查，但是列表查询需要最新的数据，只好把数据更新推es做成同步的，数据的更新还比较频繁。
-总结就是数据量大</div>2020-12-03</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/j5ld8j7BqIZe9fOVniaLJajbOwbnwKD7dn3RN5T79K00uy1utB7PTP7TiclxdhXyh4ER8hsu8mgnibUoIDaRwib4kg/132" width="30px"><span>刘飞</span> 👍（1） 💬（0）<div>mongdb 更好的应用场景呢》？</div>2020-09-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/dd/6e/1479ce4f.jpg" width="30px"><span>CoderWang</span> 👍（1） 💬（0）<div>我来说说个人对mongodb的理解，很多人之前对mongodb理解是不支持事物或者若事物，但是在4.0之后特别在最新版本4.2之后对事物支持很好了。而且mongodb是json格式存储，非常方便灵活对数据结构存储，比如数组类型。在加入aggregate之后对聚合管道查询非常方便，对数据统计分析特别大帮助。个人理解，谢谢</div>2020-06-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83ersGSic8ib7OguJv6CJiaXY0s4n9C7Z51sWxTTljklFpq3ZAIWXoFTPV5oLo0GMTkqW5sYJRRnibNqOJQ/132" width="30px"><span>walle斌</span> 👍（0） 💬（0）<div>1）我这边自研的统一消息推送引擎，底层所有的推送记录，会经过本地定时缓冲区，批量写入到mongo中。。主要是需要提供分页，可扩展字段【要允许业务定制自己的字段】，主要对内使用，所以写入量大，但是查询量不大。
-2）然后再自研统一清库策略，批量小步删除一定时间之前的数据，删除是物理删除或者导入到公司内的phoenix中。
-3）自研背后数据展示页面。中间会由于多项目资源隔离，所以还要把历史推送项目引入独立jar包开启固定接口，然后配置页面不同的jv 会默认路由到不同的数据展示。
-4） 对测试人员提供同样逻辑接口。辅助其自动化脚本的完成
-基本上从头到尾都有辅助。而做业务研发的同学，只需要引入推送引擎实现必须的几个业务内容，然后就OK了。</div>2021-07-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/dd/19/45afa234.jpg" width="30px"><span>🐛🐛</span> 👍（0） 💬（0）<div>hbase算是什么样类型的NoSQL呢</div>2021-05-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/1c/74/eb472cc3.jpg" width="30px"><span>海强</span> 👍（0） 💬（0）<div>数据量大，更新频繁，还需要查实时列表的场景有什么解决方案？有没有异步写es，但是查询时候对没来及进es的数据进行数据库查询补偿之类的方案</div>2020-12-03</li><br/>
+总结就是数据量大</div>2020-12-03</li><br/><li><span>刘飞</span> 👍（1） 💬（0）<div>mongdb 更好的应用场景呢》？</div>2020-09-28</li><br/>
 </ul>
 
 

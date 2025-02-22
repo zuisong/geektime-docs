@@ -11974,6 +11974,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      代码实现与分析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      代码优化与重构
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -14521,6 +14557,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      代码实现与分析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      代码优化与重构
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -14553,13 +14625,220 @@
 <p>假设有这样一个需求，希望写一个小程序，实现对一个文件进行排序的功能。文件中只包含整型数，并且，相邻的数字通过逗号来区隔。如果由你来编写这样一个小程序，你会如何来实现呢？你可以把它当作面试题，先自己思考一下，再来看我下面的讲解。</p>
 <p>你可能会说，这不是很简单嘛，只需要将文件中的内容读取出来，并且通过逗号分割成一个一个的数字，放到内存数组中，然后编写某种排序算法（比如快排），或者直接使用编程语言提供的排序函数，对数组进行排序，最后再将数组中的数据写入文件就可以了。</p>
 <p>但是，如果文件很大呢？比如有10GB大小，因为内存有限（比如只有8GB大小），我们没办法一次性加载文件中的所有数据到内存中，这个时候，我们就要利用外部排序算法（具体怎么做，可以参看我的另一个专栏《数据结构与算法之美》中的“排序”相关章节）了。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>如果文件更大，比如有100GB大小，我们为了利用CPU多核的优势，可以在外部排序的基础之上进行优化，加入多线程并发排序的功能，这就有点类似“单机版”的MapReduce。</p>
+<p>如果文件非常大，比如有1TB大小，即便是单机多线程排序，这也算很慢了。这个时候，我们可以使用真正的MapReduce框架，利用多机的处理能力，提高排序的效率。</p>
+<h2 id="_2">代码实现与分析</h2>
+<p>解决思路讲完了，不难理解。接下来，我们看一下，如何将解决思路翻译成代码实现。</p>
+<p>我先用最简单直接的方式将它实现出来。具体代码我贴在下面了，你可以先看一下。因为我们是在讲设计模式，不是讲算法，所以，在下面的代码实现中，我只给出了跟设计模式相关的骨架代码，并没有给出每种排序算法的具体代码实现。感兴趣的话，你可以自行实现一下。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>public class Sorter {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  private static final long GB = 1000 * 1000 * 1000;
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  public void sortFile(String filePath) {
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    // 省略校验逻辑
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    File file = new File(filePath);
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    long fileSize = file.length();
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    if (fileSize &lt; 6 * GB) { // [0, 6GB)
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>      quickSort(filePath);
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    } else if (fileSize &lt; 10 * GB) { // [6GB, 10GB)
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>      externalSort(filePath);
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    } else if (fileSize &lt; 100 * GB) { // [10GB, 100GB)
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>      concurrentExternalSort(filePath);
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    } else { // [100GB, ~)
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>      mapreduceSort(filePath);
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    }
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>  }
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>  private void quickSort(String filePath) {
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    // 快速排序
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>  }
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>  private void externalSort(String filePath) {
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    // 外部排序
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>  }
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>  private void concurrentExternalSort(String filePath) {
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>    // 多线程外部排序
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>  }
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>  private void mapreduceSort(String filePath) {
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    // 利用MapReduce多机排序
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>  }
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>}
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>public class SortingTool {
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>  public static void main(String[] args) {
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>    Sorter sorter = new Sorter();
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>    sorter.sortFile(args[0]);
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>  }
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>}
+</code></pre></div>
+<p>在“编码规范”那一部分我们讲过，函数的行数不能过多，最好不要超过一屏的大小。所以，为了避免sortFile()函数过长，我们把每种排序算法从sortFile()函数中抽离出来，拆分成4个独立的排序函数。</p>
+<p>如果只是开发一个简单的工具，那上面的代码实现就足够了。毕竟，代码不多，后续修改、扩展的需求也不多，怎么写都不会导致代码不可维护。但是，如果我们是在开发一个大型项目，排序文件只是其中的一个功能模块，那我们就要在代码设计、代码质量上下点儿功夫了。只有每个小的功能模块都写好，整个项目的代码才能不差。</p>
+<p>在刚刚的代码中，我们并没有给出每种排序算法的代码实现。实际上，如果自己实现一下的话，你会发现，每种排序算法的实现逻辑都比较复杂，代码行数都比较多。所有排序算法的代码实现都堆在Sorter一个类中，这就会导致这个类的代码很多。而在“编码规范”那一部分中，我们也讲到，一个类的代码太多也会影响到可读性、可维护性。除此之外，所有的排序算法都设计成Sorter的私有函数，也会影响代码的可复用性。</p>
+<h2 id="_3">代码优化与重构</h2>
+<p>只要掌握了我们之前讲过的设计原则和思想，针对上面的问题，即便我们想不到该用什么设计模式来重构，也应该能知道该如何解决，那就是将Sorter类中的某些代码拆分出来，独立成职责更加单一的小类。实际上，拆分是应对类或者函数代码过多、应对代码复杂性的一个常用手段。按照这个解决思路，我们对代码进行重构。重构之后的代码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>public interface ISortAlg {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  void sort(String filePath);
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>}
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>public class QuickSort implements ISortAlg {
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  @Override
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  public void sort(String filePath) {
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    //...
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>  }
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>}
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>public class ExternalSort implements ISortAlg {
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>  @Override
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>  public void sort(String filePath) {
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    //...
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>  }
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>}
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>public class ConcurrentExternalSort implements ISortAlg {
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>  @Override
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>  public void sort(String filePath) {
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    //...
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>  }
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>}
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>public class MapReduceSort implements ISortAlg {
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>  @Override
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>  public void sort(String filePath) {
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>    //...
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>  }
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>}
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>public class Sorter {
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>  private static final long GB = 1000 * 1000 * 1000;
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>  public void sortFile(String filePath) {
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>    // 省略校验逻辑
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>    File file = new File(filePath);
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>    long fileSize = file.length();
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a>    ISortAlg sortAlg;
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>    if (fileSize &lt; 6 * GB) { // [0, 6GB)
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a>      sortAlg = new QuickSort();
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>    } else if (fileSize &lt; 10 * GB) { // [6GB, 10GB)
+<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a>      sortAlg = new ExternalSort();
+<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a>    } else if (fileSize &lt; 100 * GB) { // [10GB, 100GB)
+<a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a>      sortAlg = new ConcurrentExternalSort();
+<a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a>    } else { // [100GB, ~)
+<a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a>      sortAlg = new MapReduceSort();
+<a id="__codelineno-1-49" name="__codelineno-1-49" href="#__codelineno-1-49"></a>    }
+<a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a>    sortAlg.sort(filePath);
+<a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a>  }
+<a id="__codelineno-1-52" name="__codelineno-1-52" href="#__codelineno-1-52"></a>}
+</code></pre></div>
+<p>经过拆分之后，每个类的代码都不会太多，每个类的逻辑都不会太复杂，代码的可读性、可维护性提高了。除此之外，我们将排序算法设计成独立的类，跟具体的业务逻辑（代码中的if-else那部分逻辑）解耦，也让排序算法能够复用。这一步实际上就是策略模式的第一步，也就是将策略的定义分离出来。</p>
+<p>实际上，上面的代码还可以继续优化。每种排序类都是无状态的，我们没必要在每次使用的时候，都重新创建一个新的对象。所以，我们可以使用工厂模式对对象的创建进行封装。按照这个思路，我们对代码进行重构。重构之后的代码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>public class SortAlgFactory {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  private static final Map&lt;String, ISortAlg&gt; algs = new HashMap&lt;&gt;();
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  static {
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    algs.put(&quot;QuickSort&quot;, new QuickSort());
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    algs.put(&quot;ExternalSort&quot;, new ExternalSort());
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    algs.put(&quot;ConcurrentExternalSort&quot;, new ConcurrentExternalSort());
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    algs.put(&quot;MapReduceSort&quot;, new MapReduceSort());
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>  }
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>  public static ISortAlg getSortAlg(String type) {
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    if (type == null || type.isEmpty()) {
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>      throw new IllegalArgumentException(&quot;type should not be empty.&quot;);
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    }
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    return algs.get(type);
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>  }
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>}
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>public class Sorter {
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>  private static final long GB = 1000 * 1000 * 1000;
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>  public void sortFile(String filePath) {
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    // 省略校验逻辑
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    File file = new File(filePath);
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    long fileSize = file.length();
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>    ISortAlg sortAlg;
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>    if (fileSize &lt; 6 * GB) { // [0, 6GB)
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>      sortAlg = SortAlgFactory.getSortAlg(&quot;QuickSort&quot;);
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>    } else if (fileSize &lt; 10 * GB) { // [6GB, 10GB)
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>      sortAlg = SortAlgFactory.getSortAlg(&quot;ExternalSort&quot;);
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>    } else if (fileSize &lt; 100 * GB) { // [10GB, 100GB)
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>      sortAlg = SortAlgFactory.getSortAlg(&quot;ConcurrentExternalSort&quot;);
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>    } else { // [100GB, ~)
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>      sortAlg = SortAlgFactory.getSortAlg(&quot;MapReduceSort&quot;);
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>    }
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>    sortAlg.sort(filePath);
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>  }
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>}
+</code></pre></div>
+<p>经过上面两次重构之后，现在的代码实际上已经符合策略模式的代码结构了。我们通过策略模式将策略的定义、创建、使用解耦，让每一部分都不至于太复杂。不过，Sorter类中的sortFile()函数还是有一堆if-else逻辑。这里的if-else逻辑分支不多、也不复杂，这样写完全没问题。但如果你特别想将if-else分支判断移除掉，那也是有办法的。我直接给出代码，你一看就能明白。实际上，这也是基于查表法来解决的，其中的“algs”就是“表”。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>public class Sorter {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  private static final long GB = 1000 * 1000 * 1000;
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  private static final List&lt;AlgRange&gt; algs = new ArrayList&lt;&gt;();
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  static {
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    algs.add(new AlgRange(0, 6*GB, SortAlgFactory.getSortAlg(&quot;QuickSort&quot;)));
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    algs.add(new AlgRange(6*GB, 10*GB, SortAlgFactory.getSortAlg(&quot;ExternalSort&quot;)));
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    algs.add(new AlgRange(10*GB, 100*GB, SortAlgFactory.getSortAlg(&quot;ConcurrentExternalSort&quot;)));
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    algs.add(new AlgRange(100*GB, Long.MAX_VALUE, SortAlgFactory.getSortAlg(&quot;MapReduceSort&quot;)));
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>  }
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>  public void sortFile(String filePath) {
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    // 省略校验逻辑
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    File file = new File(filePath);
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    long fileSize = file.length();
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    ISortAlg sortAlg = null;
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    for (AlgRange algRange : algs) {
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>      if (algRange.inRange(fileSize)) {
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>        sortAlg = algRange.getAlg();
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>        break;
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>      }
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    }
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>    sortAlg.sort(filePath);
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>  }
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>  private static class AlgRange {
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>    private long start;
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>    private long end;
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>    private ISortAlg alg;
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>    public AlgRange(long start, long end, ISortAlg alg) {
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>      this.start = start;
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>      this.end = end;
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>      this.alg = alg;
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>    }
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>    public ISortAlg getAlg() {
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>      return alg;
+<a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>    }
+<a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>
+<a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>    public boolean inRange(long size) {
+<a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>      return size &gt;= start &amp;&amp; size &lt; end;
+<a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>    }
+<a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a>  }
+<a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a>}
+</code></pre></div>
+<p>现在的代码实现就更加优美了。我们把可变的部分隔离到了策略工厂类和Sorter类中的静态代码段中。当要添加一个新的排序算法时，我们只需要修改策略工厂类和Sort类中的静态代码段，其他代码都不需要修改，这样就将代码改动最小化、集中化了。</p>
+<p>你可能会说，即便这样，当我们添加新的排序算法的时候，还是需要修改代码，并不完全符合开闭原则。有什么办法让我们完全满足开闭原则呢？</p>
+<p>对于Java语言来说，我们可以通过反射来避免对策略工厂类的修改。具体是这么做的：我们通过一个配置文件或者自定义的annotation来标注都有哪些策略类；策略工厂类读取配置文件或者搜索被annotation标注的策略类，然后通过反射动态地加载这些策略类、创建策略对象；当我们新添加一个策略的时候，只需要将这个新添加的策略类添加到配置文件或者用annotation标注即可。还记得上一节课的课堂讨论题吗？我们也可以用这种方法来解决。</p>
+<p>对于Sorter来说，我们可以通过同样的方法来避免修改。我们通过将文件大小区间和算法之间的对应关系放到配置文件中。当添加新的排序算法时，我们只需要改动配置文件即可，不需要改动代码。</p>
+<h2 id="_4">重点回顾</h2>
+<p>好了，今天的内容到此就讲完了。我们一块来总结回顾一下，你需要重点掌握的内容。</p>
+<p>一提到if-else分支判断，有人就觉得它是烂代码。如果if-else分支判断不复杂、代码不多，这并没有任何问题，毕竟if-else分支判断几乎是所有编程语言都会提供的语法，存在即有理由。遵循KISS原则，怎么简单怎么来，就是最好的设计。非得用策略模式，搞出n多类，反倒是一种过度设计。</p>
+<p>一提到策略模式，有人就觉得，它的作用是避免if-else分支判断逻辑。实际上，这种认识是很片面的。策略模式主要的作用还是解耦策略的定义、创建和使用，控制代码的复杂度，让每个部分都不至于过于复杂、代码量过多。除此之外，对于复杂代码来说，策略模式还能让其满足开闭原则，添加新策略的时候，最小化、集中化代码改动，减少引入bug的风险。</p>
+<p>实际上，设计原则和思想比设计模式更加普适和重要。掌握了代码的设计原则和思想，我们能更清楚的了解，为什么要用某种设计模式，就能更恰到好处地应用设计模式。</p>
+<h2 id="_5">课堂讨论</h2>
+<ol>
+<li>在过去的项目开发中，你有没有用过策略模式，都是为了解决什么问题才使用的？</li>
+<li>你可以说一说，在什么情况下，我们才有必要去掉代码中的if-else或者switch-case分支逻辑呢？</li>
+</ol>
+<p>欢迎留言和我分享你的想法。如果有收获，也欢迎你把这篇文章分享给你的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/4f/13/5197f8d2.jpg" width="30px"><span>永旭</span> 👍（10） 💬（3）<div>哪位了解无状态的类是什么意思 ?</div>2020-04-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4a/96/99466a06.jpg" width="30px"><span>Laughing</span> 👍（3） 💬（1）<div>在之前项目中，有个缓存的实现开始直接使用的redis来实现的，后来使用内存缓存替换，这样一来我使用了策略模式根据缓存key的类型，自动选择策略进行缓存。</div>2020-11-24</li><br/><li><img src="" width="30px"><span>一万小时</span> 👍（3） 💬（1）<div>策略模式看着像是个工厂模式</div>2020-11-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/1c/8c/3af20a8e.jpg" width="30px"><span>Fitch Kuma</span> 👍（2） 💬（1）<div>对查表法来避免if-else很有感触，之前设计Jenkins pipeline是就是用Map来存放不同的component部署到不同server的映射关系的. 感觉策略模式的本质就是多态？</div>2020-07-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d1/70/5c644be9.jpg" width="30px"><span>木又寸</span> 👍（1） 💬（3）<div>策略类膨胀的情况，小争哥有没一些最佳实践可以分享？
+<li><span>永旭</span> 👍（10） 💬（3）<div>哪位了解无状态的类是什么意思 ?</div>2020-04-30</li><br/><li><span>Laughing</span> 👍（3） 💬（1）<div>在之前项目中，有个缓存的实现开始直接使用的redis来实现的，后来使用内存缓存替换，这样一来我使用了策略模式根据缓存key的类型，自动选择策略进行缓存。</div>2020-11-24</li><br/><li><span>一万小时</span> 👍（3） 💬（1）<div>策略模式看着像是个工厂模式</div>2020-11-23</li><br/><li><span>Fitch Kuma</span> 👍（2） 💬（1）<div>对查表法来避免if-else很有感触，之前设计Jenkins pipeline是就是用Map来存放不同的component部署到不同server的映射关系的. 感觉策略模式的本质就是多态？</div>2020-07-05</li><br/><li><span>木又寸</span> 👍（1） 💬（3）<div>策略类膨胀的情况，小争哥有没一些最佳实践可以分享？
 
 业务实现上，可能一个父级策略下有多个子策略（譬如促销活动有满减&#47;返现&#47;立减等，满减规则下又有几种复杂的优惠策略），这时候把所有满减规则塞进一个策略类，有些偏离我们的初衷；将子策略拆分为独立的策略，策略类的数目又会急剧膨胀。
 
-如何取舍？或者能否混合其他模式来适应这种场景？</div>2020-05-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/00/4e/be2b206b.jpg" width="30px"><span>吴小智</span> 👍（217） 💬（6）<div>&quot;设计原则和思想比设计模式更加普适和重要&quot;，被这句话一下子点醒了。可以这样说，设计原则和思想是更高层次的理论和指导原则，设计模式只是这些理论和指导原则下，根据经验和场景，总结出来的编程范式。</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/68/fe/1353168d.jpg" width="30px"><span>岁月</span> 👍（77） 💬（10）<div>看到这里我感觉好多设计模式都很类似, 都是先针对接口编程, 然后再加个查表法😂</div>2020-04-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a0/a3/8da99bb0.jpg" width="30px"><span>业余爱好者</span> 👍（43） 💬（1）<div>策略集合的信息也可以定义成枚举，可以放在数据库，可以放kv配置中心，等等。都是一样的道理。
+如何取舍？或者能否混合其他模式来适应这种场景？</div>2020-05-27</li><br/><li><span>吴小智</span> 👍（217） 💬（6）<div>&quot;设计原则和思想比设计模式更加普适和重要&quot;，被这句话一下子点醒了。可以这样说，设计原则和思想是更高层次的理论和指导原则，设计模式只是这些理论和指导原则下，根据经验和场景，总结出来的编程范式。</div>2020-03-23</li><br/><li><span>岁月</span> 👍（77） 💬（10）<div>看到这里我感觉好多设计模式都很类似, 都是先针对接口编程, 然后再加个查表法😂</div>2020-04-02</li><br/><li><span>业余爱好者</span> 👍（43） 💬（1）<div>策略集合的信息也可以定义成枚举，可以放在数据库，可以放kv配置中心，等等。都是一样的道理。
 
 策略模式是对策略的定义，创建和使用解藕。定义和创建的过程与业务逻辑关系不大，写在一起会影响可读性。
 
@@ -14571,33 +14850,17 @@
 
 声明式编程很火。它就是把使用和内部实现原理解藕。java,spring的各种注解，声明式事务等等。使用者一个注解解决所有问题，无需关心底层。
 
-业务逻辑无关的放在一起影响可读性，即使自己过一段时间看自己的代码也会迷惑。写代码要有用户思维，不光是提供的api满足kiss原则，内部的实现也是一样。能放在外面单位代码尽量怎么放在外面。只要能表达逻辑即可。</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/17/27/ec30d30a.jpg" width="30px"><span>Jxin</span> 👍（25） 💬（3）<div>1.为了让调度的代码更优雅时使用。（就调度策略的代码而言，可读性高。理解结构后，阅读的心智负担低，因为调度的原理已经抽象成了共同的type查表，无需逐行检阅分支判断。像一些与持久数据相关的策略，有时为了兼容老数据或则平滑过度，无法全采用type查表，这时就需要结合if来 实现。所以采用if会让我误以为是这种场景，进而逐行检阅）。
+业务逻辑无关的放在一起影响可读性，即使自己过一段时间看自己的代码也会迷惑。写代码要有用户思维，不光是提供的api满足kiss原则，内部的实现也是一样。能放在外面单位代码尽量怎么放在外面。只要能表达逻辑即可。</div>2020-03-23</li><br/><li><span>Jxin</span> 👍（25） 💬（3）<div>1.为了让调度的代码更优雅时使用。（就调度策略的代码而言，可读性高。理解结构后，阅读的心智负担低，因为调度的原理已经抽象成了共同的type查表，无需逐行检阅分支判断。像一些与持久数据相关的策略，有时为了兼容老数据或则平滑过度，无法全采用type查表，这时就需要结合if来 实现。所以采用if会让我误以为是这种场景，进而逐行检阅）。
 
 2.感觉问反了，应该是什么场景下采用ifelse和witch。毕竟这两个的场景少些。答案是，在逻辑不复杂又不好用卫语句时采用。能用卫语句就不要ifelse。因为个人而言，看到retuern或conti能很明确跳出逻辑，else脑袋得转一下，当然这可能是个人习惯影响。但ifelse还是只在逻辑简单，没啥嵌套（一个函数内部不宜嵌套过多），且语义符合的场景用好些。
 
-3.原则和思想毕竟是指导核心，是地图和尺子，自然是最重要的。但是不等于设计模式就比其不重要了。硬要说的话，我认为两个其实一样重要。设计模式是场景的积累，拉近了普通人与天才的差距，对我这种菜鸡来说可能比设计原则还重要。毕竟从设计原则到设计模式的出现，需要丰富经验，扎实知识和妙手偶得。如果没有设计模式的铺垫，普通人拿着设计模式的知识点要一路走上高质量代码的层级，实属不易。</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/e0/d7/744bd8c3.jpg" width="30px"><span>空白昵称</span> 👍（12） 💬（0）<div>很早前使用了类似策略模式的代码做了一个从各种渠道上传下载文件。（当时大学毕业，没看过策略模式，但是学过C++的多态）其实也就是基于接口而非实现编程思想。
+3.原则和思想毕竟是指导核心，是地图和尺子，自然是最重要的。但是不等于设计模式就比其不重要了。硬要说的话，我认为两个其实一样重要。设计模式是场景的积累，拉近了普通人与天才的差距，对我这种菜鸡来说可能比设计原则还重要。毕竟从设计原则到设计模式的出现，需要丰富经验，扎实知识和妙手偶得。如果没有设计模式的铺垫，普通人拿着设计模式的知识点要一路走上高质量代码的层级，实属不易。</div>2020-03-23</li><br/><li><span>空白昵称</span> 👍（12） 💬（0）<div>很早前使用了类似策略模式的代码做了一个从各种渠道上传下载文件。（当时大学毕业，没看过策略模式，但是学过C++的多态）其实也就是基于接口而非实现编程思想。
 
 if-else使用，如果判断较少，且未来几乎不会有新需求要再加一个else时，保持if-else即可。其他的都可以使用策略模式。不过本节demo的实例，使用range来匹配，目前看是没问题。但是如果需求变化，需要增加一个根据数据特征的动态分配排序算法，那么这里实现就麻烦了。所以需要根据具体需求来看使用什么模式... 
 
-</div>2020-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/60/5f/59ee0ca2.jpg" width="30px"><span>极客海</span> 👍（11） 💬（0）<div>&quot;设计原则和思想比设计模式更加普适和重要&quot;，被这句话一下子点醒了。</div>2021-02-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3b/47/f6c772a1.jpg" width="30px"><span>Jackey</span> 👍（9） 💬（4）<div>想想以前都没用过策略模式，一会到公司看看我的if-else有没有必要优化</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/10/fa/d977627e.jpg" width="30px"><span>刘大人</span> 👍（8） 💬（0）<div>问：在什么情况下，我们才有必要去掉代码中的 if-else 或者 switch-case 分支逻辑呢？
-答：自己看不下去的时候</div>2021-02-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7e/1f/b1d458a9.jpg" width="30px"><span>iamjohnnyzhuang</span> 👍（8） 💬（0）<div>策略模式平时开发用的比较多，主要目的还是解耦策略的定义和使用。在Java中，比较喜欢用枚举策略模式。可以定义一个枚举类，提供静态方法根据传入的Type动态返回对应的枚举类。然后在枚举类中定义执行策略的抽象方法，这样迫使每个枚举都得去实现。对于策略不是非常复杂的情况下，这样可以集中管理这一批策略，新增策略的时候也只要在这个枚举类中添加。但是如果策略很复杂会导致这个类非常庞大，还是用传统的方法不同类对应不同逻辑更加优雅。总之，遵循KISS原则，怎么简单怎么来；同时尽量遵循开闭原则，添加策略的时候尽量少去改动代码。其实对于什么时候去掉IF&#47;ELSE这个问题原理也是一样的。</div>2020-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/a8/0c/82ba8ef9.jpg" width="30px"><span>Frank</span> 👍（6） 💬（0）<div>1，最近在做规则引擎，前端用户通过页面设置出业务执行的流程图，而流程图中包含数据源节点、条件判断节点、业务分发节点、业务事件执行节点。每一种节点执行的业务校验规则都不同，这个时候适合策略模式。使用策略模式的好处是：以后随着业务的发展很有可能出现其他类型的节点，所以这个时候采用策略模式非常合适，易扩展易维护。另外在整个流程流转的规则上采用了模板方法。
-2，当出现比较多的等值匹配的时候，这个时候使用switch case 更合适，结构清晰，可读性强，其他则使用if-else，当然if-else也可以进行等值比较。</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/14/ee/d72a8222.jpg" width="30px"><span>攻城拔寨</span> 👍（6） 💬（0）<div>1. 奖励系统，奖励用户不同奖励是通过后台配置，从多个奖励中选择一种或者多种。
-后端代码根据不同的奖励类型找到对应的奖励策略类，执行对应的代码。
-2. 我觉得在 if-else 每个分支代码比较多的时候就应该拆分了。但是拆分不一定就能通过设计模式拆分，很多时候把分支逻辑抽成另一个方法就就够了，代码简洁，方便维护。
-我相当同意老师 “设计原则和思想比设计模式更加普适和重要。” 这句话。</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/03/01/62b32acf.jpg" width="30px"><span>王飞洋</span> 👍（6） 💬（5）<div>GB = 1024 * 1024 * 1024吧</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/1d/cd/3819726f.jpg" width="30px"><span>徐同学呀</span> 👍（5） 💬（0）<div>最近在做公司的告警模块，对接收方式用了策略模式，以前也不知道这就是策略模式，只是觉得模块和思想解藕了。
-还有接收方式的选择策略和升级策略都用了策略模式。
-
-非要去掉if-else，我觉得如果分支不多，简单，以后可扩展性不强可以不去掉。否则就换成map缓存策略对象或者class。找到if-else条件和策略的对应关系。</div>2020-03-23</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqXKSvfaeicog2Ficx4W3pNeA1KRLOS7iaFy2uoxCDoYpGkGnP6KPGecKia6Dr3MtCkNGpHxAzmTMd0LA/132" width="30px"><span>Geek_East</span> 👍（4） 💬（0）<div>策略模式不仅仅是去除几个if-else，起到k-v store作用这么简单:
-1. 开闭原则: 行为类封装每个具体实现，如果想要添加，直接再添加一个行为类就行，不会对已经存在的行为类造成影响，提高了水平方向上的可拓展性。
-2. 依赖反转: 行为类是通过接口来传递的，能够实现业务逻辑和算法逻辑的解耦。算法层的拓展并不会影响业务层的拓展，提高了垂直方向上的可拓展性。
-3. 组合大于继承: 继承就复用的粒度来说，是整个父类。如果将接口组合在类中，代码复用的粒度从父类降到了自定义大小和自定义类型(属性或者行为)，提高了代码复用的灵活性, 能够在开发新类的时候，最大程度的从已有的代码库中汲取养分。当然有个前提，code split得优秀。</div>2020-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/32/31/449513a1.jpg" width="30px"><span>CarlXu</span> 👍（3） 💬（0）<div>看第三遍， 每一次都有不一样的的感觉， 感觉所有模式都有基本规律， 对象的创建上使用工厂+查表发， 结构或者行为上定义一个或者多个抽象的接口类，不同的业务和功能去实现统一的接口， 然后进行手动或者自动(反射)匹配。 基于接口编程才是结偶业务的关键。 </div>2022-11-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/70/ac/83bc14c0.jpg" width="30px"><span>面向百度编程</span> 👍（3） 💬（0）<div>将业务层层封装，暴露最少的方法，获得最有用的事物，复杂度从来不能被消除，只能被转移，学到了，我以为用个context类维护策略最好，却没有考虑对于客户端来说不够透明，不够知道最少，然后我只暴露一个类型，既符合迪米特法则，又符合封装，还符合利于扩展维护，将业务封装到类中，进行处理，实在是高，大话设计模式都没您讲的好</div>2020-05-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/86/56/509535da.jpg" width="30px"><span>守拙</span> 👍（3） 💬（0）<div>在什么情况下，我们才有必要去掉代码中的 if-else 或者 switch-case 分支逻辑呢？
-
-根据KISS原则, 默认我们不会主动去优化if-else&#47;switch-case. 
-只有当if-else严重影响代码可读性与可维护性, 才考虑使用策略模式+工厂方法模式优化分支逻辑.</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ca/c7/00e544c2.jpg" width="30px"><span>黄林晴</span> 👍（3） 💬（0）<div>设计原则和思想比设计模式更加普适和重要，就像掌握算法思想比死扣每种算法的实现更重要！
-虽说实践是检验真理的唯一标准，但没有理论何来实践呢</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/f5/d1/cc6f82eb.jpg" width="30px"><span>kaixiao7</span> 👍（2） 💬（0）<div>在工厂模式那一讲中，配置文件解析的例子也是用了工厂+策略的模式。策略定义是各种Parser，策略创建是工厂类，策略使用是运行时动态确定的方式。那么是不是工厂模式和策略模式（运行时动态确定）经常搭配使用呢？</div>2020-08-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/50/d7/f82ed283.jpg" width="30px"><span>辣么大</span> 👍（2） 💬（1）<div>思考题1：很久没写工程代码，但接触的科研算法对比性能时一般采用策略模式。通过输入不同的参数调用不同的算法。
-思考题2：通过策略模式的学习，可以看出实现简单的话一开始是不用使用策略模式的。if else中实现的逻辑都差不多，就是差不多都是干一件事（上节课例子中的购物，本节的文件排序）短的 if else相对易读，代码好理解。使用了策略模式要小心过度设计和影响了代码易读性。（对于不熟悉的项目刚看到或许会懵逼或者不好调试）</div>2020-03-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/82/3d/356fc3d6.jpg" width="30px"><span>忆水寒</span> 👍（2） 💬（0）<div>1、用过策略模式。我们在自研的rpc框架中为了灵活的设置线程数量（类似于netty里面的策略模式，默认情况下线程数量为CPU两倍，也可以指定）。
-2、在每个if else里面的代码都有相似功能，可以抽取出来。</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/15/69/187b9968.jpg" width="30px"><span>南山</span> 👍（2） 💬（0）<div>1:随处可见，比如根据不同的配置选择不同的分配或者负载均衡策略。
-2:策略可预期的经常变更或者选择策略的条件判定方式比较复杂时可以考虑不使用if else 方式实现，反过来则if else 没什么毛病</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/63/6e/6b971571.jpg" width="30px"><span>Z宇锤锤</span> 👍（1） 💬（0）<div>计算器，加减乘除四种方法的策略</div>2021-12-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/77/95/9d32e68c.jpg" width="30px"><span>风絮1994</span> 👍（1） 💬（0）<div>我觉得代码解耦很多时候跟人类分工一样，分工会提高专业化和效率，但也会增加复杂度，要根据项目的规模具体对待</div>2021-10-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/b0/ec/78be126d.jpg" width="30px"><span>迈克糖</span> 👍（1） 💬（0）<div>代码逻辑毕竟是服务于业务，我们要向省掉繁琐的逻辑判断，首选要在源头想想业务逻辑有没有必要这么麻烦。</div>2021-02-05</li><br/>
+</div>2020-03-24</li><br/><li><span>极客海</span> 👍（11） 💬（0）<div>&quot;设计原则和思想比设计模式更加普适和重要&quot;，被这句话一下子点醒了。</div>2021-02-02</li><br/><li><span>Jackey</span> 👍（9） 💬（4）<div>想想以前都没用过策略模式，一会到公司看看我的if-else有没有必要优化</div>2020-03-23</li><br/><li><span>刘大人</span> 👍（8） 💬（0）<div>问：在什么情况下，我们才有必要去掉代码中的 if-else 或者 switch-case 分支逻辑呢？
+答：自己看不下去的时候</div>2021-02-05</li><br/><li><span>iamjohnnyzhuang</span> 👍（8） 💬（0）<div>策略模式平时开发用的比较多，主要目的还是解耦策略的定义和使用。在Java中，比较喜欢用枚举策略模式。可以定义一个枚举类，提供静态方法根据传入的Type动态返回对应的枚举类。然后在枚举类中定义执行策略的抽象方法，这样迫使每个枚举都得去实现。对于策略不是非常复杂的情况下，这样可以集中管理这一批策略，新增策略的时候也只要在这个枚举类中添加。但是如果策略很复杂会导致这个类非常庞大，还是用传统的方法不同类对应不同逻辑更加优雅。总之，遵循KISS原则，怎么简单怎么来；同时尽量遵循开闭原则，添加策略的时候尽量少去改动代码。其实对于什么时候去掉IF&#47;ELSE这个问题原理也是一样的。</div>2020-03-24</li><br/><li><span>Frank</span> 👍（6） 💬（0）<div>1，最近在做规则引擎，前端用户通过页面设置出业务执行的流程图，而流程图中包含数据源节点、条件判断节点、业务分发节点、业务事件执行节点。每一种节点执行的业务校验规则都不同，这个时候适合策略模式。使用策略模式的好处是：以后随着业务的发展很有可能出现其他类型的节点，所以这个时候采用策略模式非常合适，易扩展易维护。另外在整个流程流转的规则上采用了模板方法。
+2，当出现比较多的等值匹配的时候，这个时候使用switch case 更合适，结构清晰，可读性强，其他则使用if-else，当然if-else也可以进行等值比较。</div>2020-03-23</li><br/>
 </ul>
 
 

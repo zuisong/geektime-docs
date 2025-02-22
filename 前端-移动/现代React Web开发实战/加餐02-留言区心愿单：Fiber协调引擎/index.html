@@ -3767,6 +3767,24 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#fiber_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fiber中的重要概念和模型
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      协调过程是怎样的？
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4885,6 +4903,24 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#fiber_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fiber中的重要概念和模型
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      协调过程是怎样的？
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4924,10 +4960,151 @@
 <p>在React的早期版本，协调是一个<strong>同步过程</strong>，这意味着当虚拟DOM足够复杂，或者元素渲染时产生的各种计算足够重，协调过程本身就可能超过16ms，严重的会导致页面卡顿。而从React v16开始，协调从之前的同步改成了<strong>异步过程</strong>，这主要得益于新的<strong>Fiber协调引擎</strong>。</p>
 </blockquote>
 </blockquote>
+<p>Fiber协调引擎做的事情基本上贯穿了React应用的整个生命周期，包括并不限于：</p>
+<ul>
+<li>创建各类FiberNode并组建Fiber树；</li>
+<li>调度并执行各类工作（Work），如渲染函数组件、挂载或是更新Hooks、实例化或更新类组件等；</li>
+<li>比对新旧Fiber，触发DOM变更；</li>
+<li>获取context数据；</li>
+<li>错误处理；</li>
+<li>性能监控。</li>
+</ul>
+<p>Fiber协调引擎的源代码集中在 <code>react-reconciler</code> 这个包里，在Github上的地址是： <a href="https://github.com/facebook/react/tree/v18.2.0/packages/react-reconciler">https://github.com/facebook/react/tree/v18.2.0/packages/react-reconciler</a></p>
+<h2 id="fiber_1">Fiber中的重要概念和模型</h2>
+<p>在协调过程中存在着各种动作，如调用生命周期方法或Hooks，这在Fiber协调引擎中被称作是<strong>工作</strong>（Work）。Fiber中最基本的模型是<strong>FiberNode，用于描述一个组件需要做的或者已完成的工作，每个组件可能对应一个或多个FiberNode</strong>。这与一个组件渲染可能会产生一个或多个React元素是一致的。</p>
+<p>实际上，每个 <code>FiberNode</code> 的数据都来自于元素树中的一个元素，元素与 <code>FiberNode</code> 是一一对应的。与元素树不同的是，元素树每次渲染都会被重建，而 <code>FiberNode</code> 会被复用，<code>FiberNode</code> 的属性会被更新。</p>
+<p>下面是 <code>FiberNode</code> 的数据结构，为了方便理解，我把关键的属性进行了分组，并省略了一些我认为不太关键的属性：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">Fiber</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="c1">// ---- Fiber类型 ----</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="cm">/** 工作类型，枚举值包括：函数组件、类组件、HTML元素、Fragment等 */</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nx">tag</span><span class="o">:</span><span class="w"> </span><span class="kt">WorkTag</span><span class="p">,</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="cm">/** 就是那个子元素列表用的key属性 */</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="nx">key</span><span class="o">:</span><span class="w"> </span><span class="kt">null</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="cm">/** 对应React元素ReactElmement.type属性 */</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span><span class="nx">elementType</span><span class="o">:</span><span class="w"> </span><span class="kt">any</span><span class="p">,</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="cm">/** 函数组件对应的函数或类组件对应的类 */</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span><span class="kr">type</span><span class="o">:</span><span class="w"> </span><span class="nx">any</span><span class="p">,</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="c1">// ---- Fiber Tree树形结构 ----</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">  </span><span class="cm">/** 指向父FiberNode的指针 */</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">  </span><span class="nx">return</span><span class="o">:</span><span class="w"> </span><span class="kt">Fiber</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">  </span><span class="cm">/** 指向子FiberNode的指针 */</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">  </span><span class="nx">child</span><span class="o">:</span><span class="w"> </span><span class="kt">Fiber</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">  </span><span class="cm">/** 指向平级FiberNode的指针 */</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">  </span><span class="nx">sibling</span><span class="o">:</span><span class="w"> </span><span class="kt">Fiber</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">  </span><span class="c1">// ---- Fiber数据 ----</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">  </span><span class="cm">/** 经本次渲染更新的props值 */</span><span class="w">  </span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">  </span><span class="nx">pendingProps</span><span class="o">:</span><span class="w"> </span><span class="kt">any</span><span class="p">,</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">  </span><span class="cm">/** 上一次渲染的props值 */</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">  </span><span class="nx">memoizedProps</span><span class="o">:</span><span class="w"> </span><span class="kt">any</span><span class="p">,</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">  </span><span class="cm">/** 上一次渲染的state值，或是本次更新中的state值 */</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">  </span><span class="nx">memoizedState</span><span class="o">:</span><span class="w"> </span><span class="kt">any</span><span class="p">,</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w">  </span><span class="cm">/** 各种state更新、回调、副作用回调和DOM更新的队列 */</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">  </span><span class="nx">updateQueue</span><span class="o">:</span><span class="w"> </span><span class="kt">mixed</span><span class="p">,</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="w">  </span><span class="cm">/** 为类组件保存对实例对象的引用，或为HTML元素保存对真实DOM的引用 */</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="w">  </span><span class="nx">stateNode</span><span class="o">:</span><span class="w"> </span><span class="kt">any</span><span class="p">,</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="w">  </span><span class="c1">// ---- Effect副作用 ----</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="w">  </span><span class="cm">/** 副作用种类的位域，可同时标记多种副作用，如Placement、Update、Callback等 */</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">  </span><span class="nx">flags</span><span class="o">:</span><span class="w"> </span><span class="kt">Flags</span><span class="p">,</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">  </span><span class="cm">/** 指向下一个具有副作用的Fiber的引用，在React 18中貌似已被弃用 */</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">  </span><span class="nx">nextEffect</span><span class="o">:</span><span class="w"> </span><span class="kt">Fiber</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">  </span><span class="c1">// ---- 异步性/并发性 ----</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">  </span><span class="cm">/** 当前Fiber与成对的进行中Fiber的双向引用 */</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="w">  </span><span class="nx">alternate</span><span class="o">:</span><span class="w"> </span><span class="kt">Fiber</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a><span class="w">  </span><span class="cm">/** 标记Lane车道模型中车道的位域，表示调度的优先级 */</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a><span class="w">  </span><span class="nx">lanes</span><span class="o">:</span><span class="w"> </span><span class="kt">Lanes</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a><span class="p">};</span>
+</code></pre></div>
+<p>其他需要关注的，还有与Hooks相关的模型，这包括了 <code>Hook</code> 和 <code>Effect</code> ：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">Hook</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nx">memoizedState</span><span class="o">:</span><span class="w"> </span><span class="kt">any</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nx">baseState</span><span class="o">:</span><span class="w"> </span><span class="kt">any</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nx">baseQueue</span><span class="o">:</span><span class="w"> </span><span class="kt">Update</span><span class="o">&lt;</span><span class="nx">any</span><span class="p">,</span><span class="w"> </span><span class="nx">any</span><span class="o">&gt;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nx">queue</span><span class="o">:</span><span class="w"> </span><span class="kt">any</span><span class="p">,</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nx">next</span><span class="o">:</span><span class="w"> </span><span class="kt">Hook</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">};</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="kr">type</span><span class="w"> </span><span class="nx">Effect</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">  </span><span class="nx">tag</span><span class="o">:</span><span class="w"> </span><span class="kt">HookFlags</span><span class="p">,</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">  </span><span class="nx">create</span><span class="o">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">)</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="ow">void</span><span class="p">,</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">  </span><span class="nx">destroy</span><span class="o">:</span><span class="w"> </span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">)</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="ow">void</span><span class="p">,</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">  </span><span class="nx">deps</span><span class="o">:</span><span class="w"> </span><span class="kt">Array</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">  </span><span class="nx">next</span><span class="o">:</span><span class="w"> </span><span class="kt">Effect</span><span class="p">,</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="p">};</span>
+</code></pre></div>
+<p>此外，还有 <code>Dispatcher</code>。基本每个Hook都有 <code>mount</code> 和 <code>update</code> 两个 <code>dispatcher</code>，如 <code>useEffect</code> 有 <code>mountEffect</code> 和 <code>updateEffect</code> ；少数Hooks还有额外的<code>rerender</code> 的 <code>dispatcher</code>，如 <code>useState</code>有<code>rerenderState</code> 。</p>
+<h2 id="_1">协调过程是怎样的？</h2>
+<p>当第一次渲染，React元素树被创建出来后，Fiber协调引擎会从 <code>HostRoot</code> 这个特殊的元素开始，遍历元素树，创建对应的 <code>FiberNode</code> 。</p>
+<p><code>FiberNode</code> 与 <code>FiberNode</code> 之间，并没有按照传统的parent-children方式建立树形结构。而是在父节点和它的第一个子节点间，利用<code>child</code> 和 <code>return</code> 属性建立了双向链表。节点与它的平级节点间，利用 <code>sibling</code> 属性建立了单向链表，同时平级节点的 <code>return</code> 属性，也都被设置成和单向链表起点的节点 <code>return</code> 一样的值引用。</p>
+<p>如图所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c6/60/c6d3d4806b9a80344a4431fc8245a460.jpg?wh=1142x670" /></p>
+<p>这样做的好处是，可以在协调引擎进行工作的过程中，<strong>避免递归遍历Fiber树，而仅仅用两层循环来完成深度优先遍历，</strong>这个用于遍历Fiber树的循环被称作workLoop。</p>
+<p>以下是workLoop的示意代码，为了便于理解，我对源码中的 <code>performUnitOfWork</code> 、 <code>beginWork</code>、<code>completeUnitOfWork</code>、<code>completeWork</code> 做了合并和简化，就是里面的 <code>workWork</code> （WARCRAFT梗）：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">let</span><span class="w"> </span><span class="nx">workInProgress</span><span class="p">;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kd">function</span><span class="w"> </span><span class="nx">workLoop</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="nx">workInProgress</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="nx">shouldYield</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">child</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">workWork</span><span class="p">(</span><span class="nx">workInProgress</span><span class="p">);</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">child</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">      </span><span class="nx">workInProgress</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">child</span><span class="p">;</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">      </span><span class="k">continue</span><span class="p">;</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="nx">completedWork</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">workInProgress</span><span class="p">;</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="k">do</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">completedWork</span><span class="p">.</span><span class="nx">sibling</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">        </span><span class="nx">workInProgress</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">completedWork</span><span class="p">.</span><span class="nx">sibling</span><span class="p">;</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">        </span><span class="k">break</span><span class="p">;</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">      </span><span class="p">}</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">      </span><span class="nx">completedWork</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">completedWork</span><span class="p">.</span><span class="k">return</span><span class="p">;</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="nx">completedWork</span><span class="p">);</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="p">}</span>
+</code></pre></div>
+<p>更狠的一点是，这个循环<strong>随时可以跑，随时可以停</strong>。这意味着 <code>workLoop</code> 既可以同步跑，也可以异步跑，当 <code>workLoop</code> 发现进行中的Fiber工作耗时过长时，可以根据一个 <code>shouldYield()</code> 标记决定是否暂停工作，释放计算资源给更紧急的任务，等完成后再恢复工作。</p>
+<p>当组件内更新state或有context更新时，React会进入渲染阶段（Render Phase）。这一阶段是异步的，Fiber协调引擎会启动<code>workLoop</code> ，从Fiber树的根部开始遍历，快速跳过已处理的节点；对有变化的节点，引擎会为 <code>Current</code><strong>（当前）节点</strong>克隆一个 <code>WorkInProgress</code><strong>（进行中）节点</strong>，将这两个FiberNode的 <code>alternate</code> 属性分别指向对方，并把更新都记录在<code>WorkInProgress</code> 节点上。如下图所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/30/d0/303937fc145e64f0242bcd65c2d96bd0.jpg?wh=1142x550" /></p>
+<p>你可以理解成同时存在两棵Fiber树，<strong>一棵 <code>Current</code> 树，对应着目前已经渲染到页面上的内容</strong>；<strong>另一棵是 <code>WorkInProgress</code> 树，记录着即将发生的修改</strong>。</p>
+<p>函数组件的Hooks也是在渲染阶段执行的。除了<code>useContext</code> ，Hooks在挂载后，都会形成一个由 <code>Hook.next</code> 属性连接的单向链表，而这个链表会挂在 <code>FiberNode.memoizedState</code> 属性上。</p>
+<p>在此基础上，<code>useEffect</code> 这样会产生副作用的Hooks，会额外创建与 <code>Hook</code> 对象一一对应的 <code>Effect</code> 对象，赋值给 <code>Hook.memoizedState</code> 属性。此外，也会在 <code>FiberNode.updateQueue</code> 属性上，维护一个由 <code>Effect.next</code> 属性连接的单向链表，并把这个 <code>Effect</code> 对象加入到链表末尾。</p>
+<p>当Fiber树所有节点都完成工作后，<code>WorkInProgress</code> 节点会被改称为 <code>FinishedWork</code><strong>（已完成）节点</strong>，<code>WorkInProgress</code> 树也会被改称为 <code>FinishedWork</code><strong>树</strong>。这时React会进入提交阶段（Commit Phase），这一阶段主要是同步执行的。Fiber协调引擎会把<code>FinishedWork</code> 节点上记录的所有修改，按一定顺序提交并体现在页面上。</p>
+<p>提交阶段又分成如下3个先后同步执行的子阶段：</p>
+<ul>
+<li><strong>变更前（Before Mutation）子阶段</strong>。这个子阶段会调用类组件的getSnapshotBeforeUpdate方法。</li>
+<li>
+<p><strong>变更（Mutation）子阶段</strong>。这个子阶段会更新真实DOM树。</p>
+</li>
+<li>
+<p>递归提交与删除相关的副作用，包括移除ref、移除真实DOM、执行类组件的 <code>componentWillUnmount</code> 。</p>
+</li>
+<li>递归提交添加、重新排序真实DOM等副作用。</li>
+<li>依次执行 <code>FiberNode</code> 上 <code>useLayoutEffect</code> 的清除函数。</li>
+<li>引擎用 <code>FinishedWork</code> 树替换 <code>Current</code> 树，供下次渲染阶段使用。</li>
+<li><strong>布局（Layout）子阶段</strong>。这个子阶段真实DOM树已经完成了变更，会调用 <code>useLayoutEffect</code> 的副作用回调函数，和类组件的 <code>componentDidMount</code> 方法。</li>
+</ul>
+<p>在提交阶段中，引擎还会多次异步或同步调用 <code>flushPassiveEffects()</code> 。这个函数会先后两轮按深度优先遍历Fiber树上每个节点：</p>
+<ul>
+<li>第一轮：如果节点的 <code>updateQueue</code> 链表中有待执行的、由 <code>useEffect</code> 定义的副作用，则顺序执行它们的<strong>清除函数</strong>；</li>
+<li>第二轮：如果节点的 <code>updateQueue</code> 链表中有待执行的、由 <code>useEffect</code> 定义的副作用，则顺序执行它们的<strong>副作用回调函数</strong>，并保存清除函数，供下一轮提交阶段执行。</li>
+</ul>
+<p>这个<code>flushPassiveEffects()</code> 函数真正的执行时机，是在上述提交阶段的三个同步子阶段之后，下一次渲染阶段之前。引擎会保证在下一次渲染之前，执行完所有待执行的副作用。</p>
+<p>你也许会好奇，协调引擎的Diffing算法在哪里？其实从渲染到提交阶段，到处都在利用memoizedProps和memoizedState与新的props、state做比较，以减少不必要的工作，进而提高性能。</p>
+<p>以上学习了Fiber协调引擎的工作流程，再回来看看 <code>oh-my-kanban</code> 的Fiber树，是不是能更进一步理解 <code>oh-my-kanban</code> 的生命周期了？</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/89/f6/892b4a21cb0a4d59a94a65e247b68af6.jpg?wh=1142x672" /></p>
+<p>好了，Fiber协调引擎我们暂时就讲到这里。</p>
+<p>如果你还有其他想听的话题，或者在课程学习中有什么疑问，欢迎在留言区告诉我。下节课再见！</p>
 <div><strong>精选留言（6）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/14/4f/39/791d0f5e.jpg" width="30px"><span>学习前端-react</span> 👍（2） 💬（1）<div>感谢宋老师的精彩加餐。目前看下来一餐可能不太够，有点囫囵吞枣的感觉。
-</div>2022-09-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/a8/1e/4ec85e24.jpg" width="30px"><span>joel</span> 👍（2） 💬（1）<div>要是有视频就更好，老师辛苦了</div>2022-09-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/bc/e3/6267bf06.jpg" width="30px"><span>乐雨</span> 👍（1） 💬（2）<div>没有讲到任务优先级和饥饿问题的处理</div>2022-09-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/4f/39/791d0f5e.jpg" width="30px"><span>学习前端-react</span> 👍（0） 💬（1）<div>请问：修改state 是生成fiber 并 diffing的过程？</div>2022-09-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/81/eb/04c16c3e.jpg" width="30px"><span>silence_wh</span> 👍（0） 💬（0）<div>推荐一篇帮助理解 React 工作流程的文章：https:&#47;&#47;pomb.us&#47;build-your-own-react&#47;</div>2024-04-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e7/20/70a95f94.jpg" width="30px"><span>潮汐</span> 👍（0） 💬（0）<div>这篇加餐结合正文课程第6、8节和文中的图，对渲染、协调有更深的理解。与6、8节正文的图形成互相诠释说明，值得反复对比理解！</div>2023-02-19</li><br/>
+<li><span>学习前端-react</span> 👍（2） 💬（1）<div>感谢宋老师的精彩加餐。目前看下来一餐可能不太够，有点囫囵吞枣的感觉。
+</div>2022-09-29</li><br/><li><span>joel</span> 👍（2） 💬（1）<div>要是有视频就更好，老师辛苦了</div>2022-09-23</li><br/><li><span>乐雨</span> 👍（1） 💬（2）<div>没有讲到任务优先级和饥饿问题的处理</div>2022-09-26</li><br/><li><span>学习前端-react</span> 👍（0） 💬（1）<div>请问：修改state 是生成fiber 并 diffing的过程？</div>2022-09-29</li><br/><li><span>silence_wh</span> 👍（0） 💬（0）<div>推荐一篇帮助理解 React 工作流程的文章：https:&#47;&#47;pomb.us&#47;build-your-own-react&#47;</div>2024-04-01</li><br/><li><span>潮汐</span> 👍（0） 💬（0）<div>这篇加餐结合正文课程第6、8节和文中的图，对渲染、协调有更深的理解。与6、8节正文的图形成互相诠释说明，值得反复对比理解！</div>2023-02-19</li><br/>
 </ul>
 
 

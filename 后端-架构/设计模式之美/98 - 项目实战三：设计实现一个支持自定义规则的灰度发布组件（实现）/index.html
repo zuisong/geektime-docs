@@ -12761,8 +12761,71 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.灰度规则的语法格式
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.灰度规则的内存组织方式
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.灰度规则热更新
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      实现灰度组件基本功能
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      添加、优化灰度组件功能
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂讨论
+    </span>
+  </a>
   
 </li>
       
@@ -14546,8 +14609,71 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.灰度规则的语法格式
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.灰度规则的内存组织方式
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.灰度规则热更新
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      实现灰度组件基本功能
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      添加、优化灰度组件功能
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂讨论
+    </span>
+  </a>
   
 </li>
       
@@ -14583,26 +14709,406 @@
 <p>针对上两节课给出的开发需求和设计思路，我们还是按照老套路，从中剥离出V1版本要实现的内容。为了方便我讲解和你查看，我把灰度组件的开发需求和设计思路，重新整理罗列了一下，放到了这里。</p>
 <h3 id="1">1.灰度规则的格式和存储方式</h3>
 <p>我们希望支持不同格式（JSON、YAML、XML等）、不同存储方式（本地配置文件、Redis、Zookeeper、或者自研配置中心等）的灰度规则配置方式。实际上，这一点跟之前的限流框架中限流规则的格式和存储方式完全一致，代码实现也是相同的，所以在接下来的讲解中，就不重复啰嗦了，你可以回过头去看下<a href="https://time.geekbang.org/column/article/243961">第92讲</a>。</p>
-<div><strong>精选留言（28）</strong></div>
+<h3 id="2">2.灰度规则的语法格式</h3>
+<p>我们支持三种灰度规则语法格式：具体值（比如893）、区间值（比如1020-1120）、比例值（比如%30）。除此之外，对于更加复杂的灰度规则，比如只对30天内购买过某某商品并且退货次数少于10次的用户进行灰度，我们通过编程的方式来实现。</p>
+<h3 id="3">3.灰度规则的内存组织方式</h3>
+<p>类似于限流框架中的限流规则，我们需要把灰度规则组织成支持快速查找的数据结构，能够快速判定某个灰度对象（darkTarget，比如用户ID），是否落在灰度规则设定的范围内。</p>
+<h3 id="4">4.灰度规则热更新</h3>
+<p>修改了灰度规则之后，我们希望不重新部署和重启系统，新的灰度规则就能生效，所以，我们需要支持灰度规则热更新。</p>
+<p>在V1版本中，对于第一点灰度规则的格式和存储方式，我们只支持YAML格式本地文件的配置存储方式。对于剩下的三点，我们都要进行实现。考虑到V1版本要实现的内容比较多，我们分两步来实现代码，第一步先将大的流程、框架搭建好，第二步再进一步添加、丰富、优化功能。</p>
+<h2 id="_2">实现灰度组件基本功能</h2>
+<p>在第一步中，我们先实现基于YAML格式的本地文件的灰度规则配置方式，以及灰度规则热更新，并且只支持三种基本的灰度规则语法格式。基于编程实现灰度规则的方式，我们留在第二步实现。</p>
+<p>我们先把这个基本功能的开发需求，用代码实现出来。它的目录结构及其Demo示例如下所示。代码非常简单，只包含4个类。接下来，我们针对每个类再详细讲解一下。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>// 代码目录结构
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>com.xzg.darklaunch
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  --DarkLaunch(框架的最顶层入口类)
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  --DarkFeature(每个feature的灰度规则)
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  --DarkRule(灰度规则)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  --DarkRuleConfig(用来映射配置到内存中)
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>// Demo示例
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>public class DarkDemo {
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>  public static void main(String[] args) {
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    DarkLaunch darkLaunch = new DarkLaunch();
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    DarkFeature darkFeature = darkLaunch.getDarkFeature(&quot;call_newapi_getUserById&quot;);
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    System.out.println(darkFeature.enabled());
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    System.out.println(darkFeature.dark(893));
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>  }
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>}
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>// 灰度规则配置(dark-rule.yaml)放置在classpath路径下
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>features:
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>- key: call_newapi_getUserById
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>  enabled: true
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>  rule: {893,342,1020-1120,%30}
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>- key: call_newapi_registerUser
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>  enabled: true
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>  rule: {1391198723, %10}
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>- key: newalgo_loan
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>  enabled: true
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>  rule: {0-1000}
+</code></pre></div>
+<p>从Demo代码中，我们可以看出，对于业务系统来说，灰度组件的两个直接使用的类是DarkLaunch类和DarkFeature类。</p>
+<p><strong>我们先来看DarkLaunch类。</strong>这个类是灰度组件的最顶层入口类。它用来组装其他类对象，串联整个操作流程，提供外部调用的接口。</p>
+<p>DarkLaunch类先读取灰度规则配置文件，映射为内存中的Java对象（DarkRuleConfig），然后再将这个中间结构，构建成一个支持快速查询的数据结构（DarkRule）。除此之外，它还负责定期更新灰度规则，也就是前面提到的灰度规则热更新。</p>
+<p>为了避免更新规则和查询规则的并发执行冲突，在更新灰度规则的时候，我们并非直接操作老的DarkRule，而是先创建一个新的DarkRule，然后等新的DarkRule都构建好之后，再“瞬间”赋值给老的DarkRule。你可以结合着下面的代码一块看下。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>public class DarkLaunch {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  private static final Logger log = LoggerFactory.getLogger(DarkLaunch.class);
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  private static final int DEFAULT_RULE_UPDATE_TIME_INTERVAL = 60; // in seconds
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  private DarkRule rule;
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  private ScheduledExecutorService executor;
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  public DarkLaunch(int ruleUpdateTimeInterval) {
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    loadRule();
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    this.executor = Executors.newSingleThreadScheduledExecutor();
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    this.executor.scheduleAtFixedRate(new Runnable() {
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>      @Override
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>      public void run() {
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        loadRule();
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>      }
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    }, ruleUpdateTimeInterval, ruleUpdateTimeInterval, TimeUnit.SECONDS);
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>  }
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>  public DarkLaunch() {
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    this(DEFAULT_RULE_UPDATE_TIME_INTERVAL);
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>  }
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>  private void loadRule() {
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    // 将灰度规则配置文件dark-rule.yaml中的内容读取DarkRuleConfig中
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    InputStream in = null;
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    DarkRuleConfig ruleConfig = null;
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>    try {
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>      in = this.getClass().getResourceAsStream(&quot;/dark-rule.yaml&quot;);
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>      if (in != null) {
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>        Yaml yaml = new Yaml();
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>        ruleConfig = yaml.loadAs(in, DarkRuleConfig.class);
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>      }
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>    } finally {
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>      if (in != null) {
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>        try {
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>          in.close();
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>        } catch (IOException e) {
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>          log.error(&quot;close file error:{}&quot;, e);
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>        }
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>      }
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a>    }
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a>    if (ruleConfig == null) {
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>      throw new RuntimeException(&quot;Can not load dark rule.&quot;);
+<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a>    }
+<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a>    // 更新规则并非直接在this.rule上进行，
+<a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a>    // 而是通过创建一个新的DarkRule，然后赋值给this.rule，
+<a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a>    // 来避免更新规则和规则查询的并发冲突问题
+<a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a>    DarkRule newRule = new DarkRule(ruleConfig);
+<a id="__codelineno-1-49" name="__codelineno-1-49" href="#__codelineno-1-49"></a>    this.rule = newRule;
+<a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a>  }
+<a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a>
+<a id="__codelineno-1-52" name="__codelineno-1-52" href="#__codelineno-1-52"></a>  public DarkFeature getDarkFeature(String featureKey) {
+<a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a>    DarkFeature darkFeature = this.rule.getDarkFeature(featureKey);
+<a id="__codelineno-1-54" name="__codelineno-1-54" href="#__codelineno-1-54"></a>    return darkFeature;
+<a id="__codelineno-1-55" name="__codelineno-1-55" href="#__codelineno-1-55"></a>  }
+<a id="__codelineno-1-56" name="__codelineno-1-56" href="#__codelineno-1-56"></a>}
+</code></pre></div>
+<p><strong>我们再来看下DarkRuleConfig类。</strong>这个类功能非常简单，只是用来将灰度规则映射到内存中。具体的代码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>public class DarkRuleConfig {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  private List&lt;DarkFeatureConfig&gt; features;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  public List&lt;DarkFeatureConfig&gt; getFeatures() {
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    return this.features;
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  }
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  public void setFeatures(List&lt;DarkFeatureConfig&gt; features) {
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    this.features = features;
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>  }
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>  public static class DarkFeatureConfig {
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    private String key;
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    private boolean enabled;
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    private String rule;
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    // 省略getter、setter方法
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>  }
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>}
+</code></pre></div>
+<p>从代码中，我们可以看出来，DarkRuleConfig类嵌套了一个内部类DarkFeatureConfig。这两个类跟配置文件的两层嵌套结构完全对应。我把对应关系标注在了下面的示例中，你可以对照着代码看下。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>&lt;!--对应DarkRuleConfig--&gt;
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>features:                       
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>- key: call_newapi_getUserById  &lt;!--对应DarkFeatureConfig--&gt;
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  enabled: true
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  rule: {893,342,1020-1120,%30}
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>- key: call_newapi_registerUser &lt;!--对应DarkFeatureConfig--&gt;
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>  enabled: true
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>  rule: {1391198723, %10}
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>- key: newalgo_loan             &lt;!--对应DarkFeatureConfig--&gt;
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>  enabled: true
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>  rule: {0-1000}
+</code></pre></div>
+<p><strong>我们再来看下DarkRule。</strong>DarkRule包含所有要灰度的业务功能的灰度规则。它用来支持根据业务功能标识（feature key），快速查询灰度规则（DarkFeature）。代码也比较简单，具体如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>public class DarkRule {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  private Map&lt;String, DarkFeature&gt; darkFeatures = new HashMap&lt;&gt;();
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  public DarkRule(DarkRuleConfig darkRuleConfig) {
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    List&lt;DarkRuleConfig.DarkFeatureConfig&gt; darkFeatureConfigs = darkRuleConfig.getFeatures();
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    for (DarkRuleConfig.DarkFeatureConfig darkFeatureConfig : darkFeatureConfigs) {
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>      darkFeatures.put(darkFeatureConfig.getKey(), new DarkFeature(darkFeatureConfig));
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    }
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>  }
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  public DarkFeature getDarkFeature(String featureKey) {
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    return darkFeatures.get(featureKey);
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>  }
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>}
+</code></pre></div>
+<p><strong>我们最后来看下DarkFeature类。</strong>DarkFeature类表示每个要灰度的业务功能的灰度规则。DarkFeature将配置文件中灰度规则，解析成一定的结构（比如RangeSet），方便快速判定某个灰度对象是否落在灰度规则范围内。具体的代码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>public class DarkFeature {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  private String key;
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  private boolean enabled;
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>  private int percentage;
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>  private RangeSet&lt;Long&gt; rangeSet = TreeRangeSet.create();
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>  public DarkFeature(DarkRuleConfig.DarkFeatureConfig darkFeatureConfig) {
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    this.key = darkFeatureConfig.getKey();
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    this.enabled = darkFeatureConfig.getEnabled();
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    String darkRule = darkFeatureConfig.getRule().trim();
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    parseDarkRule(darkRule);
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>  }
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>  @VisibleForTesting
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>  protected void parseDarkRule(String darkRule) {
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    if (!darkRule.startsWith(&quot;{&quot;) || !darkRule.endsWith(&quot;}&quot;)) {
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>      throw new RuntimeException(&quot;Failed to parse dark rule: &quot; + darkRule);
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    }
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>    String[] rules = darkRule.substring(1, darkRule.length() - 1).split(&quot;,&quot;);
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>    this.rangeSet.clear();
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    this.percentage = 0;
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>    for (String rule : rules) {
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>      rule = rule.trim();
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>      if (StringUtils.isEmpty(rule)) {
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>        continue;
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>      }
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>      if (rule.startsWith(&quot;%&quot;)) {
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>        int newPercentage = Integer.parseInt(rule.substring(1));
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>        if (newPercentage &gt; this.percentage) {
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>          this.percentage = newPercentage;
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>        }
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>      } else if (rule.contains(&quot;-&quot;)) {
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>        String[] parts = rule.split(&quot;-&quot;);
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>        if (parts.length != 2) {
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>          throw new RuntimeException(&quot;Failed to parse dark rule: &quot; + darkRule);
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>        }
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a>        long start = Long.parseLong(parts[0]);
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>        long end = Long.parseLong(parts[1]);
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a>        if (start &gt; end) {
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a>          throw new RuntimeException(&quot;Failed to parse dark rule: &quot; + darkRule);
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>        }
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a>        this.rangeSet.add(Range.closed(start, end));
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a>      } else {
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a>        long val = Long.parseLong(rule);
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a>        this.rangeSet.add(Range.closed(val, val));
+<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a>      }
+<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a>    }
+<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a>  }
+<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a>
+<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a>  public boolean enabled() {
+<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a>    return this.enabled;
+<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a>  }
+<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a>
+<a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a>  public boolean dark(long darkTarget) {
+<a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a>    boolean selected = this.rangeSet.contains(darkTarget);
+<a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a>    if (selected) {
+<a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a>      return true;
+<a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a>    }
+<a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a>
+<a id="__codelineno-5-62" name="__codelineno-5-62" href="#__codelineno-5-62"></a>    long reminder = darkTarget % 100;
+<a id="__codelineno-5-63" name="__codelineno-5-63" href="#__codelineno-5-63"></a>    if (reminder &gt;= 0 &amp;&amp; reminder &lt; this.percentage) {
+<a id="__codelineno-5-64" name="__codelineno-5-64" href="#__codelineno-5-64"></a>      return true;
+<a id="__codelineno-5-65" name="__codelineno-5-65" href="#__codelineno-5-65"></a>    }
+<a id="__codelineno-5-66" name="__codelineno-5-66" href="#__codelineno-5-66"></a>
+<a id="__codelineno-5-67" name="__codelineno-5-67" href="#__codelineno-5-67"></a>    return false;
+<a id="__codelineno-5-68" name="__codelineno-5-68" href="#__codelineno-5-68"></a>  }
+<a id="__codelineno-5-69" name="__codelineno-5-69" href="#__codelineno-5-69"></a>
+<a id="__codelineno-5-70" name="__codelineno-5-70" href="#__codelineno-5-70"></a>  public boolean dark(String darkTarget) {
+<a id="__codelineno-5-71" name="__codelineno-5-71" href="#__codelineno-5-71"></a>    long target = Long.parseLong(darkTarget);
+<a id="__codelineno-5-72" name="__codelineno-5-72" href="#__codelineno-5-72"></a>    return dark(target);
+<a id="__codelineno-5-73" name="__codelineno-5-73" href="#__codelineno-5-73"></a>  }
+<a id="__codelineno-5-74" name="__codelineno-5-74" href="#__codelineno-5-74"></a>}
+</code></pre></div>
+<h2 id="_3">添加、优化灰度组件功能</h2>
+<p>在第一步中，我们完成了灰度组件的基本功能。在第二步中，我们再实现基于编程的灰度规则配置方式，用来支持更加复杂、更加灵活的灰度规则。</p>
+<p>我们需要对于第一步实现的代码，进行一些改造。改造之后的代码目录结构如下所示。其中，DarkFeature、DarkRuleConfig的基本代码不变，新增了IDarkFeature接口，DarkLaunch、DarkRule的代码有所改动，用来支持编程实现灰度规则。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>// 第一步的代码目录结构
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>com.xzg.darklaunch
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>  --DarkLaunch(框架的最顶层入口类)
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>  --DarkFeature(每个feature的灰度规则)
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>  --DarkRule(灰度规则)
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>  --DarkRuleConfig(用来映射配置到内存中)
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>// 第二步的代码目录结构
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>com.xzg.darklaunch
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  --DarkLaunch(框架的最顶层入口类，代码有改动)
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  --IDarkFeature(抽象接口)
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>  --DarkFeature(实现IDarkFeature接口，基于配置文件的灰度规则，代码不变)
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>  --DarkRule(灰度规则，代码有改动)
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>  --DarkRuleConfig(用来映射配置到内存中，代码不变)
+</code></pre></div>
+<p>我们先来看下IDarkFeature接口，它用来抽象从配置文件中得到的灰度规则，以及编程实现的灰度规则。具体代码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>public interface IDarkFeature {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>  boolean enabled();
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>  boolean dark(long darkTarget);
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>  boolean dark(String darkTarget);
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>}
+</code></pre></div>
+<p>基于这个抽象接口，业务系统可以自己编程实现复杂的灰度规则，然后添加到DarkRule中。为了避免配置文件中的灰度规则热更新时，覆盖掉编程实现的灰度规则，在DarkRule中，我们对从配置文件中加载的灰度规则和编程实现的灰度规则分开存储。按照这个设计思路，我们对DarkRule类进行重构。重构之后的代码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>public class DarkRule {
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  // 从配置文件中加载的灰度规则
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>  private Map&lt;String, IDarkFeature&gt; darkFeatures = new HashMap&lt;&gt;();
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  // 编程实现的灰度规则
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>  private ConcurrentHashMap&lt;String, IDarkFeature&gt; programmedDarkFeatures = new ConcurrentHashMap&lt;&gt;();
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>  public void addProgrammedDarkFeature(String featureKey, IDarkFeature darkFeature) {
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    programmedDarkFeatures.put(featureKey, darkFeature);
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>  }
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>  public void setDarkFeatures(Map&lt;String, IDarkFeature&gt; newDarkFeatures) {
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    this.darkFeatures = newDarkFeatures;
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>  }
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>  public IDarkFeature getDarkFeature(String featureKey) {
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    IDarkFeature darkFeature = programmedDarkFeatures.get(featureKey);
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>    if (darkFeature != null) {
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>      return darkFeature;
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>    }
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>    return darkFeatures.get(featureKey);
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>  }
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>}
+</code></pre></div>
+<p>因为DarkRule代码有所修改，对应地，DarkLaunch的代码也需要做少许改动，主要有一处修改和一处新增代码，具体如下所示，我在代码中都做了注释，就不再重复解释了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>public class DarkLaunch {
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>  private static final Logger log = LoggerFactory.getLogger(DarkLaunch.class);
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>  private static final int DEFAULT_RULE_UPDATE_TIME_INTERVAL = 60; // in seconds
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  private DarkRule rule = new DarkRule();
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>  private ScheduledExecutorService executor;
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>  public DarkLaunch(int ruleUpdateTimeInterval) {
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    loadRule();
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    this.executor = Executors.newSingleThreadScheduledExecutor();
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    this.executor.scheduleAtFixedRate(new Runnable() {
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>      @Override
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>      public void run() {
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>        loadRule();
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>      }
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    }, ruleUpdateTimeInterval, ruleUpdateTimeInterval, TimeUnit.SECONDS);
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>  }
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>  public DarkLaunch() {
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>    this(DEFAULT_RULE_UPDATE_TIME_INTERVAL);
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>  }
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>  private void loadRule() {
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>    InputStream in = null;
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>    DarkRuleConfig ruleConfig = null;
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>    try {
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>      in = this.getClass().getResourceAsStream(&quot;/dark-rule.yaml&quot;);
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>      if (in != null) {
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>        Yaml yaml = new Yaml();
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>        ruleConfig = yaml.loadAs(in, DarkRuleConfig.class);
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>      }
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>    } finally {
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>      if (in != null) {
+<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>        try {
+<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>          in.close();
+<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>        } catch (IOException e) {
+<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a>          log.error(&quot;close file error:{}&quot;, e);
+<a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a>        }
+<a id="__codelineno-9-38" name="__codelineno-9-38" href="#__codelineno-9-38"></a>      }
+<a id="__codelineno-9-39" name="__codelineno-9-39" href="#__codelineno-9-39"></a>    }
+<a id="__codelineno-9-40" name="__codelineno-9-40" href="#__codelineno-9-40"></a>
+<a id="__codelineno-9-41" name="__codelineno-9-41" href="#__codelineno-9-41"></a>    if (ruleConfig == null) {
+<a id="__codelineno-9-42" name="__codelineno-9-42" href="#__codelineno-9-42"></a>      throw new RuntimeException(&quot;Can not load dark rule.&quot;);
+<a id="__codelineno-9-43" name="__codelineno-9-43" href="#__codelineno-9-43"></a>    }
+<a id="__codelineno-9-44" name="__codelineno-9-44" href="#__codelineno-9-44"></a>
+<a id="__codelineno-9-45" name="__codelineno-9-45" href="#__codelineno-9-45"></a>    // 修改：单独更新从配置文件中得到的灰度规则，不覆盖编程实现的灰度规则
+<a id="__codelineno-9-46" name="__codelineno-9-46" href="#__codelineno-9-46"></a>    Map&lt;String, IDarkFeature&gt; darkFeatures = new HashMap&lt;&gt;();
+<a id="__codelineno-9-47" name="__codelineno-9-47" href="#__codelineno-9-47"></a>    List&lt;DarkRuleConfig.DarkFeatureConfig&gt; darkFeatureConfigs = ruleConfig.getFeatures();
+<a id="__codelineno-9-48" name="__codelineno-9-48" href="#__codelineno-9-48"></a>    for (DarkRuleConfig.DarkFeatureConfig darkFeatureConfig : darkFeatureConfigs) {
+<a id="__codelineno-9-49" name="__codelineno-9-49" href="#__codelineno-9-49"></a>      darkFeatures.put(darkFeatureConfig.getKey(), new DarkFeature(darkFeatureConfig));
+<a id="__codelineno-9-50" name="__codelineno-9-50" href="#__codelineno-9-50"></a>    }
+<a id="__codelineno-9-51" name="__codelineno-9-51" href="#__codelineno-9-51"></a>    this.rule.setDarkFeatures(darkFeatures);
+<a id="__codelineno-9-52" name="__codelineno-9-52" href="#__codelineno-9-52"></a>  }
+<a id="__codelineno-9-53" name="__codelineno-9-53" href="#__codelineno-9-53"></a>
+<a id="__codelineno-9-54" name="__codelineno-9-54" href="#__codelineno-9-54"></a>  // 新增：添加编程实现的灰度规则的接口
+<a id="__codelineno-9-55" name="__codelineno-9-55" href="#__codelineno-9-55"></a>  public void addProgrammedDarkFeature(String featureKey, IDarkFeature darkFeature) {
+<a id="__codelineno-9-56" name="__codelineno-9-56" href="#__codelineno-9-56"></a>    this.rule.addProgrammedDarkFeature(featureKey, darkFeature);
+<a id="__codelineno-9-57" name="__codelineno-9-57" href="#__codelineno-9-57"></a>  }
+<a id="__codelineno-9-58" name="__codelineno-9-58" href="#__codelineno-9-58"></a>
+<a id="__codelineno-9-59" name="__codelineno-9-59" href="#__codelineno-9-59"></a>  public IDarkFeature getDarkFeature(String featureKey) {
+<a id="__codelineno-9-60" name="__codelineno-9-60" href="#__codelineno-9-60"></a>    IDarkFeature darkFeature = this.rule.getDarkFeature(featureKey);
+<a id="__codelineno-9-61" name="__codelineno-9-61" href="#__codelineno-9-61"></a>    return darkFeature;
+<a id="__codelineno-9-62" name="__codelineno-9-62" href="#__codelineno-9-62"></a>  }
+<a id="__codelineno-9-63" name="__codelineno-9-63" href="#__codelineno-9-63"></a>}
+</code></pre></div>
+<p>灰度组件的代码实现就讲完了。我们再通过一个Demo来看下，目前实现的灰度组件该如何使用。结合着Demo，再去理解上面的代码，会更容易些。Demo代码如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>// 灰度规则配置(dark-rule.yaml)，放到classpath路径下
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>features:
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>- key: call_newapi_getUserById
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>  enabled: true
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>  rule: {893,342,1020-1120,%30}
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>- key: call_newapi_registerUser
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>  enabled: true
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>  rule: {1391198723, %10}
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>- key: newalgo_loan
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>  enabled: true
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>  rule: {0-100}
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>// 编程实现的灰度规则
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>public class UserPromotionDarkRule implements IDarkFeature {
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>  @Override
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>  public boolean enabled() {
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    return true;
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>  }
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>  @Override
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>  public boolean dark(long darkTarget) {
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>    // 灰度规则自己想怎么写就怎么写
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>    return false;
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>  }
+<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>
+<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a>  @Override
+<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a>  public boolean dark(String darkTarget) {
+<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a>    // 灰度规则自己想怎么写就怎么写
+<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a>    return false;
+<a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a>  }
+<a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a>}
+<a id="__codelineno-10-32" name="__codelineno-10-32" href="#__codelineno-10-32"></a>
+<a id="__codelineno-10-33" name="__codelineno-10-33" href="#__codelineno-10-33"></a>// Demo
+<a id="__codelineno-10-34" name="__codelineno-10-34" href="#__codelineno-10-34"></a>public class Demo {
+<a id="__codelineno-10-35" name="__codelineno-10-35" href="#__codelineno-10-35"></a>  public static void main(String[] args) {
+<a id="__codelineno-10-36" name="__codelineno-10-36" href="#__codelineno-10-36"></a>    DarkLaunch darkLaunch = new DarkLaunch(); // 默认加载classpath下dark-rule.yaml文件中的灰度规则
+<a id="__codelineno-10-37" name="__codelineno-10-37" href="#__codelineno-10-37"></a>    darkLaunch.addProgrammedDarkFeature(&quot;user_promotion&quot;, new UserPromotionDarkRule()); // 添加编程实现的灰度规则
+<a id="__codelineno-10-38" name="__codelineno-10-38" href="#__codelineno-10-38"></a>    IDarkFeature darkFeature = darkLaunch.getDarkFeature(&quot;user_promotion&quot;);
+<a id="__codelineno-10-39" name="__codelineno-10-39" href="#__codelineno-10-39"></a>    System.out.println(darkFeature.enabled());
+<a id="__codelineno-10-40" name="__codelineno-10-40" href="#__codelineno-10-40"></a>    System.out.println(darkFeature.dark(893));
+<a id="__codelineno-10-41" name="__codelineno-10-41" href="#__codelineno-10-41"></a>  }
+<a id="__codelineno-10-42" name="__codelineno-10-42" href="#__codelineno-10-42"></a>}
+</code></pre></div>
+<h2 id="_4">重点回顾</h2>
+<p>好了，今天的内容到此就讲完了。我们一块来总结回顾一下，你需要重点掌握的内容。</p>
+<p>到今天为止，项目实战环节就彻底结束了。在这一部分中，我们通过限流、幂等、灰度这三个实战项目，带你从需求分析、系统设计、代码实现这三个环节，学习了如何进行功能性、非功能性需求分析，如何通过合理的设计，完成功能性需求的同时，满足非功能性需求，以及如何编写高质量的代码实现。</p>
+<p>实际上，项目本身的分析、设计、实现并不重要，不必对细节过于纠结。我希望通过这三个例子，分享我的思考路径、开发套路，让你借鉴并举一反三地应用到你平时的项目开发中。我觉得这才是最有价值的，才是你学习的重点。</p>
+<p>如果你学完这一部分之后，对于项目中的一些通用的功能，能够开始下意识地主动思考代码复用的问题，考虑如何抽象成框架、类库、组件，并且对于如何开发，也不再觉得无从下手，而是觉得有章可循，那我觉得你就学到了这一部分的精髓。</p>
+<h2 id="_5">课堂讨论</h2>
+<p>在DarkFeature类中，灰度规则的解析代码设计的不够优雅，你觉得问题在哪里呢？又该如何重构呢？</p>
+<p>欢迎留言和我分享你的想法。如果有收获，也欢迎你把这篇文章分享给你的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/1d/35/60/d3e723a7.jpg" width="30px"><span>Jagger</span> 👍（14） 💬（1）<div>DarkLaunch 构造器包含定时轮询，会不会影响单元测试？</div>2020-08-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/12/3b/969eedf2.jpg" width="30px"><span>robincoin</span> 👍（8） 💬（2）<div>mq和数据库灰度是不是要对mq和数据库再封装一层，方便aop处理？</div>2020-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/24/2a/33441e2b.jpg" width="30px"><span>汝林外史</span> 👍（1） 💬（2）<div>好像dark方法中没有对区间的规则进行处理</div>2020-07-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/47/31/f35367c8.jpg" width="30px"><span>小晏子</span> 👍（46） 💬（1）<div>这个DarkFeature类中灰度规则的解析代码不优雅的地方在于不够灵活，如果有新的灰度规则要加入，就需要再添加if else作处理，破坏了开闭原则，为了解决这一问题，可以使用工厂模式➕策略模式来保证开闭原则和消除if&#47;else，使用工厂模式来实现针对每个灰度规则的处理，使用“查表法”的策略模式来消除if&#47;else！</div>2020-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/98/d7/7f7a0e6f.jpg" width="30px"><span>Lee</span> 👍（19） 💬（1）<div>可以使用解释器模式，将不同类型的规则解析拆分到不同的类中。</div>2020-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/3b/67/c188d3bc.jpg" width="30px"><span>tingye</span> 👍（16） 💬（0）<div>可以考虑用职责链模式，将不同规则字符串的解析抽象为单独的handle类，依次解析直到完成处理，也方便扩展对新规则编写语法的解析</div>2020-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/d9/ff/b23018a6.jpg" width="30px"><span>Heaven</span> 👍（7） 💬（0）<div>在此类场景下,我们可以简单的使用工厂类去封装规则的解析,
+<li><span>Jagger</span> 👍（14） 💬（1）<div>DarkLaunch 构造器包含定时轮询，会不会影响单元测试？</div>2020-08-07</li><br/><li><span>robincoin</span> 👍（8） 💬（2）<div>mq和数据库灰度是不是要对mq和数据库再封装一层，方便aop处理？</div>2020-06-17</li><br/><li><span>汝林外史</span> 👍（1） 💬（2）<div>好像dark方法中没有对区间的规则进行处理</div>2020-07-15</li><br/><li><span>小晏子</span> 👍（46） 💬（1）<div>这个DarkFeature类中灰度规则的解析代码不优雅的地方在于不够灵活，如果有新的灰度规则要加入，就需要再添加if else作处理，破坏了开闭原则，为了解决这一问题，可以使用工厂模式➕策略模式来保证开闭原则和消除if&#47;else，使用工厂模式来实现针对每个灰度规则的处理，使用“查表法”的策略模式来消除if&#47;else！</div>2020-06-17</li><br/><li><span>Lee</span> 👍（19） 💬（1）<div>可以使用解释器模式，将不同类型的规则解析拆分到不同的类中。</div>2020-06-17</li><br/><li><span>tingye</span> 👍（16） 💬（0）<div>可以考虑用职责链模式，将不同规则字符串的解析抽象为单独的handle类，依次解析直到完成处理，也方便扩展对新规则编写语法的解析</div>2020-06-17</li><br/><li><span>Heaven</span> 👍（7） 💬（0）<div>在此类场景下,我们可以简单的使用工厂类去封装规则的解析,
 但是我个人觉着,应该以配置文件中配置的规则为主,所以,第二版需要在配置文件中写上实现接口的全限定类名,反射获取实例,同样支持更新,这样配置文件的Map就可以移除了,而且可以将简单的原生三种解析规则也抽象为接口,利用策略类进行区分调用
-</div>2020-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/69/c6/513df085.jpg" width="30px"><span>强哥</span> 👍（5） 💬（0）<div>这个灰度组件感觉适用简单场景，规则之间的表达式、优先级等组合方式不支持，规则的定义很重要。热更新可以通过zk下放到服务器上，通过sdk将配置信息加载到内存中。</div>2020-06-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/17/27/ec30d30a.jpg" width="30px"><span>Jxin</span> 👍（5） 💬（0）<div>1.定时任务在方法内部创建和使用，这样就没办法手动调定时任务的退出方法了。
+</div>2020-06-17</li><br/><li><span>强哥</span> 👍（5） 💬（0）<div>这个灰度组件感觉适用简单场景，规则之间的表达式、优先级等组合方式不支持，规则的定义很重要。热更新可以通过zk下放到服务器上，通过sdk将配置信息加载到内存中。</div>2020-06-21</li><br/><li><span>Jxin</span> 👍（5） 💬（0）<div>1.定时任务在方法内部创建和使用，这样就没办法手动调定时任务的退出方法了。
 
-2.感觉业务接口的路由规则的选型和路由规则的具体实现应该分离。DarkFear里面应该只要表明，哪个业务接口用哪个灰度规则，这个意图就好。至于灰度规则的具体实现，包括dsl的解析和灰度规则的执行都应该剥离出来单独封装。</div>2020-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4e/60/0d5aa340.jpg" width="30px"><span>gogo</span> 👍（5） 💬（0）<div>可以考虑引入策略模式和工厂模式，消除if else</div>2020-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/a5/98/a65ff31a.jpg" width="30px"><span>djfhchdh</span> 👍（3） 💬（0）<div>DarkFeature类扩展性、灵活性都较弱，如果feature配置新增了字段，那么就要修改类内部的解析代码，不满足开闭原则。可以把parse函数单独拿出来，抽象成一个Parser接口，针对不同的feature配置格式，实现不同的parser。这样的话，对于配置格式的改动，只要修改或扩展相应的parser类就行了，不用改动DarkFeature类的代码，达到了对于修改的隔离。</div>2020-09-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/21/7e/fb725950.jpg" width="30px"><span>罗 乾 林</span> 👍（2） 💬（0）<div> “DarkFeature 类中，灰度规则的解析代码“，是我能想到最直接简单的方式。我想可以抽象出规则解析类，对规则的解析交个解析类处理，将解析类对象注入到DarkFeature 类中。这样DarkFeature职责更单一</div>2020-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/43/79/18073134.jpg" width="30px"><span>test</span> 👍（2） 💬（0）<div>parsedarkrule的代码可以单独出来</div>2020-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/83/37/7e18b532.jpg" width="30px"><span>果果果</span> 👍（1） 💬（0）<div>感谢王争老师，看完这本书后的最大收获是，自己动手完成了一个功能更为丰富的灰度组件，支持动态数据源、以及数据源的扩展、支持规则执行结果跟踪。
+2.感觉业务接口的路由规则的选型和路由规则的具体实现应该分离。DarkFear里面应该只要表明，哪个业务接口用哪个灰度规则，这个意图就好。至于灰度规则的具体实现，包括dsl的解析和灰度规则的执行都应该剥离出来单独封装。</div>2020-06-17</li><br/><li><span>gogo</span> 👍（5） 💬（0）<div>可以考虑引入策略模式和工厂模式，消除if else</div>2020-06-17</li><br/><li><span>djfhchdh</span> 👍（3） 💬（0）<div>DarkFeature类扩展性、灵活性都较弱，如果feature配置新增了字段，那么就要修改类内部的解析代码，不满足开闭原则。可以把parse函数单独拿出来，抽象成一个Parser接口，针对不同的feature配置格式，实现不同的parser。这样的话，对于配置格式的改动，只要修改或扩展相应的parser类就行了，不用改动DarkFeature类的代码，达到了对于修改的隔离。</div>2020-09-09</li><br/><li><span>罗 乾 林</span> 👍（2） 💬（0）<div> “DarkFeature 类中，灰度规则的解析代码“，是我能想到最直接简单的方式。我想可以抽象出规则解析类，对规则的解析交个解析类处理，将解析类对象注入到DarkFeature 类中。这样DarkFeature职责更单一</div>2020-06-17</li><br/><li><span>test</span> 👍（2） 💬（0）<div>parsedarkrule的代码可以单独出来</div>2020-06-17</li><br/><li><span>果果果</span> 👍（1） 💬（0）<div>感谢王争老师，看完这本书后的最大收获是，自己动手完成了一个功能更为丰富的灰度组件，支持动态数据源、以及数据源的扩展、支持规则执行结果跟踪。
 github地址
-https:&#47;&#47;github.com&#47;TangGuoGuoR&#47;ab-gray</div>2021-11-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/55/bc/fad0090b.jpg" width="30px"><span>Yeyw</span> 👍（1） 💬（0）<div>规则扩展复杂的话可以用解释器，但是加载配置的话 我觉得定时会重复加载，定时加载加个判断吧，也可以暴露重新加载配置的方法，供开发提供自己自主刷新的接口</div>2021-05-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d1/72/4cc8475c.jpg" width="30px"><span>Leaf</span> 👍（1） 💬（0）<div>如果要集成到 spring 框架中，有些地方的设计和实现是否需要调整？比如：
-1. ruleUpdateInterval 是要放到配置中，这样便于依赖注入？
-2. loadRules 是否使用 spring 的 configuration 来替代？
-3. addProgrammedDarkFeature 是否需要做成配置的方式？
-</div>2021-01-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/82/3d/356fc3d6.jpg" width="30px"><span>忆水寒</span> 👍（1） 💬（0）<div>震撼，其实思考方式就是最大的收获，这是作者多年的经验。</div>2020-09-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1b/86/52/b92dc111.jpg" width="30px"><span>Tobias</span> 👍（1） 💬（0）<div>问：在 DarkFeature 类中，灰度规则的解析代码设计的不够优雅，你觉得问题在哪里呢？又该如何重构呢？
-答：首先，parseDarkRule方法可读性和可测试性不好：方法代码偏多，if-else比较多。其次，可扩展性不好，如果将来又新增一种规则格式，需要在parseDarkRule插入代码解析规则，违背开闭原则。
-解决方法：将parseDarkRule规则解析继续拆分成更小的类，每个类对不同的规则定义进行解析(e.g. 范围规则，百分比规则 etc.) 。相信解析器模式可以很好的解决这个问题。</div>2020-08-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/77/b3/991f3f9b.jpg" width="30px"><span>公号-技术夜未眠</span> 👍（1） 💬（0）<div>利用spi机制+热加载实现编程规则会更加优雅写</div>2020-07-04</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/TEzJ59GslVXQeZqwFgGhABF7K8bFFlud2pcsEPvEyruP7NGQTuh38IbiajdVYUSViaDJrIkJVnv3vdjPA9YENp5w/132" width="30px"><span>leezer</span> 👍（1） 💬（0）<div>解析规则可以参考之前，使用工厂模式回去解析器，通过对应的解析器进行解析对应的配置文件.</div>2020-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/7c/63/115a4b23.jpg" width="30px"><span>静海</span> 👍（0） 💬（0）<div>前端灰度发布呢</div>2023-05-28</li><br/><li><img src="" width="30px"><span>Geek_7e0e83</span> 👍（0） 💬（0）<div>问题在于 和解析的逻辑 硬编码了 如果发生变动 或者解析的逻辑过于复杂都可能导致darkFeature的逻辑 变得臃肿。可以使用解释器模式来重构代码
-
-实现可以参考这个 欢迎学习和交流
-https:&#47;&#47;github.com&#47;yukunqi&#47;designPattern&#47;tree&#47;master&#47;src&#47;main&#47;java&#47;com&#47;darklunch
-</div>2022-12-29</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Ff70ZuQbiaP0aUkNPasRkHfyIEyGLsMBd1EYQgQYZRoH85c4SsibWHJgA3u0X4Z8QyxHs17ausF2V4oN9hdYyfRg/132" width="30px"><span>郑卫林</span> 👍（0） 💬（0）<div>打开完成！
-</div>2022-09-21</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/fcftgBsticCicEEkuzB0GTkHIocX62YVTSvnhR1c94sccj42lVaYXrmcZyhzUI3l9NcvuN1rXLhXt2eBrZZ0Tw7A/132" width="30px"><span>idiot</span> 👍（0） 💬（0）<div>darkrule和darkfeature的包含关系不明显，要仔细看注释或者说明才知道。第一个改darkrules，或者第二个改darkruleoffeature？</div>2021-12-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/63/6e/6b971571.jpg" width="30px"><span>Z宇锤锤</span> 👍（0） 💬（0）<div>可以抽象出一个解析接口，解析实现类，外部依赖注入到dark future。</div>2021-12-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/4a/8a/c1069412.jpg" width="30px"><span>makermade</span> 👍（0） 💬（0）<div>有GitHub仓库链接吗</div>2021-10-06</li><br/><li><img src="" width="30px"><span>Geek_3b1096</span> 👍（0） 💬（0）<div>舍不得结束</div>2020-08-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/af/ce/d7ae8da9.jpg" width="30px"><span>学渣！！！</span> 👍（0） 💬（0）<div>更新的查询的并发冲突问题是指的什么呢？新建一个对象赋值就可以解决</div>2020-07-05</li><br/>
+https:&#47;&#47;github.com&#47;TangGuoGuoR&#47;ab-gray</div>2021-11-20</li><br/><li><span>Yeyw</span> 👍（1） 💬（0）<div>规则扩展复杂的话可以用解释器，但是加载配置的话 我觉得定时会重复加载，定时加载加个判断吧，也可以暴露重新加载配置的方法，供开发提供自己自主刷新的接口</div>2021-05-01</li><br/>
 </ul>
 
 

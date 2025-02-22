@@ -14635,39 +14635,93 @@
 <h1 id="_1">异步处理的设计</h1>
 <p>之前，我们在弹力设计中讲的是异步通讯，这里，我们想讲的是异步任务处理。当然，这里面没有什么冲突的，只不过是，异步通讯讲的是怎么把系统连接起来，而我们这里想讲的是怎么处理任务。</p>
 <p>首先，我们需要一个前台系统，把用户发来的请求一一记录下来，有点像请求日志。这样，我们的操作在数据库或是存储上只会有追加的操作，性能会很高。我们收到请求后，给客户端返回“收到请求，正在处理中”。</p>
-<div><strong>精选留言（23）</strong></div>
+<p>然后，我们有个任务处理系统来真正地处理收到的这些请求。为了解耦，我们需要一个任务派发器，这里就会出来两个事，一个是推模型Push，一个是拉模型Pull。</p>
+<p>所谓Push推模型，就是把任务派发给相应的人去处理，有点像是一个工头的调度者的角色。而Pull拉模型，则是由处理的人来拉取任务处理。这两种模型各有各的好坏。一般来说，Push模型可以做调度，但是它需要知道下游工作结点的情况。</p>
+<p>除了要知道哪些是活着的，还要知道它们的忙闲程度。这样一来，当下游工作结点扩容缩容或是有故障需要维护等一些情况发生时，Push结点都需要知道，这会增加一定的系统复杂度。而Pull的好处则是可以让上游结点不用关心下游结点的状态，只要自己忙得过来，就会来拿任务处理，这样可以减少一定的复杂度，但是少了整体任务调度。</p>
+<p>一般来说，我们构建的都是推拉结合的系统，Push端会做一定的任务调度，比如它可以像物流那样把相同商品的订单都合并起来，打成一个包，交给下游系统让其一次处理掉；也可以把同一个用户的订单中的不同商品给拆成多个订单。然后Pull端来订阅Push端发出来的异步消息，处理相应的任务。</p>
+<h1 id="_2">事件溯源</h1>
+<p>在这里，我们需要提一下Event Sourcing（事件溯源）这个设计模式。</p>
+<p>所谓Event Sourcing，其主要想解决的问题是，我们可以看到数据库中的一个数据的值（状态），但我们完全不知道这个值是怎么得出来的。就像银行的存折一样，我们可以在银行的存折看到我们收支的所有记录，也能看得到每一笔记录后的余额。</p>
+<p>当然，如果我们有了所有的收支流水账的记录，我们完全不需要保存余额，因为我们只需要回放一下所有的收支事件，就可以得到最终的数据状态。这样一来，我们的系统就会变得非常简单，只需要追加不可修改的数据操作事件，而不是保存最终状态。除了可以提高性能和响应时间之外，还可以提供事务数据一致性，并保留了可以启用补偿操作的完整记录和历史记录。</p>
+<p>还有一个好处，就是如果我们的代码里有了bug，在记录状态的系统里，我们修改bug后还需要做数据修正。然而，在Event Sourcing的系统里，我们只需要把所有事件重新播放一遍就好了，因为整个系统没有状态了。</p>
+<p>事件不可变，并且可使用只追加操作进行存储。 用户界面、工作流或启动事件的进程可继续，处理事件的任务可在后台异步运行。 此外，处理事务期间不存在争用，这两点可极大提高应用程序的性能和可伸缩性。</p>
+<p>事件是描述已发生操作的简单对象以及描述事件代表的操作所需的相关数据。 事件不会直接更新数据存储，只会对事件进行记录，以便在合适的时间进行处理。 这可简化实施和管理。</p>
+<p>事件溯源不需要直接更新数据存储中的对象，因而有助于防止并发更新造成冲突。</p>
+<p>最重要的是，异步处理 + 事件溯源的方式，可以很好地让我们的整个系统进行任务的统筹安排、批量处理，可以让整体处理过程达到性能和资源的最大化利用。</p>
+<p>关于Event Sourcing一般会和CQRS一起提。另外，你可以去GitHub上看看<a href="https://github.com/cer/event-sourcing-examples">这个项目的示例</a>以得到更多的信息。</p>
+<h1 id="_3">异步处理的分布式事务</h1>
+<p>在前面的《分布式系统的本质》一文中，我们说过，对于分布式事务，在强一致性下，在业务层上只能做两阶段提交，而在数据层面上需要使用Raft/Paxos的算法。但是，我想说，在现实生活中，需要用到强一致性的场景实在不多，不是所有的场景都必须要强一致性的事务的。</p>
+<p>我们仔细想想现实生活当中的很多例子。比如，我们去餐馆吃饭，先付钱，然后拿个小票去领餐。这种情况下，把交钱和取货这两个动作分开，可以让我们的餐馆有更高的并发和接客能力。如果要做成两阶段提交，顾客锁定好钱，餐馆锁定好食材，最后一手交钱一手交餐，那么这是一件非常恐怖的事。</p>
+<p>是的，你可以看到，我们的现实世界中有很多这样先付钱，拿小票去领货的场景，也有先消费，然后拿一个账单去付钱的场景。总之，完全不需要两阶段提交这种方式。我们完全可以使用异步的方式来达到一致性，当然，是最终一致性。</p>
+<p>要达到最终一致性，我们需要有个交易凭证。也就是说，如果一个事务需要做A和B两件事，比如，把我的钱转给我的朋友，首先先做扣钱交易，然后，记录下扣钱的凭证，拿这个凭证去给我朋友的账号上加钱。</p>
+<p>在达成这个事务的过程中，有几点需要注意。</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/a9/90/0c5ed3d9.jpg" width="30px"><span>颇忒妥</span> 👍（15） 💬（1）<div>Event sourcing 需要snapshot 否则启动时每次回放日志太恐怖。
-如果要自制分布式系统可以看一下atomix项目</div>2018-05-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/8b/a7/5b5a3e30.jpg" width="30px"><span>K</span> 👍（3） 💬（1）<div>请教一下老师，用事务性的MQ来做最终一致性，这是一个好的实践吗？</div>2018-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1a/e0/06e54287.jpg" width="30px"><span>浪荡居士</span> 👍（36） 💬（1）<div>耗子哥的文章没得说…引经据典…但有一点小建议，耗子哥能否把相关的开源框架也引用一下？我们小公司的小弟见识小…不知道哪些</div>2018-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/31/dc/af9c4356.jpg" width="30px"><span>Alan</span> 👍（28） 💬（2）<div>很失望</div>2018-05-15</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/uxKzInotBfwJLOfGtLrLC181ISxn539P04ibGVbB5lFBhCeN52kjATon74B6JQibuyTVibc8rPKUPvA63684AmVibA/132" width="30px"><span>cf</span> 👍（17） 💬（0）<div>性能设计写几篇写的比较一般，都是面上哗啦哗啦，不够深入</div>2020-01-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/b2/e0/d856f5a4.jpg" width="30px"><span>余松</span> 👍（8） 💬（1）<div>Event Sourcing 与CQRS
+<li>凭证需要非常好地保存起来，不然会导致事务做不下去。</li>
+<li>凭证处理的幂等性问题，不然在重试时就会出现多次交易的情况。</li>
+<li>如果事务完成不了，需要做补偿事务处理。</li>
+</ul>
+<h1 id="_4">异步处理的设计要点</h1>
+<p>异步处理中的事件驱动和事件溯源是两个比较关键的技术。</p>
+<p>异步处理可能会因为一些故障导致我们的一些任务没有被处理，比如消息丢失，没有通知到，或通知到了，没有处理。有这一系列的问题，异步通知的方式需要任务处理方处理完成后，给任务发起方回传状态，这样确保不会有漏掉的。</p>
+<p>另外，发起方也需要有个定时任务，把一些超时没有回传状态的任务再重新做一遍，你可以认为这是异步系统中的"对账"功能。当然，如果要重做的话，就需要处理方支持幂等性处理。</p>
+<p>异步处理的整体业务事务问题，也就是说，异步处理在处理任务的时候，并不知道能否处理成功，于是就会一步一步地处理，如果到最后一步不能成功，那么你就需要回滚。这个时候，需要走我们在弹力设计中说的补偿事务的流程。</p>
+<p>并不是所有的业务都可以用异步的方式，比如一些需要强一致性的业务，使用异步的方式可能就不适合，这里需要我们小心地分析业务。我相信绝大多数的业务场景都用不到强一致性，包括银行业务。另外，在需要性能的时候，需要牺牲强一致性，变为最终一致性。</p>
+<p>在运维时，我们要监控任务队列里的任务积压情况。如果有任务积压了，要能做到快速地扩容。如果不能扩容，而且任务积压太多，可能会导致整个系统挂掉，那么就要开始对前端流量进行限流。</p>
+<p>最后，还想强调一下，异步处理系统的本质是把被动的任务处理变成主动的任务处理，其本质是在对任务进行调度和统筹管理。</p>
+<h1 id="_5">小结</h1>
+<p>好了，我们来总结一下今天分享的主要内容。首先，我介绍了异步通讯，它在弹力设计中的作用是提高系统的稳定性和容错能力，而其实我们还可以在异步通讯的基础上统筹任务来提高系统的吞吐量。接着，我讲了异步通讯的设计，包括推拉结合的模型。异步处理配合事件溯源一起使用，将大大简化bug修复后的数据恢复，也能用于实现存储的事务一致性。</p>
+<p>我将餐馆吃饭作为比喻，介绍了异步处理的事务一致性一般不是强一致性，而是最终一致性，这样才能取得高的吞吐量。最后，我指出了异步处理的设计要点。下节课，我们讲述数据库扩展。希望对你有帮助。</p>
+<p>也欢迎你分享一下你的异步处理过程是怎样统筹安排来提高执行效率的？异步事务又是怎样实现的？</p>
+<p>文末给出了《分布式系统设计模式》系列文章的目录，希望你能在这个列表里找到自己感兴趣的内容。</p>
+<ul>
+<li>
+<p>弹力设计篇</p>
+</li>
+<li>
+<p><a href="https://time.geekbang.org/column/article/3912">认识故障和弹力设计</a></p>
+</li>
+<li><a href="https://time.geekbang.org/column/article/3917">隔离设计Bulkheads</a></li>
+<li><a href="https://time.geekbang.org/column/article/3926">异步通讯设计Asynchronous</a></li>
+<li><a href="https://time.geekbang.org/column/article/4050">幂等性设计Idempotency</a></li>
+<li><a href="https://time.geekbang.org/column/article/4086">服务的状态State</a></li>
+<li><a href="https://time.geekbang.org/column/article/4087">补偿事务Compensating Transaction</a></li>
+<li><a href="https://time.geekbang.org/column/article/4121">重试设计Retry</a></li>
+<li><a href="https://time.geekbang.org/column/article/4241">熔断设计Circuit Breaker</a></li>
+<li><a href="https://time.geekbang.org/column/article/4245">限流设计Throttle</a></li>
+<li><a href="https://time.geekbang.org/column/article/4252">降级设计degradation</a></li>
+<li><a href="https://time.geekbang.org/column/article/4253">弹力设计总结</a></li>
+<li>
+<p>管理设计篇</p>
+</li>
+<li>
+<p><a href="https://time.geekbang.org/column/article/5175">分布式锁Distributed Lock</a></p>
+</li>
+<li><a href="https://time.geekbang.org/column/article/5819">配置中心Configuration Management</a></li>
+<li><a href="https://time.geekbang.org/column/article/5909">边车模式Sidecar</a></li>
+<li><a href="https://time.geekbang.org/column/article/5920">服务网格Service Mesh</a></li>
+<li><a href="https://time.geekbang.org/column/article/6086">网关模式Gateway</a></li>
+<li><a href="https://time.geekbang.org/column/article/6283">部署升级策略</a></li>
+<li>
+<p>性能设计篇</p>
+</li>
+<li>
+<p><a href="https://time.geekbang.org/column/article/6282">缓存Cache</a></p>
+</li>
+<li><a href="https://time.geekbang.org/column/article/7036">异步处理Asynchronous</a></li>
+<li><a href="https://time.geekbang.org/column/article/7045">数据库扩展</a></li>
+<li><a href="https://time.geekbang.org/column/article/7047">秒杀Flash Sales</a></li>
+<li><a href="https://time.geekbang.org/column/article/7086">边缘计算Edge Computing</a></li>
+</ul>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>颇忒妥</span> 👍（16） 💬（1）<div>Event sourcing 需要snapshot 否则启动时每次回放日志太恐怖。
+如果要自制分布式系统可以看一下atomix项目</div>2018-05-17</li><br/><li><span>K</span> 👍（3） 💬（1）<div>请教一下老师，用事务性的MQ来做最终一致性，这是一个好的实践吗？</div>2018-05-15</li><br/><li><span>浪荡居士</span> 👍（36） 💬（1）<div>耗子哥的文章没得说…引经据典…但有一点小建议，耗子哥能否把相关的开源框架也引用一下？我们小公司的小弟见识小…不知道哪些</div>2018-05-15</li><br/><li><span>Alan</span> 👍（28） 💬（2）<div>很失望</div>2018-05-15</li><br/><li><span>cf</span> 👍（17） 💬（0）<div>性能设计写几篇写的比较一般，都是面上哗啦哗啦，不够深入</div>2020-01-01</li><br/><li><span>余松</span> 👍（8） 💬（1）<div>Event Sourcing 与CQRS
 Event Sourcing原本只需追加记录Event,然后通过聚合操作得到聚合对象的最新状态。但是每一次重新（例如系统重启）获取聚合对象的最新状态太消耗资源，所以就需要把聚合对象的最新状态存在一张表中，即物化视图。这样我们Query操作直接读取视图数据即可，而Command操作（修改操作）沿用原来的事件驱动模式追加记录。所以CQRS是Event Sourcing很自然的一个结果。
-通常，我们在追加触发事件操作时，使用一个EventHandler来更新视图（聚合对象的最新状态），还可以使用多个节点保存物化视图进一步提升读取性能。这也是最终一致性的一种实践吧。</div>2020-05-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/0e/fc/822a4e75.jpg" width="30px"><span>1angxi</span> 👍（5） 💬（1）<div>阿里面试的时候特别喜欢问这类问题🤣</div>2018-06-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/59/37/bd2de0a4.jpg" width="30px"><span>edisonhuang</span> 👍（4） 💬（0）<div>异步处理的本质是把被动处理任务转换为主动处理，这样可以对任务做规划，统筹安排。异步处理 + 事件溯源的方式，可以让整体处理过程达到性能和资源的最大化利用。
+通常，我们在追加触发事件操作时，使用一个EventHandler来更新视图（聚合对象的最新状态），还可以使用多个节点保存物化视图进一步提升读取性能。这也是最终一致性的一种实践吧。</div>2020-05-08</li><br/><li><span>1angxi</span> 👍（5） 💬（1）<div>阿里面试的时候特别喜欢问这类问题🤣</div>2018-06-03</li><br/><li><span>edisonhuang</span> 👍（4） 💬（0）<div>异步处理的本质是把被动处理任务转换为主动处理，这样可以对任务做规划，统筹安排。异步处理 + 事件溯源的方式，可以让整体处理过程达到性能和资源的最大化利用。
 这里就对应了两种模式push和pull，push做一定的调度，pull端订阅push提交的事件，主动处理任务。
-异步处理可以保证事务的最终一致性，不能保证强一致性，但是大大提高了系统的性能和吞吐量</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/92/fd/6b0e58fe.jpg" width="30px"><span>文刂 氵共 超</span> 👍（3） 💬（0）<div>坚持学习，学习笔记 https:&#47;&#47;mubu.com&#47;colla&#47;4M6zFJw6f90</div>2020-01-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/cc/de/e28c01e1.jpg" width="30px"><span>剑八</span> 👍（2） 💬（0）<div>异步处理还是很有用的
+异步处理可以保证事务的最终一致性，不能保证强一致性，但是大大提高了系统的性能和吞吐量</div>2019-07-23</li><br/><li><span>文刂 氵共 超</span> 👍（3） 💬（0）<div>坚持学习，学习笔记 https:&#47;&#47;mubu.com&#47;colla&#47;4M6zFJw6f90</div>2020-01-06</li><br/><li><span>剑八</span> 👍（2） 💬（0）<div>异步处理还是很有用的
 像一些非核心业务可以简单做成异步化
-有些对业务成功要求最终一致性则还需要一系列的保障手段，如对账补偿等</div>2018-11-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/12/e5/592d9324.jpg" width="30px"><span>TH</span> 👍（2） 💬（0）<div>Event Sourcing是否会减慢性能？因为回放事件流会比直接从存储获取状态值要慢吧？是否还是需要前置一个缓存？CQRS里C端的事件流在处理完并更新Q端之后还有必要继续保留吗？</div>2018-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ab/75/cb6ac153.jpg" width="30px"><span>有容乃大</span> 👍（2） 💬（0）<div>异步处理用发消息的形式实现的。</div>2018-06-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/b0/57/a84d633e.jpg" width="30px"><span>圣诞使者</span> 👍（2） 💬（0）<div>耗子哥讲的这个操作系统的merge和sort和linux系统编程中有出入，书中的意思是如果读请求的序号是2341，内核先sort成1234然后merge成一个请求，固态盘一般是noop算法，只merge不sort，上一个请求就会是两个读请求1和234。不知道我的理解对不对。</div>2018-05-24</li><br/><li><img src="" width="30px"><span>Xg huang</span> 👍（2） 💬（0）<div>皓哥，想问下你们在实现event souring 模式的时候，用了什么中间件做存储？我最常接触的主要是rabit mq和kafka, 前者主要是push 模型我觉得不太适合做es,后者虽然是pull模型，但更多的是强调性能而不是数据可靠性，所以问下皓哥是怎样选型的，谢谢</div>2018-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/37/3f/a9127a73.jpg" width="30px"><span>KK</span> 👍（1） 💬（0）<div>感觉说了什么，又感觉什么都没有说。</div>2023-01-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e5/76/dacea81b.jpg" width="30px"><span>50infivedays</span> 👍（1） 💬（0）<div>想了解下数据整形相关的内容</div>2018-05-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/f8/ba/d28174a9.jpg" width="30px"><span>Geek_zbvt62</span> 👍（1） 💬（0）<div>实践的例子，柔性事务的最大努力通知算么？</div>2018-05-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/92/6d/becd841a.jpg" width="30px"><span>escray</span> 👍（0） 💬（0）<div>异步处理一般需要缓存或者队列来协助，统一调度，更好的利用时间和资源，从而比同步处理更快。
-
-异步处理需要一个前台系统，记录用户请求（日志或队列）；
-还需要一个任务派发器，可以采用推拉结合的方式，Push 端做一定的任务调度，Pull 端订阅异步消息；
-最后，需要任务处理系统真正处理请求。
-
-事件溯源 Event Sourcing，系统没有状态，事件不可变，并且可使用之追加操作进行存储。
-
-事件是描述已发生操作的简单对象，以及描述事件代表的操作所需的相关数据。
-
-专栏并没有详细说明异步处理中的事件驱动，似乎这一类的文章也比较多。
-
-异步处理需要任务处理方处理完成后，给任务发起方回传状态；
-发起方需要有定时任务，把一些超时没有回传状态的任务重新做一遍；
-如果回滚，需要补偿事务流程；
-运维需要监控任务队列里面任务积压情况，如果需要，可能限流。
-
-异步处理系统的本质是把被动的任务处理编程主动的任务处理，对任务进行调度和统筹管理。
-
-现实生活中，需要用到强一致性的场景不多；绝大多数业务场景都用不到强一致性。
-
-顺着专栏里面的链接去看了那个 Event-Sourcing + CQRS example application，没有看代码，然后看了 Chris Richardson 的会议演讲 PPT。
-
-有一点好奇，代码的更新大概是在 2017 年，演讲大概是 2015 年之前，然后呢？</div>2023-03-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/80/82/3c21b30c.jpg" width="30px"><span>梅子黄时雨</span> 👍（0） 💬（0）<div>常看常新。</div>2022-09-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/b1/81/13f23d1e.jpg" width="30px"><span>方勇(gopher)</span> 👍（0） 💬（0）<div>我们在消费者设置幂等，但是基于redis.如果做事件溯源业务自己就要处理幂等逻辑。</div>2021-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/7a/ef/20818c3f.jpg" width="30px"><span>Beluga</span> 👍（0） 💬（0）<div>肯德基手机点餐下单付款后，大屏幕有个取餐队列。生活中的异步处理，这个例子还挺有意思的。</div>2021-08-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/45/74/7a82eebb.jpg" width="30px"><span>Ins</span> 👍（0） 💬（1）<div>异步相对于同步的缺点可以稍微讲一下，因为同步处理才是最原始最符合直觉的方式。</div>2021-02-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a6/90/5295fce8.jpg" width="30px"><span>昵称</span> 👍（0） 💬（1）<div>皓哥文中讲到推拉结合的例子，是否可以这么理解，上游将数据push到下游，但是下游只在从上游pull到处理数据的命令时进行处理？</div>2018-05-30</li><br/>
+有些对业务成功要求最终一致性则还需要一系列的保障手段，如对账补偿等</div>2018-11-18</li><br/><li><span>TH</span> 👍（2） 💬（0）<div>Event Sourcing是否会减慢性能？因为回放事件流会比直接从存储获取状态值要慢吧？是否还是需要前置一个缓存？CQRS里C端的事件流在处理完并更新Q端之后还有必要继续保留吗？</div>2018-06-15</li><br/><li><span>有容乃大</span> 👍（2） 💬（0）<div>异步处理用发消息的形式实现的。</div>2018-06-13</li><br/><li><span>圣诞使者</span> 👍（2） 💬（0）<div>耗子哥讲的这个操作系统的merge和sort和linux系统编程中有出入，书中的意思是如果读请求的序号是2341，内核先sort成1234然后merge成一个请求，固态盘一般是noop算法，只merge不sort，上一个请求就会是两个读请求1和234。不知道我的理解对不对。</div>2018-05-24</li><br/><li><span>Xg huang</span> 👍（2） 💬（0）<div>皓哥，想问下你们在实现event souring 模式的时候，用了什么中间件做存储？我最常接触的主要是rabit mq和kafka, 前者主要是push 模型我觉得不太适合做es,后者虽然是pull模型，但更多的是强调性能而不是数据可靠性，所以问下皓哥是怎样选型的，谢谢</div>2018-05-15</li><br/><li><span>KK</span> 👍（1） 💬（0）<div>感觉说了什么，又感觉什么都没有说。</div>2023-01-28</li><br/>
 </ul>
 
 

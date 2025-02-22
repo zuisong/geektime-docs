@@ -5539,6 +5539,201 @@
 <blockquote>
 <p>这个Sample是学习如何给代码加入Trace Tag，大家可以将这个代码运用到自己的项目中，然后利用systrace查看结果。这就是所谓的systrace + 函数插桩。</p>
 </blockquote>
+<p>操作步骤：</p>
+<ul>
+<li>使用Android Studio打开工程Chapter07。</li>
+<li>运行Gradle Task <code>:systrace-gradle-plugin:buildAndPublishToLocalMaven</code>编译plugin插件。</li>
+<li>使用Android Studio单独打开工程systrace-sample-android。</li>
+<li>编译运行App（插桩后的class文件在目录<code>Chapter07/systrace-sample-android/app/build/systrace_output/classes</code>中查看）。</li>
+</ul>
+<p>对比一下插桩效果，插桩前：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/65/a5/6587c2a9e0d4cae3b5336cbf9ef91da5.jpeg?wh=1370%2A859" /></p>
+<p>插桩后:</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/08/13/0895158565b8548d86d2e076325c0713.jpeg?wh=2160%2A1067" /></p>
+<p>可以看到在方法执行前后插入了TraceTag，这样的话<code>beginSection</code>方法和<code>endSection</code>方法之间的代码就会被追踪。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>public class TraceTag {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    public static void i(String name) {
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        Trace.beginSection(name);
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    }
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    public static void o() {
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>        Trace.endSection();
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    }
+</code></pre></div>
+<p>其实Support-Compat库中也有类似的一个<a href="https://developer.android.google.cn/reference/android/support/v4/os/TraceCompat">TraceCompat</a>，项目中可以直接使用。</p>
+<p>然后运行项目，打开systrace：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python $ANDROID_HOME/platform-tools/systrace/systrace.py gfx view wm am pm ss dalvik app sched -b 90960 -a com.sample.systrace  -o test.log.html
+</code></pre></div>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/d1/0e/d17230ca7e70b399101b1ce66dd35e0e.jpeg?wh=1123%2A391" /></p>
+<p>最后打开生成的test.log.html文件就可以查看systrace记录：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/e0/4b/e093fc650bfeafd053eb845a1b1d9c4b.jpeg?wh=3352%2A1566" /></p>
+<p>当然，这一步我们也可以使用SDK中的Monitor，效果是一样的。</p>
+<p>使用systrace + 函数插桩的方式，我们就可以很方便地观察每个方法的耗时，从而针对耗时的方法进行优化，尤其是Application的启动优化。</p>
+<p><a href="https://github.com/AndroidAdvanceWithGeektime/Chapter08"><strong>Chapter08</strong></a></p>
+<blockquote>
+<p>该项目展示了关闭掉虚拟机的class verify后对性能的影响。</p>
+</blockquote>
+<p>在加载类的过程有一个verify class的步骤，它需要校验方法的每一个指令，是一个比较耗时的操作。这个例子就是通过Hook去掉verify这个步骤。该例子尽量在Dalvik下执行，在ART下的效果并不明显。</p>
+<p>去除校验代码（可以参看阿里的<a href="https://github.com/alibaba/atlas">Atlas</a>）：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>    AndroidRuntime runtime = AndroidRuntime.getInstance();
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    runtime.init(this.getApplicationContext(), true);
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    runtime.setVerificationEnabled(false);
+</code></pre></div>
+<p>具体运行效果这里我就不展示了，直接运行体验就可以了。</p>
+<p><a href="https://github.com/AndroidAdvanceWithGeektime/Chapter12"><strong>Chapter12</strong></a></p>
+<blockquote>
+<p>通过复写Application的<code>getSharedPreferences</code>替换系统<code>SharedPreferences</code>的实现，核心的优化在于修改了Apply的实现，将多个Apply方法在内存中合并，而不是多次提交。</p>
+</blockquote>
+<p>修改<code>SharedPreferencesImpl</code>的Apply部分如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>       public void apply() {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>            // 先调用commitToMemory()
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>            final MemoryCommitResult mcr = commitToMemory();
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>            boolean hasDiskWritesInFlight = false;
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>            synchronized (SharedPreferencesImpl.this) {
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>                // mDiskWritesInFlight大于0说明之前已经有调用过commitToMemory()了
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>                hasDiskWritesInFlight = mDiskWritesInFlight &gt; 0;
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>            }
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>            // 源码没有这层判断，直接提交。
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>            if (!hasDiskWritesInFlight) {
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>                final Runnable awaitCommit = new Runnable() {
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>                    public void run() {
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>                        try {
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>                            mcr.writtenToDiskLatch.await();
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>                        } catch (InterruptedException ignored) {
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>                        }
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>                    }
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>                };
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>                QueuedWork.add(awaitCommit);
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>                Runnable postWriteRunnable = new Runnable() {
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>                    public void run() {
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>                        awaitCommit.run();
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>                        QueuedWork.remove(awaitCommit);
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>                    }
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>                };
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>                SharedPreferencesImpl.this.enqueueDiskWrite(mcr, postWriteRunnable);
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>            }
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>            // Okay to notify the listeners before it&#39;s hit disk
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>            // because the listeners should always get the same
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>            // SharedPreferences instance back, which has the
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>            // changes reflected in memory.
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>            notifyListeners(mcr);
+</code></pre></div>
+<p><a href="https://github.com/AndroidAdvanceWithGeektime/Chapter14"><strong>Chapter14</strong></a></p>
+<p>这个是全面解析SQLite的资料，有兴趣的可以下载看看。</p>
+<p><a href="https://github.com/AndroidAdvanceWithGeektime/Chapter17"><strong>Chapter17</strong></a></p>
+<blockquote>
+<p>该项目展示了如何使用PLT Hook技术来获取网络请求相关信息。</p>
+</blockquote>
+<p>通过PLT Hook，代理Socket相关的几个重要函数：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>/**
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>* 直接 hook 内存中的所有so，但是需要排除掉socket相关方法本身定义的libc(不然会出现循坏)
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>* plt hook
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>*/
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>void hookLoadedLibs() {
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    ALOG(&quot;hook_plt_method&quot;);
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    hook_plt_method_all_lib(&quot;libc.so&quot;, &quot;send&quot;, (hook_func) &amp;socket_send_hook);
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    hook_plt_method_all_lib(&quot;libc.so&quot;, &quot;recv&quot;, (hook_func) &amp;socket_recv_hook);
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    hook_plt_method_all_lib(&quot;libc.so&quot;, &quot;sendto&quot;, (hook_func) &amp;socket_sendto_hook);
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    hook_plt_method_all_lib(&quot;libc.so&quot;, &quot;recvfrom&quot;, (hook_func) &amp;socket_recvfrom_hook);
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    hook_plt_method_all_lib(&quot;libc.so&quot;, &quot;connect&quot;, (hook_func) &amp;socket_connect_hook);
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>}
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>int hook_plt_method_all_lib(const char* exclueLibname, const char* name, hook_func hook) {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>  if (refresh_shared_libs()) {
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    // Could not properly refresh the cache of shared library data
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    return -1;
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>  }
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>  int failures = 0;
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>  for (auto const&amp; lib : allSharedLibs()) {
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>      if (strcmp(lib.first.c_str(), exclueLibname) != 0) {
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>        failures += hook_plt_method(lib.first.c_str(), name, hook);
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>      }
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>  }
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>  return failures;
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>}
+</code></pre></div>
+<p>运行项目，访问百度的域名<a href="https://www.baidu.com">https://www.baidu.com</a>，输出如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>17:08:28.347 12145-12163/com.dodola.socket E/HOOOOOOOOK: socket_connect_hook sa_family: 10
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>17:08:28.349 12145-12163/com.dodola.socket E/HOOOOOOOOK: stack:com.dodola.socket.SocketHook.getStack(SocketHook.java:13)
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    java.net.PlainSocketImpl.socketConnect(Native Method)
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:334)
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:196)
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:178)
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    java.net.SocksSocketImpl.connect(SocksSocketImpl.java:356)
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    java.net.Socket.connect(Socket.java:586)
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    com.android.okhttp.internal.Platform.connectSocket(Platform.java:113)
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    com.android.okhttp.Connection.connectSocket(Connection.java:196)
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    com.android.okhttp.Connection.connect(Connection.java:172)
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    com.android.okhttp.Connection.connectAndSetOwner(Connection.java:367)
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    com.android.okhttp.OkHttpClient$1.connectAndSetOwner(OkHttpClient.java:130)
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    com.android.okhttp.internal.http.HttpEngine.connect(HttpEngine.java:329)
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    com.android.okhttp.internal.http.HttpEngine.sendRequest(HttpEngine.java:246)
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    com.android.okhttp.internal.huc.HttpURLConnectionImpl.execute(HttpURLConnection
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>    AF_INET6 ipv6 IP===&gt;183.232.231.173:443
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>    socket_connect_hook sa_family: 1
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>    Ignore local socket connect
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>02-07 17:08:28.637 12145-12163/com.dodola.socket E/HOOOOOOOOK: respond:﻿&lt;!DOCTYPE html&gt;
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>    &lt;html&gt;&lt;!--STATUS OK--&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;title&gt;百度一下,你就知道&lt;/title&gt;
+</code></pre></div>
+<p>可以看到我们获取到了网络请求的相关信息。</p>
+<p>最后，我们可以通过Connect函数的hook，实现很多需求，例如：</p>
+<ul>
+<li>禁用应用网络访问</li>
+<li>过滤广告IP</li>
+<li>禁用定位功能</li>
+</ul>
+<p><a href="https://github.com/AndroidAdvanceWithGeektime/Chapter19"><strong>Chapter19</strong></a></p>
+<blockquote>
+<p>使用Java Hook实现Alarm、WakeLock与GPS的耗电监控。</p>
+</blockquote>
+<p>实现原理</p>
+<p>根据老师提供的提示信息，动态代理对应的<a href="http://androidxref.com/7.0.0_r1/xref/frameworks/base/core/java/android/os/PowerManager.java">PowerManager</a>、<a href="http://androidxref.com/7.0.0_r1/xref/frameworks/base/core/java/android/app/AlarmManager.java">AlarmManager</a>、<a href="http://androidxref.com/7.0.0_r1/xref/frameworks/base/location/java/android/location/LocationManager.java">LocationManager</a>的<code>mService</code>实现，要拦截的方法在<a href="http://androidxref.com/7.0.0_r1/xref/frameworks/base/services/core/java/com/android/server/power/PowerManagerService.java">PowerManagerService</a>、<a href="http://androidxref.com/7.0.0_r1/xref/frameworks/base/services/core/java/com/android/server/AlarmManagerService.java">AlarmManagerService</a>、<a href="http://androidxref.com/7.0.0_r1/xref/frameworks/base/services/core/java/com/android/server/LocationManagerService.java">LocationManagerService</a>中。</p>
+<p>实现核心代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>        Object oldObj = mHostContext.getSystemService(Context.XXX_SERVICE);
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    Class&lt;?&gt; clazz = oldObj.getClass();
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    Field field = clazz.getDeclaredField(&quot;mService&quot;);
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    field.setAccessible(true);
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    final Object mService = field.get(oldObj);
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    setProxyObj(mService);
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    Object newObj = Proxy.newProxyInstance(this.getClass().getClassLoader(), mService.getClass().getInterfaces(), this);
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    field.set(oldObj, newObj)
+</code></pre></div>
+<p>写了几个调用方法去触发，通过判断对应的方法名来做堆栈信息的输出。</p>
+<p>输出的堆栈信息如下：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/43/b7/43e081eacdef050b78b71043c87acdb7.png?wh=1040%2A697" /></p>
+<p>当然，强大的Studio在3.2后也有了强大的耗电量分析器，同样可以监测到这些信息，如下图所示（我使用的Studio版本为3.3）。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/82/3d/82b2939991e4c9c729017255fb1cb73d.png?wh=1603%2A796" /></p>
+<p>实现不足之处：</p>
+<ul>
+<li>可能兼容性上不是特别完善（期待老师的标准答案）。</li>
+<li>没有按照耗电监控的规则去做一些业务处理。</li>
+</ul>
+<p>心得体会：</p>
+<ul>
+<li>本身并不复杂，只是为了找到Hook点，看了对应的Service源码耗费了一些时间，对于它们的工作流程有了更深的认识。</li>
+<li>平时也很少使用动态代理，这回查漏补缺，一次用了个爽。</li>
+</ul>
+<p>这个作业前前后后用了一天时间，之前作业还有一些同学提供PR，所以相对轻松些，但这次没有参考，走了点弯路，不过收获也是巨大的。我就不细说了，感兴趣的话可以参考我的实现。完整代码参见<a href="https://github.com/simplezhli/Chapter19">GitHub</a>，仅供参考。</p>
+<p><strong>参考</strong></p>
+<ul>
+<li><a href="https://time.geekbang.org/column/article/76413">练习Sample跑起来 | 热点问题答疑第3期</a></li>
+<li><a href="https://time.geekbang.org/column/article/79331">练习Sample跑起来 | 热点问题答疑第4期</a></li>
+</ul>
 
 
 

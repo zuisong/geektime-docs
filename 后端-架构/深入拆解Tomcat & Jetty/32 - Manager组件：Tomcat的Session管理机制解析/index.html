@@ -9528,6 +9528,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#session_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Session的清理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#session_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Session事件通知
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13093,6 +13129,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#session_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Session的清理
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#session_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Session事件通知
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13123,12 +13195,237 @@
 <p>那么Tomcat的Session管理机制我们还需要了解吗？我觉得还是有必要，因为只有了解这些原理，我们才能更好的理解Spring Session，以及Spring Session为什么设计成这样。今天我们就从Session的创建、Session的清理以及Session的事件通知这几个方面来了解Tomcat的Session管理机制。</p>
 <h2 id="session">Session的创建</h2>
 <p>Tomcat中主要由每个Context容器内的一个Manager对象来管理Session。默认实现类为StandardManager。下面我们通过它的接口来了解一下StandardManager的功能：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>public interface Manager {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    public Context getContext();
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    public void setContext(Context context);
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    public SessionIdGenerator getSessionIdGenerator();
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    public void setSessionIdGenerator(SessionIdGenerator sessionIdGenerator);
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    public long getSessionCounter();
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    public void setSessionCounter(long sessionCounter);
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    public int getMaxActive();
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    public void setMaxActive(int maxActive);
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    public int getActiveSessions();
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    public long getExpiredSessions();
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    public void setExpiredSessions(long expiredSessions);
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    public int getRejectedSessions();
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    public int getSessionMaxAliveTime();
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    public void setSessionMaxAliveTime(int sessionMaxAliveTime);
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    public int getSessionAverageAliveTime();
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    public int getSessionCreateRate();
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    public int getSessionExpireRate();
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    public void add(Session session);
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    public void changeSessionId(Session session);
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    public void changeSessionId(Session session, String newId);
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    public Session createEmptySession();
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    public Session createSession(String sessionId);
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    public Session findSession(String id) throws IOException;
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    public Session[] findSessions();
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    public void load() throws ClassNotFoundException, IOException;
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>    public void remove(Session session);
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>    public void remove(Session session, boolean update);
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    public void addPropertyChangeListener(PropertyChangeListener listener)
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    public void removePropertyChangeListener(PropertyChangeListener listener);
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>    public void unload() throws IOException;
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    public void backgroundProcess();
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>    public boolean willAttributeDistribute(String name, Object value);
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>}
+</code></pre></div>
+<p>不出意外我们在接口中看到了添加和删除Session的方法；另外还有load和unload方法，它们的作用是分别是将Session持久化到存储介质和从存储介质加载Session。</p>
+<p>当我们调用<code>HttpServletRequest.getSession(true)</code>时，这个参数true的意思是“如果当前请求还没有Session，就创建一个新的”。那Tomcat在背后为我们做了些什么呢？</p>
+<p>HttpServletRequest是一个接口，Tomcat实现了这个接口，具体实现类是：<code>org.apache.catalina.connector.Request</code>。</p>
+<p>但这并不是我们拿到的Request，Tomcat为了避免把一些实现细节暴露出来，还有基于安全上的考虑，定义了Request的包装类，叫作RequestFacade，我们可以通过代码来理解一下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>public class Request implements HttpServletRequest {}
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>public class RequestFacade implements HttpServletRequest {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  protected Request request = null;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  public HttpSession getSession(boolean create) {
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>     return request.getSession(create);
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  }
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>}
+</code></pre></div>
+<p>因此我们拿到的Request类其实是RequestFacade，RequestFacade的getSession方法调用的是Request类的getSession方法，我们继续来看Session具体是如何创建的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Context context = getContext();
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>if (context == null) {
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    return null;
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>}
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>Manager manager = context.getManager();
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>if (manager == null) {
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    return null;      
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>}
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>session = manager.createSession(sessionId);
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>session.access();
+</code></pre></div>
+<p>从上面的代码可以看出，Request对象中持有Context容器对象，而Context容器持有Session管理器Manager，这样通过Context组件就能拿到Manager组件，最后由Manager组件来创建Session。</p>
+<p>因此最后还是到了StandardManager，StandardManager的父类叫ManagerBase，这个createSession方法定义在ManagerBase中，StandardManager直接重用这个方法。</p>
+<p>接着我们来看ManagerBase的createSession是如何实现的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>@Override
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>public Session createSession(String sessionId) {
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    //首先判断Session数量是不是到了最大值，最大Session数可以通过参数设置
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    if ((maxActiveSessions &gt;= 0) &amp;&amp;
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>            (getActiveSessions() &gt;= maxActiveSessions)) {
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        rejectedSessions++;
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        throw new TooManyActiveSessionsException(
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>                sm.getString(&quot;managerBase.createSession.ise&quot;),
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>                maxActiveSessions);
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    }
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    // 重用或者创建一个新的Session对象，请注意在Tomcat中就是StandardSession
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    // 它是HttpSession的具体实现类，而HttpSession是Servlet规范中定义的接口
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    Session session = createEmptySession();
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    // 初始化新Session的值
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    session.setNew(true);
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    session.setValid(true);
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    session.setCreationTime(System.currentTimeMillis());
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>    session.setMaxInactiveInterval(getContext().getSessionTimeout() * 60);
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    String id = sessionId;
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    if (id == null) {
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>        id = generateSessionId();
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>    }
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>    session.setId(id);// 这里会将Session添加到ConcurrentHashMap中
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>    sessionCounter++;
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>    //将创建时间添加到LinkedList中，并且把最先添加的时间移除
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>    //主要还是方便清理过期Session
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>    SessionTiming timing = new SessionTiming(session.getCreationTime(), 0);
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>    synchronized (sessionCreationTiming) {
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>        sessionCreationTiming.add(timing);
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>        sessionCreationTiming.poll();
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>    }
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>    return session
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>}
+</code></pre></div>
+<p>到此我们明白了Session是如何创建出来的，创建出来后Session会被保存到一个ConcurrentHashMap中：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>protected Map&lt;String, Session&gt; sessions = new ConcurrentHashMap&lt;&gt;();
+</code></pre></div>
+<p>请注意Session的具体实现类是StandardSession，StandardSession同时实现了<code>javax.servlet.http.HttpSession</code>和<code>org.apache.catalina.Session</code>接口，并且对程序员暴露的是StandardSessionFacade外观类，保证了StandardSession的安全，避免了程序员调用其内部方法进行不当操作。StandardSession的核心成员变量如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>public class StandardSession implements HttpSession, Session, Serializable {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    protected ConcurrentMap&lt;String, Object&gt; attributes = new ConcurrentHashMap&lt;&gt;();
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    protected long creationTime = 0L;
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    protected transient volatile boolean expiring = false;
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    protected transient StandardSessionFacade facade = null;
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    protected String id = null;
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    protected volatile long lastAccessedTime = creationTime;
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    protected transient ArrayList&lt;SessionListener&gt; listeners = new ArrayList&lt;&gt;();
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    protected transient Manager manager = null;
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    protected volatile int maxInactiveInterval = -1;
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    protected volatile boolean isNew = false;
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    protected volatile boolean isValid = false;
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    protected transient Map&lt;String, Object&gt; notes = new Hashtable&lt;&gt;();
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    protected transient Principal principal = null;
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>}
+</code></pre></div>
+<h2 id="session_1">Session的清理</h2>
+<p>我们再来看看Tomcat是如何清理过期的Session。在Tomcat<a href="https://time.geekbang.org/column/article/104423">热加载和热部署</a>的文章里，我讲到容器组件会开启一个ContainerBackgroundProcessor后台线程，调用自己以及子容器的backgroundProcess进行一些后台逻辑的处理，和Lifecycle一样，这个动作也是具有传递性的，也就是说子容器还会把这个动作传递给自己的子容器。你可以参考下图来理解这个过程。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/3b/eb/3b2dfa635469c0fe7e3a17e2517c53eb.jpg?wh=1162%2A404" /></p>
+<p>其中父容器会遍历所有的子容器并调用其backgroundProcess方法，而StandardContext重写了该方法，它会调用StandardManager的backgroundProcess进而完成Session的清理工作，下面是StandardManager的backgroundProcess方法的代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>public void backgroundProcess() {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    // processExpiresFrequency 默认值为6，而backgroundProcess默认每隔10s调用一次，也就是说除了任务执行的耗时，每隔 60s 执行一次
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    count = (count + 1) % processExpiresFrequency;
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    if (count == 0) // 默认每隔 60s 执行一次 Session 清理
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>        processExpires();
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>}
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>/**
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a> * 单线程处理，不存在线程安全问题
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a> */
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>public void processExpires() {
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    // 获取所有的 Session
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    Session sessions[] = findSessions();   
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    int expireHere = 0 ;
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    for (int i = 0; i &lt; sessions.length; i++) {
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>        // Session 的过期是在isValid()方法里处理的
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>        if (sessions[i]!=null &amp;&amp; !sessions[i].isValid()) {
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>            expireHere++;
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>        }
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>    }
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>}
+</code></pre></div>
+<p>backgroundProcess由Tomcat后台线程调用，默认是每隔10秒调用一次，但是Session的清理动作不能太频繁，因为需要遍历Session列表，会耗费CPU资源，所以在backgroundProcess方法中做了取模处理，backgroundProcess调用6次，才执行一次Session清理，也就是说Session清理每60秒执行一次。</p>
+<h2 id="session_2">Session事件通知</h2>
+<p>按照Servlet规范，在Session的生命周期过程中，要将事件通知监听者，Servlet规范定义了Session的监听器接口：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>public interface HttpSessionListener extends EventListener {
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    //Session创建时调用
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    public default void sessionCreated(HttpSessionEvent se) {
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    }
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    //Session销毁时调用
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    public default void sessionDestroyed(HttpSessionEvent se) {
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    }
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>}
+</code></pre></div>
+<p>注意到这两个方法的参数都是HttpSessionEvent，所以Tomcat需要先创建HttpSessionEvent对象，然后遍历Context内部的LifecycleListener，并且判断是否为HttpSessionListener实例，如果是的话则调用HttpSessionListener的sessionCreated方法进行事件通知。这些事情都是在Session的setId方法中完成的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>session.setId(id);
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>@Override
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>public void setId(String id, boolean notify) {
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    //如果这个id已经存在，先从Manager中删除
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    if ((this.id != null) &amp;&amp; (manager != null))
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>        manager.remove(this);
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    this.id = id;
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    //添加新的Session
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    if (manager != null)
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>        manager.add(this);
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    //这里面完成了HttpSessionListener事件通知
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>    if (notify) {
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>        tellNew();
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>    }
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>}
+</code></pre></div>
+<p>从代码我们看到setId方法调用了tellNew方法，那tellNew又是如何实现的呢？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>public void tellNew() {
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    // 通知org.apache.catalina.SessionListener
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    fireSessionEvent(Session.SESSION_CREATED_EVENT, null);
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    // 获取Context内部的LifecycleListener并判断是否为HttpSessionListener
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    Context context = manager.getContext();
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    Object listeners[] = context.getApplicationLifecycleListeners();
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    if (listeners != null &amp;&amp; listeners.length &gt; 0) {
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>        //创建HttpSessionEvent
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>        HttpSessionEvent event = new HttpSessionEvent(getSession());
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>        for (int i = 0; i &lt; listeners.length; i++) {
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>            //判断是否是HttpSessionListener
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>            if (!(listeners[i] instanceof HttpSessionListener))
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>                continue;
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>            HttpSessionListener listener = (HttpSessionListener) listeners[i];
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>            //注意这是容器内部事件
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>            context.fireContainerEvent(&quot;beforeSessionCreated&quot;, listener);   
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>            //触发Session Created 事件
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>            listener.sessionCreated(event);
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>            //注意这也是容器内部事件
+<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>            context.fireContainerEvent(&quot;afterSessionCreated&quot;, listener);
+<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a>
+<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a>        }
+<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a>    }
+<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a>}
+</code></pre></div>
+<p>上面代码的逻辑是，先通过StandardContext将HttpSessionListener类型的Listener取出，然后依次调用它们的sessionCreated方法。</p>
+<h2 id="_1">本期精华</h2>
+<p>今天我们从Request谈到了Session的创建、销毁和事件通知，里面涉及不少相关的类，下面我画了一张图帮你理解和消化一下这些类的关系：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/11/cf/11493762a465c27152dbb4aa4b563ecf.jpg?wh=693%2A591" /></p>
+<p>Servlet规范中定义了HttpServletRequest和HttpSession接口，Tomcat实现了这些接口，但具体实现细节并没有暴露给开发者，因此定义了两个包装类，RequestFacade和StandardSessionFacade。</p>
+<p>Tomcat是通过Manager来管理Session的，默认实现是StandardManager。StandardContext持有StandardManager的实例，并存放了HttpSessionListener集合，Session在创建和销毁时，会通知监听器。</p>
+<h2 id="_2">课后思考</h2>
+<p>TCP连接的过期时间和Session的过期时间有什么区别？</p>
+<p>不知道今天的内容你消化得如何？如果还有疑问，请大胆的在留言区提问，也欢迎你把你的课后思考和心得记录下来，与我和其他同学一起讨论。如果你觉得今天有所收获，欢迎你把它分享给你的朋友。</p>
 <div><strong>精选留言（14）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（35） 💬（1）<div>session是会话的生命周期，每次请求都会重置超时时间，TCP链接超时，链接就被回收了(节约资源)，如果session没失效可以从新创建TCP链接通过sessionId找到之前的会话。sessionId存在cookie里面，通过http协议的head头传过来。
+<li><span>-W.LI-</span> 👍（35） 💬（1）<div>session是会话的生命周期，每次请求都会重置超时时间，TCP链接超时，链接就被回收了(节约资源)，如果session没失效可以从新创建TCP链接通过sessionId找到之前的会话。sessionId存在cookie里面，通过http协议的head头传过来。
 老师好，感觉设计模式大多的作用就是，解耦，复用，提高系统的简装性，灵活性，还有别的作用么?
-有个问题，之前听隔壁班的老师说，在数据量大的时候ConcurrentSkipMap()juc下基于条表实现性能比ConcurrentHashMap性能好。可是Tomcat管理session还是用的ConcurentHashMap()。是不够多么，大概多少量级以后用跳表比较合适啊?谢谢老师</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/21/63/f47576e1.jpg" width="30px"><span>永钱</span> 👍（16） 💬（2）<div>Tcp是系统网络层面的，而session是应用层面的，应用层面完全由应用控制生命周期，他们之间没什么关系。不知道理解对不对，求指正</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/36/d2/c7357723.jpg" width="30px"><span>发条橙子 。</span> 👍（13） 💬（1）<div>老师 我有个其他的疑问，一般我们用tomcat起java程序的时候都用的jvm的默认参数，那如果我想更改一些jvm参数 ，应该在tomcat哪里配置</div>2019-07-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/51/0d/14d9364a.jpg" width="30px"><span>L.B.Q.Y</span> 👍（5） 💬（1）<div>StandardManager持有的sessions这个ConcurrentHashMap，其Key是sessionId对吧，这个sessionId是通过cookie送进来的是吗？如此，同一个主机上发送来的请求就能和指定的session关联在一起。</div>2019-09-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5c/c5/1231d633.jpg" width="30px"><span>梁中华</span> 👍（2） 💬（1）<div>不谈下分布式session在tomcat中的实现吗？比如多个tomcat实例如何共享session？</div>2019-07-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/e9/0b/1171ac71.jpg" width="30px"><span>WL</span> 👍（1） 💬（1）<div>老师请问一下如果是集群部署的Tomcat容器怎么实现分布式的session，还能有standardManager管理吗？我看有filestore和jdbcstore两个类，但是感觉靠这两个类好像也没法实现，请老师指点一下具体怎么集群情况下的session管理</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/24/5d/65e61dcb.jpg" width="30px"><span>学无涯</span> 👍（0） 💬（1）<div>HttpSessionEvent event = new HttpSessionEvent(getSession());
-没太明白HttpSessionEvent 的作用是什么</div>2019-08-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/55/45/e4314bc6.jpg" width="30px"><span>magicnum</span> 👍（4） 💬（0）<div>一个是传输层连接的断开时间，另一个是应用层用户会话的过期时间，两者没啥关系，但是超时目的其实都是为了减少服务器资源占用</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/8a/76/4abc8ac1.jpg" width="30px"><span>完美世界</span> 👍（1） 💬（0）<div>tcp 是传输层协议，连接过期，需要重新三次握手。Session，是服务端的凭证，过期，表示会话过期，需要重新连接。此时tcp可能未过期。</div>2019-09-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2e/27/b4/df65c0f7.jpg" width="30px"><span>| ~浑蛋~</span> 👍（0） 💬（0）<div>请问一下，session的isValid状态由谁来维护</div>2022-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/81/e6/6cafed37.jpg" width="30px"><span>旅途</span> 👍（0） 💬（1）<div>老师，创建session的时候，先用context过去的manager，然后session.setId的时候，又用manager获取的context，来过去listener，这是为什么</div>2020-01-19</li><br/><li><img src="" width="30px"><span>Geek_rebel</span> 👍（0） 💬（0）<div>对Request对象进行包装，这种操作是用的装饰者模式吗？</div>2019-12-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/ee/6c/246fa0d1.jpg" width="30px"><span>Mr.差不多</span> 👍（0） 💬（0）<div>我想请教一下，就是在tomcat中session的过期时间是什么时候重置的? 是在下一次获取到这个session中的数据的时候？还是随便向后台发送个请求就可以？</div>2019-12-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/09/67/7de7988a.jpg" width="30px"><span>小飞</span> 👍（0） 💬（0）<div>其实在StandardManager 中没有 backgroundProcess()和 processExpires()的具体实现的。他们的实现提取到了基类ManagerBase中</div>2019-07-23</li><br/>
+有个问题，之前听隔壁班的老师说，在数据量大的时候ConcurrentSkipMap()juc下基于条表实现性能比ConcurrentHashMap性能好。可是Tomcat管理session还是用的ConcurentHashMap()。是不够多么，大概多少量级以后用跳表比较合适啊?谢谢老师</div>2019-07-23</li><br/><li><span>永钱</span> 👍（16） 💬（2）<div>Tcp是系统网络层面的，而session是应用层面的，应用层面完全由应用控制生命周期，他们之间没什么关系。不知道理解对不对，求指正</div>2019-07-23</li><br/><li><span>发条橙子 。</span> 👍（13） 💬（1）<div>老师 我有个其他的疑问，一般我们用tomcat起java程序的时候都用的jvm的默认参数，那如果我想更改一些jvm参数 ，应该在tomcat哪里配置</div>2019-07-24</li><br/><li><span>L.B.Q.Y</span> 👍（5） 💬（1）<div>StandardManager持有的sessions这个ConcurrentHashMap，其Key是sessionId对吧，这个sessionId是通过cookie送进来的是吗？如此，同一个主机上发送来的请求就能和指定的session关联在一起。</div>2019-09-18</li><br/><li><span>梁中华</span> 👍（2） 💬（1）<div>不谈下分布式session在tomcat中的实现吗？比如多个tomcat实例如何共享session？</div>2019-07-24</li><br/><li><span>WL</span> 👍（1） 💬（1）<div>老师请问一下如果是集群部署的Tomcat容器怎么实现分布式的session，还能有standardManager管理吗？我看有filestore和jdbcstore两个类，但是感觉靠这两个类好像也没法实现，请老师指点一下具体怎么集群情况下的session管理</div>2019-07-23</li><br/><li><span>学无涯</span> 👍（0） 💬（1）<div>HttpSessionEvent event = new HttpSessionEvent(getSession());
+没太明白HttpSessionEvent 的作用是什么</div>2019-08-14</li><br/><li><span>magicnum</span> 👍（4） 💬（0）<div>一个是传输层连接的断开时间，另一个是应用层用户会话的过期时间，两者没啥关系，但是超时目的其实都是为了减少服务器资源占用</div>2019-07-23</li><br/><li><span>完美世界</span> 👍（1） 💬（0）<div>tcp 是传输层协议，连接过期，需要重新三次握手。Session，是服务端的凭证，过期，表示会话过期，需要重新连接。此时tcp可能未过期。</div>2019-09-17</li><br/><li><span>| ~浑蛋~</span> 👍（0） 💬（0）<div>请问一下，session的isValid状态由谁来维护</div>2022-08-01</li><br/><li><span>旅途</span> 👍（0） 💬（1）<div>老师，创建session的时候，先用context过去的manager，然后session.setId的时候，又用manager获取的context，来过去listener，这是为什么</div>2020-01-19</li><br/><li><span>Geek_rebel</span> 👍（0） 💬（0）<div>对Request对象进行包装，这种操作是用的装饰者模式吗？</div>2019-12-10</li><br/><li><span>Mr.差不多</span> 👍（0） 💬（0）<div>我想请教一下，就是在tomcat中session的过期时间是什么时候重置的? 是在下一次获取到这个session中的数据的时候？还是随便向后台发送个请求就可以？</div>2019-12-03</li><br/><li><span>小飞</span> 👍（0） 💬（0）<div>其实在StandardManager 中没有 backgroundProcess()和 processExpires()的具体实现的。他们的实现提取到了基类ManagerBase中</div>2019-07-23</li><br/>
 </ul>
 
 

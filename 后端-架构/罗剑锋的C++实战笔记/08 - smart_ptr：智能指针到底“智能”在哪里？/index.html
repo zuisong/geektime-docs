@@ -10384,6 +10384,60 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#unique_ptr" class="md-nav__link">
+    <span class="md-ellipsis">
+      认识unique_ptr
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unique_ptr_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      unique_ptr的所有权
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shared_ptr" class="md-nav__link">
+    <span class="md-ellipsis">
+      认识shared_ptr
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shared_ptr_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      shared_ptr的注意事项
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      课下作业
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12820,6 +12874,60 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#unique_ptr" class="md-nav__link">
+    <span class="md-ellipsis">
+      认识unique_ptr
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unique_ptr_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      unique_ptr的所有权
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shared_ptr" class="md-nav__link">
+    <span class="md-ellipsis">
+      认识shared_ptr
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shared_ptr_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      shared_ptr的注意事项
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      课下作业
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12855,12 +12963,190 @@
 <p>指针是源自C语言的概念，本质上是一个内存地址索引，代表了一小片内存区域（也可能会很大），能够直接读写内存。</p>
 <p>因为它完全映射了计算机硬件，所以操作效率高，是C/C++高效的根源。当然，这也是引起无数麻烦的根源。访问无效数据、指针越界，或者内存分配后没有及时释放，就会导致运行错误、内存泄漏、资源丢失等一系列严重的问题。</p>
 <p>其他的编程语言，比如Java、Go就没有这方面的顾虑，因为它们内置了一个“垃圾回收”机制，会检测不再使用的内存，自动释放资源，让程序员不必为此费心。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>其实，C++里也是有垃圾回收的，不过不是Java、Go那种严格意义上的垃圾回收，而是广义上的垃圾回收，这就是<strong>构造/析构函数</strong>和<strong>RAII惯用法</strong>（Resource Acquisition Is Initialization）。</p>
+<p>我们可以应用代理模式，把裸指针包装起来，在构造函数里初始化，在析构函数里释放。这样当对象失效销毁时，C++就会<strong>自动</strong>调用析构函数，完成内存释放、资源回收等清理工作。</p>
+<p>和Java、Go相比，这算是一种“微型”的垃圾回收机制，而且回收的时机完全“自主可控”，非常灵活。当然也有一点代价——你必须要针对每一个资源手写包装代码，又累又麻烦。</p>
+<p>智能指针就是代替你来干这些“脏活累活”的。它完全实践了RAII，包装了裸指针，而且因为重载了*和-&gt;操作符，用起来和原始指针一模一样。</p>
+<p>不仅如此，它还综合考虑了很多现实的应用场景，能够自动适应各种复杂的情况，防止误用指针导致的隐患，非常“聪明”，所以被称为“智能指针”。</p>
+<p>常用的有两种智能指针，分别是<strong>unique_ptr</strong>和<strong>shared_ptr</strong>，下面我就来分别介绍一下。</p>
+<h2 id="unique_ptr">认识unique_ptr</h2>
+<p>unique_ptr是最简单、最容易使用的一个智能指针，在声明的时候必须用模板参数指定类型：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>unique_ptr&lt;int&gt; ptr1(new int(10));      // int智能指针
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>assert(*ptr1 == 10);                     // 可以使用*取内容
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>assert(ptr1 != nullptr);                // 可以判断是否为空指针
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>unique_ptr&lt;string&gt; ptr2(new string(&quot;hello&quot;));  // string智能指针
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>assert(*ptr2 == &quot;hello&quot;);                // 可以使用*取内容
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>assert(ptr2-&gt;size() == 5);               // 可以使用-&gt;调用成员函数
+</code></pre></div>
+<p>你需要注意的是，unique_ptr虽然名字叫指针，用起来也很像，但<strong>它实际上并不是指针，而是一个对象。所以，不要企图对它调用delete，它会自动管理初始化时的指针，在离开作用域时析构释放内存。</strong></p>
+<p>另外，它也没有定义加减运算，不能随意移动指针地址，这就完全避免了指针越界等危险操作，可以让代码更安全：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ptr1++;                        // 导致编译错误
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>ptr2 += 2;                     // 导致编译错误
+</code></pre></div>
+<p>除了调用delete、加减运算，初学智能指针还有一个容易犯的错误是把它当成普通对象来用，不初始化，而是声明后直接使用：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>unique_ptr&lt;int&gt; ptr3;                // 未初始化智能指针
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>*ptr3 = 42 ;                         // 错误！操作了空指针
+</code></pre></div>
+<p>未初始化的unique_ptr表示空指针，这样就相当于直接操作了空指针，运行时就会产生致命的错误（比如core dump）。</p>
+<p>为了避免这种低级错误，你可以调用工厂函数<strong>make_unique()</strong>，强制创建智能指针的时候必须初始化。同时还可以利用自动类型推导（<a href="https://time.geekbang.org/column/article/237964">第6讲</a>）的auto，少写一些代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>auto ptr3 = make_unique&lt;int&gt;(42);               // 工厂函数创建智能指针
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>assert(ptr3 &amp;&amp; *ptr3 == 42);
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>auto ptr4 = make_unique&lt;string&gt;(&quot;god of war&quot;);  // 工厂函数创建智能指针
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>assert(!ptr4-&gt;empty());
+</code></pre></div>
+<p>不过，make_unique()要求C++14，好在它的原理比较简单。如果你使用的是C++11，也可以自己实现一个简化版的make_unique()，可以参考下面的代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>template&lt;class T, class... Args&gt;              // 可变参数模板
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>std::unique_ptr&lt;T&gt;                            // 返回智能指针
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>my_make_unique(Args&amp;&amp;... args)                // 可变参数模板的入口参数
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>{
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    return std::unique_ptr&lt;T&gt;(                // 构造智能指针
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>            new T(std::forward&lt;Args&gt;(args)...));    // 完美转发
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>}
+</code></pre></div>
+<h2 id="unique_ptr_1">unique_ptr的所有权</h2>
+<p>使用unique_ptr的时候还要特别注意指针的“<strong>所有权</strong>”问题。</p>
+<p>正如它的名字，表示指针的所有权是“唯一”的，不允许共享，任何时候只能有一个“人”持有它。</p>
+<p>为了实现这个目的，unique_ptr应用了C++的“转移”（move）语义，同时禁止了拷贝赋值，所以，在向另一个unique_ptr赋值的时候，要特别留意，必须用<strong>std::move()</strong>函数显式地声明所有权转移。</p>
+<p>赋值操作之后，指针的所有权就被转走了，原来的unique_ptr变成了空指针，新的unique_ptr接替了管理权，保证所有权的唯一性：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>auto ptr1 = make_unique&lt;int&gt;(42);    // 工厂函数创建智能指针
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>assert(ptr1 &amp;&amp; *ptr1 == 42);         // 此时智能指针有效
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>auto ptr2 = std::move(ptr1);         // 使用move()转移所有权
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>assert(!ptr1 &amp;&amp; ptr2);               // ptr1变成了空指针
+</code></pre></div>
+<p>如果你对右值、转移这些概念不是太理解，也没关系，它们用起来也的确比较“微妙”，这里你只要记住，<strong>尽量不要对unique_ptr执行赋值操作</strong>就好了，让它“自生自灭”，完全自动化管理。</p>
+<h2 id="shared_ptr">认识shared_ptr</h2>
+<p>接下来要说的是shared_ptr，它是一个比unique_ptr更“智能”的智能指针。</p>
+<p>初看上去shared_ptr和unique_ptr差不多，也可以使用工厂函数来创建，也重载了*和-&gt;操作符，用法几乎一样——只是名字不同，看看下面的代码吧：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>shared_ptr&lt;int&gt; ptr1(new int(10));     // int智能指针
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>assert(*ptr1 == 10);                    // 可以使用*取内容
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>shared_ptr&lt;string&gt; ptr2(new string(&quot;hello&quot;));  // string智能指针
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>assert(*ptr2 == &quot;hello&quot;);                      // 可以使用*取内容
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>auto ptr3 = make_shared&lt;int&gt;(42);  // 工厂函数创建智能指针
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>assert(ptr3 &amp;&amp; *ptr3 == 42);       // 可以判断是否为空指针
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>auto ptr4 = make_shared&lt;string&gt;(&quot;zelda&quot;);  // 工厂函数创建智能指针
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>assert(!ptr4-&gt;empty());                   // 可以使用-&gt;调用成员函数
+</code></pre></div>
+<p>但shared_ptr的名字明显表示了它与unique_ptr的最大不同点：<strong>它的所有权是可以被安全共享的</strong>，也就是说支持拷贝赋值，允许被多个“人”同时持有，就像原始指针一样。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>auto ptr1 = make_shared&lt;int&gt;(42);    // 工厂函数创建智能指针
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>assert(ptr1 &amp;&amp; ptr1.unique() );     // 此时智能指针有效且唯一
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>auto ptr2 = ptr1;                  // 直接拷贝赋值，不需要使用move()
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>assert(ptr1 &amp;&amp; ptr2);              // 此时两个智能指针均有效
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>assert(ptr1 == ptr2);             // shared_ptr可以直接比较
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>// 两个智能指针均不唯一，且引用计数为2
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>assert(!ptr1.unique() &amp;&amp; ptr1.use_count() == 2); 
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>assert(!ptr2.unique() &amp;&amp; ptr2.use_count() == 2); 
+</code></pre></div>
+<p>shared_ptr支持安全共享的秘密在于<strong>内部使用了“引用计数”</strong>。</p>
+<p>引用计数最开始的时候是1，表示只有一个持有者。如果发生拷贝赋值——也就是共享的时候，引用计数就增加，而发生析构销毁的时候，引用计数就减少。只有当引用计数减少到0，也就是说，没有任何人使用这个指针的时候，它才会真正调用delete释放内存。</p>
+<p>因为shared_ptr具有完整的“值语义”（即可以拷贝赋值），所以，<strong>它可以在任何场合替代原始指针，而不用再担心资源回收的问题</strong>，比如用于容器存储指针、用于函数安全返回动态创建的对象，等等。</p>
+<h2 id="shared_ptr_1">shared_ptr的注意事项</h2>
+<p>那么，既然shared_ptr这么好，是不是就可以只用它而不再考虑unique_ptr了呢？</p>
+<p>答案当然是否定的，不然也就没有必要设计出来多种不同的智能指针了。</p>
+<p>虽然shared_ptr非常“智能”，但天下没有免费的午餐，它也是有代价的，<strong>引用计数的存储和管理都是成本</strong>，这方面是shared_ptr不如unique_ptr的地方。</p>
+<p>如果不考虑应用场合，过度使用shared_ptr就会降低运行效率。不过，你也不需要太担心，shared_ptr内部有很好的优化，在非极端情况下，它的开销都很小。</p>
+<p>另外一个要注意的地方是<strong>shared_ptr的销毁动作</strong>。</p>
+<p>因为我们把指针交给了shared_ptr去自动管理，但在运行阶段，引用计数的变动是很复杂的，很难知道它真正释放资源的时机，无法像Java、Go那样明确掌控、调整垃圾回收机制。</p>
+<p>你要特别小心对象的析构函数，不要有非常复杂、严重阻塞的操作。一旦shared_ptr在某个不确定时间点析构释放资源，就会阻塞整个进程或者线程，“整个世界都会静止不动”（也许用过Go的同学会深有体会）。这也是我以前遇到的实际案例，排查起来费了很多功夫，真的是“血泪教训”。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>class DemoShared final      //  危险的类，不定时的地雷   
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>{
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>public:
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    DemoShared() = default;
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>   ~DemoShared()            // 复杂的操作会导致shared_ptr析构时世界静止
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>   {
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>       // Stop The World ...
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>   }
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>};
+</code></pre></div>
+<p>shared_ptr的引用计数也导致了一个新的问题，就是“<strong>循环引用</strong>”，这在把shared_ptr作为类成员的时候最容易出现，典型的例子就是<strong>链表节点</strong>。</p>
+<p>下面的代码演示了一个简化的场景：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>class Node final
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>{
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>public:
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    using this_type     = Node;
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    using shared_type   = std::shared_ptr&lt;this_type&gt;;
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>public:
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    shared_type     next;      // 使用智能指针来指向下一个节点
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>};
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>auto n1 = make_shared&lt;Node&gt;();   // 工厂函数创建智能指针
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>auto n2 = make_shared&lt;Node&gt;();   // 工厂函数创建智能指针
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>assert(n1.use_count() == 1);    // 引用计数为1
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>assert(n2.use_count() == 1);
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>n1-&gt;next = n2;                 // 两个节点互指，形成了循环引用
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>n2-&gt;next = n1;
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>assert(n1.use_count() == 2);    // 引用计数为2
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>assert(n2.use_count() == 2);    // 无法减到0，无法销毁，导致内存泄漏
+</code></pre></div>
+<p>在这里，两个节点指针刚创建时，引用计数是1，但指针互指（即拷贝赋值）之后，引用计数都变成了2。</p>
+<p>这个时候，shared_ptr就“犯傻”了，意识不到这是一个循环引用，多算了一次计数，后果就是引用计数无法减到0，无法调用析构函数执行delete，最终导致内存泄漏。</p>
+<p>这个例子很简单，你一下子就能看出存在循环引用。但在实际开发中，指针的关系可不像例子那么清晰，很有可能会不知不觉形成一个链条很长的循环引用，复杂到你根本无法识别，想要找出来基本上是不可能的。</p>
+<p>想要从根本上杜绝循环引用，光靠shared_ptr是不行了，必须要用到它的“小帮手”：<strong>weak_ptr</strong>。</p>
+<p>weak_ptr顾名思义，功能很“弱”。它专门为打破循环引用而设计，只观察指针，不会增加引用计数（弱引用），但在需要的时候，可以调用成员函数lock()，获取shared_ptr（强引用）。</p>
+<p>刚才的例子里，只要你改用weak_ptr，循环引用的烦恼就会烟消云散：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>class Node final
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>{
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>public:
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    using this_type     = Node;
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    // 注意这里，别名改用weak_ptr
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    using shared_type   = std::weak_ptr&lt;this_type&gt;;
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>public:
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    shared_type     next;    // 因为用了别名，所以代码不需要改动
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>};
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>auto n1 = make_shared&lt;Node&gt;();  // 工厂函数创建智能指针
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>auto n2 = make_shared&lt;Node&gt;();  // 工厂函数创建智能指针
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>n1-&gt;next = n2;             // 两个节点互指，形成了循环引用
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>n2-&gt;next = n1;
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>assert(n1.use_count() == 1);    // 因为使用了weak_ptr，引用计数为1
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>assert(n2.use_count() == 1);   // 打破循环引用，不会导致内存泄漏
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>if (!n1-&gt;next.expired()) {     // 检查指针是否有效
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>    auto ptr = n1-&gt;next.lock();  // lock()获取shared_ptr
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>    assert(ptr == n2);
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>}
+</code></pre></div>
+<h2 id="_2">小结</h2>
+<p>好了，今天就先到这里。智能指针的话题很大，但是学习的时候我们不可能一下子把所有知识点都穷尽，而是要有优先级。所以我会捡最要紧的先介绍给你，剩下的接口函数等细节，还是需要你根据自己的情况，再去参考一些其他资料深入学习的。</p>
+<p>我们来回顾一下这节课的重点。</p>
+<ol>
+<li>智能指针是代理模式的具体应用，它使用RAII技术代理了裸指针，能够自动释放内存，无需程序员干预，所以被称为“智能指针”。</li>
+<li>如果指针是“独占”使用，就应该选择unique_ptr，它为裸指针添加了很多限制，更加安全。</li>
+<li>如果指针是“共享”使用，就应该选择shared_ptr，它的功能非常完善，用法几乎与原始指针一样。</li>
+<li>应当使用工厂函数make_unique()、make_shared()来创建智能指针，强制初始化，而且还能使用auto来简化声明。</li>
+<li>shared_ptr有少量的管理成本，也会引发一些难以排查的错误，所以不要过度使用。</li>
+</ol>
+<p>我还有一个很重要的建议：</p>
+<p><strong>既然你已经理解了智能指针，就尽量不要再使用裸指针、new和delete来操作内存了</strong>。</p>
+<p>如果严格遵守这条建议，用好unique_ptr、shared_ptr，那么，你的程序就不可能出现内存泄漏，你也就不需要去费心研究、使用valgrind等内存调试工具了，生活也会更“美好”一点。</p>
+<h2 id="_3">课下作业</h2>
+<p>最后是课下作业时间，给你留两个思考题：</p>
+<ol>
+<li>你觉得unique_ptr和shared_ptr的区别有哪些？列举一下。</li>
+<li>你觉得应该如何在程序里“消灭”new和delete？</li>
+</ol>
+<p>欢迎你在留言区写下你的思考和答案，如果觉得今天的内容对你有所帮助，也欢迎分享给你的朋友，我们下节课见。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/e5/51/e5298af2501d0156fcc50d50cdb82351.jpg?wh=1000%2A1677" /></p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/1e/19/17245c59.jpg" width="30px"><span>Eglinux</span> 👍（53） 💬（3）<div>C++ 这么小众吗？讲得这么好，如果写成书，完全可以看成另外一本 effective C++ 了，为什么才 3000 多订阅人数？</div>2020-05-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9c/62/f625b2bb.jpg" width="30px"><span>酸葡萄</span> 👍（30） 💬（1）<div>老师，您好，什么时候用weak_ptr,什么时候用shared_ptr？</div>2020-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/b4/63/59bb487d.jpg" width="30px"><span>eletarior</span> 👍（20） 💬（2）<div>默认用的比较多的是unique_ptr ，相反的shared_ptr倒是用的不多，因为担心文中提到的循环引用，资源消耗，线程安全等问题。大部分时候，unique_ptr是能完全取代裸指针的。如果是存粹的标准C++代码，使用智能指针确实很舒服，把它们当成一个普通的类型看就行了。但是，同时，作为C++程序员我们又不得不和裸指针打交道，不论是Linux还是Windows，我们不可避免的要使用它们的系统api，于是就不得不使用get将智能指针转成裸指针。而这条指针所指向的内存在系统api里也许是不应该随意析构掉的，因为在系统内部可能还得继续使用这段内存，那么在这种场景下，智能指针的特性就可能帮倒忙，难受了😫。针对这种问题，我想到的就是延长这个智能指针的生命周期，或者直接使用release将裸指针释放出来，可是这样一来，delete就少不了要使用了😔
-</div>2020-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/47/b0/f44aef75.jpg" width="30px"><span>颓废人才</span> 👍（13） 💬（2）<div>罗老师您好，还有一个问题，常用的C++ reference 我看到一个 cplusplus.com和cppreference.com, 但是网上有一些不好评价，觉得这两个网站都有问题，罗老师这边一般参考的哪些文档网站，可以推荐下么。非常感谢。</div>2020-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/8c/df/77acb793.jpg" width="30px"><span>禾桃</span> 👍（11） 💬（1）<div>“因为 shared_ptr 具有完整的“值语义”（即可以拷贝赋值）”
+<li><span>Eglinux</span> 👍（53） 💬（3）<div>C++ 这么小众吗？讲得这么好，如果写成书，完全可以看成另外一本 effective C++ 了，为什么才 3000 多订阅人数？</div>2020-05-23</li><br/><li><span>酸葡萄</span> 👍（30） 💬（1）<div>老师，您好，什么时候用weak_ptr,什么时候用shared_ptr？</div>2020-06-17</li><br/><li><span>eletarior</span> 👍（20） 💬（2）<div>默认用的比较多的是unique_ptr ，相反的shared_ptr倒是用的不多，因为担心文中提到的循环引用，资源消耗，线程安全等问题。大部分时候，unique_ptr是能完全取代裸指针的。如果是存粹的标准C++代码，使用智能指针确实很舒服，把它们当成一个普通的类型看就行了。但是，同时，作为C++程序员我们又不得不和裸指针打交道，不论是Linux还是Windows，我们不可避免的要使用它们的系统api，于是就不得不使用get将智能指针转成裸指针。而这条指针所指向的内存在系统api里也许是不应该随意析构掉的，因为在系统内部可能还得继续使用这段内存，那么在这种场景下，智能指针的特性就可能帮倒忙，难受了😫。针对这种问题，我想到的就是延长这个智能指针的生命周期，或者直接使用release将裸指针释放出来，可是这样一来，delete就少不了要使用了😔
+</div>2020-05-25</li><br/><li><span>颓废人才</span> 👍（13） 💬（2）<div>罗老师您好，还有一个问题，常用的C++ reference 我看到一个 cplusplus.com和cppreference.com, 但是网上有一些不好评价，觉得这两个网站都有问题，罗老师这边一般参考的哪些文档网站，可以推荐下么。非常感谢。</div>2020-07-02</li><br/><li><span>禾桃</span> 👍（11） 💬（1）<div>“因为 shared_ptr 具有完整的“值语义”（即可以拷贝赋值）”
 
-一直都觉得值语义这三个字比较难理解。想请教下这个概念到底是想说明什么问题，这个“值”该怎么理解？</div>2020-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6c/83/48e528cb.jpg" width="30px"><span>Luke</span> 👍（6） 💬（1）<div>使用智能指针可以自动析构“资源”，隐含了指针管理的细节，从而提高了代码的安全性和易用性，但是这是否同时意味着效率下降？在极致追求执行速度的系统中，是否需要避免使用智能指针，依赖程序员自己管理裸指针的new和delete呢？</div>2020-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/28/f6/7fa61d68.jpg" width="30px"><span>郭郭</span> 👍（6） 💬（1）<div>老师，关于unique_ptr，如auto ptr = ptr1，那ptr1就应该被置空啦。不需要显示的调用std::move</div>2020-05-24</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLZqsT4YGrnaBtCgetwQiaK8nt2qXr5z56a9j2ricUiadibsPNqYqiawaygHicq3frt1jPVaoT78gh2f7Uw/132" width="30px"><span>Geek_王</span> 👍（5） 💬（3）<div>罗老师能把文中提到的血泪教训详细说一下吗？什么问题？怎么解决的？</div>2020-08-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/67/05/a0315f44.jpg" width="30px"><span>The Answer</span> 👍（5） 💬（4）<div>老师，shared_ptr 本身是线程安全的，但是如何理解它所管理的对象不是线程安全的呢？</div>2020-07-12</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/E73UicmpgFiaZW4SOTGaxoIk9PWue54neNcfsicz7HOxJUucep4jSMyeMMruLNcIlxsE330qOFMacaEQ9Vz4zXJyg/132" width="30px"><span>Mari</span> 👍（4） 💬（1）<div>罗老师，问个问题：shared_ptr作为函数参数时，什么情况传值，什么情况传引用？</div>2022-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/fb/61/c84a45be.jpg" width="30px"><span>Geek_3nl94i</span> 👍（4） 💬（3）<div>讲的很好很实用，不过只有30讲，有点少呀</div>2020-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/99/27/15d2c4f5.jpg" width="30px"><span>Zivon</span> 👍（4） 💬（1）<div>罗老师，今天尝试使用智能指针改写双向链表的时候感觉实现很麻烦啊，请问在实现这种基本数据结构的时候需要使用智能指针吗</div>2020-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/47/b0/f44aef75.jpg" width="30px"><span>颓废人才</span> 👍（3） 💬（1）<div>老师您好，请问智能指针的释放和内存管理的结合怎么使用例如以前我们写的智能指针的简单用法：
+一直都觉得值语义这三个字比较难理解。想请教下这个概念到底是想说明什么问题，这个“值”该怎么理解？</div>2020-05-25</li><br/><li><span>Luke</span> 👍（6） 💬（1）<div>使用智能指针可以自动析构“资源”，隐含了指针管理的细节，从而提高了代码的安全性和易用性，但是这是否同时意味着效率下降？在极致追求执行速度的系统中，是否需要避免使用智能指针，依赖程序员自己管理裸指针的new和delete呢？</div>2020-05-30</li><br/><li><span>郭郭</span> 👍（6） 💬（1）<div>老师，关于unique_ptr，如auto ptr = ptr1，那ptr1就应该被置空啦。不需要显示的调用std::move</div>2020-05-24</li><br/><li><span>Geek_王</span> 👍（5） 💬（3）<div>罗老师能把文中提到的血泪教训详细说一下吗？什么问题？怎么解决的？</div>2020-08-20</li><br/><li><span>The Answer</span> 👍（5） 💬（4）<div>老师，shared_ptr 本身是线程安全的，但是如何理解它所管理的对象不是线程安全的呢？</div>2020-07-12</li><br/><li><span>Mari</span> 👍（4） 💬（1）<div>罗老师，问个问题：shared_ptr作为函数参数时，什么情况传值，什么情况传引用？</div>2022-04-14</li><br/><li><span>Geek_3nl94i</span> 👍（4） 💬（3）<div>讲的很好很实用，不过只有30讲，有点少呀</div>2020-06-25</li><br/><li><span>Zivon</span> 👍（4） 💬（1）<div>罗老师，今天尝试使用智能指针改写双向链表的时候感觉实现很麻烦啊，请问在实现这种基本数据结构的时候需要使用智能指针吗</div>2020-05-26</li><br/><li><span>颓废人才</span> 👍（3） 💬（1）<div>老师您好，请问智能指针的释放和内存管理的结合怎么使用例如以前我们写的智能指针的简单用法：
 Template&lt;class T&gt;
 class AutoPtr
 {
@@ -12871,23 +13157,8 @@ public:
     ~AutoPtr()                          {if(ptr) ptr-&gt;release()}          &#47;&#47;析构函数里去回收对象内存
 }
 那现在使用stl的智能指针能否做到这步。
-还有能否介绍下实际项目开发中的一些使用场景和使用小技巧。</div>2020-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1e/99/27/15d2c4f5.jpg" width="30px"><span>Zivon</span> 👍（3） 💬（1）<div>shared_ptr 与unique_ptr最大区别就在于前者可以多个指针共享一个对象或元素，而后者一块内存空间只能由唯一的一个指针持有。
-使用堆内存新建对象均使用智能指针，就可以不用new&#47;delete</div>2020-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/21/b3/7b/95adaf84.jpg" width="30px"><span>学习者</span> 👍（2） 💬（1）<div>打卡，感觉评论区也能学到很多，二刷的时候，要把评论区的内容好好整理一下。</div>2023-05-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/1f/6c/43c82d43.jpg" width="30px"><span>不如不见</span> 👍（2） 💬（1）<div>罗老师，请教个问题。确实有时候在很长的链中很难发现shared_ptr的循环引用问题。那有没有什么好的办法（工具）知道自己发生了循环引用。或者一开始在设计的时候，从哪些方面可以考虑或者避免循环引用的问题。感谢。</div>2021-04-14</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJe0esddRVdG689MicU5zMibMtkyLpYkX4MtiamKP8eFf7KUoMlfU7ficrciakyVS06jHVdskYT67JKtdg/132" width="30px"><span>湖海散人</span> 👍（2） 💬（1）<div>老师，文中提到的右值，move，完美转发会有课程讲到吗</div>2020-06-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/35/76/951b0daf.jpg" width="30px"><span>K. D.</span> 👍（2） 💬（1）<div>罗老师你好，有个问题请教一下：std::move是否也适用于shared_ptr，和=有区别吗？</div>2020-05-23</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIm5rlbJ4HdXLbxmflvW0FW4rTyLcDzHLGDJUJic9W3f1KibWY7mAj9dxUIEVlxDyjwRXEX54KXEn5g/132" width="30px"><span>sea520</span> 👍（2） 💬（2）<div>您好！为什么面试喜欢问cpp底层实现细节。比如说虚表实现，stl实现？有什么最大的价值？万一工作换新语言还要都弄的很清楚吗？那时间成本呢？</div>2020-05-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/7c/ef/013087c4.jpg" width="30px"><span>大白v5</span> 👍（1） 💬（1）<div>weak_ptr与shared_ptr配合着使用，用weak_ptr先确保shared_ptr是持有指针的，然后再放心使用</div>2022-05-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/27/b2/59/4ea0e511.jpg" width="30px"><span>e^(iα)=cosα+isinα⁵·⁰</span> 👍（1） 💬（1）<div>老师，您好，
-如果指针是“独占”使用，就应该选择 unique_ptr；
-“共享”使用，就应该选择 shared_ptr；
-这里独占指的是在单一线程里使用，共享是指可能多个线程都会使用这个指针，是这个意思吗？
-所以一个叫unique_pte，一个叫shared_ptr</div>2021-10-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/b3/17/9f6d67dc.jpg" width="30px"><span>超越杨超越</span> 👍（1） 💬（3）<div>请问老师，如果直接在栈上分配对象，跟unique ptr相比，我应该倾向于哪种呢</div>2021-03-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8b/19/a15d060d.jpg" width="30px"><span>silverhawk</span> 👍（1） 💬（1）<div>说实话，unique_ptr比起裸指针革命性进步，但是shared_ptr 有点over engineering ，感觉有些时候用起来会很坑。不知道你怎么看</div>2020-05-31</li><br/><li><img src="" width="30px"><span>java2c++</span> 👍（1） 💬（1）<div>老师文稿中的这段代码我改了下如果封装到一个函数里，可以被多线程并发调用吗？unique_ptr尽管有move可以进行转移，但是同一时刻ptr1是不是只允许转移到一个ptr2，而之前转移成功的后续逻辑还没有执行完
-
-
-void methodtest（uniqptr_ptr ptr1）｛
-auto ptr2 = std::move(ptr1);         &#47;&#47; 使用move()转移所有权
-assert(!ptr1 &amp;&amp; ptr2);               &#47;&#47; ptr1变成了空指针
-
-&#47;&#47;use ptr2 dosomething……
-｝</div>2020-05-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/c2/b7/f7facaae.jpg" width="30px"><span>李锐</span> 👍（1） 💬（2）<div>罗老师，您好，我的工作场景中经常需要new一个数组来缓存从下位机采集到的数据，比如new [100]来缓存100帧图像数据，请问下，c++11中智能指针如何去管理new数组，谢谢</div>2020-05-26</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIicr82CnrdEjibibAvyeKRQHszSzIAqoCWxN0kqC442XcjEae6S9j6NDtKLpg4Da4CUQQeUFUicWqiaDw/132" width="30px"><span>有学识的兔子</span> 👍（1） 💬（1）<div>1. 我的理解是Unique pointer 是对象而不是指针，但重载了*和箭头，离开了对象的作用域就会被析构，所管理的资源在析构执行过程中被释放；那move操作是不是对对象进行拷贝了才得以传递？
-shared_ptr 貌似也是对象，重点在于引用计数，对赋值拷贝计数+1，对于执行析构时计数-1，同时判断计数是否0，被管理的资源是否需要释放；
-没明白为什么weak pointer能避免循环引用，是因为locker，避免错误计数？
-</div>2020-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ba/ce/fd45714f.jpg" width="30px"><span>bearlu</span> 👍（1） 💬（1）<div> shared_ptr 的销毁动作，这段说世界停止，是为什么停止，做了什么操作导致世界停止，智能指针不是线程安全？</div>2020-05-23</li><br/><li><img src="" width="30px"><span>Geek_6a1d96</span> 👍（0） 💬（2）<div>对于只能指针shared_ptr的释放其实还有一点需要注意的，对于复杂点的释放最好加入释放函数。如下：shared_ptr&lt;int&gt; tmp(new int(10),[](int* p){delete[] p;p＝nullptr;});这样能完全避免内存泄露。</div>2023-04-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/20/56/9d/4b2a7d29.jpg" width="30px"><span>ryanxw</span> 👍（0） 💬（1）<div>请教一下老师make_shared，make_unique这种工厂函数除了能防止操作空指针的失误，还有哪些方面要比手动构造好呢？能详细说一下吗</div>2022-09-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2d/7f/6b/83236a96.jpg" width="30px"><span>娃哈哈</span> 👍（0） 💬（1）<div>老师讲的很好，但是让我用，我还是用不出来，难受呀。。</div>2022-04-26</li><br/>
+还有能否介绍下实际项目开发中的一些使用场景和使用小技巧。</div>2020-07-02</li><br/><li><span>Zivon</span> 👍（3） 💬（1）<div>shared_ptr 与unique_ptr最大区别就在于前者可以多个指针共享一个对象或元素，而后者一块内存空间只能由唯一的一个指针持有。
+使用堆内存新建对象均使用智能指针，就可以不用new&#47;delete</div>2020-05-25</li><br/><li><span>学习者</span> 👍（2） 💬（1）<div>打卡，感觉评论区也能学到很多，二刷的时候，要把评论区的内容好好整理一下。</div>2023-05-19</li><br/>
 </ul>
 
 

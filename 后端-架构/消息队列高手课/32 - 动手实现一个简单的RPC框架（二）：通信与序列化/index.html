@@ -9281,6 +9281,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#netty" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用Netty来实现异步网络通信
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13156,6 +13183,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#netty" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用Netty来实现异步网络通信
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13198,9 +13252,177 @@
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>}
 </code></pre></div>
 <p>上面的parse方法用于反序列化，serialize方法用于序列化。如果你对Java语言不是特别的熟悉，可能会看不懂<code>&lt;E&gt;</code>是什么意思，这是Java语言泛型机制，你可以先忽略它。看一下如何来使用这个类就明白了：</p>
-<div><strong>精选留言（23）</strong></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>// 序列化
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>MyClass myClassObject = new MyClass();
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>byte [] bytes = SerializeSupport.serialize(myClassObject);
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>// 反序列化
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>MyClass myClassObject1 = SerializeSupport.parse(bytes);
+</code></pre></div>
+<p>我在讲解序列化和反序列化的时候说过，可以使用通用的序列化实现，也可以自己来定义专用的序列化实现。专用的序列化性能最好，但缺点是实现起来比较复杂，你要为每一种类型的数据专门编写序列化和反序列化方法。一般的RPC框架采用的都是通用的序列化实现，比如gRPC采用的是Protobuf序列化实现，Dubbo支持hession2等好几种序列化实现。</p>
+<p>那为什么这些RPC框架不像消息队列一样，采用性能更好的专用的序列化实现呢？这个原因很简单，消息队列它需要序列化数据的类型是固定的，只是它自己的内部通信的一些命令。但RPC框架，它需要序列化的数据是，用户调用远程方法的参数，这些参数可能是各种数据类型，所以必须使用通用的序列化实现，确保各种类型的数据都能被正确的序列化和反序列化。我们这里还是采用专用的序列化实现，主要的目的是带你一起来实践一下，如何来实现序列化和反序列化。</p>
+<p>我们给所有序列化的实现类定义一个Serializer接口，所有的序列化实现类都实现这个接口就可以了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>public interface Serializer&lt;T&gt; {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    /**
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>     * 计算对象序列化后的长度，主要用于申请存放序列化数据的字节数组
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>     * @param entry 待序列化的对象
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>     * @return 对象序列化后的长度
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>     */
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    int size(T entry);
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    /**
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>     * 序列化对象。将给定的对象序列化成字节数组
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>     * @param entry 待序列化的对象
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>     * @param bytes 存放序列化数据的字节数组
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>     * @param offset 数组的偏移量，从这个位置开始写入序列化数据
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>     * @param length 对象序列化后的长度，也就是{@link Serializer#size(java.lang.Object)}方法的返回值。
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>     */
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    void serialize(T entry, byte[] bytes, int offset, int length);
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    /**
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>     * 反序列化对象
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>     * @param bytes 存放序列化数据的字节数组
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>     * @param offset 数组的偏移量，从这个位置开始写入序列化数据
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>     * @param length 对象序列化后的长度
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>     * @return 反序列化之后生成的对象
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>     */
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    T parse(byte[] bytes, int offset, int length);
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>    /**
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>     * 用一个字节标识对象类型，每种类型的数据应该具有不同的类型值
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>     */
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>    byte type();
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>    /**
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>     * 返回序列化对象类型的Class对象。
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>     */
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>    Class&lt;T&gt; getSerializeClass();
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>}
+</code></pre></div>
+<p>这个接口中，除了serialize和parse这两个序列化和反序列化两个方法以外，还定义了下面这几个方法：size方法计算序列化之后的数据长度，用于事先来申请存放序列化数据的字节数组；type方法定义每种序列化实现的类型，这个类型值也会写入到序列化之后的数据中，主要的作用是在反序列化的时候，能够识别是什么数据类型的，以便找到对应的反序列化实现类；getSerializeClass这个方法返回这个序列化实现类对应的对象类型，目的是，在执行序列化的时候，通过被序列化的对象类型找到对应序列化实现类。</p>
+<p>利用这个Serializer接口，我们就可以来实现SerializeSupport这个支持任何对象类型序列化的通用静态类了。首先我们定义两个Map，这两个Map中存放着所有实现Serializer接口的序列化实现类。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>    private static Map&lt;Class&lt;?&gt;/*序列化对象类型*/, Serializer&lt;?&gt;/*序列化实现*/&gt; serializerMap = new HashMap&lt;&gt;();
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    private static Map&lt;Byte/*序列化实现类型*/, Class&lt;?&gt;/*序列化对象类型*/&gt; typeMap = new HashMap&lt;&gt;();
+</code></pre></div>
+<p>serializerMap中的key是序列化实现类对应的序列化对象的类型，它的用途是在序列化的时候，通过被序列化的对象类型，找到对应的序列化实现类。typeMap的作用和serializerMap是类似的，它的key是序列化实现类的类型，用于在反序列化的时候，从序列化的数据中读出对象类型，然后找到对应的序列化实现类。</p>
+<p>理解了这两个Map的作用，实现序列化和反序列化这两个方法就很容易了。这两个方法的实现思路是一样的，都是通过一个类型在这两个Map中进行查找，查找的结果就是对应的序列化实现类的实例，也就是Serializer接口的实现，然后调用对应的序列化或者反序列化方法就可以了。具体的实现在SerializeSupport中，你可以自行查看。我刚刚讲的这几个类型，听起来可能会感觉有些晕，但其实并不难，你对着代码来自己看一遍，就很容易理解了。</p>
+<p>所有的Serializer的实现类是怎么加载到SerializeSupport的那两个Map中的呢？这里面利用了Java的一个SPI类加载机制，我会在后面的课程中专门来讲。</p>
+<p>到这里，我们就封装好了一个通用的序列化的接口，对于使用序列化的模块来说，它只要依赖SerializeSupport这个静态类，调用它的序列化和反序列化方法就可以了，不需要依赖任何序列化实现类。对于序列化实现的提供者来说，也只需要依赖并实现Serializer这个接口就可以了。比如，我们的HelloService例子中的参数是一个String类型的数据，我们需要实现一个支持String类型的序列化实现：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>public class StringSerializer implements Serializer&lt;String&gt; {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    @Override
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    public int size(String entry) {
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        return entry.getBytes(StandardCharsets.UTF_8).length;
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    }
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    @Override
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    public void serialize(String entry, byte[] bytes, int offset, int length) {
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        byte [] strBytes = entry.getBytes(StandardCharsets.UTF_8);
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        System.arraycopy(strBytes, 0, bytes, offset, strBytes.length);
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    }
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    @Override
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    public String parse(byte[] bytes, int offset, int length) {
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>        return new String(bytes, offset, length, StandardCharsets.UTF_8);
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    }
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    @Override
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    public byte type() {
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>        return Types.TYPE_STRING;
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>    }
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    @Override
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>    public Class&lt;String&gt; getSerializeClass() {
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>        return String.class;
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>    }
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>}
+</code></pre></div>
+<p>这里面有个初学者容易犯的错误，在把String和byte数组做转换的时候，一定要指定编码方式，确保序列化和反序列化的时候都使用一致的编码，我们这里面统一使用UTF8编码。否则，如果遇到执行序列化和反序列化的两台服务器默认编码不一样，就会出现乱码。我们在开发过程用遇到的很多中文乱码问题，绝大部分都是这个原因。</p>
+<p>在我们这个例子中，还有一个更复杂的序列化实现MetadataSerializer，用于将注册中心的数据持久化到文件中，你也可以参考一下。</p>
+<p>到这里序列化的部分就实现完成了。我们这个序列化的实现，对外提供服务的就只有一个SerializeSupport静态类，并且可以通过扩展支持序列化任何类型的数据，这样一个通用的实现，不仅可以用在我们这个RPC框架的例子中，你完全可以把这部分直接拿过去用在你的业务代码中。</p>
+<h2 id="netty">使用Netty来实现异步网络通信</h2>
+<p>接下来我们来说网络通信部分的实现。</p>
+<p>同样的思路，我们把通信的部分也封装成接口。在我们这个RPC框架中，对于通信模块的需求是这样的：只需要客户端给服务端发送请求，然后服务返回响应就可以了。所以，我们的通信接口只需要提供一个发送请求方法就可以了：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>public interface Transport {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    /**
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>     * 发送请求命令
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>     * @param request 请求命令
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>     * @return 返回值是一个Future，Future
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>     */
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    CompletableFuture&lt;Command&gt; send(Command request);
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>}
+</code></pre></div>
+<p>这个send方法参数request就是需要发送的请求数据，返回值是一个CompletableFuture对象，通过这个CompletableFuture对象可以获得响应结果。这里面使用一个CompletableFuture作为返回值，使用起来就非常灵活，我们可以直接调用它的get方法来获取响应数据，这就相当于同步调用；也可以使用以then开头的一系列异步方法，指定当响应返回的时候，需要执行的操作，就等同于异步调用。等于，这样一个方法既可以同步调用，也可以异步调用。</p>
+<p>在这个接口中，请求和响应数据都抽象成了一个Command类，我们来看一下这个类是如何定义的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>public class Command {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    protected Header header;
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    private byte [] payload;
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    //...
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>}
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>public class Header {
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    private int requestId;
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    private int version;
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    private int type;
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    // ...
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>}
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>public class ResponseHeader extends Header {
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    private int code;
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    private String error;
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    // ...
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>}
+</code></pre></div>
+<p>Command类包含一个命令头Header和一个payload字节数组。payload就是命令中要传输的数据，这里我们要求这个数据已经是被序列化之后生成的字节数组。Header中包含三个属性：requestId用于唯一标识一个请求命令，在我们使用双工方式异步收发数据的时候，这个requestId可以用于请求和响应的配对儿。我们在加餐那节课实现两个大爷对话的例子中，使用的是同样的设计。</p>
+<p>version这个属性用于标识这条命令的版本号。type用于标识这条命令的类型，这个类型主要的目的是为了能让接收命令一方来识别收到的是什么命令，以便路由到对应的处理类中去。</p>
+<p>另外，在返回的响应Header中，我们还需要包含一个code字段和一个error字段，code字段使用一个数字表示响应状态，0代表成功，其他值分别代表各种错误，这个设计和HTTP协议中的StatueCode是一样的。</p>
+<p>在设计通信协议时，让协议具备持续的升级能力，并且保持向下兼容是非常重要的。因为所有的软件，唯一不变的就是变化，由于需求一直变化，你不可能保证传输协议永远不变，一旦传输协议发生变化，为了确保使用这个传输协议的这些程序还能正常工作，或者是向下兼容，协议中必须提供一个版本号，标识收到的这条数据使用的是哪个版本的协议。</p>
+<p>发送方在发送命令的时候需要带上这个命令的版本号，接收方在收到命令之后必须先检查命令的版本号，如果接收方可以支持这个版本的命令就正常处理，否则就拒绝接收这个命令，返回响应告知对方：我不认识这个命令。这样才是一个完备的，可持续的升级的通信协议。</p>
+<p>需要注意的是，这个版本号是命令的版本号，或者说是传输协议的版本号，它不等同于程序的版本号。我们这个例子中，并没有检查命令版本号，你在生产系统中需要自己补充这部分逻辑。</p>
+<p>然后我们继续来看Transport这个接口的实现NettyTransport类。这个send方法的实现，本质上就是一个异步方法，在把请求数据发出去之后就返回了，并不会阻塞当前这个线程去等待响应返回来。来看一下它的实现：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>@Override
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>public  CompletableFuture&lt;Command&gt; send(Command request) {
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    // 构建返回值
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    CompletableFuture&lt;Command&gt; completableFuture = new CompletableFuture&lt;&gt;();
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    try {
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>        // 将在途请求放到inFlightRequests中
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>        inFlightRequests.put(new ResponseFuture(request.getHeader().getRequestId(), completableFuture));
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>        // 发送命令
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>        channel.writeAndFlush(request).addListener((ChannelFutureListener) channelFuture -&gt; {
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>            // 处理发送失败的情况
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>            if (!channelFuture.isSuccess()) {
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>                completableFuture.completeExceptionally(channelFuture.cause());
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>                channel.close();
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>            }
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>        });
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    } catch (Throwable t) {
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>        // 处理发送异常
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>        inFlightRequests.remove(request.getHeader().getRequestId());
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>        completableFuture.completeExceptionally(t);
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>    }
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>    return completableFuture;
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>}
+</code></pre></div>
+<p>这段代码实际上就干了两件事儿，第一件事儿是把请求中的requestId和返回的completableFuture一起，构建了一个ResponseFuture对象，然后把这个对象放到了inFlightRequests这个变量中。inFlightRequests中存放了所有在途的请求，也就是已经发出了请求但还没有收到响应的这些responseFuture对象。</p>
+<p>第二件事儿就是调用netty发送数据的方法，把这个request命令发给对方。这里面需要注意的一点是，已经发出去的请求，有可能会因为网络连接断开或者对方进程崩溃等各种异常情况，永远都收不到响应。那为了确保这些孤儿ResponseFuture不会在内存中越积越多，我们必须要捕获所有的异常情况，结束对应的ResponseFuture。所以，我们在上面代码中，两个地方都做了异常处理，分别应对发送失败和发送异常两种情况。</p>
+<p>即使是我们对所有能捕获的异常都做了处理，也不能保证所有ResponseFuture都能正常或者异常结束，比如说，编写对端程序的程序员写的代码有问题，收到了请求就是没给我们返回响应，为了应对这种情况，还必须有一个兜底超时的机制来保证所有情况下ResponseFuture都能结束，无论什么情况，只要超过了超时时间还没有收到响应，我们就认为这个ResponseFuture失败了，结束并删除它。这部分代码在InFlightRequests这个类中。</p>
+<p>这里面还有一个很重要的最佳实践分享给你。我们知道，如果是同步发送请求，客户端需要等待服务端返回响应，服务端处理这个请求需要花多长时间，客户端就要等多长时间。这实际上是一个天然的背压机制（Back pressure），服务端处理速度会天然地限制客户端请求的速度。</p>
+<p>但是在异步请求中，客户端异步发送请求并不会等待服务端，缺少了这个天然的背压机制，如果服务端的处理速度跟不上客户端的请求速度，客户端的发送速度也不会因此慢下来，就会出现在途的请求越来越多，这些请求堆积在服务端的内存中，内存放不下就会一直请求失败。服务端处理不过来的时候，客户端还一直不停地发请求显然是没有意义的。为了避免这种情况，我们需要增加一个背压机制，在服务端处理不过来的时候限制一下客户端的请求速度。</p>
+<p>这个背压机制的实现也在InFlightRequests类中，在这里面我们定义了一个信号量：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>private final Semaphore semaphore = new Semaphore(10);
+</code></pre></div>
+<p>这个信号量有10个许可，我们每次往inFlightRequest中加入一个ResponseFuture的时候，需要先从信号量中获得一个许可，如果这时候没有许可了，就会阻塞当前这个线程，也就是发送请求的这个线程，直到有人归还了许可，才能继续发送请求。我们每结束一个在途请求，就归还一个许可，这样就可以保证在途请求的数量最多不超过10个请求，积压在服务端正在处理或者待处理的请求也不会超过10个。这样就实现了一个简单有效的背压机制。</p>
+<p>我们在ResponseInvocation这个类中异步接收所有服务端返回的响应，处理逻辑比较简单，就是根据响应头中的requestId，去在途请求inFlightRequest中查找对应的ResponseFuture，设置返回值并结束这个ResponseFuture就可以了。</p>
+<p>使用Netty来收发数据这部分代码，我都放在了com.github.liyue2008.rpc.transport.netty这个包中，你可以自行查看。</p>
+<h2 id="_2">小结</h2>
+<p>这节课我们一起实现了序列化和异步网络通信这两部分的代码，用到的都是在进阶篇中讲过的知识。我们在设计序列化和网络传输这两部分实现的时候，都预先定义了对外提供服务的接口。使用服务的使用方只依赖这个接口，而不依赖这个接口的任何实现。</p>
+<p>这样做的好处是，让接口的使用者和接口的调用者充分解耦，使得我们可以安全地替换接口的实现。把接口定义的尽量通用，让接口定义与接口的使用方无关，这个接口的实现就很容易被复用，比如我们这个例子中网络传输和序列化这两部分代码，不仅可以用在这个RPC框架中，同样可以不做任何修改就用在其他的系统中。</p>
+<p>在设计协议的时候，我们给每个命令都设计了一个固定的头，这样设计的好处是，我们在解析命令的时候可以先把头解析出来，就可以对命令进行版本检查、路由分发等通用的预处理工作，而不必把整个命令都解析出来。那为了应对变化，使协议具有持续升级的能力，命令中需要携带一个协议版本号，我们需要在收到命令后检查这个版本号，确保接收方可以支持这个版本的协议。</p>
+<p>在实现异步网络传输的时候，一定要配套实现一个背压的机制，避免客户端请求速度过快，导致大量的请求失败。</p>
+<h2 id="_3">思考题</h2>
+<p>课后给你留一个思考题：来做一个序列化的替换实现。我们这个例子中，使用了自己实现的专有的序列化实现，这些实现类都放在了com.github.liyue2008.rpc.serialize.impl这个包中，你需要换一种序列化的实现方式，来替换掉我们这个序列化实现。具体实现可以使用JSON、Protobuf或者任何一种序列化方式。</p>
+<p>你可以删除或者改动com.github.liyue2008.rpc.serialize.impl这个包中的所有代码，但是不要修改其他代码。要求替换后，我们的这个RPC框架仍然可以正常运行。欢迎在留言区分享你的代码。</p>
+<p>感谢阅读，如果你觉得这篇文章对你有一些启发，也欢迎把它分享给你的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/03/10/26f9f762.jpg" width="30px"><span>Switch</span> 👍（5） 💬（2）<div>使用fastjson实现，改动代码见：https:&#47;&#47;gist.github.com&#47;Switch-vov&#47;8cb76aabd1e1addcdbec205cc06d9023</div>2019-11-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/12/1b/f62722ca.jpg" width="30px"><span>A9</span> 👍（5） 💬（1）<div>老师的课程很多地方让人茅塞顿开，感觉从高中毕业之后就再也没有过这种抽丝剥茧学习知识的感觉了。感谢带来这么好的课程</div>2019-10-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/12/1b/f62722ca.jpg" width="30px"><span>A9</span> 👍（2） 💬（1）<div>使用JSON字符串进行序列化，String的序列化保持原样。MetaData和RpcRequest修改了size parse serialize函数  https:&#47;&#47;gist.github.com&#47;WangYangA9&#47;210ca898525832cba8ddd57ae1ae3d13</div>2019-10-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/88/23/a0966b4d.jpg" width="30px"><span>Tim Zhang</span> 👍（1） 💬（1）<div>有一点不是很理解，为啥typeMap不可以是(type, serializer)，通过type获取序列化实现类一步操作，现在看源码是通过type拿到class，再class拿到serializer</div>2019-10-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/07/cf/b0d6fe74.jpg" width="30px"><span>L.</span> 👍（0） 💬（2）<div>小白问一下，send方法的返回值是怎么到completableFuture对象里的，我没看到赋值操作啊，求解。。。</div>2020-06-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/5f/73/bb3dc468.jpg" width="30px"><span>拒绝</span> 👍（0） 💬（1）<div>有点不理解，Server启动时，向NameService注册接口时，序列化对象是MetadataSerializer？</div>2019-10-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/15/69/187b9968.jpg" width="30px"><span>南山</span> 👍（0） 💬（1）<div>动手动手，一定要动手，netty不熟，看起来吃力，但也收获满满，每明白一点都是进步～～～</div>2019-10-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/41/87/46d7e1c2.jpg" width="30px"><span>Better me</span> 👍（0） 💬（2）<div>ResponseInvocation 这个类是相当于一个回调类的形式吧。“就是根据响应头中的 requestId，去在途请求 inFlightRequest 中查找对应的 ResponseFuture，设置返回值并结束这个 ResponseFuture 就可以了。”这里的设置返回值是指code码形式吗？这里的作用是还需要在返回给服务端确认收到吗？老师有空看看</div>2019-10-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/54/9a/76c0af70.jpg" width="30px"><span>每天晒白牙</span> 👍（27） 💬（2）<div>今日得到
+<li><span>Switch</span> 👍（5） 💬（2）<div>使用fastjson实现，改动代码见：https:&#47;&#47;gist.github.com&#47;Switch-vov&#47;8cb76aabd1e1addcdbec205cc06d9023</div>2019-11-02</li><br/><li><span>A9</span> 👍（5） 💬（1）<div>老师的课程很多地方让人茅塞顿开，感觉从高中毕业之后就再也没有过这种抽丝剥茧学习知识的感觉了。感谢带来这么好的课程</div>2019-10-08</li><br/><li><span>A9</span> 👍（2） 💬（1）<div>使用JSON字符串进行序列化，String的序列化保持原样。MetaData和RpcRequest修改了size parse serialize函数  https:&#47;&#47;gist.github.com&#47;WangYangA9&#47;210ca898525832cba8ddd57ae1ae3d13</div>2019-10-09</li><br/><li><span>Tim Zhang</span> 👍（1） 💬（1）<div>有一点不是很理解，为啥typeMap不可以是(type, serializer)，通过type获取序列化实现类一步操作，现在看源码是通过type拿到class，再class拿到serializer</div>2019-10-30</li><br/><li><span>L.</span> 👍（0） 💬（2）<div>小白问一下，send方法的返回值是怎么到completableFuture对象里的，我没看到赋值操作啊，求解。。。</div>2020-06-02</li><br/><li><span>拒绝</span> 👍（0） 💬（1）<div>有点不理解，Server启动时，向NameService注册接口时，序列化对象是MetadataSerializer？</div>2019-10-18</li><br/><li><span>南山</span> 👍（0） 💬（1）<div>动手动手，一定要动手，netty不熟，看起来吃力，但也收获满满，每明白一点都是进步～～～</div>2019-10-10</li><br/><li><span>Better me</span> 👍（0） 💬（2）<div>ResponseInvocation 这个类是相当于一个回调类的形式吧。“就是根据响应头中的 requestId，去在途请求 inFlightRequest 中查找对应的 ResponseFuture，设置返回值并结束这个 ResponseFuture 就可以了。”这里的设置返回值是指code码形式吗？这里的作用是还需要在返回给服务端确认收到吗？老师有空看看</div>2019-10-09</li><br/><li><span>每天晒白牙</span> 👍（27） 💬（2）<div>今日得到
 关键字:背压机制(back pressure)
 当客户端同步请求服务端时，客户端需要等待服务端处理完请求并返回响应，在此期间，客户端需要等待，这是一种天然背压机制
 
@@ -13212,15 +13434,7 @@
 1.把无界队列换成有界队列，队列满了就不让添加了
 2.在往队列中添加请求的时候获取许可，服务端处理完请求释放许可，如果许可没了就阻塞客户端的请求或返回异常
 ——每天晒白牙
-</div>2019-10-10</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaEIE3Vw0icEQic96rOykFD2bUo6KotVx53gvtG0CDe8tUKC3pNXxIQYMuyPyrgL06Zn32UWtEXTIVWMw/132" width="30px"><span>Geek_fd81b3</span> 👍（2） 💬（0）<div>纸上得来终觉浅，绝知此事要躬行，真是良心课程，赞。</div>2020-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/05/06/f5979d65.jpg" width="30px"><span>亚洲舞王.尼古拉斯赵四</span> 👍（2） 💬（0）<div>想用json的方式，搞一个泛型的CommonSerializer&lt;T&gt;出来，序列化好说，但是在进行解析成对象的时候，发现我通过泛型无法拿到原本的Class，😂，想了半天方法用反射去搞，但是觉得这样不好，查了一下发现一般这种情况是通过传入一个你想要解析的最终类型的Class对象，但是又要求不该接口，这样我就不能传进去一个Class，无奈，只能针对每个类型实现一下Serializer接口</div>2019-11-06</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/7H0jIVKP3icqA4LmA1jXicHRz3zticVGE7gTRA5WDwmcLmLiay6S7PnKwhiaN5LNia3f5SIeglU6O7ByibOibnAiaMjjQgA/132" width="30px"><span>知也无涯</span> 👍（1） 💬（1）<div>removeTimeoutFutures, 这个方法名起得不太好~  根本没有移除 future, 只是把 semaphore 释放了</div>2021-01-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/a2/fa41c8a8.jpg" width="30px"><span>书中迷梦</span> 👍（1） 💬（0）<div>requestId要保持唯一性，不然消息就乱了！！而且不用保持全局唯一性，只要保证在单个服务中唯一就好</div>2019-11-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/04/0d/3dc5683a.jpg" width="30px"><span>柯察金</span> 👍（0） 💬（0）<div>这个课不错。很多其他讲 rpc 的课，理论一大堆，不如老师这几讲的内容</div>2024-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ff/d0/402be1e9.jpg" width="30px"><span>VIC</span> 👍（0） 💬（0）<div>老师代码，github地址发下</div>2022-10-30</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKiauonyMORA2s43W7mogGDH4WYjW0gBJtYmUa9icTB6aMPGqibicEKlLoQmLKLWEctwHzthbTZkKR20w/132" width="30px"><span>Spring4J</span> 👍（0） 💬（0）<div>请教个问题：
-CommandEncoder中，byteBuf.writeInt(Integer.BYTES + command.getHeader().length() + command.getPayload().length);
-CommandDecoder中，int length = byteBuf.readInt() - LENGTH_FIELD_LENGTH(4字节);
-我没搞懂编码时第一个四字节有啥用；
-我在编码中把这四字节取消掉，然后解码时也取消掉(int length = byteBuf.readInt())是没有问题的
-</div>2022-02-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/9d/81/d748b7eb.jpg" width="30px"><span>千锤百炼领悟之极限</span> 👍（0） 💬（0）<div>private final Semaphore semaphore = new Semaphore(10);
-相当于设置一个令牌桶，最多有10个令牌，如果使用完则需要归还才能继续发送数据，是一个限流的作用。</div>2021-09-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/STqKg1kLgvRuduQfo0R2E2osYBian7XrQAjSWmOwL9nyZVhq7vyLPnlGcgvguFV4aV7ToWLFiauEMKy96KWHKBVg/132" width="30px"><span>离境”</span> 👍（0） 💬（0）<div>想问下可以使用netty的SO_BACKLOG来实现背压机制吗</div>2021-06-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/3a/6d/8b417c84.jpg" width="30px"><span>Wheat Liu</span> 👍（0） 💬（0）<div>感觉跟rocket mq的代码结构差不多，也是用的netty</div>2021-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/06/7e/735968e2.jpg" width="30px"><span>西门吹牛</span> 👍（0） 💬（0）<div>最后的RPC实战这几节课，真的是绝，看了何晓峰老师的RPC实战，然后在结合李老师的这个简易的RPC架构实现，简直完美，这个背压机制，其实就是限流，利用信号量进行限流，之前看过信号量Semaphore的源码，一直没在代码中用过，这算是一个很好的应用了，当然限流还可以用令牌桶和漏桶算法等实现，这里想信号量其实就是个计数器</div>2021-05-11</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/7H0jIVKP3icqA4LmA1jXicHRz3zticVGE7gTRA5WDwmcLmLiay6S7PnKwhiaN5LNia3f5SIeglU6O7ByibOibnAiaMjjQgA/132" width="30px"><span>知也无涯</span> 👍（0） 💬（0）<div>com.github.liyue2008.rpc.transport.InFlightRequests#remove 的实现只是把 Map 中的元素移除了, 并没有像文稿中一样 &quot;设置返回值并结束这个 ResponseFuture&quot;</div>2021-01-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8c/5c/3f164f66.jpg" width="30px"><span>亚林</span> 👍（0） 💬（0）<div>异常关流；
-超时关流；
-背压限流。</div>2020-09-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/34/eb/d00aedb0.jpg" width="30px"><span>lecy_L</span> 👍（0） 💬（0）<div>准点研读了一遍，受益匪浅。明天利用空闲时间尝试完成思考题。</div>2019-10-08</li><br/>
+</div>2019-10-10</li><br/><li><span>Geek_fd81b3</span> 👍（2） 💬（0）<div>纸上得来终觉浅，绝知此事要躬行，真是良心课程，赞。</div>2020-04-21</li><br/><li><span>亚洲舞王.尼古拉斯赵四</span> 👍（2） 💬（0）<div>想用json的方式，搞一个泛型的CommonSerializer&lt;T&gt;出来，序列化好说，但是在进行解析成对象的时候，发现我通过泛型无法拿到原本的Class，😂，想了半天方法用反射去搞，但是觉得这样不好，查了一下发现一般这种情况是通过传入一个你想要解析的最终类型的Class对象，但是又要求不该接口，这样我就不能传进去一个Class，无奈，只能针对每个类型实现一下Serializer接口</div>2019-11-06</li><br/><li><span>知也无涯</span> 👍（1） 💬（1）<div>removeTimeoutFutures, 这个方法名起得不太好~  根本没有移除 future, 只是把 semaphore 释放了</div>2021-01-18</li><br/><li><span>书中迷梦</span> 👍（1） 💬（0）<div>requestId要保持唯一性，不然消息就乱了！！而且不用保持全局唯一性，只要保证在单个服务中唯一就好</div>2019-11-14</li><br/><li><span>柯察金</span> 👍（0） 💬（0）<div>这个课不错。很多其他讲 rpc 的课，理论一大堆，不如老师这几讲的内容</div>2024-04-04</li><br/><li><span>VIC</span> 👍（0） 💬（0）<div>老师代码，github地址发下</div>2022-10-30</li><br/>
 </ul>
 
 

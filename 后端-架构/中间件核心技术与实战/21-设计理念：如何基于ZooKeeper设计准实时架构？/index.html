@@ -5258,6 +5258,57 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      应用案例
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="应用案例">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例一
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例二
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12841,6 +12892,57 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      应用案例
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="应用案例">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例一
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      案例二
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12874,9 +12976,154 @@
 <p>ElasticJob的架构采取的是去中心化设计，也就是说，ElasticJob在集群部署时，各个节点之间没有主从之分，它们的地位都是平等的。并且，ElasticJob的调度侧重对数据进行分布式处理（也就是数据分片机制），在调度每一个任务之前需要先计算分片信息，然后才能下发给集群内的其他节点来执行。实际部署效果图如下：</p>
 <p><img alt="图片" src="https://static001.geekbang.org/resource/image/7c/25/7cdb21b91a10d1501f49ed7fdee2d925.jpg?wh=1920x646" /></p>
 <p>在这张图中，order-service-job应用中创建了两个定时任务job-1和job-2，而且order-service-job这个应用部署在两台机器上，也就是说，我们拥有两个调度执行器。那么问题来了，job-1和job-2的分片信息由哪个节点来计算呢？</p>
+<p>在ElasticJob的实现中，并不是将分片的计算任务固定分配给某一个节点，而是以任务为维度允许各个调度器参与竞选，竞选成功的调度器成为该任务的Leader节点，竞选失败的节点成为备选节点。备选节点只能在Leader节点宕机时重新竞争，选举出新的Leader并接管前任Leader的工作，从而实现高可用。</p>
+<p>那具体如何实现呢？原来，ElasticJob利用了ZooKeeper的强一致性与事件监听机制。</p>
+<p>当一个任务需要被调度时，调度器会首先将任务注册到ZooKeeper中，具体操作为在ZooKeeper中创建对应的节点。ElasticJob中的任务在ZooKeeper中的目录布局如下：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/b2/65/b29ee902d616533bb69b23e7cdf96865.jpg?wh=1920x1329" /></p>
+<p>简单说明一下各个节点的用途。</p>
+<ul>
+<li>config：存放任务的配置信息。</li>
+<li>servers：存放任务调度器服务器IP地址。</li>
+<li>instances：存放任务调度器实例（IP+进程）。</li>
+<li>sharding：存放任务的分片信息。</li>
+<li>leader/election/instance：存放任务的Leader信息。</li>
+</ul>
+<p>创建好对应的节点之后，就要根据不同的业务处理注册事件监听了。在ElasticJob中，根据不同的任务会创建如下事件监听管理器，从而完成核心功能：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/80/ae/80f7a4191c11248c01f44ff30a5f25ae.png?wh=804x206" /></p>
+<p>我们这节课重点关注的是ElectionListenerManager的实现细节，掌握基于ZooKeeper事件通知的编程技巧。</p>
+<p>ElectionListenerManager会在内部进行事件注册：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/4c/1c/4c021dca25f495a67d4412558c3d561c.png?wh=1920x556" /></p>
+<p>事件注册的底层使用的是ZooKeeper的watch，每一个监听器在一个特定的节点处监听，一旦节点信息发生变化，ZooKeeper就会通知执行注册的事件监听器，执行对应的业务处理。</p>
+<p><strong>一个节点信息的变化包括：节点创建、节点值内容变更、节点删除、子节点新增、子节点删除、子节点内容变更等。</strong></p>
+<p>调度器监听了ZooKeeper中的任务节点之后，一旦任务节点下任何一个子节点发生变化，调度器Leader选举监听器就会得到通知，进而执行LeaderElectionJobListener的onChange方法，触发选举。</p>
+<p>接下来我们结合核心代码实现，来学习一下如何使用Zookeeper来实现主节点选举。</p>
+<p>ElasticJob直接使用了Apache Curator开源框架（ZooKeeper客户端API类库）提供的实现类（org.apache.curator.framework.recipes.leader.LeaderLatch），具体代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>public void executeInLeader(final String key, final LeaderExecutionCallback callback) {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>        try (LeaderLatch latch = new LeaderLatch(client, key)) { // @1
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>            latch.start(); // @2
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>            latch.await();
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>            callback.execute();
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>            //CHECKSTYLE:OFF
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        } catch (final Exception ex) {
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>            //CHECKSTYLE:ON
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>            handleException(ex);
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        }
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    }
+</code></pre></div>
+<p>我们解读一下关键代码。LeaderLatch需要传入两个参数：CuratorFramework client和latchPath。</p>
+<p>CuratorFramework client是Curator的框架客户端。latchPath则是锁节点路径，ElasticJob的锁节点路径为：/{namespace}/{Jobname}/leader/election/latch。</p>
+<p>启动LeaderLatch的start方法之后，ZooKeeper客户端会尝试去latchPath路径下创建一个<strong>临时顺序节点。</strong>如果创建的节点序号最小，LeaderLatch的await方法会返回后执行LeaderExecutionCallback的execute方法，如果存放具体实例的节点({namespace}/{jobname}/leader/election/instance)不存在，那就要创建这个临时节点，节点存储的内容为IP地址@-@进程ID，也就是说创建一个临时节点，记录当前任务的Leader信息，从而完成选举。</p>
+<p>当Leader所在进程宕机后，在锁节点路径（/leader/election/latch）中创建的临时顺序节点会被删除，并且删除事件能够被其他节点感知，继而能够及时重新选举Leader，实现Leader的高可用。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/f8/54/f8026e8e96763516aff25cff93cc6c54.jpg?wh=1920x1214" /></p>
+<p>经过上面两个步骤，我们就基于ZooKeeper轻松实现了分布式环境下集群的选举功能。我们再来总结一下基于ZooKeeper事件监听机制的编程要点。</p>
+<ol>
+<li>在Zookeeper中创建对应的节点。</li>
+</ol>
+<p>节点的类型通常分为临时节点与持久节点。如果是存放静态信息（例如配置信息），我们通常使用持久节点；如果是存储运行时信息，则要创建临时节点。当会话失效后，临时节点会自动删除。</p>
+<ol>
+<li>在对应节点通过watch机制注册事件回调机制。</li>
+</ol>
+<p>如果你对这一机制感兴趣，建议你看看ElasticJob在这方面的源码，我的<a href="https://mp.weixin.qq.com/mp/homepage?__biz=MzIzNzgyMjYxOQ%3D%3D&amp;hid=3&amp;sn=e09cc30d43246842fde82da2c7671553&amp;devicetype=android-29&amp;version=28001996&amp;lang=zh_CN&amp;nettype=WIFI&amp;ascene=15&amp;session_us=gh_1f5a9b23a34b&amp;wx_header=3&amp;scene=1">源码分析专栏</a> 应该也可以给你提供一些帮助。</p>
+<h2 id="_1">应用案例</h2>
+<p>深入学习一款中间件，不仅能让我们了解中间件的底层实现细节，还能学到一些设计理念，那ElasticJob这种基于ZooKeeper实现元数据动态感知的设计模式会有哪些应用实战呢？</p>
+<p>我想分享两个我在工作中遇到的实际场景。</p>
+<h3 id="_2">案例一</h3>
+<p>2019年，我刚来到中通，我在负责的全链路压测项目需要在压测任务开启后自动启动影子消费组，然后等压测结束后，在不重启应用程序的情况下关闭影子消费组。我们在释放线程资源时，就用到了ZooKeeper的事件通知机制。</p>
+<p>首先我们来图解一下当时的需求：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/31/68/31b065dfc2ac0db83910b2a32eb0fd68.jpg?wh=1920x625" /></p>
+<p>我们解读一下具体的实现思路。</p>
+<p>第一步，在压测任务配置界面中，提供对应的配置项，将本次压测任务需要关联的消费组存储到数据库中，同时持久到ZooKeeper的一个指定目录中，如下图所示：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/5e/38/5e53392c4fae74755e6f8964c250c738.png?wh=1794x722" /></p>
+<p>ZooKeeper中的目录设计结构如下。</p>
+<ul>
+<li>/zpt：全链路压测的根目录。</li>
+<li>/zpt/order_service_consumer：应用Aphid。</li>
+<li>/zpt/order_service_consumer/zpt_task_1：压测任务。</li>
+<li>/zpt/order_service_consumer/zpt_task_1/order_bil_group：具体的消费组。</li>
+</ul>
+<p>在这里，每一个消费组节点存储的值为JSON格式，其中，从enable字段可以看出该消费组的影子消费组是否需要启动，默认为0表示不启动。</p>
+<p>第二步，启动应用程序时，应用程序会根据应用自身的AppID去ZooKeeper中查找所有的消费组，提取出各个消费组的enable属性，如果enable属性如果为1，则立即启动影子消费组。</p>
+<p>同时，我们还要监听/zpt/order_service_consumer节点，一旦该节点下任意一个子节点发生变化，zpt-sdk就能收到一个事件通知。</p>
+<p>在需要进行全链路压测时，用户如果在全链路压测页面启动压测任务，就将该任务下消费组的enable属性设置为1，同时更新ZooKeeper中的值。一旦节点的值发生变化，zpt-sdk将收到一个节点变更事件，并启动对应消费组的影子消费组。</p>
+<p>当停止全链路压测时，压测控制台将对应消费组在ZooKeeper中的值修改为0，这样zpt同样会收到一个事件通知，从而动态停止消费组。</p>
+<p>这样，我们在不重启应用程序的情况下就实现了影子消费组的启动与停止。</p>
+<p>注册事件的关键代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>private CuratorFramework client; // carator客户端
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>​
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>public static void addDataListener(String path, TreeCacheListener listener) { //注册事件监听
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    TreeCache cache = instance.caches.get(path);
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    if(cache == null ) {
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>         cache = addCacheData(path);
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    }
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    cache.getListenable().addListener(listener);
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>}
+</code></pre></div>
+<p>事件监听器中的关键代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>class MqConsumerGroupDataNodeListener extends TreeCacheListener {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>        protected void dataChanged(String path, TreeCacheEvent.Type eventType, String data) {
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>          //首先触发事件的节点，判断路径是否为消费组的路径，如果不是，忽略本次处理
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>            if(StringUtils.isBlank(path) || !ZptNodePath.isMQConsumerGroupDataNode(path)) {
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>                logger.warn(String.format(&quot;path:%s is empty or is not a consumerGroup path.&quot;, path));
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>                return;
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>            }
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>            try {
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>                String consumerGroup = getLastKey(path);
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>                if(logger.isDebugEnabled()) {
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>                    logger.debug(String.format(&quot;节点path:%s,节点值:%s&quot;, path, data));
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>                }
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>                if(!Zpt.isConsumerGroup(consumerGroup)) {
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>                    logger.info(String.format(&quot;消费组:%s,不属于当前应用提供的，故无需订阅&quot;, consumerGroup));
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>                    return;
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>                }
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>                // 如果节点的变更类型为删除，则直接停止消费组
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>                if(StringUtils.isBlank(data) || TreeCacheEvent.Type.NODE_REMOVED.equals(eventType)) {
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>                    invokeListener(consumerGroup, false);
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>                }
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>                // 取得节点的值
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>                MqConsumerVo mqVo = JsonUtil.parse(data, MqConsumerVo.class);
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>                // 如果为空，或则为0，则停止消费组
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>                if(mqVo == null || StringUtils.isBlank(mqVo.getEnable()) || &quot;0&quot;.equals(mqVo.getEnable())) {
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>                    invokeListener(consumerGroup, false);
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>                    return;
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>                } else { // 否则启动消费组。
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>                    invokeListener(consumerGroup, true);
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>                    return;
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>                }
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>            } catch (Throwable e) {
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>                logger.error(&quot;zk mq consumerGroup manager dataChange error&quot;, e);
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>            }
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>​
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>        }
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>    }
+</code></pre></div>
+<h3 id="_3">案例二</h3>
+<p>在这节课的最后，我们再看一下另外一个案例：消息中间件SDK的核心设计理念。</p>
+<p>我们公司对消息中间件的消息发送与消息消费做了统一的封装，对用户弱化了集群的概念，用户发送、消费消息时，不需要知道主题所在的集群地址，相关的API如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>public static SendResult send(String topic, SimpleMessage simpleMessage) 
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>public static void subscribe(String consumerGroup, MessageListener listener)
+</code></pre></div>
+<p>那问题来了，我们在调用消息发送API时，如何正确路由到真实的消息集群呢？</p>
+<p>其实，我们公司对主题、消费组进行了强管控，项目组在使用主题、消费组之前，需要通过消息运维平台进行申请，审批通过后会将主题分配到对应的物理集群上，并会将topic的元数据分别存储到数据库和ZooKeeper中。因为这属于配置类信息，所以这一类节点会创建为持久化节点。</p>
+<p>这样，消息发送 API 在初次发送主题时，会根据主题的名称在ZooKeeper中查找主题的元信息，包括主题的类型（RocketMQ/Kafka）、所在的集群地址（NameServer地址或Kafka Broker地址）等，然后构建对应的消息发送客户端进行消息发送。</p>
+<p>那我们为什么要将主题、消费组的信息存储到ZooKeeper中呢？</p>
+<p>这是因为，为了便于高效运维，我们对主题、消费组的使用方屏蔽了集群相关的信息，你可以看看下面这个场景：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/9d/74/9d02103fa5faa197a4yyb63a1f4f3674.jpg?wh=1920x747" /></p>
+<p>你能在不重启应用的情况下将order_topic从A集群迁移到B集群吗？</p>
+<p>没错，在我们这种架构下，将主题从一个集群迁移到另外一个集群将变得非常简单。</p>
+<p>我们只需要在ZooKeeper中修改一下order_topic的元信息，将维护的集群的信息由集群A变更为集群B，然后zms-sdk在监听order_topic对应的主题节点时，就能收到主题元信息变更事件了。然后zms-sdk会基于新的元信息重新构建一个MQ Producer对象，再关闭老的生产者，这样就实现了主题流量的无缝迁移，快速进行故障恢复，极大程度保证了系统的高可用性。</p>
+<p>我们公司已经把这个项目开源了，具体的实现代码你可以打开链接查看（<a href="https://github.com/ZTO-Express/zms/tree/master/zms-client/src/main/java/com/zto/zms/client/producer">ZMS开源项目</a>）。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/7e/0c/7ebac62759557035b675137815dd660c.png?wh=997x576" /></p>
+<h2 id="_4">总结</h2>
+<p>好了，这节课我们就介绍到这里了。</p>
+<p>这节课我们通过ElasticJob分布式环境中的集群部署，引出了ZooKeeper来实现多进程协作机制。并着重介绍了基于ZooKeeper实现Leader选举的方法。我们还总结出了一套互联网中常用的设计模式：基于ZooKeeper的事件通知机制。</p>
+<p>我还结合我工作中两个真实的技术需求，将ZooKeeper作为配置中心，结合事件监听机制实现了不重启项目，在不重启应用程序的情况下，完成了影子消费组和消息发送者的启动与停止。</p>
+<h2 id="_5">课后题</h2>
+<p>最后我也给你留一道题。</p>
+<p>请你尝试编写一个功能，使用curator开源类库，去监听ZooKeeper中的一个节点，打印节点的名称，并能动态感知节点内容的变化、子节点列表的变化。程序编写后，可以通过ZooKeeper运维命令去操作节点，从而验证程序的输出值是否正确。</p>
+<p>欢迎你在留言区与我交流讨论，我们下节课再见。</p>
 <div><strong>精选留言（2）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/18/bd/f6/558bb119.jpg" width="30px"><span>ᯤ⁵ᴳ</span> 👍（0） 💬（1）<div>快结课了，希望老师也讲讲分库分表的中间件</div>2022-08-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/55/bf/d442b55e.jpg" width="30px"><span>mikewt</span> 👍（0） 💬（2）<div>老师 watch机制其实可以用客户端主动轮询来解决，那么这两者有啥区别吗，使用场景是什么</div>2022-08-10</li><br/>
+<li><span>ᯤ⁵ᴳ</span> 👍（0） 💬（1）<div>快结课了，希望老师也讲讲分库分表的中间件</div>2022-08-14</li><br/><li><span>mikewt</span> 👍（0） 💬（2）<div>老师 watch机制其实可以用客户端主动轮询来解决，那么这两者有啥区别吗，使用场景是什么</div>2022-08-10</li><br/>
 </ul>
 
 

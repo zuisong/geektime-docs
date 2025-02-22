@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#handlerwrapper" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -9417,6 +9422,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    29   比较：Jetty如何实现具有上下文信息的责任链？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -9426,6 +9442,68 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#handlerwrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      HandlerWrapper
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scopedhandler" class="md-nav__link">
+    <span class="md-ellipsis">
+      ScopedHandler
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contexthandler" class="md-nav__link">
+    <span class="md-ellipsis">
+      ContextHandler
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -13036,6 +13114,59 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#handlerwrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      HandlerWrapper
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scopedhandler" class="md-nav__link">
+    <span class="md-ellipsis">
+      ScopedHandler
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contexthandler" class="md-nav__link">
+    <span class="md-ellipsis">
+      ContextHandler
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -13063,9 +13194,256 @@
 <p>WebAppContext -&gt; SessionHandler -&gt; SecurityHandler -&gt; ServletHandler</p>
 <p>这样链中的Handler从头到尾能被依次调用，除此之外，Jetty还实现了“回溯”的链式调用，那就是从头到尾依次链式调用Handler的<strong>方法A</strong>，完成后再回到头节点，再进行一次链式调用，只不过这一次调用另一个<strong>方法B</strong>。你可能会问，一次链式调用不就够了吗，为什么还要回过头再调一次呢？这是因为一次请求到达时，Jetty需要先调用各Handler的初始化方法，之后再调用各Handler的请求处理方法，并且初始化必须在请求处理之前完成。</p>
 <p>而Jetty是通过ScopedHandler来做到这一点的，那ScopedHandler跟HandlerWrapper有什么关系呢？ScopedHandler是HandlerWrapper的子类，我们还是通过一张图来回顾一下各种Handler的继承关系：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/68/50/68f3668cc7b179b5311d1bb5cb3cf350.jpg?wh=1145%2A684" /></p>
+<p>从图上我们看到，ScopedHandler是Jetty非常核心的一个Handler，跟Servlet规范相关的Handler，比如ContextHandler、SessionHandler、ServletHandler、WebappContext等都直接或间接地继承了ScopedHandler。</p>
+<p>今天我就分析一下ScopedHandler是如何实现“回溯”的链式调用的。</p>
+<h2 id="handlerwrapper">HandlerWrapper</h2>
+<p>为了方便理解，我们先来回顾一下HandlerWrapper的源码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>public class HandlerWrapper extends AbstractHandlerContainer
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>{
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>   protected Handler _handler;
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>   @Override
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    public void handle(String target, 
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>                       Request baseRequest, 
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                       HttpServletRequest request, 
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                       HttpServletResponse response) 
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                       throws IOException, ServletException
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    {
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        Handler handler=_handler;
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        if (handler!=null)
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>            handler.handle(target,baseRequest, request, response);
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    }
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>}
+</code></pre></div>
+<p>从代码可以看到它持有下一个Handler的引用，并且会在handle方法里调用下一个Handler。</p>
+<h2 id="scopedhandler">ScopedHandler</h2>
+<p>ScopedHandler的父类是HandlerWrapper，ScopedHandler重写了handle方法，在HandlerWrapper的handle方法的基础上引入了doScope方法。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>public final void handle(String target, 
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>                         Request baseRequest, 
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>                         HttpServletRequest request,
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>                         HttpServletResponse response) 
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>                         throws IOException, ServletException
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>{
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    if (isStarted())
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    {
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        if (_outerScope==null)
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>            doScope(target,baseRequest,request, response);
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        else
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>            doHandle(target,baseRequest,request, response);
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    }
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>}
+</code></pre></div>
+<p>上面的代码中是根据<code>_outerScope</code>是否为null来判断是使用doScope还是doHandle方法。那<code>_outScope</code>又是什么呢？<code>_outScope</code>是ScopedHandler引入的一个辅助变量，此外还有一个<code>_nextScope</code>变量。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>protected ScopedHandler _outerScope;
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>protected ScopedHandler _nextScope;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>private static final ThreadLocal&lt;ScopedHandler&gt; __outerScope= new ThreadLocal&lt;ScopedHandler&gt;();
+</code></pre></div>
+<p>我们看到<code>__outerScope</code>是一个ThreadLocal变量，ThreadLocal表示线程的私有数据，跟特定线程绑定。需要注意的是<code>__outerScope</code>实际上保存了一个ScopedHandler。</p>
+<p>下面通过我通过一个例子来说明<code>_outScope</code>和<code>_nextScope</code>的含义。我们知道ScopedHandler继承自HandlerWrapper，所以也是可以形成Handler链的，Jetty的源码注释中给出了下面这样一个例子：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ScopedHandler scopedA;
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>ScopedHandler scopedB;
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>HandlerWrapper wrapperX;
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>ScopedHandler scopedC;
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>scopedA.setHandler(scopedB);
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>scopedB.setHandler(wrapperX);
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>wrapperX.setHandler(scopedC)
+</code></pre></div>
+<p>经过上面的设置之后，形成的Handler链是这样的：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/5f/2a/5f18bc5677f9216a9126413db4f4b22a.png?wh=776%2A146" /></p>
+<p>上面的过程只是设置了<code>_handler</code>变量，那<code>_outScope</code>和<code>_nextScope</code>需要设置成什么样呢？为了方便你理解，我们先来看最后的效果图：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/21/4c/21a2e99691804f64d13d62ab9b3f924c.png?wh=849%2A217" /></p>
+<p>从上图我们看到：scopedA的<code>_nextScope=scopedB</code>，scopedB的<code>_nextScope=scopedC</code>，为什么scopedB的<code>_nextScope</code>不是WrapperX呢，因为WrapperX不是一个ScopedHandler。scopedC的<code>_nextScope</code>是null（因为它是链尾，没有下一个节点）。因此我们得出一个结论：<code>_nextScope</code><strong>指向下一个Scoped节点</strong>的引用，由于WrapperX不是Scoped节点，它没有<code>_outScope</code>和<code>_nextScope</code>变量。</p>
+<p>注意到scopedA的<code>_outerScope</code>是null，scopedB和scopedC的<code>_outScope</code>都是指向scopedA，即<code>_outScope</code><strong>指向的是当前Handler链的头节点</strong>，头节点本身<code>_outScope</code>为null。</p>
+<p>弄清楚了<code>_outScope</code>和<code>_nextScope</code>的含义，下一个问题就是对于一个ScopedHandler对象如何设置这两个值以及在何时设置这两个值。答案是在组件启动的时候，下面是ScopedHandler中的doStart方法源码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>@Override
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>protected void doStart() throws Exception
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>{
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    try
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    {
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        //请注意_outScope是一个实例变量，而__outerScope是一个全局变量。先读取全局的线程私有变量__outerScope到_outerScope中
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a> _outerScope=__outerScope.get();
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        //如果全局的__outerScope还没有被赋值，说明执行doStart方法的是头节点
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        if (_outerScope==null)
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>            //handler链的头节点将自己的引用填充到__outerScope
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>            __outerScope.set(this);
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>        //调用父类HandlerWrapper的doStart方法
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>        super.doStart();
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>        //各Handler将自己的_nextScope指向下一个ScopedHandler
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>        _nextScope= getChildHandlerByClass(ScopedHandler.class);
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    }
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    finally
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    {
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>        if (_outerScope==null)
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>            __outerScope.set(null);
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    }
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>}
+</code></pre></div>
+<p>你可能会问，为什么要设计这样一个全局的<code>__outerScope</code>，这是因为这个变量不能通过方法参数在Handler链中进行传递，但是在形成链的过程中又需要用到它。</p>
+<p>你可以想象，当scopedA调用start方法时，会把自己填充到<code>__scopeHandler</code>中，接着scopedA调用<code>super.doStart</code>。由于scopedA是一个HandlerWrapper类型，并且它持有的<code>_handler</code>引用指向的是scopedB，所以<code>super.doStart</code>实际上会调用scopedB的start方法。</p>
+<p>这个方法里同样会执行scopedB的doStart方法，不过这次<code>__outerScope.get</code>方法返回的不是null而是scopedA的引用，所以scopedB的<code>_outScope</code>被设置为scopedA。</p>
+<p>接着<code>super.dostart</code>会进入到scopedC，也会将scopedC的<code>_outScope</code>指向scopedA。到了scopedC执行doStart方法时，它的<code>_handler</code>属性为null（因为它是Handler链的最后一个），所以它的<code>super.doStart</code>会直接返回。接着继续执行scopedC的doStart方法的下一行代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>_nextScope=(ScopedHandler)getChildHandlerByClass(ScopedHandler.class)
+</code></pre></div>
+<p>对于HandlerWrapper来说getChildHandlerByClass返回的就是其包装的<code>_handler</code>对象，这里返回的就是null。所以scopedC的<code>_nextScope</code>为null，这段方法结束返回后继续执行scopedB中的doStart中，同样执行这句代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>_nextScope=(ScopedHandler)getChildHandlerByClass(ScopedHandler.class)
+</code></pre></div>
+<p>因为scopedB的<code>_handler</code>引用指向的是scopedC，所以getChildHandlerByClass返回的结果就是scopedC的引用，即scopedB的<code>_nextScope</code>指向scopedC。</p>
+<p>同理scopedA的<code>_nextScope</code>会指向scopedB。scopedA的doStart方法返回之后，其<code>_outScope</code>为null。请注意执行到这里只有scopedA的<code>_outScope</code>为null，所以doStart中finally部分的逻辑被触发，这个线程的ThreadLocal变量又被设置为null。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>finally
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>{
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    if (_outerScope==null)
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>        __outerScope.set(null);
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>}
+</code></pre></div>
+<p>你可能会问，费这么大劲设置<code>_outScope</code>和<code>_nextScope</code>的值到底有什么用？如果你觉得上面的过程比较复杂，可以跳过这个过程，直接通过图来理解<code>_outScope</code>和<code>_nextScope</code>的值，而这样设置的目的是用来控制doScope方法和doHandle方法的调用顺序。</p>
+<p>实际上在ScopedHandler中对于doScope和doHandle方法是没有具体实现的，但是提供了nextHandle和nextScope两个方法，下面是它们的源码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>public void doScope(String target, 
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>                    Request baseRequest, 
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>                    HttpServletRequest request, 
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>                    HttpServletResponse response)
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>       throws IOException, ServletException
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>{
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    nextScope(target,baseRequest,request,response);
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>}
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>public final void nextScope(String target, 
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>                            Request baseRequest, 
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>                            HttpServletRequest request,
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>                            HttpServletResponse response)
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>                            throws IOException, ServletException
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>{
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    if (_nextScope!=null)
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        _nextScope.doScope(target,baseRequest,request, response);
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>    else if (_outerScope!=null)
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>        _outerScope.doHandle(target,baseRequest,request, response);
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>    else
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>        doHandle(target,baseRequest,request, response);
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>}
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>public abstract void doHandle(String target, 
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>                              Request baseRequest, 
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>                              HttpServletRequest request,
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>                              HttpServletResponse response)
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>       throws IOException, ServletException;
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>public final void nextHandle(String target, 
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>                             final Request baseRequest,
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>                             HttpServletRequest request,
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>                             HttpServletResponse response) 
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a>       throws IOException, ServletException
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>{
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a>    if (_nextScope!=null &amp;&amp; _nextScope==_handler)
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a>        _nextScope.doHandle(target,baseRequest,request, response);
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a>    else if (_handler!=null)
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a>        super.handle(target,baseRequest,request,response);
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a>}
+</code></pre></div>
+<p>从nextHandle和nextScope方法大致上可以猜到doScope和doHandle的调用流程。我通过一个调用栈来帮助你理解：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>A.handle(...)
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    A.doScope(...)
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>      B.doScope(...)
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>        C.doScope(...)
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>          A.doHandle(...)
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>            B.doHandle(...)
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>              X.handle(...)
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>                C.handle(...)
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>                  C.doHandle(...)  
+</code></pre></div>
+<p>因此通过设置<code>_outScope</code>和<code>_nextScope</code>的值，并且在代码中判断这些值并采取相应的动作，目的就是让ScopedHandler链上的<strong>doScope方法在doHandle、handle方法之前执行</strong>。并且不同ScopedHandler的doScope都是按照它在链上的先后顺序执行的，doHandle和handle方法也是如此。</p>
+<p>这样ScopedHandler帮我们把调用框架搭好了，它的子类只需要实现doScope和doHandle方法。比如在doScope方法里做一些初始化工作，在doHanlde方法处理请求。</p>
+<h2 id="contexthandler">ContextHandler</h2>
+<p>接下来我们来看看ScopedHandler的子类ContextHandler是如何实现doScope和doHandle方法的。ContextHandler可以理解为Tomcat中的Context组件，对应一个Web应用，它的功能是给Servlet的执行维护一个上下文环境，并且将请求转发到相应的Servlet。那什么是Servlet执行的上下文？我们通过ContextHandler的构造函数来了解一下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>private ContextHandler(Context context, HandlerContainer parent, String contextPath)
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>{
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    //_scontext就是Servlet规范中的ServletContext
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    _scontext = context == null?new Context():context;
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    //Web应用的初始化参数
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    _initParams = new HashMap&lt;String, String&gt;();
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    ...
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>}
+</code></pre></div>
+<p>我们看到ContextHandler维护了ServletContext和Web应用的初始化参数。那ContextHandler的doScope方法做了些什么呢？我们看看它的关键代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>public void doScope(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>{
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>  ...
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    //1.修正请求的URL，去掉多余的&#39;/&#39;，或者加上&#39;/&#39;
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    if (_compactPath)
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>        target = URIUtil.compactPath(target);
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    if (!checkContext(target,baseRequest,response))
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>        return;
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    if (target.length() &gt; _contextPath.length())
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    {
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>        if (_contextPath.length() &gt; 1)
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>            target = target.substring(_contextPath.length());
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>        pathInfo = target;
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>    }
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>    else if (_contextPath.length() == 1)
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    {
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>        target = URIUtil.SLASH;
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>        pathInfo = URIUtil.SLASH;
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>    }
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>    else
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>    {
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>        target = URIUtil.SLASH;
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>        pathInfo = null;
+<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>    }
+<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>
+<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>  //2.设置当前Web应用的类加载器
+<a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>  if (_classLoader != null)
+<a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>  {
+<a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>      current_thread = Thread.currentThread();
+<a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a>      old_classloader = current_thread.getContextClassLoader();
+<a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>      current_thread.setContextClassLoader(_classLoader);
+<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a>  }
+<a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a>
+<a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a>  //3. 调用nextScope
+<a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a>  nextScope(target,baseRequest,request,response);
+<a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a>
+<a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a>  ...
+<a id="__codelineno-11-38" name="__codelineno-11-38" href="#__codelineno-11-38"></a>}
+</code></pre></div>
+<p>从代码我们看到在doScope方法里主要是做了一些请求的修正、类加载器的设置，并调用nextScope，请你注意nextScope调用是由父类ScopedHandler实现的。接着我们来ContextHandler的doHandle方法：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>public void doHandle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>{
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    final DispatcherType dispatch = baseRequest.getDispatcherType();
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    final boolean new_context = baseRequest.takeNewContext();
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    try
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    {
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>         //请求的初始化工作,主要是为请求添加ServletRequestAttributeListener监听器,并将&quot;开始处理一个新请求&quot;这个事件通知ServletRequestListener
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>        if (new_context)
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>            requestInitialized(baseRequest,request);
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>        ...
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>        //继续调用下一个Handler，下一个Handler可能是ServletHandler、SessionHandler ...
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>        nextHandle(target,baseRequest,request,response);
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>    }
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>    finally
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>    {
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>        //同样一个Servlet请求处理完毕，也要通知相应的监听器
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>        if (new_context)
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>            requestDestroyed(baseRequest,request);
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>    }
+<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a>}
+</code></pre></div>
+<p>从上面的代码我们看到ContextHandler在doHandle方法里分别完成了相应的请求处理工作。</p>
+<h2 id="_1">本期精华</h2>
+<p>今天我们分析了Jetty中ScopedHandler的实现原理，剖析了如何实现链式调用的“回溯”。主要是确定了doScope和doHandle的调用顺序，doScope依次调用完以后，再依次调用doHandle，它的子类比如ContextHandler只需要实现doScope和doHandle方法，而不需要关心它们被调用的顺序。</p>
+<p>这背后的原理是，ScopedHandler通过递归的方式来设置<code>_outScope</code>和<code>_nextScope</code>两个变量，然后通过判断这些值来控制调用的顺序。递归是计算机编程的一个重要的概念，在各种面试题中也经常出现，如果你能读懂Jetty中的这部分代码，毫无疑问你已经掌握了递归的精髓。</p>
+<p>另外我们进行层层递归调用中需要用到一些变量，比如ScopedHandler中的<code>__outerScope</code>，它保存了Handler链中的头节点，但是它不是递归方法的参数，那参数怎么传递过去呢？一种可能的办法是设置一个全局变量，各Handler都能访问到这个变量。但这样会有线程安全的问题，因此ScopedHandler通过线程私有数据ThreadLocal来保存变量，这样既达到了传递变量的目的，又没有线程安全的问题。</p>
+<h2 id="_2">课后思考</h2>
+<p>ScopedHandler的doStart方法，最后一步是将线程私有变量<code>__outerScope</code>设置成null，为什么需要这样做呢？</p>
+<p>不知道今天的内容你消化得如何？如果还有疑问，请大胆的在留言区提问，也欢迎你把你的课后思考和心得记录下来，与我和其他同学一起讨论。如果你觉得今天有所收获，欢迎你把它分享给你的朋友。</p>
 <div><strong>精选留言（7）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/ec/13/49e98289.jpg" width="30px"><span>neohope</span> 👍（9） 💬（1）<div>最后的问题，应该是这样的：
+<li><span>neohope</span> 👍（9） 💬（1）<div>最后的问题，应该是这样的：
 
 protected void doStart() throws Exception
 {
@@ -13110,7 +13488,7 @@ public final void nextHandle(String target...)...
 感觉类成员的命名不太合适，
 比如__outerScope和_outerScope
 比如_handler其实一直指向的是下一个handler，是不是该为_nextHandler更好一些？
-</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e0/40/3301e490.jpg" width="30px"><span>despacito</span> 👍（6） 💬（0）<div>ScopedHandler 会有不同的实现类，而__outerScope 是ScopedHandler里static的变量，如果不设置为null，那么不同的子类实例执行doStrat()方法的时候，会有问题</div>2019-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/b2/b3/798a4bb2.jpg" width="30px"><span>帽子丨影</span> 👍（5） 💬（1）<div>感觉jetty的源码写的好混乱，经常没有注释，一个类也通常扩展3&#47;4个接口功能，还各种循环嵌套。好难懂。。。</div>2019-09-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/da/ec/779c1a78.jpg" width="30px"><span>往事随风，顺其自然</span> 👍（3） 💬（0）<div>可以重新处理下一次请求</div>2019-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1e/3a/5b21c01c.jpg" width="30px"><span>nightmare</span> 👍（3） 💬（0）<div>每一次请求的请求链互不影响</div>2019-07-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/85/a9/6d4d3ae8.jpg" width="30px"><span>绍棠</span> 👍（1） 💬（0）<div> threadlocal为什么在每次请求结束需要设置为null：为了下次请求复用。因为线程是用池化技术，下次请求优先共用线程，而不是新建线程</div>2020-04-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/f3/06/8da1bf0c.jpg" width="30px"><span>Fredo</span> 👍（0） 💬（0）<div>1. 防止影响下个请求数据
+</div>2019-07-23</li><br/><li><span>despacito</span> 👍（6） 💬（0）<div>ScopedHandler 会有不同的实现类，而__outerScope 是ScopedHandler里static的变量，如果不设置为null，那么不同的子类实例执行doStrat()方法的时候，会有问题</div>2019-07-16</li><br/><li><span>帽子丨影</span> 👍（5） 💬（1）<div>感觉jetty的源码写的好混乱，经常没有注释，一个类也通常扩展3&#47;4个接口功能，还各种循环嵌套。好难懂。。。</div>2019-09-26</li><br/><li><span>往事随风，顺其自然</span> 👍（3） 💬（0）<div>可以重新处理下一次请求</div>2019-07-16</li><br/><li><span>nightmare</span> 👍（3） 💬（0）<div>每一次请求的请求链互不影响</div>2019-07-16</li><br/><li><span>绍棠</span> 👍（1） 💬（0）<div> threadlocal为什么在每次请求结束需要设置为null：为了下次请求复用。因为线程是用池化技术，下次请求优先共用线程，而不是新建线程</div>2020-04-16</li><br/><li><span>Fredo</span> 👍（0） 💬（0）<div>1. 防止影响下个请求数据
 2. 用完即清理，防内存泄露</div>2024-02-06</li><br/>
 </ul>
 

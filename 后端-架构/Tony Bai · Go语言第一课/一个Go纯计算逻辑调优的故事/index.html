@@ -4499,6 +4499,60 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      同等条件前提下的优化尝试
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#go" class="md-nav__link">
+    <span class="md-ellipsis">
+      罪魁祸首：Go编译器未能自动优化
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      非同等条件下的优化方法
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      高级指令优化
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13534,6 +13588,60 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      同等条件前提下的优化尝试
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#go" class="md-nav__link">
+    <span class="md-ellipsis">
+      罪魁祸首：Go编译器未能自动优化
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      非同等条件下的优化方法
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      高级指令优化
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13598,9 +13706,649 @@
 <a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    fmt.Println(a[r]) // Print out a single element from the array
 <a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>}
 </code></pre></div>
+<p>这段代码通过命令行参数获取一个整数，然后生成一个随机数，接着通过两层循环对一个数组的每个元素进行累加，最终输出该数组中以随机数为下标对应的数组元素的值。</p>
+<p>接下来，我们再来看看“竞争对手”的测试代码。首先是C测试代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>// why-go-sucks/billion-loops/c/code.c
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>#include &quot;stdio.h&quot;
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>#include &quot;stdlib.h&quot;
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>#include &quot;stdint.h&quot;
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>int main (int argc, char** argv) {
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>  int u = atoi(argv[1]);               // Get an input number from the command line
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>  int r = rand() % 10000;              // Get a random integer 0 &lt;= r &lt; 10k
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>  int32_t a[10000] = {0};              // Array of 10k elements initialized to 0
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>  for (int i = 0; i &lt; 10000; i++) {    // 10k outer loop iterations
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    for (int j = 0; j &lt; 100000; j++) { // 100k inner loop iterations, per outer loop iteration
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>      a[i] = a[i] + j%u;               // Simple sum
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    }
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    a[i] += r;                         // Add a random value to each element in array
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>  }
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>  printf(&quot;%d\n&quot;, a[r]);                // Print out a single element from the array
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>}
+</code></pre></div>
+<p>然后是Java的测试代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>// why-go-sucks/billion-loops/java/code.java
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>package jvm;
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>import java.util.Random;
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>public class code {
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    public static void main(String[] args) {
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        var u = Integer.parseInt(args[0]); // Get an input number from the command line
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>        var r = new Random().nextInt(10000); // Get a random number 0 &lt;= r &lt; 10k
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>        var a = new int[10000]; // Array of 10k elements initialized to 0
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>        for (var i = 0; i &lt; 10000; i++) { // 10k outer loop iterations
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>            for (var j = 0; j &lt; 100000; j++) { // 100k inner loop iterations, per outer loop iteration
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>                a[i] = a[i] + j % u; // Simple sum
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>            }
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>            a[i] += r; // Add a random value to each element in array
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>        }
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>        System.out.println(a[r]); // Print out a single element from the array
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    }
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>}
+</code></pre></div>
+<p>你可能不熟悉C或Java，但从代码的形式上来看，C、Java与Go的代码确实处于“同等条件”。它们不仅在相同的硬件和软件环境中运行，还采用了相同的计算逻辑和算法，在输入参数处理等方面也具有相似性。</p>
+<p>为了确认一下原作者的测试结果，我在一台阿里云ECS上（AMD64，8C32G，CentOS 7.9），对上面三个程序进行了测试（使用time命令测量计算耗时），得到一个基线结果。我的环境下，C、Java和Go的编译器版本如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$go version
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>go version go1.23.0 linux/amd64
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>$java -version
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>openjdk version &quot;17.0.9&quot; 2023-10-17 LTS
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>OpenJDK Runtime Environment Zulu17.46+19-CA (build 17.0.9+8-LTS)
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>OpenJDK 64-Bit Server VM Zulu17.46+19-CA (build 17.0.9+8-LTS, mixed mode, sharing)
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>$gcc -v
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>使用内建 specs。
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>COLLECT_GCC=gcc
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/lto-wrapper
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>目标：x86_64-redhat-linux
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>配置为：../configure --prefix=/usr --mandir=/usr/share/man --infodir=/usr/share/info --with-bugurl=http://bugzilla.redhat.com/bugzilla --enable-bootstrap --enable-shared --enable-threads=posix --enable-checking=release --with-system-zlib --enable-__cxa_atexit --disable-libunwind-exceptions --enable-gnu-unique-object --enable-linker-build-id --with-linker-hash-style=gnu --enable-languages=c,c++,objc,obj-c++,java,fortran,ada,go,lto --enable-plugin --enable-initfini-array --disable-libgcj --with-isl=/builddir/build/BUILD/gcc-4.8.5-20150702/obj-x86_64-redhat-linux/isl-install --with-cloog=/builddir/build/BUILD/gcc-4.8.5-20150702/obj-x86_64-redhat-linux/cloog-install --enable-gnu-indirect-function --with-tune=generic --with-arch_32=x86-64 --build=x86_64-redhat-linux
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>线程模型：posix
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>gcc 版本 4.8.5 20150623 (Red Hat 4.8.5-44) (GCC) 
+</code></pre></div>
+<p>测试步骤与结果如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Go代码测试：
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>$cd why-go-sucks/billion-loops/go
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>$go build -o code code.go
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>$time ./code 10
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>456953
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>real    0m3.766s
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>user    0m3.767s
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>sys    0m0.007s
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>C代码测试：
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>$cd why-go-sucks/billion-loops/c
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>$gcc -O3 -std=c99 -o code code.c
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>$time ./code 10
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>459383
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>real    0m3.005s
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>user    0m3.005s
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>sys    0m0.000s
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>Java代码测试：
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>$javac -d . code.java
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>$time java -cp . jvm.code 10
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>456181
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>real    0m3.105s
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>user    0m3.092s
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>sys    0m0.027s
+</code></pre></div>
+<p>我们可以从测试结果中看到（基于real时间）：采用-O3优化的C代码最快，Java落后一个身位，<strong>Go则比C慢了25%，比Java慢了21%</strong>。</p>
+<blockquote>
+<p>这里要补充说明的是，time命令的输出结果通常包含三个主要部分：real、user和sys。</p>
+<ul>
+<li>real是从命令开始执行到结束所经过的实际时间（墙钟时间），我们以这个指标为准。</li>
+<li>user是程序在<strong>用户模式下执行所消耗的CPU时间</strong>。</li>
+<li>sys则是程序<strong>在内核模式下执行所消耗的CPU时间（系统调用）</strong>。</li>
+</ul>
+<p>如果总时间（real）略低于用户时间（user），表明程序可能在某些时刻被调度或等待，而不是持续占用CPU。这种情况可能是由于输入输出操作、等待资源等原因。如果real时间显著小于user时间，这种情况通常发生在并发程序中，其中多个线程或进程在不同的时间段执行，导致总的用户CPU时间远大于实际的墙钟时间。sys时间保持在较低数值，说明系统调用的频率较低，程序主要是执行计算而非进行大量的系统交互。</p>
+</blockquote>
+<p>上述三种语言的代码都是常规代码，不是最优化的代码。我们还可以优化Go代码，让它的性能超过Java甚至是C，但不能忘了“同等条件”这个前提。Go采用的优化方法，其他语言（C、Java）也可以采用。</p>
+<p>那么，在不改变“同等条件”的前提下，我们还能优化点啥？</p>
+<h2 id="_2">同等条件前提下的优化尝试</h2>
+<p>我们从代码中找到了不会改变计算逻辑，但可能会影响代码执行性能的几个点，先从它们入手看看效果：</p>
+<ul>
+<li>去除不必要的if判断</li>
+<li>使用更快的rand实现</li>
+<li>关闭边界检查</li>
+<li>避免逃逸</li>
+</ul>
+<p>下面是修改之后的Go代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>// why-go-sucks/billion-loops/go/code_optimize.go 
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>package main
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>import (
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    &quot;fmt&quot;
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    &quot;math/rand&quot;
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    &quot;os&quot;
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    &quot;strconv&quot;
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>)
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>func main() {
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    input, _ := strconv.Atoi(os.Args[1]) // Get an input number from the command line
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    u := int32(input)
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    r := int32(rand.Uint32() % 10000)   // Use Uint32 for faster random number generation
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>    var a [10000]int32                  // Array of 10k elements initialized to 0
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>    for i := int32(0); i &lt; 10000; i++ { // 10k outer loop iterations
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>        for j := int32(0); j &lt; 100000; j++ { // 100k inner loop iterations, per outer loop iteration
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>            a[i] = a[i] + j%u // Simple sum
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>        }
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>        a[i] += r // Add a random value to each element in array
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>    }
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>    z := a[r]
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>    fmt.Println(z) // Print out a single element from the array
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>}
+</code></pre></div>
+<p>我们编译并运行一下测试：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$cd why-go-sucks/billion-loops/go
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>$go build -o code_optimize -gcflags &#39;-B&#39; code_optimize.go // 使用-B关闭边界检查
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>$time ./code_optimize 10
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>459443
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>real    0m3.761s
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>user    0m3.759s
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>sys    0m0.011s
+</code></pre></div>
+<p>对比一下最初的测试结果，这些“所谓的优化”并没有起到什么作用，优化前你估计也猜到了。因为除了边界检查，其他优化都<strong>没有处于循环执行的热路径之上</strong>。</p>
+<blockquote>
+<p>注：rand.Uint32() % 10000的确要比rand.Intn(10000)快，我自己的benchmark结果是快约1倍。</p>
+</blockquote>
+<h2 id="go">罪魁祸首：Go编译器未能自动优化</h2>
+<p>那Go程序究竟慢在哪里呢？在“同等条件”下，我能想到的，只有<strong>在代码优化方面，Go编译器后端做得还不够</strong>，相较于GCC、Java等老牌编译器还有明显差距。</p>
+<p>比如说，原先的代码在内层循环中频繁访问a[i]，导致数组访问的读写操作较多（从内存加载a[i]，更新值后写回）。GCC和Java编译器在后端很可能做了这样的优化：将数组元素累积到一个临时变量中，并在外层循环结束后写回数组，这样做可以<strong>减少内层循环中的内存读写操作，充分利用CPU缓存和寄存器，加速数据处理</strong>。因为数组要从内存或缓存读，而一个临时变量很大可能是从寄存器读，读取速度相差还是很大的。</p>
+<p>如果我们手工在Go中实施这一优化，能达到什么效果呢？我们改一下最初版本的Go代码（code.go），新代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>// why-go-sucks/billion-loops/go/code_local_var.go 
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>package main
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>import (
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    &quot;fmt&quot;
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    &quot;math/rand&quot;
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    &quot;os&quot;
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    &quot;strconv&quot;
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>)
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>func main() {
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    input, e := strconv.Atoi(os.Args[1]) // Get an input number from the command line
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>    if e != nil {
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>        panic(e)
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>    }
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>    u := int32(input)
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>    r := int32(rand.Intn(10000))        // Get a random number 0 &lt;= r &lt; 10k
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>    var a [10000]int32                  // Array of 10k elements initialized to 0
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>    for i := int32(0); i &lt; 10000; i++ { // 10k outer loop iterations
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>        temp := a[i]
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>        for j := int32(0); j &lt; 100000; j++ { // 100k inner loop iterations, per outer loop iteration
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>            temp += j % u // Simple sum
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>        }
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>        temp += r // Add a random value to each element in array
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>        a[i] = temp
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>    }
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>    fmt.Println(a[r]) // Print out a single element from the array
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>}
+</code></pre></div>
+<p>然后我们编译并运行测试，结果如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$go build -o code_local_var code_local_var.go 
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>$time ./code_local_var 10
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>459169
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>real    0m3.017s
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>user    0m3.017s
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>sys    0m0.007s
+</code></pre></div>
+<p>我们看到，测试结果直接就比Java略好一些了。显然Go编译器没有做这种优化，从code.go的汇编也大致可以看出来：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/98/5e/989b6b129fe40723321594590c8bee5e.png?wh=1920x1400%22%E4%BD%BF%E7%94%A8Lensm%E7%94%9F%E6%88%90%E7%9A%84%E6%B1%87%E7%BC%96%E4%B8%8EGo%E6%BA%90%E7%A0%81%E5%AF%B9%E5%BA%94%E5%85%B3%E7%B3%BB%22" /></p>
+<p>而Java显然做了这类优化，我们在原Java代码版本上也按上述优化逻辑修改一下，代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>// why-go-sucks/billion-loops/java/code_local_var.java
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>package jvm;
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>import java.util.Random;
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>public class code {
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    public static void main(String[] args) {
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>        var u = Integer.parseInt(args[0]); // 获取命令行输入的整数
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>        var r = new Random().nextInt(10000); // 生成随机数 0 &lt;= r &lt; 10000
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>        var a = new int[10000]; // 定义长度为10000的数组a
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>        for (var i = 0; i &lt; 10000; i++) { // 10k外层循环迭代
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>            var temp = a[i]; // 使用临时变量存储 a[i] 的值
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>            for (var j = 0; j &lt; 100000; j++) { // 100k内层循环迭代，每次外层循环迭代
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>                temp += j % u; // 更新临时变量的值
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>            }
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>            a[i] = temp + r; // 将临时变量的值加上 r 并写回数组
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>        }
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>        System.out.println(a[r]); // 输出 a[r] 的值
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>    }
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>}
+</code></pre></div>
+<p>但从运行这个“优化”后的程序的结果来看，其对Java代码的提升幅度几乎可以忽略不计：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$time java -cp . jvm.code 10
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>450375
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>real    0m3.043s
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>user    0m3.028s
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>sys    0m0.027s
+</code></pre></div>
+<p>这也直接证明了即便采用的是原版Java代码，Java编译器也会生成带有抽取局部变量这种优化的可执行代码，Java程序员无需手工进行此类优化。</p>
+<p>像这种编译器优化还有不少，比如我们比较熟悉的循环展开（Loop Unrolling）也可以提升Go程序的性能。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>// why-go-sucks/billion-loops/go/code_loop_unrolling.go
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>package main
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>import (
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    &quot;fmt&quot;
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    &quot;math/rand&quot;
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    &quot;os&quot;
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    &quot;strconv&quot;
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>)
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>func main() {
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    input, e := strconv.Atoi(os.Args[1]) // Get an input number from the command line
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>    if e != nil {
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>        panic(e)
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>    }
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>    u := int32(input)
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>    r := int32(rand.Intn(10000))        // Get a random number 0 &lt;= r &lt; 10k
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>    var a [10000]int32                  // Array of 10k elements initialized to 0
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>    for i := int32(0); i &lt; 10000; i++ { // 10k outer loop iterations
+<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>        var sum int32
+<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>        // Unroll inner loop in chunks of 4 for optimization
+<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>        for j := int32(0); j &lt; 100000; j += 4 {
+<a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>            sum += j % u
+<a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>            sum += (j + 1) % u
+<a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>            sum += (j + 2) % u
+<a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a>            sum += (j + 3) % u
+<a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>        }
+<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a>        a[i] = sum + r // Add the accumulated sum and random value
+<a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a>    }
+<a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a>
+<a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a>
+<a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a>    fmt.Println(a[r]) // Print out a single element from the array
+<a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a>}
+</code></pre></div>
+<p>我们运行这个Go测试程序，性能如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$go build -o code_loop_unrolling code_loop_unrolling.go
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>$time ./code_loop_unrolling 10
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>458908
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>real    0m2.937s
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>user    0m2.940s
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>sys    0m0.002s
+</code></pre></div>
+<p>循环展开可以增加指令级并行性，因为展开后的代码块中可以有更多的独立指令，比如示例中的计算j % u、(j+1) % u、(j+2) % u和(j+3) % u。这些计算操作是独立的，可以并行执行，打破了依赖链，从而更好地利用了处理器的并行流水线。而原版Go代码中，每次迭代都会根据前一次迭代的结果更新a[i]，形成一个依赖链，这种顺序依赖性迫使处理器只能按顺序执行这些指令，导致CPU的流水线停顿。</p>
+<p>不过，其他语言也可以做同样的手工优化，比如我们对C代码做同样的优化（why-go-sucks/billion-loops/c/code_loop_unrolling.c），C测试程序的性能可以提升至2.7s的水平。这也证明了初版C程序即便在-O3的情况下，编译器也没有自动为其做这个优化。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>$time ./code_loop_unrolling 10
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>459383
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>real    0m2.723s
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>user    0m2.722s
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>sys    0m0.001s
+</code></pre></div>
+<p>于是，我们就从以上探索中得到了初步结论：性能测试中，Go性能落后于Java和C的原因是<strong>Go编译器优化做得还不到位，未能自动进行一些优化（比如提取局部变量、循环展开等）</strong>。期待后续Go团队能在编译器优化方面投入更多精力，早日追上GCC/Clang、Java这些成熟的编译器优化水平。</p>
+<p>如果不考虑同等条件，对于上面的Go纯计算逻辑还有哪些优化方案呢？</p>
+<h2 id="_3">非同等条件下的优化方法</h2>
+<p>如果是非同等条件下，那我们就可以自由发挥了。比如可以考虑算法优化的手段。我们看到原代码中有一个“取余操作”：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>a[i] = a[i] + j%u // Simple sum
+</code></pre></div>
+<p>在Go语言以及编译型语言中，取余操作%都是一个相对耗时的操作，尤其是在处理大数或频繁取余的情况下。这个时候，我们可以用其他算法来替代直接使用%的取余操作。比如下面示例中使用位运算来替换取余操作：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>// why-go-sucks/billion-loops/go/code_remainder.go
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>package main
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>import (
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    &quot;fmt&quot;
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    &quot;math/rand&quot;
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>    &quot;os&quot;
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    &quot;strconv&quot;
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>)
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>func main() {
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>    input, e := strconv.Atoi(os.Args[1])
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>    if e != nil {
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>        panic(e)
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>    }
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>    u := int32(input)
+<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>    mask := u - 1 // 只在u为2的幂时有效
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>    r := int32(rand.Intn(10000))
+<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a>    var a [10000]int32
+<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a>
+<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a>
+<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a>    for i := int32(0); i &lt; 10000; i++ {
+<a id="__codelineno-15-27" name="__codelineno-15-27" href="#__codelineno-15-27"></a>        for j := int32(0); j &lt; 100000; j++ {
+<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a>            a[i] = a[i] + (j &amp; mask) // 使用位运算代替取余运算
+<a id="__codelineno-15-29" name="__codelineno-15-29" href="#__codelineno-15-29"></a>        }
+<a id="__codelineno-15-30" name="__codelineno-15-30" href="#__codelineno-15-30"></a>        a[i] += r
+<a id="__codelineno-15-31" name="__codelineno-15-31" href="#__codelineno-15-31"></a>    }
+<a id="__codelineno-15-32" name="__codelineno-15-32" href="#__codelineno-15-32"></a>    fmt.Println(a[r])
+<a id="__codelineno-15-33" name="__codelineno-15-33" href="#__codelineno-15-33"></a>}
+</code></pre></div>
+<p>编译运行上述示例：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>$go build -o code_remainder code_remainder.go
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>$time ./code_remainder 10
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>453870
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>real    0m1.894s
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>user    0m1.894s
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>sys    0m0.004s
+</code></pre></div>
+<p>相对于最初版本，该Go程序的性能提升了近一倍多！看来为耗时的取余操作寻找更优化的等价算法是一条正确的优化路径。</p>
+<p>不过，使用位操作替换取余运算有局限性，这种替换仅在除数是2的次幂（例如2、4、8、16等）的前提下才正确，即取余操作x % n可以替换为x &amp; (n - 1)，前提为n是2的幂次。</p>
+<p>为了保证所有情况下程序都能正确运行，我们再次改变一下替换取余操作的算法，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>// why-go-sucks/billion-loops/go/code_remainder1.go
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>package main
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>import (
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    &quot;fmt&quot;
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    &quot;math/rand&quot;
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>    &quot;os&quot;
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>    &quot;strconv&quot;
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>)
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>func main() {
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>    input, e := strconv.Atoi(os.Args[1]) // Get an input number from the command line
+<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>    if e != nil {
+<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>        panic(e)
+<a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a>    }
+<a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a>    u := int32(input)
+<a id="__codelineno-17-19" name="__codelineno-17-19" href="#__codelineno-17-19"></a>    r := int32(rand.Intn(10000))        // Get a random number 0 &lt;= r &lt; 10k
+<a id="__codelineno-17-20" name="__codelineno-17-20" href="#__codelineno-17-20"></a>    var a [10000]int32                  // Array of 10k elements initialized to 0
+<a id="__codelineno-17-21" name="__codelineno-17-21" href="#__codelineno-17-21"></a>    for i := int32(0); i &lt; 10000; i++ { // 10k outer loop iterations
+<a id="__codelineno-17-22" name="__codelineno-17-22" href="#__codelineno-17-22"></a>        var k int32 = 0
+<a id="__codelineno-17-23" name="__codelineno-17-23" href="#__codelineno-17-23"></a>        for j := int32(0); j &lt; 100000; j++ { // 100k inner loop iterations, per outer loop iteration
+<a id="__codelineno-17-24" name="__codelineno-17-24" href="#__codelineno-17-24"></a>            a[i] = a[i] + k
+<a id="__codelineno-17-25" name="__codelineno-17-25" href="#__codelineno-17-25"></a>            k = k + 1
+<a id="__codelineno-17-26" name="__codelineno-17-26" href="#__codelineno-17-26"></a>            if k == u {
+<a id="__codelineno-17-27" name="__codelineno-17-27" href="#__codelineno-17-27"></a>                k = 0
+<a id="__codelineno-17-28" name="__codelineno-17-28" href="#__codelineno-17-28"></a>            }
+<a id="__codelineno-17-29" name="__codelineno-17-29" href="#__codelineno-17-29"></a>        }
+<a id="__codelineno-17-30" name="__codelineno-17-30" href="#__codelineno-17-30"></a>        a[i] += r // Add a random value to each element in array
+<a id="__codelineno-17-31" name="__codelineno-17-31" href="#__codelineno-17-31"></a>    }
+<a id="__codelineno-17-32" name="__codelineno-17-32" href="#__codelineno-17-32"></a>    fmt.Println(a[r]) // Print out a single element from the array
+<a id="__codelineno-17-33" name="__codelineno-17-33" href="#__codelineno-17-33"></a>}
+</code></pre></div>
+<p>这回我们引入了一个新变量k，在循环中由一个条件语句模拟每次循环的取余操作，并将结果与a[i]加和。编译和运行这个程序，看看效果如何：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>$go build -o code_remainder code_remainder.go
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>$time ./code_remainder1 10
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>453269
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>real    0m1.675s
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>user    0m1.673s
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>sys    0m0.006s
+</code></pre></div>
+<p>可以看到，我们得到了非常不错的优化效果，甚至比位操作的算法更快！</p>
+<p>当然，优化的方法还有很多，但这里我们就不再展开了，理解思路即可。如果还有更好的优化算法，欢迎你在留言区分享。</p>
+<p>除此之外，对于纯计算逻辑的程序，还有一种常见的优化思路，就是使用CPU提供的高级指令，比如SIMD指令。接下来，我们就来聊一聊高级指令优化的思路。</p>
+<h2 id="_4">高级指令优化</h2>
+<p>SIMD是单指令多数据（Single Instruction Multiple Data）的缩写。与之对应的则是SISD（Single Instruction，Single Data），即单指令单数据。</p>
+<p>在大学学习汇编时，用于举例的汇编指令通常是SISD指令，比如常见的ADD、MOV、LEA和XCHG等。这些指令<strong>每执行一次，仅处理一个数据项</strong>。早期的x86架构下，SISD指令处理的数据仅限于8字节（64位）或更小。随着处理器架构的发展，特别是x86-64架构的引入，SISD指令也能处理更大的数据项，使用更大的寄存器。但SISD指令每次仍然只处理一个数据项，即使这个数据项可能比较大。</p>
+<p>相反，SIMD指令是一种特殊的指令集，它可以让处理器同时处理多个数据项，提高计算效率。我们可以用一个形象生动的比喻来体会SIMD和SISD的差别。</p>
+<p>想象你是一个厨师，需要切100个苹果。普通的方式是一次切一个苹果，这就像普通的SISD处理器指令。而SIMD指令就像是你突然多了几双手，可以同时切4个或8个苹果。显然，多手同时工作会大大提高切苹果的速度。</p>
+<p>具体来说，SIMD指令的优势如下：</p>
+<ul>
+<li>并行处理：一条指令可以同时对多个数据进行相同的操作。</li>
+<li>数据打包：将多个较小的数据（如32位浮点数）打包到一个较大的寄存器（如256位）中。</li>
+<li>提高数据吞吐量：每个时钟周期可以处理更多的数据。</li>
+</ul>
+<p>这种并行处理方式特别适合需要大量重复计算的任务，如图像处理、音频处理和科学计算等。使用SIMD指令，可以显著提高这些应用的性能。</p>
+<p>主流的x86-64（amd64）和ARM系列CPU都有对SIMD指令的支持。以x86-64为例，该CPU体系下支持的SIMD指令就包括MMX（MultiMedia eXtensions）、SSE（Streaming SIMD Extensions）、SSE2、SSE3、SSSE3、SSE4、AVX（Advanced Vector Extensions）、AVX2以及AVX-512等。ARM架构下也有对应的SIMD指令集，包括VFP（Vector Floating Point）、NEON（Advanced SIMD）、SVE（Scalable Vector Extension）、SVE2以及Helium（M-Profile Vector Extension，MVE）等。</p>
+<p>每类SIMD指令集都有其特定的优势和应用场景，以x86-64下的SIMD指令集为例：</p>
+<ul>
+<li>MMX主要用于早期的多媒体处理。</li>
+<li>SSE系列逐步改进了浮点运算和整数运算能力，广泛应用于图形处理和音视频编码。</li>
+<li>AVX系列大幅提高了并行处理能力，特别适合科学计算和高性能计算场景。</li>
+</ul>
+<p>遗憾的是，截至目前，Go官方并没有提供支持SIMD的simd包。那我们如何使用SIMD指令呢？</p>
+<p>一种方案是使用CGO机制在Go中调用更快的C或C++，但CGO的负担又不能不考虑，就像Go语言之父Rob Pike说的那样“CGO不是Go”，因此很多人不愿意引入，我们这里也不采用这种方案。</p>
+<p>另外一种方案就是再向下一层，直接上汇编，在汇编中直接利用SIMD指令实现并行计算。但手写汇编难度很高，手写Plan9风格、资料甚少的Go汇编难度则更高。</p>
+<p>那什么方法可以避免直接手搓汇编呢？一种可行的方案是使用Uber工程师Michael McLoughlin开源的<a href="https://github.com/mmcloughlin/avo">avo</a>来生成Go汇编。avo包支持以一种相对高级的Go语法编写汇编，至少你可以不必直面那些晦涩难懂的汇编代码。下面我们就采用avo生成汇编的方案。</p>
+<p>不过，前面的示例并不是十分适用于采用SIMD汇编优化，所以我们换一个矩阵加法的例子来演示SIMD指令在计算加速方面的巨大优势。</p>
+<p>前面说过avo是一个Go库，我们无需安装任何二进制程序，直接使用avo库中的类型和函数编写矩阵加法的实现即可。下面是使用AVX指令实现矩阵加法的Go代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>// why-go-sucks/matadd-avx/pkg/asm.go
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>//go:build ignore
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>// +build ignore
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>package main
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>
+<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>import (
+<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>    &quot;github.com/mmcloughlin/avo/attr&quot;
+<a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a>    . &quot;github.com/mmcloughlin/avo/build&quot;
+<a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a>    . &quot;github.com/mmcloughlin/avo/operand&quot;
+<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>)
+<a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a>
+<a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a>
+<a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a>func main() {
+<a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a>    TEXT(&quot;MatrixAddSIMD&quot;, attr.NOSPLIT, &quot;func(a, b, c []float32)&quot;)
+<a id="__codelineno-19-20" name="__codelineno-19-20" href="#__codelineno-19-20"></a>    a := Mem{Base: Load(Param(&quot;a&quot;).Base(), GP64())}
+<a id="__codelineno-19-21" name="__codelineno-19-21" href="#__codelineno-19-21"></a>    b := Mem{Base: Load(Param(&quot;b&quot;).Base(), GP64())}
+<a id="__codelineno-19-22" name="__codelineno-19-22" href="#__codelineno-19-22"></a>    c := Mem{Base: Load(Param(&quot;c&quot;).Base(), GP64())}
+<a id="__codelineno-19-23" name="__codelineno-19-23" href="#__codelineno-19-23"></a>    n := Load(Param(&quot;a&quot;).Len(), GP64())
+<a id="__codelineno-19-24" name="__codelineno-19-24" href="#__codelineno-19-24"></a>
+<a id="__codelineno-19-25" name="__codelineno-19-25" href="#__codelineno-19-25"></a>
+<a id="__codelineno-19-26" name="__codelineno-19-26" href="#__codelineno-19-26"></a>    Y0 := YMM()
+<a id="__codelineno-19-27" name="__codelineno-19-27" href="#__codelineno-19-27"></a>    Y1 := YMM()
+<a id="__codelineno-19-28" name="__codelineno-19-28" href="#__codelineno-19-28"></a>
+<a id="__codelineno-19-29" name="__codelineno-19-29" href="#__codelineno-19-29"></a>
+<a id="__codelineno-19-30" name="__codelineno-19-30" href="#__codelineno-19-30"></a>    Label(&quot;loop&quot;)
+<a id="__codelineno-19-31" name="__codelineno-19-31" href="#__codelineno-19-31"></a>    CMPQ(n, U32(8))
+<a id="__codelineno-19-32" name="__codelineno-19-32" href="#__codelineno-19-32"></a>    JL(LabelRef(&quot;done&quot;))
+<a id="__codelineno-19-33" name="__codelineno-19-33" href="#__codelineno-19-33"></a>
+<a id="__codelineno-19-34" name="__codelineno-19-34" href="#__codelineno-19-34"></a>
+<a id="__codelineno-19-35" name="__codelineno-19-35" href="#__codelineno-19-35"></a>    VMOVUPS(a.Offset(0), Y0)
+<a id="__codelineno-19-36" name="__codelineno-19-36" href="#__codelineno-19-36"></a>    VMOVUPS(b.Offset(0), Y1)
+<a id="__codelineno-19-37" name="__codelineno-19-37" href="#__codelineno-19-37"></a>    VADDPS(Y1, Y0, Y0)
+<a id="__codelineno-19-38" name="__codelineno-19-38" href="#__codelineno-19-38"></a>    VMOVUPS(Y0, c.Offset(0))
+<a id="__codelineno-19-39" name="__codelineno-19-39" href="#__codelineno-19-39"></a>
+<a id="__codelineno-19-40" name="__codelineno-19-40" href="#__codelineno-19-40"></a>
+<a id="__codelineno-19-41" name="__codelineno-19-41" href="#__codelineno-19-41"></a>    ADDQ(U32(32), a.Base)
+<a id="__codelineno-19-42" name="__codelineno-19-42" href="#__codelineno-19-42"></a>    ADDQ(U32(32), b.Base)
+<a id="__codelineno-19-43" name="__codelineno-19-43" href="#__codelineno-19-43"></a>    ADDQ(U32(32), c.Base)
+<a id="__codelineno-19-44" name="__codelineno-19-44" href="#__codelineno-19-44"></a>    SUBQ(U32(8), n)
+<a id="__codelineno-19-45" name="__codelineno-19-45" href="#__codelineno-19-45"></a>    JMP(LabelRef(&quot;loop&quot;))
+<a id="__codelineno-19-46" name="__codelineno-19-46" href="#__codelineno-19-46"></a>
+<a id="__codelineno-19-47" name="__codelineno-19-47" href="#__codelineno-19-47"></a>
+<a id="__codelineno-19-48" name="__codelineno-19-48" href="#__codelineno-19-48"></a>    Label(&quot;done&quot;)
+<a id="__codelineno-19-49" name="__codelineno-19-49" href="#__codelineno-19-49"></a>    RET()
+<a id="__codelineno-19-50" name="__codelineno-19-50" href="#__codelineno-19-50"></a>
+<a id="__codelineno-19-51" name="__codelineno-19-51" href="#__codelineno-19-51"></a>
+<a id="__codelineno-19-52" name="__codelineno-19-52" href="#__codelineno-19-52"></a>    Generate()
+<a id="__codelineno-19-53" name="__codelineno-19-53" href="#__codelineno-19-53"></a>}
+</code></pre></div>
+<p>然后我们运行该代码，生成相应的汇编代码以及stub函数。代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>$cd why-go-sucks/matadd-avx/pkg
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>$make
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>go run asm.go -out add.s -stubs stub.go
+</code></pre></div>
+<p>生成的add.s的全部汇编代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>// why-go-sucks/matadd-avx/pkg/add.s
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>// Code generated by command: go run asm.go -out add.s -stubs stub.go. DO NOT EDIT.
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>#include &quot;textflag.h&quot;
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>// func MatrixAddSIMD(a []float32, b []float32, c []float32)
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>// Requires: AVX
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>TEXT ·MatrixAddSIMD(SB), NOSPLIT, $0-72
+<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>    MOVQ a_base+0(FP), AX
+<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>    MOVQ b_base+24(FP), CX
+<a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a>    MOVQ c_base+48(FP), DX
+<a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a>    MOVQ a_len+8(FP), BX
+<a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a>
+<a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>
+<a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a>loop:
+<a id="__codelineno-21-20" name="__codelineno-21-20" href="#__codelineno-21-20"></a>    CMPQ    BX, $0x00000008
+<a id="__codelineno-21-21" name="__codelineno-21-21" href="#__codelineno-21-21"></a>    JL      done
+<a id="__codelineno-21-22" name="__codelineno-21-22" href="#__codelineno-21-22"></a>    VMOVUPS (AX), Y0
+<a id="__codelineno-21-23" name="__codelineno-21-23" href="#__codelineno-21-23"></a>    VMOVUPS (CX), Y1
+<a id="__codelineno-21-24" name="__codelineno-21-24" href="#__codelineno-21-24"></a>    VADDPS  Y1, Y0, Y0
+<a id="__codelineno-21-25" name="__codelineno-21-25" href="#__codelineno-21-25"></a>    VMOVUPS Y0, (DX)
+<a id="__codelineno-21-26" name="__codelineno-21-26" href="#__codelineno-21-26"></a>    ADDQ    $0x00000020, AX
+<a id="__codelineno-21-27" name="__codelineno-21-27" href="#__codelineno-21-27"></a>    ADDQ    $0x00000020, CX
+<a id="__codelineno-21-28" name="__codelineno-21-28" href="#__codelineno-21-28"></a>    ADDQ    $0x00000020, DX
+<a id="__codelineno-21-29" name="__codelineno-21-29" href="#__codelineno-21-29"></a>    SUBQ    $0x00000008, BX
+<a id="__codelineno-21-30" name="__codelineno-21-30" href="#__codelineno-21-30"></a>    JMP     loop
+<a id="__codelineno-21-31" name="__codelineno-21-31" href="#__codelineno-21-31"></a>
+<a id="__codelineno-21-32" name="__codelineno-21-32" href="#__codelineno-21-32"></a>
+<a id="__codelineno-21-33" name="__codelineno-21-33" href="#__codelineno-21-33"></a>done:
+<a id="__codelineno-21-34" name="__codelineno-21-34" href="#__codelineno-21-34"></a>    RET
+</code></pre></div>
+<p>除了生成汇编代码外，asm.go还生成了一个stub函数：MatrixAddSIMD，即上面汇编实现的那个函数，用于Go代码调用。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>// why-go-sucks/matadd-avx/pkg/stub.go
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>// Code generated by command: go run asm.go -out add.s -stubs stub.go. DO NOT EDIT.
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>package pkg
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a>func MatrixAddSIMD(a []float32, b []float32, c []float32)
+</code></pre></div>
+<p>在matadd-avx/pkg/add-no-simd.go中，我们放置了常规的矩阵加法的实现：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>package pkg
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>func MatrixAddNonSIMD(a, b, c []float32) {
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>    n := len(a)
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>    for i := 0; i &lt; n; i++ {
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>        c[i] = a[i] + b[i]
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>    }
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>}
+</code></pre></div>
+<p>接下来，我们就来做一下benchmark，看看使用AVX指令实现的矩阵加法性能到底提升了多少。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>// why-go-sucks/matadd-avx/benchmark_test.go
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>package main
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>import (
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>    &quot;demo/pkg&quot;
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>    &quot;testing&quot;
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a>)
+<a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a>
+<a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a>
+<a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a>func BenchmarkMatrixAddNonSIMD(tb *testing.B) {
+<a id="__codelineno-24-14" name="__codelineno-24-14" href="#__codelineno-24-14"></a>    size := 1024
+<a id="__codelineno-24-15" name="__codelineno-24-15" href="#__codelineno-24-15"></a>    a := make([]float32, size)
+<a id="__codelineno-24-16" name="__codelineno-24-16" href="#__codelineno-24-16"></a>    b := make([]float32, size)
+<a id="__codelineno-24-17" name="__codelineno-24-17" href="#__codelineno-24-17"></a>    c := make([]float32, size)
+<a id="__codelineno-24-18" name="__codelineno-24-18" href="#__codelineno-24-18"></a>
+<a id="__codelineno-24-19" name="__codelineno-24-19" href="#__codelineno-24-19"></a>
+<a id="__codelineno-24-20" name="__codelineno-24-20" href="#__codelineno-24-20"></a>    for i := 0; i &lt; size; i++ {
+<a id="__codelineno-24-21" name="__codelineno-24-21" href="#__codelineno-24-21"></a>        a[i] = float32(i)
+<a id="__codelineno-24-22" name="__codelineno-24-22" href="#__codelineno-24-22"></a>        b[i] = float32(i)
+<a id="__codelineno-24-23" name="__codelineno-24-23" href="#__codelineno-24-23"></a>    }
+<a id="__codelineno-24-24" name="__codelineno-24-24" href="#__codelineno-24-24"></a>
+<a id="__codelineno-24-25" name="__codelineno-24-25" href="#__codelineno-24-25"></a>
+<a id="__codelineno-24-26" name="__codelineno-24-26" href="#__codelineno-24-26"></a>    tb.ResetTimer()
+<a id="__codelineno-24-27" name="__codelineno-24-27" href="#__codelineno-24-27"></a>    for i := 0; i &lt; tb.N; i++ {
+<a id="__codelineno-24-28" name="__codelineno-24-28" href="#__codelineno-24-28"></a>        pkg.MatrixAddNonSIMD(a, b, c)
+<a id="__codelineno-24-29" name="__codelineno-24-29" href="#__codelineno-24-29"></a>    }
+<a id="__codelineno-24-30" name="__codelineno-24-30" href="#__codelineno-24-30"></a>}
+<a id="__codelineno-24-31" name="__codelineno-24-31" href="#__codelineno-24-31"></a>
+<a id="__codelineno-24-32" name="__codelineno-24-32" href="#__codelineno-24-32"></a>
+<a id="__codelineno-24-33" name="__codelineno-24-33" href="#__codelineno-24-33"></a>func BenchmarkMatrixAddSIMD(tb *testing.B) {
+<a id="__codelineno-24-34" name="__codelineno-24-34" href="#__codelineno-24-34"></a>    size := 1024
+<a id="__codelineno-24-35" name="__codelineno-24-35" href="#__codelineno-24-35"></a>    a := make([]float32, size)
+<a id="__codelineno-24-36" name="__codelineno-24-36" href="#__codelineno-24-36"></a>    b := make([]float32, size)
+<a id="__codelineno-24-37" name="__codelineno-24-37" href="#__codelineno-24-37"></a>    c := make([]float32, size)
+<a id="__codelineno-24-38" name="__codelineno-24-38" href="#__codelineno-24-38"></a>
+<a id="__codelineno-24-39" name="__codelineno-24-39" href="#__codelineno-24-39"></a>
+<a id="__codelineno-24-40" name="__codelineno-24-40" href="#__codelineno-24-40"></a>    for i := 0; i &lt; size; i++ {
+<a id="__codelineno-24-41" name="__codelineno-24-41" href="#__codelineno-24-41"></a>        a[i] = float32(i)
+<a id="__codelineno-24-42" name="__codelineno-24-42" href="#__codelineno-24-42"></a>        b[i] = float32(i)
+<a id="__codelineno-24-43" name="__codelineno-24-43" href="#__codelineno-24-43"></a>    }
+<a id="__codelineno-24-44" name="__codelineno-24-44" href="#__codelineno-24-44"></a>
+<a id="__codelineno-24-45" name="__codelineno-24-45" href="#__codelineno-24-45"></a>
+<a id="__codelineno-24-46" name="__codelineno-24-46" href="#__codelineno-24-46"></a>    tb.ResetTimer()
+<a id="__codelineno-24-47" name="__codelineno-24-47" href="#__codelineno-24-47"></a>    for i := 0; i &lt; tb.N; i++ {
+<a id="__codelineno-24-48" name="__codelineno-24-48" href="#__codelineno-24-48"></a>        pkg.MatrixAddSIMD(a, b, c)
+<a id="__codelineno-24-49" name="__codelineno-24-49" href="#__codelineno-24-49"></a>    }
+<a id="__codelineno-24-50" name="__codelineno-24-50" href="#__codelineno-24-50"></a>}
+</code></pre></div>
+<p>运行benchmark：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>$go test -bench .
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>goos: darwin
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>goarch: amd64
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>pkg: demo
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>BenchmarkMatrixAddNonSIMD-8        2110710           568.2 ns/op
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>BenchmarkMatrixAddSIMD-8          10651008           111.7 ns/op
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>PASS
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a>ok      demo    3.086s
+</code></pre></div>
+<p>我们看到，AVX版SIMD指令的矩阵加法的性能是常规实现的5倍多。在实际生产中，这将大大提升代码的执行效率！</p>
+<h2 id="_5">小结</h2>
+<p>好了，到这里纯计算逻辑调优的故事就告一段落了。我们来总结一下今天的主要内容。</p>
+<p>Go语言在十亿次循环测试中的表现令人意外，这一节我们主要探讨了Go逊色于Java等语言的原因。首先，我们通过实验证明，Go在循环执行中的慢速表现，主要是因其编译器优化不足影响了执行效率。然后，我们还给出了在非同等条件下优化示例代码的思路，比如将比较耗时的取余操作替换为更快的算法等。</p>
+<p>最后，我们提及了在纯计算逻辑优化领域常见的一种方案，那就是利用SIMD指令。不过Go没有提供对SIMD指令的官方包支持，这让我们在Go中应用SIMD指令优化有了不小的难度。此外，SIMD指令也有其适用范围和场景，我们在使用之前要明确这一点。</p>
+<p>本文涉及的源码可以在<a href="https://github.com/bigwhite/publication/tree/master/column/timegeek/go-first-course/why-go-sucks">这里</a>下载。</p>
+<h2 id="_6">思考题</h2>
+<p>学完这一节后，建议你也自己动手实践一遍上面的优化流程，想一想是否还有更好的优化方法。</p>
+<p>如果你有新的想法，欢迎留言与我分享。我是Tony Bai，我们下一节见。</p>
 <div><strong>精选留言（2）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/1a/06/84/3c66309c.jpg" width="30px"><span>沿见</span> 👍（0） 💬（1）<div>之前在公众号上看到了这篇，结果老师竟然作为迭代放到了这门课上，课程常看常新，手动点赞。感觉现在很少有人像在嵌入式平台上开发一样死抠这些小的运行效率问题了，但是整个调优过程确实让人受益匪浅</div>2025-02-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/53/a8/abc96f70.jpg" width="30px"><span>return</span> 👍（0） 💬（1）<div>太厉害了👍</div>2025-01-03</li><br/>
+<li><span>沿见</span> 👍（0） 💬（1）<div>之前在公众号上看到了这篇，结果老师竟然作为迭代放到了这门课上，课程常看常新，手动点赞。感觉现在很少有人像在嵌入式平台上开发一样死抠这些小的运行效率问题了，但是整个调优过程确实让人受益匪浅</div>2025-02-19</li><br/><li><span>return</span> 👍（0） 💬（1）<div>太厉害了👍</div>2025-01-03</li><br/>
 </ul>
 
 

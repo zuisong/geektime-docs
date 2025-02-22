@@ -2293,6 +2293,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#finally" class="md-nav__link">
+    <span class="md-ellipsis">
+      小心finally中的异常
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      千万别把异常定义为静态变量
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      提交线程池的任务出了异常会怎么样？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考与讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13156,6 +13201,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#finally" class="md-nav__link">
+    <span class="md-ellipsis">
+      小心finally中的异常
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      千万别把异常定义为静态变量
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      提交线程池的任务出了异常会怎么样？
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考与讨论
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13194,9 +13284,423 @@
 </ul>
 <p><img alt="" src="https://static001.geekbang.org/resource/image/2f/61/2f2cfbd86efd3bc140400bcaf2985361.png?wh=1304%2A1284" /></p>
 <p>每层架构的工作性质不同，且从业务性质上异常可能分为业务异常和系统异常两大类，这就决定了很难进行统一的异常处理。我们从底向上看一下三层架构：</p>
-<div><strong>精选留言（30）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/13/26/38/ef063dc2.jpg" width="30px"><span>Darren</span> 👍（106） 💬（16）<div>这篇文章收获很大，因为我们现在的系统就是用的统一异常处理，使用的就是老师提到的兜底异常，就是简单的分为业务异常和非业务异常，提示语不同而已。
+<li>Repository层出现异常或许可以忽略，或许可以降级，或许需要转化为一个友好的异常。如果一律捕获异常仅记录日志，很可能业务逻辑已经出错，而用户和程序本身完全感知不到。</li>
+<li>Service层往往涉及数据库事务，出现异常同样不适合捕获，否则事务无法自动回滚。此外Service层涉及业务逻辑，有些业务逻辑执行中遇到业务异常，可能需要在异常后转入分支业务流程。如果业务异常都被框架捕获了，业务功能就会不正常。</li>
+<li>如果下层异常上升到Controller层还是无法处理的话，Controller层往往会给予用户友好提示，或是根据每一个API的异常表返回指定的异常类型，同样无法对所有异常一视同仁。</li>
+</ul>
+<p>因此，我不建议在框架层面进行异常的自动、统一处理，尤其不要随意捕获异常。但，框架可以做兜底工作。如果异常上升到最上层逻辑还是无法处理的话，可以以统一的方式进行异常转换，比如通过@RestControllerAdvice + @ExceptionHandler，来捕获这些“未处理”异常：</p>
+<ul>
+<li>对于自定义的业务异常，以Warn级别的日志记录异常以及当前URL、执行方法等信息后，提取异常中的错误码和消息等信息，转换为合适的API包装体返回给API调用方；</li>
+<li>对于无法处理的系统异常，以Error级别的日志记录异常和上下文信息（比如URL、参数、用户ID）后，转换为普适的“服务器忙，请稍后再试”异常信息，同样以API包装体返回给调用方。</li>
+</ul>
+<p>比如，下面这段代码的做法：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>@RestControllerAdvice
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>@Slf4j
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>public class RestControllerExceptionHandler {
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    private static int GENERIC_SERVER_ERROR_CODE = 2000;
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    private static String GENERIC_SERVER_ERROR_MESSAGE = &quot;服务器忙，请稍后再试&quot;;
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    @ExceptionHandler
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    public APIResponse handle(HttpServletRequest req, HandlerMethod method, Exception ex) {
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        if (ex instanceof BusinessException) {
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>            BusinessException exception = (BusinessException) ex;
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>            log.warn(String.format(&quot;访问 %s -&gt; %s 出现业务异常！&quot;, req.getRequestURI(), method.toString()), ex);
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>            return new APIResponse(false, null, exception.getCode(), exception.getMessage());
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        } else {
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>            log.error(String.format(&quot;访问 %s -&gt; %s 出现系统异常！&quot;, req.getRequestURI(), method.toString()), ex);
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>            return new APIResponse(false, null, GENERIC_SERVER_ERROR_CODE, GENERIC_SERVER_ERROR_MESSAGE);
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        }
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    }
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>}
+</code></pre></div>
+<p>出现运行时系统异常后，异常处理程序会直接把异常转换为JSON返回给调用方：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c2/84/c215e78f1b23583393649fa89efe9f84.png?wh=774%2A308" /></p>
+<p>要做得更好，你可以把相关出入参、用户信息在脱敏后记录到日志中，方便出现问题时根据上下文进一步排查。</p>
+<p>第二个错，<strong>捕获了异常后直接生吞</strong>。在任何时候，我们捕获了异常都不应该生吞，也就是直接丢弃异常不记录、不抛出。这样的处理方式还不如不捕获异常，因为被生吞掉的异常一旦导致Bug，就很难在程序中找到蛛丝马迹，使得Bug排查工作难上加难。</p>
+<p>通常情况下，生吞异常的原因，可能是不希望自己的方法抛出受检异常，只是为了把异常“处理掉”而捕获并生吞异常，也可能是想当然地认为异常并不重要或不可能产生。但不管是什么原因，不管是你认为多么不重要的异常，都不应该生吞，哪怕是一个日志也好。</p>
+<p>第三个错，<strong>丢弃异常的原始信息</strong>。我们来看两个不太合适的异常处理方式，虽然没有完全生吞异常，但也丢失了宝贵的异常信息。</p>
+<p>比如有这么一个会抛出受检异常的方法readFile：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>private void readFile() throws IOException {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    Files.readAllLines(Paths.get(&quot;a_file&quot;));
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>}
+</code></pre></div>
+<p>像这样调用readFile方法，捕获异常后，完全不记录原始异常，直接抛出一个转换后异常，导致出了问题不知道IOException具体是哪里引起的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>@GetMapping(&quot;wrong1&quot;)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>public void wrong1(){
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    try {
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        readFile();
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    } catch (IOException e) {
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        //原始异常信息丢失  
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        throw new RuntimeException(&quot;系统忙请稍后再试&quot;);
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    }
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>}
+</code></pre></div>
+<p>或者是这样，只记录了异常消息，却丢失了异常的类型、栈等重要信息：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>catch (IOException e) {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    //只保留了异常消息，栈没有记录
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    log.error(&quot;文件读取错误, {}&quot;, e.getMessage());
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    throw new RuntimeException(&quot;系统忙请稍后再试&quot;);
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>}
+</code></pre></div>
+<p>留下的日志是这样的，看完一脸茫然，只知道文件读取错误的文件名，至于为什么读取错误、是不存在还是没权限，完全不知道。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>[12:57:19.746] [http-nio-45678-exec-1] [ERROR] [.g.t.c.e.d.HandleExceptionController:35  ] - 文件读取错误, a_file
+</code></pre></div>
+<p>这两种处理方式都不太合理，可以改为如下方式：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>catch (IOException e) {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    log.error(&quot;文件读取错误&quot;, e);
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    throw new RuntimeException(&quot;系统忙请稍后再试&quot;);
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>}
+</code></pre></div>
+<p>或者，把原始异常作为转换后新异常的cause，原始异常信息同样不会丢：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>catch (IOException e) {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    throw new RuntimeException(&quot;系统忙请稍后再试&quot;, e);
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>}
+</code></pre></div>
+<p>其实，JDK内部也会犯类似的错。之前我遇到一个使用JDK10的应用偶发启动失败的案例，日志中可以看到出现类似的错误信息：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Caused by: java.lang.SecurityException: Couldn&#39;t parse jurisdiction policy files in: unlimited
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    at java.base/javax.crypto.JceSecurity.setupJurisdictionPolicies(JceSecurity.java:355)
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    at java.base/javax.crypto.JceSecurity.access$000(JceSecurity.java:73)
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    at java.base/javax.crypto.JceSecurity$1.run(JceSecurity.java:109)
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    at java.base/javax.crypto.JceSecurity$1.run(JceSecurity.java:106)
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    at java.base/java.security.AccessController.doPrivileged(Native Method)
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    at java.base/javax.crypto.JceSecurity.&lt;clinit&gt;(JceSecurity.java:105)
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    ... 20 more
+</code></pre></div>
+<p>查看JDK JceSecurity类setupJurisdictionPolicies方法源码，发现异常e没有记录，也没有作为新抛出异常的cause，当时读取文件具体出现什么异常（权限问题又或是IO问题）可能永远都无法知道了，对问题定位造成了很大困扰：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/b8/65/b8b581f6130211a19ed66490dbcd0465.png?wh=1926%2A1124" /></p>
+<p>第四个错，<strong>抛出异常时不指定任何消息</strong>。我见过一些代码中的偷懒做法，直接抛出没有message的异常：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>throw new RuntimeException();
+</code></pre></div>
+<p>这么写的同学可能觉得永远不会走到这个逻辑，永远不会出现这样的异常。但，这样的异常却出现了，被ExceptionHandler拦截到后输出了下面的日志信息：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>[13:25:18.031] [http-nio-45678-exec-3] [ERROR] [c.e.d.RestControllerExceptionHandler:24  ] - 访问 /handleexception/wrong3 -&gt; org.geekbang.time.commonmistakes.exception.demo1.HandleExceptionController#wrong3(String) 出现系统异常！
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>java.lang.RuntimeException: null
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>...
+</code></pre></div>
+<p>这里的null非常容易引起误解。按照空指针问题排查半天才发现，其实是异常的message为空。</p>
+<p>总之，如果你捕获了异常打算处理的话，<strong>除了通过日志正确记录异常原始信息外，通常还有三种处理模式</strong>：</p>
+<ul>
+<li>转换，即转换新的异常抛出。对于新抛出的异常，最好具有特定的分类和明确的异常消息，而不是随便抛一个无关或没有任何信息的异常，并最好通过cause关联老异常。</li>
+<li>重试，即重试之前的操作。比如远程调用服务端过载超时的情况，盲目重试会让问题更严重，需要考虑当前情况是否适合重试。</li>
+<li>恢复，即尝试进行降级处理，或使用默认值来替代原始数据。</li>
+</ul>
+<p>以上，就是通过catch捕获处理异常的一些最佳实践。</p>
+<h2 id="finally">小心finally中的异常</h2>
+<p>有些时候，我们希望不管是否遇到异常，逻辑完成后都要释放资源，这时可以使用finally代码块而跳过使用catch代码块。</p>
+<p>但要千万小心finally代码块中的异常，因为资源释放处理等收尾操作同样也可能出现异常。比如下面这段代码，我们在finally中抛出一个异常：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>@GetMapping(&quot;wrong&quot;)
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>public void wrong() {
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    try {
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>        log.info(&quot;try&quot;);
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        //异常丢失
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>        throw new RuntimeException(&quot;try&quot;);
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    } finally {
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>        log.info(&quot;finally&quot;);
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>        throw new RuntimeException(&quot;finally&quot;);
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    }
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>}
+</code></pre></div>
+<p>最后在日志中只能看到finally中的异常，<strong>虽然try中的逻辑出现了异常，但却被finally中的异常覆盖了</strong>。这是非常危险的，特别是finally中出现的异常是偶发的，就会在部分时候覆盖try中的异常，让问题更不明显：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>[13:34:42.247] [http-nio-45678-exec-1] [ERROR] [.a.c.c.C.[.[.[/].[dispatcherServlet]:175 ] - Servlet.service() for servlet [dispatcherServlet] in context with path [] threw exception [Request processing failed; nested exception is java.lang.RuntimeException: finally] with root cause
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>java.lang.RuntimeException: finally
+</code></pre></div>
+<p>至于异常为什么被覆盖，原因也很简单，因为一个方法无法出现两个异常。修复方式是，finally代码块自己负责异常捕获和处理：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>@GetMapping(&quot;right&quot;)
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>public void right() {
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    try {
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>        log.info(&quot;try&quot;);
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>        throw new RuntimeException(&quot;try&quot;);
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    } finally {
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>        log.info(&quot;finally&quot;);
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>        try {
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>            throw new RuntimeException(&quot;finally&quot;);
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>        } catch (Exception ex) {
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>            log.error(&quot;finally&quot;, ex);
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>        }
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>    }
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>}
+</code></pre></div>
+<p>或者可以把try中的异常作为主异常抛出，使用addSuppressed方法把finally中的异常附加到主异常上：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>@GetMapping(&quot;right2&quot;)
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>public void right2() throws Exception {
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    Exception e = null;
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    try {
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>        log.info(&quot;try&quot;);
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>        throw new RuntimeException(&quot;try&quot;);
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    } catch (Exception ex) {
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>        e = ex;
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    } finally {
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>        log.info(&quot;finally&quot;);
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>        try {
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>            throw new RuntimeException(&quot;finally&quot;);
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>        } catch (Exception ex) {
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>            if (e!= null) {
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>                e.addSuppressed(ex);
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>            } else {
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>                e = ex;
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>            }
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>        }
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>    }
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>    throw e;
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>}
+</code></pre></div>
+<p>运行方法可以得到如下异常信息，其中同时包含了主异常和被屏蔽的异常：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>java.lang.RuntimeException: try
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    at org.geekbang.time.commonmistakes.exception.finallyissue.FinallyIssueController.right2(FinallyIssueController.java:69)
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    ...
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    Suppressed: java.lang.RuntimeException: finally
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>        at org.geekbang.time.commonmistakes.exception.finallyissue.FinallyIssueController.right2(FinallyIssueController.java:75)
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>        ... 54 common frames omitted
+</code></pre></div>
+<p>其实这正是try-with-resources语句的做法，对于实现了AutoCloseable接口的资源，建议使用try-with-resources来释放资源，否则也可能会产生刚才提到的，释放资源时出现的异常覆盖主异常的问题。比如如下我们定义一个测试资源，其read和close方法都会抛出异常：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>public class TestResource implements AutoCloseable {
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    public void read() throws Exception{
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>        throw new Exception(&quot;read error&quot;);
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    }
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    @Override
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    public void close() throws Exception {
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>        throw new Exception(&quot;close error&quot;);
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    }
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>}
+</code></pre></div>
+<p>使用传统的try-finally语句，在try中调用read方法，在finally中调用close方法：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>@GetMapping(&quot;useresourcewrong&quot;)
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>public void useresourcewrong() throws Exception {
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    TestResource testResource = new TestResource();
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>    try {
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>        testResource.read();
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    } finally {
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>        testResource.close();
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>    }
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>}
+</code></pre></div>
+<p>可以看到，同样出现了finally中的异常覆盖了try中异常的问题：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>java.lang.Exception: close error
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>    at org.geekbang.time.commonmistakes.exception.finallyissue.TestResource.close(TestResource.java:10)
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    at org.geekbang.time.commonmistakes.exception.finallyissue.FinallyIssueController.useresourcewrong(FinallyIssueController.java:27)
+</code></pre></div>
+<p>而改为try-with-resources模式之后：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>@GetMapping(&quot;useresourceright&quot;)
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>public void useresourceright() throws Exception {
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>    try (TestResource testResource = new TestResource()){
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>        testResource.read();
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    }
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>}
+</code></pre></div>
+<p>try和finally中的异常信息都可以得到保留：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>java.lang.Exception: read error
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    at org.geekbang.time.commonmistakes.exception.finallyissue.TestResource.read(TestResource.java:6)
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>    ...
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>    Suppressed: java.lang.Exception: close error
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>        at org.geekbang.time.commonmistakes.exception.finallyissue.TestResource.close(TestResource.java:10)
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>        at org.geekbang.time.commonmistakes.exception.finallyissue.FinallyIssueController.useresourceright(FinallyIssueController.java:35)
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>        ... 54 common frames omitted
+</code></pre></div>
+<h2 id="_2">千万别把异常定义为静态变量</h2>
+<p>既然我们通常会自定义一个业务异常类型，来包含更多的异常信息，比如异常错误码、友好的错误提示等，那就需要在业务逻辑各处，手动抛出各种业务异常来返回指定的错误码描述（比如对于下单操作，用户不存在返回2001，商品缺货返回2002等）。</p>
+<p>对于这些异常的错误代码和消息，我们期望能够统一管理，而不是散落在程序各处定义。这个想法很好，但稍有不慎就可能会出现把异常定义为静态变量的坑。</p>
+<p>我在救火排查某项目生产问题时，遇到了一件非常诡异的事情：我发现异常堆信息显示的方法调用路径，在当前入参的情况下根本不可能产生，项目的业务逻辑又很复杂，就始终没往异常信息是错的这方面想，总觉得是因为某个分支流程导致业务没有按照期望的流程进行。</p>
+<p><strong>经过艰难的排查，最终定位到原因是把异常定义为了静态变量，导致异常栈信息错乱</strong>，类似于定义一个Exceptions类来汇总所有的异常，把异常存放在静态字段中：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>public class Exceptions {
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>    public static BusinessException ORDEREXISTS = new BusinessException(&quot;订单已经存在&quot;, 3001);
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>...
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>}
+</code></pre></div>
+<p>把异常定义为静态变量会导致异常信息固化，这就和异常的栈一定是需要根据当前调用来动态获取相矛盾。</p>
+<p>我们写段代码来模拟下这个问题：定义两个方法createOrderWrong和cancelOrderWrong方法，它们内部都会通过Exceptions类来获得一个订单不存在的异常；先后调用两个方法，然后抛出。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>@GetMapping(&quot;wrong&quot;)
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>public void wrong() {
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>    try {
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>        createOrderWrong();
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>    } catch (Exception ex) {
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>        log.error(&quot;createOrder got error&quot;, ex);
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>    }
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>    try {
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>        cancelOrderWrong();
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>    } catch (Exception ex) {
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>        log.error(&quot;cancelOrder got error&quot;, ex);
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>    }
+<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>}
+<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>
+<a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a>private void createOrderWrong() {
+<a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a>    //这里有问题
+<a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a>    throw Exceptions.ORDEREXISTS;
+<a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>}
+<a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a>
+<a id="__codelineno-21-20" name="__codelineno-21-20" href="#__codelineno-21-20"></a>private void cancelOrderWrong() {
+<a id="__codelineno-21-21" name="__codelineno-21-21" href="#__codelineno-21-21"></a>    //这里有问题
+<a id="__codelineno-21-22" name="__codelineno-21-22" href="#__codelineno-21-22"></a>    throw Exceptions.ORDEREXISTS;
+<a id="__codelineno-21-23" name="__codelineno-21-23" href="#__codelineno-21-23"></a>}
+</code></pre></div>
+<p>运行程序后看到如下日志，cancelOrder got error的提示对应了createOrderWrong方法。显然，cancelOrderWrong方法在出错后抛出的异常，其实是createOrderWrong方法出错的异常：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>[14:05:25.782] [http-nio-45678-exec-1] [ERROR] [.c.e.d.PredefinedExceptionController:25  ] - cancelOrder got error
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>org.geekbang.time.commonmistakes.exception.demo2.BusinessException: 订单已经存在
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>    at org.geekbang.time.commonmistakes.exception.demo2.Exceptions.&lt;clinit&gt;(Exceptions.java:5)
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>    at org.geekbang.time.commonmistakes.exception.demo2.PredefinedExceptionController.createOrderWrong(PredefinedExceptionController.java:50)
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>    at org.geekbang.time.commonmistakes.exception.demo2.PredefinedExceptionController.wrong(PredefinedExceptionController.java:18)
+</code></pre></div>
+<p>修复方式很简单，改一下Exceptions类的实现，通过不同的方法把每一种异常都new出来抛出即可：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>public class Exceptions {
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>    public static BusinessException orderExists(){
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>        return new BusinessException(&quot;订单已经存在&quot;, 3001);
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>    }
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>}
+</code></pre></div>
+<h2 id="_3">提交线程池的任务出了异常会怎么样？</h2>
+<p>在<a href="https://time.geekbang.org/column/article/210337">第3讲</a>介绍线程池时我提到，线程池常用作异步处理或并行处理。那么，把任务提交到线程池处理，任务本身出现异常时会怎样呢？</p>
+<p>我们来看一个例子：提交10个任务到线程池异步处理，第5个任务抛出一个RuntimeException，每个任务完成后都会输出一行日志：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>@GetMapping(&quot;execute&quot;)
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>public void execute() throws InterruptedException {
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>    String prefix = &quot;test&quot;;
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>    ExecutorService threadPool = Executors.newFixedThreadPool(1, new ThreadFactoryBuilder().setNameFormat(prefix+&quot;%d&quot;).get());
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>    //提交10个任务到线程池处理，第5个任务会抛出运行时异常
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>    IntStream.rangeClosed(1, 10).forEach(i -&gt; threadPool.execute(() -&gt; {
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>        if (i == 5) throw new RuntimeException(&quot;error&quot;);
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>        log.info(&quot;I&#39;m done : {}&quot;, i);
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a>    }));
+<a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a>
+<a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a>    threadPool.shutdown();
+<a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a>    threadPool.awaitTermination(1, TimeUnit.HOURS);
+<a id="__codelineno-24-14" name="__codelineno-24-14" href="#__codelineno-24-14"></a>}
+</code></pre></div>
+<p>观察日志可以发现两点：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>...
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>[14:33:55.990] [test0] [INFO ] [e.d.ThreadPoolAndExceptionController:26  ] - I&#39;m done : 4
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>Exception in thread &quot;test0&quot; java.lang.RuntimeException: error
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>    at org.geekbang.time.commonmistakes.exception.demo3.ThreadPoolAndExceptionController.lambda$null$0(ThreadPoolAndExceptionController.java:25)
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>    at java.lang.Thread.run(Thread.java:748)
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a>[14:33:55.990] [test1] [INFO ] [e.d.ThreadPoolAndExceptionController:26  ] - I&#39;m done : 6
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a>...
+</code></pre></div>
+<ul>
+<li>任务1到4所在的线程是test0，任务6开始运行在线程test1。由于我的线程池通过线程工厂为线程使用统一的前缀test加上计数器进行命名，因此<strong>从线程名的改变可以知道因为异常的抛出老线程退出了，线程池只能重新创建一个线程</strong>。如果每个异步任务都以异常结束，那么线程池可能完全起不到线程重用的作用。</li>
+<li>因为没有手动捕获异常进行处理，ThreadGroup帮我们进行了未捕获异常的默认处理，向标准错误输出打印了出现异常的线程名称和异常信息。<strong>显然，这种没有以统一的错误日志格式记录错误信息打印出来的形式，对生产级代码是不合适的</strong>，ThreadGroup的相关源码如下所示：</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>public void uncaughtException(Thread t, Throwable e) {
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>        if (parent != null) {
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>            parent.uncaughtException(t, e);
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>        } else {
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>            Thread.UncaughtExceptionHandler ueh =
+<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>                Thread.getDefaultUncaughtExceptionHandler();
+<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>            if (ueh != null) {
+<a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a>                ueh.uncaughtException(t, e);
+<a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a>            } else if (!(e instanceof ThreadDeath)) {
+<a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a>                System.err.print(&quot;Exception in thread \&quot;&quot;
+<a id="__codelineno-26-11" name="__codelineno-26-11" href="#__codelineno-26-11"></a>                                 + t.getName() + &quot;\&quot; &quot;);
+<a id="__codelineno-26-12" name="__codelineno-26-12" href="#__codelineno-26-12"></a>                e.printStackTrace(System.err);
+<a id="__codelineno-26-13" name="__codelineno-26-13" href="#__codelineno-26-13"></a>            }
+<a id="__codelineno-26-14" name="__codelineno-26-14" href="#__codelineno-26-14"></a>        }
+<a id="__codelineno-26-15" name="__codelineno-26-15" href="#__codelineno-26-15"></a>    }
+</code></pre></div>
+<p>修复方式有2步：</p>
+<ol>
+<li>以execute方法提交到线程池的异步任务，最好在任务内部做好异常处理；</li>
+<li>设置自定义的异常处理程序作为保底，比如在声明线程池时自定义线程池的未捕获异常处理程序：</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>new ThreadFactoryBuilder()
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>    .setNameFormat(prefix+&quot;%d&quot;)
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>    .setUncaughtExceptionHandler((thread, throwable)-&gt; log.error(&quot;ThreadPool {} got exception&quot;, thread, throwable))
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a>    .get()
+</code></pre></div>
+<p>或者设置全局的默认未捕获异常处理程序：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>static {
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>    Thread.setDefaultUncaughtExceptionHandler((thread, throwable)-&gt; log.error(&quot;Thread {} got exception&quot;, thread, throwable));
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>}
+</code></pre></div>
+<p>通过线程池ExecutorService的execute方法提交任务到线程池处理，如果出现异常会导致线程退出，控制台输出中可以看到异常信息。那么，把execute方法改为submit，线程还会退出吗，异常还能被处理程序捕获到吗？</p>
+<p><strong>修改代码后重新执行程序可以看到如下日志，说明线程没退出，异常也没记录被生吞了：</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>[15:44:33.769] [test0] [INFO ] [e.d.ThreadPoolAndExceptionController:47  ] - I&#39;m done : 1
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>[15:44:33.770] [test0] [INFO ] [e.d.ThreadPoolAndExceptionController:47  ] - I&#39;m done : 2
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>[15:44:33.770] [test0] [INFO ] [e.d.ThreadPoolAndExceptionController:47  ] - I&#39;m done : 3
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a>[15:44:33.770] [test0] [INFO ] [e.d.ThreadPoolAndExceptionController:47  ] - I&#39;m done : 4
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>[15:44:33.770] [test0] [INFO ] [e.d.ThreadPoolAndExceptionController:47  ] - I&#39;m done : 6
+<a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a>[15:44:33.770] [test0] [INFO ] [e.d.ThreadPoolAndExceptionController:47  ] - I&#39;m done : 7
+<a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a>[15:44:33.770] [test0] [INFO ] [e.d.ThreadPoolAndExceptionController:47  ] - I&#39;m done : 8
+<a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a>[15:44:33.771] [test0] [INFO ] [e.d.ThreadPoolAndExceptionController:47  ] - I&#39;m done : 9
+<a id="__codelineno-29-9" name="__codelineno-29-9" href="#__codelineno-29-9"></a>[15:44:33.771] [test0] [INFO ] [e.d.ThreadPoolAndExceptionController:47  ] - I&#39;m done : 10
+</code></pre></div>
+<p>为什么会这样呢？</p>
+<p>查看FutureTask源码可以发现，在执行任务出现异常之后，异常存到了一个outcome字段中，只有在调用get方法获取FutureTask结果的时候，才会以ExecutionException的形式重新抛出异常：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>public void run() {
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>...
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>    try {
+<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>        Callable&lt;V&gt; c = callable;
+<a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a>        if (c != null &amp;&amp; state == NEW) {
+<a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a>            V result;
+<a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a>            boolean ran;
+<a id="__codelineno-30-8" name="__codelineno-30-8" href="#__codelineno-30-8"></a>            try {
+<a id="__codelineno-30-9" name="__codelineno-30-9" href="#__codelineno-30-9"></a>                result = c.call();
+<a id="__codelineno-30-10" name="__codelineno-30-10" href="#__codelineno-30-10"></a>                ran = true;
+<a id="__codelineno-30-11" name="__codelineno-30-11" href="#__codelineno-30-11"></a>            } catch (Throwable ex) {
+<a id="__codelineno-30-12" name="__codelineno-30-12" href="#__codelineno-30-12"></a>                result = null;
+<a id="__codelineno-30-13" name="__codelineno-30-13" href="#__codelineno-30-13"></a>                ran = false;
+<a id="__codelineno-30-14" name="__codelineno-30-14" href="#__codelineno-30-14"></a>                setException(ex);
+<a id="__codelineno-30-15" name="__codelineno-30-15" href="#__codelineno-30-15"></a>            }
+<a id="__codelineno-30-16" name="__codelineno-30-16" href="#__codelineno-30-16"></a>...
+<a id="__codelineno-30-17" name="__codelineno-30-17" href="#__codelineno-30-17"></a>}
+<a id="__codelineno-30-18" name="__codelineno-30-18" href="#__codelineno-30-18"></a>
+<a id="__codelineno-30-19" name="__codelineno-30-19" href="#__codelineno-30-19"></a>protected void setException(Throwable t) {
+<a id="__codelineno-30-20" name="__codelineno-30-20" href="#__codelineno-30-20"></a>    if (UNSAFE.compareAndSwapInt(this, stateOffset, NEW, COMPLETING)) {
+<a id="__codelineno-30-21" name="__codelineno-30-21" href="#__codelineno-30-21"></a>        outcome = t;
+<a id="__codelineno-30-22" name="__codelineno-30-22" href="#__codelineno-30-22"></a>        UNSAFE.putOrderedInt(this, stateOffset, EXCEPTIONAL); // final state
+<a id="__codelineno-30-23" name="__codelineno-30-23" href="#__codelineno-30-23"></a>        finishCompletion();
+<a id="__codelineno-30-24" name="__codelineno-30-24" href="#__codelineno-30-24"></a>    }
+<a id="__codelineno-30-25" name="__codelineno-30-25" href="#__codelineno-30-25"></a>}
+<a id="__codelineno-30-26" name="__codelineno-30-26" href="#__codelineno-30-26"></a>
+<a id="__codelineno-30-27" name="__codelineno-30-27" href="#__codelineno-30-27"></a>public V get() throws InterruptedException, ExecutionException {
+<a id="__codelineno-30-28" name="__codelineno-30-28" href="#__codelineno-30-28"></a>    int s = state;
+<a id="__codelineno-30-29" name="__codelineno-30-29" href="#__codelineno-30-29"></a>    if (s &lt;= COMPLETING)
+<a id="__codelineno-30-30" name="__codelineno-30-30" href="#__codelineno-30-30"></a>        s = awaitDone(false, 0L);
+<a id="__codelineno-30-31" name="__codelineno-30-31" href="#__codelineno-30-31"></a>    return report(s);
+<a id="__codelineno-30-32" name="__codelineno-30-32" href="#__codelineno-30-32"></a>}
+<a id="__codelineno-30-33" name="__codelineno-30-33" href="#__codelineno-30-33"></a>
+<a id="__codelineno-30-34" name="__codelineno-30-34" href="#__codelineno-30-34"></a>private V report(int s) throws ExecutionException {
+<a id="__codelineno-30-35" name="__codelineno-30-35" href="#__codelineno-30-35"></a>    Object x = outcome;
+<a id="__codelineno-30-36" name="__codelineno-30-36" href="#__codelineno-30-36"></a>    if (s == NORMAL)
+<a id="__codelineno-30-37" name="__codelineno-30-37" href="#__codelineno-30-37"></a>        return (V)x;
+<a id="__codelineno-30-38" name="__codelineno-30-38" href="#__codelineno-30-38"></a>    if (s &gt;= CANCELLED)
+<a id="__codelineno-30-39" name="__codelineno-30-39" href="#__codelineno-30-39"></a>        throw new CancellationException();
+<a id="__codelineno-30-40" name="__codelineno-30-40" href="#__codelineno-30-40"></a>    throw new ExecutionException((Throwable)x);
+<a id="__codelineno-30-41" name="__codelineno-30-41" href="#__codelineno-30-41"></a>}
+</code></pre></div>
+<p>修改后的代码如下所示，我们把submit返回的Future放到了List中，随后遍历List来捕获所有任务的异常。这么做确实合乎情理。既然是以submit方式来提交任务，那么我们应该关心任务的执行结果，否则应该以execute来提交任务：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>List&lt;Future&gt; tasks = IntStream.rangeClosed(1, 10).mapToObj(i -&gt; threadPool.submit(() -&gt; {
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>    if (i == 5) throw new RuntimeException(&quot;error&quot;);
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>    log.info(&quot;I&#39;m done : {}&quot;, i);
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>})).collect(Collectors.toList());
+<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>
+<a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a>tasks.forEach(task-&gt; {
+<a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a>    try {
+<a id="__codelineno-31-8" name="__codelineno-31-8" href="#__codelineno-31-8"></a>        task.get();
+<a id="__codelineno-31-9" name="__codelineno-31-9" href="#__codelineno-31-9"></a>    } catch (Exception e) {
+<a id="__codelineno-31-10" name="__codelineno-31-10" href="#__codelineno-31-10"></a>        log.error(&quot;Got exception&quot;, e);
+<a id="__codelineno-31-11" name="__codelineno-31-11" href="#__codelineno-31-11"></a>    }
+<a id="__codelineno-31-12" name="__codelineno-31-12" href="#__codelineno-31-12"></a>});
+</code></pre></div>
+<p>执行这段程序可以看到如下的日志输出：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>[15:44:13.543] [http-nio-45678-exec-1] [ERROR] [e.d.ThreadPoolAndExceptionController:69  ] - Got exception
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>java.util.concurrent.ExecutionException: java.lang.RuntimeException: error
+</code></pre></div>
+<h2 id="_4">重点回顾</h2>
+<p>在今天的文章中，我介绍了处理异常容易犯的几个错和最佳实践。</p>
+<p>第一，注意捕获和处理异常的最佳实践。首先，不应该用AOP对所有方法进行统一异常处理，异常要么不捕获不处理，要么根据不同的业务逻辑、不同的异常类型进行精细化、针对性处理；其次，处理异常应该杜绝生吞，并确保异常栈信息得到保留；最后，如果需要重新抛出异常的话，请使用具有意义的异常类型和异常消息。</p>
+<p>第二，务必小心finally代码块中资源回收逻辑，确保finally代码块不出现异常，内部把异常处理完毕，避免finally中的异常覆盖try中的异常；或者考虑使用addSuppressed方法把finally中的异常附加到try中的异常上，确保主异常信息不丢失。此外，使用实现了AutoCloseable接口的资源，务必使用try-with-resources模式来使用资源，确保资源可以正确释放，也同时确保异常可以正确处理。</p>
+<p>第三，虽然在统一的地方定义收口所有的业务异常是一个不错的实践，但务必确保异常是每次new出来的，而不能使用一个预先定义的static字段存放异常，否则可能会引起栈信息的错乱。</p>
+<p>第四，确保正确处理了线程池中任务的异常，如果任务通过execute提交，那么出现异常会导致线程退出，大量的异常会导致线程重复创建引起性能问题，我们应该尽可能确保任务不出异常，同时设置默认的未捕获异常处理程序来兜底；如果任务通过submit提交意味着我们关心任务的执行结果，应该通过拿到的Future调用其get方法来获得任务运行结果和可能出现的异常，否则异常可能就被生吞了。</p>
+<p>今天用到的代码，我都放在了GitHub上，你可以点击<a href="https://github.com/JosephZhu1983/java-common-mistakes">这个链接</a>查看。</p>
+<h2 id="_5">思考与讨论</h2>
+<ol>
+<li>关于在finally代码块中抛出异常的坑，如果在finally代码块中返回值，你觉得程序会以try或catch中返回值为准，还是以finally中的返回值为准呢？</li>
+<li>对于手动抛出的异常，不建议直接使用Exception或RuntimeException，通常建议复用JDK中的一些标准异常，比如<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html">IllegalArgumentException</a>、<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html">IllegalStateException</a>、<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/UnsupportedOperationException.html">UnsupportedOperationException</a>，你能说说它们的适用场景，并列出更多常用异常吗？</li>
+</ol>
+<p>不知道针对异常处理，你还遇到过什么坑，还有什么最佳实践的心得吗？我是朱晔，欢迎在评论区与我留言分享，也欢迎你把这篇文章分享给你的朋友或同事，一起交流。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>Darren</span> 👍（106） 💬（16）<div>这篇文章收获很大，因为我们现在的系统就是用的统一异常处理，使用的就是老师提到的兜底异常，就是简单的分为业务异常和非业务异常，提示语不同而已。
 试着回答下问题：
 第一个问题：
 肯定是以finally语句块为准。
@@ -13208,7 +13712,7 @@ finally 代码块的原理是复制 finally 代码块的内容，分别放在 tr
 IllegalArgumentException：不合法的参数异常，比如说限制不能为空或者有指定的发小范围，调用方没有按照规定传递参数，就可以抛出这个异常；
 IllegalStateException：如果有状态流转的概念在里面（比如状态机），状态只能从A-&gt;B-&gt;C,若状态直接从A-&gt;C,就可以抛出该异常；
 UnsupportedOperationException：不支持该操作异常，比如非抽象父类中有个方法，子类必须实现，父类中的方法就可以抛出次异常。老师在集合坑中提到的Arrays.asList 返回的 List 并不是我们期望的 java.util.ArrayList，而是 Arrays 的内部类 ArrayList。ArrayList 内部类继承自 AbstractList 类，并没有覆写父类的 add 方法，而父类中 add 方法的实现，就是抛出 UnsupportedOperationException。
-</div>2020-04-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/17/3b/37bcd31e.jpg" width="30px"><span>扎紧绷带</span> 👍（26） 💬（1）<div>老师，为了便于定位异常请求bug，我希望url请求后端出现异常后，框架拦截打印出请求的参数信息，因为body里的参数在流中，只能消费一次，想要在出错后打印，必须要提前复制出一份保存。老师有什么好的实践吗？</div>2020-07-11</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/bvj76PmeUvW8kokyu91IZWuRATKmabibDWbzAj2TajeEic7WvKCJOLaOh6jibEmdQ36EO3sBUZ0HibAiapsrZo64U8w/132" width="30px"><span>梦倚栏杆</span> 👍（18） 💬（5）<div>遇到一个坑(也可以说不理解)，和该篇文章没关系，反馈一下
+</div>2020-04-05</li><br/><li><span>扎紧绷带</span> 👍（26） 💬（1）<div>老师，为了便于定位异常请求bug，我希望url请求后端出现异常后，框架拦截打印出请求的参数信息，因为body里的参数在流中，只能消费一次，想要在出错后打印，必须要提前复制出一份保存。老师有什么好的实践吗？</div>2020-07-11</li><br/><li><span>梦倚栏杆</span> 👍（18） 💬（5）<div>遇到一个坑(也可以说不理解)，和该篇文章没关系，反馈一下
 
 mysql 占位符问题
 prepare sqltpl from &#39;select id,name from table1 where id in (?)&#39;;
@@ -13220,14 +13724,14 @@ execute  sqltpl using @a;
 prepare sqltpl from &#39;select name from table1 where name in (?)&#39;;
 set @a=&#39;zhangsan,lisi,wangwu&#39;;
 execute  sqltpl using @a;
-结果没有记录</div>2020-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3b/36/2d61e080.jpg" width="30px"><span>行者</span> 👍（15） 💬（5）<div>老师，关于 千万别把异常定义为静态变量，麻烦分析下为什么cancelOrderRight抛出的异常信息指向createOrderWrong所在的行~</div>2020-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3b/36/2d61e080.jpg" width="30px"><span>行者</span> 👍（14） 💬（1）<div>IllegalArgumentException: 入参错误，比如参数类型int输入string。
+结果没有记录</div>2020-04-06</li><br/><li><span>行者</span> 👍（15） 💬（5）<div>老师，关于 千万别把异常定义为静态变量，麻烦分析下为什么cancelOrderRight抛出的异常信息指向createOrderWrong所在的行~</div>2020-04-04</li><br/><li><span>行者</span> 👍（14） 💬（1）<div>IllegalArgumentException: 入参错误，比如参数类型int输入string。
 IllegalStateException: 状态错误，比如订单已经支付完成，二次请求支付接口。
 UnsupportedOperationException: 不支持操作错误，比如对一笔不能退款的订单退款。
 其他异常
-SecurityException: 权限错误，比如未登陆用户调用修改用户信息接口。</div>2020-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1c/6e/6c5f5734.jpg" width="30px"><span>终结者999号</span> 👍（8） 💬（2）<div>关于行者的问题，请老师再解释一下可以吗？貌似没有看懂那个回复，什么叫一次性fillstacktrace？</div>2020-04-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ce/79/673f4268.jpg" width="30px"><span>小杰</span> 👍（3） 💬（1）<div>老师，看不懂那个异常定义为静态变量的例子，异常打印的是堆栈信息，堆栈信息必须是对象是这个意思吗？</div>2020-04-05</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/t1IeXCJODYdTt2RPGqx2zDjVX4N1FrxCWqQFfico2wVfetel8vcQYax1ASJHagACzdGCiaUbzlbjjfwtZa5G5TSQ/132" width="30px"><span>yan_12345</span> 👍（2） 💬（1）<div>老师，在业务代码当中，在catch之后，在什么情况下需要重新抛出新的异常，这样做有什么意义和作用？</div>2020-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/bd/da/3d76ea74.jpg" width="30px"><span>看不到de颜色</span> 👍（1） 💬（1）<div>好文，目前生产环境就存在出现异常只向上返回e.getMessage()，导致出现预期外的问题时一脸懵逼，这块日后一定要注意。statis Exception这块学习到了，对日后闭坑有很大帮助。通过这篇文章还学到了try-with-resources语法，收货颇丰。</div>2020-04-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/e5/c9/1061582b.jpg" width="30px"><span>skying</span> 👍（1） 💬（4）<div>你好，关于 提交到线程池的线程发生异常的场景。
+SecurityException: 权限错误，比如未登陆用户调用修改用户信息接口。</div>2020-04-04</li><br/><li><span>终结者999号</span> 👍（8） 💬（2）<div>关于行者的问题，请老师再解释一下可以吗？貌似没有看懂那个回复，什么叫一次性fillstacktrace？</div>2020-04-05</li><br/><li><span>小杰</span> 👍（3） 💬（1）<div>老师，看不懂那个异常定义为静态变量的例子，异常打印的是堆栈信息，堆栈信息必须是对象是这个意思吗？</div>2020-04-05</li><br/><li><span>yan_12345</span> 👍（2） 💬（1）<div>老师，在业务代码当中，在catch之后，在什么情况下需要重新抛出新的异常，这样做有什么意义和作用？</div>2020-04-17</li><br/><li><span>看不到de颜色</span> 👍（1） 💬（1）<div>好文，目前生产环境就存在出现异常只向上返回e.getMessage()，导致出现预期外的问题时一脸懵逼，这块日后一定要注意。statis Exception这块学习到了，对日后闭坑有很大帮助。通过这篇文章还学到了try-with-resources语法，收货颇丰。</div>2020-04-11</li><br/><li><span>skying</span> 👍（1） 💬（4）<div>你好，关于 提交到线程池的线程发生异常的场景。
 我本地环境 添加了UncaughtExceptionHandler，但后续的5次循环中，打印的线程还是test1.
 
-本地环境:spring boot2.2.5+undertow</div>2020-04-10</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/dgox0m94vr6w2Vxk0N6651pyL5wKWicqgwIxU9iahlIn5LKeFfQJDjzUoQKM8WNibS7Yuxyulmic1Xxfia5ibFc6ia0Hw/132" width="30px"><span>Geek_fe5e8a</span> 👍（0） 💬（1）<div>老师能不能讲讲lombok的注解@SneakyThrows </div>2020-09-01</li><br/><li><img src="" width="30px"><span>Geek_96815d</span> 👍（0） 💬（1）<div>execute 使用执行出现异常，程序依然没有中断</div>2020-07-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a5/f0/8648c464.jpg" width="30px"><span>Joker</span> 👍（0） 💬（1）<div>   @GetMapping(&quot;wrong3&quot;)
+本地环境:spring boot2.2.5+undertow</div>2020-04-10</li><br/><li><span>Geek_fe5e8a</span> 👍（0） 💬（1）<div>老师能不能讲讲lombok的注解@SneakyThrows </div>2020-09-01</li><br/><li><span>Geek_96815d</span> 👍（0） 💬（1）<div>execute 使用执行出现异常，程序依然没有中断</div>2020-07-07</li><br/><li><span>Joker</span> 👍（0） 💬（1）<div>   @GetMapping(&quot;wrong3&quot;)
     public void wrong3(@RequestParam(&quot;orderId&quot;) String orderId) {
         try {
             readFile();
@@ -13239,85 +13743,7 @@ SecurityException: 权限错误，比如未登陆用户调用修改用户信息�
 
 ---
 老师我在项目中发现这个也是错的，是因为用 `Exception` 代替了IOException吗？
-还是因为抛出异常 throw new RuntimeException() 这里没有任何提示消息，所以是错误的用法？</div>2020-06-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/f5/57/ce10fb1b.jpg" width="30px"><span>天天向上</span> 👍（0） 💬（1）<div>老师，把异常定义为静态变量后，cancelOrderWrong的异常堆栈却是createOrderWrong的，是因为createOrderWrong的异常信息是先调用的，由于异常是staic的，导致之后所有该异常堆栈都是createOrderWrong的吗？</div>2020-05-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/06/08/855abb02.jpg" width="30px"><span>Seven.Lin澤耿</span> 👍（0） 💬（2）<div>老师，我想请假下你对Java中的Checked Exception和UnChecked Exception的看法？我个人编程习惯上不喜欢使用Checked Exception，我认为对编程不友好，而且无论出现什么异常都是对正常的逻辑造成影响，好像Checked Exception相对于UnChecked Exception没啥优点，有的话也就是告诉调用者有异常而已，但是异常还是得处理==、</div>2020-05-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/t1IeXCJODYdTt2RPGqx2zDjVX4N1FrxCWqQFfico2wVfetel8vcQYax1ASJHagACzdGCiaUbzlbjjfwtZa5G5TSQ/132" width="30px"><span>yan_12345</span> 👍（0） 💬（1）<div>老师，请教一个问题，在平常的业务代码当中，看到在catch异常之后，会抛出运行时异常RuntimeException，这种异常不是检查异常，不需要强制捕获，那重新抛出这种异常有什么作用，</div>2020-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d1/3e/77c6ba5e.jpg" width="30px"><span>梁铁山</span> 👍（0） 💬（3）<div>老师好，我们项目是用SpringMVC的，也是使用统一异常处理，在实际项目中遇到了个比较棘手的问题。RespEntity&lt;Map&lt;String, String&gt;&gt; create(@RequestBody @Valid Useproduct useproduct, HttpServletRequest request) throws Exception { 。。。}  如果 MbeUserproduct 这个实体中的属性有@NotNull 等注解，那么通过添加@Valid可以在全局异常中捕获到属性异常信息（400）；如果属性中没有添加此类的注解，那么就不会进入全局的异常处理类中，前端虽然会收到400的响应状态，但是没有具体的错误信息。
-
-老师，对于这类问题该怎么处理！</div>2020-04-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/10/bb/f1061601.jpg" width="30px"><span>Demon.Lee</span> 👍（0） 💬（2）<div>老师，关于java微服务之间通过rpc调用的异常处理问题，请教下，先说声谢谢。
-我们使用了dubbo作为rpc调用的框架，但是微服务A调用微服务B时抛出了业务异常（比如xxxBusinessException），
-这些异常都是微服务B自定义的（xxxBusinessException extends ApplicationException，而ApplicationException是extends RuntimeException），
-但是返回到微服务A时，都被转成了RuntimeException。经查，是因为dubbo框架中通过ExceptionFilter把异常进行了处理，防止客户端无法识别而报错。
-但是我其实想要的是这些异常里面的errorCode和errorMsg，现在都没有了。我现在有两种优化思路：
-1. 微服务A和B都依赖这个ApplicationException，然后重写dubbo框架中的ExceptionFilter，抛出ApplicationException，
-这样微服务A就可以通过这个异常获取到errorCode和errorMsg等信息；
-2. 把RPC的返回结果由返回业务DTO，改成返回一个标准的APIResponse（即{&quot;success&quot;: false, &quot;data&quot;: 原来的业务DTO， &quot;errorCode&quot;：1111, &quot;errorMsg&quot;: &quot;xxxx&quot;}）;
-
-老师觉得如何，有什么更好的行业实践么
-</div>2020-04-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/62/d5/1f5c5ab6.jpg" width="30px"><span>大大大熊myeh</span> 👍（0） 💬（1）<div>关于“把异常定义为静态变量”的错误示例，建议把堆栈贴全，不要仅贴下半部分，可能是水平原因，我是运行了一下您的代码才理解后面的那段解释。
-
-其实您想说的是，如果把异常定义为静态变量，那么以后每次调用这个静态变量的异常，它的堆栈信息都是第一次调用该异常时的堆栈信息，会引起排查时的很大困难。
-
-（顺便测试一下留言的markdown）
-
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="mi">14</span><span class="p">:</span><span class="mo">06</span><span class="p">:</span><span class="mf">35.916</span><span class="w"> </span><span class="o">[</span><span class="n">main</span><span class="o">]</span><span class="w"> </span><span class="n">ERROR</span><span class="w"> </span><span class="n">org</span><span class="p">.</span><span class="na">geekbang</span><span class="p">.</span><span class="na">time</span><span class="p">.</span><span class="na">commonmistakes</span><span class="p">.</span><span class="na">exception</span><span class="p">.</span><span class="na">predefinedexception</span><span class="p">.</span><span class="na">PredefinedExceptionController</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">createOrder</span><span class="w"> </span><span class="n">got</span><span class="w"> </span><span class="n">error</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">org</span><span class="p">.</span><span class="na">geekbang</span><span class="p">.</span><span class="na">time</span><span class="p">.</span><span class="na">commonmistakes</span><span class="p">.</span><span class="na">exception</span><span class="p">.</span><span class="na">predefinedexception</span><span class="p">.</span><span class="na">BusinessException</span><span class="p">:</span><span class="w"> </span><span class="n">订单已经存在</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="n">at</span><span class="w"> </span><span class="n">org</span><span class="p">.</span><span class="na">geekbang</span><span class="p">.</span><span class="na">time</span><span class="p">.</span><span class="na">commonmistakes</span><span class="p">.</span><span class="na">exception</span><span class="p">.</span><span class="na">predefinedexception</span><span class="p">.</span><span class="na">Exceptions</span><span class="p">.</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">clinit</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="n">Exceptions</span><span class="p">.</span><span class="na">java</span><span class="p">:</span><span class="mi">5</span><span class="p">)</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="n">at</span><span class="w"> </span><span class="n">org</span><span class="p">.</span><span class="na">geekbang</span><span class="p">.</span><span class="na">time</span><span class="p">.</span><span class="na">commonmistakes</span><span class="p">.</span><span class="na">exception</span><span class="p">.</span><span class="na">predefinedexception</span><span class="p">.</span><span class="na">PredefinedExceptionController</span><span class="p">.</span><span class="na">createOrderWrong</span><span class="p">(</span><span class="n">PredefinedExceptionController</span><span class="p">.</span><span class="na">java</span><span class="p">:</span><span class="mi">56</span><span class="p">)</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="n">at</span><span class="w"> </span><span class="n">org</span><span class="p">.</span><span class="na">geekbang</span><span class="p">.</span><span class="na">time</span><span class="p">.</span><span class="na">commonmistakes</span><span class="p">.</span><span class="na">exception</span><span class="p">.</span><span class="na">predefinedexception</span><span class="p">.</span><span class="na">PredefinedExceptionController</span><span class="p">.</span><span class="na">main</span><span class="p">(</span><span class="n">PredefinedExceptionController</span><span class="p">.</span><span class="na">java</span><span class="p">:</span><span class="mi">29</span><span class="p">)</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="mi">14</span><span class="p">:</span><span class="mo">06</span><span class="p">:</span><span class="mf">35.919</span><span class="w"> </span><span class="o">[</span><span class="n">main</span><span class="o">]</span><span class="w"> </span><span class="n">ERROR</span><span class="w"> </span><span class="n">org</span><span class="p">.</span><span class="na">geekbang</span><span class="p">.</span><span class="na">time</span><span class="p">.</span><span class="na">commonmistakes</span><span class="p">.</span><span class="na">exception</span><span class="p">.</span><span class="na">predefinedexception</span><span class="p">.</span><span class="na">PredefinedExceptionController</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">cancelOrder</span><span class="w"> </span><span class="n">got</span><span class="w"> </span><span class="n">error</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">org</span><span class="p">.</span><span class="na">geekbang</span><span class="p">.</span><span class="na">time</span><span class="p">.</span><span class="na">commonmistakes</span><span class="p">.</span><span class="na">exception</span><span class="p">.</span><span class="na">predefinedexception</span><span class="p">.</span><span class="na">BusinessException</span><span class="p">:</span><span class="w"> </span><span class="n">订单已经存在</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="n">at</span><span class="w"> </span><span class="n">org</span><span class="p">.</span><span class="na">geekbang</span><span class="p">.</span><span class="na">time</span><span class="p">.</span><span class="na">commonmistakes</span><span class="p">.</span><span class="na">exception</span><span class="p">.</span><span class="na">predefinedexception</span><span class="p">.</span><span class="na">Exceptions</span><span class="p">.</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">clinit</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="n">Exceptions</span><span class="p">.</span><span class="na">java</span><span class="p">:</span><span class="mi">5</span><span class="p">)</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="n">at</span><span class="w"> </span><span class="n">org</span><span class="p">.</span><span class="na">geekbang</span><span class="p">.</span><span class="na">time</span><span class="p">.</span><span class="na">commonmistakes</span><span class="p">.</span><span class="na">exception</span><span class="p">.</span><span class="na">predefinedexception</span><span class="p">.</span><span class="na">PredefinedExceptionController</span><span class="p">.</span><span class="na">createOrderWrong</span><span class="p">(</span><span class="n">PredefinedExceptionController</span><span class="p">.</span><span class="na">java</span><span class="p">:</span><span class="mi">56</span><span class="p">)</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="n">at</span><span class="w"> </span><span class="n">org</span><span class="p">.</span><span class="na">geekbang</span><span class="p">.</span><span class="na">time</span><span class="p">.</span><span class="na">commonmistakes</span><span class="p">.</span><span class="na">exception</span><span class="p">.</span><span class="na">predefinedexception</span><span class="p">.</span><span class="na">PredefinedExceptionController</span><span class="p">.</span><span class="na">main</span><span class="p">(</span><span class="n">PredefinedExceptionController</span><span class="p">.</span><span class="na">java</span><span class="p">:</span><span class="mi">29</span><span class="p">)</span>
-</code></pre></div>
-</div>2020-04-10</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/bvj76PmeUvW8kokyu91IZWuRATKmabibDWbzAj2TajeEic7WvKCJOLaOh6jibEmdQ36EO3sBUZ0HibAiapsrZo64U8w/132" width="30px"><span>梦倚栏杆</span> 👍（6） 💬（0）<div>现在出问题就是瞎子，一点一点的日志的打，上线，哎，这哪是个合格的RD呀</div>2020-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/64/79/f1e1ca76.jpg" width="30px"><span>努力奋斗的Pisces</span> 👍（4） 💬（0）<div>1.得看finally里面是怎么处理的了，除非finally没有执行到，或者是finally里面报错了，不然都是按照finally里面的返回值做最终的返回吧</div>2020-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a1/e6/50da1b2d.jpg" width="30px"><span>旭东(Frank)</span> 👍（3） 💬（0）<div>订单存在异常，这个例子实际开发中真需要区分吗？个人觉得无效参数的例子更好些</div>2020-04-04</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/L8EpqHoAnmvkzCIsdOkv5QvhIzu5tMaF2FDusXShqukv5ZBkS8DbicWaErjnYydibiaqBrs70wQ8P6axvC2FbWpbQ/132" width="30px"><span>Geek_d3928c</span> 👍（1） 💬（0）<div>try-with-resources语句能够帮你自动调用资源的close()函数关闭资源不用到finally块.,在try关键字后面的( )里new一些需要自动关闭的资源。</div>2022-07-07</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIV7iaia7Ko59UJk3oap1XZEg6JW999tIibuTicWfVXgaXicUHjABI6ibXErd2tY527VMsib5ElZJxSW8nFw/132" width="30px"><span>刘志鹏</span> 👍（1） 💬（0）<div>我的异常处理通常这么做：1： 自定义异常，包括中英文message, code。2： service手动抛出业务异常， controller 不捕获； 3：框架统一处理。
-
-这样返回的message，其实也是service抛出的异常消息。  </div>2021-10-30</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83ersGSic8ib7OguJv6CJiaXY0s4n9C7Z51sWxTTljklFpq3ZAIWXoFTPV5oLo0GMTkqW5sYJRRnibNqOJQ/132" width="30px"><span>walle斌</span> 👍（1） 💬（0）<div>没有回答老师的问题，而是对异常处理有一些其他看法
-1、log.error保留现场，log.error(&quot;xxx error:&quot; + reqString,e)
-2、以标准返回，返回错误，供上层处理，按照标准返回的正确与与否返回
-3、标准返回，除了一般的是否正确，错误码，错误信息，增加如下2点，方便快速排查问题
-1）、详细错误，附带错误的前200【可配置】信息，且对外网关可以考虑过滤此字段
-2）、全链路跟踪字段
-直接把全链路跟踪字段暴露出来，对于异常排场加速排查。而且有了详细错误字段，其实一眼就能看出咋回事了，一般的错误。</div>2021-07-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/38/fa/76/561eeaa3.jpg" width="30px"><span>S</span> 👍（0） 💬（0）<div>如果使用Executors.newScheduledThreadPool创建的线程池情况，程序异常时也是有坑的</div>2023-10-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/10/6e/a21968a9.jpg" width="30px"><span>花下眠</span> 👍（0） 💬（0）<div>异常以为自己理解了，看完这节课，收获满满，瑞思拜
-1、切记生吞异常，并且记录堆栈信息
-2、异常消息有意义
-3、异常覆盖
-4、线程池异常，为线程起名字好定位问题，注意异常后线程是否退出等</div>2022-01-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/99/af/d29273e2.jpg" width="30px"><span>饭粒</span> 👍（0） 💬（0）<div>为什么我测试时，execute 方式即使加了异常捕获处理，线程还是会退出重建？</div>2021-10-09</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/X4ib36ADEvj76XaKD4OUY9k15KqWCAVCwibPicBxz6BBUfDrVolpYInn8zFOw3JBPtVw3L4Lkibaf2eLPemwGKzAXA/132" width="30px"><span>Geek_427d0c</span> 👍（0） 💬（0）<div>不知道是什么原因，下述代码，没有出现老师的静态Exception的现象。打印的error堆栈信息看到还是很正常的。
-package com.example.demo;
-
-import lombok.extern.slf4j.Slf4j;
-
-&#47;**
- * Created by wensi on 2021-09-09
- *&#47;
-@Slf4j
-public class Test {
-    public static BusinessException ORDEREXISTS = new BusinessException(&quot;订单已经存在&quot;);
-
-    public static void main(String[] args) throws InterruptedException {
-        new Test().wrong();
-    }
-
-    public void wrong() {
-        try {
-            createOrderWrong();
-        } catch (Exception ex) {
-            log.error(&quot;createOrder got error&quot;, ex);
-        }
-        try {
-            cancelOrderWrong();
-        } catch (Exception ex) {
-            log.error(&quot;cancelOrder got error&quot;, ex);
-        }
-    }
-
-    private void createOrderWrong() { &#47;&#47;这里有问题
-        throw Test.ORDEREXISTS;
-    }
-
-    private void cancelOrderWrong() { &#47;&#47;这里有问题
-        throw Test.ORDEREXISTS;
-    }
-}
-</div>2021-09-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/0b/44/c6487b93.jpg" width="30px"><span>Vince</span> 👍（0） 💬（0）<div>真好，受益匪浅，直接就读了2遍，我还得和小伙伴分享一下收获</div>2021-08-26</li><br/>
+还是因为抛出异常 throw new RuntimeException() 这里没有任何提示消息，所以是错误的用法？</div>2020-06-03</li><br/><li><span>天天向上</span> 👍（0） 💬（1）<div>老师，把异常定义为静态变量后，cancelOrderWrong的异常堆栈却是createOrderWrong的，是因为createOrderWrong的异常信息是先调用的，由于异常是staic的，导致之后所有该异常堆栈都是createOrderWrong的吗？</div>2020-05-17</li><br/><li><span>Seven.Lin澤耿</span> 👍（0） 💬（2）<div>老师，我想请假下你对Java中的Checked Exception和UnChecked Exception的看法？我个人编程习惯上不喜欢使用Checked Exception，我认为对编程不友好，而且无论出现什么异常都是对正常的逻辑造成影响，好像Checked Exception相对于UnChecked Exception没啥优点，有的话也就是告诉调用者有异常而已，但是异常还是得处理==、</div>2020-05-09</li><br/>
 </ul>
 
 

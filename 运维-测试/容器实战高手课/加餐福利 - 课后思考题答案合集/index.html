@@ -3432,6 +3432,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      专题加餐
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5338,6 +5347,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      专题加餐
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5374,9 +5392,195 @@
 <p>A：即使在宿主机上向容器1号进程发送SIGTERM，在1号进程没有注册handler的情况下，这个进程也不能被杀死。</p>
 <p>这个问题的原因是这样的：开始要看内核里的那段代码，“ !(force &amp;&amp; sig_kernel_only(sig))”，</p>
 <p>虽然由不同的namespace发送信号， 虽然force是1了，但是sig_kernel_only(sig)对于SIGTERM来说还是0，这里是个&amp;&amp;, 那么 !(1 &amp;&amp; 0) = 1。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">#define sig_kernel_only(sig) siginmask(sig, SIG_KERNEL_ONLY_MASK)</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">#define SIG_KERNEL_ONLY_MASK (\</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">        </span>rt_sigmask<span class="o">(</span>SIGKILL<span class="o">)</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>rt_sigmask<span class="o">(</span>SIGSTOP<span class="o">))</span>
+</code></pre></div>
+<p><a href="https://time.geekbang.org/column/article/310060">第3讲</a></p>
+<p>Q：如果容器的init进程创建了子进程B，B又创建了自己的子进程C。如果C运行完之后，退出成了僵尸进程，B进程还在运行，而容器的init进程还在不断地调用waitpid()，那C这个僵尸进程可以被回收吗？</p>
+<p>A：这道题可以参考下面两位同学的回答。</p>
+<p>Geek2014用户的回答：</p>
+<blockquote>
+<p>这时C是不会被回收的，只有等到B也被杀死，C这个僵尸进程也会变成孤儿进程，被init进程收养，进而被init的wait机制清理掉。</p>
+</blockquote>
+<p>莫名同学的回答：</p>
+<blockquote>
+<p>C应该不会被回收，waitpid仅等待直接children的状态变化。</p>
+<p>为什么先进入僵尸状态而不是直接消失？觉得是留给父进程一次机会，查看子进程的PID、终止状态（退出码、终止原因，比如是信号终止还是正常退出等）、资源使用信息。如果子进程直接消失，那么父进程没有机会掌握子进程的具体终止情况。</p>
+<p>一般情况下，程序逻辑可能会依据子进程的终止情况做出进一步处理：比如 Nginx Master 进程获知 Worker 进程异常退出，则重新拉起来一个Worker进程。</p>
+</blockquote>
+<p><a href="https://time.geekbang.org/column/article/310804">第4讲</a></p>
+<p>Q：请你回顾一下基本概念中最后的这段代码，你可以想一想，在不做编译运行的情况下，它的输出是什么？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">#include &lt;stdio.h&gt;</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1">#include &lt;signal.h&gt;</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>typedef<span class="w"> </span>void<span class="w"> </span><span class="o">(</span>*sighandler_t<span class="o">)(</span>int<span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>void<span class="w"> </span>sig_handler<span class="o">(</span>int<span class="w"> </span>signo<span class="o">)</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="o">{</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">(</span><span class="nv">signo</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>SIGTERM<span class="o">)</span><span class="w"> </span><span class="o">{</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">                </span>printf<span class="o">(</span><span class="s2">&quot;received SIGTERM\n\n&quot;</span><span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">                </span>//<span class="w"> </span>Set<span class="w"> </span>SIGTERM<span class="w"> </span>handler<span class="w"> </span>to<span class="w"> </span>default
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">                </span>signal<span class="o">(</span>SIGTERM,<span class="w"> </span>SIG_DFL<span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">        </span><span class="o">}</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="o">}</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>int<span class="w"> </span>main<span class="o">(</span>int<span class="w"> </span>argc,<span class="w"> </span>char<span class="w"> </span>*argv<span class="o">[])</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="o">{</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">        </span>//Ignore<span class="w"> </span>SIGTERM,<span class="w"> </span>and<span class="w"> </span>send<span class="w"> </span>SIGTERM
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">        </span>//<span class="w"> </span>to<span class="w"> </span>process<span class="w"> </span>itself.
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">        </span>signal<span class="o">(</span>SIGTERM,<span class="w"> </span>SIG_IGN<span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">        </span>printf<span class="o">(</span><span class="s2">&quot;Ignore SIGTERM\n\n&quot;</span><span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">        </span>kill<span class="o">(</span><span class="m">0</span>,<span class="w"> </span>SIGTERM<span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">        </span>//Catch<span class="w"> </span>SIGERM,<span class="w"> </span>and<span class="w"> </span>send<span class="w"> </span>SIGTERM
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">        </span>//<span class="w"> </span>to<span class="w"> </span>process<span class="w"> </span>itself.
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">        </span>signal<span class="o">(</span>SIGTERM,<span class="w"> </span>sig_handler<span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">        </span>printf<span class="o">(</span><span class="s2">&quot;Catch SIGTERM\n&quot;</span><span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="w">        </span>kill<span class="o">(</span><span class="m">0</span>,<span class="w"> </span>SIGTERM<span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a><span class="w">        </span>//Default<span class="w"> </span>SIGTERM.<span class="w"> </span>In<span class="w"> </span>sig_handler,<span class="w"> </span>it<span class="w"> </span>sets
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a><span class="w">        </span>//SIGTERM<span class="w"> </span>handler<span class="w"> </span>back<span class="w"> </span>to<span class="w"> </span>default<span class="w"> </span>one.
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a><span class="w">        </span>printf<span class="o">(</span><span class="s2">&quot;Default SIGTERM\n&quot;</span><span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a><span class="w">        </span>kill<span class="o">(</span><span class="m">0</span>,<span class="w"> </span>SIGTERM<span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span><span class="p">;</span>
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a><span class="o">}</span>
+</code></pre></div>
+<p>A：可以参考用户geek 2014同学的答案。输出结果如下：</p>
+<p>Ignore SIGTERM<br />
+Catch SIGTERM<br />
+received SIGTERM<br />
+Default SIGTERM</p>
+<p><a href="https://time.geekbang.org/column/article/311054">第5讲</a></p>
+<p>Q：我们还是按照文档中定义的控制组目录层次结构图，然后按序执行这几个脚本：</p>
+<ul>
+<li><a href="https://github.com/chengyli/training/blob/main/cpu/cgroup_cpu/create_groups.sh">create_groups.sh</a></li>
+<li><a href="https://github.com/chengyli/training/blob/main/cpu/cgroup_cpu/update_group1.sh">update_group1.sh</a></li>
+<li><a href="https://github.com/chengyli/training/blob/main/cpu/cgroup_cpu/update_group4.sh">update_group4.sh</a></li>
+<li><a href="https://github.com/chengyli/training/blob/main/cpu/cgroup_cpu/update_group3.sh">update_group3.sh</a></li>
+</ul>
+<p>那么，在一个4个CPU的节点上，group1/group3/group4里的进程，分别会被分配到多少CPU呢?</p>
+<p>A：分配比例是: 2 : 0.5 : 1.5</p>
+<p><strong>可以参考geek 2014的答案：</strong></p>
+<blockquote>
+<p>group1 的shares为1024，quota 3.5，尝试使用4，</p>
+<p>group2的shares默认为1024，quota设置为-1，不受限制，也即是，如果CPU上只有group2的话，那么group2可以使用完所有的CPU（实际上根据group3和group4，group2最多也就能用到1.5+3.5 core）</p>
+<p>故而，group1和group2各分配到2。把group2分到的2CPU，看作总量，再次分析group3和group4。group3和group3尝试使用的总量超过2，所以按照shares比例分配，group3使用1/(1+3) * 2 = 0.5，group4使用3/(1+3) * 2 = 1.5</p>
+</blockquote>
+<p><a href="https://time.geekbang.org/column/article/313255">第6讲</a></p>
+<p>Q：写一个小程序，在容器中执行，它可以显示当前容器中所有进程总的CPU使用率。</p>
+<p>A：上邪忘川的回答可以作为一个参考。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="ch">#!/bin/bash</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nv">cpuinfo1</span><span class="o">=</span><span class="k">$(</span>cat<span class="w"> </span>/sys/fs/cgroup/cpu,cpuacct/cpuacct.stat<span class="k">)</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nv">utime1</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="nv">$cpuinfo1</span><span class="p">|</span>awk<span class="w"> </span><span class="s1">&#39;{print $2}&#39;</span><span class="k">)</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="nv">stime1</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="nv">$cpuinfo1</span><span class="p">|</span>awk<span class="w"> </span><span class="s1">&#39;{print $4}&#39;</span><span class="k">)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>sleep<span class="w"> </span><span class="m">1</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="nv">cpuinfo2</span><span class="o">=</span><span class="k">$(</span>cat<span class="w"> </span>/sys/fs/cgroup/cpu,cpuacct/cpuacct.stat<span class="k">)</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="nv">utime2</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="nv">$cpuinfo2</span><span class="p">|</span>awk<span class="w"> </span><span class="s1">&#39;{print $2}&#39;</span><span class="k">)</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="nv">stime2</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="nv">$cpuinfo2</span><span class="p">|</span>awk<span class="w"> </span><span class="s1">&#39;{print $4}&#39;</span><span class="k">)</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="nv">cpus</span><span class="o">=</span><span class="k">$((</span><span class="nv">utime2</span><span class="o">+</span><span class="nv">stime2</span><span class="o">-</span><span class="nv">utime1</span><span class="o">-</span><span class="nv">stime1</span><span class="k">))</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">cpus</span><span class="si">}</span><span class="s2">%&quot;</span>
+</code></pre></div>
+<p><a href="https://time.geekbang.org/column/article/315468">第8讲</a></p>
+<p>Q：在我们的例子<a href="https://github.com/chengyli/training/blob/main/memory/oom/start_container.sh">脚本</a>基础上，你可以修改一下，在容器刚一启动，就在容器对应的Memory Cgroup中禁止OOM，看看接下来会发生什么？</p>
+<p>A：通过“<strong>memory.oom_control</strong>”禁止OOM后，在容器中的进程不会发生OOM，但是也无法申请出超过“memory.limit_in_bytes”内存。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># cat start_container.sh</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1">#!/bin/bash</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>docker<span class="w"> </span>stop<span class="w"> </span>mem_alloc<span class="p">;</span>docker<span class="w"> </span>rm<span class="w"> </span>mem_alloc
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>--name<span class="w"> </span>mem_alloc<span class="w"> </span>registry/mem_alloc:v1
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>sleep<span class="w"> </span><span class="m">2</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="nv">CONTAINER_ID</span><span class="o">=</span><span class="k">$(</span>sudo<span class="w"> </span>docker<span class="w"> </span>ps<span class="w"> </span>--format<span class="w"> </span><span class="s2">&quot;{{.ID}}\t{{.Names}}&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>mem_alloc<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $1}&#39;</span><span class="k">)</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$CONTAINER_ID</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="nv">CGROUP_CONTAINER_PATH</span><span class="o">=</span><span class="k">$(</span>find<span class="w"> </span>/sys/fs/cgroup/memory/<span class="w"> </span>-name<span class="w"> </span><span class="s2">&quot;*</span><span class="nv">$CONTAINER_ID</span><span class="s2">*&quot;</span><span class="k">)</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$CGROUP_CONTAINER_PATH</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="nb">echo</span><span class="w"> </span><span class="m">536870912</span><span class="w"> </span>&gt;<span class="w"> </span><span class="nv">$CGROUP_CONTAINER_PATH</span>/memory.limit_in_bytes
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="nb">echo</span><span class="w"> </span><span class="m">1</span><span class="w"> </span>&gt;<span class="w"> </span><span class="nv">$CGROUP_CONTAINER_PATH</span>/memory.oom_control
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>cat<span class="w"> </span><span class="nv">$CGROUP_CONTAINER_PATH</span>/memory.limit_in_bytes
+</code></pre></div>
+<p><a href="https://time.geekbang.org/column/article/317216">第10讲</a></p>
+<p>Q：在一个有Swap分区的节点上用Docker启动一个容器，对它的Memory Cgroup控制组设置一个内存上限N，并且将memory.swappiness设置为0。这时，如果在容器中启动一个不断读写文件的程序，同时这个程序再申请1/2N的内存，请你判断一下，Swap分区中会有数据写入吗？</p>
+<p>A：Memory Cgroup参数memory.swappiness起到局部控制的作用，因为已经设置了memory.swappiness参数，全局参数swappiness参数失效，那么容器里就不能使用swap了。</p>
+<p><a href="https://time.geekbang.org/column/article/318173">第11讲</a></p>
+<p>Q：在这一讲OverlayFS的<a href="https://github.com/chengyli/training/blob/main/filesystem/overlayfs/test_overlayfs.sh">例子</a>的基础上，建立2个lowerdir的目录，并且在目录中建立相同文件名的文件，然后一起做一个overlay mount，看看会发生什么？</p>
+<p>A：这里引用上邪忘川同学的实验结果。</p>
+<p>实验过程如下，结果是lower1目录中的文件覆盖了lower2中同名的文件, 第一个挂载的目录优先级比较高</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="o">[[</span>root@localhost<span class="w"> </span>~<span class="o">]</span><span class="c1"># cat overlay.sh</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1">#!/bin/bash</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>umount<span class="w"> </span>./merged
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>rm<span class="w"> </span>upper<span class="w"> </span>lower1<span class="w"> </span>lower2<span class="w"> </span>merged<span class="w"> </span>work<span class="w"> </span>-r
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>mkdir<span class="w"> </span>upper<span class="w"> </span>lower1<span class="w"> </span>lower2<span class="w"> </span>merged<span class="w"> </span>work
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;I&#39;m from lower1!&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>lower1/in_lower.txt
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;I&#39;m from lower2!&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>lower2/in_lower.txt
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;I&#39;m from upper!&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>upper/in_upper.txt
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="c1"># `in_both` is in both directories</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;I&#39;m from lower1!&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>lower1/in_both.txt
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;I&#39;m from lower2!&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>lower2/in_both.txt
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;I&#39;m from upper!&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>upper/in_both.txt
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>sudo<span class="w"> </span>mount<span class="w"> </span>-t<span class="w"> </span>overlay<span class="w"> </span>overlay<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w"> </span>-o<span class="w"> </span><span class="nv">lowerdir</span><span class="o">=</span>./lower1:./lower2,upperdir<span class="o">=</span>./upper,workdir<span class="o">=</span>./work<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w"> </span>./merged
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="o">[</span>root@localhost<span class="w"> </span>~<span class="o">]</span><span class="c1"># sh overlay.sh</span>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="o">[</span>root@localhost<span class="w"> </span>~<span class="o">]</span><span class="c1"># cat merged/in_lower.txt</span>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>I<span class="err">&#39;</span>m<span class="w"> </span>from<span class="w"> </span>lower1!
+</code></pre></div>
+<p><a href="https://time.geekbang.org/column/article/318978">第12讲</a></p>
+<p>Q：在正文知识详解的部分，我们使用"xfs_quota"给目录打了project ID并且限制了文件写入的数据量。那么在做完限制之后，我们是否能用xfs_quota命令，查询到被限制目录的project ID和限制的数据量呢？</p>
+<p>A：xfs_quota不能直接得到一个目录的quota大小的限制，只可以看到project ID上的quota限制，不过我们可以用<a href="https://github.com/chengyli/training/blob/main/filesystem/quota/get_projectid.c">这段程序</a>来获得目录对应的project ID。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># xfs_quota -x -c &#39;report -h /&#39;</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>...
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>Project<span class="w"> </span>ID<span class="w">   </span>Used<span class="w">   </span>Soft<span class="w">   </span>Hard<span class="w"> </span>Warn/Grace
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>----------<span class="w"> </span>---------------------------------
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1">#0         105.6G      0      0  00 [------]</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1">#101            0      0    10M  00 [------]</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1"># ./get_proj /tmp/xfs_prjquota</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>Dir:<span class="w"> </span>/tmp/xfs_prjquota<span class="w"> </span>projectid<span class="w"> </span>is<span class="w"> </span><span class="m">101</span>
+</code></pre></div>
+<p><a href="https://time.geekbang.org/column/article/320123">第13讲</a></p>
+<p>Q：这是一道操作题，通过这个操作你可以再理解一下 blkio Cgroup与 Buffered I/O的关系。</p>
+<p>在Cgroup V1的环境里，我们在blkio Cgroup V1的例子基础上，把fio中“-direct=1”参数去除之后，再运行fio，同时运行iostat查看实际写入磁盘的速率，确认Cgroup V1 blkio无法对Buffered I/O限速。</p>
+<p>A: 这是通过iostat看到磁盘的写入速率，是可以突破cgroup V1 blkio中的限制值的。</p>
+<p><a href="https://time.geekbang.org/column/article/324122">第17讲</a></p>
+<p>Q：在这节课的最后，我提到“由于ipvlan/macvlan网络接口直接挂载在物理网络接口上，对于需要使用iptables规则的容器，比如Kubernetes里使用service的容器，就不能工作了”，请你思考一下这个判断背后的具体原因。</p>
+<p>A：ipvlan/macvlan工作在网络2层，而iptables工作在网络3层。所以用ipvlan/macvlan为容器提供网络接口，那么基于iptables的service服务就不工作了。</p>
+<p><a href="https://time.geekbang.org/column/article/324357">第18讲</a></p>
+<p>Q：在这一讲中，我们提到了Linux内核中的tcp_force_fast_retransmit()函数，那么你可以想想看，这个函数中的tp-&gt;recording和内核参数 /proc/sys/net/ipv4/tcp_reordering是什么关系？它们对数据包的重传会带来什么影响？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>static<span class="w"> </span>bool<span class="w"> </span>tcp_force_fast_retransmit<span class="o">(</span>struct<span class="w"> </span>sock<span class="w"> </span>*sk<span class="o">)</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="o">{</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">        </span>struct<span class="w"> </span>tcp_sock<span class="w"> </span>*tp<span class="w"> </span><span class="o">=</span><span class="w"> </span>tcp_sk<span class="o">(</span>sk<span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span>after<span class="o">(</span>tcp_highest_sack_seq<span class="o">(</span>tp<span class="o">)</span>,
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">                     </span>tp-&gt;snd_una<span class="w"> </span>+<span class="w"> </span>tp-&gt;reordering<span class="w"> </span>*<span class="w"> </span>tp-&gt;mss_cache<span class="o">)</span><span class="p">;</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="o">}</span>
+</code></pre></div>
+<p>A: 在TCP链接建立的时候，tp-&gt;reordering默认值是从/proc/sys/net/ipv4/tcp_reordering（默认值为3）获取的。之后根据网络的乱序情况，进行动态调整，最大可以增长到/proc/sys/net/ipv4/tcp_max_reordering (默认值为300)的大小。</p>
+<p><a href="https://time.geekbang.org/column/article/327107">第20讲</a></p>
+<p>Q：我在这一讲里提到了rootless container，不过对于rootless container的支持，还存在着不少的难点，比如容器网络的配置、Cgroup的配置，你可以去查阅一些资料，看看podman是怎么解决这些问题的。</p>
+<p>A：可以阅读一下<a href="https://github.com/containers/podman/blob/master/rootless.md">这篇文档</a>。</p>
+<h2 id="_2">专题加餐</h2>
+<p><a href="https://time.geekbang.org/column/article/340142">专题03</a></p>
+<p>Q：我们讲ftrace实现机制时，说过内核中的“inline函数”不能被ftrace到，你知道这是为什么吗？那么内核中的“static函数”可以被ftrace追踪到吗？</p>
+<p>A：inline函数在编译的时候被展开了，所以不能被ftrace到。而static函数需要看情况，如果加了编译优化参数“-finline-functions-called-once”，对于只被调用到一次的static函数也会当成inline函数处理，那么也不能被ftrace追踪到了。</p>
+<p><a href="https://time.geekbang.org/column/article/340934">专题04</a></p>
+<p>Q：想想看，当我们用kprobe为一个内核函数注册了probe之后，怎样能看到对应内核函数的第一条指令被替换了呢？</p>
+<p>A：<strong>首先可以参考莫名同学的答案：</strong></p>
+<blockquote>
+<p>关于思考题，想到一个比较笨拙的方法：gdb+qemu调试内核。先进入虚拟机在某个内核函数上注册一个kprobe，然后gdb远程调试内核，查看该内核函数的汇编指令（disass）是否被替换。应该有更简单的方法，这方面了解不深。</p>
+</blockquote>
+<p>另外，我们用gdb远程调试内核看也可以。还可以通过 /proc/kallsyms找到函数的地址，然后写个kernel module把从这个地址开始后面的几个字节dump出来，比较一下probe函数注册前后的值。</p>
 <div><strong>精选留言（1）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/1e/b6/d6/3b1fbf9b.jpg" width="30px"><span>2018</span> 👍（0） 💬（0）<div>强</div>2022-09-22</li><br/>
+<li><span>2018</span> 👍（0） 💬（0）<div>强</div>2022-09-22</li><br/>
 </ul>
 
 

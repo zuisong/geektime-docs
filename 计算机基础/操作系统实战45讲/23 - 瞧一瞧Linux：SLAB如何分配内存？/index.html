@@ -3436,8 +3436,86 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#kmem_cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      第一个kmem_cache
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kmem_cache_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      管理kmem_cache
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#slab_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      SLAB分配对象的过程
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SLAB分配对象的过程">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#slab_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      SLAB分配接口
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kmem_cache_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何查找kmem_cache结构
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      分配对象
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
   
 </li>
       
@@ -5763,8 +5841,86 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#kmem_cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      第一个kmem_cache
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kmem_cache_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      管理kmem_cache
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#slab_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      SLAB分配对象的过程
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SLAB分配对象的过程">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#slab_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      SLAB分配接口
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kmem_cache_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      如何查找kmem_cache结构
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      分配对象
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      重点回顾
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
   
 </li>
       
@@ -5802,9 +5958,430 @@
 <p>由于作者公开了实现方法，后来被Linux所借鉴，用于实现内核中更小粒度的内存分配。看看吧，你以为Linux很强大，真的强大吗？不过是站在巨人的肩膀上飞翔的。</p>
 <h3 id="slab_1">走进SLAB对象</h3>
 <p>何为SLAB对象？在SLAB分配器中，它把一个内存页面或者一组连续的内存页面，划分成大小相同的块，其中这一个小的内存块就是SLAB对象，但是这一组连续的内存页面中不只是SLAB对象，还有SLAB管理头和着色区。</p>
-<div><strong>精选留言（19）</strong></div>
+<p>我画个图你就明白了，如下所示。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/1b/22/1b210fe094e7eba4b19ef118f76e6322.jpg?wh=5881x2933" title="SLAB对象示意图" /></p>
+<p>上图中有一个内存页面和两个内存页面的SLAB，你可能对着色区有点陌生，我来给你讲解一下。</p>
+<p>这个着色区也是一块动态的内存块，建立SLAB时才会设置它的大小，目的是为了错开不同SLAB中的对象地址，降低硬件Cache行中的地址争用，以免导致Cache抖动效应，整个系统性能下降。</p>
+<p>SLAB头其实是一个数据结构，但是它不一定放在保存对象内存页面的开始。通常会有一个保存SLAB管理头的SLAB，在Linux中，SLAB管理头用kmem_cache结构来表示，代码如下。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>struct array_cache {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    unsigned int avail;
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    unsigned int limit;
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    void *entry[]; 
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>};
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>struct kmem_cache {
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    //是每个CPU一个array_cache类型的变量，cpu_cache是用于管理空闲对象的 
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    struct array_cache __percpu *cpu_cache;
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    unsigned int size; //cache大小
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    slab_flags_t flags;//slab标志
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    unsigned int num;//对象个数
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    unsigned int gfporder;//分配内存页面的order
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    gfp_t allocflags;
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    size_t colour;//着色区大小
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    unsigned int colour_off;//着色区的开始偏移
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    const char *name;//本SLAB的名字
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    struct list_head list;//所有的SLAB都要链接起来
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    int refcount;//引用计数
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    int object_size;//对象大小
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    int align;//对齐大小
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    struct kmem_cache_node *node[MAX_NUMNODES];//指向管理kmemcache的上层结构
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>};
+</code></pre></div>
+<p>上述代码中，有多少个CPU，就会有多少个array_cache类型的变量。这种为每个CPU构造一个变量副本的同步机制，就是<strong>每CPU变量</strong>（per-cpu-variable）。array_cache结构中"entry[]"表示了一个遵循LIFO顺序的数组，"avail"和"limit"分别指定了当前可用对象的数目和允许容纳对象的最大数目。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/83/b6/8392800e70d37795c902b0d5dfebe5b6.jpg?wh=4008x2196" title="kmem_cache结构图解" /></p>
+<h3 id="kmem_cache">第一个kmem_cache</h3>
+<p>第一个kmem_cache是哪里来的呢？其实它是静态定义在代码中的，如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>static struct kmem_cache kmem_cache_boot = {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    .batchcount = 1,
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    .limit = BOOT_CPUCACHE_ENTRIES,
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    .shared = 1,
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    .size = sizeof(struct kmem_cache),
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    .name = &quot;kmem_cache&quot;,
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>};
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>void __init kmem_cache_init(void)
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>{
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    int i;
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    //指向静态定义的kmem_cache_boot
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    kmem_cache = &amp;kmem_cache_boot;
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    for (i = 0; i &lt; NUM_INIT_LISTS; i++)
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>        kmem_cache_node_init(&amp;init_kmem_cache_node[i]);
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    //建立保存kmem_cache结构的kmem_cache
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    create_boot_cache(kmem_cache, &quot;kmem_cache&quot;,
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>        offsetof(struct kmem_cache, node) +
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>                  nr_node_ids * sizeof(struct kmem_cache_node *),
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>                  SLAB_HWCACHE_ALIGN, 0, 0);
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    //加入全局slab_caches链表中
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    list_add(&amp;kmem_cache-&gt;list, &amp;slab_caches);
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    {
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>        int nid;
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>        for_each_online_node(nid) {
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>            init_list(kmem_cache, &amp;init_kmem_cache_node[CACHE_CACHE + nid], nid);
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>            init_list(kmalloc_caches[KMALLOC_NORMAL][INDEX_NODE],                      &amp;init_kmem_cache_node[SIZE_NODE + nid], nid);
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>        }
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>    }
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>    //建立kmalloc函数使用的的kmem_cache
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>    create_kmalloc_caches(ARCH_KMALLOC_FLAGS);
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>}
+</code></pre></div>
+<h3 id="kmem_cache_1">管理kmem_cache</h3>
+<p>我们建好了第一个kmem_cache，以后kmem_cache越来越多，而且我们并没有看到kmem_cache结构中有任何指向内存页面的字段，但在kmem_cache结构中有个保存kmem_cache_node结构的指针数组。</p>
+<p>kmem_cache_node结构是每个内存节点对应一个，它就是用来管理kmem_cache结构的，它开始是静态定义的，初始化时建立了第一个kmem_cache结构之后，init_list函数负责一个个分配内存空间，代码如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>#define NUM_INIT_LISTS (2 * MAX_NUMNODES)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>//定义的kmem_cache_node结构数组
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>static struct kmem_cache_node __initdata init_kmem_cache_node[NUM_INIT_LISTS];
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>struct kmem_cache_node {
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    spinlock_t list_lock;//自旋锁
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    struct list_head slabs_partial;//有一部分空闲对象的kmem_cache结构
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    struct list_head slabs_full;//没有空闲对象的kmem_cache结构
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    struct list_head slabs_free;//对象全部空闲kmem_cache结构
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    unsigned long total_slabs; //一共多少kmem_cache结构
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    unsigned long free_slabs;  //空闲的kmem_cache结构
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    unsigned long free_objects;//空闲的对象
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    unsigned int free_limit;
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>};
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>static void __init init_list(struct kmem_cache *cachep, struct kmem_cache_node *list,
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>                int nodeid)
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>{
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    struct kmem_cache_node *ptr;
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>    //分配新的 kmem_cache_node 结构的空间
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    ptr = kmalloc_node(sizeof(struct kmem_cache_node), GFP_NOWAIT, nodeid);
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    BUG_ON(!ptr);
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>    //复制初始时的静态kmem_cache_node结构
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    memcpy(ptr, list, sizeof(struct kmem_cache_node));
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    spin_lock_init(&amp;ptr-&gt;list_lock);
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    MAKE_ALL_LISTS(cachep, ptr, nodeid);
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>    //设置kmem_cache_node的地址
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>    cachep-&gt;node[nodeid] = ptr;
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>}
+</code></pre></div>
+<p>我们第一次分配对象时，肯定没有对应的内存页面存放对象，那么SLAB模块就会调用<strong>cache_grow_begin函数</strong>获取内存页面，然后用获取的页面来存放对象，我们一起来看看代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>static void slab_map_pages(struct kmem_cache *cache, struct page *page,void *freelist)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>{
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    //页面结构指向kmem_cache结构
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    page-&gt;slab_cache = cache;
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    //指向空闲对象的链表
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    page-&gt;freelist = freelist;
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>}
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>static struct page *cache_grow_begin(struct kmem_cache *cachep,
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>                gfp_t flags, int nodeid)
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>{
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    void *freelist;
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    size_t offset;
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    gfp_t local_flags;
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    int page_node;
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    struct kmem_cache_node *n;
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    struct page *page;
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    WARN_ON_ONCE(cachep-&gt;ctor &amp;&amp; (flags &amp; __GFP_ZERO));
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    local_flags = flags &amp; (GFP_CONSTRAINT_MASK|GFP_RECLAIM_MASK);
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    //获取页面
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    page = kmem_getpages(cachep, local_flags, nodeid);
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>    //获取页面所在的内存节点号
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>    page_node = page_to_nid(page);
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>    //根据内存节点获取对应kmem_cache_node结构
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    n = get_node(cachep, page_node);
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>    //分配管理空闲对象的数据结构
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>    freelist = alloc_slabmgmt(cachep, page, offset,
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>            local_flags &amp; ~GFP_CONSTRAINT_MASK, page_node);
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>    //让页面中相关的字段指向kmem_cache和空闲对象
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>    slab_map_pages(cachep, page, freelist);
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>    //初始化空闲对象管理数据
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>    cache_init_objs(cachep, page);
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>    return page;
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>}
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>static void cache_grow_end(struct kmem_cache *cachep, struct page *page)
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>{
+<a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>    struct kmem_cache_node *n;
+<a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>    void *list = NULL;
+<a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>    if (!page)
+<a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>        return;
+<a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>    //初始化结page构的slab_list链表
+<a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a>    INIT_LIST_HEAD(&amp;page-&gt;slab_list);
+<a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a>    //根据内存节点获取对应kmem_cache_node结构.
+<a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a>    n = get_node(cachep, page_to_nid(page));
+<a id="__codelineno-3-46" name="__codelineno-3-46" href="#__codelineno-3-46"></a>    spin_lock(&amp;n-&gt;list_lock);
+<a id="__codelineno-3-47" name="__codelineno-3-47" href="#__codelineno-3-47"></a>    //slab计数增加
+<a id="__codelineno-3-48" name="__codelineno-3-48" href="#__codelineno-3-48"></a>    n-&gt;total_slabs++;
+<a id="__codelineno-3-49" name="__codelineno-3-49" href="#__codelineno-3-49"></a>    if (!page-&gt;active) {
+<a id="__codelineno-3-50" name="__codelineno-3-50" href="#__codelineno-3-50"></a>        //把这个page结构加入到kmem_cache_node结构的空闲链表中
+<a id="__codelineno-3-51" name="__codelineno-3-51" href="#__codelineno-3-51"></a>        list_add_tail(&amp;page-&gt;slab_list, &amp;n-&gt;slabs_free);
+<a id="__codelineno-3-52" name="__codelineno-3-52" href="#__codelineno-3-52"></a>        n-&gt;free_slabs++;
+<a id="__codelineno-3-53" name="__codelineno-3-53" href="#__codelineno-3-53"></a>    } 
+<a id="__codelineno-3-54" name="__codelineno-3-54" href="#__codelineno-3-54"></a>    spin_unlock(&amp;n-&gt;list_lock);
+<a id="__codelineno-3-55" name="__codelineno-3-55" href="#__codelineno-3-55"></a>}
+</code></pre></div>
+<p>上述代码中的注释已经很清楚了，cache_grow_begin函数会为kmem_cache结构分配用来存放对象的页面，随后会调用与之对应的cache_grow_end函数，把这页面挂载到kmem_cache_node结构的链表中，并让页面指向kmem_cache结构。</p>
+<p>这样kmem_cache_node，kmem_cache，page这三者之间就联系起来了。你再看一下后面的图，就更加清楚了。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/e7/30/e7b479af38d5ed1ab00f35b4fe88fe30.jpg?wh=5437x3654" title="SLAB全局结构示意图" /></p>
+<p>上图中page可能是一组连续的pages，但是只会把第一个page挂载到kmem_cache_node中，同时，在slab_map_pages函数中又让page指向了kmem_cache。</p>
+<p>但你要特别留意kmem_cache_node中的三个链表，它们分别挂载的pages，有一部分是空闲对象的page、还有对象全部都已经分配的page，以及全部都为空闲对象的page。这是为了提高分配时查找kmem_cache的性能。</p>
+<h2 id="slab_2">SLAB分配对象的过程</h2>
+<p>有了前面对SLAB数据结构的了解，SLAB分配对象的过程你自己也能推导出来，无非是根据请求分配对象的大小，查找对应的kmem_cache结构，接着从这个结构中获取arry_cache结构，然后分配对象。</p>
+<p>如果没有空闲对象了，就需要在kmem_cache对应的kmem_cache_node结构中查找有空闲对象的kmem_cache。如果还是没找到，最后就要分配内存页面新增kmem_cache结构了。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/78/fe/78868f267073d4b0a8fb73b15bb41bfe.jpg?wh=2828x2700" title="SLAB分配对象的过程图解" /></p>
+<p>下面我们从接口开始了解这些过程。</p>
+<h3 id="slab_3">SLAB分配接口</h3>
+<p>其实在Linux内核中，用的最多的是kmalloc函数，经常用于分配小的缓冲区，或者数据结构分配实例空间，这个函数就是SLAB分配接口，它是用来分配对象的，这个对象就是一小块内存空间。</p>
+<p>下面一起来看看代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>static __always_inline void *__do_kmalloc(size_t size, gfp_t flags,unsigned long caller)
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>{
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    struct kmem_cache *cachep;
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    void *ret;
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    if (unlikely(size &gt; KMALLOC_MAX_CACHE_SIZE))
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        return NULL;
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    //查找size对应的kmem_cache
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    cachep = kmalloc_slab(size, flags);
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    if (unlikely(ZERO_OR_NULL_PTR(cachep)))
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        return cachep;
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    //分配对象
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    ret = slab_alloc(cachep, flags, caller);
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    return ret;
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>}
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>void *__kmalloc(size_t size, gfp_t flags)
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>{
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    return __do_kmalloc(size, flags, _RET_IP_);
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>}
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>static __always_inline void *kmalloc(size_t size, gfp_t flags)
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>{
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    return __kmalloc(size, flags);
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>}
+</code></pre></div>
+<p>上面代码的流程很简单，就是在__do_kmalloc函数中，查找出分配大小对应的kmem_cache结构，然后调用slab_alloc函数进行分配。可以说，slab_alloc函数才是SLAB的接口函数，但是它的参数中<strong>必须要有kmem_cache结构</strong>。</p>
+<p>具体是如何查找的呢？我们这就来看看。</p>
+<h3 id="kmem_cache_2">如何查找kmem_cache结构</h3>
+<p>由于SLAB的接口函数slab_alloc，它的参数中必须要有kmem_cache结构指针，指定从哪个kmem_cache结构分配对象，所以在调用slab_alloc函数之前必须给出kmem_cache结构。</p>
+<p>我们怎么查找到它呢？这就需要调用kmalloc_slab函数了，代码如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>enum kmalloc_cache_type {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    KMALLOC_NORMAL = 0,
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    KMALLOC_RECLAIM,
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>#ifdef CONFIG_ZONE_DMA
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    KMALLOC_DMA,
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>#endif
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    NR_KMALLOC_TYPES
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>};
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>struct kmem_cache *kmalloc_caches[NR_KMALLOC_TYPES][KMALLOC_SHIFT_HIGH + 1] __ro_after_init ={ static u8 size_index[24] __ro_after_init = {
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    3,  /* 8 */
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    4,  /* 16 */
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    5,  /* 24 */
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    5,  /* 32 */
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    6,  /* 40 */
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    6,  /* 48 */
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    6,  /* 56 */
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    6,  /* 64 */
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    1,  /* 72 */
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>    1,  /* 80 */
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>    1,  /* 88 */
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>    1,  /* 96 */
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    7,  /* 104 */
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>    7,  /* 112 */
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>    7,  /* 120 */
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>    7,  /* 128 */
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>    2,  /* 136 */
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>    2,  /* 144 */
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>    2,  /* 152 */
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>    2,  /* 160 */
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>    2,  /* 168 */
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>    2,  /* 176 */
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>    2,  /* 184 */
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>    2   /* 192 */
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>};
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>//根据分配标志返回枚举类型，其实是0、1、2其中之一
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>static __always_inline enum kmalloc_cache_type kmalloc_type(gfp_t flags)
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>{
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>#ifdef CONFIG_ZONE_DMA
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a>    if (likely((flags &amp; (__GFP_DMA | __GFP_RECLAIMABLE)) == 0))
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>        return KMALLOC_NORMAL;
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a>    return flags &amp; __GFP_DMA ? KMALLOC_DMA : KMALLOC_RECLAIM;
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a>#else
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>    return flags &amp; __GFP_RECLAIMABLE ? KMALLOC_RECLAIM : KMALLOC_NORMAL;
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a>#endif
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a>}
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a>struct kmem_cache *kmalloc_slab(size_t size, gfp_t flags)
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a>{
+<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a>    unsigned int index;
+<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a>    //计算出index
+<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a>    if (size &lt;= 192) {
+<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a>        if (!size)
+<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a>            return ZERO_SIZE_PTR;
+<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a>        index = size_index[size_index_elem(size)];
+<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a>    } else {
+<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a>        if (WARN_ON_ONCE(size &gt; KMALLOC_MAX_CACHE_SIZE))
+<a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a>            return NULL;
+<a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a>        index = fls(size - 1);
+<a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a>    }
+<a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a>    return kmalloc_caches[kmalloc_type(flags)][index];
+<a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a>}
+</code></pre></div>
+<p>从上述代码，不难发现kmalloc_caches就是个全局的二维数组，kmalloc_slab函数只是根据分配大小和分配标志计算出了数组下标，最后取出其中kmem_cache结构指针。</p>
+<p>那么kmalloc_caches中的kmem_cache，它又是谁建立的呢？我们还是接着看代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>struct kmem_cache *__init create_kmalloc_cache(const char *name,
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>        unsigned int size, slab_flags_t flags,
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>        unsigned int useroffset, unsigned int usersize)
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>{
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    //从第一个kmem_cache中分配一个对象放kmem_cache
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    struct kmem_cache *s = kmem_cache_zalloc(kmem_cache, GFP_NOWAIT);
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    if (!s)
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>        panic(&quot;Out of memory when creating slab %s\n&quot;, name);
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    //设置s的对齐参数，处理s的freelist就是arr_cache
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    create_boot_cache(s, name, size, flags, useroffset, usersize);
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    list_add(&amp;s-&gt;list, &amp;slab_caches);
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    s-&gt;refcount = 1;
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    return s;
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>}
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>//新建一个kmem_cache
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>static void __init new_kmalloc_cache(int idx, enum kmalloc_cache_type type, slab_flags_t flags)
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>{
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>    if (type == KMALLOC_RECLAIM)
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>        flags |= SLAB_RECLAIM_ACCOUNT;
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>        //根据kmalloc_info中信息建立一个kmem_cache
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>    kmalloc_caches[type][idx] = create_kmalloc_cache(
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>                    kmalloc_info[idx].name[type],
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>                    kmalloc_info[idx].size, flags, 0,
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>                    kmalloc_info[idx].size);
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>}
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>//建立所有的kmalloc_caches中的kmem_cache
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>void __init create_kmalloc_caches(slab_flags_t flags)
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>{
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>    int i;
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>    enum kmalloc_cache_type type;
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>    for (type = KMALLOC_NORMAL; type &lt;= KMALLOC_RECLAIM; type++) {
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>        for (i = KMALLOC_SHIFT_LOW; i &lt;= KMALLOC_SHIFT_HIGH; i++) {
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a>            if (!kmalloc_caches[type][i])
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a>                //建立一个新的kmem_cache
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a>                new_kmalloc_cache(i, type, flags);
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a>            if (KMALLOC_MIN_SIZE &lt;= 32 &amp;&amp; i == 6 &amp;&amp;
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>                    !kmalloc_caches[type][1])
+<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a>                new_kmalloc_cache(1, type, flags);
+<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>            if (KMALLOC_MIN_SIZE &lt;= 64 &amp;&amp; i == 7 &amp;&amp;
+<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a>                    !kmalloc_caches[type][2])
+<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a>                new_kmalloc_cache(2, type, flags);
+<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a>        }
+<a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a>    }
+<a id="__codelineno-6-45" name="__codelineno-6-45" href="#__codelineno-6-45"></a>}
+</code></pre></div>
+<p>到这里，__do_kmalloc函数中根据分配对象大小查找的所有kmem_cache结构，我们就建立好了，保存在kmalloc_caches数组中。下面我们再去看看对象是如何分配的。</p>
+<h3 id="_1">分配对象</h3>
+<p>下面我们从slab_alloc函数开始探索对象的分配过程，slab_alloc函数的第一个参数就kmem_cache结构的指针，表示从该kmem_cache结构中分配对象。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>static __always_inline void *slab_alloc(struct kmem_cache *cachep, gfp_t flags, unsigned long caller)
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>{
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    unsigned long save_flags;
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    void *objp;
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    //关中断
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    local_irq_save(save_flags);
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    //分配对象
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    objp = __do_cache_alloc(cachep, flags);
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    //恢复中断
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    local_irq_restore(save_flags);
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    return objp;
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>}
+</code></pre></div>
+<p>接口函数总是简单的，真正干活的是__do_cache_alloc函数，下面我们就来看看这个函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>static inline void *____cache_alloc(struct kmem_cache *cachep, gfp_t flags)
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>{
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    void *objp;
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    struct array_cache *ac;
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    //获取当前cpu在cachep结构中的array_cache结构的指针
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    ac = cpu_cache_get(cachep);
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    //如果ac中的avail不为0,说明当前kmem_cache结构中freelist是有空闲对象
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    if (likely(ac-&gt;avail)) {
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        ac-&gt;touched = 1;
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>        //空间对象的地址保存在ac-&gt;entry
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>        objp = ac-&gt;entry[--ac-&gt;avail];
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>        goto out;
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    }
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    objp = cache_alloc_refill(cachep, flags);
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>out:
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    return objp;
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>}
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>static __always_inline void *__do_cache_alloc(struct kmem_cache *cachep, gfp_t flags)
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>{
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>    return ____cache_alloc(cachep, flags);
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>}
+</code></pre></div>
+<p>上述代码中真正做事的函数是<strong>____cache_alloc函数</strong>，它首先获取了当前kmem_cache结构中指向array_cache结构的指针，找到它里面空闲对象的地址（如果你不懂array_cache结构，请回到SLAB对象那一小节复习），然后在array_cache结构中取出一个空闲对象地址返回，这样就分配成功了。</p>
+<p>这个速度是很快的，如果array_cache结构中没有空闲对象了，就会调用cache_alloc_refill函数。那这个函数又干了什么呢？我们接着往下看。代码如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>static struct page *get_first_slab(struct kmem_cache_node *n, bool pfmemalloc)
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>{
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    struct page *page;
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    assert_spin_locked(&amp;n-&gt;list_lock);
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    //首先从kmem_cache_node结构中的slabs_partial链表上查看有没有page
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    page = list_first_entry_or_null(&amp;n-&gt;slabs_partial, struct page,slab_list);
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    if (!page) {
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    //如果没有
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>        n-&gt;free_touched = 1;
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    //从kmem_cache_node结构中的slabs_free链表上查看有没有page
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>        page = list_first_entry_or_null(&amp;n-&gt;slabs_free, struct page,slab_list);
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>        if (page)
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>            n-&gt;free_slabs--; //空闲slab计数减一
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    }
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    //返回page
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>    return page;
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>}
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>static void *cache_alloc_refill(struct kmem_cache *cachep, gfp_t flags)
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>{
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>    int batchcount;
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>    struct kmem_cache_node *n;
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>    struct array_cache *ac, *shared;
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>    int node;
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>    void *list = NULL;
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>    struct page *page;
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>    //获取内存节点
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>    node = numa_mem_id();
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>    ac = cpu_cache_get(cachep);
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>    batchcount = ac-&gt;batchcount;
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>    //获取cachep所属的kmem_cache_node
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>    n = get_node(cachep, node);
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>    shared = READ_ONCE(n-&gt;shared);
+<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>    if (!n-&gt;free_objects &amp;&amp; (!shared || !shared-&gt;avail))
+<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>        goto direct_grow;
+<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>    while (batchcount &gt; 0) {
+<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a>        //获取kmem_cache_node结构中其它kmem_cache,返回的是page，而page会指向kmem_cache
+<a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a>        page = get_first_slab(n, false);
+<a id="__codelineno-9-38" name="__codelineno-9-38" href="#__codelineno-9-38"></a>        if (!page)
+<a id="__codelineno-9-39" name="__codelineno-9-39" href="#__codelineno-9-39"></a>            goto must_grow;
+<a id="__codelineno-9-40" name="__codelineno-9-40" href="#__codelineno-9-40"></a>        batchcount = alloc_block(cachep, ac, page, batchcount);
+<a id="__codelineno-9-41" name="__codelineno-9-41" href="#__codelineno-9-41"></a>    }
+<a id="__codelineno-9-42" name="__codelineno-9-42" href="#__codelineno-9-42"></a>must_grow:
+<a id="__codelineno-9-43" name="__codelineno-9-43" href="#__codelineno-9-43"></a>    n-&gt;free_objects -= ac-&gt;avail;
+<a id="__codelineno-9-44" name="__codelineno-9-44" href="#__codelineno-9-44"></a>direct_grow:
+<a id="__codelineno-9-45" name="__codelineno-9-45" href="#__codelineno-9-45"></a>    if (unlikely(!ac-&gt;avail)) {
+<a id="__codelineno-9-46" name="__codelineno-9-46" href="#__codelineno-9-46"></a>        //分配新的kmem_cache并初始化
+<a id="__codelineno-9-47" name="__codelineno-9-47" href="#__codelineno-9-47"></a>        page = cache_grow_begin(cachep, gfp_exact_node(flags), node);
+<a id="__codelineno-9-48" name="__codelineno-9-48" href="#__codelineno-9-48"></a>        ac = cpu_cache_get(cachep);
+<a id="__codelineno-9-49" name="__codelineno-9-49" href="#__codelineno-9-49"></a>        if (!ac-&gt;avail &amp;&amp; page)
+<a id="__codelineno-9-50" name="__codelineno-9-50" href="#__codelineno-9-50"></a>            alloc_block(cachep, ac, page, batchcount);
+<a id="__codelineno-9-51" name="__codelineno-9-51" href="#__codelineno-9-51"></a>        //让page挂载到kmem_cache_node结构的slabs_list链表上
+<a id="__codelineno-9-52" name="__codelineno-9-52" href="#__codelineno-9-52"></a>        cache_grow_end(cachep, page);
+<a id="__codelineno-9-53" name="__codelineno-9-53" href="#__codelineno-9-53"></a>        if (!ac-&gt;avail)
+<a id="__codelineno-9-54" name="__codelineno-9-54" href="#__codelineno-9-54"></a>            return NULL;
+<a id="__codelineno-9-55" name="__codelineno-9-55" href="#__codelineno-9-55"></a>    }
+<a id="__codelineno-9-56" name="__codelineno-9-56" href="#__codelineno-9-56"></a>    ac-&gt;touched = 1;
+<a id="__codelineno-9-57" name="__codelineno-9-57" href="#__codelineno-9-57"></a>    //重新分配
+<a id="__codelineno-9-58" name="__codelineno-9-58" href="#__codelineno-9-58"></a>    return ac-&gt;entry[--ac-&gt;avail];
+<a id="__codelineno-9-59" name="__codelineno-9-59" href="#__codelineno-9-59"></a>}
+</code></pre></div>
+<p>调用cache_alloc_refill函数的过程，主要的工作都有哪些呢？我给你梳理一下。</p>
+<p>首先，获取了cachep所属的kmem_cache_node。</p>
+<p>然后调用get_first_slab，获取kmem_cache_node结构还有没有包含空闲对象的kmem_cache。但是请注意，这里返回的是page，因为page会指向kmem_cache结构，page所代表的物理内存页面，也保存着kmem_cache结构中的对象。</p>
+<p>最后，如果kmem_cache_node结构没有包含空闲对象的kmem_cache了，就必须调用cache_grow_begin函数，找伙伴系统分配新的内存页面，而且还要找第一个kmem_cache分配新的对象，来存放kmem_cache结构的实例变量，并进行必要的初始化。</p>
+<p>这些步骤完成之后，再调用cache_grow_end函数，把刚刚分配的page挂载到kmem_cache_node结构的slabs_list链表上。因为cache_grow_begin和cache_grow_end函数在前面已经分析过了，这里不再赘述。</p>
+<h2 id="_2">重点回顾</h2>
+<p>今天的内容讲完了，我来帮你梳理一下本课程的重点。</p>
+<p>1.为了分配小于1个page的小块内存，Linux实现了SLAB，用kmem_cache结构管理page对应内存页面上小块内存对象，然后让该page指向kmem_cache，由kmem_cache_node结构管理多个page。</p>
+<p>2.我们从Linux内核中使用的kmalloc函数入手，了解了SLAB下整个内存对象的分配过程。</p>
+<p>到此为止，我们对SLAB的研究就告一段落了，是不是感觉和Cosmos内存管理有些相像而又不同呢？甚至我们Cosmos内存管理要更为简洁和高效。</p>
+<h2 id="_3">思考题</h2>
+<p>Linux的SLAB，使用kmalloc函数能分配多大的内存对象呢？</p>
+<p>欢迎你在留言区跟我交流互动，也欢迎你把这节课分享给你的同事、朋友，跟他一起研究SLAB相关的内容。</p>
+<p>我是LMOS，我们下节课见！</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/bb/85/191eea69.jpg" width="30px"><span>搬铁少年ai</span> 👍（5） 💬（2）<div>回答有的同学关于为什么是196大小的问题
+<li><span>搬铁少年ai</span> 👍（5） 💬（2）<div>回答有的同学关于为什么是196大小的问题
 
 这里196大小的对象，应该是专门针对256B以下小内存进行的优化，正常情况支持的对象大小都是2的n次方，2的七次方是128，8次方就是256了。所以这里在不违反缓存对其的前提下，单独支持了196大小的对象。
 
@@ -5812,7 +6389,7 @@
 
 除了192，另外在2的6次方和7次方之间，也特殊支持了96b大小的对象，同样是类似的原理。
 
-理论上能够背cache line大小整除的都可以特殊支持，只不过256以上的对象可能不常见，slab申请了特殊大小的对象却没有人用，反倒是一种浪费</div>2021-11-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ec/13/49e98289.jpg" width="30px"><span>neohope</span> 👍（15） 💬（2）<div>一、数据结构
+理论上能够背cache line大小整除的都可以特殊支持，只不过256以上的对象可能不常见，slab申请了特殊大小的对象却没有人用，反倒是一种浪费</div>2021-11-05</li><br/><li><span>neohope</span> 👍（15） 💬（2）<div>一、数据结构
 系统有一个全局kmem_cache_node数组，每一个kmem_cache_node结构，对应一个内存节点
 
 kmem_cache_node结构，用三个链表管理内存节点的全部kmem_cache【slab管理结构】，包括：
@@ -5864,7 +6441,7 @@ kmalloc-&gt;__kmalloc-&gt;__do_kmalloc
 四、对象回收
 kfree-&gt;__cache_free-&gt;___cache_free-&gt;__free_one
 将对象清空后，还给了CPU的对应的array_cache
-</div>2021-07-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/43/61/eeefa369.jpg" width="30px"><span>tony</span> 👍（2） 💬（1）<div>既然已经有了slab分配机制，为什么在用户态还有ptmalloc以及tcmalloc？它们侧重点有什么不一样</div>2022-11-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/06/7e/735968e2.jpg" width="30px"><span>西门吹牛</span> 👍（2） 💬（1）<div>之前学 netty，netty 中用到了伙伴算法实现内存分配与释放，说下 netty 中的实现吧：
+</div>2021-07-07</li><br/><li><span>tony</span> 👍（2） 💬（1）<div>既然已经有了slab分配机制，为什么在用户态还有ptmalloc以及tcmalloc？它们侧重点有什么不一样</div>2022-11-21</li><br/><li><span>西门吹牛</span> 👍（2） 💬（1）<div>之前学 netty，netty 中用到了伙伴算法实现内存分配与释放，说下 netty 中的实现吧：
 首先会预申请一大块内存 PoolArena，内部由 6 个 PoolChunkList，和俩个 PoolSubpage[]
 ● 6 个 PoolChunkList：分别是 qInit、q000、q025、q050、q075、q100
   ○ Netty 根据 PoolChunk 的使用率，将他们分别放入对应的 PoolChunkList 中，目的减少内存碎片
@@ -5889,10 +6466,10 @@ kfree-&gt;__cache_free-&gt;___cache_free-&gt;__free_one
 
 当然，其中还有很多细节，比如是否池化，内存释放之后，是直接归还，还是先缓存起来，下次在用，多线程申请的时候，怎么避免竞争等问题
 
-</div>2022-07-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/da/b5/9d1f2f55.jpg" width="30px"><span>朱熙</span> 👍（2） 💬（1）<div>linux内核包括三种小对象管理方式，slab，slub和slob，其中slob效率较低用于嵌入式等，linux默认使用slub</div>2021-07-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2d/06/30/c26ea06a.jpg" width="30px"><span>艾恩凝</span> 👍（1） 💬（1）<div>打卡，看了记，记了忘，忘了看，内存的相关学习，我在路上</div>2022-04-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/bb/85/191eea69.jpg" width="30px"><span>搬铁少年ai</span> 👍（1） 💬（1）<div>请教老师，为什么有的资料说struct page就是slab，您这里说kmem_cache是描述slab，有点糊涂。</div>2021-11-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/bb/85/191eea69.jpg" width="30px"><span>搬铁少年ai</span> 👍（1） 💬（1）<div>请教老师，我看kmem_cache源码里的node是一个指向kmem_cache_node的指针数组，您这里给的是一个指针，如果是指针我是理解的，但是如果是指针数组，我不明白为什么需要多个node管理kmem_cache(slab头)</div>2021-11-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/82/0c/cc106ab1.jpg" width="30px"><span>Samaritan.</span> 👍（1） 💬（1）<div>“在 Linux 中，SLAB 管理头用 kmem_cache 结构来表示，代码如下”，请问一下，作者引用的是linux的哪个内核版本的代码呀？</div>2021-09-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/27/f8/2c/92969c48.jpg" width="30px"><span>青玉白露</span> 👍（1） 💬（1）<div>其实在 kmalloc_slab 函数已经写明了，最大是192，单位应该是B吧？</div>2021-07-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/52/40/e57a736e.jpg" width="30px"><span>pedro</span> 👍（1） 💬（1）<div>Cosmos YYDS！！！
-问题答案看代码注释，最大192</div>2021-06-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/3b/d7/42/d37aaa5b.jpg" width="30px"><span>小灰象</span> 👍（0） 💬（1）<div>翻过内存管理的大山啦！可喜可贺！！！</div>2024-08-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/fa/b0/f70ec8a0.jpg" width="30px"><span>弘文要努力</span> 👍（0） 💬（1）<div>请问老师的源码从哪里获取呢？</div>2022-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/27/f8/2c/92969c48.jpg" width="30px"><span>青玉白露</span> 👍（0） 💬（1）<div>思考题有点像脑筋急转弯······
+</div>2022-07-06</li><br/><li><span>朱熙</span> 👍（2） 💬（1）<div>linux内核包括三种小对象管理方式，slab，slub和slob，其中slob效率较低用于嵌入式等，linux默认使用slub</div>2021-07-03</li><br/><li><span>艾恩凝</span> 👍（1） 💬（1）<div>打卡，看了记，记了忘，忘了看，内存的相关学习，我在路上</div>2022-04-22</li><br/><li><span>搬铁少年ai</span> 👍（1） 💬（1）<div>请教老师，为什么有的资料说struct page就是slab，您这里说kmem_cache是描述slab，有点糊涂。</div>2021-11-03</li><br/><li><span>搬铁少年ai</span> 👍（1） 💬（1）<div>请教老师，我看kmem_cache源码里的node是一个指向kmem_cache_node的指针数组，您这里给的是一个指针，如果是指针我是理解的，但是如果是指针数组，我不明白为什么需要多个node管理kmem_cache(slab头)</div>2021-11-02</li><br/><li><span>Samaritan.</span> 👍（1） 💬（1）<div>“在 Linux 中，SLAB 管理头用 kmem_cache 结构来表示，代码如下”，请问一下，作者引用的是linux的哪个内核版本的代码呀？</div>2021-09-22</li><br/><li><span>青玉白露</span> 👍（1） 💬（1）<div>其实在 kmalloc_slab 函数已经写明了，最大是192，单位应该是B吧？</div>2021-07-13</li><br/><li><span>pedro</span> 👍（1） 💬（1）<div>Cosmos YYDS！！！
+问题答案看代码注释，最大192</div>2021-06-30</li><br/><li><span>小灰象</span> 👍（0） 💬（1）<div>翻过内存管理的大山啦！可喜可贺！！！</div>2024-08-26</li><br/><li><span>弘文要努力</span> 👍（0） 💬（1）<div>请问老师的源码从哪里获取呢？</div>2022-04-17</li><br/><li><span>青玉白露</span> 👍（0） 💬（1）<div>思考题有点像脑筋急转弯······
 几处的注释都表明了最大值是192
-不过这个值是怎么定的呢？</div>2021-06-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3e/e7/261711a5.jpg" width="30px"><span>blentle</span> 👍（0） 💬（1）<div>最多192吧，
+不过这个值是怎么定的呢？</div>2021-06-30</li><br/><li><span>blentle</span> 👍（0） 💬（1）<div>最多192吧，
 
 &#47;&#47;计算出index
     if (size &lt;= 192) {
@@ -5903,9 +6480,7 @@ kfree-&gt;__cache_free-&gt;___cache_free-&gt;__free_one
         if (WARN_ON_ONCE(size &gt; KMALLOC_MAX_CACHE_SIZE))
             return NULL;
         index = fls(size - 1);
-    }</div>2021-06-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/3b/e0/9b/6a227f73.jpg" width="30px"><span>建涛</span> 👍（0） 💬（0）<div>老师您好，我看您给出的源码，在发现没有空闲内存对象的时候，会新建kmem_cache实例。但我看具体代码，好像是将新增的page挂载到原先的kmem_cache上面来扩展slab，求解惑。</div>2025-02-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/3b/e0/9b/6a227f73.jpg" width="30px"><span>建涛</span> 👍（0） 💬（0）<div>if (unlikely(!ac-&gt;avail)) { &#47;&#47;分配新的kmem_cache并初始化 page = cache_grow_begin(cachep, gfp_exact_node(flags), node); ac = cpu_cache_get(cachep); if (!ac-&gt;avail &amp;&amp; page) alloc_block(cachep, ac, page, batchcount); &#47;&#47;让page挂载到kmem_cache_node结构的slabs_list链表上 cache_grow_end(cachep, page); if (!ac-&gt;avail) return NULL; }           &#39;
-老师您好,这段代码好像没有分配新的kmem_cache实例呀，而是将新的page挂载到原先的cachep上诶，求老师解答，疑惑很久了。呜呜呜</div>2025-02-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/37/4f/ef/4d4b1260.jpg" width="30px"><span>庄重</span> 👍（0） 💬（0）<div>我有个疑惑，slab分配器和伙伴算法管理的是虚拟内存还是物理内存？
-因为我目前认知是最底层的物理内存管理，在这之上是mmu和分页(10-10-12分页等)开启了虚拟内存的映射，上面就是虚拟内存的管理算法，我困惑的点是这两种算法在linux中属于管理物理内存还是虚拟内存。</div>2024-03-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/bb/85/191eea69.jpg" width="30px"><span>搬铁少年ai</span> 👍（0） 💬（0）<div>SLAB 支持的最大 size 不是 2 的 25 次方 32MB 吗？大家说的 192B 是为什么呢？</div>2021-11-05</li><br/>
+    }</div>2021-06-30</li><br/>
 </ul>
 
 

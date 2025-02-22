@@ -1557,6 +1557,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      先补个课：关于隐式的构造方法
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#super" class="md-nav__link">
+    <span class="md-ellipsis">
+      非派生类是不用调用super()的
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      定制的构造方法
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      其他
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4822,6 +4867,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      先补个课：关于隐式的构造方法
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#super" class="md-nav__link">
+    <span class="md-ellipsis">
+      非派生类是不用调用super()的
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      定制的构造方法
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      其他
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4859,25 +4949,159 @@
 <li>使用ECMAScript 6之后的类。</li>
 </ol>
 <p>从根底上来说，这两种方法的构建过程都是在JavaScript引擎中事先定义好了的，例如在旧式风格的构造器中（以代码<code>new X</code>为例），对象<code>this</code>实际上是由new运算依据<code>X.prototype</code>来创建的。循此前例，ECMAScript 6中的类，在创建<code>this</code>对象时也需要这个<code>X.prototype</code>来作为原型。</p>
+<p>但是，按照ECMAScript 6的设计，创建这个<code>this</code>对象的行为与权力，将通过<code>super()</code>被层层转交，直到父类或祖先类中有能力创建该对象的那个构造器或类为止。而在这时，父类是不可能知道<code>new X</code>运算中的这个子类为何的，因为父类通常是更早先被声明出来的。既然它的代码一早就被决定了，那么对子类透明也就是正常的了。</p>
+<p>于是真正的矛盾在这时候就出现了：<strong>父类并不知道子类<code>X</code>，却又需要<code>X.prototype</code>来为实例<code>this</code>设置原型。</strong></p>
+<p>ECMAScript为此提出了<code>new.target</code>这个东西，它就指向上面的<code>X</code>，并且随着<code>super()</code>调用一层层地向上传递，以便最终创建者类可以使用它。也就是说，以之前讨论过的<code>Date()</code>为例，它的构建过程必然包括“类似于”如下两行代码来处理<code>this</code>：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>// 在JavaScript内置类Date()中可能的处理逻辑
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>function _Date() {
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  this = Object.Create(Date.prototype, { _internal_slots });
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  Object.setPrototypeOf(this, new.target.prototype);
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  ...
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>}
+</code></pre></div>
+<ol>
+<li>依据父类的原型，也就是Date.prototype来创建对象实例this，因为它是父类创建出来的；</li>
+<li>置this实例的原型为子类的prototype，也就是new.target.prototype，因为它最终是子类的实例。</li>
+</ol>
+<p>这也就是为什么Proxy()类的construct句柄与Reflect.construct()方法中都需要传递一个称为<code>_newTarget</code>_的额外参数的原因。<code>new.target</code>这个元属性，事实上就是在构造过程中，在<code>super()</code>调用的参数界面上传递的。只不过你在构造方法中写<code>super()</code>的时候，是JavaScript引擎隐式地帮你传递了这个参数而已。</p>
+<p>你可能已经发现了问题的关键：<strong>是<code>super()</code>在帮助你传递这个<code>new.target</code>参数！</strong></p>
+<p>那么，如果函数中没有调用<code>super()</code>呢？</p>
+<h2 id="_2">先补个课：关于隐式的构造方法</h2>
+<p>在之前的课程中我提及过，当类声明中没有“constructor()”方法时，JavaScript会主动为它创建一个。关于这一点当时并没有展开来细讲，所以这里先补个课。</p>
+<p>首先，你通常写一个类的时候，都不太会主动去声明构造方法“constructor()”。因为多数情况下，类主要是定义它的实例的那些性质，例如方法或属性存取器。极端的情况下，你也可能只写一个空的类，只是为了将父类做一次简单的派生。例如：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>class MyClass extends Object {}
+</code></pre></div>
+<p>无论是哪种情况，总之<strong>你就是没有写“constructor()”方法</strong>。有趣的是，事实上JavaScript初始化出来的这个MyClass类，（它作为一个函数）就是指向那个“constructor()”方法的，两者是同一个东西。</p>
+<p>不过，这一点不太容易证实。因为在“constructor()”方法内部无法访问它自身，不能写出类似“<em>constructor===MyClass</em>”这样的检测条件来。所以，你只能在ECMAScript的规范文档中去确认这一点。</p>
+<p>那么，既然MyClass就是constructor()方法，而用户代码又没有声明这个方法。那么该怎么办呢？</p>
+<p>ECMAScript规范就约定，在这种情况下，引擎需要向用户代码中插入一段硬代码。也就是帮你写一个缺省的构造方法，然后引擎为这个硬代码的代码文本动态地生成一个“构造方法”声明，最后再将它初始化为类MyClass()。这里的“硬代码”包括两个代码片断，分别对应于“有/没有”<code>extends</code>声明的情况。如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>// 如果在class声明中有extends XXX
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>class MyClass extends XXX {
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  // 自动插入的缺省构造方法
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  constructor(...args) {
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    super(...args);
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  }
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>  ...
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>}
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>// 如果在class声明中没有声明extends
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>class MyClass {
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>  // 自动插入的缺省构造方法
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>  constructor() {}
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>  ...
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>}
+</code></pre></div>
+<p>在声明中如果有extends语法的话，缺省构造方法中就插入一个SuperCall()；而如果声明中没有extends，那么缺省构造方法就是一段空的代码，什么也没有。</p>
+<p>所以，现在你看到了你所提出的问题的第一个答案：</p>
+<p>如果没有声明构造方法（因此没有super()调用），那么就让引擎偷偷声明一个。</p>
+<h2 id="super">非派生类是不用调用super()的</h2>
+<p>另一种特殊情况就是上面的这种非派生类，也就在类声明中语法中没有“extends XXX”的这种情况。上面的硬代码中，JavaScript引擎为它生成的就是一个空的构造方法，目的呢，也就是为了创建类所对应的那个函数体。并且，貌似别无它用。</p>
+<p>这种非派生类的声明非常特别，本质上来说，它是兼容旧的JavaScript构造器声明的一种语法。也就是说，如果“extends XXX”不声明，那么空的构造方法和空的函数一样；并且即使是声明了具体的构造方法，那么它的行为也与传统的构造函数一样。</p>
+<p>为了这种一致性，当这种非派生类的构造方法返回无效值时，它和传统的构造函数也会发生相同的行为——“返回已创建的<code>this</code>”。例如：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>class MyClass extends Object {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  constructor() {
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    return 1;
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  }
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>}
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>function MyConstructor() {
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>  return 1;
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>}
+</code></pre></div>
+<p>测试如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>&gt; new MyClass;
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>{}
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>&gt; new MyConstructor;
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>{}
+</code></pre></div>
+<p>这样的相似性还包括一个重要的、与今天讨论的主题相关的特性：**非派生类也不需要调用<code>super()</code>。**至于原因，则是非常明显的，因为“创建<code>this</code>实例”的行为是由引擎隐式完成的，对于传统的构造器是这样，对于非派生类的构造方法，也是这样。二者的行为一致。</p>
+<p>那么这种情况下还有没有“new.target”呢？事实是：</p>
+<p>在传统的构造函数和非派生类的构造方法中，一样是有<code>new.target</code>的。</p>
+<p>然而为什么呢？<code>new.target</code>是需要用<code>super()</code>来传递的呀？！</p>
+<p>是的，这两种函数与类的确不调用<code>super()</code>，但这只说明它不需要向父类传递<code>new.target</code>而已。要知道，当它自已作为父类时，还是需要接受由它的子类传递来的那些<code>new.target</code>的。</p>
+<p>所以，你所提出的问题还有第二个答案：</p>
+<p>如果是不使用<code>super()</code>调用的类或构造器函数，那么可以让它做根类（祖先类）。</p>
+<h2 id="_3">定制的构造方法</h2>
+<p>你应该还记得，上面这两种情况的类或构造器函数都是可以通过<code>return</code>来返回值的。之前的课程中也一再强调过：</p>
+<ul>
+<li>在这样的类中返回非对象值，那么就默认替换成已创建的<code>this</code>；</li>
+<li>返回通过<code>return</code>传出的对象（也就是一个用户定制的创建过程）。</li>
+</ul>
+<p>所以如果是用户定制的创建过程，那么就回到了最开始的那个问题上：</p>
+<p>父类并不知道子类<code>X</code>，却又需要<code>X.prototype</code>来为实例<code>this</code>设置原型。</p>
+<p>因此事实上如果用户要在“根类/祖先类”的层级上实现一个定制过程，并且还需要返回一个子类所需要的实例，那么它除了自己创建<code>this</code>之外，还需要调用一个为实例<code>x</code>置它的类原型X.prototype的过程：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>// 参见本讲开始的_Date()过程
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>Object.setPrototypeOf(x, X.prototype)
+</code></pre></div>
+<p>由于<code>X.prototype</code>是子类通过<code>super()</code>传递来的，因此作为父类的<code>MyClass</code>中通常需要处理的代码，就变成了<code>为this引用置new.target.prototype这个原型</code>。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>// （也就是）
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>Object.setPrototypeOf(this, new.target.prototype);
+</code></pre></div>
+<p>然而还有一种更加特殊的情况：类的构造方法中也可能没有<code>this</code>这个引用。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>class MyClass extends null {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>  constructor() {
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    ...
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>  }
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>}
+</code></pre></div>
+<p>例如，当你为extends这个声明置null值时，由于<code>extends</code>声明<code>MyClass</code>派生自<code>null</code>（也就是没有原型），那么在构造方法中也是不能调用<code>super()</code>的。并且由于没有原型，JavaScript引擎也不会缺省为这个<code>MyClass</code>创建<code>this</code>实例。所以，在这个“constructor()”构造方法中，既没有<code>this</code>也不能调用<code>super()</code>。</p>
+<p>怎么办呢？</p>
+<p>你必须确信这样的类只能用作根类（显然，它不是任何东西派生出来的子类）。因此，在语义上，它可以自己创建一个实例。也就是说，这样的根类之所以存在的目的，就是用来替代本讲前面讨论的所有过程，以为“它的子类创建一个<code>this</code>实例”为己任。因此，完整实现这一目的的最简单方式，就是本讲标题中的这一行代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>class MyClass extends null {
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  constructor() {
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    return Object.create(new.target.prototype);
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  }
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>}
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>// 测试
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>console.log(new MyClass);  // MyClass {}
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>console.log(new (class MyClassEx extends MyClass{})); // MyClassEx {}
+</code></pre></div>
+<p>所以，仅仅是这样的一行代码，就几乎已经穷尽了JavaScript类构建过程的全部秘密。</p>
+<h2 id="_4">其他</h2>
+<p>当然如果父类并不关心子类实例的原型，那么它返回任何的对象都是可以的，子类在super()的返回中并不检查原型继承链的维护情况。也就是说，确实存在“子类创建出非该类的实例”的情况。例如：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>class MyClass {
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>  constructor() { return new Date };
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>}
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>class MyClassEx extends MyClass {
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  constructor() { super() }; // or default
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>  foo() {
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    console.log(&#39;check only&#39;);
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>  }
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>}
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>var x = new MyClassEx;
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>console.log(x instanceof MyClassEx); // false
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>console.log(&#39;foo&#39; in x); // fals
+</code></pre></div>
+<p>今天的内容就到这里。有关继承、原型与类的所有内容就暂时告一段落了。下一讲开始，我将侧重为你介绍对象的本质，以及它的应用。</p>
+<h2 id="_5">思考题</h2>
+<p>当然，这一讲仍然会留有一个习题。仅仅一个而已：</p>
+<ul>
+<li><code>new.target</code>为什么称为元属性，它与<code>a.b</code>（例如super.xxx，或者’a’.toString）有什么不同？</li>
+</ul>
+<p>希望你喜欢我的分享，也欢迎你把文章分享给你的朋友。</p>
 <div><strong>精选留言（9）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/17/1b/a6/6373416f.jpg" width="30px"><span>青史成灰</span> 👍（3） 💬（2）<div>老师，最后的这个例子：
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>class MyClass {
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  constructor() { return new Date };
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>}
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>class MyClassEx extends MyClass {
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  constructor() { super() }; &amp;#47;&amp;#47; or default
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  foo() {
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    console.log(&amp;#39;check only&amp;#39;);
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  }
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>}
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>var x = new MyClassEx;
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>console.log(&amp;#39;foo&amp;#39; in x); &amp;#47;&amp;#47; false
+<li><span>青史成灰</span> 👍（3） 💬（2）<div>老师，最后的这个例子：
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>class MyClass {
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>  constructor() { return new Date };
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>}
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>class MyClassEx extends MyClass {
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>  constructor() { super() }; &amp;#47;&amp;#47; or default
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>  foo() {
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    console.log(&amp;#39;check only&amp;#39;);
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>  }
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>}
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>var x = new MyClassEx;
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>console.log(&amp;#39;foo&amp;#39; in x); &amp;#47;&amp;#47; false
 </code></pre></div>
-因为`foo`并不在`x`实例上，那假如我要访问`foo`，那得通过什么方式？或者说，那我这个类中定义的`foo`定义到哪里去了？</div>2020-01-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/13/7b/74e90531.jpg" width="30px"><span>Astrogladiator-埃蒂纳度斯</span> 👍（3） 💬（1）<div>new.target为什么称为元属性，它与a.b（例如 super.xxx，或者’a’.toString）有什么不同？
-个人理解是new.target是用来描述构造器本身的属性，指代是当前这个构造器函数this， 它不属于实例对象的一部分，它可以由super函数传递至根类，并最终由根类创建带有子类实例的对象。</div>2019-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/dc/90/c980113a.jpg" width="30px"><span>行问</span> 👍（3） 💬（2）<div>这里的代码在 Chrome 或 Node 是报错的
+因为`foo`并不在`x`实例上，那假如我要访问`foo`，那得通过什么方式？或者说，那我这个类中定义的`foo`定义到哪里去了？</div>2020-01-15</li><br/><li><span>Astrogladiator-埃蒂纳度斯</span> 👍（3） 💬（1）<div>new.target为什么称为元属性，它与a.b（例如 super.xxx，或者’a’.toString）有什么不同？
+个人理解是new.target是用来描述构造器本身的属性，指代是当前这个构造器函数this， 它不属于实例对象的一部分，它可以由super函数传递至根类，并最终由根类创建带有子类实例的对象。</div>2019-12-19</li><br/><li><span>行问</span> 👍（3） 💬（2）<div>这里的代码在 Chrome 或 Node 是报错的
 
 
 class MyClass extends Object {
@@ -4892,7 +5116,7 @@ function MyConstructor() {
 
 
 console.log(new MyClass)
-console.log(new MyConstructor)</div>2019-12-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1a/e8/43/f9c0faed.jpg" width="30px"><span>小童</span> 👍（2） 💬（2）<div>老师，我在看规范的时候，有那么一句话不理解，状态和方法都会被对象承载，结构，行为和状态都能被继承。
+console.log(new MyConstructor)</div>2019-12-18</li><br/><li><span>小童</span> 👍（2） 💬（2）<div>老师，我在看规范的时候，有那么一句话不理解，状态和方法都会被对象承载，结构，行为和状态都能被继承。
 这句怎么理解呢？
 比如:
 function Car(){
@@ -4910,7 +5134,7 @@ function Dog(){
 
 }
 Dog.prototype=Car.prototype;
-&#47;&#47;继承 Dog 继承了Car对象的结构 行为指继承了run方法吗？ 状态是name属性吗？</div>2020-04-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/18/11/f1f37801.jpg" width="30px"><span>James</span> 👍（2） 💬（1）<div>老师，在看react源码的context时候，遇到一个问题，简化如下，如果var a = {}, a.a =a,最终a.a.a...好像会无限下去，这样，会不会执行这个代码的时候，就内存泄漏了啊，如果造成内存泄漏的化，怎么会在react源码里面呢？
+&#47;&#47;继承 Dog 继承了Car对象的结构 行为指继承了run方法吗？ 状态是name属性吗？</div>2020-04-24</li><br/><li><span>James</span> 👍（2） 💬（1）<div>老师，在看react源码的context时候，遇到一个问题，简化如下，如果var a = {}, a.a =a,最终a.a.a...好像会无限下去，这样，会不会执行这个代码的时候，就内存泄漏了啊，如果造成内存泄漏的化，怎么会在react源码里面呢？
 
 export function createContext&lt;T&gt;(
   defaultValue: T,
@@ -4937,12 +5161,12 @@ context.Consumer = context;
 
   return context;
 }
-</div>2020-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d4/37/528a43e7.jpg" width="30px"><span>Elmer</span> 👍（1） 💬（1）<div>定制的构造方法中，如果返回通过return传出的对象（也就是一个用户定制的创建过程），这个时候返回的对象原型并不是子类的原型，那不是不需要再设置this的原型了吗。。
+</div>2020-03-23</li><br/><li><span>Elmer</span> 👍（1） 💬（1）<div>定制的构造方法中，如果返回通过return传出的对象（也就是一个用户定制的创建过程），这个时候返回的对象原型并不是子类的原型，那不是不需要再设置this的原型了吗。。
 function test (){
   return {a: 1};
 }
 const b = new test();
-b instanceof test  &#47;&#47; false;此时如果test有父类也不需要设置this的原型？</div>2020-01-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/ee/28/c04a0c83.jpg" width="30px"><span>小炭</span> 👍（0） 💬（1）<div>“迄今为止，new.target是 JavaScript 中唯一的一个元属性。” 对这句话有疑惑，就是下面这些不是元属性吗？
+b instanceof test  &#47;&#47; false;此时如果test有父类也不需要设置this的原型？</div>2020-01-07</li><br/><li><span>小炭</span> 👍（0） 💬（1）<div>“迄今为止，new.target是 JavaScript 中唯一的一个元属性。” 对这句话有疑惑，就是下面这些不是元属性吗？
 {
   value: 123,
   writable: false,
@@ -4950,7 +5174,7 @@ b instanceof test  &#47;&#47; false;此时如果test有父类也不需要设置t
   configurable: false,
   get: undefined,
   set: undefined
-}</div>2020-11-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/a3/ea/53333dd5.jpg" width="30px"><span>HoSalt</span> 👍（0） 💬（1）<div>
+}</div>2020-11-10</li><br/><li><span>HoSalt</span> 👍（0） 💬（1）<div>
 &#47;&#47; 在JavaScript内置类Date()中可能的处理逻辑
 function _Date() {
   this = Object.Create(Date.prototype, { _internal_slots });
@@ -4962,7 +5186,7 @@ function _Date() {
 function _Date() {
   this = Object.create(new.target.prototype);
   ...
-}</div>2020-05-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5c/c2/8ffd2ad0.jpg" width="30px"><span>qqq</span> 👍（0） 💬（0）<div>因为可以改变默认的原型继承行为</div>2019-12-18</li><br/>
+}</div>2020-05-25</li><br/><li><span>qqq</span> 👍（0） 💬（0）<div>因为可以改变默认的原型继承行为</div>2019-12-18</li><br/>
 </ul>
 
 

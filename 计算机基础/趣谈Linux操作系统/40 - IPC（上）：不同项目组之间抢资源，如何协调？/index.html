@@ -4509,6 +4509,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      信号量
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5990,6 +6017,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      信号量
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6097,11 +6151,156 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>int shmget(key_t key, size_t size, int shmflag);
 </code></pre></div>
 <p>其中，key就是前面生成的那个key，shmflag如果为IPC_CREAT，就表示新创建，还可以指定读写权限0777。</p>
-<div><strong>精选留言（13）</strong></div>
+<p>对于共享内存，需要指定一个大小size，这个一般要申请多大呢？一个最佳实践是，我们将多个进程需要共享的数据放在一个struct里面，然后这里的size就应该是这个struct的大小。这样每一个进程得到这块内存后，只要强制将类型转换为这个struct类型，就能够访问里面的共享数据了。</p>
+<p>在这里，我们定义了一个struct shm_data结构。这里面有两个成员，一个是一个整型的数组，一个是数组中元素的个数。</p>
+<p>生成了共享内存以后，接下来就是将这个共享内存映射到进程的虚拟地址空间中。我们使用下面这个函数来进行操作。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>void *shmat(int  shm_id, const  void *addr, int shmflg);
+</code></pre></div>
+<p>这里面的shm_id，就是上面创建的共享内存的id，addr就是指定映射在某个地方。如果不指定，则内核会自动选择一个地址，作为返回值返回。得到了返回地址以后，我们需要将指针强制类型转换为struct shm_data结构，就可以使用这个指针设置data和datalength了。</p>
+<p>当共享内存使用完毕，我们可以通过shmdt解除它到虚拟内存的映射。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>int shmdt(const  void *shmaddr)；
+</code></pre></div>
+<h2 id="_2">信号量</h2>
+<p>看完了共享内存，接下来我们再来看信号量。信号量以集合的形式存在的。</p>
+<p>首先，创建之前，我们同样需要有一个key，来唯一标识这个信号量集合。这个key同样可以根据文件系统上的一个文件的inode随机生成。</p>
+<p>然后，我们需要创建一个信号量集合，同样也是使用xxxget来创建，其中创建信号量集合使用的是下面这个函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>int semget(key_t key, int nsems, int semflg);
+</code></pre></div>
+<p>这里面的key，就是前面生成的那个key，shmflag如果为IPC_CREAT，就表示新创建，还可以指定读写权限0777。</p>
+<p>这里，nsems表示这个信号量集合里面有几个信号量，最简单的情况下，我们设置为1。</p>
+<p>信号量往往代表某种资源的数量，如果用信号量做互斥，那往往将信号量设置为1。这就是上面代码中semaphore_init函数的作用，这里面调用semctl函数，将这个信号量集合的中的第0个信号量，也即唯一的这个信号量设置为1。</p>
+<p>对于信号量，往往要定义两种操作，P操作和V操作。对应上面代码中semaphore_p函数和semaphore_v函数，semaphore_p会调用semop函数将信号量的值减一，表示申请占用一个资源，当发现当前没有资源的时候，进入等待。semaphore_v会调用semop函数将信号量的值加一，表示释放一个资源，释放之后，就允许等待中的其他进程占用这个资源。</p>
+<p>我们可以用这个信号量，来保护共享内存中的struct shm_data，使得同时只有一个进程可以操作这个结构。</p>
+<p>你是否记得咱们讲线程同步机制的时候，构建了一个老板分配活的场景。这里我们同样构建一个场景，分为producer.c和consumer.c，其中producer也即生产者，负责往struct shm_data塞入数据，而consumer.c负责处理struct shm_data中的数据。</p>
+<p>下面我们来看producer.c的代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>#include &quot;share.h&quot;
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>int main() {
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>  void *shm = NULL;
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>  struct shm_data *shared = NULL;
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>  int shmid = get_shmid();
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>  int semid = get_semaphoreid();
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>  int i;
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>  shm = shmat(shmid, (void*)0, 0);
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>  if(shm == (void*)-1){
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    exit(0);
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>  }
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>  shared = (struct shm_data*)shm;
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>  memset(shared, 0, sizeof(struct shm_data));
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>  semaphore_init(semid);
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>  while(1){
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    semaphore_p(semid);
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>    if(shared-&gt;datalength &gt; 0){
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>      semaphore_v(semid);
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>      sleep(1);
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    } else {
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>      printf(&quot;how many integers to caculate : &quot;);
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>      scanf(&quot;%d&quot;,&amp;shared-&gt;datalength);
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>      if(shared-&gt;datalength &gt; MAX_NUM){
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>        perror(&quot;too many integers.&quot;);
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>        shared-&gt;datalength = 0;
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>        semaphore_v(semid);
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>        exit(1);
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>      }
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>      for(i=0;i&lt;shared-&gt;datalength;i++){
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>        printf(&quot;Input the %d integer : &quot;, i);
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>        scanf(&quot;%d&quot;,&amp;shared-&gt;data[i]);
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>      }
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>      semaphore_v(semid);
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>    }
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>  }
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>}
+</code></pre></div>
+<p>在这里面，get_shmid创建了共享内存，get_semaphoreid创建了信号量集合，然后shmat将共享内存映射到了虚拟地址空间的shm指针指向的位置，然后通过强制类型转换，shared的指针指向放在共享内存里面的struct shm_data结构，然后初始化为0。semaphore_init将信号量进行了初始化。</p>
+<p>接着，producer进入了一个无限循环。在这个循环里面，我们先通过semaphore_p申请访问共享内存的权利，如果发现datalength大于零，说明共享内存里面的数据没有被处理过，于是semaphore_v释放权利，先睡一会儿，睡醒了再看。如果发现datalength等于0，说明共享内存里面的数据被处理完了，于是开始往里面放数据。让用户输入多少个数，然后每个数是什么，都放在struct shm_data结构中，然后semaphore_v释放权利，等待其他的进程将这些数拿去处理。</p>
+<p>我们再来看consumer的代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>#include &quot;share.h&quot;
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>int main() {
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>  void *shm = NULL;
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>  struct shm_data *shared = NULL;
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>  int shmid = get_shmid();
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>  int semid = get_semaphoreid();
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>  int i;
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  shm = shmat(shmid, (void*)0, 0);
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  if(shm == (void*)-1){
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    exit(0);
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>  }
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>  shared = (struct shm_data*)shm;
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>  while(1){
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    semaphore_p(semid);
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>    if(shared-&gt;datalength &gt; 0){
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>      int sum = 0;
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>      for(i=0;i&lt;shared-&gt;datalength-1;i++){
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>        printf(&quot;%d+&quot;,shared-&gt;data[i]);
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>        sum += shared-&gt;data[i];
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>      }
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>      printf(&quot;%d&quot;,shared-&gt;data[shared-&gt;datalength-1]);
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>      sum += shared-&gt;data[shared-&gt;datalength-1];
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>      printf(&quot;=%d\n&quot;,sum);
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>      memset(shared, 0, sizeof(struct shm_data));
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>      semaphore_v(semid);
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>    } else {
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>      semaphore_v(semid);
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>      printf(&quot;no tasks, waiting.\n&quot;);
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>      sleep(1);
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>    }
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>  }
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a>}
+</code></pre></div>
+<p>在这里面，get_shmid获得producer创建的共享内存，get_semaphoreid获得producer创建的信号量集合，然后shmat将共享内存映射到了虚拟地址空间的shm指针指向的位置，然后通过强制类型转换，shared的指针指向放在共享内存里面的struct shm_data结构。</p>
+<p>接着，consumer进入了一个无限循环，在这个循环里面，我们先通过semaphore_p申请访问共享内存的权利，如果发现datalength等于0，就说明没什么活干，需要等待。如果发现datalength大于0，就说明有活干，于是将datalength个整型数字从data数组中取出来求和。最后将struct shm_data清空为0，表示任务处理完毕，通过semaphore_v释放权利。</p>
+<p>通过程序创建的共享内存和信号量集合，我们可以通过命令ipcs查看。当然，我们也可以通过ipcrm进行删除。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a># ipcs
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>------ Message Queues --------
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>key        msqid      owner      perms      used-bytes   messages    
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>------ Shared Memory Segments --------
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>key        shmid      owner      perms      bytes      nattch     status      
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>0x00016988 32768      root       777        516        0             
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>------ Semaphore Arrays --------
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>key        semid      owner      perms      nsems     
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>0x00016989 32768      root       777        1 
+</code></pre></div>
+<p>下面我们来运行一下producer和consumer，可以得到下面的结果：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a># ./producer 
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>how many integers to caculate : 2
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>Input the 0 integer : 3
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>Input the 1 integer : 4
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>how many integers to caculate : 4
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>Input the 0 integer : 3
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>Input the 1 integer : 4
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>Input the 2 integer : 5
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>Input the 3 integer : 6
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>how many integers to caculate : 7
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>Input the 0 integer : 9
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>Input the 1 integer : 8
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>Input the 2 integer : 7
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>Input the 3 integer : 6
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>Input the 4 integer : 5
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>Input the 5 integer : 4
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>Input the 6 integer : 3
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a># ./consumer 
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>3+4=7
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>3+4+5+6=18
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>9+8+7+6+5+4+3=42
+</code></pre></div>
+<h2 id="_3">总结时刻</h2>
+<p>这一节的内容差不多了，我们来总结一下。共享内存和信号量的配合机制，如下图所示：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/1c/2e/93812642.jpg" width="30px"><span>Amark</span> 👍（16） 💬（1）<div>请教一个问题，CPU调度是以进程为单位的吗，还是以线程?</div>2019-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5e/96/a03175bc.jpg" width="30px"><span>莫名</span> 👍（13） 💬（1）<div>System V IPC具有很好的移植性，但缺点也比较明显，不能接口自成一套，难以使用现有的fd操作函数。建议对比讲一下比较流行的POSIX IPC。</div>2019-06-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1e/3a/5b21c01c.jpg" width="30px"><span>nightmare</span> 👍（4） 💬（1）<div>信号量大于1的情况，可以让进程不操作共享变量，比如操作不同的变量，比如对一批数据做操作，然后做完之后给消费端读取</div>2019-06-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4d/fd/0aa0e39f.jpg" width="30px"><span>许童童</span> 👍（1） 💬（2）<div>信号量大于 1 的情况下，应该如何使用？
-可以让多个进程同时访问一个共享内存。</div>2019-06-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/12/ce/a8c8b5e8.jpg" width="30px"><span>Jason</span> 👍（0） 💬（2）<div>老师好，ftok提示我的机器里没有“&#47;root&#47;sharememory&#47;semaphorekey”这个文件，我随便新建一个文件可以吗？</div>2019-08-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/50/39/14adb0f0.jpg" width="30px"><span>trllllllll</span> 👍（0） 💬（1）<div>老师，share.h 里面 include 了两次 ipc.h。</div>2019-07-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1c/2e/93812642.jpg" width="30px"><span>Amark</span> 👍（0） 💬（1）<div>如果线程是掉用的到基本单位，那么进程的共享资源呢?</div>2019-06-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/4f/6a/0a6b437e.jpg" width="30px"><span>有风</span> 👍（2） 💬（0）<div>信号量大于1，可以用于限流。如线程或进程的个数，访问请求的个数等。</div>2022-02-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/0b/d4/39763233.jpg" width="30px"><span>Tianz</span> 👍（2） 💬（0）<div>超哥，现在是不是推荐使用 POSIX 系列的 IPC 呢？</div>2019-06-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/8d/3b/42d9c669.jpg" width="30px"><span>艾瑞克小霸王</span> 👍（1） 💬（0）<div>信号量和锁的区别就是 信号量可以控制资源数量（&gt;1）, 而锁是 互斥排他的？</div>2019-12-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/12/ce/a8c8b5e8.jpg" width="30px"><span>Jason</span> 👍（1） 💬（0）<div>这篇看的很明白，嘿嘿。</div>2019-08-27</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTI4Gr57Aia5McdvyQco8hKpaibeeYUhQcMtaFhNtHESSF7MPq5OdQBQpCBYicl7Libt6MjWKNJvmGwODA/132" width="30px"><span>Geek_93a721</span> 👍（0） 💬（0）<div>如果大于1时，应该使用三个信号量，一个表示任务这种资源，一个表示空间这种资源，第三个将其置为1用于互斥访问。</div>2020-09-29</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKJrOl63enWXCRxN0SoucliclBme0qrRb19ATrWIOIvibKIz8UAuVgicBMibIVUznerHnjotI4dm6ibODA/132" width="30px"><span>Helios</span> 👍（0） 💬（0）<div>信号量大于1的时候应该就不能控制写操作了。应该是控制读操作的进程数量。</div>2019-10-15</li><br/>
+<li>无论是共享内存还是信号量，创建与初始化都遵循同样流程，通过ftok得到key，通过xxxget创建对象并生成id；</li>
+<li>生产者和消费者都通过shmat将共享内存映射到各自的内存空间，在不同的进程里面映射的位置不同；</li>
+<li>为了访问共享内存，需要信号量进行保护，信号量需要通过semctl初始化为某个值；</li>
+<li>接下来生产者和消费者要通过semop(-1)来竞争信号量，如果生产者抢到信号量则写入，然后通过semop(+1)释放信号量，如果消费者抢到信号量则读出，然后通过semop(+1)释放信号量；</li>
+<li>共享内存使用完毕，可以通过shmdt来解除映射。</li>
 </ul>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/46/0b/469552bffe601d594c432d4fad97490b.png?wh=2383%2A2206" /></p>
+<h2 id="_4">课堂练习</h2>
+<p>信号量大于1的情况下，应该如何使用？你可以试着构建一个场景。</p>
+<p>欢迎留言和我分享你的疑惑和见解 ，也欢迎可以收藏本节内容，反复研读。你也可以把今天的内容分享给你的朋友，和他一起学习和进步。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/8c/37/8c0a95fa07a8b9a1abfd394479bdd637.jpg?wh=1110%2A659" /></p>
 
 
 

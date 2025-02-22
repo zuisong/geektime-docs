@@ -9045,6 +9045,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#connector" class="md-nav__link">
+    <span class="md-ellipsis">
+      Connector组件
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13093,6 +13120,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#connector" class="md-nav__link">
+    <span class="md-ellipsis">
+      Connector组件
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13124,13 +13178,142 @@
 <p>简单来说，Jetty Server就是由多个Connector（连接器）、多个Handler（处理器），以及一个线程池组成。整体结构请看下面这张图。</p>
 <p><img alt="" src="https://static001.geekbang.org/resource/image/95/b6/95b908af86695af107fd3877a02190b6.jpg?wh=1368%2A728" /></p>
 <p>跟Tomcat一样，Jetty也有HTTP服务器和Servlet容器的功能，因此Jetty中的Connector组件和Handler组件分别来实现这两个功能，而这两个组件工作时所需要的线程资源都直接从一个全局线程池ThreadPool中获取。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>Jetty Server可以有多个Connector在不同的端口上监听客户请求，而对于请求处理的Handler组件，也可以根据具体场景使用不同的Handler。这样的设计提高了Jetty的灵活性，需要支持Servlet，则可以使用ServletHandler；需要支持Session，则再增加一个SessionHandler。也就是说我们可以不使用Servlet或者Session，只要不配置这个Handler就行了。</p>
+<p>为了启动和协调上面的核心组件工作，Jetty提供了一个Server类来做这个事情，它负责创建并初始化Connector、Handler、ThreadPool组件，然后调用start方法启动它们。</p>
+<p>我们对比一下Tomcat的整体架构图，你会发现Tomcat在整体上跟Jetty很相似，它们的第一个区别是Jetty中没有Service的概念，Tomcat中的Service包装了多个连接器和一个容器组件，一个Tomcat实例可以配置多个Service，不同的Service通过不同的连接器监听不同的端口；而Jetty中Connector是被所有Handler共享的。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/7b/f2/7b100cb1c7399a366157b97b77f042f2.jpg?wh=1330%2A678" /></p>
+<p>它们的第二个区别是，在Tomcat中每个连接器都有自己的线程池，而在Jetty中所有的Connector共享一个全局的线程池。</p>
+<p>讲完了Jetty的整体架构，接下来我来详细分析Jetty的Connector组件的设计，下一期我将分析Handler组件的设计。</p>
+<h2 id="connector">Connector组件</h2>
+<p>跟Tomcat一样，Connector的主要功能是对I/O模型和应用层协议的封装。I/O模型方面，最新的Jetty 9版本只支持NIO，因此Jetty的Connector设计有明显的Java NIO通信模型的痕迹。至于应用层协议方面，跟Tomcat的Processor一样，Jetty抽象出了Connection组件来封装应用层协议的差异。</p>
+<p>Java NIO早已成为程序员的必备技能，并且也经常出现在面试题中。接下来我们一起来看看Jetty是如何实现NIO模型的，以及它是怎么<strong>用</strong>Java NIO的。</p>
+<p><strong>Java NIO回顾</strong></p>
+<p>关于Java NIO编程，如果你还不太熟悉，可以先学习这一<a href="http://ifeve.com/java-nio-all/">系列文章</a>。Java NIO的核心组件是Channel、Buffer和Selector。Channel表示一个连接，可以理解为一个Socket，通过它可以读取和写入数据，但是并不能直接操作数据，需要通过Buffer来中转。</p>
+<p>Selector可以用来检测Channel上的I/O事件，比如读就绪、写就绪、连接就绪，一个Selector可以同时处理多个Channel，因此单个线程可以监听多个Channel，这样会大量减少线程上下文切换的开销。下面我们通过一个典型的服务端NIO程序来回顾一下如何使用这些组件。</p>
+<p>首先，创建服务端Channel，绑定监听端口并把Channel设置为非阻塞方式。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ServerSocketChannel server = ServerSocketChannel.open();
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>server.socket().bind(new InetSocketAddress(port));
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>server.configureBlocking(false);
+</code></pre></div>
+<p>然后，创建Selector，并在Selector中注册Channel感兴趣的事件OP_ACCEPT，告诉Selector如果客户端有新的连接请求到这个端口就通知我。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Selector selector = Selector.open();
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>server.register(selector, SelectionKey.OP_ACCEPT);
+</code></pre></div>
+<p>接下来，Selector会在一个死循环里不断地调用select去查询I/O状态，select会返回一个SelectionKey列表，Selector会遍历这个列表，看看是否有“客户”感兴趣的事件，如果有，就采取相应的动作。</p>
+<p>比如下面这个例子，如果有新的连接请求，就会建立一个新的连接。连接建立后，再注册Channel的可读事件到Selector中，告诉Selector我对这个Channel上是否有新的数据到达感兴趣。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a> while (true) {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>        selector.select();//查询I/O事件
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>        for (Iterator&lt;SelectionKey&gt; i = selector.selectedKeys().iterator(); i.hasNext();) { 
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>            SelectionKey key = i.next(); 
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>            i.remove(); 
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>            if (key.isAcceptable()) { 
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>                // 建立一个新连接 
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>                SocketChannel client = server.accept(); 
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>                client.configureBlocking(false); 
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>                //连接建立后，告诉Selector，我现在对I/O可读事件感兴趣
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>                client.register(selector, SelectionKey.OP_READ);
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>            } 
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>        }
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    } 
+</code></pre></div>
+<p>简单回顾完服务端NIO编程之后，你会发现服务端在I/O通信上主要完成了三件事情：<strong>监听连接、I/O事件查询以及数据读写</strong>。因此Jetty设计了<strong>Acceptor、SelectorManager和Connection来分别做这三件事情</strong>，下面我分别来说说这三个组件。</p>
+<p><strong>Acceptor</strong></p>
+<p>顾名思义，Acceptor用于接受请求，跟Tomcat一样，Jetty也有独立的Acceptor线程组用于处理连接请求。在Connector的实现类ServerConnector中，有一个<code>_acceptors</code>的数组，在Connector启动的时候, 会根据<code>_acceptors</code>数组的长度创建对应数量的Acceptor，而Acceptor的个数可以配置。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>for (int i = 0; i &lt; _acceptors.length; i++)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>{
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  Acceptor a = new Acceptor(i);
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  getExecutor().execute(a);
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>}
+</code></pre></div>
+<p>Acceptor是ServerConnector中的一个内部类，同时也是一个Runnable，Acceptor线程是通过getExecutor得到的线程池来执行的，前面提到这是一个全局的线程池。</p>
+<p>Acceptor通过阻塞的方式来接受连接，这一点跟Tomcat也是一样的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>public void accept(int acceptorID) throws IOException
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>{
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  ServerSocketChannel serverChannel = _acceptChannel;
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  if (serverChannel != null &amp;&amp; serverChannel.isOpen())
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  {
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    // 这里是阻塞的
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    SocketChannel channel = serverChannel.accept();
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    // 执行到这里时说明有请求进来了
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    accepted(channel);
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>  }
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>}
+</code></pre></div>
+<p>接受连接成功后会调用accepted函数，accepted函数中会将SocketChannel设置为非阻塞模式，然后交给Selector去处理，因此这也就到了Selector的地界了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>private void accepted(SocketChannel channel) throws IOException
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>{
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    channel.configureBlocking(false);
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    Socket socket = channel.socket();
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    configure(socket);
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    // _manager是SelectorManager实例，里面管理了所有的Selector实例
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    _manager.accept(channel);
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>}
+</code></pre></div>
+<p><strong>SelectorManager</strong></p>
+<p>Jetty的Selector由SelectorManager类管理，而被管理的Selector叫作ManagedSelector。SelectorManager内部有一个ManagedSelector数组，真正干活的是ManagedSelector。咱们接着上面分析，看看在SelectorManager在accept方法里做了什么。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>public void accept(SelectableChannel channel, Object attachment)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>{
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>  //选择一个ManagedSelector来处理Channel
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>  final ManagedSelector selector = chooseSelector();
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>  //提交一个任务Accept给ManagedSelector
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>  selector.submit(selector.new Accept(channel, attachment));
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>}
+</code></pre></div>
+<p>SelectorManager从本身的Selector数组中选择一个Selector来处理这个Channel，并创建一个任务Accept交给ManagedSelector，ManagedSelector在处理这个任务主要做了两步：</p>
+<p>第一步，调用Selector的register方法把Channel注册到Selector上，拿到一个SelectionKey。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a> _key = _channel.register(selector, SelectionKey.OP_ACCEPT, this);
+</code></pre></div>
+<p>第二步，创建一个EndPoint和Connection，并跟这个SelectionKey（Channel）绑在一起：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>private void createEndPoint(SelectableChannel channel, SelectionKey selectionKey) throws IOException
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>{
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    //1. 创建EndPoint
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    EndPoint endPoint = _selectorManager.newEndPoint(channel, this, selectionKey);
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    //2. 创建Connection
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    Connection connection = _selectorManager.newConnection(channel, endPoint, selectionKey.attachment());
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    //3. 把EndPoint、Connection和SelectionKey绑在一起
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    endPoint.setConnection(connection);
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    selectionKey.attach(endPoint);
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>}
+</code></pre></div>
+<p>上面这两个过程是什么意思呢？打个比方，你到餐厅吃饭，先点菜（注册I/O事件），服务员（ManagedSelector）给你一个单子（SelectionKey），等菜做好了（I/O事件到了），服务员根据单子就知道是哪桌点了这个菜，于是喊一嗓子某某桌的菜做好了（调用了绑定在SelectionKey上的EndPoint的方法）。</p>
+<p>这里需要你特别注意的是，ManagedSelector并没有调用直接EndPoint的方法去处理数据，而是通过调用EndPoint的方法<strong>返回一个Runnable，然后把这个Runnable扔给线程池执行</strong>，所以你能猜到，这个Runnable才会去真正读数据和处理请求。</p>
+<p><strong>Connection</strong></p>
+<p>这个Runnable是EndPoint的一个内部类，它会调用Connection的回调方法来处理请求。Jetty的Connection组件类比就是Tomcat的Processor，负责具体协议的解析，得到Request对象，并调用Handler容器进行处理。下面我简单介绍一下它的具体实现类HttpConnection对请求和响应的处理过程。</p>
+<p><strong>请求处理</strong>：HttpConnection并不会主动向EndPoint读取数据，而是向在EndPoint中注册一堆回调方法：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>getEndPoint().fillInterested(_readCallback);
+</code></pre></div>
+<p>这段代码就是告诉EndPoint，数据到了你就调我这些回调方法<code>_readCallback</code>吧，有点异步I/O的感觉，也就是说Jetty在应用层面模拟了异步I/O模型。</p>
+<p>而在回调方法<code>_readCallback</code>里，会调用EndPoint的接口去读数据，读完后让HTTP解析器去解析字节流，HTTP解析器会将解析后的数据，包括请求行、请求头相关信息存到Request对象里。</p>
+<p><strong>响应处理</strong>：Connection调用Handler进行业务处理，Handler会通过Response对象来操作响应流，向流里面写入数据，HttpConnection再通过EndPoint把数据写到Channel，这样一次响应就完成了。</p>
+<p>到此你应该了解了Connector的工作原理，下面我画张图再来回顾一下Connector的工作流程。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/b5/83/b526a90be6ee4c3e45c94e122c9c1e83.jpg?wh=1570%2A986" /></p>
+<p>1.Acceptor监听连接请求，当有连接请求到达时就接受连接，一个连接对应一个Channel，Acceptor将Channel交给ManagedSelector来处理。</p>
+<p>2.ManagedSelector把Channel注册到Selector上，并创建一个EndPoint和Connection跟这个Channel绑定，接着就不断地检测I/O事件。</p>
+<p>3.I/O事件到了就调用EndPoint的方法拿到一个Runnable，并扔给线程池执行。</p>
+<p>4.线程池中调度某个线程执行Runnable。</p>
+<p>5.Runnable执行时，调用回调函数，这个回调函数是Connection注册到EndPoint中的。</p>
+<p>6.回调函数内部实现，其实就是调用EndPoint的接口方法来读数据。</p>
+<p>7.Connection解析读到的数据，生成请求对象并交给Handler组件去处理。</p>
+<h2 id="_1">本期精华</h2>
+<p>Jetty Server就是由多个Connector、多个Handler，以及一个线程池组成，在设计上简洁明了。</p>
+<p>Jetty的Connector只支持NIO模型，跟Tomcat的NioEndpoint组件一样，它也是通过Java的NIO API实现的。我们知道，Java NIO编程有三个关键组件：Channel、Buffer和Selector，而核心是Selector。为了方便使用，Jetty在原生Selector组件的基础上做了一些封装，实现了ManagedSelector组件。</p>
+<p>在线程模型设计上Tomcat的NioEndpoint跟Jetty的Connector是相似的，都是用一个Acceptor数组监听连接，用一个Selector数组侦测I/O事件，用一个线程池执行请求。它们的不同点在于，Jetty使用了一个全局的线程池，所有的线程资源都是从线程池来分配。</p>
+<p>Jetty Connector设计中的一大特点是，使用了回调函数来模拟异步I/O，比如Connection向EndPoint注册了一堆回调函数。它的本质<strong>将函数当作一个参数来传递</strong>，告诉对方，你准备好了就调这个回调函数。</p>
+<h2 id="_2">课后思考</h2>
+<p>Jetty的Connector主要完成了三件事件：接收连接、I/O事件查询以及数据读写。因此Jetty设计了Acceptor、SelectorManager和Connection来做这三件事情。今天的思考题是，为什么要把这些组件跑在不同的线程里呢？</p>
+<p>不知道今天的内容你消化得如何？如果还有疑问，请大胆的在留言区提问，也欢迎你把你的课后思考和心得记录下来，与我和其他同学一起讨论。如果你觉得今天有所收获，欢迎你把它分享给你的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/a8/e2/f8e51df2.jpg" width="30px"><span>Li Shunduo</span> 👍（47） 💬（2）<div>有两个问题请教老师：
+<li><span>Li Shunduo</span> 👍（47） 💬（2）<div>有两个问题请教老师：
 问题一：根据文章看，Jetty中有多个Acceptor组件，请问这些Acceptor背后是共享同一个ServerSocketChannel？还是每个Acceptor有自己的ServerSocketChannel? 如果有多个ServerSocketChannel的话，这些ServerSocketChannel如何做到监听同一个端口？连接到来时如何决定分配到哪一个ServerSocketChannel?
 问题二：Acceptor组件是直接使用ServerSocketChannel.accept()方法来接受连接的，为什么不使用向Selector注册OP_ACCEPT事件的方式来接受连接？直接调用.accept()方法有什么考虑？
 问题三：Jetty中有多个ManagedSelector，这些ManagedSelector背后是共享同一个Selector吗？还是每个ManagedSelector有自己的Selector？如果是多个Selector有什么好处，注册IO事件时如何选择合适的Selector？
-</div>2019-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/74/c9/d3439ca4.jpg" width="30px"><span>why</span> 👍（22） 💬（1）<div>- Jetty 也是 Http 服务器 + Servlet 容器, 更小巧, 更易于定制
+</div>2019-06-01</li><br/><li><span>why</span> 👍（22） 💬（1）<div>- Jetty 也是 Http 服务器 + Servlet 容器, 更小巧, 更易于定制
 - Jetty 架构: 多个 Connector + 多个 Handler + 一个全局线程池(Connector 和 Handler 共享)
 - 多个 Connector 在不同端口监听请求, 可以根据应用场景选择 Handler : ServletHandler 和 SessionHandler
 - Jetty 用 Server 启动和协调上述组件
@@ -13162,35 +13345,19 @@
             - 相应处理: Handler 返回 Response, HttpConnection 通过 EndPoint 写到 Channel
 - 留言
     - 每次请求跟一个 Hanlder 线程是一对一的关系, 下一次再来请求，会分配一个新的 Hanlder 线程。
-    - 多个 Acceptor 共享同一个 ServerSocketChannel 。多个 Acceptor 线程调用同一个 ServerSocketChannel 的 accept 方法，由操作系统保证线程安全</div>2019-06-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/67/8a/babd74dc.jpg" width="30px"><span>锦</span> 👍（16） 💬（1）<div>使用不同的线程是为了合理的使用全局线程池。
+    - 多个 Acceptor 共享同一个 ServerSocketChannel 。多个 Acceptor 线程调用同一个 ServerSocketChannel 的 accept 方法，由操作系统保证线程安全</div>2019-06-02</li><br/><li><span>锦</span> 👍（16） 💬（1）<div>使用不同的线程是为了合理的使用全局线程池。
 我有两个问题请教老师：
 问题一：负责读写的socket与handle线程是什么对应关系呢？多对1，还是1对1？
 问题二：如果有很多tcp建立连接后迟迟没有写入数据导致连接请求堵塞，或者如果有很多handle在处理耗时io操作时，
-同样可能拖慢整个线程池，进而影响到accepters和selectors，那么可能会拖慢整个线程池，jetty是如何考虑的呢？</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/5d/0d/9a7e588c.jpg" width="30px"><span>focus</span> 👍（13） 💬（1）<div>源码都是怎么导入，怎么编译，怎么看呢</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（10） 💬（1）<div>老师好!在线程模型设计上 Tomcat 的 NioEndpoint 跟 Jetty 的 Connector 是相似的，都是用一个 Acceptor 数组监听连接，用一个 Selector 数组侦测 I&#47;O 事件。这句话怎么理解啊?
+同样可能拖慢整个线程池，进而影响到accepters和selectors，那么可能会拖慢整个线程池，jetty是如何考虑的呢？</div>2019-05-30</li><br/><li><span>focus</span> 👍（13） 💬（1）<div>源码都是怎么导入，怎么编译，怎么看呢</div>2019-05-30</li><br/><li><span>-W.LI-</span> 👍（10） 💬（1）<div>老师好!在线程模型设计上 Tomcat 的 NioEndpoint 跟 Jetty 的 Connector 是相似的，都是用一个 Acceptor 数组监听连接，用一个 Selector 数组侦测 I&#47;O 事件。这句话怎么理解啊?
 问题1:Acceptor 数组监听连接,监听的是一次TCP链接么?
 
 问题2:Selector 数组侦测 I&#47;O 事件，具体监听的是啥?
 
 问题3:长链接下，每次http请求会新打开一个channel的，还是复用原有的channel，channel是阻塞还是非阻塞的。
 
-说的有点乱不晓得老师看的懂不😂。我就是想知道，一次TCP链接，多次http具体是和connector怎么绑定的。</div>2019-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/aa/e6/cc3f3853.jpg" width="30px"><span>gameboy120</span> 👍（9） 💬（1）<div>请问注册一堆回调函数的用意是什么？</div>2019-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（9） 💬（1）<div>老师好，跑在不同的线程里是为了解耦么?实在想不出，告诉答案吧</div>2019-06-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/69/c6/513df085.jpg" width="30px"><span>强哥</span> 👍（9） 💬（1）<div>说了各自的特点。但是感觉缺少关键性的对比，以及背后设计的理念，建议再深入探讨各自的主要差异及场景</div>2019-05-30</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKPjJg1rdQ0D0l6EbdrXsKhmCAVLBJmc7QNFHS19LMdjk1ibVOVlicuZlWTrEWUsYuoftdhJvBWcTGw/132" width="30px"><span>kxkq2000</span> 👍（7） 💬（1）<div>分在不同的线程里我认为是这样分工明确好比工厂流水线最大化提升处理能力。
-我有个疑问是用全局线程池真的好吗，不是应该根据任务类型分配线程池的吗？用全局的不会互相干扰吗？</div>2019-06-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/03/57/31595f22.jpg" width="30px"><span>Lrwin</span> 👍（7） 💬（2）<div>感觉jetty就是一个netty模型</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/6e/89/be79c8a5.jpg" width="30px"><span>Lc</span> 👍（4） 💬（1）<div>Jetty作为后起之秀，跟tomcat相比，它的优势在哪儿？他们的设计思路不同，我们自己在设计的时候应该依据什么来确定使用哪种呢？</div>2019-05-30</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/IgjIXs9jjpODTPaOLrms0XOhJ8pxMcaZgtgBrPG6deqsKXv1sPIqkg0faL6X0rtFicJn5Wf7QXTickjYWpmF0V8A/132" width="30px"><span>Geek_28b75e</span> 👍（3） 💬（1）<div>老师，麻烦您给说说bio和nio的区别，表面上的差别我看过了，能不能从操作系统角度给讲解一下呢？麻烦您了，实在有点难理解</div>2019-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/6d/8f/81e282e2.jpg" width="30px"><span>802.11</span> 👍（3） 💬（1）<div>老师，在一个类里再写接口或者类，一般是基于什么样的设计思想呢</div>2019-06-02</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKDfO7wKibzpwxZzSMDtkPlnD2nqtkBEX2g71uibJZY1Ly2dNulEICGqkMWUicOicLGIibTib7fPEBU8lPQ/132" width="30px"><span>毕延文</span> 👍（2） 💬（1）<div>前面几章还好，到这里就有些看不懂了，我还是太菜了。</div>2019-06-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/16/5b/83a35681.jpg" width="30px"><span>Monday</span> 👍（2） 💬（1）<div>tomcat还没学透，就学jetty，两者还相互比较，生怕自己混淆了</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/cf/14/384258ba.jpg" width="30px"><span>Wiggle Wiggle</span> 👍（1） 💬（1）<div>请教一下，在 SelectorManager 在 accept 方法里，向selector中注册channel的事件为什么还是on_accept呢？在上一步的serverchannel不是已经建立连接了吗？</div>2019-08-03</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqLcWH3mSPmhjrs1aGL4b3TqI7xDqWWibM4nYFrRlp0z7FNSWaJz0mqovrgIA7ibmrPt8zRScSfRaqQ/132" width="30px"><span>易儿易</span> 👍（1） 💬（1）<div>Jetty这个共享线程池的设计，在另一篇专讲并发的专栏里是明确提出严禁使用的……比如A调用B，线程池容量2，2个A同时开始执行，这个时候B无法创建，A无法释放……Jetty有特别设计可以避免这种情况吗？</div>2019-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5c/c5/1231d633.jpg" width="30px"><span>梁中华</span> 👍（1） 💬（1）<div>jetty内部是用epoll的吗？还是只是传统的select?</div>2019-06-21</li><br/><li><img src="" width="30px"><span>田程杯166</span> 👍（1） 💬（1）<div>java处理网络请求的底层都是socket，传统bio是将每个网络连接的socket封装完成后，交给单独的线程去处理，那nio是怎么处理？将每个网络连接封装成的socket，用一个线程去接受 ，然后放到一个数组里面，再用一个线程去轮询这个socket数组？那么实际处理业务的代码是在什么线程呢？业务线程是在哪里创建的呢？</div>2019-06-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d1/fd/1cdfef42.jpg" width="30px"><span>刘为红</span> 👍（1） 💬（1）<div>李老师，您好！看源码tomcat9好像把阻塞IO去掉了，也不支持阻塞IO，tomcat支持NIO和NIO2（异步IO），jetty不支持NIO2吗？</div>2019-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/ee/67/d6d9499e.jpg" width="30px"><span>木木木</span> 👍（1） 💬（1）<div>从理论上，Accept接受请求，SelectorManager处理客户端socket组的轮询，Connection负责数据的收发，三者关系是异步的，可以分成不同的线程。特别是jetty的Accept是阻塞的更没办法。
-有几点疑问，按我的理解，虽然是全局线程池，这三者应该有独立的线程最大数量配置吧，这样应该更可控点，否则相互抢占，会不会有问题。
-第二点，我觉得Jetty的多个Accept本身可以设成非阻塞的，然后挂到一个selector下面，现在这种设计就是bio了。不知道它是偷懒呢（既然已经有selector了），还是有其他的考虑呢。
-第三点，SelectorManager里的多个ManagedSelector本身其实可以合成一个，所有channel挂在一个selector下面，有多个selector是不是基于性能考虑，利用多核多线程能力</div>2019-06-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b3/c5/7fc124e2.jpg" width="30px"><span>Liam</span> 👍（1） 💬（1）<div>文中的事例里面，acceptor拿到连接后创建SocketChannel， 为什么又重新去注册Accept事件呢，socketChannel不应该只关心读写事件吗</div>2019-05-30</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLNRjRHibgf1ia8RrhPJSZBiawk5OOb5VsVva5cmwickaV58WsaOkljD5rVeibWnlic62c2ZqcPsapOqCdw/132" width="30px"><span>east</span> 👍（1） 💬（1）<div>共享的线程池的大小就是一个应用的最大并发量吗</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/8d/a6/22c37c91.jpg" width="30px"><span>楊_宵夜</span> 👍（0） 💬（1）<div>李老师好, 请问, spring-boot的jetty9, Acceptor第667-&gt;670行, 是
-CountDownLatch stopping = _stopping;   &#47;&#47; 此处_stopping是AbstractConnector的成员变量
-然后就stopping.countDown()了;
-
-我就想问, 为何要创建一个局部引用? 直接使用 _stopping.countDown()不行吗?
-</div>2019-07-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/03/57/31595f22.jpg" width="30px"><span>Lrwin</span> 👍（0） 💬（1）<div>创建多个Acceptor 真的有必要吗？一个线程一个selector就可以用于监听所有的连接呀、。
-
-netty中bossgroup也就只有一个eventloop来监听所有连接。</div>2019-06-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（0） 💬（1）<div>老师好!源码里面有些全局变量希望给下注释解释下。都搞不清楚acceptor怎么拿到selectormanager对象的。然后_manager.accept(channel)调用的是一个入参，下面是两个入参的重载方法。基础比较差希望老师照顾下。</div>2019-06-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/bb/c9/37924ad4.jpg" width="30px"><span>天天向上</span> 👍（2） 💬（0）<div>为了分工协作，IO工作，业务处理工作分成两大流程环节，互不干扰，分工明确，
-高效复用IO线程</div>2019-05-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/1f/48/4bf434ef.jpg" width="30px"><span>非洲铜</span> 👍（1） 💬（0）<div>一直没用过jetty当web容器，看的有点懵逼</div>2019-05-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/87/62/f99b5b05.jpg" width="30px"><span>曙光</span> 👍（0） 💬（0）<div>老师，有个疑问：
-1 SocketChannel channel = serverChannel.accept();
-2 _key = _channel.register(selector, SelectionKey.OP_ACCEPT, this);
-既然已经监听到接收事件，为什么后面继续监听OP_ACCEPT，而不是OP_READ?</div>2022-09-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/87/62/f99b5b05.jpg" width="30px"><span>曙光</span> 👍（0） 💬（0）<div>老师，有个疑问：
-1 SocketChannel channel = serverChannel.accept();
-2 _key = _channel.register(selector, SelectionKey.OP_ACCEPT, this); </div>2022-09-18</li><br/>
+说的有点乱不晓得老师看的懂不😂。我就是想知道，一次TCP链接，多次http具体是和connector怎么绑定的。</div>2019-06-01</li><br/><li><span>gameboy120</span> 👍（9） 💬（1）<div>请问注册一堆回调函数的用意是什么？</div>2019-07-09</li><br/><li><span>-W.LI-</span> 👍（9） 💬（1）<div>老师好，跑在不同的线程里是为了解耦么?实在想不出，告诉答案吧</div>2019-06-02</li><br/><li><span>强哥</span> 👍（9） 💬（1）<div>说了各自的特点。但是感觉缺少关键性的对比，以及背后设计的理念，建议再深入探讨各自的主要差异及场景</div>2019-05-30</li><br/><li><span>kxkq2000</span> 👍（7） 💬（1）<div>分在不同的线程里我认为是这样分工明确好比工厂流水线最大化提升处理能力。
+我有个疑问是用全局线程池真的好吗，不是应该根据任务类型分配线程池的吗？用全局的不会互相干扰吗？</div>2019-06-01</li><br/><li><span>Lrwin</span> 👍（7） 💬（2）<div>感觉jetty就是一个netty模型</div>2019-05-30</li><br/><li><span>Lc</span> 👍（4） 💬（1）<div>Jetty作为后起之秀，跟tomcat相比，它的优势在哪儿？他们的设计思路不同，我们自己在设计的时候应该依据什么来确定使用哪种呢？</div>2019-05-30</li><br/><li><span>Geek_28b75e</span> 👍（3） 💬（1）<div>老师，麻烦您给说说bio和nio的区别，表面上的差别我看过了，能不能从操作系统角度给讲解一下呢？麻烦您了，实在有点难理解</div>2019-06-04</li><br/><li><span>802.11</span> 👍（3） 💬（1）<div>老师，在一个类里再写接口或者类，一般是基于什么样的设计思想呢</div>2019-06-02</li><br/><li><span>毕延文</span> 👍（2） 💬（1）<div>前面几章还好，到这里就有些看不懂了，我还是太菜了。</div>2019-06-22</li><br/><li><span>Monday</span> 👍（2） 💬（1）<div>tomcat还没学透，就学jetty，两者还相互比较，生怕自己混淆了</div>2019-05-30</li><br/>
 </ul>
 
 

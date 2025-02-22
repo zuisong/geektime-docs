@@ -3683,6 +3683,57 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#sqlprofiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      SQL剖析：profiling
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SQL剖析：profiling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#profiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      profiling操作步骤
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mysql_exportorprometheusgrafana" class="md-nav__link">
+    <span class="md-ellipsis">
+      mysql_exportor+Prometheus+Grafana
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5464,6 +5515,57 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#sqlprofiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      SQL剖析：profiling
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SQL剖析：profiling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#profiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      profiling操作步骤
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mysql_exportorprometheusgrafana" class="md-nav__link">
+    <span class="md-ellipsis">
+      mysql_exportor+Prometheus+Grafana
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5511,24 +5613,364 @@
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a># Query size       102.82M       6  10.96k  512.99  719.66  265.43  719.66
 </code></pre></div>
 <p>从上表中可以看得出来，在这个慢日志中，总执行时间达到了118079s，平均执行时间为562ms，最长执行时间为9s，标准方差为612ms。</p>
-<div><strong>精选留言（19）</strong></div>
+<p>可见在此示例中，SQL执行还是有点慢的。</p>
+<p>这时也许会有人问，SQL执行多长时间才是慢呢？之前在一个金融机构，我跟一个做核心系统的团队讨论他们的SQL执行时间指标。他们判断之后说，希望SQL平均执行时间指标定在500ms。我说，你们要500ms，那前面还有一连串的节点才能到达最终的用户，如果每个环节都这样要求自己，那最终的用户不就明显感觉到很慢了吗？</p>
+<p>经过一轮轮的讨论，最后定在了100ms以内。</p>
+<p>其实从我的经验上来看，对于大部分实时的业务，一个SQL执行的平均时间指标定在100ms都多了。但是对性能来说就是这样，在所有的环节中都没有固定的标准，只有经验数据和不断演化的系统性能能力。</p>
+<p>我们再接着分析上面的数据。再来看<code>pt-query-digest</code>给出的负载报表：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a># Profile
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a># Rank Query ID           Response time    Calls  R/Call V/M   Item
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a># ==== ================== ================ ====== ====== ===== ===========
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>#    1 0x6A516B681113449F 73081.7989 61.9%  76338 0.9573  0.71 UPDATE mb_trans
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>#    2 0x90194A5C40980DA7 38014.5008 32.2% 105778 0.3594  0.20 SELECT mb_trans mb_trans_finan
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>#    3 0x9B56065EE2D0A5C8  3893.9757  3.3%   9709 0.4011  0.11 UPDATE mb_finan
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a># MISC 0xMISC              3088.5453  2.6%  18353 0.1683   0.0 &lt;40 ITEMS&gt;
+</code></pre></div>
+<p>从这个表中可以看到，有两个SQL的执行时间占了总执行时间的94%，显然这两个SQL是要接下来要分析的重点。</p>
+<p>我们再接着看这个工具给出的第一个SQL的性能报表：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a># Query 1: 0.30 QPS, 0.29x concurrency, ID 0x6A516B681113449F at byte 127303589
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a># This item is included in the report because it matches --limit.
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a># Scores: V/M = 0.71
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a># Time range: 2017-06-16 21:12:05 to 2017-06-19 18:50:59
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a># Attribute    pct   total     min     max     avg     95%  stddev  median
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a># ============ === ======= ======= ======= ======= ======= ======= =======
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a># Count         36   76338
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a># Exec time     61  73082s   100ms      5s   957ms      2s   823ms   672ms
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a># Lock time     19      3s    20us     7ms    38us    66us    29us    33us
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a># Rows sent      0       0       0       0       0       0       0       0
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a># Rows examine  36   5.06G   3.82k 108.02k  69.57k 101.89k  22.70k  68.96k
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a># Rows affecte   2  74.55k       1       1       1       1       0       1
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a># Query size    12  12.36M     161     263  169.75  192.76   11.55  158.58
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a># String:
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a># Databases    db_bank
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a># Hosts        10.21.16.50 (38297/50%)... 1 more
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a># Users        user1
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a># Query_time distribution
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>#   1us
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>#  10us
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a># 100us
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>#   1ms
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>#  10ms
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a># 100ms  ################################################################
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>#    1s  #########################################
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>#  10s+
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a># Tables
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>#    SHOW TABLE STATUS FROM `db_bank` LIKE &#39;mb_trans&#39;\G
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>#    SHOW CREATE TABLE `db_bank`.`mb_trans`\G
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>UPDATE mb_trans  
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>        SET 
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>        resCode=&#39;PCX00000&#39;,resultMes=&#39;交易成功&#39;,payTranStatus=&#39;P03&#39;,payRouteCode=&#39;CMA&#39;  
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>        WHERE 
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>        seqNo=&#39;20170619PM010394356875&#39;\G
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a># Converted for EXPLAIN
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a># EXPLAIN /*!50100 PARTITIONS*/
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>select  
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>        resCode=&#39;PCX00000&#39;,resultMes=&#39;交易成功&#39;,payTranStatus=&#39;P03&#39;,payRouteCode=&#39;CMA&#39; from mb_trans where  
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>        seqNo=&#39;20170619PM010394356875&#39;\G
+</code></pre></div>
+<p>从查询时间分布图上来看，这个语句的执行时间在100ms~1s之间居多，95%的执行时间在2s以下。那么这个SQL就是我们接下来要调优的重点了。</p>
+<p>第二个SQL我就不赘述了，因为逻辑是完全一样的。</p>
+<p>通过对慢日志的分析，我们可以很快知道哪个SQL是慢的了。当然你用<code>mysqldumpslow</code>分析，也会得到一样的结果。</p>
+<h2 id="sqlprofiling">SQL剖析：profiling</h2>
+<p>在分析数据库的性能时，显然对SQL的分析是绕不过去的一个环节。但是我之前也说过了，上来就对SQL进行全面剖析也是不合逻辑的，因为SQL那么多，如果对每个SQL都进行详细的执行步骤解析，显然会拖慢整个系统，而且，对一些执行快的SQL进行分析也没有什么必要，徒增资源消耗。</p>
+<p>通过上面的分析过程，我们已经定位到了具体是哪个SQL执行得慢，那么下面就是要知道SQL的执行细节。无论是在Oracle还是在MySQL中，我们都要去看执行计划。</p>
+<p>比如说下面这样的：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/0d/e6/0dc186fdc3757e4804030a9e19b5a0e6.png?wh=608%2A64" /></p>
+<p>上图中<code>select_type</code>是子句类型的意思，有简单有复杂，但是它不能说明什么成本的问题。在这里，最重要的内容是type，因为type可以告诉你访问这个表的时候，是通过什么样的方式访问的。上图中的ALL是全表扫描的意思。type还有如下几个值：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ba/ba/ba8d198f6dc35389a615c8e64b5c6dba.png?wh=2102%2A1232" /></p>
+<p>执行计划中的<code>possible_keys</code>会列出可能使用到的索引值。key这一列会列出执行时使用到的索引值。</p>
+<p>以上信息就是MySQL的执行计划中比较重要的部分了。这些信息可以帮助我们做SQL的分析，为优化提供证据。</p>
+<p>除了执行计划外，MySQL还提供了<code>profiling</code>，这个有什么用呢？它可以把SQL执行的每一个步骤详细列出来，从一个SQL进入到数据库中，到执行完这整个生命周期。</p>
+<p>MySQL的<code>profiling</code>在<code>session</code>级生效，所以当你用了慢日志，知道哪个SQL有问题之后，再用这个功能是最见成效的。如果想一开始就把所有<code>session</code>的<code>SQL profiling</code>功能打开，那成本就太高了。</p>
+<p>下面我来详细解释一下profiling的用法和功能。</p>
+<h3 id="profiling">profiling操作步骤</h3>
+<p>profiling的操作步骤比较简单，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>步骤一 ：set profiling=1;  //这一步是为了打开profiling功能
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>步骤二 ：执行语句           //执行你从慢日志中看到的语句
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>步骤三 ：show profiles;    //这一步是为了查找步骤二中执行的语句的ID
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>步骤四 ：show profile all for query id; //这一步是为了显示出profiling的结果
+</code></pre></div>
+<p>我们实际执行一下上面的步骤：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>// 步骤一：打开profiling功能
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>mysql&gt; set profiling=1;
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>Query OK, 0 rows affected, 1 warning (0.00 sec)
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>// 这一步只是为了确认一下profiles列表有没有值，可以不用执行。
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>mysql&gt; show profiles;
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>Empty set, 1 warning (0.00 sec)
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>// 步骤二：执行语句
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>mysql&gt; select * from t_user where user_name=&#39;Zee0355916&#39;;
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>+--------------------------------------+-------------+------------+--------+----------------------+-------------+---------------------+
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>| id                                   | user_number | user_name  | org_id | email                | mobile      | create_time         |
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>+--------------------------------------+-------------+------------+--------+----------------------+-------------+---------------------+
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>| 00000d2d-32a8-11ea-91f8-00163e124cff | 00009496    | Zee0355916 | NULL   | test9495@dunshan.com | 17600009498 | 2020-01-09 14:19:32 |
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>| 77bdb1ef-32a6-11ea-91f8-00163e124cff | 00009496    | Zee0355916 | NULL   | test9495@dunshan.com | 17600009498 | 2020-01-09 14:08:34 |
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>| d4338339-32a2-11ea-91f8-00163e124cff | 00009496    | Zee0355916 | NULL   | test9495@dunshan.com | 17600009498 | 2020-01-09 13:42:31 |
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>+--------------------------------------+-------------+------------+--------+----------------------+-------------+---------------------+
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>3 rows in set (14.33 sec)
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>// 步骤三：查看profiles列表中，有了我们刚才执行的语句
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>mysql&gt; show profiles;
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>+----------+-------------+---------------------------------------------------+
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>| Query_ID | Duration    | Query                                             |
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>+----------+-------------+---------------------------------------------------+
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>|        1 | 14.34078475 | select * from t_user where user_name=&#39;Zee0355916&#39; |
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>+----------+-------------+---------------------------------------------------+
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>1 row in set, 1 warning (0.00 sec)
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>// 步骤四：看这个语句的profile信息
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>mysql&gt; show profile all for query 1;
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>+--------------------------------+-----------+----------+------------+-------------------+---------------------+--------------+---------------+---------------+-------------------+-------------------+-------------------+-------+-----------------------+------------------+-------------+
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>| Status                         | Duration  | CPU_user | CPU_system | Context_voluntary | Context_involuntary | Block_ops_in | Block_ops_out | Messages_sent | Messages_received | Page_faults_major | Page_faults_minor | Swaps | Source_function       | Source_file      | Source_line |
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>+--------------------------------+-----------+----------+------------+-------------------+---------------------+--------------+---------------+---------------+-------------------+-------------------+-------------------+-------+-----------------------+------------------+-------------+
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>| starting                       |  0.000024 | 0.000012 |   0.000005 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | NULL                  | NULL             |        NULL |
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>| Waiting for query cache lock   |  0.000004 | 0.000003 |   0.000001 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>| init                           |  0.000003 | 0.000002 |   0.000001 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>| checking query cache for query |  0.000052 | 0.000036 |   0.000015 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | send_result_to_client | sql_cache.cc     |        1601 |
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>| checking permissions           |  0.000007 | 0.000005 |   0.000002 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | check_access          | sql_parse.cc     |        5316 |
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>| Opening tables                 |  0.000032 | 0.000023 |   0.000009 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | open_tables           | sql_base.cc      |        5095 |
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>| init                           |  0.000042 | 0.000029 |   0.000013 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | mysql_prepare_select  | sql_select.cc    |        1051 |
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>| System lock                    |  0.000016 | 0.000011 |   0.000004 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | mysql_lock_tables     | lock.cc          |         304 |
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>| Waiting for query cache lock   |  0.000003 | 0.000002 |   0.000001 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>| System lock                    |  0.000020 | 0.000014 |   0.000006 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>| optimizing                     |  0.000012 | 0.000009 |   0.000004 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | optimize              | sql_optimizer.cc |         139 |
+<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>| statistics                     |  0.000019 | 0.000013 |   0.000005 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | optimize              | sql_optimizer.cc |         365 |
+<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>| preparing                      |  0.000015 | 0.000010 |   0.000005 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | optimize              | sql_optimizer.cc |         488 |
+<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>| executing                      |  0.000004 | 0.000003 |   0.000001 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | exec                  | sql_executor.cc  |         110 |
+<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>| Sending data                   | 14.324781 | 4.676869 |   0.762349 |              1316 |                 132 |      2499624 |           288 |             0 |                 0 |                 8 |             30862 |     0 | exec                  | sql_executor.cc  |         190 |
+<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a>| end                            |  0.000015 | 0.000007 |   0.000002 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | mysql_execute_select  | sql_select.cc    |        1106 |
+<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a>| query end                      |  0.000006 | 0.000005 |   0.000001 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | mysql_execute_command | sql_parse.cc     |        5015 |
+<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a>| closing tables                 |  0.000016 | 0.000013 |   0.000003 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | mysql_execute_command | sql_parse.cc     |        5063 |
+<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a>| freeing items                  |  0.000013 | 0.000010 |   0.000003 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 2 |     0 | mysql_parse           | sql_parse.cc     |        6490 |
+<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a>| Waiting for query cache lock   |  0.000003 | 0.000002 |   0.000000 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a>| freeing items                  |  0.000014 | 0.000012 |   0.000003 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a>| Waiting for query cache lock   |  0.000003 | 0.000002 |   0.000000 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a>| freeing items                  |  0.000003 | 0.000002 |   0.000001 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a>| storing result in query cache  |  0.000004 | 0.000002 |   0.000000 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | end_of_result         | sql_cache.cc     |        1034 |
+<a id="__codelineno-4-54" name="__codelineno-4-54" href="#__codelineno-4-54"></a>| logging slow query             |  0.015645 | 0.000084 |   0.000020 |                 2 |                   0 |           16 |             8 |             0 |                 0 |                 0 |                 2 |     0 | log_slow_do           | sql_parse.cc     |        1935 |
+<a id="__codelineno-4-55" name="__codelineno-4-55" href="#__codelineno-4-55"></a>| cleaning up                    |  0.000034 | 0.000024 |   0.000006 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | dispatch_command      | sql_parse.cc     |        1837 |
+<a id="__codelineno-4-56" name="__codelineno-4-56" href="#__codelineno-4-56"></a>+--------------------------------+-----------+----------+------------+-------------------+---------------------+--------------+---------------+---------------+-------------------+-------------------+-------------------+-------+-----------------------+------------------+-------------+
+<a id="__codelineno-4-57" name="__codelineno-4-57" href="#__codelineno-4-57"></a>26 rows in set, 1 warning (0.02 sec)
+</code></pre></div>
+<p>非常长，从这样的数据中，我们就看到了一个语句在数据库中从开始到结束的整个生命周期。</p>
+<p>对生命周期中的每个步骤进行统计之后，我们就可以看到每个步骤所消耗的时间。不仅如此，还能看到如下这些信息：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/f6/55/b3ab84a2.jpg" width="30px"><span>张红占</span> 👍（13） 💬（1）<div>干货太多了，课程价格严重低估了！</div>2020-02-14</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJGXndj5N66z9BL1ic9GibZzWWgoVeWaWTL2XUnCYic7iba2kAEvN9WfjmlXELD5lqt8IJ1P023N5ZWicg/132" width="30px"><span>Geek_f93234</span> 👍（10） 💬（1）<div>数据库分析的大体思路是什么吗？
+<li>BLOCK IO</li>
+<li>Context Switches</li>
+<li>CPU</li>
+<li>IPC</li>
+<li>MEMORY</li>
+<li>Page Fault</li>
+<li>SOURCE</li>
+<li>SWAPS</li>
+</ul>
+<p>有了这些信息，我们基本上就可以判断语句哪里有问题了。</p>
+<p>从上面这个示例语句中，你可以看到<code>Sending data</code>这一步消耗了14秒的时间，并且从后面的数据中，也可以看到主动上下文切换有1316次，被动的有132次，块操作的量也非常大。</p>
+<p>碰到这样的情况，我们就得先知道这个<code>Sending data</code>到底是什么东西。下面我们结合之前说的到的执行计划，一起看一下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>mysql&gt; explain select * from t_user where user_name=&#39;Zee0355916&#39;;
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>+----+-------------+--------+------+---------------+------+---------+------+---------+-------------+
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>| id | select_type | table  | type | possible_keys | key  | key_len | ref  | rows    | Extra       |
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>+----+-------------+--------+------+---------------+------+---------+------+---------+-------------+
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>|  1 | SIMPLE      | t_user | ALL  | NULL          | NULL | NULL    | NULL | 3868195 | Using where |
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>+----+-------------+--------+------+---------------+------+---------+------+---------+-------------+
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>1 row in set (0.00 sec)
+</code></pre></div>
+<p>这就是个典型的全表扫描，所以下一步就是检查有没有创建索引。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>mysql&gt; show indexes from t_user;
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>+--------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>| Table  | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment |
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>+--------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>| t_user |          0 | PRIMARY  |            1 | id          | A         |     3868195 |     NULL | NULL   |      | BTREE      |         |               |
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>+--------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>1 row in set (0.00 sec)
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>mysql&gt;
+</code></pre></div>
+<p>还是有一个主键索引的，但由于我们没用主键来查，所以用不到。</p>
+<p>有些性能测试工程师面对这种情况可能会有这种想法：第一次没有查索引，但是把所有数据都调到缓存里了呀，所以第二次就快了嘛，于是有些人可能想尽快“完成”工作，就用重复的数据。</p>
+<p>这里我再执行一遍，你可以看看是什么结果：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>+----------+-------------+-----------------------------------------------------------+
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>| Query_ID | Duration    | Query                                                     |
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>+----------+-------------+-----------------------------------------------------------+
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>|        1 | 14.34078475 | select * from t_user where user_name=&#39;Zee0355916&#39;         |
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>|        2 |  0.00006675 | show profile all for 1                                    |
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>|        3 |  0.00031700 | explain select * from t_user where user_name=&#39;Zee0355916&#39; |
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>|        4 |  0.00040025 | show indexes from t_user                                  |
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>+----------+-------------+-----------------------------------------------------------+
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>6 rows in set, 1 warning (0.00 sec)
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>mysql&gt; select * from t_user where user_name=&#39;Zee0355916&#39;;
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>+--------------------------------------+-------------+------------+--------+----------------------+-------------+---------------------+
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>| id                                   | user_number | user_name  | org_id | email                | mobile      | create_time         |
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>+--------------------------------------+-------------+------------+--------+----------------------+-------------+---------------------+
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>| 00000d2d-32a8-11ea-91f8-00163e124cff | 00009496    | Zee0355916 | NULL   | test9495@dunshan.com | 17600009498 | 2020-01-09 14:19:32 |
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>| 77bdb1ef-32a6-11ea-91f8-00163e124cff | 00009496    | Zee0355916 | NULL   | test9495@dunshan.com | 17600009498 | 2020-01-09 14:08:34 |
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>| d4338339-32a2-11ea-91f8-00163e124cff | 00009496    | Zee0355916 | NULL   | test9495@dunshan.com | 17600009498 | 2020-01-09 13:42:31 |
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>+--------------------------------------+-------------+------------+--------+----------------------+-------------+---------------------+
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>3 rows in set (0.00 sec)
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>mysql&gt; show profiles;
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>+----------+-------------+-----------------------------------------------------------+
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>| Query_ID | Duration    | Query                                                     |
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>+----------+-------------+-----------------------------------------------------------+
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>|        1 | 14.34078475 | select * from t_user where user_name=&#39;Zee0355916&#39;         |
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>|        2 |  0.00006675 | show profile all for 1                                    |
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>|        3 |  0.00031700 | explain select * from t_user where user_name=&#39;Zee0355916&#39; |
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>|        4 |  0.00040025 | show indexes from t_user                                  |
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>|        5 |  0.00027325 | select * from t_user where user_name=&#39;Zee0355916&#39;         |
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>+----------+-------------+-----------------------------------------------------------+
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>7 rows in set, 1 warning (0.00 sec)
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>mysql&gt; show profile all for query 5;
+<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>+--------------------------------+----------+----------+------------+-------------------+---------------------+--------------+---------------+---------------+-------------------+-------------------+-------------------+-------+-----------------------+--------------+-------------+
+<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a>| Status                         | Duration | CPU_user | CPU_system | Context_voluntary | Context_involuntary | Block_ops_in | Block_ops_out | Messages_sent | Messages_received | Page_faults_major | Page_faults_minor | Swaps | Source_function       | Source_file  | Source_line |
+<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a>+--------------------------------+----------+----------+------------+-------------------+---------------------+--------------+---------------+---------------+-------------------+-------------------+-------------------+-------+-----------------------+--------------+-------------+
+<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a>| starting                       | 0.000029 | 0.000018 |   0.000004 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | NULL                  | NULL         |        NULL |
+<a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a>| Waiting for query cache lock   | 0.000006 | 0.000003 |   0.000001 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc |         468 |
+<a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a>| init                           | 0.000003 | 0.000003 |   0.000000 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc |         468 |
+<a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a>| checking query cache for query | 0.000008 | 0.000006 |   0.000002 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | send_result_to_client | sql_cache.cc |        1601 |
+<a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a>| checking privileges on cached  | 0.000003 | 0.000002 |   0.000000 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | send_result_to_client | sql_cache.cc |        1692 |
+<a id="__codelineno-7-45" name="__codelineno-7-45" href="#__codelineno-7-45"></a>| checking permissions           | 0.000010 | 0.000192 |   0.000000 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | check_access          | sql_parse.cc |        5316 |
+<a id="__codelineno-7-46" name="__codelineno-7-46" href="#__codelineno-7-46"></a>| sending cached result to clien | 0.000210 | 0.000028 |   0.000000 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 1 |     0 | send_result_to_client | sql_cache.cc |        1803 |
+<a id="__codelineno-7-47" name="__codelineno-7-47" href="#__codelineno-7-47"></a>| cleaning up                    | 0.000006 | 0.000006 |   0.000000 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | dispatch_command      | sql_parse.cc |        1837 |
+<a id="__codelineno-7-48" name="__codelineno-7-48" href="#__codelineno-7-48"></a>+--------------------------------+----------+----------+------------+-------------------+---------------------+--------------+---------------+---------------+-------------------+-------------------+-------------------+-------+-----------------------+--------------+-------------+
+<a id="__codelineno-7-49" name="__codelineno-7-49" href="#__codelineno-7-49"></a>8 rows in set, 1 warning (0.00 sec)
+<a id="__codelineno-7-50" name="__codelineno-7-50" href="#__codelineno-7-50"></a>
+<a id="__codelineno-7-51" name="__codelineno-7-51" href="#__codelineno-7-51"></a>
+<a id="__codelineno-7-52" name="__codelineno-7-52" href="#__codelineno-7-52"></a>mys
+</code></pre></div>
+<p>看到没有，在用重复数据的时候确实会让响应时间快很多，因为数据直接从<code>cache</code>中发给<code>client</code>了。</p>
+<p>但是，这种作法请你坚决制止，因为它不符合真实生产的样子。当你再换一个数据的时候，就会歇菜，还要再经过14秒的时间做全表扫描。</p>
+<p>所以正确的做法是创建合适的索引，让语句在执行任何一条数据时都能快起来，那么，我们现在就创建一个索引，再看执行结果。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>// 创建索引
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>mysql&gt; ALTER TABLE t_user ADD INDEX username_idx (user_name);
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>Query OK, 0 rows affected (44.69 sec)
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>Records: 0  Duplicates: 0  Warnings: 0
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>// 分析表
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>mysql&gt; analyze table t_user;
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>+-----------+---------+----------+----------+
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>| Table     | Op      | Msg_type | Msg_text |
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>+-----------+---------+----------+----------+
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>| pa.t_user | analyze | status   | OK       |
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>+-----------+---------+----------+----------+
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>1 row in set (0.08 sec)
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>// 执行语句 
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>mysql&gt; select * from t_user where user_name=&#39;Zee0046948&#39;;
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>+--------------------------------------+-------------+------------+--------+----------------------+-------------+---------------------+
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>| id                                   | user_number | user_name  | org_id | email                | mobile      | create_time         |
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>+--------------------------------------+-------------+------------+--------+----------------------+-------------+---------------------+
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>| 000061a2-31c2-11ea-8d89-00163e124cff | 00009496    | Zee0046948 | NULL   | test9495@dunshan.com | 17600009498 | 2020-01-08 10:53:08 |
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>| 047d7ae1-32a2-11ea-91f8-00163e124cff | 00009496    | Zee0046948 | NULL   | test9495@dunshan.com | 17600009498 | 2020-01-09 13:36:42 |
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>| 1abfa543-318f-11ea-8d89-00163e124cff | 00009496    | Zee0046948 | NULL   | test9495@dunshan.com | 17600009498 | 2020-01-08 04:48:48 |
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>| 671c4014-3222-11ea-91f8-00163e124cff | 00009496    | Zee0046948 | NULL   | test9495@dunshan.com | 17600009498 | 2020-01-08 22:23:12 |
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>| 9de16dd3-32a5-11ea-91f8-00163e124cff | 00009496    | Zee0046948 | NULL   | test9495@dunshan.com | 17600009498 | 2020-01-09 14:02:28 |
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>| dd4ab182-32a4-11ea-91f8-00163e124cff | 00009496    | Zee0046948 | NULL   | test9495@dunshan.com | 17600009498 | 2020-01-09 13:57:05 |
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>| f507067e-32a6-11ea-91f8-00163e124cff | 00009496    | Zee0046948 | NULL   | test9495@dunshan.com | 17600009498 | 2020-01-09 14:12:04 |
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>| f7b82744-3185-11ea-8d89-00163e124cff | 00009496    | Zee0046948 | NULL   | test9495@dunshan.com | 17600009498 | 2020-01-08 03:43:24 |
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>+--------------------------------------+-------------+------------+--------+----------------------+-------------+---------------------+
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>8 rows in set (0.02 sec)
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>// 查看Query_ID
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>mysql&gt; show profiles;
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>+----------+-------------+-----------------------------------------------------------+
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>| Query_ID | Duration    | Query                                                     |
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>+----------+-------------+-----------------------------------------------------------+
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>|        1 | 14.34078475 | select * from t_user where user_name=&#39;Zee0355916&#39;         |
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>|        2 |  0.00006675 | show profile all for 1                                    |
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a>|        3 |  0.00031700 | explain select * from t_user where user_name=&#39;Zee0355916&#39; |
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>|        4 |  0.00005875 | show indexes for table t_user                             |
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a>|        5 |  0.00005850 | show indexes for t_user                                   |
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a>|        6 |  0.00040025 | show indexes from t_user                                  |
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a>|        7 |  0.00027325 | select * from t_user where user_name=&#39;Zee0355916&#39;         |
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a>|        8 |  0.00032100 | explain select * from t_user where user_name=&#39;Zee0355916&#39; |
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a>|        9 | 12.22490550 | select * from t_user where user_name=&#39;Zee0046945&#39;         |
+<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a>|       10 |  0.00112450 | select * from t_user limit 20                             |
+<a id="__codelineno-8-43" name="__codelineno-8-43" href="#__codelineno-8-43"></a>|       11 | 44.68370500 | ALTER TABLE t_user ADD INDEX username_idx (user_name)     |
+<a id="__codelineno-8-44" name="__codelineno-8-44" href="#__codelineno-8-44"></a>|       12 |  0.07385150 | analyze table t_user                                      |
+<a id="__codelineno-8-45" name="__codelineno-8-45" href="#__codelineno-8-45"></a>|       13 |  0.01516450 | select * from t_user where user_name=&#39;Zee0046948&#39;         |
+<a id="__codelineno-8-46" name="__codelineno-8-46" href="#__codelineno-8-46"></a>+----------+-------------+-----------------------------------------------------------+
+<a id="__codelineno-8-47" name="__codelineno-8-47" href="#__codelineno-8-47"></a>13 rows in set, 1 warning (0.00 sec)
+<a id="__codelineno-8-48" name="__codelineno-8-48" href="#__codelineno-8-48"></a>// 查看profile信息
+<a id="__codelineno-8-49" name="__codelineno-8-49" href="#__codelineno-8-49"></a>mysql&gt; show profile all for query 13;
+<a id="__codelineno-8-50" name="__codelineno-8-50" href="#__codelineno-8-50"></a>+--------------------------------+----------+----------+------------+-------------------+---------------------+--------------+---------------+---------------+-------------------+-------------------+-------------------+-------+-----------------------+------------------+-------------+
+<a id="__codelineno-8-51" name="__codelineno-8-51" href="#__codelineno-8-51"></a>| Status                         | Duration | CPU_user | CPU_system | Context_voluntary | Context_involuntary | Block_ops_in | Block_ops_out | Messages_sent | Messages_received | Page_faults_major | Page_faults_minor | Swaps | Source_function       | Source_file      | Source_line |
+<a id="__codelineno-8-52" name="__codelineno-8-52" href="#__codelineno-8-52"></a>+--------------------------------+----------+----------+------------+-------------------+---------------------+--------------+---------------+---------------+-------------------+-------------------+-------------------+-------+-----------------------+------------------+-------------+
+<a id="__codelineno-8-53" name="__codelineno-8-53" href="#__codelineno-8-53"></a>| starting                       | 0.000030 | 0.000017 |   0.000004 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | NULL                  | NULL             |        NULL |
+<a id="__codelineno-8-54" name="__codelineno-8-54" href="#__codelineno-8-54"></a>| Waiting for query cache lock   | 0.000005 | 0.000004 |   0.000001 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-8-55" name="__codelineno-8-55" href="#__codelineno-8-55"></a>| init                           | 0.000003 | 0.000002 |   0.000000 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-8-56" name="__codelineno-8-56" href="#__codelineno-8-56"></a>| checking query cache for query | 0.000060 | 0.000050 |   0.000011 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | send_result_to_client | sql_cache.cc     |        1601 |
+<a id="__codelineno-8-57" name="__codelineno-8-57" href="#__codelineno-8-57"></a>| checking permissions           | 0.000009 | 0.000007 |   0.000002 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | check_access          | sql_parse.cc     |        5316 |
+<a id="__codelineno-8-58" name="__codelineno-8-58" href="#__codelineno-8-58"></a>| Opening tables                 | 0.000671 | 0.000412 |   0.000000 |                 1 |                   0 |            8 |             0 |             0 |                 0 |                 0 |                 1 |     0 | open_tables           | sql_base.cc      |        5095 |
+<a id="__codelineno-8-59" name="__codelineno-8-59" href="#__codelineno-8-59"></a>| init                           | 0.006018 | 0.000082 |   0.000899 |                 1 |                   0 |         5408 |             0 |             0 |                 0 |                 1 |                 0 |     0 | mysql_prepare_select  | sql_select.cc    |        1051 |
+<a id="__codelineno-8-60" name="__codelineno-8-60" href="#__codelineno-8-60"></a>| System lock                    | 0.000017 | 0.000011 |   0.000003 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | mysql_lock_tables     | lock.cc          |         304 |
+<a id="__codelineno-8-61" name="__codelineno-8-61" href="#__codelineno-8-61"></a>| Waiting for query cache lock   | 0.000003 | 0.000003 |   0.000000 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-8-62" name="__codelineno-8-62" href="#__codelineno-8-62"></a>| System lock                    | 0.000019 | 0.000015 |   0.000004 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-8-63" name="__codelineno-8-63" href="#__codelineno-8-63"></a>| optimizing                     | 0.000012 | 0.000010 |   0.000002 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | optimize              | sql_optimizer.cc |         139 |
+<a id="__codelineno-8-64" name="__codelineno-8-64" href="#__codelineno-8-64"></a>| statistics                     | 0.001432 | 0.000167 |   0.000037 |                 1 |                   0 |           32 |             0 |             0 |                 0 |                 0 |                 4 |     0 | optimize              | sql_optimizer.cc |         365 |
+<a id="__codelineno-8-65" name="__codelineno-8-65" href="#__codelineno-8-65"></a>| preparing                      | 0.000026 | 0.000043 |   0.000009 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 1 |     0 | optimize              | sql_optimizer.cc |         488 |
+<a id="__codelineno-8-66" name="__codelineno-8-66" href="#__codelineno-8-66"></a>| executing                      | 0.000034 | 0.000005 |   0.000001 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | exec                  | sql_executor.cc  |         110 |
+<a id="__codelineno-8-67" name="__codelineno-8-67" href="#__codelineno-8-67"></a>| Sending data                   | 0.006727 | 0.000439 |   0.001111 |                13 |                   0 |         1536 |             0 |             0 |                 0 |                 0 |                 1 |     0 | exec                  | sql_executor.cc  |         190 |
+<a id="__codelineno-8-68" name="__codelineno-8-68" href="#__codelineno-8-68"></a>| end                            | 0.000014 | 0.000007 |   0.000002 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | mysql_execute_select  | sql_select.cc    |        1106 |
+<a id="__codelineno-8-69" name="__codelineno-8-69" href="#__codelineno-8-69"></a>| query end                      | 0.000009 | 0.000008 |   0.000001 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | mysql_execute_command | sql_parse.cc     |        5015 |
+<a id="__codelineno-8-70" name="__codelineno-8-70" href="#__codelineno-8-70"></a>| closing tables                 | 0.000015 | 0.000012 |   0.000003 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | mysql_execute_command | sql_parse.cc     |        5063 |
+<a id="__codelineno-8-71" name="__codelineno-8-71" href="#__codelineno-8-71"></a>| freeing items                  | 0.000010 | 0.000008 |   0.000002 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | mysql_parse           | sql_parse.cc     |        6490 |
+<a id="__codelineno-8-72" name="__codelineno-8-72" href="#__codelineno-8-72"></a>| Waiting for query cache lock   | 0.000003 | 0.000002 |   0.000000 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-8-73" name="__codelineno-8-73" href="#__codelineno-8-73"></a>| freeing items                  | 0.000027 | 0.000022 |   0.000005 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-8-74" name="__codelineno-8-74" href="#__codelineno-8-74"></a>| Waiting for query cache lock   | 0.000003 | 0.000002 |   0.000001 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-8-75" name="__codelineno-8-75" href="#__codelineno-8-75"></a>| freeing items                  | 0.000003 | 0.000002 |   0.000000 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | try_lock              | sql_cache.cc     |         468 |
+<a id="__codelineno-8-76" name="__codelineno-8-76" href="#__codelineno-8-76"></a>| storing result in query cache  | 0.000004 | 0.000004 |   0.000001 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | end_of_result         | sql_cache.cc     |        1034 |
+<a id="__codelineno-8-77" name="__codelineno-8-77" href="#__codelineno-8-77"></a>| cleaning up                    | 0.000015 | 0.000012 |   0.000003 |                 0 |                   0 |            0 |             0 |             0 |                 0 |                 0 |                 0 |     0 | dispatch_command      | sql_parse.cc     |        1837 |
+<a id="__codelineno-8-78" name="__codelineno-8-78" href="#__codelineno-8-78"></a>+--------------------------------+----------+----------+------------+-------------------+---------------------+--------------+---------------+---------------+-------------------+-------------------+-------------------+-------+-----------------------+------------------+-------------+
+<a id="__codelineno-8-79" name="__codelineno-8-79" href="#__codelineno-8-79"></a>25 rows in set, 1 warning (0.01 sec)
+<a id="__codelineno-8-80" name="__codelineno-8-80" href="#__codelineno-8-80"></a>
+<a id="__codelineno-8-81" name="__codelineno-8-81" href="#__codelineno-8-81"></a>
+<a id="__codelineno-8-82" name="__codelineno-8-82" href="#__codelineno-8-82"></a>mysql&gt;
+</code></pre></div>
+<p>从上面最后的profile信息你可以看出来，步骤一点没少，但是速度快了很多，这才是正确的优化思路。</p>
+<p>在上一篇文章中，我描述了在一个数据库中，如何从全局监控的角度查看数据，今天讲的是如何找到具体慢的SQL，以及如何定位这个SQL的问题。</p>
+<p>当然不是所有的情况下，都是SQL的问题，也有可能是配置的问题，也有可能是硬件的问题。不管什么样的问题，其分析思路都是这样的，也就是我总是在强调的：全局监控-定向监控。</p>
+<p>当然，在这里我也应该给出MySQL分析决策树的思路。从<code>mysqlreport</code>的划分上，给出几个具体的分析决策树的树枝。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/5b/27/5b9c8e2f05ee467ffc834dad86dcb927.png?wh=3867%2A851" /></p>
+<p>这是常见的问题，如果你有兴趣，可以自己完善这棵完整的树，因为你可能会有不一样的划分计数器的工具或思路，所以这个树是可以灵活变化的。</p>
+<p>你一定要记得，别人给你的东西，永远变不成自己的东西，它们只能引导你。如果你自己动手去做一遍，哪怕只画出一个分枝来，都会是很大的进步。</p>
+<p>如果你想用其他的全局监控工具，也可以考虑如下的组合，也就是mysql_exportor+Prometheus+Grafana。</p>
+<h2 id="mysql_exportorprometheusgrafana">mysql_exportor+Prometheus+Grafana</h2>
+<p>我在前面也屡次提到过这类组合，不同的exportors结合Prometheus+Grafana，可以实现实时监控及数据的保存。</p>
+<p>在这里我们看一下<code>mysql_exportor</code>可以给我们提供什么样的监控数据。这里截几个图，给你大概看一下这个套装工具能看什么内容，有兴趣的话，你也可以自己搭建一下。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/d9/ac/d96a58c12ab279375d976f27ff17acac.png?wh=1842%2A892" /></p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/29/a1/292761d3463870e0fe3a0b05a502d6a1.png?wh=1852%2A765" /></p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/95/73/959feaeacefe12129a9337eee5e1c073.png?wh=1860%2A768" /></p>
+<h2 id="_1">总结</h2>
+<p>有关数据库的知识实在是太多了，在这两篇文章中，我重点想告诉你的，就是分析数据库应该具有的思路。至于其他的知识点，我想应该是你打开文章之前就应该储备的东西。</p>
+<p>我们再来总结一下，在数据库的分析中，最有可能在三个方面出现问题：</p>
+<ol>
+<li>硬件配置</li>
+<li>数据库配置</li>
+<li>SQL语句</li>
+</ol>
+<p>对于硬件配置来说，我们只能在解决了2和3的问题之后，再来评估到底多少硬件够用的。而面对数据库配置问题，这个实在没什么好招，只能去了解数据库架构等一系列的知识之后，再学着解决。而SQL的问题呢，应该说是我们在性能测试和分析中最常见的了。SQL性能问题的分析思路也比较清晰，那就是判断出具体的SQL瓶颈点，进而做相应的优化，切记不要蒙！</p>
+<p>现在的数据库类别比之前多太多了，每种数据库都有自己的架构和使用场景，我们要在充分了解了之后，才能下手去调。</p>
+<h2 id="_2">思考题</h2>
+<p>我在这里照例留两个问题。你能说一下数据库分析的大体思路是什么吗？如何在数据库中迅速找到一个慢SQL的根本原因呢？</p>
+<p>欢迎你在评论区写下你的思考，也欢迎把这篇文章分享给你的朋友或者同事，一起交流一下。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>张红占</span> 👍（13） 💬（1）<div>干货太多了，课程价格严重低估了！</div>2020-02-14</li><br/><li><span>Geek_f93234</span> 👍（10） 💬（1）<div>数据库分析的大体思路是什么吗？
 全局分析--定向分析
 1.全局分析：分析数据库硬件配置，数据库配置，SQL语句，采用全局监控工具如mysqlreport工具收集到的测试数据，分析可能存在的问题；
 2.定向分析：如：针慢查询导致的性能问题，采用pt-query-digest工具分析慢查询日志抓取存在问题的sql，利用profiling分析sql语句的每一个层级，查看sql执行计划,对sql进行优化。
 
 如何在数据库中迅速找到一个慢 SQL 的根本原因呢？
-profiling分析sql语句的每一个层级，结合sql语句执行计划分析慢sql根本原因</div>2020-02-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/85/e2/540b91fa.jpg" width="30px"><span>凯耐</span> 👍（3） 💬（1）<div>数据库慢SQL分析基本思路：
+profiling分析sql语句的每一个层级，结合sql语句执行计划分析慢sql根本原因</div>2020-02-14</li><br/><li><span>凯耐</span> 👍（3） 💬（1）<div>数据库慢SQL分析基本思路：
 1.配置慢sql条件，将满足条件的sql写入慢查询日志
 2.通过explain工具解析sql，判断是否加了索引或索引是否失效
 3.如果没有索引，在数据表添加合适的索引，再执行sql，看执行时间。
 4.添加索引sql执行时间没有优化那就从sql编写逻辑过于复杂导致查询过慢
-5.当然硬件配置，数据库配置都会影响数据库sql的执行时间</div>2021-03-12</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83erdesQy0moaicYTicoHRQXzbmJm15wohb77qD1OdbuSqPCSUerbcZHzxJJunfmEhTx4kBLxbGaxQ9iag/132" width="30px"><span>村夫</span> 👍（2） 💬（1）<div>老师，网上都建议Mysql要关闭query cache，我看您的示例是开启呢，所以执行同一个sql会读缓存。如果关闭了，偷懒的办法是没有用的吧</div>2020-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/96/3e/2295581a.jpg" width="30px"><span>程科长</span> 👍（1） 💬（1）<div>问题一：
+5.当然硬件配置，数据库配置都会影响数据库sql的执行时间</div>2021-03-12</li><br/><li><span>村夫</span> 👍（2） 💬（1）<div>老师，网上都建议Mysql要关闭query cache，我看您的示例是开启呢，所以执行同一个sql会读缓存。如果关闭了，偷懒的办法是没有用的吧</div>2020-03-22</li><br/><li><span>程科长</span> 👍（1） 💬（1）<div>问题一：
 先全局，在定向分析
 问题二：
 profiling，它可以把 SQL 执行的每一个步骤详细列出来，从一个 SQL 进入到数据库中，到执行完这整个生命周期。
-MySQL 的profiling在session级生效，所以当你用了慢日志，知道哪个 SQL 有问题之后，再用这个功能是最见成效的。</div>2022-04-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7e/3e/82202cc8.jpg" width="30px"><span>月亮和六便士</span> 👍（1） 💬（1）<div>看完昨天和今天的专栏，我有个想法，不管三七二十一，一上来先把慢日志拎出来，分析，然后执行计划，三板斧耍完了，然后在开始工作......</div>2020-03-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/b6/a2/c7ec1355.jpg" width="30px"><span>乐少</span> 👍（0） 💬（1）<div>老师哪里可以加微信群，也要学习下</div>2024-02-16</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eoWfXendN7czHpsyaWKLPK6Na9P5czquJ7Wdre4TibZQ5SQib88edyuib3LpCVFkp0gII2wyvvR8tEIA/132" width="30px"><span>OM</span> 👍（0） 💬（1）<div>数据库方面的性能诊断涉及操作系统层,网络层,存储层,应用层，通常将关联数据库的其他层通过诊断分析确定是否与数据库有关系,缩小诊断范围和找到性能问题症结。</div>2023-08-02</li><br/><li><img src="" width="30px"><span>Geek_33192c</span> 👍（0） 💬（1）<div>初学者得从哪里学起</div>2023-03-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/01/b9/73435279.jpg" width="30px"><span>学习学个屁</span> 👍（0） 💬（1）<div>mac 如何安装 pt-query-digest  总是安装不成功</div>2021-09-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/01/b9/73435279.jpg" width="30px"><span>学习学个屁</span> 👍（0） 💬（1）<div>这些工具有搭建教程吗老师</div>2021-09-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d9/36/92d8eb91.jpg" width="30px"><span>Promise</span> 👍（0） 💬（2）<div>老师mysql_exportor+Prometheus+Grafana这一套有搭建流程吗</div>2021-09-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/58/3b/22dbe7c3.jpg" width="30px"><span>LQQ</span> 👍（0） 💬（1）<div>老师，上文中提到 ID尾号为449F的sql 日志，标准差为823ms，95线为2s，平均值为957ms，如果是正态分布，根据标准差的定义，68%的请求应该在100ms~1780ms之间，您说的是大多数请求在100ms~1s内，可能是我太较真了，特意算了一下^_^</div>2020-07-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7e/3e/82202cc8.jpg" width="30px"><span>月亮和六便士</span> 👍（0） 💬（1）<div>老师，哪可以看到MySQL- grafana 里面各个指标的详细解释，现在看到指标一脸懵逼，不知道哪个指标什么意思，值到了多少代表有问题，应该怎么办？怎么破解</div>2020-04-25</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83erdesQy0moaicYTicoHRQXzbmJm15wohb77qD1OdbuSqPCSUerbcZHzxJJunfmEhTx4kBLxbGaxQ9iag/132" width="30px"><span>村夫</span> 👍（0） 💬（1）<div>老师我看show profile在5.7以后就被废弃了，还有就是我同一个sql执行多次，通过show prorile查看每次queryId，步骤差不多呀。不知道为啥呢？</div>2020-03-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/2f/f4/2dede51a.jpg" width="30px"><span>小老鼠</span> 👍（0） 💬（1）<div>如何确定引起系统慢的原因是DB，是否可从OS分析入手？</div>2020-03-09</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83er3G5DWFp5PEklibQPYE1m8OxtYqTcryibkcUHpP4ibBicf8OUYHB6V1iaSRaNiaFV8cuNFb0xbOUF7mZhQ/132" width="30px"><span>Duke</span> 👍（0） 💬（1）<div>干活太多，我得看看吸收！</div>2020-02-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2a/04/63/80aa615f.jpg" width="30px"><span>陈星</span> 👍（0） 💬（0）<div>percona monitor and manager</div>2025-01-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/57/6e/b6795c44.jpg" width="30px"><span>夜空中最亮的星</span> 👍（0） 💬（0）<div>好好在家呆着学习 那也不去</div>2020-02-13</li><br/>
+MySQL 的profiling在session级生效，所以当你用了慢日志，知道哪个 SQL 有问题之后，再用这个功能是最见成效的。</div>2022-04-24</li><br/><li><span>月亮和六便士</span> 👍（1） 💬（1）<div>看完昨天和今天的专栏，我有个想法，不管三七二十一，一上来先把慢日志拎出来，分析，然后执行计划，三板斧耍完了，然后在开始工作......</div>2020-03-12</li><br/><li><span>乐少</span> 👍（0） 💬（1）<div>老师哪里可以加微信群，也要学习下</div>2024-02-16</li><br/><li><span>OM</span> 👍（0） 💬（1）<div>数据库方面的性能诊断涉及操作系统层,网络层,存储层,应用层，通常将关联数据库的其他层通过诊断分析确定是否与数据库有关系,缩小诊断范围和找到性能问题症结。</div>2023-08-02</li><br/><li><span>Geek_33192c</span> 👍（0） 💬（1）<div>初学者得从哪里学起</div>2023-03-27</li><br/><li><span>学习学个屁</span> 👍（0） 💬（1）<div>mac 如何安装 pt-query-digest  总是安装不成功</div>2021-09-25</li><br/><li><span>学习学个屁</span> 👍（0） 💬（1）<div>这些工具有搭建教程吗老师</div>2021-09-25</li><br/><li><span>Promise</span> 👍（0） 💬（2）<div>老师mysql_exportor+Prometheus+Grafana这一套有搭建流程吗</div>2021-09-11</li><br/><li><span>LQQ</span> 👍（0） 💬（1）<div>老师，上文中提到 ID尾号为449F的sql 日志，标准差为823ms，95线为2s，平均值为957ms，如果是正态分布，根据标准差的定义，68%的请求应该在100ms~1780ms之间，您说的是大多数请求在100ms~1s内，可能是我太较真了，特意算了一下^_^</div>2020-07-01</li><br/><li><span>月亮和六便士</span> 👍（0） 💬（1）<div>老师，哪可以看到MySQL- grafana 里面各个指标的详细解释，现在看到指标一脸懵逼，不知道哪个指标什么意思，值到了多少代表有问题，应该怎么办？怎么破解</div>2020-04-25</li><br/><li><span>村夫</span> 👍（0） 💬（1）<div>老师我看show profile在5.7以后就被废弃了，还有就是我同一个sql执行多次，通过show prorile查看每次queryId，步骤差不多呀。不知道为啥呢？</div>2020-03-19</li><br/>
 </ul>
 
 

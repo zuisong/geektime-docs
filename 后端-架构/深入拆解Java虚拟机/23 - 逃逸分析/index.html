@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -9238,6 +9243,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    23   逃逸分析
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -9247,6 +9263,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      逃逸分析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      基于逃逸分析的优化
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      部分逃逸分析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结与实践
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -12994,6 +13063,50 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      逃逸分析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      基于逃逸分析的优化
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      部分逃逸分析
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结与实践
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -13075,11 +13188,164 @@
 </code></pre></div>
 <p>实际上，Java虚拟机中的即时编译器可以将<code>ArrayList.iterator</code>方法中的实例创建操作给优化掉。不过，这需要方法内联以及逃逸分析的协作。</p>
 <p>在前面几篇中我们已经深入学习了方法内联，今天我便来介绍一下逃逸分析。</p>
-<div><strong>精选留言（23）</strong></div>
+<h2 id="_1">逃逸分析</h2>
+<p>逃逸分析是“一种确定指针动态范围的静态分析，它可以分析在程序的哪些地方可以访问到指针”（出处参见[1]）。</p>
+<p>在Java虚拟机的即时编译语境下，逃逸分析将判断<strong>新建</strong>的对象是否<strong>逃逸</strong>。即时编译器判断对象是否逃逸的依据，一是对象是否被存入堆中（静态字段或者堆中对象的实例字段），二是对象是否被传入未知代码中。</p>
+<p>前者很好理解：一旦对象被存入堆中，其他线程便能获得该对象的引用。即时编译器也因此无法追踪所有使用该对象的代码位置。</p>
+<p>关于后者，由于Java虚拟机的即时编译器是以方法为单位的，对于方法中未被内联的方法调用，即时编译器会将其当成未知代码，毕竟它无法确认该方法调用会不会将调用者或所传入的参数存储至堆中。因此，我们可以认为方法调用的调用者以及参数是逃逸的。</p>
+<p>通常来说，即时编译器里的逃逸分析是放在方法内联之后的，以便消除这些“未知代码”入口。</p>
+<p>回到文章开头的例子。理想情况下，即时编译器能够内联对<code>ArrayList$Itr</code>构造器的调用，对<code>hasNext</code>以及<code>next</code>方法的调用，以及当内联了<code>Itr.next</code>方法后，对<code>checkForComodification</code>方法的调用。</p>
+<p>如果这些方法调用均能够被内联，那么结果将近似于下面这段伪代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>public void forEach(ArrayList&lt;Object&gt; list, Consumer&lt;Object&gt; f) {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  Itr iter = new Itr; // 注意这里是new指令
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  iter.cursor = 0;
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  iter.lastRet = -1;
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  iter.expectedModCount = list.modCount;
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>  while (iter.cursor &lt; list.size) {
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    if (list.modCount != iter.expectedModCount)
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>      throw new ConcurrentModificationException();
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    int i = iter.cursor;
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    if (i &gt;= list.size)
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>      throw new NoSuchElementException();
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    Object[] elementData = list.elementData;
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    if (i &gt;= elementData.length)
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>      throw new ConcurrentModificationException();
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    iter.cursor = i + 1;
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    iter.lastRet = i;
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    Object obj = elementData[i];
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    f.accept(obj);
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>  }
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>}
+</code></pre></div>
+<p>可以看到，这段代码所新建的<code>ArrayList$Itr</code>实例既没有被存入任何字段之中，也没有作为任何方法调用的调用者或者参数。因此，逃逸分析将断定该实例不逃逸。</p>
+<h2 id="_2">基于逃逸分析的优化</h2>
+<p>即时编译器可以根据逃逸分析的结果进行诸如锁消除、栈上分配以及标量替换的优化。</p>
+<p>我们先来看一下锁消除。如果即时编译器能够证明锁对象不逃逸，那么对该锁对象的加锁、解锁操作没有意义。这是因为其他线程并不能获得该锁对象，因此也不可能对其进行加锁。在这种情况下，即时编译器可以消除对该不逃逸锁对象的加锁、解锁操作。</p>
+<p>实际上，传统编译器仅需证明锁对象不逃逸出线程，便可以进行锁消除。由于Java虚拟机即时编译的限制，上述条件被强化为证明锁对象不逃逸出当前编译的方法。</p>
+<p>在介绍Java内存模型时，我曾提过<code>synchronized (new Object()) {}</code>会被完全优化掉。这正是因为基于逃逸分析的锁消除。由于其他线程不能获得该锁对象，因此也无法基于该锁对象构造两个线程之间的happens-before规则。</p>
+<p><code>synchronized (escapedObject) {}</code>则不然。由于其他线程可能会对逃逸了的对象<code>escapedObject</code>进行加锁操作，从而构造了两个线程之间的happens-before关系。因此即时编译器至少需要为这段代码生成一条刷新缓存的内存屏障指令。</p>
+<p>不过，基于逃逸分析的锁消除实际上并不多见。一般来说，开发人员不会直接对方法中新构造的对象进行加锁。事实上，逃逸分析的结果更多被用于将新建对象操作转换成栈上分配或者标量替换。</p>
+<p>我们知道，Java虚拟机中对象都是在堆上分配的，而堆上的内容对任何线程都是可见的。与此同时，Java虚拟机需要对所分配的堆内存进行管理，并且在对象不再被引用时回收其所占据的内存。</p>
+<p>如果逃逸分析能够证明某些新建的对象不逃逸，那么Java虚拟机完全可以将其分配至栈上，并且在new语句所在的方法退出时，通过弹出当前方法的栈桢来自动回收所分配的内存空间。这样一来，我们便无须借助垃圾回收器来处理不再被引用的对象。</p>
+<p>不过，由于实现起来需要更改大量假设了“对象只能堆分配”的代码，因此HotSpot虚拟机<strong>并没有</strong>采用栈上分配，而是使用了标量替换这么一项技术。</p>
+<p>所谓的标量，就是仅能存储一个值的变量，比如Java代码中的局部变量。与之相反，聚合量则可能同时存储多个值，其中一个典型的例子便是Java对象。</p>
+<p>标量替换这项优化技术，可以看成将原本对对象的字段的访问，替换为一个个局部变量的访问。举例来说，前面经过内联之后的forEach代码可以被转换为如下代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>public void forEach(ArrayList&lt;Object&gt; list, Consumer&lt;Object&gt; f) {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  // Itr iter = new Itr; // 经过标量替换后该分配无意义，可以被优化掉
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  int cursor = 0;     // 标量替换
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>  int lastRet = -1;   // 标量替换
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>  int expectedModCount = list.modCount; // 标量替换
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>  while (cursor &lt; list.size) {
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    if (list.modCount != expectedModCount)
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>      throw new ConcurrentModificationException();
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    int i = cursor;
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    if (i &gt;= list.size)
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>      throw new NoSuchElementException();
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    Object[] elementData = list.elementData;
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    if (i &gt;= elementData.length)
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>      throw new ConcurrentModificationException();
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    cursor = i + 1;
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    lastRet = i;
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    Object obj = elementData[i];
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    f.accept(obj);
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>  }
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>}
+</code></pre></div>
+<p>可以看到，原本需要在内存中连续分布的对象，现已被拆散为一个个单独的字段<code>cursor</code>，<code>lastRet</code>，以及<code>expectedModCount</code>。这些字段既可以存储在栈上，也可以直接存储在寄存器中。而该对象的对象头信息则直接消失了，不再被保存至内存之中。</p>
+<p>由于该对象没有被实际分配，因此和栈上分配一样，它同样可以减轻垃圾回收的压力。与栈上分配相比，它对字段的内存连续性不做要求，而且，这些字段甚至可以直接在寄存器中维护，无须浪费任何内存空间。</p>
+<h2 id="_3">部分逃逸分析</h2>
+<p>C2的逃逸分析与控制流无关，相对来说比较简单。Graal则引入了一个与控制流有关的逃逸分析，名为部分逃逸分析（partial escape analysis）[2]。它解决了所新建的实例仅在部分程序路径中逃逸的情况。</p>
+<p>举个例子，在下面这段代码中，新建实例只会在进入if-then分支时逃逸。（对<code>hashCode</code>方法的调用是一个HotSpot intrinsic，将被替换为一个无法内联的本地方法调用。）</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>public static void bar(boolean cond) {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>  Object foo = new Object();
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>  if (cond) {
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    foo.hashCode();
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>  }
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>}
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>// 可以手工优化为：
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>public static void bar(boolean cond) {
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>  if (cond) {
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    Object foo = new Object();
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    foo.hashCode();
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>  }
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>}
+</code></pre></div>
+<p>假设if语句的条件成立的可能性只有1%，那么在99%的情况下，程序没有必要新建对象。其手工优化的版本正是部分逃逸分析想要自动达到的成果。</p>
+<p>部分逃逸分析将根据控制流信息，判断出新建对象仅在部分分支中逃逸，并且将对象的新建操作推延至对象逃逸的分支中。这将使得原本因对象逃逸而无法避免的新建对象操作，不再出现在只执行if-else分支的程序路径之中。</p>
+<p>综上，与C2所使用的逃逸分析相比，Graal所使用的部分逃逸分析能够优化更多的情况，不过它编译时间也更长一些。</p>
+<h2 id="_4">总结与实践</h2>
+<p>今天我介绍了Java虚拟机中即时编译器的逃逸分析，以及基于逃逸分析的优化。</p>
+<p>在Java虚拟机的即时编译语境下，逃逸分析将判断新建的对象是否会逃逸。即时编译器判断对象逃逸的依据有两个：一是看对象是否被存入堆中，二是看对象是否作为方法调用的调用者或者参数。</p>
+<p>即时编译器会根据逃逸分析的结果进行优化，如锁消除以及标量替换。后者指的是将原本连续分配的对象拆散为一个个单独的字段，分布在栈上或者寄存器中。</p>
+<p>部分逃逸分析是一种附带了控制流信息的逃逸分析。它将判断新建对象真正逃逸的分支，并且支持将新建操作推延至逃逸分支。</p>
+<hr />
+<p>今天的实践环节有两项内容。</p>
+<p>第一项内容，我们来验证一下<code>ArrayList.iterator</code>中的新建对象能否被逃逸分析所优化。运行下述代码并观察GC的情况。你可以通过虚拟机参数<code>-XX:-DoEscapeAnalysis</code>来关闭默认开启的逃逸分析。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>// Run with
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>// java -XX:+PrintGC -XX:+DoEscapeAnalysis EscapeTest
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>import java.util.ArrayList;
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>import java.util.function.Consumer;
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>public class EscapeTest {
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>  public static void forEach(ArrayList&lt;Object&gt; list, Consumer&lt;Object&gt; f) {
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    for (Object obj : list) {
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>      f.accept(obj);
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    }
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>  }
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>  public static void main(String[] args) {
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    ArrayList&lt;Object&gt; list = new ArrayList&lt;&gt;();
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    for (int i = 0; i &lt; 100; i++) {
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>      list.add(i);
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>    }
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>    for (int i = 0; i &lt; 400_000_000; i++) {
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>      forEach(list, obj -&gt; {});
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>    }
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>  }
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>}
+</code></pre></div>
+<p>第二项内容，我们来看一看部分逃逸分析的效果。你需要使用附带Graal编译器的Java版本，如Java 10，来运行下述代码，并且观察GC的情况。你可以通过虚拟机参数<code>-XX:+UnlockExperimentalVMOptions -XX:+UseJVMCICompiler</code>来启用Graal。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>// Run with
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>// java -Xlog:gc Foo
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>// java -XX:+UnlockExperimentalVMOptions -XX:+UseJVMCICompiler -Xlog:gc Foo
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>public class Foo {
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>  long placeHolder0;
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>  long placeHolder1;
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>  long placeHolder2;
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>  long placeHolder3;
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>  long placeHolder4;
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>  long placeHolder5;
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>  long placeHolder6;
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>  long placeHolder7;
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>  long placeHolder8;
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>  long placeHolder9;
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>  long placeHoldera;
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>  long placeHolderb;
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>  long placeHolderc;
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>  long placeHolderd;
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>  long placeHoldere;
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>  long placeHolderf;
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>  public static void bar(boolean condition) {
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>    Foo foo = new Foo();
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>    if (condition) {
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>      foo.hashCode();
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>    }
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>  }
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>  public static void main(String[] args) {
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>    for (int i = 0; i &lt; Integer.MAX_VALUE; i++) {
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>      bar(i % 100 == 0);
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>    }
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>  }
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>}
+</code></pre></div>
+<p>[1] <a href="https://zh.wikipedia.org/wiki/%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90">https://zh.wikipedia.org/wiki/逃逸分析</a><br />
+[2] <a href="http://www.ssw.uni-linz.ac.at/Research/Papers/Stadler14/Stadler2014-CGO-PEA.pdf">http://www.ssw.uni-linz.ac.at/Research/Papers/Stadler14/Stadler2014-CGO-PEA.pdf</a></p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/0b/78/22410c47.jpg" width="30px"><span>魏春河</span> 👍（23） 💬（10）<div>怎么看出来对象是否放入堆中？不是所有的对象都在堆中吗</div>2018-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/26/38/ef063dc2.jpg" width="30px"><span>Darren</span> 👍（12） 💬（1）<div>逃逸分析的主要优化点是：栈上分配，标量替换，同步消除。其中同步消除比较少，栈上分配在HotSpot中暂未实现，主要是标量替换。
+<li><span>魏春河</span> 👍（23） 💬（10）<div>怎么看出来对象是否放入堆中？不是所有的对象都在堆中吗</div>2018-09-12</li><br/><li><span>Darren</span> 👍（12） 💬（1）<div>逃逸分析的主要优化点是：栈上分配，标量替换，同步消除。其中同步消除比较少，栈上分配在HotSpot中暂未实现，主要是标量替换。
 逃逸分析的缺点是：分析过程比较耗费性能或者分析完毕后发现非逃逸的对象很少。
-逃逸程度：不逃逸，方法逃逸，线程逃逸；其中栈上分配不支持线程逃逸，标量替换不支持方法逃逸。</div>2020-03-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/2e/c1/3b9844cd.jpg" width="30px"><span>房艳</span> 👍（5） 💬（0）<div>看完老师的讲解，我又看了下面的这个文章，感觉好像更理解了一些。
+逃逸程度：不逃逸，方法逃逸，线程逃逸；其中栈上分配不支持线程逃逸，标量替换不支持方法逃逸。</div>2020-03-06</li><br/><li><span>房艳</span> 👍（5） 💬（0）<div>看完老师的讲解，我又看了下面的这个文章，感觉好像更理解了一些。
 逃逸分析
 逃逸分析并不是直接的优化手段，而是一个代码分析，通过动态分析对象的作用域，为其它优化手段如栈上分配、标量替换和同步消除等提供依据，发生逃逸行为的情况有两种：方法逃逸和线程逃逸。
 1、方法逃逸：当一个对象在方法中定义之后，作为参数传递到其它方法中；
@@ -13099,30 +13365,27 @@
 栈上分配
 故名思议就是在栈上分配对象，其实目前Hotspot并没有实现真正意义上的栈上分配，实际上是标量替换。
 ......
-链接：https:&#47;&#47;www.jianshu.com&#47;p&#47;20bd2e9b1f03</div>2021-01-21</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLwSoTjHPX5tm4whBSfoZLX6toZxrZGUaLABQywKNf4MDc9toK3QSV7Z99ATcGicFCysoleQ5ISzmw/132" width="30px"><span>乘风</span> 👍（4） 💬（1）<div>看了此篇后有一些疑惑：
+链接：https:&#47;&#47;www.jianshu.com&#47;p&#47;20bd2e9b1f03</div>2021-01-21</li><br/><li><span>乘风</span> 👍（4） 💬（1）<div>看了此篇后有一些疑惑：
     1.为什么对象存入到堆中就无法追踪其代码位置？ 当基于全局的优化确定对象的作用域限定在方法内部，其引用不会发生逃逸，这样的对象虽然存在堆中但其引用作用域固定，不会发生方法逃逸。
     2.逃逸分析的判断依据是对象是否存入到堆中，而后文又讲到HotSpot并没有采用栈上分配，那不是意味着对象是一定分配在堆中吗？
-    </div>2019-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d4/f3/129d6dfe.jpg" width="30px"><span>李二木</span> 👍（2） 💬（1）<div>本章介绍逃逸分析的优化作用，那么它有什么不足的地方吗？</div>2018-09-12</li><br/><li><img src="" width="30px"><span>Scott</span> 👍（2） 💬（1）<div>你好，我翻了一下R大关于escape analysis的一篇知乎回答，里面提到C2可以对不逸出当前线程的锁做消除，这个过程是怎样的？</div>2018-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/4a/6f/e36b3908.jpg" width="30px"><span>xzy</span> 👍（1） 💬（0）<div>最后的结果还是：所有对象都在堆里面</div>2020-11-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/c5/2d/1eebfc3c.jpg" width="30px"><span>GaGi</span> 👍（1） 💬（0）<div>对于如何判断对象是逃逸的，我的理解是这样：
+    </div>2019-07-18</li><br/><li><span>李二木</span> 👍（2） 💬（1）<div>本章介绍逃逸分析的优化作用，那么它有什么不足的地方吗？</div>2018-09-12</li><br/><li><span>Scott</span> 👍（2） 💬（1）<div>你好，我翻了一下R大关于escape analysis的一篇知乎回答，里面提到C2可以对不逸出当前线程的锁做消除，这个过程是怎样的？</div>2018-09-12</li><br/><li><span>xzy</span> 👍（1） 💬（0）<div>最后的结果还是：所有对象都在堆里面</div>2020-11-12</li><br/><li><span>GaGi</span> 👍（1） 💬（0）<div>对于如何判断对象是逃逸的，我的理解是这样：
 1、对象如果在堆中，其他线程是可以获取到这个对象的引用，这时如果很多地方引用到这个对象，那么就会导致即时编译器无法追踪所有使用该对象的代码位置；
 2、关于第二点，文中说的比较清晰，就是对象如果是作为调用者调用一个未知方法&#47;作为参数传入未知方法，这时就可以认为是逃逸的；
 
-对于上面这两点，应该是连带的；也就是说先满足对象是在堆中存储，并且对象有涉及到未知代码中就认为是逃逸的；不知道理解正不正确，如果理解不正确，麻烦老师纠正下</div>2020-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/95/7a/ee2207f8.jpg" width="30px"><span>9700</span> 👍（1） 💬（3）<div>为啥hashCode方法不能内联，22节介绍的native方法，只要被标注了intrinsic，都会被直接内联的啊。</div>2019-06-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f9/16/99a7045d.jpg" width="30px"><span>倔强</span> 👍（1） 💬（0）<div>老师讲的非常好，对jvm的了解更加深入了一些</div>2018-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/da/c4/270db3ad.jpg" width="30px"><span>ZoQ-tans</span> 👍（1） 💬（0）<div>老师讲的很有帮助，陈列原理，结合事例，有理有据，逻辑清晰，层次鲜明</div>2018-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/10/bb/f1061601.jpg" width="30px"><span>Demon.Lee</span> 👍（0） 💬（0）<div>“由于该对象没有被实际分配，因此和栈上分配一样，它同样可以减轻垃圾回收的压力。与栈上分配相比，它对字段的内存连续性不做要求，而且，这些字段甚至可以直接在寄存器中维护，无须浪费任何内存空间。”
+对于上面这两点，应该是连带的；也就是说先满足对象是在堆中存储，并且对象有涉及到未知代码中就认为是逃逸的；不知道理解正不正确，如果理解不正确，麻烦老师纠正下</div>2020-04-17</li><br/><li><span>9700</span> 👍（1） 💬（3）<div>为啥hashCode方法不能内联，22节介绍的native方法，只要被标注了intrinsic，都会被直接内联的啊。</div>2019-06-28</li><br/><li><span>倔强</span> 👍（1） 💬（0）<div>老师讲的非常好，对jvm的了解更加深入了一些</div>2018-09-12</li><br/><li><span>ZoQ-tans</span> 👍（1） 💬（0）<div>老师讲的很有帮助，陈列原理，结合事例，有理有据，逻辑清晰，层次鲜明</div>2018-09-12</li><br/><li><span>Demon.Lee</span> 👍（0） 💬（0）<div>“由于该对象没有被实际分配，因此和栈上分配一样，它同样可以减轻垃圾回收的压力。与栈上分配相比，它对字段的内存连续性不做要求，而且，这些字段甚至可以直接在寄存器中维护，无须浪费任何内存空间。”
 
-“与栈上分配相比” 这句话是否是“与堆上分配相比”，编辑小姐姐瞧一瞧 😄</div>2024-04-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/0b/8c/db1ee0a2.jpg" width="30px"><span>walkingonair</span> 👍（0） 💬（0）<div>标量替换（Scalar Replacement）是一种编译器优化技术，它可以将某些对象拆分成多个独立的基本类型变量，从而提高程序的执行效率。由于基本类型变量不需要进行内存管理和垃圾回收等操作，因此可以大幅度降低程序的内存开销和运行时开销。
+“与栈上分配相比” 这句话是否是“与堆上分配相比”，编辑小姐姐瞧一瞧 😄</div>2024-04-21</li><br/><li><span>walkingonair</span> 👍（0） 💬（0）<div>标量替换（Scalar Replacement）是一种编译器优化技术，它可以将某些对象拆分成多个独立的基本类型变量，从而提高程序的执行效率。由于基本类型变量不需要进行内存管理和垃圾回收等操作，因此可以大幅度降低程序的内存开销和运行时开销。
 在 Java 中，当创建一个对象时，它通常会被分配在堆空间中，并由 GC 进行管理和回收。但如果编译器能够确切地知道对象的属性数量、类型以及访问方式等信息，那么就可以将该对象拆分成多个独立的基本类型变量，从而提高程序的执行效率。
 具体来说，标量替换的过程如下：
 1、编译器首先会对程序进行静态分析，找出其中满足条件的对象。
 2、对于满足条件的对象，编译器会将其属性值拆分成多个独立的基本类型变量，并将这些变量分别存储在栈上或寄存器中。
 3、当需要使用该对象的属性值时，编译器会将这些基本类型变量合并为一个对象，并返回对象的引用。
-4、当对象不再被使用时，它所占用的内存区域会由 GC 自动回收，无需进行额外的内存管理操作。</div>2023-06-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/0b/8c/db1ee0a2.jpg" width="30px"><span>walkingonair</span> 👍（0） 💬（0）<div>栈上分配（Stack Allocation）是一种编译器优化技术，它可以将某些对象直接分配在栈上，从而避免了对堆空间的额外开销。由于栈上分配不需要进行内存管理和垃圾回收等操作，因此可以大幅度提高程序的执行效率。
+4、当对象不再被使用时，它所占用的内存区域会由 GC 自动回收，无需进行额外的内存管理操作。</div>2023-06-26</li><br/><li><span>walkingonair</span> 👍（0） 💬（0）<div>栈上分配（Stack Allocation）是一种编译器优化技术，它可以将某些对象直接分配在栈上，从而避免了对堆空间的额外开销。由于栈上分配不需要进行内存管理和垃圾回收等操作，因此可以大幅度提高程序的执行效率。
 在 Java 中，当创建一个对象时，它通常会被分配在堆空间中，并由 GC 进行管理和回收。但如果编译器能够确切地知道对象的生命周期、访问方式以及是否发生逃逸等信息，那么就可以将该对象直接分配在栈上，避免了对堆空间的额外开销。
 具体来说，栈上分配的过程如下：
 1、编译器首先会对程序进行静态分析，找出其中局部变量且不会被逃逸的对象。
 2、对于满足条件的对象，编译器会在方法栈帧中为其分配一段连续的内存区域，并将对象的属性值直接存储在这个内存区域中。
-3、当对象不再被使用时，它所占用的内存区域会随着方法的返回而自动释放，无需进行垃圾回收等操作。</div>2023-06-26</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLEIsgI4ub1VOKWtVOfouAzSqx8Yt8ibQEsAnwNJsJHmuJzzpQqG79HullvYwpic8hgiclgON2GwXSjw/132" width="30px"><span>cv0cv0</span> 👍（0） 💬（0）<div>Graal 是作者写的吗？</div>2022-03-09</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/hQ01GRPRFNTfBWX1Gmz0cqXZxbyJqHmORNJuE8yIqCbg1fXjvaWOGoatVo3Pbib5ZHCEqYFhSHhCVA8zr2Q2WuA/132" width="30px"><span>Geek_03a866</span> 👍（0） 💬（0）<div>逃逸分析将优化，线程本地存储，方法，栈帧，垃圾回收讲清楚了</div>2020-10-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/db/26/3c8d68fb.jpg" width="30px"><span>天使梦泪</span> 👍（0） 💬（0）<div>老师好，课后的第一个问题，从垃圾回收怎么看出是否发生了逃逸优化？</div>2020-06-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/db/26/3c8d68fb.jpg" width="30px"><span>天使梦泪</span> 👍（0） 💬（1）<div>老师好，怎么查看逃逸分析的效果？</div>2020-06-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/db/26/3c8d68fb.jpg" width="30px"><span>天使梦泪</span> 👍（0） 💬（0）<div>1.不会发生逃逸吧，没有对list做改变</div>2020-06-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/cc/de/e28c01e1.jpg" width="30px"><span>剑八</span> 👍（0） 💬（0）<div>逃逸指的是对象是否可能被多个线程访问
-而分析对象是否逃逸的目的，最终是希望找出哪些对象是非逃逸的，我们针对非逃逸的对象可以做些优化。
-如：锁消除，栈上替换，标量替换。
-栈上替换和标量替换都是针对非逃逸对象，将原本需要在堆中新建对象的消耗（含后面的垃圾回收）给消除掉，通过将对象用标量替换掉来达到对于对象操作的目的。</div>2020-06-14</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eou1BMETumU21ZI4yiaLenOMSibzkAgkw944npIpsJRicmdicxlVQcgibyoQ00rdGk9Htp1j0dM5CP2Fibw/132" width="30px"><span>寥若晨星</span> 👍（0） 💬（2）<div>同问，“一是看对象是否被存入堆中”，所有对象不是都分配在堆中吗？</div>2019-08-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/18/cb/edb5a0a0.jpg" width="30px"><span>小橙橙</span> 👍（0） 💬（2）<div>第一个示例，加了jvm参数，控制台什么内容都没有打印出来，jdk是1.8</div>2018-09-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/aa/85/b9946d11.jpg" width="30px"><span>idiandian</span> 👍（0） 💬（0）<div>锁消除的概念很有意思</div>2018-09-12</li><br/>
+3、当对象不再被使用时，它所占用的内存区域会随着方法的返回而自动释放，无需进行垃圾回收等操作。</div>2023-06-26</li><br/><li><span>cv0cv0</span> 👍（0） 💬（0）<div>Graal 是作者写的吗？</div>2022-03-09</li><br/>
 </ul>
 
 

@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#10java" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -3063,6 +3068,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    12   实战：用Kotlin实现一个网络请求框架KtHttp
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -3072,6 +3088,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#10java" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.0：Java思维
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.0：函数式思维
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -5227,6 +5296,50 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#10java" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.0：Java思维
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.0：函数式思维
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -5259,11 +5372,522 @@
 <li>2.0 版本，我们会用函数式思维来重构代码。</li>
 </ul>
 <p>另外，在正式开始学习之前，我也建议你去clone我GitHub上面的KtHttp工程：<a href="https://github.com/chaxiu/KtHttp.git">https://github.com/chaxiu/KtHttp.git</a>，然后用IntelliJ打开，并切换到<strong>start</strong>分支跟着课程一步步敲代码。</p>
-<div><strong>精选留言（20）</strong></div>
+<h2 id="10java">1.0：Java思维</h2>
+<p>在正式开始之前，我们还是先来看看程序的运行效果：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/32/bc/321d151db077766997ed8d8b911f1fbc.gif?wh=1294x862" /></p>
+<p>在上面的动图中，我们通过KtHttp请求了一个服务器的API，然后在控制台输出了结果。这其实是我们在开发工作当中十分常见的需求。通过这个KtHttp，我们就可以在程序当中访问任何服务器的API，比如<a href="https://docs.github.com/en">GitHub的API</a>。</p>
+<p>那么，为了描述服务器返回的内容，我们定义了两个数据类：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>// 这种写法是有问题的，但这节课我们先不管。
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>data class RepoList(
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    var count: Int?,
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    var items: List&lt;Repo&gt;?,
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    var msg: String?
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>)
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>data class Repo(
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    var added_stars: String?,
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    var avatars: List&lt;String&gt;?,
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    var desc: String?,
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    var forks: String?,
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    var lang: String?,
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    var repo: String?,
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    var repo_link: String?,
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    var stars: String?
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>)
+</code></pre></div>
+<p>除了数据类以外，我们还要定义一个用于网络请求的接口：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>interface ApiService {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    @GET(&quot;/repo&quot;)
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    fun repos(
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        @Field(&quot;lang&quot;) lang: String,
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        @Field(&quot;since&quot;) since: String
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    ): RepoList
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>}
+</code></pre></div>
+<p>在这个接口当中，有两个注解，我们一个个分析：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/14/71/c1/cbc55e06.jpg" width="30px"><span>白乾涛</span> 👍（8） 💬（1）<div>勉强能看明白，但这代码谁能手写的出来呀？
+<li><strong>GET注解</strong>，代表了这个网络请求应该是GET请求，这是<a href="https://zh.wikipedia.org/wiki/%E8%B6%85%E6%96%87%E6%9C%AC%E4%BC%A0%E8%BE%93%E5%8D%8F%E8%AE%AE">HTTP</a>请求的一种方式。GET注解当中的“/repo”，代表了API的path，它是和baseURL拼接的；</li>
+<li><strong>Field注解</strong>，代表了GET请求的参数。Field注解当中的值也会和URL拼接在一起。</li>
+</ul>
+<p>也许你会好奇，<strong>GET、Field这两个注解是从哪里来的呢？</strong>这其实也是需要我们自己定义的。根据上节课学过的内容，我们很容易就能写出下面的代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>@Target(AnnotationTarget.FUNCTION)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>@Retention(AnnotationRetention.RUNTIME)
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>annotation class GET(val value: String)
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>@Target(AnnotationTarget.VALUE_PARAMETER)
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>@Retention(AnnotationRetention.RUNTIME)
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>annotation class Field(val value: String)
+</code></pre></div>
+<p>从这段代码里我们可以看出，GET注解只能用于修饰函数，Field注解只能用于修饰参数。另外，这两个注解的Retention都是AnnotationRetention.RUNTIME，这意味着这两个注解都是运行时可访问的。而这，也正好是我们后面要使用的反射的前提。</p>
+<p>最后，我们再来看看KtHttp是如何使用的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>fun main() {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    // ①
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    val api: ApiService = KtHttpV1.create(ApiService::class.java)
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    // ②
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    val data: RepoList = api.repos(lang = &quot;Kotlin&quot;, since = &quot;weekly&quot;)
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    println(data)
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>}
+</code></pre></div>
+<p>上面的代码有两个注释，我们分别来看。</p>
+<ul>
+<li>注释①：我们调用KtHttpV1.create()方法，传入了ApiService::class.java，参数的类型是<code>Class&lt;T&gt;</code>，返回值类型是ApiService。这就相当于创建了ApiService这个接口的实现类的对象。</li>
+<li>注释②：我们调用api.repos()这个方法，传入了Kotlin、weekly这两个参数，代表我们想查询最近一周最热门的Kotlin开源项目。</li>
+</ul>
+<p>看到这里，你也许会好奇，<strong>KtHttpV1.create()是如何创建ApiService的实例的呢？</strong>要知道ApiService可是一个接口，我们要创建它的对象，必须要先定义一个类实现它的接口方法，然后再用这个类来创建对象才行。</p>
+<p>不过在这里，我们不会使用这种传统的方式，而是会用<strong>动态代理</strong>，也就是JDK的<a href="https://docs.oracle.com/javase/7/docs/api/java/lang/reflect/Proxy.html">Proxy</a>。Proxy的底层，其实也用到了反射。</p>
+<p>不过，由于这个案例涉及到的知识点都很抽象，在正式开始编写逻辑代码之前，我们先来看看下面这个动图，对整体的程序有一个粗略的认识。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/cf/95/cf441d3df1bb4b49432319e160cd3c95.gif?wh=1080x608" /></p>
+<p>现在，相信你大概就知道这个程序是如何实现的了。下面，我再带你来看看具体的代码是怎么写的。</p>
+<p>这里我要先说明一点，为了不偏离这次实战课的主题，我们不会去深究Proxy的底层原理。在这里，<strong>你只需要知道，我们通过Proxy，就可以动态地创建ApiService接口的实例化对象</strong>。具体的做法如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>fun &lt;T&gt; create(service: Class&lt;T&gt;): T {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    // 调用 Proxy.newProxyInstance 就可以创建接口的实例化对象
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    return Proxy.newProxyInstance(
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        service.classLoader,
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        arrayOf&lt;Class&lt;*&gt;&gt;(service),
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        object : InvocationHandler{
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>            override fun invoke(proxy: Any?, method: Method?, args: Array&lt;out Any&gt;?): Any {
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>                // 省略
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>            }
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        }
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    ) as T
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>}    
+</code></pre></div>
+<p>在上面的代码当中，我们在create()方法当中，直接返回了Proxy.newProxyInstance()这个方法的返回值，最后再将其转换成了T类型。</p>
+<p>那么，newProxyInstance()这个方法又是如何定义的呢？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="n">Object</span><span class="w"> </span><span class="nf">newProxyInstance</span><span class="p">(</span><span class="n">ClassLoader</span><span class="w"> </span><span class="n">loader</span><span class="p">,</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">                                          </span><span class="n">Class</span><span class="o">&lt;?&gt;[]</span><span class="w"> </span><span class="n">interfaces</span><span class="p">,</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">                                          </span><span class="n">InvocationHandler</span><span class="w"> </span><span class="n">h</span><span class="p">){</span><span class="w"> </span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">        </span><span class="p">...</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="p">}</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">InvocationHandler</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">Object</span><span class="w"> </span><span class="nf">invoke</span><span class="p">(</span><span class="n">Object</span><span class="w"> </span><span class="n">proxy</span><span class="p">,</span><span class="w"> </span><span class="n">Method</span><span class="w"> </span><span class="n">method</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="o">[]</span><span class="w"> </span><span class="n">args</span><span class="p">)</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">        </span><span class="kd">throws</span><span class="w"> </span><span class="n">Throwable</span><span class="p">;</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="p">}</span>
+</code></pre></div>
+<p>从上面的代码当中，我们可以看到，最后一个参数，InvocationHandler其实是符合SAM转换要求的，所以我们的create()方法可以进一步简化成这样：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>fun &lt;T&gt; create(service: Class&lt;T&gt;): T {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    return Proxy.newProxyInstance(
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>        service.classLoader,
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        arrayOf&lt;Class&lt;*&gt;&gt;(service)
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    ) { proxy, method, args -&gt;
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        // 待完成
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    } as T
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>}
+</code></pre></div>
+<p>那么到这里，我们程序的基本框架也就搭建好了。</p>
+<p>细心的你一定发现了，我们<strong>程序的主要逻辑还没实现</strong>，所以接下来，我们就一起看看上面那个“待完成”的InvocationHandler，这个Lambda表达式应该怎么写。这个换句话说，也就是Proxy.newProxyInstance()，会帮我们创建ApiService的实例对象，而ApiService当中的接口方法的具体逻辑，我们需要在Lambda表达式当中实现。</p>
+<p>好了，让我们回过头来看看ApiService当中的代码细节：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>interface ApiService {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>// 假设我们的baseurl是：https://baseurl.com
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>// 这里拼接结果会是这样：https://baseurl.com/repo
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>//          ↓
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    @GET(&quot;/repo&quot;)
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    fun repos(
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    //                Field注解当中的lang，最终会拼接到url当中去
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    //            ↓                                                 ↓
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>        @Field(&quot;lang&quot;) lang: String,  // https://baseurl.com/repo?lang=Kotlin
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>        @Field(&quot;since&quot;) since: String // https://baseurl.com/repo?lang=Kotlin&amp;since=weekly
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    ): RepoList
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>}
+</code></pre></div>
+<p>从代码注释中可以看出来，其实我们真正需要实现的逻辑，就是想办法把注解当中的值/repo、lang、since取出来，然后拼接到URL当中去。那么，我们如何才能得到注解当中的值呢？</p>
+<p>答案自然就是我们在上节课学过的：<strong>反射</strong>。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>object KtHttpV1 {
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    // 底层使用 OkHttp
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    private var okHttpClient: OkHttpClient = OkHttpClient()
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    // 使用 Gson 解析 JSON
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    private var gson: Gson = Gson()
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    // 这里以baseurl.com为例，实际上我们的KtHttpV1可以请求任意API
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    var baseUrl = &quot;https://baseurl.com&quot;
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    fun &lt;T&gt; create(service: Class&lt;T&gt;): T {
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>        return Proxy.newProxyInstance(
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>            service.classLoader,
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>            arrayOf&lt;Class&lt;*&gt;&gt;(service)
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>        //           ①     ②
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>        //           ↓      ↓
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        ) { proxy, method, args -&gt;
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>            // ③
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>            val annotations = method.annotations
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>            for (annotation in annotations) {
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>                // ④
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>                if (annotation is GET) {
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>                    // ⑤
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>                    val url = baseUrl + annotation.value
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>                    // ⑥
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>                    return@newProxyInstance invoke(url, method, args!!)
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>                }
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>            }
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>            return@newProxyInstance null
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>        } as T
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>    }
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>    private fun invoke(url: String, method: Method, args: Array&lt;Any&gt;): Any? {
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a>        // 待完成
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>    }
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a>}
+</code></pre></div>
+<p>在上面的代码中，一共有6个注释，我们一个个看。</p>
+<ul>
+<li>注释①：method的类型是反射后的Method，在我们这个例子当中，它最终会代表被调用的方法，也就是ApiService接口里面的repos()这个方法。</li>
+<li>注释②：args的类型是对象的数组，在我们的例子当中，它最终会代表方法的参数的值，也就是“<code>api.repos("Kotlin", "weekly")</code>”当中的<code>"Kotlin"</code>和<code>"weekly"</code>。</li>
+<li>注释③：method.annotations，代表了我们会取出repos()这个方法上面的所有注解，由于repos()这个方法上面可能会有多个注解，因此它是数组类型。</li>
+<li>注释④：我们使用for循环，遍历所有的注解，找到GET注解。</li>
+<li>注释⑤：我们找到GET注解以后，要取出@GET(“/repo”)当中的"/repo"，也就是“annotation.value”。这时候我们只需要用它与baseURL进行拼接，就可以得到完整的URL；</li>
+<li>注释⑥：return@newProxyInstance，用的是Lambda表达式当中的返回语法，在得到完整的URL以后，我们将剩下的逻辑都交给了invoke()这个方法。</li>
+</ul>
+<p>接下来，我们再来看看invoke()当中的“待完成代码”应该怎么写。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>private fun invoke(url: String, method: Method, args: Array&lt;Any&gt;): Any? {
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    // ① 根据url拼接参数，也就是：url + ?lang=Kotlin&amp;since=weekly
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    // ② 使用okHttpClient进行网络请求
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    // ③ 使用gson进行JSON解析
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    // ④ 返回结果
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>}
+</code></pre></div>
+<p>在上面的代码中，我们的invoke()方法一共分成了四个步骤，其中的③、④两个步骤其实很容易实现：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>private fun invoke(url: String, method: Method, args: Array&lt;Any&gt;): Any? {
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    // ① 根据url拼接参数，也就是：url + ?lang=Kotlin&amp;since=weekly
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    // 使用okHttpClient进行网络请求
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    val request = Request.Builder()
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>            .url(url)
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>            .build()
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    val response = okHttpClient.newCall(request).execute()
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    // ② 获取repos()的返回值类型 genericReturnType
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    // 使用gson进行JSON解析
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>    val body = response.body
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    val json = body?.string()
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>    //                              根据repos()的返回值类型解析JSON
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>    //                                            ↓
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    val result = gson.fromJson&lt;Any?&gt;(json, genericReturnType)
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>    // 返回结果
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>    return result
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>}
+</code></pre></div>
+<p>继续看，经过我们的分解，现在的问题变成了下面这样：</p>
+<ul>
+<li>注释①，利用反射，解析出“<code>api.repos("Kotlin", "weekly")</code>”这个方法当中的<code>"Kotlin"</code>和<code>"weekly"</code>，将其与URL进行拼接得到：<code>url + ?lang=Kotlin&amp;since=weekly</code></li>
+<li>注释②，利用反射，解析出repos()的返回值类型，用于JSON解析。</li>
+</ul>
+<p>我们来看看最终的代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>private fun invoke(path: String, method: Method, args: Array&lt;Any&gt;): Any? {
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    // 条件判断
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    if (method.parameterAnnotations.size != args.size) return null
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    // 解析完整的url
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    var url = path
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    // ①
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    val parameterAnnotations = method.parameterAnnotations
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    for (i in parameterAnnotations.indices) {
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>        for (parameterAnnotation in parameterAnnotations[i]) {
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>            // ②
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>            if (parameterAnnotation is Field) {
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>                val key = parameterAnnotation.value
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>                val value = args[i].toString()
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>                if (!url.contains(&quot;?&quot;)) {
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>                    // ③
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>                    url += &quot;?$key=$value&quot;
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>                } else {
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>                    // ④
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>                    url += &quot;&amp;$key=$value&quot;
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>                }
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>            }
+<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>        }
+<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>    }
+<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>    // 最终的url会是这样：
+<a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>    // https://baseurl.com/repo?lang=Kotlin&amp;since=weekly
+<a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>
+<a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>    // 执行网络请求
+<a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a>    val request = Request.Builder()
+<a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>        .url(url)
+<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a>        .build()
+<a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a>    val response = okHttpClient.newCall(request).execute()
+<a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a>
+<a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a>    // ⑤
+<a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a>    val genericReturnType = method.genericReturnType
+<a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a>    val body = response.body
+<a id="__codelineno-11-38" name="__codelineno-11-38" href="#__codelineno-11-38"></a>    val json = body?.string()
+<a id="__codelineno-11-39" name="__codelineno-11-39" href="#__codelineno-11-39"></a>    // JSON解析
+<a id="__codelineno-11-40" name="__codelineno-11-40" href="#__codelineno-11-40"></a>    val result = gson.fromJson&lt;Any?&gt;(json, genericReturnType)
+<a id="__codelineno-11-41" name="__codelineno-11-41" href="#__codelineno-11-41"></a>
+<a id="__codelineno-11-42" name="__codelineno-11-42" href="#__codelineno-11-42"></a>    // 返回值
+<a id="__codelineno-11-43" name="__codelineno-11-43" href="#__codelineno-11-43"></a>    return result
+<a id="__codelineno-11-44" name="__codelineno-11-44" href="#__codelineno-11-44"></a>}
+</code></pre></div>
+<p>上面的代码一共涉及五个注释，它们都是跟注解与反射这两个知识点相关的。</p>
+<ul>
+<li>注释①，method.parameterAnnotations，它的作用是取出方法参数当中的所有注解，在我们这个案例当中，repos()这个方法当中涉及到两个注解，它们分别是<code>@Field("lang")</code>、<code>@Field("since")</code>。</li>
+<li>注释②，由于方法当中可能存在其他注解，因此要筛选出我们想要的Field注解。</li>
+<li>注释③，这里是取出注解当中的值“lang”，以及参数当中对应的值“Kotlin”进行拼接，URL第一次拼接参数的时候，要用“?”分隔。</li>
+<li>注释④，这里是取出注解当中的值“since”，以及参数当中对应的值“weekly”进行拼接，后面的参数拼接格式，是用“&amp;”分隔。</li>
+<li>注释⑤，method.genericReturnType取出repos()的返回值类型，也就是RepoList，最终，我们用它来解析JSON。</li>
+</ul>
+<p>说实话，动态代理的这种模式，由于它大量应用了反射，加之我们的代码当中还牵涉到了泛型和注解，导致这个案例的代码不是那么容易理解。不过，我们其实可以利用<strong>调试</strong>的手段，去查看代码当中每一步执行的结果，这样就能对注解、反射、动态代理有一个更具体的认识。</p>
+<p>前面带你看过的这个动图，其实就是在向你展示代码在调试过程中的关键节点，我们可以再来回顾一下整个代码的执行流程：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/cf/95/cf441d3df1bb4b49432319e160cd3c95.gif?wh=1080x608" /></p>
+<p>相信现在，你已经能够体会我们使用 <strong>动态代理+注解+反射</strong> 实现这个网络请求框架的原因了。通过这样的方式，我们就不必在代码当中去实现每一个接口，而是只要是符合这样的代码模式，任意的接口和方法，我们都可以直接传进去。在这个例子当中，我们用的是ApiService这个接口，如果下次我们定义了另一个接口，比如说：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>interface GitHubService {
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    @GET(&quot;/search&quot;)
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    fun search(
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>        @Field(&quot;id&quot;) id: String
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    ): User
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>}
+</code></pre></div>
+<p>这时候，我们的KtHttp根本不需要做任何的改动，直接这样调用即可：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>fun main() {
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    KtHttpV1.baseUrl = &quot;https://api.github.com&quot;
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    //       换一个接口名即可                  换一个接口名即可
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    //              ↓                             ↓                
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    val api: GitHubService = KtHttpV1.create(GitHubService::class.java)
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    val data: User = api.search(id = &quot;JetBrains&quot;)
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>}
+</code></pre></div>
+<p>可以发现，使用动态代理实现网络请求的优势，它的<strong>灵活性</strong>是非常好的。只要我们定义的Service接口拥有对应的注解GET、Field，我们就可以通过注解与反射，将这些信息拼凑在一起。下面这个动图就展示了它们整体的流程：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/8b/31/8b5997dc2f036020dc16a1a5efb8c531.gif?wh=1080x608" /></p>
+<p>实际上，我们的KtHttp，就是将URL的信息存储在了注解当中（比如lang和since），而实际的参数值，是在函数调用的时候传进来的（比如Kotlin和weekly）。我们通过泛型、注解、反射的结合，将这些信息集到一起，完成整个URL的拼接，最后才通过OkHttp完成的网络请求、Gson完成的解析。</p>
+<p>好，到这里，我们1.0版本的开发就算是完成了。这里的单元测试代码很容易写，我就不贴出来了，<strong>单元测试是个好习惯，我们不能忘</strong>。</p>
+<p>接下来，我们正式进入2.0版本的开发。</p>
+<h2 id="20">2.0：函数式思维</h2>
+<p>其实，如果你理解了1.0版本的代码，2.0版本的程序也就不难实现了。因为这个程序的主要功能都已经完成了，现在要做的只是：<strong>换一种思路重构代码</strong>。</p>
+<p>我们先来看看KtHttpV1这个单例的成员变量：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>object KtHttpV1 {
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    private var okHttpClient: OkHttpClient = OkHttpClient()
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    private var gson: Gson = Gson()
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    fun &lt;T&gt; create(service: Class&lt;T&gt;): T {}
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    fun invoke(url: String, method: Method, args: Array&lt;Any&gt;): Any? {}
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>}
+</code></pre></div>
+<p>okHttpClient、gson这两个成员是不支持懒加载的，因此我们首先应该让它们<strong>支持懒加载</strong>。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>object KtHttpV2 {
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    private val okHttpClient by lazy { OkHttpClient() }
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    private val gson by lazy { Gson() }
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    fun &lt;T&gt; create(service: Class&lt;T&gt;): T {}
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    fun invoke(url: String, method: Method, args: Array&lt;Any&gt;): Any? {}
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>}
+</code></pre></div>
+<p>这里，我们直接使用了by lazy委托的方式，它简洁的语法可以让我们快速实现懒加载。<br />
+接下来，我们再来看看create()这个方法的定义：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>//                      注意这里
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>//                         ↓
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>fun &lt;T&gt; create(service: Class&lt;T&gt;): T {
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>    return Proxy.newProxyInstance(
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>        service.classLoader,
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>        arrayOf&lt;Class&lt;*&gt;&gt;(service)
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>    ) { proxy, method, args -&gt;
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>    }
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>}
+</code></pre></div>
+<p>在上面的代码中，create()会接收一个<code>Class&lt;T&gt;</code>类型的参数。其实，针对这样的情况，我们完全可以省略掉这个参数。具体做法，是使用我们前面学过的<a href="https://time.geekbang.org/column/article/477295">inline</a>，来实现<strong>类型实化</strong>（Reified Type）。我们常说，Java的泛型是伪泛型，而这里我们要实现的就是真泛型。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>//  注意这两个关键字
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>//  ↓          ↓
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>inline fun &lt;reified T&gt; create(): T {
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>    return Proxy.newProxyInstance(
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>        T::class.java.classLoader, // ① 变化在这里
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>        arrayOf(T::class.java) // ② 变化在这里
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    ) { proxy, method, args -&gt;
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>        // 待重构
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>    }
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>}
+</code></pre></div>
+<p>正常情况下，泛型参数<a href="https://zh.wikipedia.org/wiki/%E7%B1%BB%E5%9E%8B%E6%93%A6%E9%99%A4">类型会被擦除</a>，这就是Java的泛型被称为“伪泛型”的原因。而通过使用<strong>inline和reified</strong>这两个关键字，我们就能实现类型实化，也就是“真泛型”，进一步，我们就可以在代码注释①、②的地方，使用“T::class.java”来得到Class对象。</p>
+<p>下面，我们来看看KtHttp的主要逻辑该如何重构。</p>
+<p>为了方便理解，我们会使用Kotlin标准库当中已有的高阶函数，尽量不去涉及函数式编程里的高级概念。<strong>在这里我强烈建议你打开IDE一边敲代码一边阅读</strong>，这样一来，当你遇到不熟悉的标准函数时，就可以随时去看它的实现源码了。相信在学习过第7讲的<a href="https://time.geekbang.org/column/article/476637">高阶函数</a>以后，这些库函数都不会难倒你。</p>
+<p>首先，我们来看看create()里面“待重构”的代码该如何写。在这个方法当中，我们需要读取method当中的GET注解，解析出它的值，然后与baseURL拼接。这里我们完全可以<strong>借助Kotlin的标准库函数</strong>来实现：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>inline fun &lt;reified T&gt; create(): T {
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>    return Proxy.newProxyInstance(
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>        T::class.java.classLoader,
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>        arrayOf(T::class.java)
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    ) { proxy, method, args -&gt;
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>        return@newProxyInstance method.annotations
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>            .filterIsInstance&lt;GET&gt;()
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>            .takeIf { it.size == 1 }
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>            ?.let { invoke(&quot;$baseUrl${it[0].value}&quot;, method, args) }
+<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>    } as T
+<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>}
+</code></pre></div>
+<p>这段代码的可读性很好，我们可以像读英语文本一样来阅读：</p>
+<ul>
+<li>首先，我们通过method.annotations，来获取method的所有注解；</li>
+<li>接着，我们用<code>filterIsInstance&lt;GET&gt;()</code>，来筛选出我们想要找的GET注解。这里的filterIsInstance其实是filter的升级版，也就是<strong>过滤</strong>的意思；</li>
+<li>之后，我们判断GET注解的数量，它的数量必须是1，其他的都不行，这里的takeIf其实相当于我们的if；</li>
+<li>最后，我们通过拼接出URL，然后将程序执行流程交给invoke()方法。这里的"?.let{}"相当于判空。</li>
+</ul>
+<p>好了，create()方法的重构已经完成，接下来我们来看看invoke()方法该如何重构。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>fun invoke(url: String, method: Method, args: Array&lt;Any&gt;): Any? =
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    method.parameterAnnotations
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>        .takeIf { method.parameterAnnotations.size == args.size }
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>        ?.mapIndexed { index, it -&gt; Pair(it, args[index]) }
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>        ?.fold(url, ::parseUrl)
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>        ?.let { Request.Builder().url(it).build() }
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>        ?.let { okHttpClient.newCall(it).execute().body?.string() }
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>        ?.let { gson.fromJson(it, method.genericReturnType) }
+</code></pre></div>
+<p>这段代码读起来也不难，我们一行一行来分析。</p>
+<ul>
+<li>第一步，我们通过method.parameterAnnotations，获取方法当中所有的参数注解，在这里也就是<code>@Field("lang")</code>、<code>@Field("since")</code>。</li>
+<li>第二步，我们通过takeIf来判断，参数注解数组的数量与参数的数量相等，也就是说<code>@Field("lang")</code>、<code>@Field("since")</code>的数量是2，那么<code>["Kotlin", "weekly"]</code>的size也应该是2，它必须是一一对应的关系。</li>
+<li>第三步，我们将<code>@Field("lang")</code>与<code>"Kotlin"</code>进行配对，将<code>@Field("since")</code>与<code>"weekly"</code>进行配对。这里的mapIndexed，其实就是map的升级版，它本质还是一种映射的语法，“注解数组类型”映射成了“Pair数组”，只是多了一个index而已。</li>
+<li>第四步，我们使用fold与parseUrl()这个方法，拼接出完整的URL，也就是：<a href="https://baseurl.com/repo?lang=Kotlin&amp;since=weekly">https://baseurl.com/repo?lang=Kotlin&amp;since=weekly</a>。 这里我们使用了<strong>函数引用</strong>的语法“::parseUrl”。而fold这个操作符，其实就是高阶函数版的for循环。</li>
+<li>第五步，我们构建出OkHttp的Request对象，并且将URL传入了进去，准备做网络请求。</li>
+<li>第六步，我们通过okHttpClient发起了网络请求，并且拿到了String类型的JSON数据。</li>
+<li>最后，我们通过Gson解析出JSON的内容，并且返回RepoList对象。</li>
+</ul>
+<p>到目前为止，我们的invoke()方法的主要流程就分析完了，接下来我们再来看看用于实现URL拼接的parseUrl()是如何实现的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>private fun parseUrl(acc: String, pair: Pair&lt;Array&lt;Annotation&gt;, Any&gt;) =
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>    pair.first.filterIsInstance&lt;Field&gt;()
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>        .first()
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>        .let { field -&gt;
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>            if (acc.contains(&quot;?&quot;)) {
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>                &quot;$acc&amp;${field.value}=${pair.second}&quot;
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>            } else {
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>                &quot;$acc?${field.value}=${pair.second}&quot;
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>            }
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>        }
+</code></pre></div>
+<p>可以看到，这里我们只是把从前的for循环代码，换成了 <strong>Kotlin的集合操作符</strong>而已。大致流程如下：</p>
+<ul>
+<li>首先，我们从注解的数组里筛选出Field类型的注解；</li>
+<li>接着，通过first()取出第一个Field注解，这里它也应该是唯一的；</li>
+<li>最后，我们判断当前的acc是否已经拼接过参数，如果没有拼接过，就用“?”分隔，如果已经拼接过参数，我们就用“&amp;”分隔。</li>
+</ul>
+<p>至此，我们2.0版本的代码就完成了，完整的代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>object KtHttpV2 {
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>    private val okHttpClient by lazy { OkHttpClient() }
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    private val gson by lazy { Gson() }
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>    var baseUrl = &quot;https://baseurl.com&quot; // 可改成任意url
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>    inline fun &lt;reified T&gt; create(): T {
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>        return Proxy.newProxyInstance(
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>            T::class.java.classLoader,
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>            arrayOf(T::class.java)
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>        ) { proxy, method, args -&gt;
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>
+<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>            return@newProxyInstance method.annotations
+<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>                .filterIsInstance&lt;GET&gt;()
+<a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a>                .takeIf { it.size == 1 }
+<a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a>                ?.let { invoke(&quot;$baseUrl${it[0].value}&quot;, method, args) }
+<a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a>        } as T
+<a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>    }
+<a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a>
+<a id="__codelineno-21-20" name="__codelineno-21-20" href="#__codelineno-21-20"></a>    fun invoke(url: String, method: Method, args: Array&lt;Any&gt;): Any? =
+<a id="__codelineno-21-21" name="__codelineno-21-21" href="#__codelineno-21-21"></a>        method.parameterAnnotations
+<a id="__codelineno-21-22" name="__codelineno-21-22" href="#__codelineno-21-22"></a>            .takeIf { method.parameterAnnotations.size == args.size }
+<a id="__codelineno-21-23" name="__codelineno-21-23" href="#__codelineno-21-23"></a>            ?.mapIndexed { index, it -&gt; Pair(it, args[index]) }
+<a id="__codelineno-21-24" name="__codelineno-21-24" href="#__codelineno-21-24"></a>            ?.fold(url, ::parseUrl)
+<a id="__codelineno-21-25" name="__codelineno-21-25" href="#__codelineno-21-25"></a>            ?.let { Request.Builder().url(it).build() }
+<a id="__codelineno-21-26" name="__codelineno-21-26" href="#__codelineno-21-26"></a>            ?.let { okHttpClient.newCall(it).execute().body?.string() }
+<a id="__codelineno-21-27" name="__codelineno-21-27" href="#__codelineno-21-27"></a>            ?.let { gson.fromJson(it, method.genericReturnType) }
+<a id="__codelineno-21-28" name="__codelineno-21-28" href="#__codelineno-21-28"></a>
+<a id="__codelineno-21-29" name="__codelineno-21-29" href="#__codelineno-21-29"></a>
+<a id="__codelineno-21-30" name="__codelineno-21-30" href="#__codelineno-21-30"></a>    private fun parseUrl(acc: String, pair: Pair&lt;Array&lt;Annotation&gt;, Any&gt;) =
+<a id="__codelineno-21-31" name="__codelineno-21-31" href="#__codelineno-21-31"></a>        pair.first.filterIsInstance&lt;Field&gt;()
+<a id="__codelineno-21-32" name="__codelineno-21-32" href="#__codelineno-21-32"></a>            .first()
+<a id="__codelineno-21-33" name="__codelineno-21-33" href="#__codelineno-21-33"></a>            .let { field -&gt;
+<a id="__codelineno-21-34" name="__codelineno-21-34" href="#__codelineno-21-34"></a>                if (acc.contains(&quot;?&quot;)) {
+<a id="__codelineno-21-35" name="__codelineno-21-35" href="#__codelineno-21-35"></a>                    &quot;$acc&amp;${field.value}=${pair.second}&quot;
+<a id="__codelineno-21-36" name="__codelineno-21-36" href="#__codelineno-21-36"></a>                } else {
+<a id="__codelineno-21-37" name="__codelineno-21-37" href="#__codelineno-21-37"></a>                    &quot;$acc?${field.value}=${pair.second}&quot;
+<a id="__codelineno-21-38" name="__codelineno-21-38" href="#__codelineno-21-38"></a>                }
+<a id="__codelineno-21-39" name="__codelineno-21-39" href="#__codelineno-21-39"></a>            }
+<a id="__codelineno-21-40" name="__codelineno-21-40" href="#__codelineno-21-40"></a>}
+</code></pre></div>
+<p>对应的，我们可以再看看1.0版本的完整代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>object KtHttpV1 {
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>    private var okHttpClient: OkHttpClient = OkHttpClient()
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>    private var gson: Gson = Gson()
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>    var baseUrl = &quot;https://baseurl.com&quot; // 可改成任意url
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>    fun &lt;T&gt; create(service: Class&lt;T&gt;): T {
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>        return Proxy.newProxyInstance(
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>            service.classLoader,
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a>            arrayOf&lt;Class&lt;*&gt;&gt;(service)
+<a id="__codelineno-22-11" name="__codelineno-22-11" href="#__codelineno-22-11"></a>        ) { proxy, method, args -&gt;
+<a id="__codelineno-22-12" name="__codelineno-22-12" href="#__codelineno-22-12"></a>            val annotations = method.annotations
+<a id="__codelineno-22-13" name="__codelineno-22-13" href="#__codelineno-22-13"></a>            for (annotation in annotations) {
+<a id="__codelineno-22-14" name="__codelineno-22-14" href="#__codelineno-22-14"></a>                if (annotation is GET) {
+<a id="__codelineno-22-15" name="__codelineno-22-15" href="#__codelineno-22-15"></a>                    val url = baseUrl + annotation.value
+<a id="__codelineno-22-16" name="__codelineno-22-16" href="#__codelineno-22-16"></a>                    return@newProxyInstance invoke(url, method, args!!)
+<a id="__codelineno-22-17" name="__codelineno-22-17" href="#__codelineno-22-17"></a>                }
+<a id="__codelineno-22-18" name="__codelineno-22-18" href="#__codelineno-22-18"></a>            }
+<a id="__codelineno-22-19" name="__codelineno-22-19" href="#__codelineno-22-19"></a>            return@newProxyInstance null
+<a id="__codelineno-22-20" name="__codelineno-22-20" href="#__codelineno-22-20"></a>
+<a id="__codelineno-22-21" name="__codelineno-22-21" href="#__codelineno-22-21"></a>        } as T
+<a id="__codelineno-22-22" name="__codelineno-22-22" href="#__codelineno-22-22"></a>    }
+<a id="__codelineno-22-23" name="__codelineno-22-23" href="#__codelineno-22-23"></a>
+<a id="__codelineno-22-24" name="__codelineno-22-24" href="#__codelineno-22-24"></a>    private fun invoke(path: String, method: Method, args: Array&lt;Any&gt;): Any? {
+<a id="__codelineno-22-25" name="__codelineno-22-25" href="#__codelineno-22-25"></a>        if (method.parameterAnnotations.size != args.size) return null
+<a id="__codelineno-22-26" name="__codelineno-22-26" href="#__codelineno-22-26"></a>
+<a id="__codelineno-22-27" name="__codelineno-22-27" href="#__codelineno-22-27"></a>        var url = path
+<a id="__codelineno-22-28" name="__codelineno-22-28" href="#__codelineno-22-28"></a>        val parameterAnnotations = method.parameterAnnotations
+<a id="__codelineno-22-29" name="__codelineno-22-29" href="#__codelineno-22-29"></a>        for (i in parameterAnnotations.indices) {
+<a id="__codelineno-22-30" name="__codelineno-22-30" href="#__codelineno-22-30"></a>            for (parameterAnnotation in parameterAnnotations[i]) {
+<a id="__codelineno-22-31" name="__codelineno-22-31" href="#__codelineno-22-31"></a>                if (parameterAnnotation is Field) {
+<a id="__codelineno-22-32" name="__codelineno-22-32" href="#__codelineno-22-32"></a>                    val key = parameterAnnotation.value
+<a id="__codelineno-22-33" name="__codelineno-22-33" href="#__codelineno-22-33"></a>                    val value = args[i].toString()
+<a id="__codelineno-22-34" name="__codelineno-22-34" href="#__codelineno-22-34"></a>                    if (!url.contains(&quot;?&quot;)) {
+<a id="__codelineno-22-35" name="__codelineno-22-35" href="#__codelineno-22-35"></a>                        url += &quot;?$key=$value&quot;
+<a id="__codelineno-22-36" name="__codelineno-22-36" href="#__codelineno-22-36"></a>                    } else {
+<a id="__codelineno-22-37" name="__codelineno-22-37" href="#__codelineno-22-37"></a>                        url += &quot;&amp;$key=$value&quot;
+<a id="__codelineno-22-38" name="__codelineno-22-38" href="#__codelineno-22-38"></a>                    }
+<a id="__codelineno-22-39" name="__codelineno-22-39" href="#__codelineno-22-39"></a>
+<a id="__codelineno-22-40" name="__codelineno-22-40" href="#__codelineno-22-40"></a>                }
+<a id="__codelineno-22-41" name="__codelineno-22-41" href="#__codelineno-22-41"></a>            }
+<a id="__codelineno-22-42" name="__codelineno-22-42" href="#__codelineno-22-42"></a>        }
+<a id="__codelineno-22-43" name="__codelineno-22-43" href="#__codelineno-22-43"></a>
+<a id="__codelineno-22-44" name="__codelineno-22-44" href="#__codelineno-22-44"></a>        val request = Request.Builder()
+<a id="__codelineno-22-45" name="__codelineno-22-45" href="#__codelineno-22-45"></a>            .url(url)
+<a id="__codelineno-22-46" name="__codelineno-22-46" href="#__codelineno-22-46"></a>            .build()
+<a id="__codelineno-22-47" name="__codelineno-22-47" href="#__codelineno-22-47"></a>
+<a id="__codelineno-22-48" name="__codelineno-22-48" href="#__codelineno-22-48"></a>        val response = okHttpClient.newCall(request).execute()
+<a id="__codelineno-22-49" name="__codelineno-22-49" href="#__codelineno-22-49"></a>
+<a id="__codelineno-22-50" name="__codelineno-22-50" href="#__codelineno-22-50"></a>        val genericReturnType = method.genericReturnType
+<a id="__codelineno-22-51" name="__codelineno-22-51" href="#__codelineno-22-51"></a>        val body = response.body
+<a id="__codelineno-22-52" name="__codelineno-22-52" href="#__codelineno-22-52"></a>        val json = body?.string()
+<a id="__codelineno-22-53" name="__codelineno-22-53" href="#__codelineno-22-53"></a>        val result = gson.fromJson&lt;Any?&gt;(json, genericReturnType)
+<a id="__codelineno-22-54" name="__codelineno-22-54" href="#__codelineno-22-54"></a>
+<a id="__codelineno-22-55" name="__codelineno-22-55" href="#__codelineno-22-55"></a>        return result
+<a id="__codelineno-22-56" name="__codelineno-22-56" href="#__codelineno-22-56"></a>    }
+<a id="__codelineno-22-57" name="__codelineno-22-57" href="#__codelineno-22-57"></a>}
+</code></pre></div>
+<p>可见，1.0版本、2.0版本，它们之间可以说是天壤之别。</p>
+<h2 id="_1">小结</h2>
+<p>好了，这节实战就到这里。接下来我们来简单总结一下：</p>
+<ul>
+<li>在1.0版本的代码中，我们灵活利用了<strong>动态代理、泛型、注解、反射</strong>这几个技术，实现了KtHttp的基础功能。</li>
+<li><strong>动态代理</strong>，由于它的底层原理比较复杂，课程当中我是通过ApiImpl这个类，来模拟了它动态生成的Proxy类。用这种直观的方式来帮助你理解它存在的意义。</li>
+<li><strong>泛型</strong>方面，我们将其用在了动态代理的create()方法上，后面我们还使用了“类型实化”的技术，也就是inline + reified关键字。</li>
+<li><strong>注解</strong>方面，我们首先自定义了两个注解，分别是GET、Field。其中，@GET用于标记接口的方法，它的值是URL的path；@Field用于标记参数，它的值是参数的key。</li>
+<li><strong>反射</strong>方面，这个技术点，几乎是贯穿于整个代码实现流程的。我们通过反射的自省能力，去分析repos()方法，从GET注解当中取出了“/repo”这个path，从注解Field当中取出了lang、since，还取出了repos()方法的返回值RepoList，用于JSON数据的解析。</li>
+<li>在2.0版本的代码中，我们几乎删除了之前所有的代码，<strong>以函数式的思维重写</strong>了KtHttp的内部逻辑。在这个版本当中，我们大量地使用了Kotlin标准库里的高阶函数，进一步提升了代码的可读性。</li>
+</ul>
+<p>在前面的<a href="https://time.geekbang.org/column/article/478106">加餐</a>课程当中，我们也讨论过Kotlin的编程范式问题。<strong>命令式还是函数式，这完全取决于我们开发者自身。</strong></p>
+<p>相比起前面实战课中的<a href="https://time.geekbang.org/column/article/477295">单词频率统计程序</a>，这一次我们的函数式范式的代码，实现起来就没有那么得流畅了。原因其实也很简单，Kotlin提供了强大的集合操作符，这就让Kotlin十分擅长“集合操作”的场景，因此词频统计程序，我们不到10行代码就解决了。而对于注解、反射相关的场景，函数式的编程范式就没那么擅长了。</p>
+<p>在这节课里，我之所以费尽心思地用函数式风格，重构出KtHttp 2.0版本，主要还是想让你看到函数式编程在它不那么擅长的领域表现会如何。毕竟，我们在工作中什么问题都可能会遇到。</p>
+<h2 id="_2">思考题</h2>
+<p>好了，学完这节课以后，请问你有哪些感悟和收获？请在评论区里分享出来，我们一起交流吧！</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>白乾涛</span> 👍（8） 💬（1）<div>勉强能看明白，但这代码谁能手写的出来呀？
 
-就算写出来了，谁保证没 bug？谁能保证别人能看明白？谁能保证后续能维护？</div>2022-02-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/a6/f0/50d0931d.jpg" width="30px"><span>木易杨</span> 👍（3） 💬（1）<div>Kotlin这语法越写越变态。Java啰嗦吧，起码能看懂，没那么多语法题</div>2022-01-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/20/c7/5c/94cb3a1a.jpg" width="30px"><span>$Kotlin</span> 👍（3） 💬（1）<div>动图看起来不太方便，不能暂停，而且这个动图好长。</div>2022-01-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ec/b0/4e22819f.jpg" width="30px"><span>syz</span> 👍（2） 💬（1）<div>动态代理的那张动图，播放中不能暂停，要懂这样过一遍没毛病。建议将每一次停顿变成带序号的标注，贴代码上来感觉会好点。</div>2022-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f0/3c/d72b0d26.jpg" width="30px"><span>面无表情的生鱼片</span> 👍（2） 💬（1）<div>请教老师，如果 method.genericType 是 kotlin 的 Basic Type 的话（例如：String、Int），要怎么做兼容比较好呢？</div>2022-02-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/2a/57/6629c858.jpg" width="30px"><span>阿康</span> 👍（2） 💬（3）<div>Lambda 表达式当中的返回语法 能讲下吗？或者给个相关的博客连接</div>2022-01-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/92/76/343c8497.jpg" width="30px"><span>河山</span> 👍（1） 💬（1）<div>请问老师 像如下代码 
+就算写出来了，谁保证没 bug？谁能保证别人能看明白？谁能保证后续能维护？</div>2022-02-19</li><br/><li><span>木易杨</span> 👍（3） 💬（1）<div>Kotlin这语法越写越变态。Java啰嗦吧，起码能看懂，没那么多语法题</div>2022-01-24</li><br/><li><span>$Kotlin</span> 👍（3） 💬（1）<div>动图看起来不太方便，不能暂停，而且这个动图好长。</div>2022-01-24</li><br/><li><span>syz</span> 👍（2） 💬（1）<div>动态代理的那张动图，播放中不能暂停，要懂这样过一遍没毛病。建议将每一次停顿变成带序号的标注，贴代码上来感觉会好点。</div>2022-03-09</li><br/><li><span>面无表情的生鱼片</span> 👍（2） 💬（1）<div>请教老师，如果 method.genericType 是 kotlin 的 Basic Type 的话（例如：String、Int），要怎么做兼容比较好呢？</div>2022-02-12</li><br/><li><span>阿康</span> 👍（2） 💬（3）<div>Lambda 表达式当中的返回语法 能讲下吗？或者给个相关的博客连接</div>2022-01-24</li><br/><li><span>河山</span> 👍（1） 💬（1）<div>请问老师 像如下代码 
 fun &lt;T&gt; Int.toType():T{
     return (this as T)
 }
@@ -5271,29 +5895,15 @@ class Animal{}
 fun main() {
     println(100.toType&lt;Animal&gt;())
 }
-这个不应该有类型转换异常吗 为什么我运行没有报异常 而且会输出100  但是debug模式 去运行100.toType&lt;Animal&gt;()  这个表达式 却的确会提示类型转换异常 老师 为什么运行没问题啊 </div>2022-03-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/07/6d/4c1909be.jpg" width="30px"><span>PoPlus</span> 👍（0） 💬（3）<div>操作符太多了，日常写业务不常用的话很快就忘了。不知道老师是如何知道这么多没听过的操作符（filterIsInstance、fold）🥲。</div>2022-02-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/95/f9/0d4801ce.jpg" width="30px"><span>山河入梦</span> 👍（0） 💬（1）<div>&#47;&#47; 这种写法是有问题的，但这节课我们先不管。
-我想问下老师，这种写法的问题在哪，因为我一直这样写来着，从昨天看了文章，就一直纠结着</div>2022-02-16</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Urc67zDC8R6dh9U1ZFTF36icXewM1seehvOUYUs4hyWSsFzS5WQc2RcrE1Mzs8qtgib5SM5wFrVh22QcQd0JUUBw/132" width="30px"><span>jim</span> 👍（0） 💬（1）<div>kotlin确实很优雅，有时候写着写着看不懂了！</div>2022-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/4d/99/f133c8ff.jpg" width="30px"><span>梦佳</span> 👍（0） 💬（3）<div>运行不起来</div>2022-01-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/27/52/ba/25f8f998.jpg" width="30px"><span>只为你停留</span> 👍（0） 💬（3）<div>mapIndexed { index, it -&gt; Pair(it, args[index]) }
-这个函数中 it -&gt; Pair(it, args[index] 怎么理解呢，尤其不理解 it -&gt;</div>2022-01-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/f2/c7/c5855ff3.jpg" width="30px"><span>l-zesong</span> 👍（0） 💬（1）<div>return@newProxyInstance  是什么意思啊？没看懂</div>2022-01-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/b3/d5/93b704b6.jpg" width="30px"><span>sunlight</span> 👍（0） 💬（2）<div>有个地方疑惑，动态代理一般会有两种使用方式吗？
+这个不应该有类型转换异常吗 为什么我运行没有报异常 而且会输出100  但是debug模式 去运行100.toType&lt;Animal&gt;()  这个表达式 却的确会提示类型转换异常 老师 为什么运行没问题啊 </div>2022-03-09</li><br/><li><span>PoPlus</span> 👍（0） 💬（3）<div>操作符太多了，日常写业务不常用的话很快就忘了。不知道老师是如何知道这么多没听过的操作符（filterIsInstance、fold）🥲。</div>2022-02-27</li><br/><li><span>山河入梦</span> 👍（0） 💬（1）<div>&#47;&#47; 这种写法是有问题的，但这节课我们先不管。
+我想问下老师，这种写法的问题在哪，因为我一直这样写来着，从昨天看了文章，就一直纠结着</div>2022-02-16</li><br/><li><span>jim</span> 👍（0） 💬（1）<div>kotlin确实很优雅，有时候写着写着看不懂了！</div>2022-02-15</li><br/><li><span>梦佳</span> 👍（0） 💬（3）<div>运行不起来</div>2022-01-31</li><br/><li><span>只为你停留</span> 👍（0） 💬（3）<div>mapIndexed { index, it -&gt; Pair(it, args[index]) }
+这个函数中 it -&gt; Pair(it, args[index] 怎么理解呢，尤其不理解 it -&gt;</div>2022-01-28</li><br/><li><span>l-zesong</span> 👍（0） 💬（1）<div>return@newProxyInstance  是什么意思啊？没看懂</div>2022-01-25</li><br/><li><span>sunlight</span> 👍（0） 💬（2）<div>有个地方疑惑，动态代理一般会有两种使用方式吗？
 
 方式一 create()方法中会多传个被代理对象，通过method.invoke(被代理对象)，实现拦截。外层返回代理对象
 方式二 create()方法中只会有接口，没有手动实现被代理对象。因为我们不关心接口的具体实现，只关心接口中的注解参数，拦截获取到参数即可
 
 文中是使用第二种，并没有手动实现被代理对象，只是最终返回了代理对象。请问这样理解对么
-</div>2022-01-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/ee/f4/27a5080a.jpg" width="30px"><span>7Promise</span> 👍（0） 💬（1）<div>深奥的东西在经过学习原理后都是会有恍然开朗的感觉。</div>2022-01-24</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/OYhGKRZF1Afr76s8VZzVPCuN0icckfnk6L30e70hnmauDMRWDCOHicUicl6WaH071MSB525U2JqfWpYic5VbglHWRQ/132" width="30px"><span>Geek_981acf</span> 👍（0） 💬（0）<div>好难啊</div>2023-07-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2e/09/cc/3543fb8f.jpg" width="30px"><span>独饮敌敌畏丶</span> 👍（0） 💬（0）<div>一下子把困扰我多年的动态代理、反射和retrofit原理解决了，牛！！！</div>2023-02-19</li><br/><li><img src="" width="30px"><span>Geek_416c20</span> 👍（0） 💬（0）<div>现在的基地址是有效的吗? 请求发生了这个错误
- javax.net.ssl.SSLProtocolException: Connection reset, javax.net.ssl.SSLProtocolException: Connection reset</div>2023-01-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/1b/f9/018197f1.jpg" width="30px"><span>小江爱学术</span> 👍（0） 💬（0）<div> val url = baseUrl + annotation.value
-这行代码循环拿的是get注解的值，只能拿到path，拿不到parameters吧。
-
-感觉可以再加一个注解，就像feignclient一样，作用在接口上，可以指定baseurl。</div>2022-08-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f9/c5/95b97dfa.jpg" width="30px"><span>郑峰</span> 👍（0） 💬（0）<div>mapIndexed -&gt; zip
-
-    fun invoke(url: String, method: Method, args: Array&lt;Any&gt;): Any? =
-        method.parameterAnnotations
-            .takeIf { it.size == args.size }
-            ?.zip(args)
-            ?.fold(url, ::parseUrl)
-            ?.let { Request.Builder().url(it).build() }
-            ?.let { okHttpClient.newCall(it).execute().body?.string() }
-            ?.let { gson.fromJson(it, method.genericReturnType) }
-}</div>2022-07-28</li><br/>
+</div>2022-01-25</li><br/><li><span>7Promise</span> 👍（0） 💬（1）<div>深奥的东西在经过学习原理后都是会有恍然开朗的感觉。</div>2022-01-24</li><br/>
 </ul>
 
 

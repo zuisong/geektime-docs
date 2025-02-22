@@ -3093,6 +3093,24 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#stm_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      自己实现STM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13219,6 +13237,24 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#stm_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      自己实现STM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13249,9 +13285,212 @@
 <p>STM的使用很简单，下面我们以经典的转账操作为例，看看用STM该如何实现。</p>
 <h2 id="stm">用STM实现转账</h2>
 <p>我们曾经在<a href="https://time.geekbang.org/column/article/85001">《05 | 一不小心就死锁了，怎么办？》</a>这篇文章中，讲到了并发转账的例子，示例代码如下。简单地使用 synchronized 将 transfer() 方法变成同步方法并不能解决并发问题，因为还存在死锁问题。</p>
-<div><strong>精选留言（26）</strong></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>class UnsafeAccount {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  //余额
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  private long balance;
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  //构造函数
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  public UnsafeAccount(long balance) {
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    this.balance = balance;
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  }
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  //转账
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  void transfer(UnsafeAccount target, long amt){
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    if (this.balance &gt; amt) {
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>      this.balance -= amt;
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>      target.balance += amt;
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    }
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>  }
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>}
+</code></pre></div>
+<p>该转账操作若使用数据库事务就会非常简单，如下面的示例代码所示。如果所有SQL都正常执行，则通过 commit() 方法提交事务；如果SQL在执行过程中有异常，则通过 rollback() 方法回滚事务。数据库保证在并发情况下不会有死锁，而且还能保证前面我们说的原子性、一致性、隔离性和持久性，也就是ACID。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Connection conn = null;
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>try{
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  //获取数据库连接
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  conn = DriverManager.getConnection();
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  //设置手动提交事务
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  conn.setAutoCommit(false);
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  //执行转账SQL
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>  ......
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>  //提交事务
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>  conn.commit();
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>} catch (Exception e) {
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>  //出现异常回滚事务
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>  conn.rollback();
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>}
+</code></pre></div>
+<p>那如果用STM又该如何实现呢？Java语言并不支持STM，不过可以借助第三方的类库来支持，<a href="https://github.com/pveentjer/Multiverse">Multiverse</a>就是个不错的选择。下面的示例代码就是借助Multiverse实现了线程安全的转账操作，相比较上面线程不安全的UnsafeAccount，其改动并不大，仅仅是将余额的类型从 long 变成了 TxnLong ，将转账的操作放到了 atomic(()-&gt;{}) 中。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>class Account{
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  //余额
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  private TxnLong balance;
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  //构造函数
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  public Account(long balance){
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    this.balance = StmUtils.newTxnLong(balance);
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>  }
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  //转账
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>  public void transfer(Account to, int amt){
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    //原子化操作
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    atomic(()-&gt;{
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>      if (this.balance.get() &gt; amt) {
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        this.balance.decrement(amt);
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        to.balance.increment(amt);
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>      }
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    });
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>  }
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>}
+</code></pre></div>
+<p>一个关键的atomic()方法就把并发问题解决了，这个方案看上去比传统的方案的确简单了很多，那它是如何实现的呢？数据库事务发展了几十年了，目前被广泛使用的是<strong>MVCC</strong>（全称是Multi-Version Concurrency Control），也就是多版本并发控制。</p>
+<p>MVCC可以简单地理解为数据库事务在开启的时候，会给数据库打一个快照，以后所有的读写都是基于这个快照的。当提交事务的时候，如果所有读写过的数据在该事务执行期间没有发生过变化，那么就可以提交；如果发生了变化，说明该事务和有其他事务读写的数据冲突了，这个时候是不可以提交的。</p>
+<p>为了记录数据是否发生了变化，可以给每条数据增加一个版本号，这样每次成功修改数据都会增加版本号的值。MVCC的工作原理和我们曾经在<a href="https://time.geekbang.org/column/article/89456">《18 | StampedLock：有没有比读写锁更快的锁？》</a>中提到的乐观锁非常相似。有不少STM的实现方案都是基于MVCC的，例如知名的Clojure STM。</p>
+<p>下面我们就用最简单的代码基于MVCC实现一个简版的STM，这样你会对STM以及MVCC的工作原理有更深入的认识。</p>
+<h2 id="stm_1">自己实现STM</h2>
+<p>我们首先要做的，就是让Java中的对象有版本号，在下面的示例代码中，VersionedRef这个类的作用就是将对象value包装成带版本号的对象。按照MVCC理论，数据的每一次修改都对应着一个唯一的版本号，所以不存在仅仅改变value或者version的情况，用不变性模式就可以很好地解决这个问题，所以VersionedRef这个类被我们设计成了不可变的。</p>
+<p>所有对数据的读写操作，一定是在一个事务里面，TxnRef这个类负责完成事务内的读写操作，读写操作委托给了接口Txn，Txn代表的是读写操作所在的当前事务， 内部持有的curRef代表的是系统中的最新值。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>//带版本号的对象引用
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>public final class VersionedRef&lt;T&gt; {
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  final T value;
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  final long version;
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  //构造方法
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>  public VersionedRef(T value, long version) {
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    this.value = value;
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    this.version = version;
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>  }
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>}
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>//支持事务的引用
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>public class TxnRef&lt;T&gt; {
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>  //当前数据，带版本号
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>  volatile VersionedRef curRef;
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>  //构造方法
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>  public TxnRef(T value) {
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    this.curRef = new VersionedRef(value, 0L);
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>  }
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>  //获取当前事务中的数据
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>  public T getValue(Txn txn) {
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    return txn.get(this);
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>  }
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>  //在当前事务中设置数据
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>  public void setValue(T value, Txn txn) {
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    txn.set(this, value);
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>  }
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>}
+</code></pre></div>
+<p>STMTxn是Txn最关键的一个实现类，事务内对于数据的读写，都是通过它来完成的。STMTxn内部有两个Map：inTxnMap，用于保存当前事务中所有读写的数据的快照；writeMap，用于保存当前事务需要写入的数据。每个事务都有一个唯一的事务ID txnId，这个txnId是全局递增的。</p>
+<p>STMTxn有三个核心方法，分别是读数据的get()方法、写数据的set()方法和提交事务的commit()方法。其中，get()方法将要读取数据作为快照放入inTxnMap，同时保证每次读取的数据都是一个版本。set()方法会将要写入的数据放入writeMap，但如果写入的数据没被读取过，也会将其放入 inTxnMap。</p>
+<p>至于commit()方法，我们为了简化实现，使用了互斥锁，所以事务的提交是串行的。commit()方法的实现很简单，首先检查inTxnMap中的数据是否发生过变化，如果没有发生变化，那么就将writeMap中的数据写入（这里的写入其实就是TxnRef内部持有的curRef）；如果发生过变化，那么就不能将writeMap中的数据写入了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>//事务接口
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>public interface Txn {
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  &lt;T&gt; T get(TxnRef&lt;T&gt; ref);
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  &lt;T&gt; void set(TxnRef&lt;T&gt; ref, T value);
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>}
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>//STM事务实现类
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>public final class STMTxn implements Txn {
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>  //事务ID生成器
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>  private static AtomicLong txnSeq = new AtomicLong(0);
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  //当前事务所有的相关数据
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>  private Map&lt;TxnRef, VersionedRef&gt; inTxnMap = new HashMap&lt;&gt;();
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>  //当前事务所有需要修改的数据
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>  private Map&lt;TxnRef, Object&gt; writeMap = new HashMap&lt;&gt;();
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>  //当前事务ID
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>  private long txnId;
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>  //构造函数，自动生成当前事务ID
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>  STMTxn() {
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    txnId = txnSeq.incrementAndGet();
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>  }
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>  //获取当前事务中的数据
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>  @Override
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>  public &lt;T&gt; T get(TxnRef&lt;T&gt; ref) {
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>    //将需要读取的数据，加入inTxnMap
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>    if (!inTxnMap.containsKey(ref)) {
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>      inTxnMap.put(ref, ref.curRef);
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>    }
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>    return (T) inTxnMap.get(ref).value;
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>  }
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>  //在当前事务中修改数据
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>  @Override
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>  public &lt;T&gt; void set(TxnRef&lt;T&gt; ref, T value) {
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>    //将需要修改的数据，加入inTxnMap
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>    if (!inTxnMap.containsKey(ref)) {
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>      inTxnMap.put(ref, ref.curRef);
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>    }
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>    writeMap.put(ref, value);
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>  }
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>  //提交事务
+<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>  boolean commit() {
+<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>    synchronized (STM.commitLock) {
+<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>    //是否校验通过
+<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>    boolean isValid = true;
+<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a>    //校验所有读过的数据是否发生过变化
+<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a>    for(Map.Entry&lt;TxnRef, VersionedRef&gt; entry : inTxnMap.entrySet()){
+<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a>      VersionedRef curRef = entry.getKey().curRef;
+<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a>      VersionedRef readRef = entry.getValue();
+<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a>      //通过版本号来验证数据是否发生过变化
+<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a>      if (curRef.version != readRef.version) {
+<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a>        isValid = false;
+<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a>        break;
+<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a>      }
+<a id="__codelineno-4-54" name="__codelineno-4-54" href="#__codelineno-4-54"></a>    }
+<a id="__codelineno-4-55" name="__codelineno-4-55" href="#__codelineno-4-55"></a>    //如果校验通过，则所有更改生效
+<a id="__codelineno-4-56" name="__codelineno-4-56" href="#__codelineno-4-56"></a>    if (isValid) {
+<a id="__codelineno-4-57" name="__codelineno-4-57" href="#__codelineno-4-57"></a>      writeMap.forEach((k, v) -&gt; {
+<a id="__codelineno-4-58" name="__codelineno-4-58" href="#__codelineno-4-58"></a>        k.curRef = new VersionedRef(v, txnId);
+<a id="__codelineno-4-59" name="__codelineno-4-59" href="#__codelineno-4-59"></a>      });
+<a id="__codelineno-4-60" name="__codelineno-4-60" href="#__codelineno-4-60"></a>    }
+<a id="__codelineno-4-61" name="__codelineno-4-61" href="#__codelineno-4-61"></a>    return isValid;
+<a id="__codelineno-4-62" name="__codelineno-4-62" href="#__codelineno-4-62"></a>  }
+<a id="__codelineno-4-63" name="__codelineno-4-63" href="#__codelineno-4-63"></a>}
+</code></pre></div>
+<p>下面我们来模拟实现Multiverse中的原子化操作atomic()。atomic()方法中使用了类似于CAS的操作，如果事务提交失败，那么就重新创建一个新的事务，重新执行。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>@FunctionalInterface
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>public interface TxnRunnable {
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  void run(Txn txn);
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>}
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>//STM
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>public final class STM {
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>  //私有化构造方法
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>  private STM() {
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>  //提交数据需要用到的全局锁  
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>  static final Object commitLock = new Object();
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>  //原子化提交方法
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>  public static void atomic(TxnRunnable action) {
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    boolean committed = false;
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    //如果没有提交成功，则一直重试
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    while (!committed) {
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>      //创建新的事务
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>      STMTxn txn = new STMTxn();
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>      //执行业务逻辑
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>      action.run(txn);
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>      //提交事务
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>      committed = txn.commit();
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    }
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>  }
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>}}
+</code></pre></div>
+<p>就这样，我们自己实现了STM，并完成了线程安全的转账操作，使用方法和Multiverse差不多，这里就不赘述了，具体代码如下面所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>class Account {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>  //余额
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>  private TxnRef&lt;Integer&gt; balance;
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>  //构造方法
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>  public Account(int balance) {
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    this.balance = new TxnRef&lt;Integer&gt;(balance);
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>  }
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>  //转账操作
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>  public void transfer(Account target, int amt){
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    STM.atomic((txn)-&gt;{
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>      Integer from = balance.getValue(txn);
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>      balance.setValue(from-amt, txn);
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>      Integer to = target.balance.getValue(txn);
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>      target.balance.setValue(to+amt, txn);
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    });
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>  }
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>}
+</code></pre></div>
+<h2 id="_1">总结</h2>
+<p>STM借鉴的是数据库的经验，数据库虽然复杂，但仅仅存储数据，而编程语言除了有共享变量之外，还会执行各种I/O操作，很显然I/O操作是很难支持回滚的。所以，STM也不是万能的。目前支持STM的编程语言主要是函数式语言，函数式语言里的数据天生具备不可变性，利用这种不可变性实现STM相对来说更简单。</p>
+<p>另外，需要说明的是，文中的“自己实现STM”部分我参考了<a href="http://www.codecommit.com/blog/scala/software-transactional-memory-in-scala">Software Transactional Memory in Scala</a>这篇博文以及<a href="https://github.com/epam-mooc/stm-java">一个GitHub项目</a>，目前还很粗糙，并不是一个完备的MVCC。如果你对这方面感兴趣，可以参考<a href="http://www.codecommit.com/blog/scala/improving-the-stm-multi-version-concurrency-control">Improving the STM: Multi-Version Concurrency Control</a> 这篇博文，里面讲到了如何优化，你可以尝试学习下。</p>
+<p>欢迎在留言区与我分享你的想法，也欢迎你在留言区记录你的思考过程。感谢阅读，如果你觉得这篇文章对你有帮助的话，也欢迎把它分享给更多的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/ae/c5/09c2dd48.jpg" width="30px"><span>M$画像</span> 👍（22） 💬（1）<div>希望王老师再出新品，一定支持。</div>2019-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/49/a5/e4c1c2d4.jpg" width="30px"><span>小文同学</span> 👍（20） 💬（9）<div>谢谢老师推荐STM，我所在的游戏项目一直有对象异步入库的需求，为了使用异步入库，放弃了Spring针对数据库的事务。为此不得不编写大量代码去判断某个操作是否可以执行，希望软件事务内存可以为我的需求提供一个新的解决方案。最近几天开始研究相关源码了，希望可以较好的结合现有项目，有可以发布的成果一定在留言区为大家共享。</div>2019-09-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7f/ca/ea85bfdd.jpg" width="30px"><span>helloworld</span> 👍（6） 💬（4）<div>按照老师自己实现的STM程序，根本不存在commit提交失败的时候吧？因为每一次的commit都是新创建一个STMTxn，新创建STMTxn后，inTxnMap和writeMap都是新的。不知道我考虑的对不对？？</div>2019-09-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/75/dd/9ead6e69.jpg" width="30px"><span>黄海峰</span> 👍（2） 💬（1）<div>代码里硬是没看到哪里修改了version。。</div>2019-06-06</li><br/><li><img src="" width="30px"><span>Geek_039a5c</span> 👍（1） 💬（1）<div>代码还有有点小问题。 STM  这个类的代码 花括号写的不对。 </div>2022-02-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/1f/13/4647402a.jpg" width="30px"><span>纷繁的烟火</span> 👍（1） 💬（1）<div>最后段代码的 构造参数里的txn在哪呀 找也找不到</div>2020-01-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/99/4a/bdf26d5c.jpg" width="30px"><span>石头汤</span> 👍（0） 💬（1）<div>是不是 STM.atomic 的 TxnRunnable 的实现必须是幂等的，否则 while 循环那里会产生脏数据？</div>2020-06-11</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/3XbCueYYVWTiclv8T5tFpwiblOxLphvSZxL4ujMdqVMibZnOiaFK2C5nKRGv407iaAsrI0CDICYVQJtiaITzkjfjbvrQ/132" width="30px"><span>有铭</span> 👍（0） 💬（1）<div>老师，关系数据库也是有死锁的，只是他们往往实现了死锁检测机制，死锁到一定时间就会强制解锁</div>2019-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/8a/cc/da9adc82.jpg" width="30px"><span>小太阳</span> 👍（12） 💬（2）<div>看了三遍，终于看懂了，很妙。原来精华就在这一段：MVCC 可以简单地理解为数据库事务在开启的时候，会给数据库打一个快照，以后所有的读写都是基于这个快照的。当提交事务的时候，如果所有读写过的数据在该事务执行期间没有发生过变化，那么就可以提交；如果发生了变化，说明该事务和有其他事务读写的数据冲突了，这个时候是不可以提交的。Txn负责维护检测快照，TxnRef负责包装数据使之可以接入Txn，作为快照的key。VersionedRef负责包装数据使之有版本。   另外，最后的代码里忘了判断余额是否够用了。😁</div>2020-07-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e8/ed/f9347e5e.jpg" width="30px"><span>松小鼠</span> 👍（11） 💬（5）<div>我公司用的就是这个解决并发问题的，才知道是这种技术</div>2019-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d1/29/1b1234ed.jpg" width="30px"><span>DFighting</span> 👍（8） 💬（0）<div>STM的优化有一点是针对大快照的优化吧，因为MySQL对数据库的快照并不是真正存储一份备份数据，类似例子中的map，而是利用version和undolog计算得到的，不然一个100G大小的数据库，每开启一个事物就拷贝一份数据，肯定是不现实的。</div>2019-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/27/db/c8b35c07.jpg" width="30px"><span>林添</span> 👍（5） 💬（3）<div>照着实现了一遍，确实可以巧妙。
+<li><span>M$画像</span> 👍（22） 💬（1）<div>希望王老师再出新品，一定支持。</div>2019-06-24</li><br/><li><span>小文同学</span> 👍（20） 💬（9）<div>谢谢老师推荐STM，我所在的游戏项目一直有对象异步入库的需求，为了使用异步入库，放弃了Spring针对数据库的事务。为此不得不编写大量代码去判断某个操作是否可以执行，希望软件事务内存可以为我的需求提供一个新的解决方案。最近几天开始研究相关源码了，希望可以较好的结合现有项目，有可以发布的成果一定在留言区为大家共享。</div>2019-09-06</li><br/><li><span>helloworld</span> 👍（6） 💬（4）<div>按照老师自己实现的STM程序，根本不存在commit提交失败的时候吧？因为每一次的commit都是新创建一个STMTxn，新创建STMTxn后，inTxnMap和writeMap都是新的。不知道我考虑的对不对？？</div>2019-09-23</li><br/><li><span>黄海峰</span> 👍（2） 💬（1）<div>代码里硬是没看到哪里修改了version。。</div>2019-06-06</li><br/><li><span>Geek_039a5c</span> 👍（1） 💬（1）<div>代码还有有点小问题。 STM  这个类的代码 花括号写的不对。 </div>2022-02-05</li><br/><li><span>纷繁的烟火</span> 👍（1） 💬（1）<div>最后段代码的 构造参数里的txn在哪呀 找也找不到</div>2020-01-14</li><br/><li><span>石头汤</span> 👍（0） 💬（1）<div>是不是 STM.atomic 的 TxnRunnable 的实现必须是幂等的，否则 while 循环那里会产生脏数据？</div>2020-06-11</li><br/><li><span>有铭</span> 👍（0） 💬（1）<div>老师，关系数据库也是有死锁的，只是他们往往实现了死锁检测机制，死锁到一定时间就会强制解锁</div>2019-06-06</li><br/><li><span>小太阳</span> 👍（12） 💬（2）<div>看了三遍，终于看懂了，很妙。原来精华就在这一段：MVCC 可以简单地理解为数据库事务在开启的时候，会给数据库打一个快照，以后所有的读写都是基于这个快照的。当提交事务的时候，如果所有读写过的数据在该事务执行期间没有发生过变化，那么就可以提交；如果发生了变化，说明该事务和有其他事务读写的数据冲突了，这个时候是不可以提交的。Txn负责维护检测快照，TxnRef负责包装数据使之可以接入Txn，作为快照的key。VersionedRef负责包装数据使之有版本。   另外，最后的代码里忘了判断余额是否够用了。😁</div>2020-07-08</li><br/><li><span>松小鼠</span> 👍（11） 💬（5）<div>我公司用的就是这个解决并发问题的，才知道是这种技术</div>2019-06-06</li><br/><li><span>DFighting</span> 👍（8） 💬（0）<div>STM的优化有一点是针对大快照的优化吧，因为MySQL对数据库的快照并不是真正存储一份备份数据，类似例子中的map，而是利用version和undolog计算得到的，不然一个100G大小的数据库，每开启一个事物就拷贝一份数据，肯定是不现实的。</div>2019-10-16</li><br/><li><span>林添</span> 👍（5） 💬（3）<div>照着实现了一遍，确实可以巧妙。
 我觉得类STMTxn的get函数可以改进一下：现在get返回的值，只是最初始的值，如果当前事务更改了值，然后再调用get，最好可以返回最新的值；即当前事务的更改，对自己是可见的。
 ```
     @Override
@@ -13267,11 +13506,7 @@
             return (T) inTxnMap.get(ref).value;
         }
     }
-```</div>2019-08-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/3d/13/275f9698.jpg" width="30px"><span>青菜</span> 👍（1） 💬（0）<div>老师，理解在提交时版本号都是一样的，都是0，即使修改了也没去修改版本号啊，所以不管怎样都能提交</div>2020-08-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7b/57/a9b04544.jpg" width="30px"><span>QQ怪</span> 👍（1） 💬（0）<div>哔，打卡，涨知识了</div>2019-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/38/9f/895353ab.jpg" width="30px"><span>黄卫江</span> 👍（0） 💬（0）<div>核心点：inMap记录所有事务内读取过的值，writeMap暂存所有值的新值，由于inMap的key的curRef是不可变的，所以如果有其他事务改过了值就会找到inMap中的curRef和一开始设置的inMap的value不是一个对象（键值对的值永远是一开始写入的对象）</div>2023-05-21</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTL23Wicb0gO9RIXrRzpettuEYaSHLicA2LgRz3X7Npiagf1R4aB9bmePt1TY006z63ngKzhEONZvOsfw/132" width="30px"><span>Geek_aa23b7</span> 👍（0） 💬（0）<div>感觉这个原理和cas有点像，都是先尝试更新，然后真正更新的时候根据版本号判断是否被其他线程变更过，没有发生变更过，则更新成功。核心要点就在于正真更新的时候要加锁或者原子操作</div>2022-09-24</li><br/><li><img src="" width="30px"><span>Geek_d1026b</span> 👍（0） 💬（0）<div>老师 完整的代码在哪里可以下载</div>2022-04-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/29/53/92/21c78176.jpg" width="30px"><span>小黄鸭</span> 👍（0） 💬（0）<div>我终于终于看懂了，老师太厉害了！！</div>2022-01-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/32/99/91b58bf7.jpg" width="30px"><span>Tomy</span> 👍（0） 💬（1）<div>用@Trasaction不可以吗，我们的项目都是用这个的</div>2021-10-22</li><br/><li><img src="" width="30px"><span>dominiczhu</span> 👍（0） 💬（0）<div>老师您好，我想请问一下，看了之前的转账实现与这个txn转账实现，是不是也会存在着之前提到的问题，例如全部线程都共享了同一把锁，高并发可能扛不住；while()循环也可能导致高cpu消耗之类的。</div>2021-08-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/08/b8/ac8a778e.jpg" width="30px"><span>我得儿意的笑</span> 👍（0） 💬（0）<div>
-&#47;&#47;构造函数，自动生成当前事务ID  STMTxn() {    txnId = txnSeq.incrementAndGet();  }
-    StmTxn() {
-        this.txnId = StmTxn.txnSeq.incrementAndGet();
-    }</div>2021-01-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/0a/dd/88fa7b52.jpg" width="30px"><span>Geek_41d472</span> 👍（0） 💬（1）<div>有没有和我一样懵逼的,版本号怎么看,所有的的版本号都是0啊,是我眼花了吗</div>2020-07-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/24/75/808ac160.jpg" width="30px"><span>悟空</span> 👍（0） 💬（1）<div>老师，private Map&lt;TxnRef, VersionedRef&gt; inTxnMap = new HashMap&lt;&gt;(); 这个是不是应该是静态的。在多个事物中共享，这样一个事物变更了，其他事物才能知晓</div>2019-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/60/6d/e2576fda.jpg" width="30px"><span>Rancood</span> 👍（0） 💬（0）<div>感觉没有前面容易理解了</div>2019-06-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/52/3c/d6fcb93a.jpg" width="30px"><span>张三</span> 👍（0） 💬（0）<div>打卡！这篇高质量！</div>2019-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/d3/cb/f8157ad8.jpg" width="30px"><span>爱吃回锅肉的瘦子</span> 👍（0） 💬（0）<div>涨见识了，谢谢老师。</div>2019-06-06</li><br/>
+```</div>2019-08-19</li><br/><li><span>青菜</span> 👍（1） 💬（0）<div>老师，理解在提交时版本号都是一样的，都是0，即使修改了也没去修改版本号啊，所以不管怎样都能提交</div>2020-08-11</li><br/><li><span>QQ怪</span> 👍（1） 💬（0）<div>哔，打卡，涨知识了</div>2019-06-06</li><br/><li><span>黄卫江</span> 👍（0） 💬（0）<div>核心点：inMap记录所有事务内读取过的值，writeMap暂存所有值的新值，由于inMap的key的curRef是不可变的，所以如果有其他事务改过了值就会找到inMap中的curRef和一开始设置的inMap的value不是一个对象（键值对的值永远是一开始写入的对象）</div>2023-05-21</li><br/>
 </ul>
 
 

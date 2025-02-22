@@ -4845,6 +4845,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#qemu" class="md-nav__link">
+    <span class="md-ellipsis">
+      qemu的启动过程中的网络虚拟化
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      关联前端设备驱动和后端设备驱动
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      发送网络包过程
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5990,6 +6035,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#qemu" class="md-nav__link">
+    <span class="md-ellipsis">
+      qemu的启动过程中的网络虚拟化
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      关联前端设备驱动和后端设备驱动
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      发送网络包过程
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结时刻
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      课堂练习
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6060,15 +6150,749 @@
 <p>Virtio Network Device这种类的定义是有多层继承关系的，TYPE_VIRTIO_NET的父类是TYPE_VIRTIO_DEVICE，TYPE_VIRTIO_DEVICE的父类是TYPE_DEVICE，TYPE_DEVICE的父类是TYPE_OBJECT，继承关系到头了。</p>
 <p>type_init用于注册这种类。这里面每一层都有class_init，用于从TypeImpl生成xxxClass，也有instance_init，会将xxxClass初始化为实例。</p>
 <p>TYPE_VIRTIO_NET层的class_init函数virtio_net_class_init，定义了DeviceClass的realize函数为virtio_net_device_realize，这一点和存储块设备是一样的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>static void virtio_net_device_realize(DeviceState *dev, Error **errp)
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>{
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    VirtIODevice *vdev = VIRTIO_DEVICE(dev);
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    VirtIONet *n = VIRTIO_NET(dev);
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    NetClientState *nc;
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    int i;
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>......
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    virtio_init(vdev, &quot;virtio-net&quot;, VIRTIO_ID_NET, n-&gt;config_size);
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    /*
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>     * We set a lower limit on RX queue size to what it always was.
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>     * Guests that want a smaller ring can always resize it without
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>     * help from us (using virtio 1 and up).
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>     */
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    if (n-&gt;net_conf.rx_queue_size &lt; VIRTIO_NET_RX_QUEUE_MIN_SIZE ||
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>        n-&gt;net_conf.rx_queue_size &gt; VIRTQUEUE_MAX_SIZE ||
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>        !is_power_of_2(n-&gt;net_conf.rx_queue_size)) {
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>......
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>        return;
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    }
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    if (n-&gt;net_conf.tx_queue_size &lt; VIRTIO_NET_TX_QUEUE_MIN_SIZE ||
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>        n-&gt;net_conf.tx_queue_size &gt; VIRTQUEUE_MAX_SIZE ||
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>        !is_power_of_2(n-&gt;net_conf.tx_queue_size)) {
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>......
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>        return;
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>    }
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>    n-&gt;max_queues = MAX(n-&gt;nic_conf.peers.queues, 1);
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>    if (n-&gt;max_queues * 2 + 1 &gt; VIRTIO_QUEUE_MAX) {
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>......
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>        return;
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>    }
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>    n-&gt;vqs = g_malloc0(sizeof(VirtIONetQueue) * n-&gt;max_queues);
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>    n-&gt;curr_queues = 1;
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>......
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>    n-&gt;net_conf.tx_queue_size = MIN(virtio_net_max_tx_queue_size(n),
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>                                    n-&gt;net_conf.tx_queue_size);
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a>    for (i = 0; i &lt; n-&gt;max_queues; i++) {
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>        virtio_net_add_queue(n, i);
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a>    }
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>
+<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a>    n-&gt;ctrl_vq = virtio_add_queue(vdev, 64, virtio_net_handle_ctrl);
+<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a>    qemu_macaddr_default_if_unset(&amp;n-&gt;nic_conf.macaddr);
+<a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a>    memcpy(&amp;n-&gt;mac[0], &amp;n-&gt;nic_conf.macaddr, sizeof(n-&gt;mac));
+<a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a>    n-&gt;status = VIRTIO_NET_S_LINK_UP;
+<a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a>
+<a id="__codelineno-1-49" name="__codelineno-1-49" href="#__codelineno-1-49"></a>    if (n-&gt;netclient_type) {
+<a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a>        n-&gt;nic = qemu_new_nic(&amp;net_virtio_info, &amp;n-&gt;nic_conf,
+<a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a>                              n-&gt;netclient_type, n-&gt;netclient_name, n);
+<a id="__codelineno-1-52" name="__codelineno-1-52" href="#__codelineno-1-52"></a>    } else {
+<a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a>        n-&gt;nic = qemu_new_nic(&amp;net_virtio_info, &amp;n-&gt;nic_conf,
+<a id="__codelineno-1-54" name="__codelineno-1-54" href="#__codelineno-1-54"></a>                              object_get_typename(OBJECT(dev)), dev-&gt;id, n);
+<a id="__codelineno-1-55" name="__codelineno-1-55" href="#__codelineno-1-55"></a>    }
+<a id="__codelineno-1-56" name="__codelineno-1-56" href="#__codelineno-1-56"></a>......
+<a id="__codelineno-1-57" name="__codelineno-1-57" href="#__codelineno-1-57"></a>}
+</code></pre></div>
+<p>这里面创建了一个VirtIODevice，这一点和存储虚拟化也是一样的。virtio_init用来初始化这个设备。VirtIODevice结构里面有一个VirtQueue数组，这就是virtio前端和后端互相传数据的队列，最多有VIRTIO_QUEUE_MAX个。</p>
+<p>刚才我们说的都是一样的地方，其实也有不一样的地方，我们下面来看。</p>
+<p>你会发现，这里面有这样的语句n-&gt;max_queues * 2 + 1 &gt; VIRTIO_QUEUE_MAX。为什么要乘以2呢？这是因为，对于网络设备来讲，应该分发送队列和接收队列两个方向，所以乘以2。</p>
+<p>接下来，我们调用virtio_net_add_queue来初始化队列，可以看出来，这里面就有发送tx_vq和接收rx_vq两个队列。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>typedef struct VirtIONetQueue {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    VirtQueue *rx_vq;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    VirtQueue *tx_vq;
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    QEMUTimer *tx_timer;
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    QEMUBH *tx_bh;
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    uint32_t tx_waiting;
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    struct {
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        VirtQueueElement *elem;
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    } async_tx;
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    struct VirtIONet *n;
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>} VirtIONetQueue;
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>static void virtio_net_add_queue(VirtIONet *n, int index)
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>{
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    VirtIODevice *vdev = VIRTIO_DEVICE(n);
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    n-&gt;vqs[index].rx_vq = virtio_add_queue(vdev, n-&gt;net_conf.rx_queue_size, virtio_net_handle_rx);
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>......
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    n-&gt;vqs[index].tx_vq = virtio_add_queue(vdev, n-&gt;net_conf.tx_queue_size, virtio_net_handle_tx_bh);
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>    n-&gt;vqs[index].tx_bh = qemu_bh_new(virtio_net_tx_bh, &amp;n-&gt;vqs[index]);
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    n-&gt;vqs[index].n = n;
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>}
+</code></pre></div>
+<p>每个VirtQueue中，都有一个vring用来维护这个队列里面的数据；另外还有函数virtio_net_handle_rx用于处理网络包的接收；函数virtio_net_handle_tx_bh用于网络包的发送，这个函数我们后面会用到。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>NICState *qemu_new_nic(NetClientInfo *info,
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>                       NICConf *conf,
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>                       const char *model,
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>                       const char *name,
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>                       void *opaque)
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>{
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    NetClientState **peers = conf-&gt;peers.ncs;
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    NICState *nic;
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    int i, queues = MAX(1, conf-&gt;peers.queues);
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>......
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    nic = g_malloc0(info-&gt;size + sizeof(NetClientState) * queues);
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    nic-&gt;ncs = (void *)nic + info-&gt;size;
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    nic-&gt;conf = conf;
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    nic-&gt;opaque = opaque;
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    for (i = 0; i &lt; queues; i++) {
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>        qemu_net_client_setup(&amp;nic-&gt;ncs[i], info, peers[i], model, name, NULL);
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>        nic-&gt;ncs[i].queue_index = i;
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    }
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    return nic;
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>}
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>static void qemu_net_client_setup(NetClientState *nc,
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>                                  NetClientInfo *info,
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>                                  NetClientState *peer,
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>                                  const char *model,
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>                                  const char *name,
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>                                  NetClientDestructor *destructor)
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>{
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>    nc-&gt;info = info;
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>    nc-&gt;model = g_strdup(model);
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>    if (name) {
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>        nc-&gt;name = g_strdup(name);
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>    } else {
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>        nc-&gt;name = assign_name(nc, model);
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>    }
+<a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>
+<a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>    QTAILQ_INSERT_TAIL(&amp;net_clients, nc, next);
+<a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>
+<a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>    nc-&gt;incoming_queue = qemu_new_net_queue(qemu_deliver_packet_iov, nc);
+<a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>    nc-&gt;destructor = destructor;
+<a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a>    QTAILQ_INIT(&amp;nc-&gt;filters);
+<a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a>}
+</code></pre></div>
+<p>接下来，qemu_new_nic会创建一个虚拟机里面的网卡。</p>
+<h2 id="qemu">qemu的启动过程中的网络虚拟化</h2>
+<p>初始化过程解析完毕以后，我们接下来从qemu的启动过程看起。</p>
+<p>对于网卡的虚拟化，qemu的启动参数里面有关的是下面两行：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>-netdev tap,fd=32,id=hostnet0,vhost=on,vhostfd=37
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>-device virtio-net-pci,netdev=hostnet0,id=net0,mac=fa:16:3e:d1:2d:99,bus=pci.0,addr=0x3
+</code></pre></div>
+<p>qemu的main函数会调用net_init_clients进行网络设备的初始化，可以解析net参数，也可以在net_init_clients中解析netdev参数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>int net_init_clients(Error **errp)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>{
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    QTAILQ_INIT(&amp;net_clients);
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    if (qemu_opts_foreach(qemu_find_opts(&quot;netdev&quot;),
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>                          net_init_netdev, NULL, errp)) {
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        return -1;
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    }
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    if (qemu_opts_foreach(qemu_find_opts(&quot;nic&quot;), net_param_nic, NULL, errp)) {
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        return -1;
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>   }
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    if (qemu_opts_foreach(qemu_find_opts(&quot;net&quot;), net_init_client, NULL, errp)) {
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>        return -1;
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    }
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    return 0;
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>}  
+</code></pre></div>
+<p>net_init_clients会解析参数。上面的参数netdev会调用net_init_netdev-&gt;net_client_init-&gt;net_client_init1。</p>
+<p>net_client_init1会根据不同的driver类型，调用不同的初始化函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>static int (* const net_client_init_fun[NET_CLIENT_DRIVER__MAX])(
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    const Netdev *netdev,
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    const char *name,
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    NetClientState *peer, Error **errp) = {
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        [NET_CLIENT_DRIVER_NIC]       = net_init_nic,
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>        [NET_CLIENT_DRIVER_TAP]       = net_init_tap,
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        [NET_CLIENT_DRIVER_SOCKET]    = net_init_socket,
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        [NET_CLIENT_DRIVER_HUBPORT]   = net_init_hubport,
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>......
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>};
+</code></pre></div>
+<p>由于我们配置的driver的类型是tap，因而这里会调用net_init_tap-&gt;net_tap_init-&gt;tap_open。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>#define PATH_NET_TUN &quot;/dev/net/tun&quot;
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>int tap_open(char *ifname, int ifname_size, int *vnet_hdr,
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>             int vnet_hdr_required, int mq_required, Error **errp)
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>{
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    struct ifreq ifr;
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    int fd, ret;
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    int len = sizeof(struct virtio_net_hdr);
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    unsigned int features;
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    TFR(fd = open(PATH_NET_TUN, O_RDWR));
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    memset(&amp;ifr, 0, sizeof(ifr));
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    if (ioctl(fd, TUNGETFEATURES, &amp;features) == -1) {
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>        features = 0;
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>    }
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>    if (features &amp; IFF_ONE_QUEUE) {
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>        ifr.ifr_flags |= IFF_ONE_QUEUE;
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>    }
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>    if (*vnet_hdr) {
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>        if (features &amp; IFF_VNET_HDR) {
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>            *vnet_hdr = 1;
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>            ifr.ifr_flags |= IFF_VNET_HDR;
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>        } else {
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>            *vnet_hdr = 0;
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>        }
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>        ioctl(fd, TUNSETVNETHDRSZ, &amp;len);
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>    }
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>......
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>    ret = ioctl(fd, TUNSETIFF, (void *) &amp;ifr);
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>......
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>    fcntl(fd, F_SETFL, O_NONBLOCK);
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>    return fd;
+<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>}
+</code></pre></div>
+<p>在tap_open中，我们打开一个文件"/dev/net/tun"，然后通过ioctl操作这个文件。这是Linux内核的一项机制，和KVM机制很像。其实这就是一种通过打开这个字符设备文件，然后通过ioctl操作这个文件和内核打交道，来使用内核的能力。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/24/d3/243e93913b18c3ab00be5676bef334d3.png?wh=1546%2A1303" /></p>
+<p>为什么需要使用内核的机制呢？因为网络包需要从虚拟机里面发送到虚拟机外面，发送到宿主机上的时候，必须是一个正常的网络包才能被转发。要形成一个网络包，我们那就需要经过复杂的协议栈，协议栈的复杂咱们在<a href="https://time.geekbang.org/column/article/106490">发送网络包</a>那一节讲过了。</p>
+<p>客户机会将网络包发送给qemu。qemu自己没有网络协议栈，现去实现一个也不可能，太复杂了。于是，它就要借助内核的力量。</p>
+<p>qemu会将客户机发送给它的网络包，然后转换成为文件流，写入"/dev/net/tun"字符设备。就像写一个文件一样。内核中TUN/TAP字符设备驱动会收到这个写入的文件流，然后交给TUN/TAP的虚拟网卡驱动。这个驱动会将文件流再次转成网络包，交给TCP/IP栈，最终从虚拟TAP网卡tap0发出来，成为标准的网络包。后面我们会看到这个过程。</p>
+<p>现在我们到内核里面，看一看打开"/dev/net/tun"字符设备后，内核会发生什么事情。内核的实现在drivers/net/tun.c文件中。这是一个字符设备驱动程序，应该符合字符设备的格式。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>module_init(tun_init);
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>module_exit(tun_cleanup);
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>MODULE_DESCRIPTION(DRV_DESCRIPTION);
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>MODULE_AUTHOR(DRV_COPYRIGHT);
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>MODULE_LICENSE(&quot;GPL&quot;);
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>MODULE_ALIAS_MISCDEV(TUN_MINOR);
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>MODULE_ALIAS(&quot;devname:net/tun&quot;);
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>static int __init tun_init(void)
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>{
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>......
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    ret = rtnl_link_register(&amp;tun_link_ops);
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>......
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    ret = misc_register(&amp;tun_miscdev);
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>......
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    ret = register_netdevice_notifier(&amp;tun_notifier_block);
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>......
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>}
+</code></pre></div>
+<p>这里面注册了一个tun_miscdev字符设备，从它的定义可以看出，这就是"/dev/net/tun"字符设备。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>static struct miscdevice tun_miscdev = {
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    .minor = TUN_MINOR,
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    .name = &quot;tun&quot;,
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    .nodename = &quot;net/tun&quot;,
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    .fops = &amp;tun_fops,
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>};
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>static const struct file_operations tun_fops = {
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    .owner  = THIS_MODULE,
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    .llseek = no_llseek,
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    .read_iter  = tun_chr_read_iter,
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    .write_iter = tun_chr_write_iter,
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    .poll   = tun_chr_poll,
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    .unlocked_ioctl = tun_chr_ioctl,
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    .open   = tun_chr_open,
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>    .release = tun_chr_close,
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>    .fasync = tun_chr_fasync,
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>};
+</code></pre></div>
+<p>qemu的tap_open函数会打开这个字符设备PATH_NET_TUN。打开字符设备的过程我们不再重复。我就说一下，到了驱动这一层，调用的是tun_chr_open。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>static int tun_chr_open(struct inode *inode, struct file * file)
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>{
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    struct tun_file *tfile;
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    tfile = (struct tun_file *)sk_alloc(net, AF_UNSPEC, GFP_KERNEL,
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>                        &amp;tun_proto, 0);
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    RCU_INIT_POINTER(tfile-&gt;tun, NULL);
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    tfile-&gt;flags = 0;
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    tfile-&gt;ifindex = 0;
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    init_waitqueue_head(&amp;tfile-&gt;wq.wait);
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    RCU_INIT_POINTER(tfile-&gt;socket.wq, &amp;tfile-&gt;wq);
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>    tfile-&gt;socket.file = file;
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    tfile-&gt;socket.ops = &amp;tun_socket_ops;
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>    sock_init_data(&amp;tfile-&gt;socket, &amp;tfile-&gt;sk);
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>    tfile-&gt;sk.sk_write_space = tun_sock_write_space;
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>    tfile-&gt;sk.sk_sndbuf = INT_MAX;
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>    file-&gt;private_data = tfile;
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>    INIT_LIST_HEAD(&amp;tfile-&gt;next);
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>    sock_set_flag(&amp;tfile-&gt;sk, SOCK_ZEROCOPY);
+<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>
+<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a>    return 0;
+<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a>}
+</code></pre></div>
+<p>在tun_chr_open的参数里面，有一个struct file，这是代表什么文件呢？它代表的就是打开的字符设备文件"/dev/net/tun"，因而往这个字符设备文件中写数据，就会通过这个struct file写入。这个struct file里面的file_operations，按照字符设备打开的规则，指向的就是tun_fops。</p>
+<p>另外，我们还需要在tun_chr_open创建了一个结构struct tun_file，并且将struct file的private_data指向它。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>/* A tun_file connects an open character device to a tuntap netdevice. It
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a> * also contains all socket related structures 
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a> * to serve as one transmit queue for tuntap device. 
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a> */
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>struct tun_file {
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    struct sock sk;
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    struct socket socket;
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    struct socket_wq wq;
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    struct tun_struct __rcu *tun;
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    struct fasync_struct *fasync;
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    /* only used for fasnyc */
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>    unsigned int flags;
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>    union {
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>        u16 queue_index;
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>        unsigned int ifindex;
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    };
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>    struct list_head next;
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>    struct tun_struct *detached;
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>    struct skb_array tx_array;
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>};
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>struct tun_struct {
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>    struct tun_file __rcu   *tfiles[MAX_TAP_QUEUES];
+<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>    unsigned int            numqueues;
+<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>    unsigned int        flags;
+<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>    kuid_t          owner;
+<a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>    kgid_t          group;
+<a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>
+<a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>    struct net_device   *dev;
+<a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a>    netdev_features_t   set_features;
+<a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>    int         align;
+<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a>    int         vnet_hdr_sz;
+<a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a>    int         sndbuf;
+<a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a>    struct tap_filter   txflt;
+<a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a>    struct sock_fprog   fprog;
+<a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a>    /* protected by rtnl lock */
+<a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a>    bool            filter_attached;
+<a id="__codelineno-11-38" name="__codelineno-11-38" href="#__codelineno-11-38"></a>    spinlock_t lock;
+<a id="__codelineno-11-39" name="__codelineno-11-39" href="#__codelineno-11-39"></a>    struct hlist_head flows[TUN_NUM_FLOW_ENTRIES];
+<a id="__codelineno-11-40" name="__codelineno-11-40" href="#__codelineno-11-40"></a>    struct timer_list flow_gc_timer;
+<a id="__codelineno-11-41" name="__codelineno-11-41" href="#__codelineno-11-41"></a>    unsigned long ageing_time;
+<a id="__codelineno-11-42" name="__codelineno-11-42" href="#__codelineno-11-42"></a>    unsigned int numdisabled;
+<a id="__codelineno-11-43" name="__codelineno-11-43" href="#__codelineno-11-43"></a>    struct list_head disabled;
+<a id="__codelineno-11-44" name="__codelineno-11-44" href="#__codelineno-11-44"></a>    void *security;
+<a id="__codelineno-11-45" name="__codelineno-11-45" href="#__codelineno-11-45"></a>    u32 flow_count;
+<a id="__codelineno-11-46" name="__codelineno-11-46" href="#__codelineno-11-46"></a>    u32 rx_batched;
+<a id="__codelineno-11-47" name="__codelineno-11-47" href="#__codelineno-11-47"></a>    struct tun_pcpu_stats __percpu *pcpu_stats;
+<a id="__codelineno-11-48" name="__codelineno-11-48" href="#__codelineno-11-48"></a>};
+<a id="__codelineno-11-49" name="__codelineno-11-49" href="#__codelineno-11-49"></a>
+<a id="__codelineno-11-50" name="__codelineno-11-50" href="#__codelineno-11-50"></a>static const struct proto_ops tun_socket_ops = {
+<a id="__codelineno-11-51" name="__codelineno-11-51" href="#__codelineno-11-51"></a>    .peek_len = tun_peek_len,
+<a id="__codelineno-11-52" name="__codelineno-11-52" href="#__codelineno-11-52"></a>    .sendmsg = tun_sendmsg,
+<a id="__codelineno-11-53" name="__codelineno-11-53" href="#__codelineno-11-53"></a>    .recvmsg = tun_recvmsg,
+<a id="__codelineno-11-54" name="__codelineno-11-54" href="#__codelineno-11-54"></a>};
+</code></pre></div>
+<p>在struct tun_file中，有一个成员struct tun_struct，它里面有一个struct net_device，这个用来表示宿主机上的tuntap网络设备。在struct tun_file中，还有struct socket和struct sock，因为要用到内核的网络协议栈，所以就需要这两个结构，这在<a href="https://time.geekbang.org/column/article/105338">网络协议</a>那一节已经分析过了。</p>
+<p>所以，按照struct tun_file的注释说的，这是一个很重要的数据结构。"/dev/net/tun"对应的struct file的private_data指向它，因而可以接收qemu发过来的数据。除此之外，它还可以通过struct sock来操作内核协议栈，然后将网络包从宿主机上的tuntap网络设备发出去，宿主机上的tuntap网络设备对应的struct net_device也归它管。</p>
+<p>在qemu的tap_open函数中，打开这个字符设备文件之后，接下来要做的事情是，通过ioctl来设置宿主机的网卡TUNSETIFF。</p>
+<p>接下来，ioctl到了内核里面，会调用tun_chr_ioctl。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>static long __tun_chr_ioctl(struct file *file, unsigned int cmd,
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>                unsigned long arg, int ifreq_len)
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>{
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    struct tun_file *tfile = file-&gt;private_data;
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    struct tun_struct *tun;
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    void __user* argp = (void __user*)arg;
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    struct ifreq ifr;
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    kuid_t owner;
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>    kgid_t group;
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>    int sndbuf;
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>    int vnet_hdr_sz;
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>    unsigned int ifindex;
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>    int le;
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>    int ret;
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>    if (cmd == TUNSETIFF || cmd == TUNSETQUEUE || _IOC_TYPE(cmd) == SOCK_IOC_TYPE) {
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>        if (copy_from_user(&amp;ifr, argp, ifreq_len))
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>            return -EFAULT;
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>    } 
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>......
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>    tun = __tun_get(tfile);
+<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a>    if (cmd == TUNSETIFF) {
+<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a>        ifr.ifr_name[IFNAMSIZ-1] = &#39;\0&#39;;
+<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a>        ret = tun_set_iff(sock_net(&amp;tfile-&gt;sk), file, &amp;ifr);
+<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a>......
+<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a>        if (copy_to_user(argp, &amp;ifr, ifreq_len))
+<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a>            ret = -EFAULT;
+<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a>    }
+<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a>......
+<a id="__codelineno-12-30" name="__codelineno-12-30" href="#__codelineno-12-30"></a>}
+</code></pre></div>
+<p>在__tun_chr_ioctl中，我们首先通过copy_from_user把配置从用户态拷贝到内核态，调用tun_set_iff设置tuntap网络设备，然后调用copy_to_user将配置结果返回。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>static int tun_set_iff(struct net *net, struct file *file, struct ifreq *ifr)
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>{
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    struct tun_struct *tun;
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    struct tun_file *tfile = file-&gt;private_data;
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    struct net_device *dev;
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>......
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    char *name;
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    unsigned long flags = 0;
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    int queues = ifr-&gt;ifr_flags &amp; IFF_MULTI_QUEUE ?
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>                 MAX_TAP_QUEUES : 1;
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    if (ifr-&gt;ifr_flags &amp; IFF_TUN) {
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>        /* TUN device */
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>        flags |= IFF_TUN;
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>        name = &quot;tun%d&quot;;
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>    } else if (ifr-&gt;ifr_flags &amp; IFF_TAP) {
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>        /* TAP device */
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>        flags |= IFF_TAP;
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>        name = &quot;tap%d&quot;;
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>    } else
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>        return -EINVAL;
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>    if (*ifr-&gt;ifr_name)
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>        name = ifr-&gt;ifr_name;
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>    dev = alloc_netdev_mqs(sizeof(struct tun_struct), name,
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>                       NET_NAME_UNKNOWN, tun_setup, queues,
+<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a>                       queues);
+<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>
+<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a>    err = dev_get_valid_name(net, dev, name);
+<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a>    dev_net_set(dev, net);
+<a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a>    dev-&gt;rtnl_link_ops = &amp;tun_link_ops;
+<a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a>    dev-&gt;ifindex = tfile-&gt;ifindex;
+<a id="__codelineno-13-34" name="__codelineno-13-34" href="#__codelineno-13-34"></a>    dev-&gt;sysfs_groups[0] = &amp;tun_attr_group;
+<a id="__codelineno-13-35" name="__codelineno-13-35" href="#__codelineno-13-35"></a>
+<a id="__codelineno-13-36" name="__codelineno-13-36" href="#__codelineno-13-36"></a>    tun = netdev_priv(dev);
+<a id="__codelineno-13-37" name="__codelineno-13-37" href="#__codelineno-13-37"></a>    tun-&gt;dev = dev;
+<a id="__codelineno-13-38" name="__codelineno-13-38" href="#__codelineno-13-38"></a>    tun-&gt;flags = flags;
+<a id="__codelineno-13-39" name="__codelineno-13-39" href="#__codelineno-13-39"></a>    tun-&gt;txflt.count = 0;
+<a id="__codelineno-13-40" name="__codelineno-13-40" href="#__codelineno-13-40"></a>    tun-&gt;vnet_hdr_sz = sizeof(struct virtio_net_hdr);
+<a id="__codelineno-13-41" name="__codelineno-13-41" href="#__codelineno-13-41"></a>
+<a id="__codelineno-13-42" name="__codelineno-13-42" href="#__codelineno-13-42"></a>    tun-&gt;align = NET_SKB_PAD;
+<a id="__codelineno-13-43" name="__codelineno-13-43" href="#__codelineno-13-43"></a>    tun-&gt;filter_attached = false;
+<a id="__codelineno-13-44" name="__codelineno-13-44" href="#__codelineno-13-44"></a>    tun-&gt;sndbuf = tfile-&gt;socket.sk-&gt;sk_sndbuf;
+<a id="__codelineno-13-45" name="__codelineno-13-45" href="#__codelineno-13-45"></a>    tun-&gt;rx_batched = 0;
+<a id="__codelineno-13-46" name="__codelineno-13-46" href="#__codelineno-13-46"></a>
+<a id="__codelineno-13-47" name="__codelineno-13-47" href="#__codelineno-13-47"></a>    tun_net_init(dev);
+<a id="__codelineno-13-48" name="__codelineno-13-48" href="#__codelineno-13-48"></a>    tun_flow_init(tun);
+<a id="__codelineno-13-49" name="__codelineno-13-49" href="#__codelineno-13-49"></a>
+<a id="__codelineno-13-50" name="__codelineno-13-50" href="#__codelineno-13-50"></a>    err = tun_attach(tun, file, false);
+<a id="__codelineno-13-51" name="__codelineno-13-51" href="#__codelineno-13-51"></a>    err = register_netdevice(tun-&gt;dev);
+<a id="__codelineno-13-52" name="__codelineno-13-52" href="#__codelineno-13-52"></a>
+<a id="__codelineno-13-53" name="__codelineno-13-53" href="#__codelineno-13-53"></a>    netif_carrier_on(tun-&gt;dev);
+<a id="__codelineno-13-54" name="__codelineno-13-54" href="#__codelineno-13-54"></a>
+<a id="__codelineno-13-55" name="__codelineno-13-55" href="#__codelineno-13-55"></a>    if (netif_running(tun-&gt;dev))
+<a id="__codelineno-13-56" name="__codelineno-13-56" href="#__codelineno-13-56"></a>        netif_tx_wake_all_queues(tun-&gt;dev);
+<a id="__codelineno-13-57" name="__codelineno-13-57" href="#__codelineno-13-57"></a>
+<a id="__codelineno-13-58" name="__codelineno-13-58" href="#__codelineno-13-58"></a>    strcpy(ifr-&gt;ifr_name, tun-&gt;dev-&gt;name);
+<a id="__codelineno-13-59" name="__codelineno-13-59" href="#__codelineno-13-59"></a>    return 0;
+<a id="__codelineno-13-60" name="__codelineno-13-60" href="#__codelineno-13-60"></a>}
+</code></pre></div>
+<p>tun_set_iff创建了struct tun_struct和struct net_device，并且将这个tuntap网络设备通过register_netdevice注册到内核中。这样，我们就能在宿主机上通过ip addr看到这个网卡了。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/98/fd/9826223c7375bec19bd13588f3875ffd.png?wh=3463%2A1903" /></p>
+<p>至此宿主机上的内核的数据结构也完成了。</p>
+<h2 id="_2">关联前端设备驱动和后端设备驱动</h2>
+<p>下面，我们来解析在客户机中发送一个网络包的时候，会发生哪些事情。</p>
+<p>虚拟机里面的进程发送一个网络包，通过文件系统和Socket调用网络协议栈，到达网络设备层。只不过这个不是普通的网络设备，而是virtio_net的驱动。</p>
+<p>virtio_net的驱动程序代码在Linux操作系统的源代码里面，文件名为drivers/net/virtio_net.c。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>static __init int virtio_net_driver_init(void)
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>{
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    ret = register_virtio_driver(&amp;virtio_net_driver);
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>......
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>}
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>module_init(virtio_net_driver_init);
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>module_exit(virtio_net_driver_exit);
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>MODULE_DEVICE_TABLE(virtio, id_table);
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>MODULE_DESCRIPTION(&quot;Virtio network driver&quot;);
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>MODULE_LICENSE(&quot;GPL&quot;);
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>static struct virtio_driver virtio_net_driver = {
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>    .driver.name =  KBUILD_MODNAME,
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>    .driver.owner = THIS_MODULE,
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>    .id_table = id_table,
+<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>    .validate = virtnet_validate,
+<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>    .probe =    virtnet_probe,
+<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>    .remove =   virtnet_remove,
+<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a>    .config_changed = virtnet_config_changed,
+<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a>......
+<a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a>};
+</code></pre></div>
+<p>在virtio_net的驱动程序的初始化代码中，我们需要注册一个驱动函数virtio_net_driver。</p>
+<p>当一个设备驱动作为一个内核模块被初始化的时候，probe函数会被调用，因而我们来看一下virtnet_probe。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>static int virtnet_probe(struct virtio_device *vdev)
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>{
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    int i, err;
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    struct net_device *dev;
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    struct virtnet_info *vi;
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    u16 max_queue_pairs;
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    int mtu;
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    /* Allocate ourselves a network device with room for our info */
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>    dev = alloc_etherdev_mq(sizeof(struct virtnet_info), max_queue_pairs);
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>    /* Set up network device as normal. */
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>    dev-&gt;priv_flags |= IFF_UNICAST_FLT | IFF_LIVE_ADDR_CHANGE;
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>    dev-&gt;netdev_ops = &amp;virtnet_netdev;
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>    dev-&gt;features = NETIF_F_HIGHDMA;
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>    dev-&gt;ethtool_ops = &amp;virtnet_ethtool_ops;
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>    SET_NETDEV_DEV(dev, &amp;vdev-&gt;dev);
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>......
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>    /* MTU range: 68 - 65535 */
+<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>    dev-&gt;min_mtu = MIN_MTU;
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>    dev-&gt;max_mtu = MAX_MTU;
+<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a>
+<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a>    /* Set up our device-specific information */
+<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a>    vi = netdev_priv(dev);
+<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a>    vi-&gt;dev = dev;
+<a id="__codelineno-15-27" name="__codelineno-15-27" href="#__codelineno-15-27"></a>    vi-&gt;vdev = vdev;
+<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a>    vdev-&gt;priv = vi;
+<a id="__codelineno-15-29" name="__codelineno-15-29" href="#__codelineno-15-29"></a>    vi-&gt;stats = alloc_percpu(struct virtnet_stats);
+<a id="__codelineno-15-30" name="__codelineno-15-30" href="#__codelineno-15-30"></a>    INIT_WORK(&amp;vi-&gt;config_work, virtnet_config_changed_work);
+<a id="__codelineno-15-31" name="__codelineno-15-31" href="#__codelineno-15-31"></a>......
+<a id="__codelineno-15-32" name="__codelineno-15-32" href="#__codelineno-15-32"></a>    vi-&gt;max_queue_pairs = max_queue_pairs;
+<a id="__codelineno-15-33" name="__codelineno-15-33" href="#__codelineno-15-33"></a>
+<a id="__codelineno-15-34" name="__codelineno-15-34" href="#__codelineno-15-34"></a>    /* Allocate/initialize the rx/tx queues, and invoke find_vqs */
+<a id="__codelineno-15-35" name="__codelineno-15-35" href="#__codelineno-15-35"></a>    err = init_vqs(vi);
+<a id="__codelineno-15-36" name="__codelineno-15-36" href="#__codelineno-15-36"></a>    netif_set_real_num_tx_queues(dev, vi-&gt;curr_queue_pairs);
+<a id="__codelineno-15-37" name="__codelineno-15-37" href="#__codelineno-15-37"></a>    netif_set_real_num_rx_queues(dev, vi-&gt;curr_queue_pairs);
+<a id="__codelineno-15-38" name="__codelineno-15-38" href="#__codelineno-15-38"></a>
+<a id="__codelineno-15-39" name="__codelineno-15-39" href="#__codelineno-15-39"></a>    virtnet_init_settings(dev);
+<a id="__codelineno-15-40" name="__codelineno-15-40" href="#__codelineno-15-40"></a>
+<a id="__codelineno-15-41" name="__codelineno-15-41" href="#__codelineno-15-41"></a>    err = register_netdev(dev);
+<a id="__codelineno-15-42" name="__codelineno-15-42" href="#__codelineno-15-42"></a>    virtio_device_ready(vdev);
+<a id="__codelineno-15-43" name="__codelineno-15-43" href="#__codelineno-15-43"></a>    virtnet_set_queues(vi, vi-&gt;curr_queue_pairs);
+<a id="__codelineno-15-44" name="__codelineno-15-44" href="#__codelineno-15-44"></a>......
+<a id="__codelineno-15-45" name="__codelineno-15-45" href="#__codelineno-15-45"></a>}
+</code></pre></div>
+<p>在virtnet_probe中，会创建struct net_device，并且通过register_netdev注册这个网络设备，这样在客户机里面，就能看到这个网卡了。</p>
+<p>在virtnet_probe中，还有一件重要的事情就是，init_vqs会初始化发送和接收的virtqueue。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>static int init_vqs(struct virtnet_info *vi)
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>{
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    int ret;
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    /* Allocate send &amp; receive queues */
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    ret = virtnet_alloc_queues(vi);
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>    ret = virtnet_find_vqs(vi);
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>......
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>    get_online_cpus();
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>    virtnet_set_affinity(vi);
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>    put_online_cpus();
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>    return 0;
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>}
+<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a>
+<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>static int virtnet_alloc_queues(struct virtnet_info *vi)
+<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>{
+<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>    int i;
+<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>
+<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a>    vi-&gt;sq = kzalloc(sizeof(*vi-&gt;sq) * vi-&gt;max_queue_pairs, GFP_KERNEL);
+<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a>    vi-&gt;rq = kzalloc(sizeof(*vi-&gt;rq) * vi-&gt;max_queue_pairs, GFP_KERNEL);
+<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a>
+<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a>    INIT_DELAYED_WORK(&amp;vi-&gt;refill, refill_work);
+<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a>    for (i = 0; i &lt; vi-&gt;max_queue_pairs; i++) {
+<a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a>        vi-&gt;rq[i].pages = NULL;
+<a id="__codelineno-16-26" name="__codelineno-16-26" href="#__codelineno-16-26"></a>        netif_napi_add(vi-&gt;dev, &amp;vi-&gt;rq[i].napi, virtnet_poll,
+<a id="__codelineno-16-27" name="__codelineno-16-27" href="#__codelineno-16-27"></a>                   napi_weight);
+<a id="__codelineno-16-28" name="__codelineno-16-28" href="#__codelineno-16-28"></a>        netif_tx_napi_add(vi-&gt;dev, &amp;vi-&gt;sq[i].napi, virtnet_poll_tx,
+<a id="__codelineno-16-29" name="__codelineno-16-29" href="#__codelineno-16-29"></a>                  napi_tx ? napi_weight : 0);
+<a id="__codelineno-16-30" name="__codelineno-16-30" href="#__codelineno-16-30"></a>
+<a id="__codelineno-16-31" name="__codelineno-16-31" href="#__codelineno-16-31"></a>        sg_init_table(vi-&gt;rq[i].sg, ARRAY_SIZE(vi-&gt;rq[i].sg));
+<a id="__codelineno-16-32" name="__codelineno-16-32" href="#__codelineno-16-32"></a>        ewma_pkt_len_init(&amp;vi-&gt;rq[i].mrg_avg_pkt_len);
+<a id="__codelineno-16-33" name="__codelineno-16-33" href="#__codelineno-16-33"></a>        sg_init_table(vi-&gt;sq[i].sg, ARRAY_SIZE(vi-&gt;sq[i].sg));
+<a id="__codelineno-16-34" name="__codelineno-16-34" href="#__codelineno-16-34"></a>    }
+<a id="__codelineno-16-35" name="__codelineno-16-35" href="#__codelineno-16-35"></a>
+<a id="__codelineno-16-36" name="__codelineno-16-36" href="#__codelineno-16-36"></a>    return 0;
+<a id="__codelineno-16-37" name="__codelineno-16-37" href="#__codelineno-16-37"></a>}
+</code></pre></div>
+<p>按照上一节的virtio原理，virtqueue是一个介于客户机前端和qemu后端的一个结构，用于在这两端之间传递数据，对于网络设备来讲有发送和接收两个方向的队列。这里建立的struct virtqueue是客户机前端对于队列的管理的数据结构。</p>
+<p>队列的实体需要通过函数virtnet_find_vqs查找或者生成，这里还会指定接收队列的callback函数为skb_recv_done，发送队列的callback函数为skb_xmit_done。那当buffer使用发生变化的时候，我们可以调用这个callback函数进行通知。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>static int virtnet_find_vqs(struct virtnet_info *vi)
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>{
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    vq_callback_t **callbacks;
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>    struct virtqueue **vqs;
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    int ret = -ENOMEM;
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    int i, total_vqs;
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    const char **names;
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>    /* Allocate space for find_vqs parameters */
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>    vqs = kzalloc(total_vqs * sizeof(*vqs), GFP_KERNEL);
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>    callbacks = kmalloc(total_vqs * sizeof(*callbacks), GFP_KERNEL);
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>    names = kmalloc(total_vqs * sizeof(*names), GFP_KERNEL);
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>    /* Allocate/initialize parameters for send/receive virtqueues */
+<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>    for (i = 0; i &lt; vi-&gt;max_queue_pairs; i++) {
+<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>        callbacks[rxq2vq(i)] = skb_recv_done;
+<a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a>        callbacks[txq2vq(i)] = skb_xmit_done;
+<a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a>        names[rxq2vq(i)] = vi-&gt;rq[i].name;
+<a id="__codelineno-17-19" name="__codelineno-17-19" href="#__codelineno-17-19"></a>        names[txq2vq(i)] = vi-&gt;sq[i].name;
+<a id="__codelineno-17-20" name="__codelineno-17-20" href="#__codelineno-17-20"></a>    }
+<a id="__codelineno-17-21" name="__codelineno-17-21" href="#__codelineno-17-21"></a>
+<a id="__codelineno-17-22" name="__codelineno-17-22" href="#__codelineno-17-22"></a>    ret = vi-&gt;vdev-&gt;config-&gt;find_vqs(vi-&gt;vdev, total_vqs, vqs, callbacks, names, ctx, NULL);
+<a id="__codelineno-17-23" name="__codelineno-17-23" href="#__codelineno-17-23"></a>......
+<a id="__codelineno-17-24" name="__codelineno-17-24" href="#__codelineno-17-24"></a>    for (i = 0; i &lt; vi-&gt;max_queue_pairs; i++) {
+<a id="__codelineno-17-25" name="__codelineno-17-25" href="#__codelineno-17-25"></a>        vi-&gt;rq[i].vq = vqs[rxq2vq(i)];
+<a id="__codelineno-17-26" name="__codelineno-17-26" href="#__codelineno-17-26"></a>        vi-&gt;rq[i].min_buf_len = mergeable_min_buf_len(vi, vi-&gt;rq[i].vq);
+<a id="__codelineno-17-27" name="__codelineno-17-27" href="#__codelineno-17-27"></a>        vi-&gt;sq[i].vq = vqs[txq2vq(i)];
+<a id="__codelineno-17-28" name="__codelineno-17-28" href="#__codelineno-17-28"></a>    }
+<a id="__codelineno-17-29" name="__codelineno-17-29" href="#__codelineno-17-29"></a>......
+<a id="__codelineno-17-30" name="__codelineno-17-30" href="#__codelineno-17-30"></a>}
+</code></pre></div>
+<p>这里的find_vqs是在struct virtnet_info里的struct virtio_device里的struct virtio_config_ops *config里面定义的。</p>
+<p>根据virtio_config_ops的定义，find_vqs会调用vp_modern_find_vqs，到这一步和块设备是一样的了。</p>
+<p>在vp_modern_find_vqs中，vp_find_vqs会调用vp_find_vqs_intx。在vp_find_vqs_intx中，通过request_irq注册一个中断处理函数vp_interrupt。当设备向队列中写入信息时，会产生一个中断，也就是vq中断。中断处理函数需要调用相应的队列的回调函数，然后根据队列的数目，依次调用vp_setup_vq完成virtqueue、vring的分配和初始化。</p>
+<p>同样，这些数据结构会和virtio后端的VirtIODevice、VirtQueue、vring对应起来，都应该指向刚才创建的那一段内存。</p>
+<p>客户机同样会通过调用专门给外部设备发送指令的函数iowrite告诉外部的pci设备，这些共享内存的地址。</p>
+<p>至此前端设备驱动和后端设备驱动之间的两个收发队列就关联好了，这两个队列的格式和块设备是一样的。</p>
+<h2 id="_3">发送网络包过程</h2>
+<p>接下来，我们来看当真的发送一个网络包的时候，会发生什么。</p>
+<p>当网络包经过客户机的协议栈到达virtio_net驱动的时候，按照net_device_ops的定义，start_xmit会被调用。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>static const struct net_device_ops virtnet_netdev = {
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>    .ndo_open            = virtnet_open,
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>    .ndo_stop            = virtnet_close,
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>    .ndo_start_xmit      = start_xmit,
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    .ndo_validate_addr   = eth_validate_addr,
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>    .ndo_set_mac_address = virtnet_set_mac_address,
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>    .ndo_set_rx_mode     = virtnet_set_rx_mode,
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>    .ndo_get_stats64     = virtnet_stats,
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>    .ndo_vlan_rx_add_vid = virtnet_vlan_rx_add_vid,
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>    .ndo_vlan_rx_kill_vid = virtnet_vlan_rx_kill_vid,
+<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>    .ndo_xdp        = virtnet_xdp,
+<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>    .ndo_features_check = passthru_features_check,
+<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>};
+</code></pre></div>
+<p>接下来的调用链为：start_xmit-&gt;xmit_skb-&gt; virtqueue_add_outbuf-&gt;virtqueue_add，将网络包放入队列中，并调用virtqueue_notify通知接收方。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>static netdev_tx_t start_xmit(struct sk_buff *skb, struct net_device *dev)
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>{
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>    struct virtnet_info *vi = netdev_priv(dev);
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>    int qnum = skb_get_queue_mapping(skb);
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>    struct send_queue *sq = &amp;vi-&gt;sq[qnum];
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>    int err;
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>    struct netdev_queue *txq = netdev_get_tx_queue(dev, qnum);
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>    bool kick = !skb-&gt;xmit_more;
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>    bool use_napi = sq-&gt;napi.weight;
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>......
+<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>    /* Try to transmit */
+<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>    err = xmit_skb(sq, skb);
+<a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a>......
+<a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a>    if (kick || netif_xmit_stopped(txq))
+<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>        virtqueue_kick(sq-&gt;vq);
+<a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a>    return NETDEV_TX_OK;
+<a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a>}
+<a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a>
+<a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a>bool virtqueue_kick(struct virtqueue *vq)
+<a id="__codelineno-19-20" name="__codelineno-19-20" href="#__codelineno-19-20"></a>{
+<a id="__codelineno-19-21" name="__codelineno-19-21" href="#__codelineno-19-21"></a>    if (virtqueue_kick_prepare(vq))
+<a id="__codelineno-19-22" name="__codelineno-19-22" href="#__codelineno-19-22"></a>        return virtqueue_notify(vq);
+<a id="__codelineno-19-23" name="__codelineno-19-23" href="#__codelineno-19-23"></a>    return true;
+<a id="__codelineno-19-24" name="__codelineno-19-24" href="#__codelineno-19-24"></a>}
+</code></pre></div>
+<p>写入一个I/O会使得qemu触发VM exit，这个逻辑我们在解析CPU的时候看到过。</p>
+<p>接下来，我们那会调用VirtQueue的handle_output函数。前面我们已经设置过这个函数了，其实就是virtio_net_handle_tx_bh。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>static void virtio_net_handle_tx_bh(VirtIODevice *vdev, VirtQueue *vq)
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>{
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>    VirtIONet *n = VIRTIO_NET(vdev);
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>    VirtIONetQueue *q = &amp;n-&gt;vqs[vq2q(virtio_get_queue_index(vq))];
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>    q-&gt;tx_waiting = 1;
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>    virtio_queue_set_notification(vq, 0);
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>    qemu_bh_schedule(q-&gt;tx_bh);
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>}
+</code></pre></div>
+<p>virtio_net_handle_tx_bh调用了qemu_bh_schedule，而在virtio_net_add_queue中调用qemu_bh_new，并把函数设置为virtio_net_tx_bh。</p>
+<p>virtio_net_tx_bh函数调用发送函数virtio_net_flush_tx。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>static int32_t virtio_net_flush_tx(VirtIONetQueue *q)
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>{
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>    VirtIONet *n = q-&gt;n;
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    VirtIODevice *vdev = VIRTIO_DEVICE(n);
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>    VirtQueueElement *elem;
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>    int32_t num_packets = 0;
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>    int queue_index = vq2q(virtio_get_queue_index(q-&gt;tx_vq));
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>    for (;;) {
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>        ssize_t ret;
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>        unsigned int out_num;
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>        struct iovec sg[VIRTQUEUE_MAX_SIZE], sg2[VIRTQUEUE_MAX_SIZE + 1], *out_sg;
+<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>        struct virtio_net_hdr_mrg_rxbuf mhdr;
+<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>
+<a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a>        elem = virtqueue_pop(q-&gt;tx_vq, sizeof(VirtQueueElement));
+<a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a>        out_num = elem-&gt;out_num;
+<a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a>        out_sg = elem-&gt;out_sg;
+<a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>......
+<a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a>        ret = qemu_sendv_packet_async(qemu_get_subqueue(n-&gt;nic, queue_index),out_sg, out_num, virtio_net_tx_complete);
+<a id="__codelineno-21-20" name="__codelineno-21-20" href="#__codelineno-21-20"></a>    }
+<a id="__codelineno-21-21" name="__codelineno-21-21" href="#__codelineno-21-21"></a>......
+<a id="__codelineno-21-22" name="__codelineno-21-22" href="#__codelineno-21-22"></a>    return num_packets;
+<a id="__codelineno-21-23" name="__codelineno-21-23" href="#__codelineno-21-23"></a>}
+</code></pre></div>
+<p>virtio_net_flush_tx会调用virtqueue_pop。这里面，我们能看到对于vring的操作，也即从这里面将客户机里面写入的数据读取出来。</p>
+<p>然后，我们调用qemu_sendv_packet_async发送网络包。接下来的调用链为：qemu_sendv_packet_async-&gt;qemu_net_queue_send_iov-&gt;qemu_net_queue_flush-&gt;qemu_net_queue_deliver。</p>
+<p>在qemu_net_queue_deliver中，我们会调用NetQueue的deliver函数。前面qemu_new_net_queue会把deliver函数设置为qemu_deliver_packet_iov。它会调用nc-&gt;info-&gt;receive_iov。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>static NetClientInfo net_tap_info = {
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>    .type = NET_CLIENT_DRIVER_TAP,
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>    .size = sizeof(TAPState),
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>    .receive = tap_receive,
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>    .receive_raw = tap_receive_raw,
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>    .receive_iov = tap_receive_iov,
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>    .poll = tap_poll,
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>    .cleanup = tap_cleanup,
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>    .has_ufo = tap_has_ufo,
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a>    .has_vnet_hdr = tap_has_vnet_hdr,
+<a id="__codelineno-22-11" name="__codelineno-22-11" href="#__codelineno-22-11"></a>    .has_vnet_hdr_len = tap_has_vnet_hdr_len,
+<a id="__codelineno-22-12" name="__codelineno-22-12" href="#__codelineno-22-12"></a>    .using_vnet_hdr = tap_using_vnet_hdr,
+<a id="__codelineno-22-13" name="__codelineno-22-13" href="#__codelineno-22-13"></a>    .set_offload = tap_set_offload,
+<a id="__codelineno-22-14" name="__codelineno-22-14" href="#__codelineno-22-14"></a>    .set_vnet_hdr_len = tap_set_vnet_hdr_len,
+<a id="__codelineno-22-15" name="__codelineno-22-15" href="#__codelineno-22-15"></a>    .set_vnet_le = tap_set_vnet_le,
+<a id="__codelineno-22-16" name="__codelineno-22-16" href="#__codelineno-22-16"></a>    .set_vnet_be = tap_set_vnet_be,
+<a id="__codelineno-22-17" name="__codelineno-22-17" href="#__codelineno-22-17"></a>};
+</code></pre></div>
+<p>根据net_tap_info的定义调用的是tap_receive_iov。他会调用tap_write_packet-&gt;writev写入这个字符设备。</p>
+<p>在内核的字符设备驱动中，tun_chr_write_iter会被调用。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>static ssize_t tun_chr_write_iter(struct kiocb *iocb, struct iov_iter *from)
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>{
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>    struct file *file = iocb-&gt;ki_filp;
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>    struct tun_struct *tun = tun_get(file);
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>    struct tun_file *tfile = file-&gt;private_data;
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>    ssize_t result;
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>    result = tun_get_user(tun, tfile, NULL, from,
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>                  file-&gt;f_flags &amp; O_NONBLOCK, false);
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a>
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>    tun_put(tun);
+<a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a>    return result;
+<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a>}
+</code></pre></div>
+<p>当我们使用writev()系统调用向tun/tap设备的字符设备文件写入数据时，tun_chr_write函数将被调用。它会使用tun_get_user，从用户区接收数据，将数据存入skb中，然后调用关键的函数netif_rx_ni(skb) ，将skb送给tcp/ip协议栈处理，最终完成虚拟网卡的数据接收。</p>
+<p>至此，从虚拟机内部到宿主机的网络传输过程才算结束。</p>
+<h2 id="_4">总结时刻</h2>
+<p>最后，我们把网络虚拟化场景下网络包的发送过程总结一下。</p>
+<ul>
+<li>在虚拟机里面的用户态，应用程序通过write系统调用写入socket。</li>
+<li>写入的内容经过VFS层，内核协议栈，到达虚拟机里面的内核的网络设备驱动，也即virtio_net。</li>
+<li>virtio_net网络设备有一个操作结构struct net_device_ops，里面定义了发送一个网络包调用的函数为start_xmit。</li>
+<li>在virtio_net的前端驱动和qemu中的后端驱动之间，有两个队列virtqueue，一个用于发送，一个用于接收。然后，我们需要在start_xmit中调用virtqueue_add，将网络包放入发送队列，然后调用virtqueue_notify通知qemu。</li>
+<li>qemu本来处于KVM_RUN的状态，收到通知后，通过VM exit指令退出客户机模式，进入宿主机模式。发送网络包的时候，virtio_net_handle_tx_bh函数会被调用。</li>
+<li>接下来是一个for循环，我们需要在循环中调用virtqueue_pop，从传输队列中获取要发送的数据，然后调用qemu_sendv_packet_async进行发送。</li>
+<li>qemu会调用writev向字符设备文件写入，进入宿主机的内核。</li>
+<li>在宿主机内核中字符设备文件的file_operations里面的write_iter会被调用，也即会调用tun_chr_write_iter。</li>
+<li>在tun_chr_write_iter函数中，tun_get_user将要发送的网络包从qemu拷贝到宿主机内核里面来，然后调用netif_rx_ni开始调用宿主机内核协议栈进行处理。</li>
+<li>宿主机内核协议栈处理完毕之后，会发送给tap虚拟网卡，完成从虚拟机里面到宿主机的整个发送过程。</li>
+</ul>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/e3/44/e329505cfcd367612f8ae47054ec8e44.jpg?wh=3586%2A5503" /></p>
+<h2 id="_5">课堂练习</h2>
+<p>这一节我们解析的是发送过程，请你根据类似的思路，解析一下接收过程。</p>
+<p>欢迎留言和我分享你的疑惑和见解，也欢迎收藏本节内容，反复研读。你也可以把今天的内容分享给你的朋友，和他一起学习和进步。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/8c/37/8c0a95fa07a8b9a1abfd394479bdd637.jpg?wh=1110%2A659" /></p>
 <div><strong>精选留言（14）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/14/04/1c/b0c6c009.jpg" width="30px"><span>zhj</span> 👍（16） 💬（1）<div>不仅是走了两次协议栈，关键是客户机内核栈封包--&gt;宿主机内核栈解包，然后又利用宿主机协议栈封包发出去，这个流程感觉好怪异，两次走协议栈，三次动包，这个不能优化吗</div>2019-08-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/99/af/d29273e2.jpg" width="30px"><span>饭粒</span> 👍（6） 💬（1）<div>写的真好，尤其总结精华。一篇内容要断断续续看好久。。</div>2019-08-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b2/e0/bf56878a.jpg" width="30px"><span>kkxue</span> 👍（1） 💬（1）<div>学了这么多年的虚拟网络，不及老师一节课的深度啊</div>2019-08-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/34/df/64e3d533.jpg" width="30px"><span>leslie</span> 👍（1） 💬（1）<div>       学习了：跟完刘老师的趣谈网络协议再跟着linux系统，发现收获又不一样；同时在跟老师的网络协议的过程中，还被迫去跟着学习刘文浩老师的计算机组成原理-否则没法理解老师的一些概念。
-       这大概就是老师之前说的学习方法吧：书阅读越厚、读书的过程中不断去相应的扩展、学习、提升理解，然后整理出自己的东西-书就薄了；虽然书薄了，可是笔记和自己的学习笔录却反而越来越厚了；感谢老师简单形象的教诲。</div>2019-08-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/39/fa/a7edbc72.jpg" width="30px"><span>安排</span> 👍（1） 💬（2）<div>网络包是什么样的？经过协议栈处理之前的还是之后的？这样看来虚拟机里面发送网络数据要走两次协议栈吗？因为虚拟机本身也有自己的协议栈，经过虚拟机协议栈处理的数据qemu会进行拆包重新还原出原始的数据吗？</div>2019-08-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/23/f8/24fcccea.jpg" width="30px"><span>💢 星星💢</span> 👍（13） 💬（2）<div>我感觉每次看看总结就差不多了。。一看到文中的代码，头很疼，本人c语言基础一般，调用来调用去。头很晕。每次看老师的文章。我先是大致看一下文章的大概意思，最后认真看一下总结。但是第二天好像又忘得七七八八了。自己基础还是太差了。刘老师的功底，太过于深厚。佩服。</div>2019-11-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/ac/96/46b13896.jpg" width="30px"><span>williamcai</span> 👍（3） 💬（0）<div>能大概理解虚拟化原来是这么回事，用软件来模拟设备，最后还是要真正的设备来处理</div>2019-12-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/36/94/0b969588.jpg" width="30px"><span>青年祭司</span> 👍（1） 💬（0）<div>老师，如果是一个宿主机上的两个虚拟机之间互相发送数据，会有优化吗</div>2020-07-24</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJAWUhO0xSjD6wbGScY5WOujAE94vNYWlWmsVdibb0IWbXzSSNXJHp0lqfWVq8ZicKBsEY1EuAWArew/132" width="30px"><span>Felix</span> 👍（0） 💬（0）<div>打个卡，证明我坚持到这里，并不说明我看懂了😂</div>2024-03-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/9b/06/a1b0bd54.jpg" width="30px"><span>呆萌白的大白。</span> 👍（0） 💬（0）<div>有几个问题还是想请教一下作者：
+<li><span>zhj</span> 👍（16） 💬（1）<div>不仅是走了两次协议栈，关键是客户机内核栈封包--&gt;宿主机内核栈解包，然后又利用宿主机协议栈封包发出去，这个流程感觉好怪异，两次走协议栈，三次动包，这个不能优化吗</div>2019-08-20</li><br/><li><span>饭粒</span> 👍（6） 💬（1）<div>写的真好，尤其总结精华。一篇内容要断断续续看好久。。</div>2019-08-15</li><br/><li><span>kkxue</span> 👍（1） 💬（1）<div>学了这么多年的虚拟网络，不及老师一节课的深度啊</div>2019-08-04</li><br/><li><span>leslie</span> 👍（1） 💬（1）<div>       学习了：跟完刘老师的趣谈网络协议再跟着linux系统，发现收获又不一样；同时在跟老师的网络协议的过程中，还被迫去跟着学习刘文浩老师的计算机组成原理-否则没法理解老师的一些概念。
+       这大概就是老师之前说的学习方法吧：书阅读越厚、读书的过程中不断去相应的扩展、学习、提升理解，然后整理出自己的东西-书就薄了；虽然书薄了，可是笔记和自己的学习笔录却反而越来越厚了；感谢老师简单形象的教诲。</div>2019-08-03</li><br/><li><span>安排</span> 👍（1） 💬（2）<div>网络包是什么样的？经过协议栈处理之前的还是之后的？这样看来虚拟机里面发送网络数据要走两次协议栈吗？因为虚拟机本身也有自己的协议栈，经过虚拟机协议栈处理的数据qemu会进行拆包重新还原出原始的数据吗？</div>2019-08-02</li><br/><li><span>💢 星星💢</span> 👍（13） 💬（2）<div>我感觉每次看看总结就差不多了。。一看到文中的代码，头很疼，本人c语言基础一般，调用来调用去。头很晕。每次看老师的文章。我先是大致看一下文章的大概意思，最后认真看一下总结。但是第二天好像又忘得七七八八了。自己基础还是太差了。刘老师的功底，太过于深厚。佩服。</div>2019-11-07</li><br/><li><span>williamcai</span> 👍（3） 💬（0）<div>能大概理解虚拟化原来是这么回事，用软件来模拟设备，最后还是要真正的设备来处理</div>2019-12-24</li><br/><li><span>青年祭司</span> 👍（1） 💬（0）<div>老师，如果是一个宿主机上的两个虚拟机之间互相发送数据，会有优化吗</div>2020-07-24</li><br/><li><span>Felix</span> 👍（0） 💬（0）<div>打个卡，证明我坚持到这里，并不说明我看懂了😂</div>2024-03-13</li><br/><li><span>呆萌白的大白。</span> 👍（0） 💬（0）<div>有几个问题还是想请教一下作者：
 一:课程中讲的virtio-net后端是vhost-net吗?
 二:vhost-net模式下,guestos中的网络IO一定会引起vmexit吗?
 三:vmexit之后,KVM是怎么通知给vhost-net内核线程的,KVM直接调用vhost-net模块吗?
 四:前端肯定都是virtio-net了,vhost-net后端跟virtio-net后端,vmexit之后都是KVM模块直接调用后端的驱动代码吗,那这段时间guestos始终出去vmexit状态,不做任何操作吗?
-五:vhost-net怎么把包传递给guestos啊,也是KVM直接调用代码吗?那是guestos发包,vmexit然后一直等着,对端回包之后KVM再vmentry吗?因为IO中断就一直阻塞是不是效率太差了,而且非常用可能外部访问虚拟机提供的服务啊,这时候虚拟机本身就是在vmentry已进入的状态啊,这就矛盾了啊.</div>2022-04-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/dd/5e/2354204d.jpg" width="30px"><span>古古惑惑</span> 👍（0） 💬（0）<div>老师功力太深了，膜拜。</div>2021-09-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5e/96/a03175bc.jpg" width="30px"><span>莫名</span> 👍（0） 💬（0）<div>🐮🍺</div>2020-09-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/44/84/4da14994.jpg" width="30px"><span>呆瓜</span> 👍（0） 💬（0）<div>老师内力太过深厚,吾等难以望其项背!</div>2020-09-20</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJnRUibp7LV1lyHFWEUz5pIwvuXVIJ9ZlFKFOOQQEc7FO3Umt03FUrvYHa3gXQbvT3M70m6V0LibXvw/132" width="30px"><span>Geek_366a52</span> 👍（0） 💬（0）<div>图中的虚拟网卡tap0和物理网卡应该是在内核态部分的吧？</div>2019-11-08</li><br/>
+五:vhost-net怎么把包传递给guestos啊,也是KVM直接调用代码吗?那是guestos发包,vmexit然后一直等着,对端回包之后KVM再vmentry吗?因为IO中断就一直阻塞是不是效率太差了,而且非常用可能外部访问虚拟机提供的服务啊,这时候虚拟机本身就是在vmentry已进入的状态啊,这就矛盾了啊.</div>2022-04-25</li><br/><li><span>古古惑惑</span> 👍（0） 💬（0）<div>老师功力太深了，膜拜。</div>2021-09-07</li><br/><li><span>莫名</span> 👍（0） 💬（0）<div>🐮🍺</div>2020-09-25</li><br/><li><span>呆瓜</span> 👍（0） 💬（0）<div>老师内力太过深厚,吾等难以望其项背!</div>2020-09-20</li><br/><li><span>Geek_366a52</span> 👍（0） 💬（0）<div>图中的虚拟网卡tap0和物理网卡应该是在内核态部分的吧？</div>2019-11-08</li><br/>
 </ul>
 
 

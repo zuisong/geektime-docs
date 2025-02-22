@@ -9339,6 +9339,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#tomcat_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tomcat热加载
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tomcat_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tomcat热部署
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13093,6 +13129,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#tomcat_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tomcat热加载
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tomcat_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tomcat热部署
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      本期精华
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13128,23 +13200,165 @@
 <p>今天我们来学习一下Tomcat是如何用后台线程来实现热加载和热部署的。Tomcat通过开启后台线程，使得各个层次的容器组件都有机会完成一些周期性任务。我们在实际工作中，往往也需要执行一些周期性的任务，比如监控程序周期性拉取系统的健康状态，就可以借鉴这种设计。</p>
 <h2 id="tomcat">Tomcat的后台线程</h2>
 <p>要说开启后台线程做周期性的任务，有经验的同学马上会想到线程池中的ScheduledThreadPoolExecutor，它除了具有线程池的功能，还能够执行周期性的任务。Tomcat就是通过它来开启后台线程的：</p>
-<div><strong>精选留言（29）</strong></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>bgFuture = exec.scheduleWithFixedDelay(
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>              new ContainerBackgroundProcessor(),//要执行的Runnable
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>              backgroundProcessorDelay, //第一次执行延迟多久
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>              backgroundProcessorDelay, //之后每次执行间隔多久
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>              TimeUnit.SECONDS);        //时间单位
+</code></pre></div>
+<p>上面的代码调用了scheduleWithFixedDelay方法，传入了四个参数，第一个参数就是要周期性执行的任务类ContainerBackgroundProcessor，它是一个Runnable，同时也是ContainerBase的内部类，ContainerBase是所有容器组件的基类，我们来回忆一下容器组件有哪些，有Engine、Host、Context和Wrapper等，它们具有父子关系。</p>
+<p><strong>ContainerBackgroundProcessor实现</strong></p>
+<p>我们接来看ContainerBackgroundProcessor具体是如何实现的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>protected class ContainerBackgroundProcessor implements Runnable {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    @Override
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    public void run() {
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        //请注意这里传入的参数是&quot;宿主类&quot;的实例
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        processChildren(ContainerBase.this);
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    }
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    protected void processChildren(Container container) {
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>        try {
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>            //1. 调用当前容器的backgroundProcess方法。
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>            container.backgroundProcess();
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>            //2. 遍历所有的子容器，递归调用processChildren，
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>            //这样当前容器的子孙都会被处理            
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>            Container[] children = container.findChildren();
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>            for (int i = 0; i &lt; children.length; i++) {
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>            //这里请你注意，容器基类有个变量叫做backgroundProcessorDelay，如果大于0，表明子容器有自己的后台线程，无需父容器来调用它的processChildren方法。
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>                if (children[i].getBackgroundProcessorDelay() &lt;= 0) {
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>                    processChildren(children[i]);
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>                }
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>            }
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>        } catch (Throwable t) { ... }
+</code></pre></div>
+<p>上面的代码逻辑也是比较清晰的，首先ContainerBackgroundProcessor是一个Runnable，它需要实现run方法，它的run很简单，就是调用了processChildren方法。这里有个小技巧，它把“宿主类”，也就是<strong>ContainerBase的类实例当成参数传给了run方法</strong>。</p>
+<p>而在processChildren方法里，就做了两步：调用当前容器的backgroundProcess方法，以及递归调用子孙的backgroundProcess方法。请你注意backgroundProcess是Container接口中的方法，也就是说所有类型的容器都可以实现这个方法，在这个方法里完成需要周期性执行的任务。</p>
+<p>这样的设计意味着什么呢？我们只需要在顶层容器，也就是Engine容器中启动一个后台线程，那么这个线程<strong>不但会执行Engine容器的周期性任务，它还会执行所有子容器的周期性任务</strong>。</p>
+<p><strong>backgroundProcess方法</strong></p>
+<p>上述代码都是在基类ContainerBase中实现的，那具体容器类需要做什么呢？其实很简单，如果有周期性任务要执行，就实现backgroundProcess方法；如果没有，就重用基类ContainerBase的方法。ContainerBase的backgroundProcess方法实现如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>public void backgroundProcess() {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    //1.执行容器中Cluster组件的周期性任务
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    Cluster cluster = getClusterInternal();
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    if (cluster != null) {
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        cluster.backgroundProcess();
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    }
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    //2.执行容器中Realm组件的周期性任务
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    Realm realm = getRealmInternal();
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    if (realm != null) {
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>        realm.backgroundProcess();
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>   }
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>   //3.执行容器中Valve组件的周期性任务
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    Valve current = pipeline.getFirst();
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    while (current != null) {
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>       current.backgroundProcess();
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>       current = current.getNext();
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    }
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>    //4. 触发容器的&quot;周期事件&quot;，Host容器的监听器HostConfig就靠它来调用
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    fireLifecycleEvent(Lifecycle.PERIODIC_EVENT, null);
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>}
+</code></pre></div>
+<p>从上面的代码可以看到，不仅每个容器可以有周期性任务，每个容器中的其他通用组件，比如跟集群管理有关的Cluster组件、跟安全管理有关的Realm组件都可以有自己的周期性任务。</p>
+<p>我在前面的专栏里提到过，容器之间的链式调用是通过Pipeline-Valve机制来实现的，从上面的代码你可以看到容器中的Valve也可以有周期性任务，并且被ContainerBase统一处理。</p>
+<p>请你特别注意的是，在backgroundProcess方法的最后，还触发了容器的“周期事件”。我们知道容器的生命周期事件有初始化、启动和停止等，那“周期事件”又是什么呢？它跟生命周期事件一样，是一种扩展机制，你可以这样理解：</p>
+<p>又一段时间过去了，容器还活着，你想做点什么吗？如果你想做点什么，就创建一个监听器来监听这个“周期事件”，事件到了我负责调用你的方法。</p>
+<p>总之，有了ContainerBase中的后台线程和backgroundProcess方法，各种子容器和通用组件不需要各自弄一个后台线程来处理周期性任务，这样的设计显得优雅和整洁。</p>
+<h2 id="tomcat_1">Tomcat热加载</h2>
+<p>有了ContainerBase的周期性任务处理“框架”，作为具体容器子类，只需要实现自己的周期性任务就行。而Tomcat的热加载，就是在Context容器中实现的。Context容器的backgroundProcess方法是这样实现的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>public void backgroundProcess() {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    //WebappLoader周期性的检查WEB-INF/classes和WEB-INF/lib目录下的类文件
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    Loader loader = getLoader();
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    if (loader != null) {
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        loader.backgroundProcess();        
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    }
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    //Session管理器周期性的检查是否有过期的Session
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    Manager manager = getManager();
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    if (manager != null) {
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        manager.backgroundProcess();
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    }
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    //周期性的检查静态资源是否有变化
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    WebResourceRoot resources = getResources();
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    if (resources != null) {
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>        resources.backgroundProcess();
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    }
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    //调用父类ContainerBase的backgroundProcess方法
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>    super.backgroundProcess();
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>}
+</code></pre></div>
+<p>从上面的代码我们看到Context容器通过WebappLoader来检查类文件是否有更新，通过Session管理器来检查是否有Session过期，并且通过资源管理器来检查静态资源是否有更新，最后还调用了父类ContainerBase的backgroundProcess方法。</p>
+<p>这里我们要重点关注，WebappLoader是如何实现热加载的，它主要是调用了Context容器的reload方法，而Context的reload方法比较复杂，总结起来，主要完成了下面这些任务：</p>
+<ol>
+<li>停止和销毁Context容器及其所有子容器，子容器其实就是Wrapper，也就是说Wrapper里面Servlet实例也被销毁了。</li>
+<li>停止和销毁Context容器关联的Listener和Filter。</li>
+<li>停止和销毁Context下的Pipeline和各种Valve。</li>
+<li>停止和销毁Context的类加载器，以及类加载器加载的类文件资源。</li>
+<li>启动Context容器，在这个过程中会重新创建前面四步被销毁的资源。</li>
+</ol>
+<p>在这个过程中，类加载器发挥着关键作用。一个Context容器对应一个类加载器，类加载器在销毁的过程中会把它加载的所有类也全部销毁。Context容器在启动过程中，会创建一个新的类加载器来加载新的类文件。</p>
+<p>在Context的reload方法里，并没有调用Session管理器的destroy方法，也就是说这个Context关联的Session是没有销毁的。你还需要注意的是，Tomcat的热加载默认是关闭的，你需要在conf目录下的context.xml文件中设置reloadable参数来开启这个功能，像下面这样：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>&lt;Context reloadable=&quot;true&quot;/&gt;
+</code></pre></div>
+<h2 id="tomcat_2">Tomcat热部署</h2>
+<p>我们再来看看热部署，热部署跟热加载的本质区别是，热部署会重新部署Web应用，原来的Context对象会整个被销毁掉，因此这个Context所关联的一切资源都会被销毁，包括Session。</p>
+<p>那么Tomcat热部署又是由哪个容器来实现的呢？应该不是由Context，因为热部署过程中Context容器被销毁了，那么这个重担就落在Host身上了，因为它是Context的父容器。</p>
+<p>跟Context不一样，Host容器并没有在backgroundProcess方法中实现周期性检测的任务，而是通过监听器HostConfig来实现的，HostConfig就是前面提到的“周期事件”的监听器，那“周期事件”达到时，HostConfig会做什么事呢？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>public void lifecycleEvent(LifecycleEvent event) {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    // 执行check方法。
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    if (event.getType().equals(Lifecycle.PERIODIC_EVENT)) {
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        check();
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    } 
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>}
+</code></pre></div>
+<p>它执行了check方法，我们接着来看check方法里做了什么。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>protected void check() {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    if (host.getAutoDeploy()) {
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>        // 检查这个Host下所有已经部署的Web应用
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        DeployedApplication[] apps =
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>            deployed.values().toArray(new DeployedApplication[0]);
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        for (int i = 0; i &lt; apps.length; i++) {
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>            //检查Web应用目录是否有变化
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>            checkResources(apps[i], false);
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>        }
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>        //执行部署
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>        deployApps();
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    }
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>}
+</code></pre></div>
+<p>其实HostConfig会检查webapps目录下的所有Web应用：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/53/3d/1189e48a.jpg" width="30px"><span>微思</span> 👍（24） 💬（5）<div>文章读完有两点疑惑：
+<li>如果原来Web应用目录被删掉了，就把相应Context容器整个销毁掉。</li>
+<li>是否有新的Web应用目录放进来了，或者有新的WAR包放进来了，就部署相应的Web应用。</li>
+</ul>
+<p>因此HostConfig做的事情都是比较“宏观”的，它不会去检查具体类文件或者资源文件是否有变化，而是检查Web应用目录级别的变化。</p>
+<h2 id="_1">本期精华</h2>
+<p>今天我们学习Tomcat的热加载和热部署，它们的目的都是在不重启Tomcat的情况下实现Web应用的更新。</p>
+<p>热加载的粒度比较小，主要是针对类文件的更新，通过创建新的类加载器来实现重新加载。而热部署是针对整个Web应用的，Tomcat会将原来的Context对象整个销毁掉，再重新创建Context容器对象。</p>
+<p>热加载和热部署的实现都离不开后台线程的周期性检查，Tomcat在基类ContainerBase中统一实现了后台线程的处理逻辑，并在顶层容器Engine启动后台线程，这样子容器组件甚至各种通用组件都不需要自己去创建后台线程，这样的设计显得优雅整洁。</p>
+<h2 id="_2">课后思考</h2>
+<p>为什么Host容器不通过重写backgroundProcess方法来实现热部署呢？</p>
+<p>不知道今天的内容你消化得如何？如果还有疑问，请大胆的在留言区提问，也欢迎你把你的课后思考和心得记录下来，与我和其他同学一起讨论。如果你觉得今天有所收获，欢迎你把它分享给你的朋友。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>微思</span> 👍（24） 💬（5）<div>文章读完有两点疑惑：
 1、文章提到热部署和热加载的本质是热部署的Context对象整个会被销毁掉，会重新创建一个Context对象；而前文讲热加载时提到WebLoader会调用Context的reload方法，也会销毁Context对象，是否前后矛盾了？
 2、整个设计自顶向下，父容器调用子容器中的backgroundProcess方法，但是到了Context容器的此方法中最后一行supper.backgroundProcess又反过来调用了父类该方法，有些不解？
-还请老师指教……</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/79/4b/740f91ca.jpg" width="30px"><span>-W.LI-</span> 👍（11） 💬（1）<div>老师好!是因为基于事件，可以解耦么?</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/5d/91/a9365c01.jpg" width="30px"><span>锟铻</span> 👍（7） 💬（1）<div>请教一个疑问，文中讲的在热部署过程中：停止和销毁 Context 容器及其所有子容器，这个跟热加载一样都销毁了context容器，只是在销毁session有区别，对不，
+还请老师指教……</div>2019-07-02</li><br/><li><span>-W.LI-</span> 👍（11） 💬（1）<div>老师好!是因为基于事件，可以解耦么?</div>2019-07-02</li><br/><li><span>锟铻</span> 👍（7） 💬（1）<div>请教一个疑问，文中讲的在热部署过程中：停止和销毁 Context 容器及其所有子容器，这个跟热加载一样都销毁了context容器，只是在销毁session有区别，对不，
 
-</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/7b/57/a9b04544.jpg" width="30px"><span>QQ怪</span> 👍（7） 💬（1）<div>老师，问个问题，我们平常在开发中，在已经运行的应用上改了代码之后然后编译，是不是就是主动热加载?</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/b3/c5/7fc124e2.jpg" width="30px"><span>Liam</span> 👍（7） 💬（1）<div>热部署也会导致系统短暂地不可用吧？我理解它只不过是通过后台线程周期性任务实现了一下自动重启功能？</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4e/1b/f4b786b9.jpg" width="30px"><span>飞翔</span> 👍（4） 💬（1）<div>老师 求问 我们生成一个类 可以用反射 也可以用 new， 那么你说在热部署的时候很多类都被销毁了，那销毁调用的是哪个函数呀</div>2019-07-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/24/5d/65e61dcb.jpg" width="30px"><span>学无涯</span> 👍（3） 💬（1）<div>老师讲的web应用目录级别的变化是指人为的删除或者添加web应用吗这种情况吗</div>2019-08-13</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/6LaITPQ4Lk5fZn8ib1tfsPW8vI9icTuSwAddiajVfibPDiaDvMU2br6ZT7K0LWCKibSQuicT7sIEVmY4K7ibXY0T7UQEiag/132" width="30px"><span>尔东橙</span> 👍（2） 💬（1）<div>老师，您文中提到的Session是http中的Session么</div>2019-08-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1e/3a/5b21c01c.jpg" width="30px"><span>nightmare</span> 👍（4） 💬（0）<div>热加载的定位是某些文件更新，热部署是通过用户手动加了一个项目，热部署没有必要定时执行，只需要监听用户的热部署事件就行</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/be/e6/7808520d.jpg" width="30px"><span>Edward Lee</span> 👍（2） 💬（0）<div>课后习题
+</div>2019-07-23</li><br/><li><span>QQ怪</span> 👍（7） 💬（1）<div>老师，问个问题，我们平常在开发中，在已经运行的应用上改了代码之后然后编译，是不是就是主动热加载?</div>2019-07-02</li><br/><li><span>Liam</span> 👍（7） 💬（1）<div>热部署也会导致系统短暂地不可用吧？我理解它只不过是通过后台线程周期性任务实现了一下自动重启功能？</div>2019-07-02</li><br/><li><span>飞翔</span> 👍（4） 💬（1）<div>老师 求问 我们生成一个类 可以用反射 也可以用 new， 那么你说在热部署的时候很多类都被销毁了，那销毁调用的是哪个函数呀</div>2019-07-23</li><br/><li><span>学无涯</span> 👍（3） 💬（1）<div>老师讲的web应用目录级别的变化是指人为的删除或者添加web应用吗这种情况吗</div>2019-08-13</li><br/><li><span>尔东橙</span> 👍（2） 💬（1）<div>老师，您文中提到的Session是http中的Session么</div>2019-08-09</li><br/><li><span>nightmare</span> 👍（4） 💬（0）<div>热加载的定位是某些文件更新，热部署是通过用户手动加了一个项目，热部署没有必要定时执行，只需要监听用户的热部署事件就行</div>2019-07-02</li><br/><li><span>Edward Lee</span> 👍（2） 💬（0）<div>课后习题
 
-因为 Host 位于容器的最顶层，已经没有可以调用 Host backgroundProcess 方法的更顶层容器了，再上一层就是重启</div>2020-11-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4c/06/2f8d2085.jpg" width="30px"><span>nate</span> 👍（2） 💬（0）<div>scheduleWithFixedDelayd的第二个和第三个传参应该是：backgroundProcessorInitialDelay和backgroundProcessorDelay</div>2019-07-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/65/16/24d6921d.jpg" width="30px"><span>LTL</span> 👍（1） 💬（1）<div>tomcat9代码中，context容器reload时，会调用manager的stop方法，在manager的stopInternal方法中有使所有session失效的方法，好像和老师讲的不一样</div>2021-10-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/83/c8/5ce842f6.jpg" width="30px"><span>maybe</span> 👍（1） 💬（0）<div>热部署和热加载区别是热部署会销毁整个context然后重建，热部署session会被删除，而热加载只是重新加载了变化的类，不会对原来的对象gc，session也会保留。tomcat如何实现热部署和热加载的，热加载是通过后台周期性框架实现的，具体是containerbase基类实现了周期性任务backgroudprocess，会依次调用子容器的backgroundprocess方法，只需要实现它就会被定期执行，热加载就是context容器重写了backgroundprocess方法完成的热加载。热部署是通过事件来完成的，host容器监听事件，然后处理变化。</div>2020-08-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1e/3a/5b21c01c.jpg" width="30px"><span>nightmare</span> 👍（1） 💬（0）<div>Host热部署是父容器，如果也采用定时任务，那么context都重新加载了，也就没有热加载什么事情了</div>2019-07-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/ea/05/c0d8014d.jpg" width="30px"><span>一道阳光</span> 👍（1） 💬（0）<div>backgroundProcess 方法主要用在加载粒度比较小，加载具体的资源、文件。而热部署是直接销毁Context,然后重新部署，所以不适合。</div>2019-07-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/28/e8/7734b8d3.jpg" width="30px"><span>P</span> 👍（0） 💬（0）<div>请教个问题：现在基本都是一个Tomcat对应一个Web应用，是不是没必要热部署了，直接重启。</div>2023-02-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1f/88/ec/9229419d.jpg" width="30px"><span>.</span> 👍（0） 💬（0）<div>热部署在生产环境中用的多吗？一般都是怎么用的？</div>2022-07-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9b/a7/440aff07.jpg" width="30px"><span>风翱</span> 👍（0） 💬（0）<div>热部署感觉和关闭再启动好像差不多。 热部署主要的应用场景是什么呢？</div>2021-06-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/1d/cd/3819726f.jpg" width="30px"><span>徐同学呀</span> 👍（0） 💬（0）<div>1、WebappLoader周期性的检查WEB-INF&#47;classes和WEB-INF&#47;lib目录下的类文件
-我看源码热加载只包括这两个目录下的jar和.class ，这两个目录路径是否可以改变？
-2、周期性的检查静态资源是否有变化
-静态资源的路径 是哪里，是否可以改变，源码看不太懂
-</div>2021-05-12</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaELxA3FzZX2aQezw2FohiarFJknlv8DgicP1lG2RrVtG2iaWQaYnhrpCICbDm4ZfDkkPBanYOCpg6MOlQ/132" width="30px"><span>Geek_d47377</span> 👍（0） 💬（0）<div>老师，文中说到&lt;Context reloadable=&quot;true&quot;&gt;启用重载后监测 classes和lib中的类文件变化，但classes中还有template,static下面的静态文件变化，这个也会触发重载？如何做到只有class或jar变化时才触发重载，静态文件不触发呢？</div>2020-12-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/67/8a/babd74dc.jpg" width="30px"><span>锦</span> 👍（0） 💬（0）<div>所以热加载机制是把类销毁掉，然后重新调用相同的类加载器加载吗？也就是说，如果需要实现热更，需要先销毁旧有的类加载器，然后创建一个新的类加载器，意味着不能使用系统提供的应用类加载器吗？</div>2020-05-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/2d/d7/74fc8f38.jpg" width="30px"><span>灿烂明天</span> 👍（0） 💬（0）<div>也就是说热加载会触发热部署？</div>2020-03-07</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTI4akcIyIOXB2OqibTe7FF90hwsBicxkjdicUNTMorGeIictdr3OoMxhc20yznmZWwAvQVThKPFWgOyMw/132" width="30px"><span>Chuan</span> 👍（0） 💬（1）<div>老师，在使用嵌入式的tomcat时，怎么实现热部署和热加载啊，因为比如spring boot应用本身是一个jar包，怎么去修改里面的应用目录和class文件呢，这种场景是不是直接重启应用更方便？</div>2020-02-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/5d/d4/e5ea1c25.jpg" width="30px"><span>sun留白</span> 👍（0） 💬（0）<div>关于课后题，host容器是整个应用层级的，当确定web下目录有更新，就直接整个清理，然后按启动顺序，整个启动web应用就好（），这个启动逻辑已有，没必要通过重写 backgroundProcess 方法来实现，也不需要逐层的递归查找变化。当前启动前，得先销毁Context 对象。</div>2020-01-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/5d/d4/e5ea1c25.jpg" width="30px"><span>sun留白</span> 👍（0） 💬（0）<div>老师看完了整个，我有两点疑问：
-1.是否热加载和热部署都会有短暂的停机，只是相对来说热加载粒度小，停机时间短。而这两个技术可以做到，自动检测，不用手动启，减少人工重启的中间停顿时间。
-2.热加载时候，session没有被干掉，是为了保存context容器的数据吗？
-</div>2020-01-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/cf/2f/4f89f22a.jpg" width="30px"><span>李鑫磊</span> 👍（0） 💬（0）<div>我的Sevlet编译后的.class文件在Tomcat启动之前放进class目录下，Tomcat启动后都是可以访问的；但Tomcat启动后，再把我的.class文件放进class目录下，就访问不到，报404；context.xml已经配置了reloadable=&quot;true&quot;了；</div>2020-01-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/cf/2f/4f89f22a.jpg" width="30px"><span>李鑫磊</span> 👍（0） 💬（1）<div>请问老师，有什么方式可以把一个正在运行的Tomcat的流量旁路出来？</div>2020-01-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/cf/2f/4f89f22a.jpg" width="30px"><span>李鑫磊</span> 👍（0） 💬（0）<div>老师这个Tomcat的版本是什么？</div>2020-01-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/65/32/36c16c89.jpg" width="30px"><span>Geek_osqiyw</span> 👍（0） 💬（0）<div>热加载这种设计感觉就是一个树结构，从根开始遍历执行到所有叶，学习了。</div>2019-07-02</li><br/>
+因为 Host 位于容器的最顶层，已经没有可以调用 Host backgroundProcess 方法的更顶层容器了，再上一层就是重启</div>2020-11-20</li><br/><li><span>nate</span> 👍（2） 💬（0）<div>scheduleWithFixedDelayd的第二个和第三个传参应该是：backgroundProcessorInitialDelay和backgroundProcessorDelay</div>2019-07-09</li><br/><li><span>LTL</span> 👍（1） 💬（1）<div>tomcat9代码中，context容器reload时，会调用manager的stop方法，在manager的stopInternal方法中有使所有session失效的方法，好像和老师讲的不一样</div>2021-10-09</li><br/><li><span>maybe</span> 👍（1） 💬（0）<div>热部署和热加载区别是热部署会销毁整个context然后重建，热部署session会被删除，而热加载只是重新加载了变化的类，不会对原来的对象gc，session也会保留。tomcat如何实现热部署和热加载的，热加载是通过后台周期性框架实现的，具体是containerbase基类实现了周期性任务backgroudprocess，会依次调用子容器的backgroundprocess方法，只需要实现它就会被定期执行，热加载就是context容器重写了backgroundprocess方法完成的热加载。热部署是通过事件来完成的，host容器监听事件，然后处理变化。</div>2020-08-11</li><br/><li><span>nightmare</span> 👍（1） 💬（0）<div>Host热部署是父容器，如果也采用定时任务，那么context都重新加载了，也就没有热加载什么事情了</div>2019-07-03</li><br/><li><span>一道阳光</span> 👍（1） 💬（0）<div>backgroundProcess 方法主要用在加载粒度比较小，加载具体的资源、文件。而热部署是直接销毁Context,然后重新部署，所以不适合。</div>2019-07-02</li><br/>
 </ul>
 
 

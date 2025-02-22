@@ -2877,6 +2877,90 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="音频编码模块的实现">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      改造编码器
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      编码器适配器
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      视频模块
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="视频模块">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      视频队列的实现
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#android" class="md-nav__link">
+    <span class="md-ellipsis">
+      Android平台画面编码后入队
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ios" class="md-nav__link">
+    <span class="md-ellipsis">
+      iOS平台画面编码后入队
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
 </li>
       
     </ul>
@@ -4757,6 +4841,90 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="音频编码模块的实现">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      改造编码器
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      编码器适配器
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      视频模块
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="视频模块">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      视频队列的实现
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#android" class="md-nav__link">
+    <span class="md-ellipsis">
+      Android平台画面编码后入队
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ios" class="md-nav__link">
+    <span class="md-ellipsis">
+      iOS平台画面编码后入队
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
 </li>
       
     </ul>
@@ -4789,9 +4957,191 @@
 <h3 id="_1">音频编码模块的实现</h3>
 <p>我们先来看音频编码模块，输入是从PCM音频队列里获取的PCM数据，输出会放到另外一个AAC格式的音频队列中。这节课的重点是把这个编码器集成到整个系统中，这里我们会以软件编码为例来讲解。如果你有兴趣，还可以自己把硬件编码的实现集成到这个视频录制器项目中。</p>
 <p>音频的编码应该也放到一个单独的线程里，所以我们建立一个类AudioEncoderAdapter，利用PThread维护一个编码线程，不断从音频队列里取出PCM数据，然后调用编码器把这些数据编码成AAC数据，最后把AAC数据封装成AudioPacket数据结构，并放入AAC的队列里。其中编码器是我们自己封装的一个AudioEncoder类，它是在<a href="https://time.geekbang.org/column/article/553115">第12节课</a>编码器类的基础上进行改造的，下面我们来逐一看一下各个类的具体实现。</p>
+<h4 id="_2">改造编码器</h4>
+<p>先看AudioEncoder类，回顾一下<a href="https://time.geekbang.org/column/article/553115">第12节课</a>中编码器的结构，当时在初始化函数中直接给出了一个文件路径，让FFmpeg帮我们输出到这个文件中，而在这里要改造一下。</p>
+<p>因为这个类只负责编码，不需要完成封装格式以及写文件的工作，用不到FFmpeg中libavformat这个模块，使用它的libavcodec模块就可以完成工作。所以我们改造一下初始化方法，只需要分配出编码器，把编码器的参数设置进去，然后分配出存放PCM数据的缓冲区以及输送给编码器之前的AVFrame结构体就可以了。</p>
+<p>实际的编码过程也需要修改一下，首先在AudioEncoder这个类中定义一个回调方法。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>static int fill_pcm_frame_callback(int16_t *samples, int frame_size,
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>      int nb_channels, void *context)
+</code></pre></div>
+<p>这个回调函数用来让调用端填充PCM数据，把PCM数据编码之后是FFmpeg中AVPacket的结构体，最后把这个FFmpeg的数据结构转换成我们自己定义的数据结构AudioPacket，返回给调用端。</p>
+<p>最终的销毁方法比较简单，释放掉分配的存放PCM数据的缓存区，以及编码前的AVFrame数据结构，关掉编码器上下文并释放掉。这就是编码器类核心的改造过程。</p>
+<h4 id="_3">编码器适配器</h4>
+<p>接下来我们完成编码器的适配器——AudioEncoderAdapter，从名字上就可以看出这个类承担的职责就是控制线程调度与转换数据送给编码器进行编码。初始化方法原型如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>void init(LivePacketPool* pcmPacketPool, int audioSampleRate, int audioChannels,
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>      int audioBitRate, const char* audio_codec_name);
+</code></pre></div>
+<p>初始化方法需要调用端把PCM数据存放的队列的池子传递进来，因为这个类需要往从池子的PCM队列中取数据以及向池子里AAC队列里存数据，此外还需要调用端把编码文件的采样率、声道数、比特率，还有编码器的名称传递进来，因为这个类还需要按照这些参数去寻找并配置编码器。这个方法的实现需要构建出编码后的AAC存放队列，并启动一个编码线程来编码，接下来我们看一下编码线程的主要工作流程。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>audioEncoder = new AudioEncoder();
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>audioEncoder-&gt;init(audioBitRate,audioChannels,audioSampleRate,
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>        audioCodecName,fill_pcm_frame_callback,this);
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>while(isEncoding){
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    AudioPacket *audioPacket = NULL;
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    int ret = audioEncoder-&gt;encode(&amp;audioPacket);
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    if(ret &gt;= 0 &amp;&amp; NULL != audioPacket){
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        aacPacketPool-&gt;pushAudioPacketToQueue(audioPacket);
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    }
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>}
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>if (NULL != audioEncoder) {
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    audioEncoder-&gt;destroy();
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    delete audioEncoder;
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    audioEncoder = NULL;
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>}
+</code></pre></div>
+<p>先用初始化函数的参数来实例化一个编码器，除此之外还要加上一个回调函数，这个回调函数负责按照帧大小和声道数取出PCM数据队列里的PCM数据，接下来我们看一下这个回调函数的实现。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>int AudioEncoderAdapter::getAudioFrame(int16_t * samples,
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>        int frame_size, int nb_channels) {
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    int sampleCnt = frame_size * nb_channels;
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    int samplesInShortCursor = 0;
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    while (true) {
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        if (packetBufferSize == 0) {
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>            int ret = this-&gt;getAudioPacket();
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>            if (ret &lt; 0) {
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>                return ret;
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>            }
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        }
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        int copyToSamplesInShortSize = sampleCnt - samplesInShortCursor;
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>        if (packetBufferCursor + copyToSamplesInShortSize &lt;= packetBufferSize) {
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>            memcpy(samples + samplesInShortCursor, packetBuffer
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>                    + packetBufferCursor, copyToSamplesInShortSize *
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>                    sizeof(short));
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>            packetBufferCursor += copyToSamplesInShortSize;
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>            samplesInShortCursor = 0;
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>            break;
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>        } else {
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>            int subPacketBufferSize = packetBufferSize – packetBufferCursor;
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>            memcpy(samples + samplesInShortCursor, packetBuffer
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>                    + packetBufferCursor, subPacketBufferSize *
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>                    sizeof(short));
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>            samplesInShortCursor += subPacketBufferSize;
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>            packetBufferSize = 0;
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>            continue;
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>        }
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>    }
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>    return frame_size * nb_channels;
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>}
+</code></pre></div>
+<p>这个函数看起来很复杂，下面我们来一一分析。</p>
+<ul>
+<li>在这个函数的输入参数里，希望我们填充的帧大小是frame_size，声道数是nb_channels，填充目标是samples这一块内存区域，所以需要填充进去的采样的数目可以这样计算：</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>int sampleCnt = frame_size * nb_channels;
+</code></pre></div>
+<ul>
+<li>由于从PCM队列中取出的PCM的buffer大小和编码器需要的sampleCnt大小不一定相同，所以如果PCM队列的buffer小于sampleCnt，就需要积攒多个放到这个内存区域里，如果大于sampleCnt，就需要拆分，并放入下一次编码器要求放入的内存区域里。所以这里设置一个samplesInShortCursor的变量，代表已经给这个填充区域填充进去了多少个采样。对于PCM队列读取出来的buffer，用packetBuffer来代表，使用packetBufferSize代表这个buffer的大小，使用packetBufferCursor代表已经使用了这个buffer多少数据。</li>
+<li>如果PCM队列里读取出来的buffer已经被耗尽了，就调用getAudioPacket方法去PCM队列中读取一个新的buffer。如果返回小于0的值，代表已经结束，就返回小于0的值，编码器则结束；如果返回大于0的值，就代表正确读出了PCM数据，并且把采样存放到了全局变量packetBuffer里，采样数目存放到packetBufferSize里，然后计算还需要为编码器填充的内存区域填充多少数据。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>int copyToSamplesInShortSize = sampleCnt - samplesInShortCursor;
+</code></pre></div>
+<ul>
+<li>然后判断当前PCM队列读取出来的Buffer是否还有这么多的数据可用于填充。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>if (packetBufferCursor + copyToSamplesInShortSize &lt;= packetBufferSize)
+</code></pre></div>
+<ul>
+<li>如果packetBuffer里面还有足够多的数据，就拷贝数据，然后把packetBufferCursor的大小加上拷贝的大小；如果数据不够用，就先计算一下packetBuffer里面还有多少数据，并把剩余的数据全部拷贝到编码器需要我们填充的内存区域里，然后把packetBufferSize设置为0，进行下一次循环，再一次从PCM队列中读取出新的packetBuffer，重复做这个循环中的事情，直到填充满编码器需要我们填充的内存区域为止。</li>
+</ul>
+<p>再来看一下getAudioPacket方法，在两个平台音频采集的实现不同，在Android平台上，伴奏和人声都要单独入队，而在iOS平台上，人声和伴奏是合并之后入队，所以实现有所不同。</p>
+<ul>
+<li>iOS平台的实现是把伴奏和人声合并之后放到了人声队列中，所以在iOS平台就从人声队列中取出数据直接填充packetBuffer了。</li>
+<li>对于Android平台，我们需要实现一个子类，继承自当前类并且重写getAudioPacket这个方法，在这个方法的实现中首先调用父类方法拿到人声数据，然后再读取伴奏队列中的PCM数据，把读取出来的数据与父类填充的packetBuffer合并之后，再存入packetBuffer中，这样就可以无缝地接入到整个系统中了。</li>
+</ul>
+<p>继续回到编码线程的主体流程中，有一个判断isEncoding的while循环，这个布尔型变量为了控制编码循环，在循环中不断调用编码器的编码方法。当然，编码器编码时，第一步就是调用上面说的回调函数填充PCM数据，然后把它编码成一个AudioPacket结构体并返回。调用端拿到AudioPacket之后，判断返回值是正确编码，就把它放到AAC的队列里；如果返回值是编码失败的话，就跳出循环，最终销毁编码器。</p>
+<p>这个适配器还要提供一个销毁的方法，进入销毁方法之后先把isEncoding这个变量设置为false，然后丢弃PCM的队列，然后等待编码线程结束，最后销毁分配的packetBuffer等资源。</p>
+<p>这样一来，编码器适配器类就完成了。接下来我们看一下视频模块的实现。</p>
+<h2 id="_4">视频模块</h2>
+<p>这个部分与前面<a href="https://time.geekbang.org/column/article/561913">第18节课</a>的工程不同之处在于编码之后的H264数据不会直接写入文件，而是会放到视频队列中，所以这里我们会重点介绍视频队列的实现，还有怎么把编码之后的H264数据放入队列里，如果你对视频画面的采集和编码还不熟悉的话，要回头认真学习一下专栏第五部分的内容。</p>
+<h3 id="_5">视频队列的实现</h3>
+<p>视频队列的实现其实和音频队列是非常类似的，所以就不再重复了，但是要看一下具体的接口，以便后续使用。</p>
+<p>初始化接口，负责队列的初始化工作，要想使用队列，第一步就应该调用这个方法。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>void init();
+</code></pre></div>
+<p>入队接口，如果要存入队列一个视频帧，调用这个接口方法，如果存入成功则返回0，否则返回负数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>int put(VideoPacket* videoPacket);
+</code></pre></div>
+<p>获取视频帧接口，职责是从队列里拿出一个视频帧。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>int get(VideoPacket** packet);
+</code></pre></div>
+<p>这个方法是一个阻塞方法，如果队列为空就会阻塞住，直到队列被丢弃或者有了新的视频帧放入。如果正确取到视频帧就返回0，而如果返回小于0的值，则代表队列被丢弃掉了。</p>
+<p>丢弃队列方法，即不再接受任何入队和出队的请求，一般在队列使用结束之前调用这个方法。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>void abort();
+</code></pre></div>
+<p>接下来的这个方法是私有方法，当队列被销毁的时候调用，这个方法会把队列中所有的元素取出来并且销毁掉。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>void flush();
+</code></pre></div>
+<p>另外，存放的每个元素和音频队列也是不一样的，视频帧结构体定义如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>typedef struct VideoPacket {
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    byte * buffer;
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    int size;
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    int timeMills;
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    int duration;
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    VideoPacket() {
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>        buffer = NULL;
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>        size = 0;
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>        timeMills = -1;
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>        duration = 0;
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>    }
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>    ~VideoPacket() {
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>        if (NULL != buffer) {
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>            delete[] buffer;
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>            buffer = NULL;
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>        }
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>    }
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>} VideoPacket;
+</code></pre></div>
+<p>可以看到这个结构体中记录了这一帧视频帧的数据和数据长度，还有这一帧视频帧的时间戳和时长，在析构函数中会释放掉视频帧所占的内存。</p>
+<h3 id="android">Android平台画面编码后入队</h3>
+<p>Android平台的实现将基于<a href="https://time.geekbang.org/column/article/561913">第18节课</a>的硬件编码项目进行改造，来适配当前场景下的需求。先找到HWEncoderAdapter这个类，然后找到方法drainEncodedData，目前这个方法的实现是从MediaCodec中取出编码之后的H264数据，然后写入文件。那我们要做的改造就是删除写文件的代码部分，然后把H264的数据封装为VideoPacket放入队列中。</p>
+<p>在改造之前，我们再来回顾一个重点，就是MediaCodec这个编码器会在开始编码之后给出SPS和PPS信息，两者会放在同一帧中，PPS放在SPS之后。具体如何判断当前帧是否是SPS和PPS所代表的数据帧呢？因为MediaCodec编码器给开发者的H264数据是有一个开始码的，也就是说一定是从00 00 00 01开始，之后是代表帧类型的位，所以可以通过以下代码取出帧类型。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>int nalu_type = (outputData[4] &amp; 0x1F);
+</code></pre></div>
+<p>拿出数组中下标为4的字节和0X1F进行[相与]操作，得到nalu_type，比较nalu_type和H264协议中预设的Type，来判断到底是哪种类型的NALU类型。</p>
+<p>之前的操作是把SPS和PPS保存下来，然后在每一个关键帧前面拼接上SPS和PPS信息，形成Annex-b封装格式的H264码流。但在Mux模块（下节课中会讲到）把H264数据封装到一个MP4文件中的时候，只需要一次SPS和PPS的设置，所以这里也只需要把SPS和PPS信息放入队列中一次，并且确保即便再有SPS和PPS信息，也不会再一次填充入队列。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>if(isSPSUnWriteFlag){
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    VideoPacket* videoPacket = new VideoPacket();
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    videoPacket-&gt;buffer = new byte[size];
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    memcpy(videoPacket-&gt;buffer, outputData, size);
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    videoPacket-&gt;size = size;
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    videoPacket-&gt;timeMills = timeMills;
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    packetPool-&gt;pushRecordingVideoPacketToQueue(videoPacket);
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    isSPSUnWriteFlag = false;
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>}
+</code></pre></div>
+<p>如果不是SPS和PPS的话，就直接进行封装成VideoPacket，然后放入队列中，代码就不再展示了。这样我们就按照与Mux模块约定好的格式把MediaCodec编码出来的H264数据填入队列里了。</p>
+<p>这里我们只改动了硬件编码部分，软件编码部分不再讲解，但是代码示例中会有针对软件编码分支的处理，如果有兴趣，之后你可以自己研究一下。</p>
+<h3 id="ios">iOS平台画面编码后入队</h3>
+<p>iOS平台的实现也会基于<a href="https://time.geekbang.org/column/article/561913">第18节课</a>的硬件编码项目做一些改动，把编码后的H264的Packet放入视频队列里替换掉之前写文件的操作，以供后续的Muxer模块使用。</p>
+<p>通过之前的学习我们知道每一帧的前面都必须要拼接上开始码（StartCode 00 00 00 01），这样当解码器每读取到00 00 00 01这个开始码的时候，就知道这是一个视频帧的开始了，然后读取下一个开始码的时候，就知道上一个视频帧结束了。所以我们在SPS和PPS以及普通的视频帧前面都拼接上这样一个开始码。</p>
+<p>但是在不同的封装格式里，视频帧的封装是不确定的，所以这里只负责把视频帧前面拼接上开始码，然后送到视频队列里，后续的封装处理就是Mux模块的事情了。又因为muxer模块最终会封装成MP4格式的，所以SPS和PPS只需要入队一次，我们可以在全局变量列表中新增一个布尔类型变量来标志是否做了SPS和PPS入队，然后把SPS和PPS前面都加上开始码，并将这个数组拼接到一起，封装成一个VideoPacket，最后放入队列中。代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>const char bytesHeader[] = &quot;\x00\x00\x00\x01&quot;;
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>size_t headerLength = 4;
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>VideoPacket* spsPpsPacket = new VideoPacket();
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>size_t length = 2 * headerLength + sps.length + pps.length;
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>spsPpsPacket-&gt;buffer = new unsigned char[length];
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>spsPpsPacket-&gt;size = int(length);
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>memcpy(spsPpsPacket-&gt;buffer, bytesHeader, headerLength);
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>memcpy(spsPpsPacket-&gt;buffer + headerLength, (unsigned
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>        char*)[sps bytes], sps.length);
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>memcpy(spsPpsPacket-&gt;buffer + headerLength + sps.length,
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>        bytesHeader, headerLength);
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>memcpy(spsPpsPacket-&gt;buffer + headerLength*2 + sps.length,
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>         (unsigned char*)[pps bytes], pps.length);
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>spsPpsPacket-&gt;timeMills = 0;
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>LivePacketPool::GetInstance()-&gt;pushRecordingVideoPacketToQueue(spsPpsPacket);
+</code></pre></div>
+<p>在上述代码中可以看到，先在SPS前面拼接上开始码，再拼接上SPS的内容，接下来会再拼接上一个开始码，然后再拼接上PPS的内容。到这里，这一帧特殊类型的帧就拼接完成了。接下来封装成一个VideoPacket，最后把构造好的这个packet推送到视频队列里。而具体放入队列之后如何进行封装以及输出，我们下节课会讲到。</p>
+<h2 id="_6">小结</h2>
+<p>最后，我们可以一起来回顾一下音频模块与视频模块的具体实现。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/76/70/76352e65e65e0893e5926f088d356470.png?wh=1920x1069" /></p>
+<p>音频编码模块的实现流程是从上一步的PCM队列中获取出PCM数据，然后编码为AAC的码流，存入到AAC队列中。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/5a/96/5ac62966c52eyyb54dd2be09d8c3fe96.png?wh=1920x1200" /></p>
+<p>在视频模块的学习中，我们也是先实现了视频队列，然后在第18节课的编码工程的基础上做了一些改造，把编码出来的H264码流由写文件修改成存入H264的队列里，并且SPS和PPS信息只存储一份，其他类型的视频帧则直接拼接startCode之后进行存储。</p>
+<p>到这里，视频录制器的底层模块已经实现完毕了，一个AAC的队列和一个H264的队列已经源源不断地存入数据了。接下来我们会进入Muxer模块的讲解，让整个视频录制器跑起来。</p>
+<h2 id="_7">思考题</h2>
+<p>最后，我们来思考一个问题，音频AAC编码和视频的H264编码是怎么与时间戳关联起来的呢？欢迎把你的答案留在评论区，也欢迎你把这节课分享给更多对音视频感兴趣的朋友，我们一起交流、共同进步。下节课再见！</p>
 <div><strong>精选留言（2）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/25/87/f3a69d1b.jpg" width="30px"><span>peter</span> 👍（0） 💬（1）<div>请教老师几个问题啊：
+<li><span>peter</span> 👍（0） 💬（1）<div>请教老师几个问题啊：
 Q1：编码器的输入是什么？
 代码“audioEncoder-&gt;encode(&amp;audioPacket);”，其中的audioPacket是存放编码后的数据，那编码器需要的PCM数据从哪里来的？
 Q2：03课的AudioTrack例子，提到“decoder 是一个decoder实例，构建这个decoder实例比较简单，在这里我就不详细介绍了”。我不知道该用哪个解decoder，就创建了一个MediaCodec: MediaCodec.createDecoderByType(“audio&#47;mpeg”);
@@ -4814,7 +5164,7 @@ RxFFmpegPlayerController controller = new RxFFmpegPlayerControllerImpl(MainActiv
 rxFFmpegPlayerView.setController(controller, MeasureHelper.FitModel.FM_DEFAULT);
 rxFFmpegPlayerView.play(musicFilePath,false);
 
-注意注意：上面用到的”decoder”是指”JieMaQi”，如果用中文，会被当做敏感词而不能提交。</div>2022-09-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/3a/df/f0f1ee84.jpg" width="30px"><span>我的無力雙臂</span> 👍（0） 💬（1）<div>有示例demo吗  求分享</div>2022-09-09</li><br/>
+注意注意：上面用到的”decoder”是指”JieMaQi”，如果用中文，会被当做敏感词而不能提交。</div>2022-09-09</li><br/><li><span>我的無力雙臂</span> 👍（0） 💬（1）<div>有示例demo吗  求分享</div>2022-09-09</li><br/>
 </ul>
 
 

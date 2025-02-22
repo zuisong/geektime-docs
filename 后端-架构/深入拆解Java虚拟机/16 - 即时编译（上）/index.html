@@ -9139,6 +9139,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      即时编译的触发
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#osr" class="md-nav__link">
+    <span class="md-ellipsis">
+      OSR编译
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结与实践
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13051,6 +13078,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      即时编译的触发
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#osr" class="md-nav__link">
+    <span class="md-ellipsis">
+      OSR编译
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结与实践
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13085,28 +13139,131 @@
 <p>对于执行时间较长的，或者对峰值性能有要求的程序，我们采用生成代码执行效率较快的C2，对应参数-server。</p>
 <p>Java 7引入了分层编译（对应参数-XX:+TieredCompilation）的概念，综合了C1的启动性能优势和C2的峰值性能优势。</p>
 <p>分层编译将Java虚拟机的执行状态分为了五个层次。为了方便阐述，我用“C1代码”来指代由C1生成的机器码，“C2代码”来指代由C2生成的机器码。五个层级分别是：</p>
-<div><strong>精选留言（29）</strong></div>
+<ol>
+<li>解释执行；</li>
+<li>执行不带profiling的C1代码；</li>
+<li>执行仅带方法调用次数以及循环回边执行次数profiling的C1代码；</li>
+<li>执行带所有profiling的C1代码；</li>
+<li>执行C2代码。</li>
+</ol>
+<p>通常情况下，C2代码的执行效率要比C1代码的高出30%以上。然而，对于C1代码的三种状态，按执行效率从高至低则是1层 &gt; 2层 &gt; 3层。</p>
+<p>其中1层的性能比2层的稍微高一些，而2层的性能又比3层高出30%。这是因为profiling越多，其额外的性能开销越大。</p>
+<p>这里解释一下，profiling是指在程序执行过程中，收集能够反映程序执行状态的数据。这里所收集的数据我们称之为程序的profile。</p>
+<p>你可能已经接触过许许多多的profiler，例如JDK附带的hprof。这些profiler大多通过注入（instrumentation）或者JVMTI事件来实现的。Java虚拟机也内置了profiling。我会在下一篇中具体介绍Java虚拟机的profiling都在做些什么。</p>
+<p>在5个层次的执行状态中，1层和4层为终止状态。当一个方法被终止状态编译过后，如果编译后的代码并没有失效，那么Java虚拟机是不会再次发出该方法的编译请求的。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c5/e5/c503010c157b7db7596893633b624fe5.png?wh=1920%2A960" /><br />
+不同的编译路径，图片来源于我之前一篇<a href="https://zhengyudi.github.io/2018/03/20/graal-intro/">介绍Graal的博客</a>。</p>
+<p>这里我列举了4个不同的编译路径（<a href="http://cr.openjdk.java.net/~iveresov/tiered/Tiered.pdf">Igor的演讲</a>列举了更多的编译路径）。通常情况下，热点方法会被3层的C1编译，然后再被4层的C2编译。</p>
+<p>如果方法的字节码数目比较少（如getter/setter），而且3层的profiling没有可收集的数据。</p>
+<p>那么，Java虚拟机断定该方法对于C1代码和C2代码的执行效率相同。在这种情况下，Java虚拟机会在3层编译之后，直接选择用1层的C1编译。由于这是一个终止状态，因此Java虚拟机不会继续用4层的C2编译。</p>
+<p>在C1忙碌的情况下，Java虚拟机在解释执行过程中对程序进行profiling，而后直接由4层的C2编译。在C2忙碌的情况下，方法会被2层的C1编译，然后再被3层的C1编译，以减少方法在3层的执行时间。</p>
+<p>Java 8默认开启了分层编译。不管是开启还是关闭分层编译，原本用来选择即时编译器的参数-client和-server都是无效的。当关闭分层编译的情况下，Java虚拟机将直接采用C2。</p>
+<p>如果你希望只是用C1，那么你可以在打开分层编译的情况下使用参数-XX:TieredStopAtLevel=1。在这种情况下，Java虚拟机会在解释执行之后直接由1层的C1进行编译。</p>
+<h2 id="_2">即时编译的触发</h2>
+<p>Java虚拟机是根据方法的调用次数以及循环回边的执行次数来触发即时编译的。前面提到，Java虚拟机在0层、2层和3层执行状态时进行profiling，其中就包含方法的调用次数和循环回边的执行次数。</p>
+<p>这里的循环回边是一个控制流图中的概念。在字节码中，我们可以简单理解为往回跳转的指令。（注意，这并不一定符合循环回边的定义。）</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>public static void foo(Object obj) {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  int sum = 0;
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  for (int i = 0; i &lt; 200; i++) {
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    sum += i;
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  }
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>}
+</code></pre></div>
+<p>举例来说，上面这段代码将被编译为下面的字节码。其中，偏移量为18的字节码将往回跳至偏移量为7的字节码中。在解释执行时，每当运行一次该指令，Java虚拟机便会将该方法的循环回边计数器加1。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>public static void foo(java.lang.Object);
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  Code:
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>     0: iconst_0
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>     1: istore_1
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>     2: iconst_0
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>     3: istore_2
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>     4: goto 14
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>     7: iload_1
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>     8: iload_2
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>     9: iadd
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    10: istore_1
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    11: iinc 2, 1
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    14: iload_2
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    15: sipush 200
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    18: if_icmplt 7
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    21: return
+</code></pre></div>
+<p>在即时编译过程中，我们会识别循环的头部和尾部。在上面这段字节码中，循环的头部是偏移量为14的字节码，尾部为偏移量为11的字节码。</p>
+<p>循环尾部到循环头部的控制流边就是真正意义上的循环回边。也就是说，C1将在这个位置插入增加循环回边计数器的代码。</p>
+<p>解释执行和C1代码中增加循环回边计数器的位置并不相同，但这并不会对程序造成影响。</p>
+<p>实际上，Java虚拟机并不会对这些计数器进行同步操作，因此收集而来的执行次数也并非精确值。不管如何，即时编译的触发并不需要非常精确的数值。只要该数值足够大，就能说明对应的方法包含热点代码。</p>
+<p>具体来说，在不启用分层编译的情况下，当方法的调用次数和循环回边的次数的和，超过由参数-XX:CompileThreshold指定的阈值时（使用C1时，该值为1500；使用C2时，该值为10000），便会触发即时编译。</p>
+<p>当启用分层编译时，Java虚拟机将不再采用由参数-XX:CompileThreshold指定的阈值（该参数失效），而是使用另一套阈值系统。在这套系统中，阈值的大小是动态调整的。</p>
+<p>所谓的动态调整其实并不复杂：在比较阈值时，Java虚拟机会将阈值与某个系数s相乘。该系数与当前待编译的方法数目成正相关，与编译线程的数目成负相关。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>系数的计算方法为：
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>s = queue_size_X / (TierXLoadFeedback * compiler_count_X) + 1
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>其中X是执行层次，可取3或者4；
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>queue_size_X是执行层次为X的待编译方法的数目；
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>TierXLoadFeedback是预设好的参数，其中Tier3LoadFeedback为5，Tier4LoadFeedback为3；
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>compiler_count_X是层次X的编译线程数目。
+</code></pre></div>
+<p>在64位Java虚拟机中，默认情况下编译线程的总数目是根据处理器数量来调整的（对应参数-XX:+CICompilerCountPerCPU，默认为true；当通过参数-XX:+CICompilerCount=N强制设定总编译线程数目时，CICompilerCountPerCPU将被设置为false）。</p>
+<p>Java虚拟机会将这些编译线程按照1:2的比例分配给C1和C2（至少各为1个）。举个例子，对于一个四核机器来说，总的编译线程数目为3，其中包含一个C1编译线程和两个C2编译线程。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>对于四核及以上的机器，总的编译线程的数目为：
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>n = log2(N) * log2(log2(N)) * 3 / 2
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>其中N为CPU核心数目。
+</code></pre></div>
+<p>当启用分层编译时，即时编译具体的触发条件如下。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>当方法调用次数大于由参数-XX:TierXInvocationThreshold指定的阈值乘以系数，或者当方法调用次数大于由参数-XX:TierXMINInvocationThreshold指定的阈值乘以系数，并且方法调用次数和循环回边次数之和大于由参数-XX:TierXCompileThreshold指定的阈值乘以系数时，便会触发X层即时编译。
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>触发条件为：
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>i &gt; TierXInvocationThreshold * s || (i &gt; TierXMinInvocationThreshold * s  &amp;&amp; i + b &gt; TierXCompileThreshold * s)
+</code></pre></div>
+<p>其中i为调用次数，b为循环回边次数。</p>
+<h2 id="osr">OSR编译</h2>
+<p>可以看到，决定一个方法是否为热点代码的因素有两个：方法的调用次数、循环回边的执行次数。即时编译便是根据这两个计数器的和来触发的。为什么Java虚拟机需要维护两个不同的计数器呢？</p>
+<p>实际上，除了以方法为单位的即时编译之外，Java虚拟机还存在着另一种以循环为单位的即时编译，叫做On-Stack-Replacement（OSR）编译。循环回边计数器便是用来触发这种类型的编译的。</p>
+<p>OSR实际上是一种技术，它指的是在程序执行过程中，动态地替换掉Java方法栈桢，从而使得程序能够在非方法入口处进行解释执行和编译后的代码之间的切换。事实上，去优化（deoptimization）采用的技术也可以称之为OSR。</p>
+<p>在不启用分层编译的情况下，触发OSR编译的阈值是由参数-XX:CompileThreshold指定的阈值的倍数。</p>
+<p>该倍数的计算方法为：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>(OnStackReplacePercentage - InterpreterProfilePercentage)/100
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>其中-XX:InterpreterProfilePercentage的默认值为33，当使用C1时-XX:OnStackReplacePercentage为933，当使用C2时为140。
+</code></pre></div>
+<p>也就是说，默认情况下，C1的OSR编译的阈值为13500，而C2的为10700。</p>
+<p>在启用分层编译的情况下，触发OSR编译的阈值则是由参数-XX:TierXBackEdgeThreshold指定的阈值乘以系数。</p>
+<p>OSR编译在正常的应用程序中并不多见。它只在基准测试时比较常见，因此并不需要过多了解。</p>
+<h2 id="_3">总结与实践</h2>
+<p>今天我详细地介绍了Java虚拟机中的即时编译。</p>
+<p>从Java 8开始，Java虚拟机默认采用分层编译的方式。它将执行分为五个层次，分为为0层解释执行，1层执行没有profiling的C1代码，2层执行部分profiling的C1代码，3层执行全部profiling的C1代码，和4层执行C2代码。</p>
+<p>通常情况下，方法会首先被解释执行，然后被3层的C1编译，最后被4层的C2编译。</p>
+<p>即时编译是由方法调用计数器和循环回边计数器触发的。在使用分层编译的情况下，触发编译的阈值是根据当前待编译的方法数目动态调整的。</p>
+<p>OSR是一种能够在非方法入口处进行解释执行和编译后代码之间切换的技术。OSR编译可以用来解决单次调用方法包含热循环的性能优化问题。</p>
+<p>今天的实践环节，你可以使用参数-XX:+PrintCompilation来打印你项目中的即时编译情况。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>     88   15       3       CompilationTest::foo (16 bytes)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>     88   16       3       java.lang.Integer::valueOf (32 bytes)
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>     88   17       4       CompilationTest::foo (16 bytes)
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>     88   18       4       java.lang.Integer::valueOf (32 bytes)
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>     89   15       3       CompilationTest::foo (16 bytes)   made not entrant
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>     89   16       3       java.lang.Integer::valueOf (32 bytes)   made not entrant
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>     90   19 %     3       CompilationTest::main @ 5 (33 bytes)
+</code></pre></div>
+<p>简单解释一下该参数的输出：第一列是时间，第二列是Java虚拟机维护的编译ID。</p>
+<p>接下来是一系列标识，包括%（是否OSR编译），s（是否synchronized方法），！（是否包含异常处理器），b（是否阻塞了应用线程，可了解一下参数-Xbatch），n（是否为native方法）。再接下来则是编译层次，以及方法名。如果是OSR编译，那么方法名后面还会跟着@以及循环所在的字节码。</p>
+<p>当发生去优化时，你将看到之前出现过的编译，不过被标记了“made not entrant"。它表示该方法不能再被进入。</p>
+<p>当Java虚拟机检测到所有的线程都退出该编译后的“made not entrant”时，会将该方法标记为“made zombie”，此时可以回收这块代码所占据的空间了。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/0f/67/f4/9a1feb59.jpg" width="30px"><span>钱</span> 👍（52） 💬（1）<div>有点费解，不过还好又明白了一些东西，小结如下：
+<li><span>钱</span> 👍（52） 💬（1）<div>有点费解，不过还好又明白了一些东西，小结如下：
 1:即时编译-直接将Java字节码编译成机器码，运行在底层硬件之上，这么玩是为了提高代码的执行效率，通俗点就是能使代码跑的更快一些
 
 2:即时编译的触发点是热点代码，即 即时编译仅针对热点代码来触发，热点代码是通过方法的调用次数或者回边循环的次数来标示的，这里也侧面反映出来即时编译是针对方法块的，有个疑问❓为什么不把所有代码都即时编译一下呢？这样程序的执行效率不是更快吗？为什么还分热点非热点呢？
 
 3:分层编译的设计也有点奇怪，为什么要这样呢？使用最快的编译代码编译器编译的代码不是更好吗？
 
-4:解释执行-将Java字节码一段一段的编译成机器码在底层硬件上运行，即时编译是一个相对解释执行而言的概念，它将热点代码先编译成机器码缓存起来，在解释执行字节码的时候判断出已经缓存起来了就不在编译直接获取执行就可以了</div>2018-08-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/11/82/ab3f0985.jpg" width="30px"><span>槛外人</span> 👍（8） 💬（1）<div>为什么一块代码会被2层编译后还会被3、4层编译？不能某一层编译就完了吗？</div>2018-11-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/09/c7/861b4a70.jpg" width="30px"><span>泰格杨</span> 👍（7） 💬（1）<div>去优化是啥意思？</div>2018-08-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/e2/58/8c8897c8.jpg" width="30px"><span>杨春鹏</span> 👍（5） 💬（1）<div>Java中的即时编译器，是不是重新将java代码编译成机器码，并没有使用class文件？</div>2018-08-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/7c/85/8b221758.jpg" width="30px"><span>郑杰</span> 👍（5） 💬（1）<div>能说下及时编译的结果是什么样的吗，然后他是怎么跟解释执行一起运行的</div>2018-08-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/61/f2/ca989d6f.jpg" width="30px"><span>Leon Wong</span> 👍（3） 💬（4）<div>有个小问题，1、4层是终止（接受）状态的前提是，您的五层应该从0开始，到4层结束，但是您现在1层开始，5层结束，那么终止状态应该是2层和5层。</div>2018-09-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/5e/ec/70c8d94d.jpg" width="30px"><span>大场镇车王</span> 👍（3） 💬（1）<div>请问带所有profiling是什么意思 所有是个什么概念</div>2018-08-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/77/b3/991f3f9b.jpg" width="30px"><span>公号-技术夜未眠</span> 👍（3） 💬（1）<div>请问即时编译的对象是方法级还是语句块级？</div>2018-08-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/04/b5/8bc4790b.jpg" width="30px"><span>Geek_987169</span> 👍（1） 💬（1）<div>老师，问下，中止状态是什么意思？</div>2018-10-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/0b/78/22410c47.jpg" width="30px"><span>魏春河</span> 👍（1） 💬（1）<div>我记得前面提到过CompileThreshold 默认是15，今天怎么成1500了？</div>2018-08-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/9a/68/92caeed6.jpg" width="30px"><span>Shine</span> 👍（0） 💬（1）<div>”前面提到，Java 虚拟机在 0 层、2 层和 3 层执行状态时进行 profiling”
-第0层是解释执行，前面没说带profiling啊？ 前面只列出第2，3层带profiling. 这里会不会笔误？</div>2018-08-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/5f/91/a9b51d4e.jpg" width="30px"><span>Desire</span> 👍（0） 💬（1）<div>请问打印出！表示什么意思  n表示native</div>2018-08-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/dc/b8/31c7e110.jpg" width="30px"><span>LVM_23</span> 👍（4） 💬（1）<div>有兴趣进来，懵逼出去</div>2020-11-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/61/f2/ca989d6f.jpg" width="30px"><span>Leon Wong</span> 👍（4） 💬（0）<div>小结一下：
+4:解释执行-将Java字节码一段一段的编译成机器码在底层硬件上运行，即时编译是一个相对解释执行而言的概念，它将热点代码先编译成机器码缓存起来，在解释执行字节码的时候判断出已经缓存起来了就不在编译直接获取执行就可以了</div>2018-08-28</li><br/><li><span>槛外人</span> 👍（8） 💬（1）<div>为什么一块代码会被2层编译后还会被3、4层编译？不能某一层编译就完了吗？</div>2018-11-06</li><br/><li><span>泰格杨</span> 👍（7） 💬（1）<div>去优化是啥意思？</div>2018-08-27</li><br/><li><span>杨春鹏</span> 👍（5） 💬（1）<div>Java中的即时编译器，是不是重新将java代码编译成机器码，并没有使用class文件？</div>2018-08-28</li><br/><li><span>郑杰</span> 👍（5） 💬（1）<div>能说下及时编译的结果是什么样的吗，然后他是怎么跟解释执行一起运行的</div>2018-08-27</li><br/><li><span>Leon Wong</span> 👍（3） 💬（4）<div>有个小问题，1、4层是终止（接受）状态的前提是，您的五层应该从0开始，到4层结束，但是您现在1层开始，5层结束，那么终止状态应该是2层和5层。</div>2018-09-17</li><br/><li><span>大场镇车王</span> 👍（3） 💬（1）<div>请问带所有profiling是什么意思 所有是个什么概念</div>2018-08-27</li><br/><li><span>公号-技术夜未眠</span> 👍（3） 💬（1）<div>请问即时编译的对象是方法级还是语句块级？</div>2018-08-27</li><br/><li><span>Geek_987169</span> 👍（1） 💬（1）<div>老师，问下，中止状态是什么意思？</div>2018-10-20</li><br/><li><span>魏春河</span> 👍（1） 💬（1）<div>我记得前面提到过CompileThreshold 默认是15，今天怎么成1500了？</div>2018-08-28</li><br/><li><span>Shine</span> 👍（0） 💬（1）<div>”前面提到，Java 虚拟机在 0 层、2 层和 3 层执行状态时进行 profiling”
+第0层是解释执行，前面没说带profiling啊？ 前面只列出第2，3层带profiling. 这里会不会笔误？</div>2018-08-30</li><br/><li><span>Desire</span> 👍（0） 💬（1）<div>请问打印出！表示什么意思  n表示native</div>2018-08-28</li><br/><li><span>LVM_23</span> 👍（4） 💬（1）<div>有兴趣进来，懵逼出去</div>2020-11-19</li><br/><li><span>Leon Wong</span> 👍（4） 💬（0）<div>小结一下：
 
 分层编译的引入是为了让即时编译更具备灵性，使得虚拟机可以根据量化的实际情况以及相应的算法动态选择执行代码的编译路径。分层编译是否开启，决定了编译器的执行阈值是否动态化。
 
 根据两种不同的计数器（方法调用计数器和循环回边的执行次数计数器），虚拟机有不同的考量，基于方法层面的优化，会使用方法调用计数器作为主要依据，而基于循环层面的，则使用循环回边计数器作为主要依据。
 
-由此引入了OSR技术，即一种能够替换正在运行函数的栈帧的技术。其目的在于能让执行引擎能在不同的优化层次间来回切换，并以更细粒度（循环）的形式实现之。为了平衡启动性能与峰值性能，OSR可以实现低层次优化往高层次优化的迁移；为了去优化以及方便获取调试信息，OSR可以实现高层次优化往低层次迁移。</div>2018-09-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/08/96/231fdd9e.jpg" width="30px"><span>未知</span> 👍（2） 💬（0）<div>每次看都有收获。第三遍。</div>2019-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/33/9f/8dbd9558.jpg" width="30px"><span>逆流的鱼</span> 👍（2） 💬（0）<div>疑问:即时编译之后的机器码和 native 方法是不是可以等同，这样是不是他俩都是占用jvm的内存和线程资源，而具体的Java程序只是持有机器码方法和native方法的引用，具体Java程序的线程调用时也是再委托给JVM 执行</div>2018-11-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/fe/83/df562574.jpg" width="30px"><span>慎独明强</span> 👍（1） 💬（1）<div>昨天线上出现了机器CPU飙高，通过dump文件查看有C2 相关的日志，组长问C2是什么知道吗？ 之前看过这一章节那时候看的不是很明白。再回过头看，明白了一些。jvm的静态编译和动态编译，静态编译即为解释执行，动态编译为将字节码文件翻译为机器码，以方法纬度，直接运行在底层硬件上，编译过程会比较耗CPU。结合线上问题，大量的接口调用，导致触发了C2编译</div>2021-06-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/ef/04/f2942f14.jpg" width="30px"><span>Boomkeeper</span> 👍（1） 💬（0）<div>老师好，20年留言一个问题，请问在java中第二次执行方法返回比第一次快，原因是啥？和及时编译应该没关系吧？</div>2020-12-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/49/94/55e70da0.jpg" width="30px"><span>HeRui</span> 👍（0） 💬（0）<div>请问老师:c2是把操作java栈的指令逻辑编译成CPU支持的机器码还是直接把java源代码的逻辑编译成CPU指令的机器码，如果是把jvm指令编操作java栈的逻辑编译为本地机器码的话是不是一条jvm指令需要很多跳CPU指令才能完成，如果是这样的话感觉java编译成机器码的指令数量会比C编译成机器码的指令数量多很多</div>2023-10-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/51/b0/d32c895d.jpg" width="30px"><span>熊能</span> 👍（0） 💬（0）<div>学习了</div>2022-11-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/40/6a/ab1cf396.jpg" width="30px"><span>小兵</span> 👍（0） 💬（0）<div>有点不理解的地方在于方法调用次数，这里是不是指的方法被调用的次数，回边次数指的应该时循环次数，可不可以认为方法每被调用一次回边次数就增加一倍。</div>2020-02-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/5e/82/438c8534.jpg" width="30px"><span>longslee</span> 👍（0） 💬（0）<div>老师你好，请教个问题：有个同事写的程序本身占用JVM空间非常大，然后启动项 JAVA8 指定了 -server ，但是运行一段时间后，就会出现 “C2 编译器  什么空间不足，ReservedCodeCacheSize 什么什么”，按照提示调大以后还是会出现。</div>2019-11-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/71/a2/091d9619.jpg" width="30px"><span>leo</span> 👍（0） 💬（0）<div>解释执行后的机器码不会缓存吗，为什么之后还需要即时编译</div>2019-10-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ec/13/49e98289.jpg" width="30px"><span>neohope</span> 👍（0） 💬（0）<div>老师您好，在文章最后，我的理解是，从c1或c2到解释运行时，会有内存回收。
-我想问下，当从c1升级到c2后，也会出现“made zombie”将c1代码回收的情况吗？
-此外，是不是解释运行的代码，永远都不会被回收呢？
-谢谢！</div>2019-08-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/67/0e/2a51a2df.jpg" width="30px"><span>Eric</span> 👍（0） 💬（1）<div>为什么执行效率1层大于2层，2层大于3层？？？</div>2019-05-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/d0/42/6fd01fb9.jpg" width="30px"><span>我已经设置了昵称</span> 👍（0） 💬（0）<div>还是有点不懂，即时编译是在程序运行的时候触发？解释编译是指我们普通的java文件被编译class文件的内容？</div>2019-04-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/43/38/72feb2e0.jpg" width="30px"><span>哇！怎么这么大个</span> 👍（0） 💬（0）<div>老师，-XX:+PrintCompilation看到的信息都是及时编译的结果吗，还是说包含了及时编译（C1 C2）和解释编译的结果，有没其他查看代码里即时编译的其他相关文档</div>2018-12-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/6a/d5/73c75eb3.jpg" width="30px"><span>夜行观星</span> 👍（0） 💬（0）<div>看了分层，还看封面，老师真的用心</div>2018-10-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/86/a8/427879a9.jpg" width="30px"><span>搬砖匠</span> 👍（0） 💬（0）<div>请教两个问题：
-1. 解释执行如果发现该方法还没有被编译，是否就是触发即时编译生成二进制码去执行？
-2. 一个方法被即时编译成二进制码后，程序运行期间是否就可以无限循环利用之前编译的机器码去执行了，会有需要再重新编译的情况吗？</div>2018-09-26</li><br/>
+由此引入了OSR技术，即一种能够替换正在运行函数的栈帧的技术。其目的在于能让执行引擎能在不同的优化层次间来回切换，并以更细粒度（循环）的形式实现之。为了平衡启动性能与峰值性能，OSR可以实现低层次优化往高层次优化的迁移；为了去优化以及方便获取调试信息，OSR可以实现高层次优化往低层次迁移。</div>2018-09-18</li><br/><li><span>未知</span> 👍（2） 💬（0）<div>每次看都有收获。第三遍。</div>2019-03-23</li><br/>
 </ul>
 
 

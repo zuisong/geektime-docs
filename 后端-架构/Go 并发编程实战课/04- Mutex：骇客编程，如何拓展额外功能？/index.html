@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#trylock" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -1315,6 +1320,8 @@
       
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
+      
+        
       
       
       <a href="./" class="md-nav__link md-nav__link--active">
@@ -12552,6 +12559,8 @@
   
   
   
+    
+  
   
 </nav>
                   </div>
@@ -12574,105 +12583,278 @@
   
 
 
-  <h1>04  Mutex：骇客编程，如何拓展额外功能？</h1>
-
 <p>你好，我是鸟窝。</p>
 <p>前面三讲，我们学习了互斥锁Mutex的基本用法、实现原理以及易错场景，可以说是涵盖了互斥锁的方方面面。如果你能熟练掌握这些内容，那么，在大多数的开发场景中，你都可以得心应手。</p>
 <p>但是，在一些特定的场景中，这些基础功能是不足以应对的。这个时候，我们就需要开发一些扩展功能了。我来举几个例子。</p>
 <p>比如说，我们知道，如果互斥锁被某个goroutine获取了，而且还没有释放，那么，其他请求这把锁的goroutine，就会阻塞等待，直到有机会获得这把锁。有时候阻塞并不是一个很好的主意，比如你请求锁更新一个计数器，如果获取不到锁的话没必要等待，大不了这次不更新，我下次更新就好了，如果阻塞的话会导致业务处理能力的下降。</p>
 <p>再比如，如果我们要监控锁的竞争情况，一个监控指标就是，等待这把锁的goroutine数量。我们可以把这个指标推送到时间序列数据库中，再通过一些监控系统（比如Grafana）展示出来。要知道，<strong>锁是性能下降的“罪魁祸首”之一，所以，有效地降低锁的竞争，就能够很好地提高性能。因此，监控关键互斥锁上等待的goroutine的数量，是我们分析锁竞争的激烈程度的一个重要指标</strong>。</p>
 <p>实际上，不论是不希望锁的goroutine继续等待，还是想监控锁，我们都可以基于标准库中Mutex的实现，通过Hacker的方式，为Mutex增加一些额外的功能。这节课，我就来教你实现几个扩展功能，包括实现TryLock，获取等待者的数量等指标，以及实现一个线程安全的队列。</p>
-<div><strong>精选留言（30）</strong></div>
+<h1 id="trylock">TryLock</h1>
+<p>我们可以为Mutex添加一个TryLock的方法，也就是尝试获取排外锁。PS：在Go 1.18官方标准库中，已经为Mutex/RWMutex增加了TryLock方法。</p>
+<p>这个方法具体是什么意思呢？我来解释一下这里的逻辑。当一个goroutine调用这个TryLock方法请求锁的时候，如果这把锁没有被其他goroutine所持有，那么，这个goroutine就持有了这把锁，并返回true；如果这把锁已经被其他goroutine所持有，或者是正在准备交给某个被唤醒的goroutine，那么，这个请求锁的goroutine就直接返回false，不会阻塞在方法调用上。</p>
+<p>如下图所示，如果Mutex已经被一个goroutine持有，调用Lock的goroutine阻塞排队等待，调用TryLock的goroutine直接得到一个false返回。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/e7/65/e7787d959b60d66cc3a46ee921098865.jpg?wh=2973%2A1913" /></p>
+<p>在实际开发中，如果要更新配置数据，我们通常需要加锁，这样可以避免同时有多个goroutine并发修改数据。有的时候，我们也会使用TryLock。这样一来，当某个goroutine想要更改配置数据时，如果发现已经有goroutine在更改了，其他的goroutine调用TryLock，返回了false，这个goroutine就会放弃更改。</p>
+<p>很多语言（比如Java）都为锁提供了TryLock的方法，但是，Go官方<a href="https://github.com/golang/go/issues/6123">issue 6123</a>有一个讨论（后来一些issue中也提到过），标准库的Mutex不会添加TryLock方法。虽然通过Go的Channel我们也可以实现TryLock的功能，但是基于Channel的实现我们会放在Channel那一讲中去介绍，这一次我们还是基于Mutex去实现，毕竟大部分的程序员还是熟悉传统的同步原语，而且传统的同步原语也不容易出错。所以这节课，还是希望带你掌握基于Mutex实现的方法。</p>
+<p>那怎么实现一个扩展TryLock方法的Mutex呢？我们直接来看代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>// 复制Mutex定义的常量
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>const (
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    mutexLocked = 1 &lt;&lt; iota // 加锁标识位置
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    mutexWoken              // 唤醒标识位置
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    mutexStarving           // 锁饥饿标识位置
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    mutexWaiterShift = iota // 标识waiter的起始bit位置
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>)
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>// 扩展一个Mutex结构
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>type Mutex struct {
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    sync.Mutex
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>}
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>// 尝试获取锁
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>func (m *Mutex) TryLock() bool {
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    // 如果能成功抢到锁
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    if atomic.CompareAndSwapInt32((*int32)(unsafe.Pointer(&amp;m.Mutex)), 0, mutexLocked) {
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        return true
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    }
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    // 如果处于唤醒、加锁或者饥饿状态，这次请求就不参与竞争了，返回false
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    old := atomic.LoadInt32((*int32)(unsafe.Pointer(&amp;m.Mutex)))
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    if old&amp;(mutexLocked|mutexStarving|mutexWoken) != 0 {
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>        return false
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    }
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>    // 尝试在竞争的状态下请求锁
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>    new := old | mutexLocked
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    return atomic.CompareAndSwapInt32((*int32)(unsafe.Pointer(&amp;m.Mutex)), old, new)
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>}
+</code></pre></div>
+<p>第17行是一个fast path，如果幸运，没有其他goroutine争这把锁，那么，这把锁就会被这个请求的goroutine获取，直接返回。</p>
+<p>如果锁已经被其他goroutine所持有，或者被其他唤醒的goroutine准备持有，那么，就直接返回false，不再请求，代码逻辑在第23行。</p>
+<p>如果没有被持有，也没有其它唤醒的goroutine来竞争锁，锁也不处于饥饿状态，就尝试获取这把锁（第29行），不论是否成功都将结果返回。因为，这个时候，可能还有其他的goroutine也在竞争这把锁，所以，不能保证成功获取这把锁。</p>
+<p>我们可以写一个简单的测试程序，来测试我们的TryLock的机制是否工作。</p>
+<p>这个测试程序的工作机制是这样子的：程序运行时会启动一个goroutine持有这把我们自己实现的锁，经过随机的时间才释放。主goroutine会尝试获取这把锁。如果前一个goroutine一秒内释放了这把锁，那么，主goroutine就有可能获取到这把锁了，输出“got the lock”，否则没有获取到也不会被阻塞，会直接输出“<code>can't get the lock</code>”。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>func try() {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    var mu Mutex
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    go func() { // 启动一个goroutine持有一段时间的锁
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        mu.Lock()
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        time.Sleep(time.Duration(rand.Intn(2)) * time.Second)
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        mu.Unlock()
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    }()
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    time.Sleep(time.Second)
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    ok := mu.TryLock() // 尝试获取到锁
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    if ok { // 获取成功
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        fmt.Println(&quot;got the lock&quot;)
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        // do something
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>        mu.Unlock()
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>        return
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    }
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    // 没有获取到
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    fmt.Println(&quot;can&#39;t get the lock&quot;)
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>}
+</code></pre></div>
+<h1 id="_1">获取等待者的数量等指标</h1>
+<p>接下来，我想和你聊聊怎么获取等待者数量等指标。</p>
+<p>第二讲中，我们已经学习了Mutex的结构。先来回顾一下Mutex的数据结构，如下面的代码所示。它包含两个字段，state和sema。前四个字节（int32）就是state字段。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>type Mutex struct {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    state int32
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    sema  uint32
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>}
+</code></pre></div>
+<p>Mutex结构中的state字段有很多个含义，通过state字段，你可以知道锁是否已经被某个goroutine持有、当前是否处于饥饿状态、是否有等待的goroutine被唤醒、等待者的数量等信息。但是，state这个字段并没有暴露出来，所以，我们需要想办法获取到这个字段，并进行解析。</p>
+<p>怎么获取未暴露的字段呢？很简单，我们可以通过unsafe的方式实现。我来举一个例子，你一看就明白了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>const (
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    mutexLocked = 1 &lt;&lt; iota // mutex is locked
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    mutexWoken
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    mutexStarving
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    mutexWaiterShift = iota
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>)
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>type Mutex struct {
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    sync.Mutex
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>}
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>func (m *Mutex) Count() int {
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    // 获取state字段的值
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    v := atomic.LoadInt32((*int32)(unsafe.Pointer(&amp;m.Mutex)))
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    v = v &gt;&gt; mutexWaiterShift + (v &amp; mutexLocked)
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    return int(v)
+</code></pre></div>
+<p>这个例子的第14行通过unsafe操作，我们可以得到state字段的值。第15行我们右移三位（这里的常量mutexWaiterShift的值为3），就得到了当前等待者的数量。如果当前的锁已经被其他goroutine持有，那么，我们就稍微调整一下这个值，加上一个1（第16行），你基本上可以把它看作是当前持有和等待这把锁的goroutine的总数。</p>
+<p>state这个字段的第一位是用来标记锁是否被持有，第二位用来标记是否已经唤醒了一个等待者，第三位标记锁是否处于饥饿状态，通过分析这个state字段我们就可以得到这些状态信息。我们可以为这些状态提供查询的方法，这样就可以实时地知道锁的状态了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>// 锁是否被持有
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>func (m *Mutex) IsLocked() bool {
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    state := atomic.LoadInt32((*int32)(unsafe.Pointer(&amp;m.Mutex)))
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    return state&amp;mutexLocked == mutexLocked
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>}
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>// 是否有等待者被唤醒
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>func (m *Mutex) IsWoken() bool {
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    state := atomic.LoadInt32((*int32)(unsafe.Pointer(&amp;m.Mutex)))
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    return state&amp;mutexWoken == mutexWoken
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>}
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>// 锁是否处于饥饿状态
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>func (m *Mutex) IsStarving() bool {
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    state := atomic.LoadInt32((*int32)(unsafe.Pointer(&amp;m.Mutex)))
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    return state&amp;mutexStarving == mutexStarving
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>}
+</code></pre></div>
+<p>我们可以写一个程序测试一下，比如，在1000个goroutine并发访问的情况下，我们可以把锁的状态信息输出出来：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>func count() {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    var mu Mutex
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    for i := 0; i &lt; 1000; i++ { // 启动1000个goroutine
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        go func() {
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>            mu.Lock()
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>            time.Sleep(time.Second)
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>            mu.Unlock()
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        }()
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    }
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    time.Sleep(time.Second)
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    // 输出锁的信息
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    fmt.Printf(&quot;waitings: %d, isLocked: %t, woken: %t,  starving: %t\n&quot;, mu.Count(), mu.IsLocked(), mu.IsWoken(), mu.IsStarving())
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>}
+</code></pre></div>
+<p>有一点你需要注意一下，在获取state字段的时候，并没有通过Lock获取这把锁，所以获取的这个state的值是一个瞬态的值，可能在你解析出这个字段之后，锁的状态已经发生了变化。不过没关系，因为你查看的就是调用的那一时刻的锁的状态。</p>
+<h1 id="mutex">使用Mutex实现一个线程安全的队列</h1>
+<p>最后，我们来讨论一下，如何使用Mutex实现一个线程安全的队列。</p>
+<p>为什么要讨论这个话题呢？因为Mutex经常会和其他非线程安全（对于Go来说，我们其实指的是goroutine安全）的数据结构一起，组合成一个线程安全的数据结构。新数据结构的业务逻辑由原来的数据结构提供，而<strong>Mutex提供了锁的机制，来保证线程安全</strong>。</p>
+<p>比如队列，我们可以通过Slice来实现，但是通过Slice实现的队列不是线程安全的，出队（Dequeue）和入队（Enqueue）会有data race的问题。这个时候，Mutex就要隆重出场了，通过它，我们可以在出队和入队的时候加上锁的保护。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>type SliceQueue struct {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    data []interface{}
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    mu   sync.Mutex
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>}
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>func NewSliceQueue(n int) (q *SliceQueue) {
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    return &amp;SliceQueue{data: make([]interface{}, 0, n)}
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>}
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>// Enqueue 把值放在队尾
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>func (q *SliceQueue) Enqueue(v interface{}) {
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    q.mu.Lock()
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    q.data = append(q.data, v)
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    q.mu.Unlock()
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>}
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>// Dequeue 移去队头并返回
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>func (q *SliceQueue) Dequeue() interface{} {
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>    q.mu.Lock()
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>    if len(q.data) == 0 {
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>        q.mu.Unlock()
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>        return nil
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>    }
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>    v := q.data[0]
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>    q.data = q.data[1:]
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>    q.mu.Unlock()
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>    return v
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>}
+</code></pre></div>
+<p>因为标准库中没有线程安全的队列数据结构的实现，所以，你可以通过Mutex实现一个简单的队列。通过Mutex我们就可以为一个非线程安全的data interface{}实现线程安全的访问。</p>
+<h1 id="_2">总结</h1>
+<p>好了，我们来做个总结。</p>
+<p>Mutex是package sync的基石，其他的一些同步原语也是基于它实现的，所以，我们“隆重”地用了四讲来深度学习它。学到后面，你一定能感受到，多花些时间来完全掌握Mutex是值得的。</p>
+<p>今天这一讲我和你分享了几个Mutex的拓展功能，这些方法是不是给你带来了一种“骇客”的编程体验呢，通过Hacker的方式，我们真的可以让Mutex变得更强大。</p>
+<p>我们学习了基于Mutex实现TryLock，通过unsafe的方式读取到Mutex内部的state字段，这样，我们就解决了开篇列举的问题，一是不希望锁的goroutine继续等待，一是想监控锁。</p>
+<p>另外，使用Mutex组合成更丰富的数据结构是我们常见的场景，今天我们就实现了一个线程安全的队列，未来我们还会讲到实现线程安全的map对象。</p>
+<p>到这里，Mutex我们就系统学习完了，最后给你总结了一张Mutex知识地图，帮你复习一下。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/5a/0b/5ayy6cd9ec9fe0bcc13113302056ac0b.jpg?wh=2396%2A3131" /></p>
+<h1 id="_3">思考题</h1>
+<p>你可以为Mutex获取锁时加上Timeout机制吗？会有什么问题吗？</p>
+<p>欢迎在留言区写下你的思考和答案，我们一起交流讨论。如果你觉得有所收获，也欢迎你把今天的内容分享给你的朋友或同事。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/13/d5/1f/9fbd95ac.jpg" width="30px"><span>+1day</span> 👍（24） 💬（7）<div>老师您好，在获取等待者数量的代码中
+<li><span>+1day</span> 👍（24） 💬（7）<div>老师您好，在获取等待者数量的代码中
 如果要加上锁持有者的数量的话，为什么不是 
 v = v &gt;&gt; mutexWaiterShift + (v &amp; mutexLocked)
 而是
 v = v &gt;&gt; mutexWaiterShift &#47;&#47;得到等待者的数值
 v = v + (v &amp; mutexLocked) &#47;&#47;再加上锁持有者的数量，0或者1
-这样呢？第一步修改了 v 的值，v 的第一位已经不再是记录该锁是否被持有了，那 v&amp;mutexLocked 是不是不对呢？</div>2020-10-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/55/47/d217c45f.jpg" width="30px"><span>Panmax</span> 👍（10） 💬（4）<div>如果底层 Mutex 的 state 在某个版本中含义变了，上边写的 TryLock 和监控锁的一些方法就会失效，所以这样做是不是比较危险。</div>2020-10-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ac/33/110437cc.jpg" width="30px"><span>不二</span> 👍（6） 💬（7）<div>请教一个基础问题，为啥 (*int32)(unsafe.Pointer(&amp;m.Mutex)) 可以获取sync.Mutex中state的值，Mutex结构中不是还有sema吗？</div>2020-10-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/89/c9/68457f80.jpg" width="30px"><span>天空之城</span> 👍（2） 💬（1）<div>关于 RWLock 的扩展，我这边给出一段代码（评论不好贴代码，贴个 share link）
+这样呢？第一步修改了 v 的值，v 的第一位已经不再是记录该锁是否被持有了，那 v&amp;mutexLocked 是不是不对呢？</div>2020-10-23</li><br/><li><span>Panmax</span> 👍（10） 💬（4）<div>如果底层 Mutex 的 state 在某个版本中含义变了，上边写的 TryLock 和监控锁的一些方法就会失效，所以这样做是不是比较危险。</div>2020-10-24</li><br/><li><span>不二</span> 👍（6） 💬（7）<div>请教一个基础问题，为啥 (*int32)(unsafe.Pointer(&amp;m.Mutex)) 可以获取sync.Mutex中state的值，Mutex结构中不是还有sema吗？</div>2020-10-20</li><br/><li><span>天空之城</span> 👍（2） 💬（1）<div>关于 RWLock 的扩展，我这边给出一段代码（评论不好贴代码，贴个 share link）
 https:&#47;&#47;go.dev&#47;play&#47;p&#47;X4YNwqZR4ta
 
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">package</span><span class="w"> </span><span class="nx">sync</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="o">&amp;</span><span class="nx">quot</span><span class="p">;</span><span class="nx">sync</span><span class="o">&amp;</span><span class="nx">quot</span><span class="p">;</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="o">&amp;</span><span class="nx">quot</span><span class="p">;</span><span class="nx">sync</span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="nx">atomic</span><span class="o">&amp;</span><span class="nx">quot</span><span class="p">;</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="o">&amp;</span><span class="nx">quot</span><span class="p">;</span><span class="nx">unsafe</span><span class="o">&amp;</span><span class="nx">quot</span><span class="p">;</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="kd">type</span><span class="w"> </span><span class="nx">RWMutex</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="nx">rw</span><span class="w"> </span><span class="nx">sync</span><span class="p">.</span><span class="nx">RWMutex</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="p">}</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="kd">const</span><span class="w"> </span><span class="p">(</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="nx">mutexLocked</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="w"> </span><span class="kc">iota</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">    </span><span class="nx">mutexWake</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">    </span><span class="nx">mutexStarving</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">    </span><span class="nx">mutexWaiterShift</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">iota</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="p">)</span>
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="kd">const</span><span class="w"> </span><span class="p">(</span>
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">    </span><span class="nx">rwmutexMaxReaders</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="w"> </span><span class="mi">30</span>
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="p">)</span>
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>
-<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">TryLock</span><span class="p">()</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">GetReader</span><span class="p">()</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span>
-<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">    </span><span class="nx">e</span><span class="p">.</span><span class="nx">rw</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
-<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span>
-<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="p">}</span>
-<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>
-<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="w"> </span><span class="nx">readerCount</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">=</span><span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span><span class="w"> </span><span class="nx">Reader</span><span class="w"> </span><span class="nx">Hold</span><span class="w"> </span><span class="nx">without</span><span class="w"> </span><span class="nx">Writer</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="mi">0</span><span class="w"> </span><span class="p">=</span><span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span><span class="w"> </span><span class="nx">Reader</span><span class="w"> </span><span class="nx">Hold</span><span class="w"> </span><span class="nx">and</span><span class="w"> </span><span class="nx">Writer</span><span class="w"> </span><span class="nx">waiting</span><span class="p">,</span><span class="w"> </span><span class="o">==</span><span class="mi">0</span><span class="w"> </span><span class="p">=</span><span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span><span class="w"> </span><span class="nx">no</span><span class="w"> </span><span class="nx">reader</span>
-<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="w"> </span><span class="nx">state</span><span class="p">.</span><span class="nx">mutexLocked</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">=</span><span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span><span class="w"> </span><span class="nx">Writer</span><span class="w"> </span><span class="nx">Hold</span><span class="w"> </span><span class="p">(</span><span class="nx">in</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">meanwhile</span><span class="p">,</span><span class="w"> </span><span class="nx">readerWaiter</span><span class="o">==</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nx">all</span><span class="w"> </span><span class="nx">reader</span><span class="p">(</span><span class="nx">readerCount</span><span class="p">)</span><span class="w"> </span><span class="nx">are</span><span class="w"> </span><span class="nx">waiting</span><span class="p">)</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">IsLocked</span><span class="p">()</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">IsWriterLocked</span><span class="p">()</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">IsReaderLocked</span><span class="p">()</span>
-<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="p">}</span>
-<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>
-<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">IsWriterLocked</span><span class="p">()</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">    </span><span class="nx">state</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">atomic</span><span class="p">.</span><span class="nx">LoadInt32</span><span class="p">((</span><span class="o">*</span><span class="kt">int32</span><span class="p">)(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">amp</span><span class="p">;</span><span class="nx">e</span><span class="p">.</span><span class="nx">rw</span><span class="p">)))</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">state</span><span class="o">&amp;</span><span class="nx">amp</span><span class="p">;</span><span class="nx">mutexLocked</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">mutexLocked</span>
-<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="p">}</span>
-<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>
-<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">IsReaderLocked</span><span class="p">()</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">atomic</span><span class="p">.</span><span class="nx">LoadInt32</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">readerCountPtr</span><span class="p">())</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">0</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="p">}</span>
-<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>
-<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">HasWriter</span><span class="p">()</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">atomic</span><span class="p">.</span><span class="nx">LoadInt32</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">readerCountPtr</span><span class="p">())</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="w"> </span><span class="mi">0</span>
-<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a><span class="p">}</span>
-<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>
-<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">GetWriter</span><span class="p">()</span><span class="w"> </span><span class="kt">int32</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a><span class="w">    </span><span class="nx">state</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">atomic</span><span class="p">.</span><span class="nx">LoadInt32</span><span class="p">((</span><span class="o">*</span><span class="kt">int32</span><span class="p">)(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">amp</span><span class="p">;</span><span class="nx">e</span><span class="p">.</span><span class="nx">rw</span><span class="p">)))</span>
-<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">int32</span><span class="p">((</span><span class="nx">state</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span><span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span><span class="w"> </span><span class="nx">mutexWaiterShift</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="nx">state</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">amp</span><span class="p">;</span><span class="w"> </span><span class="nx">mutexLocked</span><span class="p">))</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a><span class="p">}</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>
-<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">HasReader</span><span class="p">()</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">atomic</span><span class="p">.</span><span class="nx">LoadInt32</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">readerCountPtr</span><span class="p">())</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">0</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="p">}</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a>
-<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">GetReader</span><span class="p">()</span><span class="w"> </span><span class="kt">int32</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a><span class="w">    </span><span class="nx">r</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">atomic</span><span class="p">.</span><span class="nx">LoadInt32</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">readerCountPtr</span><span class="p">())</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a><span class="w">        </span><span class="nx">r</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="nx">rwmutexMaxReaders</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">r</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a><span class="p">}</span>
-<a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a>
-<a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">readerCountPtr</span><span class="p">()</span><span class="w"> </span><span class="o">*</span><span class="kt">int32</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="kt">int32</span><span class="p">)(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">(</span><span class="nb">uintptr</span><span class="p">(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">amp</span><span class="p">;</span><span class="nx">e</span><span class="p">.</span><span class="nx">rw</span><span class="p">))</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Sizeof</span><span class="p">(</span><span class="nx">sync</span><span class="p">.</span><span class="nx">Mutex</span><span class="p">{})</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Sizeof</span><span class="p">(</span><span class="nb">uint32</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span><span class="o">*</span><span class="mi">2</span><span class="p">))</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70" href="#__codelineno-0-70"></a><span class="p">}</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71" href="#__codelineno-0-71"></a>
-<a id="__codelineno-0-72" name="__codelineno-0-72" href="#__codelineno-0-72"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">readerWaitPtr</span><span class="p">()</span><span class="w"> </span><span class="o">*</span><span class="kt">int32</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-73" name="__codelineno-0-73" href="#__codelineno-0-73"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="kt">int32</span><span class="p">)(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">(</span><span class="nb">uintptr</span><span class="p">(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">amp</span><span class="p">;</span><span class="nx">e</span><span class="p">.</span><span class="nx">rw</span><span class="p">))</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Sizeof</span><span class="p">(</span><span class="nx">sync</span><span class="p">.</span><span class="nx">Mutex</span><span class="p">{})</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Sizeof</span><span class="p">(</span><span class="nb">uint32</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span><span class="o">*</span><span class="mi">2</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Sizeof</span><span class="p">((</span><span class="nb">int32</span><span class="p">(</span><span class="mi">0</span><span class="p">)))))</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74" href="#__codelineno-0-74"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">package</span><span class="w"> </span><span class="nx">sync</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span><span class="o">&amp;</span><span class="nx">quot</span><span class="p">;</span><span class="nx">sync</span><span class="o">&amp;</span><span class="nx">quot</span><span class="p">;</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span><span class="o">&amp;</span><span class="nx">quot</span><span class="p">;</span><span class="nx">sync</span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="nx">atomic</span><span class="o">&amp;</span><span class="nx">quot</span><span class="p">;</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">    </span><span class="o">&amp;</span><span class="nx">quot</span><span class="p">;</span><span class="nx">unsafe</span><span class="o">&amp;</span><span class="nx">quot</span><span class="p">;</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="p">)</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="kd">type</span><span class="w"> </span><span class="nx">RWMutex</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="w">    </span><span class="nx">rw</span><span class="w"> </span><span class="nx">sync</span><span class="p">.</span><span class="nx">RWMutex</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="p">}</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="kd">const</span><span class="w"> </span><span class="p">(</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="w">    </span><span class="nx">mutexLocked</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="w"> </span><span class="kc">iota</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="w">    </span><span class="nx">mutexWake</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="w">    </span><span class="nx">mutexStarving</span>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="w">    </span><span class="nx">mutexWaiterShift</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">iota</span>
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="p">)</span>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="kd">const</span><span class="w"> </span><span class="p">(</span>
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a><span class="w">    </span><span class="nx">rwmutexMaxReaders</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="w"> </span><span class="mi">30</span>
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a><span class="p">)</span>
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">TryLock</span><span class="p">()</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">GetReader</span><span class="p">()</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span>
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a><span class="w">    </span><span class="nx">e</span><span class="p">.</span><span class="nx">rw</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span>
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a><span class="p">}</span>
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="w"> </span><span class="nx">readerCount</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">=</span><span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span><span class="w"> </span><span class="nx">Reader</span><span class="w"> </span><span class="nx">Hold</span><span class="w"> </span><span class="nx">without</span><span class="w"> </span><span class="nx">Writer</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="mi">0</span><span class="w"> </span><span class="p">=</span><span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span><span class="w"> </span><span class="nx">Reader</span><span class="w"> </span><span class="nx">Hold</span><span class="w"> </span><span class="nx">and</span><span class="w"> </span><span class="nx">Writer</span><span class="w"> </span><span class="nx">waiting</span><span class="p">,</span><span class="w"> </span><span class="o">==</span><span class="mi">0</span><span class="w"> </span><span class="p">=</span><span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span><span class="w"> </span><span class="nx">no</span><span class="w"> </span><span class="nx">reader</span>
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="o">&amp;</span><span class="err">#</span><span class="mi">47</span><span class="p">;</span><span class="w"> </span><span class="nx">state</span><span class="p">.</span><span class="nx">mutexLocked</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">=</span><span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span><span class="w"> </span><span class="nx">Writer</span><span class="w"> </span><span class="nx">Hold</span><span class="w"> </span><span class="p">(</span><span class="nx">in</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">meanwhile</span><span class="p">,</span><span class="w"> </span><span class="nx">readerWaiter</span><span class="o">==</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nx">all</span><span class="w"> </span><span class="nx">reader</span><span class="p">(</span><span class="nx">readerCount</span><span class="p">)</span><span class="w"> </span><span class="nx">are</span><span class="w"> </span><span class="nx">waiting</span><span class="p">)</span>
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">IsLocked</span><span class="p">()</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">IsWriterLocked</span><span class="p">()</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">IsReaderLocked</span><span class="p">()</span>
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a><span class="p">}</span>
+<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>
+<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">IsWriterLocked</span><span class="p">()</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a><span class="w">    </span><span class="nx">state</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">atomic</span><span class="p">.</span><span class="nx">LoadInt32</span><span class="p">((</span><span class="o">*</span><span class="kt">int32</span><span class="p">)(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">amp</span><span class="p">;</span><span class="nx">e</span><span class="p">.</span><span class="nx">rw</span><span class="p">)))</span>
+<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">state</span><span class="o">&amp;</span><span class="nx">amp</span><span class="p">;</span><span class="nx">mutexLocked</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">mutexLocked</span>
+<a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a><span class="p">}</span>
+<a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a>
+<a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">IsReaderLocked</span><span class="p">()</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">atomic</span><span class="p">.</span><span class="nx">LoadInt32</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">readerCountPtr</span><span class="p">())</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">0</span>
+<a id="__codelineno-7-45" name="__codelineno-7-45" href="#__codelineno-7-45"></a><span class="p">}</span>
+<a id="__codelineno-7-46" name="__codelineno-7-46" href="#__codelineno-7-46"></a>
+<a id="__codelineno-7-47" name="__codelineno-7-47" href="#__codelineno-7-47"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">HasWriter</span><span class="p">()</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-48" name="__codelineno-7-48" href="#__codelineno-7-48"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">atomic</span><span class="p">.</span><span class="nx">LoadInt32</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">readerCountPtr</span><span class="p">())</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="w"> </span><span class="mi">0</span>
+<a id="__codelineno-7-49" name="__codelineno-7-49" href="#__codelineno-7-49"></a><span class="p">}</span>
+<a id="__codelineno-7-50" name="__codelineno-7-50" href="#__codelineno-7-50"></a>
+<a id="__codelineno-7-51" name="__codelineno-7-51" href="#__codelineno-7-51"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">GetWriter</span><span class="p">()</span><span class="w"> </span><span class="kt">int32</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-52" name="__codelineno-7-52" href="#__codelineno-7-52"></a><span class="w">    </span><span class="nx">state</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">atomic</span><span class="p">.</span><span class="nx">LoadInt32</span><span class="p">((</span><span class="o">*</span><span class="kt">int32</span><span class="p">)(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">amp</span><span class="p">;</span><span class="nx">e</span><span class="p">.</span><span class="nx">rw</span><span class="p">)))</span>
+<a id="__codelineno-7-53" name="__codelineno-7-53" href="#__codelineno-7-53"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">int32</span><span class="p">((</span><span class="nx">state</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span><span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span><span class="w"> </span><span class="nx">mutexWaiterShift</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="nx">state</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">amp</span><span class="p">;</span><span class="w"> </span><span class="nx">mutexLocked</span><span class="p">))</span>
+<a id="__codelineno-7-54" name="__codelineno-7-54" href="#__codelineno-7-54"></a><span class="p">}</span>
+<a id="__codelineno-7-55" name="__codelineno-7-55" href="#__codelineno-7-55"></a>
+<a id="__codelineno-7-56" name="__codelineno-7-56" href="#__codelineno-7-56"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">HasReader</span><span class="p">()</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-57" name="__codelineno-7-57" href="#__codelineno-7-57"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">atomic</span><span class="p">.</span><span class="nx">LoadInt32</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">readerCountPtr</span><span class="p">())</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">0</span>
+<a id="__codelineno-7-58" name="__codelineno-7-58" href="#__codelineno-7-58"></a><span class="p">}</span>
+<a id="__codelineno-7-59" name="__codelineno-7-59" href="#__codelineno-7-59"></a>
+<a id="__codelineno-7-60" name="__codelineno-7-60" href="#__codelineno-7-60"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">GetReader</span><span class="p">()</span><span class="w"> </span><span class="kt">int32</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-61" name="__codelineno-7-61" href="#__codelineno-7-61"></a><span class="w">    </span><span class="nx">r</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">atomic</span><span class="p">.</span><span class="nx">LoadInt32</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">readerCountPtr</span><span class="p">())</span>
+<a id="__codelineno-7-62" name="__codelineno-7-62" href="#__codelineno-7-62"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-63" name="__codelineno-7-63" href="#__codelineno-7-63"></a><span class="w">        </span><span class="nx">r</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="nx">rwmutexMaxReaders</span>
+<a id="__codelineno-7-64" name="__codelineno-7-64" href="#__codelineno-7-64"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-7-65" name="__codelineno-7-65" href="#__codelineno-7-65"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">r</span>
+<a id="__codelineno-7-66" name="__codelineno-7-66" href="#__codelineno-7-66"></a><span class="p">}</span>
+<a id="__codelineno-7-67" name="__codelineno-7-67" href="#__codelineno-7-67"></a>
+<a id="__codelineno-7-68" name="__codelineno-7-68" href="#__codelineno-7-68"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">readerCountPtr</span><span class="p">()</span><span class="w"> </span><span class="o">*</span><span class="kt">int32</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-69" name="__codelineno-7-69" href="#__codelineno-7-69"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="kt">int32</span><span class="p">)(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">(</span><span class="nb">uintptr</span><span class="p">(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">amp</span><span class="p">;</span><span class="nx">e</span><span class="p">.</span><span class="nx">rw</span><span class="p">))</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Sizeof</span><span class="p">(</span><span class="nx">sync</span><span class="p">.</span><span class="nx">Mutex</span><span class="p">{})</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Sizeof</span><span class="p">(</span><span class="nb">uint32</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span><span class="o">*</span><span class="mi">2</span><span class="p">))</span>
+<a id="__codelineno-7-70" name="__codelineno-7-70" href="#__codelineno-7-70"></a><span class="p">}</span>
+<a id="__codelineno-7-71" name="__codelineno-7-71" href="#__codelineno-7-71"></a>
+<a id="__codelineno-7-72" name="__codelineno-7-72" href="#__codelineno-7-72"></a><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">RWMutex</span><span class="p">)</span><span class="w"> </span><span class="nx">readerWaitPtr</span><span class="p">()</span><span class="w"> </span><span class="o">*</span><span class="kt">int32</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-7-73" name="__codelineno-7-73" href="#__codelineno-7-73"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="kt">int32</span><span class="p">)(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">(</span><span class="nb">uintptr</span><span class="p">(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">amp</span><span class="p">;</span><span class="nx">e</span><span class="p">.</span><span class="nx">rw</span><span class="p">))</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Sizeof</span><span class="p">(</span><span class="nx">sync</span><span class="p">.</span><span class="nx">Mutex</span><span class="p">{})</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Sizeof</span><span class="p">(</span><span class="nb">uint32</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span><span class="o">*</span><span class="mi">2</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Sizeof</span><span class="p">((</span><span class="nb">int32</span><span class="p">(</span><span class="mi">0</span><span class="p">)))))</span>
+<a id="__codelineno-7-74" name="__codelineno-7-74" href="#__codelineno-7-74"></a><span class="p">}</span>
 </code></pre></div>
 
-</div>2023-05-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/1c/cd/8d552516.jpg" width="30px"><span>Gojustforfun</span> 👍（2） 💬（1）<div>1）『获取等待者的数量等指标』小节，『第 15 行我们左移三位（这里的常量 mutexWaiterShift 的值为 3）』应该是右移三位。
-2）在now～now+timout内，间隔重试调用TryLock</div>2020-10-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/7f/75/551c5d6c.jpg" width="30px"><span>CrazyCodes</span> 👍（1） 💬（1）<div>你可以为 Mutex 获取锁时加上 Timeout 机制吗？会有什么问题吗？
+</div>2023-05-12</li><br/><li><span>Gojustforfun</span> 👍（2） 💬（1）<div>1）『获取等待者的数量等指标』小节，『第 15 行我们左移三位（这里的常量 mutexWaiterShift 的值为 3）』应该是右移三位。
+2）在now～now+timout内，间隔重试调用TryLock</div>2020-10-20</li><br/><li><span>CrazyCodes</span> 👍（1） 💬（1）<div>你可以为 Mutex 获取锁时加上 Timeout 机制吗？会有什么问题吗？
 
-如果加上timeout机制，就不要用defer 去unlock，因为需要自行判断超时时间，然后直接unlock，如果defer再unlock就会触发panic</div>2023-11-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/50/33/9dcd30c4.jpg" width="30px"><span>斯蒂芬.赵</span> 👍（1） 💬（3）<div>fast path执行失败，直接返回false不就行了，为啥还要往下执行？正常不是多个携程并发只有一个执行成功，其他都是失败么？</div>2021-05-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/75/bc/89d88775.jpg" width="30px"><span>Calvin</span> 👍（0） 💬（1）<div>老师，TryLock 那里的以下这段代码，我对比了一下官方 1.18 以后的实现，貌似 mutexWoken 可以排除掉？
+如果加上timeout机制，就不要用defer 去unlock，因为需要自行判断超时时间，然后直接unlock，如果defer再unlock就会触发panic</div>2023-11-27</li><br/><li><span>斯蒂芬.赵</span> 👍（1） 💬（3）<div>fast path执行失败，直接返回false不就行了，为啥还要往下执行？正常不是多个携程并发只有一个执行成功，其他都是失败么？</div>2021-05-07</li><br/><li><span>Calvin</span> 👍（0） 💬（1）<div>老师，TryLock 那里的以下这段代码，我对比了一下官方 1.18 以后的实现，貌似 mutexWoken 可以排除掉？
 old := atomic.LoadInt32((*int32)(unsafe.Pointer(&amp;m.Mutex)))
 if old&amp;(mutexLocked|mutexStarving|mutexWoken) != 0 {
     return false
@@ -12694,12 +12876,12 @@ if !atomic.CompareAndSwapInt32(&amp;m.state, old, old|mutexLocked) {
 if race.Enabled {
     race.Acquire(unsafe.Pointer(m))
 }
-return true</div>2024-05-20</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83erHzX39iazGeL5dIlBMibiaMTfXdzSfiamgCbAPZEx5QyQkIyBz1YqMWAgxGaWzT16UgowQgwY5uXGdeQ/132" width="30px"><span>路过</span> 👍（0） 💬（1）<div>想问一下，为什么最后实现线程安全的队列里面的 Dequeue() 方法释放锁不用defer，这样不用写两次unlock</div>2023-04-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/23/ac/55/80dc6b48.jpg" width="30px"><span>鲁迅原名周树人</span> 👍（0） 💬（2）<div>老师您好，
+return true</div>2024-05-20</li><br/><li><span>路过</span> 👍（0） 💬（1）<div>想问一下，为什么最后实现线程安全的队列里面的 Dequeue() 方法释放锁不用defer，这样不用写两次unlock</div>2023-04-17</li><br/><li><span>鲁迅原名周树人</span> 👍（0） 💬（2）<div>老师您好，
 
 &#47;&#47; 如果能成功抢到锁 if atomic.CompareAndSwapInt32((*int32)(unsafe.Pointer(&amp;m.Mutex)), 0, mutexLocked) { return true }
 
 在以上代码中，(*int32)(unsafe.Pointer(&amp;m.Mutex))是取的Mutex中state的首地址对嘛?
-</div>2021-05-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/b0/c3/e1e2c097.jpg" width="30px"><span>黄毅</span> 👍（0） 💬（1）<div>func (m *Mutex) TryLock() bool {
+</div>2021-05-03</li><br/><li><span>黄毅</span> 👍（0） 💬（1）<div>func (m *Mutex) TryLock() bool {
     &#47;&#47; 如果能成功抢到锁
     if atomic.CompareAndSwapInt32((*int32)(unsafe.Pointer(&amp;m.Mutex)), 0, mutexLocked) {
         return true
@@ -12748,12 +12930,12 @@ func main() {
     wg.Wait()
 }
 
-老师，你好。在main中尝试编写一段逻辑测试TryLock方法，请问在什么情况下会执行fmt.Println(&quot;===new===:&quot;, new) 请老师答疑解惑，谢谢。</div>2020-11-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/05/bf/cc9d43ae.jpg" width="30px"><span>樊少</span> 👍（0） 💬（1）<div>在安全Queue的实现中，锁的释放为什么不用defer?</div>2020-11-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/5a/11/1f0d54f8.jpg" width="30px"><span>Chen</span> 👍（0） 💬（1）<div>第 15 行我们右移三位（这里的常量 mutexWaiterShift 的值为 3），就得到了当前等待者的数量
-=&gt;&gt; 这里看不懂，为什么右移三位=》得到等待者数量</div>2020-10-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/5c/88/222d946e.jpg" width="30px"><span>linxs</span> 👍（0） 💬（3）<div>TryLock方法内，对于这段代码有点不理解，为什么要把&amp;m.Mutex转换成*int32，这里的话我直接用&amp;m.Mutex.state是否是一样的
+老师，你好。在main中尝试编写一段逻辑测试TryLock方法，请问在什么情况下会执行fmt.Println(&quot;===new===:&quot;, new) 请老师答疑解惑，谢谢。</div>2020-11-16</li><br/><li><span>樊少</span> 👍（0） 💬（1）<div>在安全Queue的实现中，锁的释放为什么不用defer?</div>2020-11-05</li><br/><li><span>Chen</span> 👍（0） 💬（1）<div>第 15 行我们右移三位（这里的常量 mutexWaiterShift 的值为 3），就得到了当前等待者的数量
+=&gt;&gt; 这里看不懂，为什么右移三位=》得到等待者数量</div>2020-10-22</li><br/><li><span>linxs</span> 👍（0） 💬（3）<div>TryLock方法内，对于这段代码有点不理解，为什么要把&amp;m.Mutex转换成*int32，这里的话我直接用&amp;m.Mutex.state是否是一样的
 
 if atomic.CompareAndSwapInt32((*int32)(unsafe.Pointer(&amp;m.Mutex)), 0, mutexLocked) { 
      return true 
-}</div>2020-10-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ab/a9/590d6f02.jpg" width="30px"><span>Junes</span> 👍（34） 💬（2）<div>我来提供个思路~
+}</div>2020-10-20</li><br/><li><span>Junes</span> 👍（34） 💬（2）<div>我来提供个思路~
 
 最简单直接的是采用channel实现，用select监听锁和timeout两个channel，不在今天的讨论范围内。
 
@@ -12766,29 +12948,7 @@ if atomic.CompareAndSwapInt32((*int32)(unsafe.Pointer(&amp;m.Mutex)), 0, mutexLo
 TryLock的抢占实现分为两部分，一个是fast path，另一个是竞争状态下的，后者的cas操作很多。我会考虑减少slow方法的频率，比如调用n次fast path失败后，再调用一次整个Trylock。
 
 3. 优化2：借鉴TCP重试机制
-for循环中的重试增加休眠时间，每次失败将休眠时间乘以一个系数（如1.5），直到达到上限（如10ms），减少自旋带来的性能损耗</div>2020-10-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/03/fc/daa02847.jpg" width="30px"><span>18</span> 👍（17） 💬（1）<div>我变秃了，也变强了</div>2020-10-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/17/6e/76b4aa3d.jpg" width="30px"><span>橙子888</span> 👍（5） 💬（0）<div>认真消化完前三章后看今天的这章感觉容易多了。</div>2020-10-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/22/17/11/a63acc6a.jpg" width="30px"><span>( ･᷄ὢ･᷅ )</span> 👍（4） 💬（0）<div>可以通过Context.WithTimeout进行超时机制添加 也可以通过select time.After配合使用</div>2020-10-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/8e/f0/18720510.jpg" width="30px"><span>50%</span> 👍（3） 💬（2）<div>type Mutex struct {
-    sync.Mutex
-}
-var m Mutex
-    fmt.Printf(&quot;%+v\n&quot;, unsafe.Pointer(&amp;m))
-    &#47;&#47;state 字段 先得到m中sync.Mutex字段的地址 再用int32类型的指针获取state字段
-    fmt.Printf(&quot;%+v\n&quot;, (*int32)(unsafe.Pointer(&amp;m.Mutex)))
-    &#47;&#47;sema 字段 先得到m中sync.Mutex字段的地址 + state（int32类型）所占的内存地址（偏移量）得到sema的字段的起始地址 在转换int32类型的指针获取sema字段
-    &#47;&#47;fmt.Printf(&quot;%+v\n&quot;, unsafe.Sizeof(uint32(0)))
-    fmt.Printf(&quot;%+v\n&quot;, (*uint32)(unsafe.Pointer(uintptr(unsafe.Pointer(&amp;m.Mutex))+unsafe.Sizeof(int32(0)))))</div>2020-11-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/2a/e6/c788257f.jpg" width="30px"><span>geek_arong2048</span> 👍（1） 💬（0）<div>timeout实现：
-1、select+time.After
-2、for自旋+时间戳判断</div>2021-06-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/51/ec/3d51d5e6.jpg" width="30px"><span>上校</span> 👍（1） 💬（0）<div>你可以为 Mutex 获取锁时加上 Timeout 机制吗？会有什么问题吗？
-
-希望老师抽时间把相关的课后思考题解答下，从经验和工作中遇到的问题肯定不如老师理解的深刻，老师辛苦了</div>2021-05-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c1/0e/2b987d54.jpg" width="30px"><span>蜉蝣</span> 👍（1） 💬（0）<div>老师好。在 trylock 中，我想不明白为什么在唤醒状态下也要直接 return 出去，是因为如果唤醒状态下取得锁会破坏原有的 Mutex 处理逻辑吗？我看如果 trylock 在唤醒取得锁，并且不清除 Mutex 的唤醒标记，对 Mutex 的处理不会有影响，但如果清除了，会造成一些走 Lock 方法的 goroutine 误以为是自己取得了锁（atomic.CompareAndSwapInt32(&amp;m.state, old, new) &amp;&amp; (old&amp;(mutexLocked|mutexStarving))）。不知道我的理解对不对。</div>2020-11-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/67/dd/55aa6e07.jpg" width="30px"><span>罗帮奎</span> 👍（1） 💬（0）<div>感觉可以把timeout分小段，每过一小段时间尝试拿锁，要不然一直卡在自旋拿锁会很耗cpu</div>2020-10-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/9b/ba/333b59e5.jpg" width="30px"><span>Linuxer</span> 👍（1） 💬（0）<div>通过tryLock-&gt;sleep-&gt;tryLock存在的问题是，可能sleep过程中就能获取到锁，但是不得不等设定的时长，如果间隔一段时间就尝试，有可能实际拿不到锁而浪费CPU</div>2020-10-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/1c/cd/8d552516.jpg" width="30px"><span>Gojustforfun</span> 👍（1） 💬（0）<div>TryLock方法中27行表示的是：
-1）在锁的瞬时状态为正常模式+无唤醒的等待者+锁未被持有时，当前goroutine与等待队列中队头goroutine一起竞争（此时等待者队列不为空）。
-2）与TryLock的fast path一样，锁的瞬时状态为正常模式+无唤醒的等待者+锁未被持有+等待队列为空。此时无竞争，直接获取到锁。
-
-&#47;&#47; 尝试在竞争的状态下请求锁 
-new := old | mutexLocked 
-return atomic.CompareAndSwapInt32((*int32(unsafe.Pointer(&amp;m.Mutex)), old, new)</div>2020-10-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0a/a4/828a431f.jpg" width="30px"><span>张申傲</span> 👍（0） 💬（0）<div>对于 Mutex 的理解更深入了一层</div>2022-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/2b/e0/61/53a17039.jpg" width="30px"><span>tourist</span> 👍（0） 💬（0）<div>不知道其他语言怎么搞，但看完Go写的，感觉Go确实挺简洁的</div>2022-02-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/d2/94/c7223eb8.jpg" width="30px"><span>白志稳</span> 👍（0） 💬（1）<div>每次思考题的答案在哪呀？有没有老师的标准答案？只看评论区也不知道谁的对啊？
-v = v &gt;&gt; mutexWaiterShift &#47;&#47;得到等待者的数值 
-v = v + (v &amp; mutexLocked) &#47;&#47;再加上锁持有者的数量，0或者1
-这个地方能再解释一下吗？怎么拆出来的那几个字段？</div>2021-09-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/60/57/6a53393a.jpg" width="30px"><span>关东燕雀寇关来</span> 👍（0） 💬（0）<div>time.Sleep(time.Duration(rand.Intn(2)) * time.Second)前没有time.Seed() 导致随机数失效</div>2021-06-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/50/33/9dcd30c4.jpg" width="30px"><span>斯蒂芬.赵</span> 👍（0） 💬（0）<div>v = v + (v &amp; mutexLocked) &#47;&#47;再加上锁持有者的数量，0或者1 这块的逻辑是不是写的有问题，判断是否上锁不应该用state := atomic.LoadInt32((*int32)(unsafe.Pointer(&amp;m.Mutex))) return state&amp;mutexLocked == mutexLocked 来判断么，v &amp; mutexLocked) v 这时候代表的是锁等待着的数量，不是state当前的状态</div>2021-05-17</li><br/>
+for循环中的重试增加休眠时间，每次失败将休眠时间乘以一个系数（如1.5），直到达到上限（如10ms），减少自旋带来的性能损耗</div>2020-10-19</li><br/>
 </ul>
 
 

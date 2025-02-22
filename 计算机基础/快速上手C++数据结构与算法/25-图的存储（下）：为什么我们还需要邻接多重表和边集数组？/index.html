@@ -2610,6 +2610,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      边集数组
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5633,6 +5660,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      边集数组
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后思考
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5678,6 +5732,132 @@
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    //int weight; //权值，可以根据需要决定是否需要此字段
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>};
 </code></pre></div>
+<p>上述结构请注意，<strong>前两个</strong>成员（iidx和ilink）是一组，<strong>后两个</strong>成员（jidx和jlink）是一组。iidx和jidx表示的是一个顶点，而ilink和jlink会指向某个边节点，ilink指向的边节点所代表的边所包括的两个顶点中必定有一个是顶点iidx。同理，jlink指向的边节点所代表的边，它包括的两个顶点中也必定有一个是顶点jidx，后面我会画图进一步描述。</p>
+<p>表示顶点的节点结构一般会像下面的代码一样定义。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>//表示顶点的节点结构
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>template&lt;typename T&gt;
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>struct VertexNode_adjmt
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>{
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    T data;    //顶点中的数据
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    EdgeNode_adjmt* firstedge; //与该顶点相连的第一条边
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>};
+</code></pre></div>
+<p>如11所示，看一看一个无向图如何用邻接多重表来表示。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/a7/16/a7a4462ec2c10452214e91281ea1f116.jpg?wh=2575x968" title="图1 一个无向图对应的邻接多重表" /></p>
+<p>图1所示的邻接多重表中有A、B、C、D、E、F共6个顶点，这6个顶点分别存储在一个数组中，数组下标分别为0、1、2、3、4、5。观察每个顶点，我们尝试找到与每个顶点关联的边。</p>
+<ol>
+<li><strong>对于顶点A，有三条边（“0、1”，“0、2”，“0、3”）与该顶点连接。</strong>因此，让顶点A的firstedge指针指向这三条边中的任意一条——这里指向“0、1”边节点，然后进行下面的操作。</li>
+</ol>
+<!--THE END-->
+
+<ul>
+<li>对于“0、1”边节点，因为其所对应的结构（EdgeNode_adjmt）的iidx成员等于0，因此，和iidx一组的ilink指针指向下一个依附于iidx（下标0）所代表的顶点的边就可以指向“0、2”边节点，因为该边节点也有一个顶点下标是0。</li>
+<li>“0、2”边节点的ilink指针就可以指向“0、3”边节点，顶点A没有其他相关边了，所以“0、3”边节点的ilink指针就应该指向nullptr。</li>
+</ul>
+<p>这样看起来，下标0所代表的顶点A相关的所有边（“0、1”，“0、2”，“0、3”）就链在一起了，把上面的图1拆开细分一下，与顶点A相关的部分如图2所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ab/fc/ab46a14631b858ac3fa80d220efaaffc.jpg?wh=2358x367" title="图2 顶点A相关的边节点链在了一起" /></p>
+<ol>
+<li><strong>对于顶点B，有三条边（“1、0”，“1、4”，“1、5”）与该顶点连接。</strong>但是因为对于无向图来讲，边“1、0”与边“0、1”是同一条边，而边“0、1”刚刚已经绘制过了，因此让顶点B的firstedge指针指向“0、1”边节点，然后进行下面的操作。</li>
+</ol>
+<!--THE END-->
+
+<ul>
+<li>对于“0、1”边节点，因为其所对应的结构（EdgeNode_adjmt）的jidx成员等于1，因此，和jidx一组的jlink指针指向下一个依附于jidx（下标1）所代表的顶点的边就可以指向“1、4”边节点，因为该边节点也有一个顶点下标是1。</li>
+<li>“1、4”边节点的ilink指针就可以指向“1、5”边节点，顶点B没有其他相关边了，所以“1、5”边节点的ilink指针就应该指向nullptr。</li>
+</ul>
+<p>这样看起来，下标1所代表的顶点B相关的所有边（“1、0”，“1、4”，“1、5”）就链在一起了，把上面的图1拆开细分一下，与顶点B相关的部分如图3所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/bc/f7/bcb40e0dfe9061a5ae1d43e33f7b7bf7.jpg?wh=2334x515" title="图3 顶点B相关的边节点链在了一起（虚线箭头表示与顶点B无关的一些指针指向）" /></p>
+<ol>
+<li><strong>对于顶点C，有两条边（“2、0”，“2、5”）与该顶点连接。</strong>但因为对于无向图来讲，边“2、0”与边“0、2”是同一条边，而边“0、2”刚刚已经绘制过了，因此让顶点C的firstedge指针指向“0、2”边节点，然后进行下面的操作。</li>
+</ol>
+<!--THE END-->
+
+<ul>
+<li>对于“0、2”边节点，因为其所对应的结构（EdgeNode_adjmt）的jidx成员等于2，因此，和jidx一组的jlink指针指向下一个依附于jidx（下标2）所代表的顶点的边就可以指向“2、5”边节点，因为该边节点也有一个顶点下标是2。</li>
+<li>顶点C没有其他相关边了，所以“2、5”边节点的ilink指针就应该指向nullptr。<br />
+  这样看起来，下标2所代表的顶点C相关的所有边（“2、0”，“2、5”）就链在一起了，把上面的图1拆开细分一下，与顶点C相关的部分如图4所示：</li>
+</ul>
+<!--THE END-->
+
+<p><img alt="" src="https://static001.geekbang.org/resource/image/b3/39/b350d4b8e1bb170588df2d7a7a047639.jpg?wh=2450x669" title="图4 顶点C相关的边节点链在了一起（虚线箭头表示与顶点C无关的一些指针指向）" /></p>
+<ol>
+<li><strong>顶点D同C类似，有两条边（“3、0”，“3、5”）与该顶点连接。</strong>但因为对于无向图来讲，边“3、0”与边“0、3”是同一条边，而边“0、3”刚刚已经绘制过了，因此让顶点D的firstedge指针指向“0、3”边节点，然后进行下面的步骤。</li>
+</ol>
+<!--THE END-->
+
+<ul>
+<li>对于“0、3”边节点，因为其所对应的结构（EdgeNode_adjmt）的jidx成员等于3，因此，和jidx一组的jlink指针指向下一个依附于jidx（下标3）所代表的顶点的边就可以指向“3、5”边节点，因为该边节点也有一个顶点下标是3。</li>
+<li>顶点D没有其他相关边了，所以“3、5”边节点的ilink指针就应该指向nullptr。<br />
+  这样看起来，下标3所代表的顶点D相关的所有边（“3、0”，“3、5”）就链在一起了，把上面的图1拆开细分一下，与顶点D相关的部分如图5所示：</li>
+</ul>
+<!--THE END-->
+
+<p><img alt="" src="https://static001.geekbang.org/resource/image/33/2e/332e7893eee34b8645cc3a1810ebb32e.jpg?wh=2428x792" title="图5 顶点D相关的边节点链在了一起（虚线箭头表示与顶点D无关的一些指针指向）" /></p>
+<ol>
+<li><strong>对于顶点E，只有一条边（“4、1”）与该顶点连接。</strong>但因为对于无向图来讲，边“4、1”与边“1、4”是同一条边，而边“1、4”前面已经绘制过了，因此让顶点E的firstedge指针指向“1、4”边节点，然后，对于“1、4”边节点，因为其所对应的结构（EdgeNode_adjmt）的jidx成员等于4，而且，顶点E没有其他相关边了，所以和jidx一组的jlink指针指向下一个依附于jidx（下标4）所代表的顶点的边就应该指向nullptr。</li>
+</ol>
+<p>这样看起来，下标4所代表的顶点E相关的所有边其实只有一条边（“4、1”）就链在一起了，把上面的图1拆开细分一下，与顶点E相关的部分如图6所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/e8/d3/e82f4cd0124cb313d8c7236dd1399bd3.jpg?wh=2387x875" title="图6 顶点E相关的边节点链在了一起（虚线箭头表示与顶点E无关的一些指针指向）" /></p>
+<ol>
+<li><strong>对于顶点F，有三条边（“5、1”，“5、2”，“5、3”）与该顶点连接。</strong>但是这三条边（对于无向图其实就是“1、5”，“2、5”，“3、5”三条边）前面都已经绘制过，因此让顶点F的firstedge指针指向这三条边中的任意一条——这里指向“1、5”边节点，然后进行下面的操作。</li>
+</ol>
+<!--THE END-->
+
+<ul>
+<li>对于“1、5”边节点，因为其所对应的结构（EdgeNode_adjmt）的jidx成员等于5，因此，和jidx一组的jlink指针指向下一个依附于jidx（下标5）所代表的顶点的边就可以指向“2、5”边节点，因为该边节点也有一个顶点下标是5。</li>
+<li>“2、5”边节点的jlink指针就可以指向“3、5”边节点，顶点F没有其他相关边了，所以“3、5”边节点的jlink指针就应该指向nullptr。</li>
+</ul>
+<p>这样看起来，下标5所代表的顶点F相关的所有边（“5、1”，“5、2”，“5、3”）就链在一起了，把上面的图1拆开细分一下，与顶点F相关的部分如图7所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/25/c8/252d2756dbaa449b22aa5dd8e86d51c8.jpg?wh=2347x1045" title="图7 顶点F相关的边节点链在了一起（虚线箭头表示与顶点F无关的一些指针指向）" /></p>
+<p>在邻接多重表中，找到和某个顶点相关联的边是很容易的。同时，每条边的存储只会用到一个边节点，不但节省了存储空间，同时在删除顶点或删除边时，也减少了操作上的复杂性。对于删除边的操作，实现上是比较简单的，而对于删除顶点的操作，也不要忘记删除和对应顶点相关的所有边。</p>
+<p>使用邻接多重表存储无向图所需要的空间复杂度是O(|V|+|E|)。相关代码在这里就不进行实现了，你可以尝试一下是否能够自行实现。</p>
+<h2 id="_2">边集数组</h2>
+<p>边集数组由两个一维数组构成，一个存储顶点信息，另一个存储边信息。边数组的每个元素是一个结构，结构成员包括边的起始顶点下标、边的终止顶点下标、权值。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>//表示边的结构
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>struct Edge_esa
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>{
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    int beginidx; //边的起始顶点下标
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    int endidx; //边的终止顶点下标
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    //int weight; //权值，可以根据需要决定是否需要此字段
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>};
+</code></pre></div>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/fd/30/fdf7a701690d9e98f174debfd94f3230.jpg?wh=1956x795" title="图8一个有向图对应的边集数组" /></p>
+<p>在边集数组中，要计算一个顶点的度需要扫描整个边数组，效率不高。所以边集数组适合需要对边进行依次处理的场合，不太适合对顶点进行操作的场合。</p>
+<p>使用边集数组存储图所需要的空间复杂度是O(|V|+|E|)。相关代码并不复杂，有兴趣的话，你可以自行实现。</p>
+<h2 id="_3">小结</h2>
+<p>这节课，我们继续上节课的内容学习了存储图的2个数据结构，分别是邻接多重表、边集数组来存储图。</p>
+<p>邻接多重表是用于存储<strong>无向图</strong>的一种<strong>链式</strong>存储结构。比较适合于对边做频繁操作的场合，找到和某个顶点相关联的边是很容易。从编写代码角度来讲有一定的复杂性。</p>
+<p>边集数组由两个一维数组构成，一个存储顶点信息，另一个存储边信息。边集数组适合需要对边进行依次处理的场合，不太适合对顶点进行操作的场合。</p>
+<p>到这里，我们5种存储图的数据结构就讲完了，我把各种图所用到的存储结构的比较信息进行了整理，方便你的查阅和适当的记忆：</p>
+<p>1．<strong>邻接矩阵</strong></p>
+<p>空间复杂度：O($|V|^{2}$)，空间浪费较多。<br />
+适用性：稠密图，顶点多，边也多。<br />
+找邻边（有公共顶点的两条边）：需要对行或者列进行遍历，具有O(|V|)的时间复杂度。<br />
+操作便利性：删除边比较容易，删除顶点需要移动许多数据。</p>
+<p>2．<strong>邻接表</strong></p>
+<p>空间复杂度：无向图O(|V|+2|E|)；有向图O(|V|+|E|)。<br />
+适用性：稀疏图（顶点多边较少）。<br />
+找邻边：寻找有向图某个顶点的入边（入度）不方便，需要遍历整个邻接表。<br />
+操作便利性：删除无向图的边和顶点并不方便。</p>
+<p>3．<strong>十字链表</strong></p>
+<p>空间复杂度：O(|V|+|E|)。<br />
+适用性：有向图。<br />
+找邻边：很容易。<br />
+操作便利性：操作比较便利，编程较复杂。</p>
+<p>4．<strong>邻接多重表</strong></p>
+<p>空间复杂度：O(|V|+|E|)。<br />
+适用性：无向图。<br />
+找邻边：很容易。<br />
+操作便利性：操作比较便利，编程较复杂。</p>
+<p>5．<strong>边集数组</strong></p>
+<p>空间复杂度：O(|V|+|E|)。<br />
+适用性：有向图、无向图。<br />
+找邻边：需要遍历整个边数组。<br />
+操作便利性：不太适合对顶点进行操作的场合。操作比较便利，编程较简单。</p>
+<p>相信通过两节课的拆解，你一定对它们有了更全面、更扎实的了解。下节课，我们就看一看图的遍历问题。</p>
+<h2 id="_4">课后思考</h2>
+<p>你能参照邻接表存储图的实现代码，完成邻接多重表和边集数组存储图的实现代码吗？</p>
+<p>欢迎你在留言区分享自己的思考，如果觉得有所收获，也可以把课程分享给更多的朋友一起学习。我们下节课见！</p>
 
 
 

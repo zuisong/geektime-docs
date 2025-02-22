@@ -3150,8 +3150,62 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#ddl" class="md-nav__link">
+    <span class="md-ellipsis">
+      需要重建表的在线DDL
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ddl_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      在线DDL小结
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ddl_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      不支持在线执行的DDL
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ddl_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      第三方在线DDL工具
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
   
 </li>
       
@@ -13286,8 +13340,62 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#ddl" class="md-nav__link">
+    <span class="md-ellipsis">
+      需要重建表的在线DDL
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ddl_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      在线DDL小结
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ddl_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      不支持在线执行的DDL
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ddl_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      第三方在线DDL工具
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
   
 </li>
       
@@ -13330,9 +13438,295 @@
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nx">Query</span><span class="w"> </span><span class="nx">OK</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="nx">rows</span><span class="w"> </span><span class="nx">affected</span><span class="w"> </span><span class="p">(</span><span class="mf">0.73</span><span class="w"> </span><span class="nx">sec</span><span class="p">)</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="nx">Records</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="w">  </span><span class="nx">Duplicates</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="w">  </span><span class="nx">Warnings</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
 </code></pre></div>
+<p>创建二级索引主要分为几个步骤。</p>
+<p><strong>1. 扫描整个表，读取新建索引需要的字段。</strong></p>
+<p>InnoDB可以使用多个线程并发读取聚簇索引，参数innodb_parallel_read_threads用来设置并发读取的线程数，默认值是4。如果表比较大，服务器的配置比较好，可以将这个参数设置得大一些，来提升读取的速度。读取到的数据会先写到一块临时的内存中，参数innodb_ddl_buffer_size用来控制这块临时内存的大小，最终临时内存中的数据会写到临时排序文件中。如果你的表比较大，临时文件也可能占用比较大的空间。</p>
+<p><strong>2. 合并排序步骤1生成的多个临时文件中的数据。</strong></p>
+<p>如果步骤1使用了多个线程，那么每个线程都会生成临时排序文件。步骤2需要将所有临时文件中的数据合并到一起。合并排序时，InnoDB也使用了多个线程，线程的数量由参数innodb_ddl_threads控制。</p>
+<p><strong>3. 将步骤2得到的数据加载到新建的索引中。</strong></p>
+<p>步骤2得到的数据已经按索引字段排序好了，这里需要将这些数据插入到新的索引中。</p>
+<p>前面这3个步骤在执行的过程中，其他会话还可以正常读取和修改表里面的数据。InnoDB需要将这期间修改过的数据记录下来，数据会先写入到一块临时的内存中，这块临时内存的大小由参数innodb_sort_buffer_size控制。最终这些数据会写到一个临时文件中，我们把这个临时文件称为在线变更日志。如果在创建索引的过程中，表中的数据变更特别频繁，那么在线变更日志中就要记录很多数据，参数innodb_online_alter_log_max_size限制了在线变更日志的大小，如果期间产生的变更日志超过了这个限制，DDL最终会失败。</p>
+<p><strong>4. 将在线变更日志中的数据更新到索引中。</strong></p>
+<p>为了保障索引数据和表中数据的一致性，步骤3执行完成后，InnoDB需要将在线变更日志中的数据更新到索引结构中。这个过程中，需要锁定新创建的这个索引，因此，其他会话插入新的数据，或者更新这个新创建的索引中包含的字段时，都会被阻塞。</p>
+<p>处理在线变更日志中的数据时，可能会遇到几个问题。</p>
+<p>如果创建索引的过程中发生变化的数据太多，超过了innodb_online_alter_log_max_size的限制，那么DDL最后会报DB_ONLINE_LOG_TOO_BIG的错误。如果新创建的是唯一索引，那么如果在线变更日志中如果有数据违反了唯一性约束，DDL也会失败。</p>
+<p>下面我通过一个例子来说明这种情况。</p>
+<p>我们在会话1中创建一个唯一索引。此时表中这几个字段的数据是唯一的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">alter</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">employees</span><span class="w"> </span><span class="nx">add</span><span class="w"> </span><span class="nx">unique</span><span class="w"> </span><span class="nx">key</span><span class="w"> </span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="nx">uk_x</span><span class="p">(</span><span class="nx">first_name</span><span class="p">,</span><span class="w"> </span><span class="nx">last_name</span><span class="p">,</span><span class="w"> </span><span class="nx">birth_date</span><span class="p">,</span><span class="w"> </span><span class="nx">hire_date</span><span class="p">);</span>
+</code></pre></div>
+<p>在索引创建的过程中，我们在另外一个会话中执行下面这几个SQL。因为新的唯一索引还没有创建好，所以这些INSERT语句可以正常执行。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">insert</span><span class="w"> </span><span class="nx">into</span><span class="w"> </span><span class="nx">employees</span><span class="w"> </span><span class="nx">values</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="err">&#39;</span><span class="mi">2013</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">10</span><span class="err">&#39;</span><span class="p">,</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">AAAA</span><span class="err">&#39;</span><span class="p">,</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">BBBB</span><span class="err">&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;M&#39;</span><span class="p">,</span><span class="w"> </span><span class="err">&#39;</span><span class="mi">2020</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mo">01</span><span class="err">&#39;</span><span class="p">);</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="nx">Query</span><span class="w"> </span><span class="nx">OK</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="nx">row</span><span class="w"> </span><span class="nx">affected</span><span class="w"> </span><span class="p">(</span><span class="mf">5.05</span><span class="w"> </span><span class="nx">sec</span><span class="p">)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">insert</span><span class="w"> </span><span class="nx">into</span><span class="w"> </span><span class="nx">employees</span><span class="w"> </span><span class="nx">values</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="err">&#39;</span><span class="mi">2013</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">10</span><span class="err">&#39;</span><span class="p">,</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">AAAA</span><span class="err">&#39;</span><span class="p">,</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">BBBB</span><span class="err">&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;M&#39;</span><span class="p">,</span><span class="w"> </span><span class="err">&#39;</span><span class="mi">2020</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mo">01</span><span class="err">&#39;</span><span class="p">);</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="nx">Query</span><span class="w"> </span><span class="nx">OK</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="nx">row</span><span class="w"> </span><span class="nx">affected</span><span class="w"> </span><span class="p">(</span><span class="mf">5.45</span><span class="w"> </span><span class="nx">sec</span><span class="p">)</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">insert</span><span class="w"> </span><span class="nx">into</span><span class="w"> </span><span class="nx">employees</span><span class="w"> </span><span class="nx">values</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="p">(</span><span class="mi">30</span><span class="p">,</span><span class="w"> </span><span class="err">&#39;</span><span class="mi">2013</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">10</span><span class="err">&#39;</span><span class="p">,</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">AAAA</span><span class="err">&#39;</span><span class="p">,</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">BBBB</span><span class="err">&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;M&#39;</span><span class="p">,</span><span class="w"> </span><span class="err">&#39;</span><span class="mi">2020</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mo">01</span><span class="err">&#39;</span><span class="p">);</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="nx">Query</span><span class="w"> </span><span class="nx">OK</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="nx">row</span><span class="w"> </span><span class="nx">affected</span><span class="w"> </span><span class="p">(</span><span class="mf">2.10</span><span class="w"> </span><span class="nx">sec</span><span class="p">)</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">delete</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="nx">employees</span><span class="w"> </span><span class="nx">where</span><span class="w"> </span><span class="nx">emp_no</span><span class="w"> </span><span class="nx">in</span><span class="w"> </span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">30</span><span class="p">);</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="nx">Query</span><span class="w"> </span><span class="nx">OK</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="nx">rows</span><span class="w"> </span><span class="nx">affected</span><span class="w"> </span><span class="p">(</span><span class="mf">0.90</span><span class="w"> </span><span class="nx">sec</span><span class="p">)</span>
+</code></pre></div>
+<p>当会话1完成新索引的创建，在处理在线变更日志中的数据时，发生了数据冲突，因此DDL最终失败了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">alter</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">employees</span><span class="w"> </span><span class="nx">add</span><span class="w"> </span><span class="nx">unique</span><span class="w"> </span><span class="nx">key</span><span class="w"> </span><span class="nx">uk_x</span><span class="p">(</span><span class="nx">first_name</span><span class="p">,</span><span class="w"> </span><span class="nx">last_name</span><span class="p">,</span><span class="w"> </span><span class="nx">birth_date</span><span class="p">,</span><span class="w"> </span><span class="nx">hire_date</span><span class="p">);</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nx">ERROR</span><span class="w"> </span><span class="mi">1062</span><span class="w"> </span><span class="p">(</span><span class="mi">23000</span><span class="p">):</span><span class="w"> </span><span class="nx">Duplicate</span><span class="w"> </span><span class="nx">entry</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">AAAA</span><span class="o">-</span><span class="nx">BBBB</span><span class="o">-</span><span class="mi">2013</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">2020</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mo">01</span><span class="err">&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nx">key</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">employees</span><span class="p">.</span><span class="nx">uk_x</span><span class="err">&#39;</span>
+</code></pre></div>
+<h3 id="ddl">需要重建表的在线DDL</h3>
+<p>还有一些DDL操作，虽然能以INPLACE的方式执行，但是在执行过程中需要重建表，因此开销也是比较大的。</p>
+<p>创建主键、修改主键这几个操作都需要重建表。这一点很容易理解，因为InnoDB表以聚簇索引的方式组织数据，主键变了，数据的物理格式就会发生变化。下面是一个修改主键的例子。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">alter</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">employees_bak</span><span class="w"> </span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="nx">drop</span><span class="w"> </span><span class="nx">primary</span><span class="w"> </span><span class="nx">key</span><span class="p">,</span><span class="w"> </span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="nx">add</span><span class="w"> </span><span class="nx">primary</span><span class="w"> </span><span class="nx">key</span><span class="p">(</span><span class="nx">emp_no</span><span class="p">,</span><span class="w"> </span><span class="nx">last_name</span><span class="p">,</span><span class="w"> </span><span class="nx">first_name</span><span class="p">),</span><span class="w"> </span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="nx">algorithm</span><span class="p">=</span><span class="nx">inplace</span><span class="p">;</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="nx">Query</span><span class="w"> </span><span class="nx">OK</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="nx">rows</span><span class="w"> </span><span class="nx">affected</span><span class="w"> </span><span class="p">(</span><span class="mf">46.97</span><span class="w"> </span><span class="nx">sec</span><span class="p">)</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="nx">Records</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="w">  </span><span class="nx">Duplicates</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="w">  </span><span class="nx">Warnings</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+</code></pre></div>
+<p>修改字段的顺序和NOT NULL属性也需要重建表。这几个操作会改变行的存储格式，因此也需要重建表。下面这个例子中，将字段first_name移到了第1列。当然，我们一般应该不太会特意去修改表的字段顺序。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">desc</span><span class="w"> </span><span class="nx">employees_bak</span><span class="p">;</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="o">+------------+---------------+------+-----+---------+-------+</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="o">|</span><span class="w"> </span><span class="nx">Field</span><span class="w">      </span><span class="o">|</span><span class="w"> </span><span class="nx">Type</span><span class="w">          </span><span class="o">|</span><span class="w"> </span><span class="nx">Null</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">Key</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">Default</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">Extra</span><span class="w"> </span><span class="o">|</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="o">+------------+---------------+------+-----+---------+-------+</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="o">|</span><span class="w"> </span><span class="nx">first_name</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">varchar</span><span class="p">(</span><span class="mi">14</span><span class="p">)</span><span class="w">   </span><span class="o">|</span><span class="w"> </span><span class="nx">NO</span><span class="w">   </span><span class="o">|</span><span class="w"> </span><span class="nx">PRI</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">NULL</span><span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="o">|</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="o">|</span><span class="w"> </span><span class="nx">emp_no</span><span class="w">     </span><span class="o">|</span><span class="w"> </span><span class="kt">int</span><span class="w">           </span><span class="o">|</span><span class="w"> </span><span class="nx">NO</span><span class="w">   </span><span class="o">|</span><span class="w"> </span><span class="nx">PRI</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">NULL</span><span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="o">|</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="o">|</span><span class="w"> </span><span class="nx">birth_date</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">date</span><span class="w">          </span><span class="o">|</span><span class="w"> </span><span class="nx">NO</span><span class="w">   </span><span class="o">|</span><span class="w">     </span><span class="o">|</span><span class="w"> </span><span class="nx">NULL</span><span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="o">|</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="o">|</span><span class="w"> </span><span class="nx">last_name</span><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="nx">varchar</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span><span class="w">   </span><span class="o">|</span><span class="w"> </span><span class="nx">NO</span><span class="w">   </span><span class="o">|</span><span class="w"> </span><span class="nx">PRI</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">NULL</span><span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="o">|</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="o">|</span><span class="w"> </span><span class="nx">gender</span><span class="w">     </span><span class="o">|</span><span class="w"> </span><span class="nx">enum</span><span class="p">(</span><span class="sc">&#39;M&#39;</span><span class="p">,</span><span class="sc">&#39;F&#39;</span><span class="p">)</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">NO</span><span class="w">   </span><span class="o">|</span><span class="w">     </span><span class="o">|</span><span class="w"> </span><span class="nx">NULL</span><span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="o">|</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="o">|</span><span class="w"> </span><span class="nx">hire_date</span><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="nx">date</span><span class="w">          </span><span class="o">|</span><span class="w"> </span><span class="nx">YES</span><span class="w">  </span><span class="o">|</span><span class="w">     </span><span class="o">|</span><span class="w"> </span><span class="nx">NULL</span><span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="o">|</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="o">+------------+---------------+------+-----+---------+-------+</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">alter</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">employees_bak</span><span class="w"> </span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">    </span><span class="nx">modify</span><span class="w"> </span><span class="nx">first_name</span><span class="w"> </span><span class="nx">varchar</span><span class="p">(</span><span class="mi">14</span><span class="p">)</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">null</span><span class="w"> </span><span class="nx">first</span><span class="p">,</span><span class="w"> </span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">    </span><span class="nx">algorithm</span><span class="p">=</span><span class="nx">inplace</span><span class="p">;</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="nx">Query</span><span class="w"> </span><span class="nx">OK</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="nx">rows</span><span class="w"> </span><span class="nx">affected</span><span class="w"> </span><span class="p">(</span><span class="mf">41.22</span><span class="w"> </span><span class="nx">sec</span><span class="p">)</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="nx">Records</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="w">  </span><span class="nx">Duplicates</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="w">  </span><span class="nx">Warnings</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+</code></pre></div>
+<p>另外，优化表、修改表的行格式或key_block_size属性也都需要重建表。</p>
+<p>使用optimize table命令优化表。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">optimize</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">employees_bak</span><span class="p">;</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="o">+-------------------------+----------+----------+-------------------------------------------------------------------+</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="o">|</span><span class="w"> </span><span class="nx">Table</span><span class="w">                   </span><span class="o">|</span><span class="w"> </span><span class="nx">Op</span><span class="w">       </span><span class="o">|</span><span class="w"> </span><span class="nx">Msg_type</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">Msg_text</span><span class="w">                                                          </span><span class="o">|</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="o">+-------------------------+----------+----------+-------------------------------------------------------------------+</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="o">|</span><span class="w"> </span><span class="nx">employees</span><span class="p">.</span><span class="nx">employees_bak</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">optimize</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">note</span><span class="w">     </span><span class="o">|</span><span class="w"> </span><span class="nx">Table</span><span class="w"> </span><span class="nx">does</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">support</span><span class="w"> </span><span class="nx">optimize</span><span class="p">,</span><span class="w"> </span><span class="nx">doing</span><span class="w"> </span><span class="nx">recreate</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">analyze</span><span class="w"> </span><span class="nx">instead</span><span class="w"> </span><span class="o">|</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="o">|</span><span class="w"> </span><span class="nx">employees</span><span class="p">.</span><span class="nx">employees_bak</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">optimize</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">status</span><span class="w">   </span><span class="o">|</span><span class="w"> </span><span class="nx">OK</span><span class="w">                                                                </span><span class="o">|</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="o">+-------------------------+----------+----------+-------------------------------------------------------------------+</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="mi">2</span><span class="w"> </span><span class="nx">rows</span><span class="w"> </span><span class="nx">in</span><span class="w"> </span><span class="nx">set</span><span class="w"> </span><span class="p">(</span><span class="mf">42.58</span><span class="w"> </span><span class="nx">sec</span><span class="p">)</span>
+</code></pre></div>
+<p>optimize table命令的语法中，不支持algorithm关键字，但是实际上优化表是做了一次在线的表重建。和下面这个命令的效果类似。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">alter</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">employees_bak</span><span class="w"> </span><span class="nx">engine</span><span class="p">=</span><span class="nx">innodb</span><span class="p">,</span><span class="w"> </span><span class="nx">algorithm</span><span class="p">=</span><span class="nx">inplace</span><span class="p">,</span><span class="w"> </span><span class="nx">lock</span><span class="p">=</span><span class="nx">none</span><span class="p">;</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nx">Query</span><span class="w"> </span><span class="nx">OK</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="nx">rows</span><span class="w"> </span><span class="nx">affected</span><span class="w"> </span><span class="p">(</span><span class="mf">45.60</span><span class="w"> </span><span class="nx">sec</span><span class="p">)</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nx">Records</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="w">  </span><span class="nx">Duplicates</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="w">  </span><span class="nx">Warnings</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+</code></pre></div>
+<p>InnoDB重建表的时候，需要将整个表的数据写到一个临时的ibd文件中，这个临时文件和表的ibd文件放在同一个目录下，文件名以 “#sql-ib” 开头，在重建表的过程中，你可以在数据目录中看到这个文件。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="err">#</span><span class="w"> </span><span class="nx">ls</span><span class="w"> </span><span class="o">-</span><span class="nx">lrt</span><span class="w"> </span><span class="o">/</span><span class="nx">data</span><span class="o">/</span><span class="nx">mysql01</span><span class="o">/</span><span class="nx">data</span><span class="o">/</span><span class="nx">employees</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="o">......</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="o">-</span><span class="nx">rw</span><span class="o">-</span><span class="nx">r</span><span class="o">-----</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="nx">mysql</span><span class="w"> </span><span class="nx">mysql</span><span class="w">  </span><span class="mi">37748736</span><span class="w"> </span><span class="mi">8</span><span class="nx">月</span><span class="w">   </span><span class="mi">3</span><span class="w"> </span><span class="mi">16</span><span class="p">:</span><span class="mi">08</span><span class="w"> </span><span class="nx">employees</span><span class="p">.</span><span class="nx">ibd</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="o">-</span><span class="nx">rw</span><span class="o">-</span><span class="nx">r</span><span class="o">-----</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="nx">mysql</span><span class="w"> </span><span class="nx">mysql</span><span class="w">   </span><span class="mi">7340032</span><span class="w"> </span><span class="mi">8</span><span class="nx">月</span><span class="w">   </span><span class="mi">3</span><span class="w"> </span><span class="mi">16</span><span class="p">:</span><span class="mi">28</span><span class="w"> </span><span class="err">#</span><span class="nx">sql</span><span class="o">-</span><span class="nx">ib1396</span><span class="o">-</span><span class="m">1337919602.i</span><span class="nx">bd</span>
+</code></pre></div>
+<p>表中的二级索引，也需要加载到新生成的这个ibd文件中。</p>
+<p>和在线创建二级索引类似，重建表的过程中，其他会话可以正常读写表中的数据。这个过程中，如果表中的记录被修改了，需要将修改的数据记录到在线变更日志中。</p>
+<p>当聚簇索引和二级索引的数据全部都写到新的ibd文件中后，需要将在线变更日志中的数据更新到新的ibd文件中，这个过程中，会先锁定老的聚簇索引。因此，在应用在线变更日志时，应用程序无法读写表的数据，注意，这个过程中连查询都会被阻塞。</p>
+<p>如果在重建表的过程中，修改的数据超过了innodb_online_alter_log_max_size的限制，DDL最终会失败。你可以增加innodb_online_alter_log_max_size，但是，这同时也可能会导致应用在线变更日志的时间变长，因此会增加锁表的时间。</p>
+<p>在线变更日志应用完成之后，InnoDB删除老的ibd文件，修改新创建的ibd文件，并在元数据中记录这些操作。</p>
+<h3 id="ddl_1">在线DDL小结</h3>
+<p>在线DDL是MySQL为了增加数据库可维护性引入的一个很有用的特性。你可以适当地调大innodb_parallel_read_threads、innodb_ddl_threads、innodb_ddl_buffer_size、innodb_sort_buffer_size等参数，以加快DDL的执行效率，当然前提是服务器的性能要跟得上。</p>
+<p>在线DDL的执行过程中，需要占用一些额外的空间，包括临时排序文件，在线变更日志文件，以及临时的ibd文件。临时排序文件默认存放在tmpdir下，如果tmpdir空间紧张，你也可以设置参数innodb_tmpdir，将这些文件放到一个空间足够大的目录下。你可以根据表ibd文件当前的大小来估算临时排序文件和临时ibd文件需要的空间。</p>
+<p>虽然在线DDL极大地减少了锁表的时间，但是在应用在线变更日志时，还是会将表或二级索引锁住，因此应用程序还是会有影响的，锁的时间取决于表的大小以及和DDL期间发生变化的数据量有关。</p>
+<p>InnoDB在线变更日志按innodb_sort_buffer_size的设置，分为多个块。在应用在线变更日志时，如果是在应用最后一个日志块中的记录，需要获取主键或索引的锁。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/a1/0d/a14d78989f67a7117c0f7f506e41yy0d.png?wh=1406x408" /></p>
+<p>如果你的表特别大，并且表中数据的修改非常频繁，InnoDB原生的在线DDL并不一定能满足你的需求。</p>
+<h2 id="ddl_2">不支持在线执行的DDL</h2>
+<p>虽然MySQL增加了在线DDL的能力，但还是存在一些情况无法使用在线DDL，执行这些DDL时，需要使用MySQL最原始的COPY方式，先创建一个临时表，再锁住源表，将源表的记录插入到临时表，最后，当数据复制完成后，将临时表改为正式表。</p>
+<p>下面这些操作都不支持在线DDL。</p>
+<ul>
+<li>删除表的主键。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">alter</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">salaries</span><span class="w"> </span><span class="nx">drop</span><span class="w"> </span><span class="nx">primary</span><span class="w"> </span><span class="nx">key</span><span class="p">,</span><span class="w"> </span><span class="nx">algorithm</span><span class="p">=</span><span class="nx">inplace</span><span class="p">;</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nx">ERROR</span><span class="w"> </span><span class="mi">1846</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="nx">A000</span><span class="p">):</span><span class="w"> </span><span class="nx">ALGORITHM</span><span class="p">=</span><span class="nx">INPLACE</span><span class="w"> </span><span class="nx">is</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">supported</span><span class="p">.</span><span class="w"> </span><span class="nx">Reason</span><span class="p">:</span><span class="w"> </span><span class="nx">Dropping</span><span class="w"> </span><span class="nx">a</span><span class="w"> </span><span class="nx">primary</span><span class="w"> </span><span class="nx">key</span><span class="w"> </span><span class="nx">is</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">allowed</span><span class="w"> </span><span class="nx">without</span><span class="w"> </span><span class="nx">also</span><span class="w"> </span><span class="nx">adding</span><span class="w"> </span><span class="nx">a</span><span class="w"> </span><span class="nx">new</span><span class="w"> </span><span class="nx">primary</span><span class="w"> </span><span class="nx">key</span><span class="p">.</span><span class="w"> </span><span class="nx">Try</span><span class="w"> </span><span class="nx">ALGORITHM</span><span class="p">=</span><span class="nx">COPY</span><span class="p">.</span>
+</code></pre></div>
+<ul>
+<li>修改字符集。</li>
+</ul>
+<p>注意，使用alter table table_name convert to character set才会修改表中已有数据的编码。alter table table_name character set只是修改了表的默认字符集，不会修改现有数据的编码方式。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">alter</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">employees_bak</span><span class="w"> </span><span class="nx">CONVERT</span><span class="w"> </span><span class="nx">TO</span><span class="w"> </span><span class="nx">CHARACTER</span><span class="w"> </span><span class="nx">SET</span><span class="w"> </span><span class="nx">GBK</span><span class="p">,</span><span class="w"> </span><span class="nx">algorithm</span><span class="p">=</span><span class="nx">inplace</span><span class="p">;</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="nx">ERROR</span><span class="w"> </span><span class="mi">1846</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="nx">A000</span><span class="p">):</span><span class="w"> </span><span class="nx">ALGORITHM</span><span class="p">=</span><span class="nx">INPLACE</span><span class="w"> </span><span class="nx">is</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">supported</span><span class="p">.</span><span class="w"> </span><span class="nx">Reason</span><span class="p">:</span><span class="w"> </span><span class="nx">Cannot</span><span class="w"> </span><span class="nx">change</span><span class="w"> </span><span class="nx">column</span><span class="w"> </span><span class="kd">type</span><span class="w"> </span><span class="nx">INPLACE</span><span class="p">.</span><span class="w"> </span><span class="nx">Try</span><span class="w"> </span><span class="nx">ALGORITHM</span><span class="p">=</span><span class="nx">COPY</span><span class="p">.</span>
+</code></pre></div>
+<ul>
+<li>修改字段的数据类型。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">desc</span><span class="w"> </span><span class="nx">salaries</span><span class="p">;</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="o">+-----------+------+------+-----+---------+-------+</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="o">|</span><span class="w"> </span><span class="nx">Field</span><span class="w">     </span><span class="o">|</span><span class="w"> </span><span class="nx">Type</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">Null</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">Key</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">Default</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">Extra</span><span class="w"> </span><span class="o">|</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="o">+-----------+------+------+-----+---------+-------+</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="o">|</span><span class="w"> </span><span class="nx">emp_no</span><span class="w">    </span><span class="o">|</span><span class="w"> </span><span class="kt">int</span><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="nx">NO</span><span class="w">   </span><span class="o">|</span><span class="w"> </span><span class="nx">PRI</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">NULL</span><span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="o">|</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="o">|</span><span class="w"> </span><span class="nx">salary</span><span class="w">    </span><span class="o">|</span><span class="w"> </span><span class="kt">int</span><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="nx">NO</span><span class="w">   </span><span class="o">|</span><span class="w">     </span><span class="o">|</span><span class="w"> </span><span class="nx">NULL</span><span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="o">|</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="o">|</span><span class="w"> </span><span class="nx">from_date</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">date</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">NO</span><span class="w">   </span><span class="o">|</span><span class="w"> </span><span class="nx">PRI</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">NULL</span><span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="o">|</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="o">|</span><span class="w"> </span><span class="nx">to_date</span><span class="w">   </span><span class="o">|</span><span class="w"> </span><span class="nx">date</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">YES</span><span class="w">  </span><span class="o">|</span><span class="w">     </span><span class="o">|</span><span class="w"> </span><span class="nx">NULL</span><span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="o">|</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="o">+-----------+------+------+-----+---------+-------+</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="mi">4</span><span class="w"> </span><span class="nx">rows</span><span class="w"> </span><span class="nx">in</span><span class="w"> </span><span class="nx">set</span><span class="w"> </span><span class="p">(</span><span class="mf">0.01</span><span class="w"> </span><span class="nx">sec</span><span class="p">)</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">alter</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">salaries</span><span class="w"> </span><span class="nx">modify</span><span class="w"> </span><span class="nx">salary</span><span class="w"> </span><span class="nx">bigint</span><span class="p">,</span><span class="w"> </span><span class="nx">algorithm</span><span class="p">=</span><span class="nx">inplace</span><span class="p">;</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="nx">ERROR</span><span class="w"> </span><span class="mi">1846</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="nx">A000</span><span class="p">):</span><span class="w"> </span><span class="nx">ALGORITHM</span><span class="p">=</span><span class="nx">INPLACE</span><span class="w"> </span><span class="nx">is</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">supported</span><span class="p">.</span><span class="w"> </span><span class="nx">Reason</span><span class="p">:</span><span class="w"> </span><span class="nx">Cannot</span><span class="w"> </span><span class="nx">change</span><span class="w"> </span><span class="nx">column</span><span class="w"> </span><span class="kd">type</span><span class="w"> </span><span class="nx">INPLACE</span><span class="p">.</span><span class="w"> </span><span class="nx">Try</span><span class="w"> </span><span class="nx">ALGORITHM</span><span class="p">=</span><span class="nx">COPY</span><span class="p">.</span>
+</code></pre></div>
+<ul>
+<li>缩减VARCHAR字段的长度，或者将VARCHAR字段的长度从不到255字节修改为超过255字节。这一点对CHAR类型其实也一样。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">desc</span><span class="w"> </span><span class="nx">departments</span><span class="p">;</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="o">+-----------+-------------+------+-----+---------+-------+</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="o">|</span><span class="w"> </span><span class="nx">Field</span><span class="w">     </span><span class="o">|</span><span class="w"> </span><span class="nx">Type</span><span class="w">        </span><span class="o">|</span><span class="w"> </span><span class="nx">Null</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">Key</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">Default</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">Extra</span><span class="w"> </span><span class="o">|</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="o">+-----------+-------------+------+-----+---------+-------+</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="o">|</span><span class="w"> </span><span class="nx">dept_no</span><span class="w">   </span><span class="o">|</span><span class="w"> </span><span class="nx">char</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span><span class="w">     </span><span class="o">|</span><span class="w"> </span><span class="nx">NO</span><span class="w">   </span><span class="o">|</span><span class="w"> </span><span class="nx">PRI</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">NULL</span><span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="o">|</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="o">|</span><span class="w"> </span><span class="nx">dept_name</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">varchar</span><span class="p">(</span><span class="mi">40</span><span class="p">)</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">NO</span><span class="w">   </span><span class="o">|</span><span class="w"> </span><span class="nx">UNI</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">NULL</span><span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="o">|</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="o">+-----------+-------------+------+-----+---------+-------+</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="mi">2</span><span class="w"> </span><span class="nx">rows</span><span class="w"> </span><span class="nx">in</span><span class="w"> </span><span class="nx">set</span><span class="w"> </span><span class="p">(</span><span class="mf">0.01</span><span class="w"> </span><span class="nx">sec</span><span class="p">)</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">alter</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">departments</span><span class="w"> </span><span class="nx">modify</span><span class="w"> </span><span class="nx">dept_name</span><span class="w"> </span><span class="nx">varchar</span><span class="p">(</span><span class="mi">30</span><span class="p">),</span><span class="w"> </span><span class="nx">algorithm</span><span class="p">=</span><span class="nx">inplace</span><span class="p">;</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="nx">ERROR</span><span class="w"> </span><span class="mi">1846</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="nx">A000</span><span class="p">):</span><span class="w"> </span><span class="nx">ALGORITHM</span><span class="p">=</span><span class="nx">INPLACE</span><span class="w"> </span><span class="nx">is</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">supported</span><span class="p">.</span><span class="w"> </span><span class="nx">Reason</span><span class="p">:</span><span class="w"> </span><span class="nx">Cannot</span><span class="w"> </span><span class="nx">change</span><span class="w"> </span><span class="nx">column</span><span class="w"> </span><span class="kd">type</span><span class="w"> </span><span class="nx">INPLACE</span><span class="p">.</span><span class="w"> </span><span class="nx">Try</span><span class="w"> </span><span class="nx">ALGORITHM</span><span class="p">=</span><span class="nx">COPY</span><span class="p">.</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">alter</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">departments</span><span class="w"> </span><span class="nx">modify</span><span class="w"> </span><span class="nx">dept_name</span><span class="w"> </span><span class="nx">varchar</span><span class="p">(</span><span class="mi">64</span><span class="p">),</span><span class="w"> </span><span class="nx">algorithm</span><span class="p">=</span><span class="nx">inplace</span><span class="p">;</span>
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a><span class="nx">ERROR</span><span class="w"> </span><span class="mi">1846</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="nx">A000</span><span class="p">):</span><span class="w"> </span><span class="nx">ALGORITHM</span><span class="p">=</span><span class="nx">INPLACE</span><span class="w"> </span><span class="nx">is</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">supported</span><span class="p">.</span><span class="w"> </span><span class="nx">Reason</span><span class="p">:</span><span class="w"> </span><span class="nx">Cannot</span><span class="w"> </span><span class="nx">change</span><span class="w"> </span><span class="nx">column</span><span class="w"> </span><span class="kd">type</span><span class="w"> </span><span class="nx">INPLACE</span><span class="p">.</span><span class="w"> </span><span class="nx">Try</span><span class="w"> </span><span class="nx">ALGORITHM</span><span class="p">=</span><span class="nx">COPY</span><span class="p">.</span>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">alter</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">departments</span><span class="w"> </span><span class="nx">modify</span><span class="w"> </span><span class="nx">dept_no</span><span class="w"> </span><span class="nx">char</span><span class="p">(</span><span class="mi">64</span><span class="p">),</span><span class="w"> </span><span class="nx">algorithm</span><span class="p">=</span><span class="nx">inplace</span><span class="p">;</span>
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a><span class="nx">ERROR</span><span class="w"> </span><span class="mi">1846</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="nx">A000</span><span class="p">):</span><span class="w"> </span><span class="nx">ALGORITHM</span><span class="p">=</span><span class="nx">INPLACE</span><span class="w"> </span><span class="nx">is</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">supported</span><span class="p">.</span><span class="w"> </span><span class="nx">Reason</span><span class="p">:</span><span class="w"> </span><span class="nx">Cannot</span><span class="w"> </span><span class="nx">change</span><span class="w"> </span><span class="nx">column</span><span class="w"> </span><span class="kd">type</span><span class="w"> </span><span class="nx">INPLACE</span><span class="p">.</span><span class="w"> </span><span class="nx">Try</span><span class="w"> </span><span class="nx">ALGORITHM</span><span class="p">=</span><span class="nx">COPY</span><span class="p">.</span>
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a><span class="nx">mysql</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">alter</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">departments</span><span class="w"> </span><span class="nx">modify</span><span class="w"> </span><span class="nx">dept_no</span><span class="w"> </span><span class="nx">char</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="nx">algorithm</span><span class="p">=</span><span class="nx">inplace</span><span class="p">;</span>
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a><span class="nx">ERROR</span><span class="w"> </span><span class="mi">1846</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="nx">A000</span><span class="p">):</span><span class="w"> </span><span class="nx">ALGORITHM</span><span class="p">=</span><span class="nx">INPLACE</span><span class="w"> </span><span class="nx">is</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">supported</span><span class="p">.</span><span class="w"> </span><span class="nx">Reason</span><span class="p">:</span><span class="w"> </span><span class="nx">Cannot</span><span class="w"> </span><span class="nx">change</span><span class="w"> </span><span class="nx">column</span><span class="w"> </span><span class="kd">type</span><span class="w"> </span><span class="nx">INPLACE</span><span class="p">.</span><span class="w"> </span><span class="nx">Try</span><span class="w"> </span><span class="nx">ALGORITHM</span><span class="p">=</span><span class="nx">COPY</span><span class="p">.</span>
+</code></pre></div>
+<p>虽然有些INPLACE操作也需要重建表，需要复制整个表的数据，但是和COPY方式相比，还是存在比较大的区别的。首先，以COPY的方式执行DDL时，整个过程中都会锁表。其次COPY是在MySQL的Server层执行的，需要先从存储引擎获取一行数据，再调用存储引擎的接口写入一行数据，直到处理完所有的记录。而INPLACE DDL是在InnoDB存储引擎的内部复制数据，这个过程中不需要记录UNDO日志和REDO日志，而且二级索引的条目会预先排好序，因此理论上写入的速度会更快。</p>
+<h2 id="ddl_3">第三方在线DDL工具</h2>
+<p>如果你要执行的DDL不支持以INSTANT和INPLACE的方式执行，或者你的表非常大，数据变更也很频繁，使用MySQL原生的在线DDL也无法满足业务的可用性要求，那么你可以考虑使用一些第三方的在线DDL工具，业界比较知名的有percona出品的pt-online-schema-change工具，以及Github出品的gh-ost工具。当然，可能还存在其他类似的第三方工具，实际上你自己也可以写一个类似的工具。</p>
+<p>接下来我们来一起探讨下，怎么实现一个在线DDL工具。假设我们要对一个表SRC_TAB执行一个开销很大的DDL，我们可以将DDL拆分成几个步骤。</p>
+<ol>
+<li>创建一个表结构一样的空表。</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nx">create</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">__SRC_TAB_TMP</span><span class="w"> </span><span class="nx">like</span><span class="w"> </span><span class="nx">SRC_TAB</span><span class="p">;</span>
+</code></pre></div>
+<ol>
+<li>在新建的临时表上执行DDL。由于新表中没有任何数据，因此DDL很快就能执行完。</li>
+<li>分批读取源表的数据，插入到新建的临时表中。</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="nx">insert</span><span class="w"> </span><span class="nx">ignore</span><span class="w"> </span><span class="nx">into</span><span class="w"> </span><span class="nx">__SRC_TAB_TMP</span><span class="p">(</span><span class="o">...</span><span class="p">)</span><span class="w"> </span><span class="k">select</span><span class="w"> </span><span class="o">...</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="nx">SRC_TAB</span><span class="w"> </span><span class="nx">where</span><span class="w"> </span><span class="o">...</span>
+</code></pre></div>
+<p>当然，在复制数据的过程中，源表的数据会不断地发生变化，因此我们需要想办法同步这些发生了变化的数据，否则两个表的数据就不一致了。</p>
+<ol>
+<li>我们可以给源表建几个触发器，将源表发生过变化的记录都捕捉下来。</li>
+</ol>
+<p>实际上，要在复制数据前，先把触发器建好，因此这一步要在步骤3之前执行。触发器的实现上，有几种不同的策略可以选择。一种是在触发器中，将整条记录直接写到目标临时表中。</p>
+<p>还有一种方式是先将发生过变化的数据写到一个日志表中，日志表中只保存主键字段和数据的变更类型。</p>
+<p>日志表的结构类似于下面建的__SRC_TAB_DML_LOG表。PK字段是源表的主键字段，当然数据类型要和源表保持一致，用来标识发生过变化的记录的主键。DML_TYPE字段用了标识发生的DML类型。DML类型分为INSERT、UPDATE、DELETE。如果是更新了主键，那么需要记录两条日志，一条是删除操作，一条是插入操作。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nx">create</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">__SRC_TAB_DML_LOG</span><span class="p">(</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">    </span><span class="nx">id</span><span class="w"> </span><span class="nx">bigint</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">null</span><span class="w"> </span><span class="nx">auto_increment</span><span class="p">,</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">    </span><span class="nx">pk</span><span class="w"> </span><span class="nx">bigint</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">null</span><span class="p">,</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">    </span><span class="nx">dml_type</span><span class="w"> </span><span class="nx">tinyint</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">null</span><span class="w"> </span><span class="nx">comment</span><span class="w"> </span><span class="err">&#39;</span><span class="mi">0</span><span class="p">:</span><span class="w"> </span><span class="nx">insert</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="nx">update</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">:</span><span class="w"> </span><span class="nx">delete</span><span class="err">&#39;</span><span class="p">,</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">    </span><span class="nx">ts</span><span class="w"> </span><span class="nx">timestamp</span><span class="p">,</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="w">    </span><span class="nx">applied</span><span class="w"> </span><span class="nx">tinyint</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">null</span><span class="w"> </span><span class="nx">comment</span><span class="w"> </span><span class="err">&#39;</span><span class="mi">0</span><span class="p">:</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">applied</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="nx">applied</span><span class="err">&#39;</span><span class="p">,</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="w">    </span><span class="nx">primary</span><span class="w"> </span><span class="nx">key</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="p">)</span><span class="w"> </span><span class="nx">engine</span><span class="p">=</span><span class="nx">innodb</span><span class="p">;</span>
+</code></pre></div>
+<ol>
+<li>按顺序处理增量日志表中的数据。</li>
+</ol>
+<p>根据增量日志表中记录的主键ID，依次将数据从源表复制到目标表。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nx">replace</span><span class="w"> </span><span class="nx">into</span><span class="w"> </span><span class="nx">__SRC_TAB_TMP</span><span class="p">(</span><span class="o">...</span><span class="p">)</span><span class="w"> </span><span class="k">select</span><span class="w"> </span><span class="o">...</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="nx">SRC_TAB</span><span class="w"> </span><span class="nx">where</span><span class="w"> </span><span class="nx">pk</span><span class="w"> </span><span class="nx">in</span><span class="w"> </span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</code></pre></div>
+<p>如果是DELETE操作，则需要到目标表中删除对应的记录。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nx">delete</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="nx">__SRC_TAB_TMP</span><span class="w"> </span><span class="nx">where</span><span class="w"> </span><span class="nx">pk</span><span class="w"> </span><span class="nx">in</span><span class="w"> </span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</code></pre></div>
+<p>处理增量日志表中的数据时，你可以想办法做并行处理。还可以将主键相同的多条变更记录合并到一起执行。比如源表中有一行记录被更新了100次，你只要将该记录最新的数据同步到目标表就可以了。</p>
+<ol>
+<li>锁定源表，处理增量日志表中剩余的数据。</li>
+</ol>
+<p>当增量日志表中的数据基本处理完之后，锁定源表。源表锁定后，就不会再发生数据变化了，然后你再将增量日志表中所剩不多的数据处理完。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="nx">lock</span><span class="w"> </span><span class="nx">tables</span><span class="w"> </span><span class="nx">SRC_TAB</span><span class="w"> </span><span class="nx">write</span><span class="p">,</span><span class="w"> </span><span class="nx">__SRC_TAB_TMP</span><span class="w"> </span><span class="nx">write</span><span class="p">;</span>
+</code></pre></div>
+<ol>
+<li>交换源表和目标表。</li>
+</ol>
+<p>此时源表和目标表的数据已经完全同步了，执行rename操作，交换两个表的表名。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="nx">rename</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">SRC_TAB</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">__SRC_TAB_TOBE_DROPPED</span><span class="p">,</span><span class="w"> </span><span class="nx">__SRC_TAB_TMP</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">SRC_TAB_</span><span class="p">;</span>
+</code></pre></div>
+<p>这样，你就完成了SRC_TAB表的DDL操作。当然，在实现上，还有很多细节问题需要处理。比如，如果源表使用了联合主键，你应该如何分批复制数据。如果有其他表对源表有外键依赖，这样做也会有问题。更重要的是，如何保证源表和目标表的数据是完全一致的。</p>
+<h2 id="_2">总结</h2>
+<p>这一讲中，我们讨论MySQL中执行DDL的几种不同的方式。</p>
+<p>DDL，特别是对大表进行DDL，最好是安排在业务访问的低峰期进行。如果你的数据库非常繁忙，即使是DROP TABLE这样看似简单的操作，都有可能对业务造成明显的影响。</p>
+<p>还有，即使你执行的DDL只需要修改元数据，在DDL执行开始和执行结束的时候，也是需要短暂地获取元数据锁的，如果数据库中有别的长事务提前获取了元数据锁，那么DDL就会被阻塞，而DDL被阻塞后，后续其他会话访问同一个表时，也会被阻塞。因此在DDL执行的过程中，需要注意观察数据库的整体状况，特别是要注意有没有会话在等待元数据锁。</p>
+<p>MySQL的在线DDL并不是完全无锁的。还有一些DDL并不支持在线执行。你可以考虑使用第三方的在线DDL工具，但是在使用前一定要在你自己的环境中做好充分的测试，这些工具可能会有一些额外的限制。你需要重点验证下这些工具是否能保证数据的一致性。</p>
+<h2 id="_3">思考题</h2>
+<p>gh-ost是比较知名的一款在线DDL工具，在实现上也非常有特色。gt-ost在执行DDL变更时，不需要给源表建触发器，而是通过BINLOG来捕捉DDL变更期间发生过变化的数据。我尝试在测试环境做了一个实验。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="nx">gh</span><span class="o">-</span><span class="nx">ost</span><span class="w"> </span><span class="o">-</span><span class="nx">alter</span><span class="w"> </span><span class="s">&quot;alter table employees_bak modify hire_date date&quot;</span><span class="w"> </span>\
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span><span class="o">-</span><span class="nx">user</span><span class="w"> </span><span class="nx">user_01</span><span class="w"> </span>\
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="w">  </span><span class="o">-</span><span class="nx">host</span><span class="w"> </span><span class="mf">127.0.0.1</span><span class="w"> </span>\
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="w">  </span><span class="o">-</span><span class="nx">password</span><span class="w"> </span><span class="nx">somepass</span><span class="w"> </span>\
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="w">  </span><span class="o">-</span><span class="nx">database</span><span class="w"> </span><span class="nx">employees</span><span class="w"> </span>\
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="w">  </span><span class="o">--</span><span class="nx">allow</span><span class="o">-</span><span class="nx">on</span><span class="o">-</span><span class="nx">master</span><span class="w"> </span>\
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="w">  </span><span class="o">--</span><span class="nx">execute</span><span class="w"> </span>\
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="w">  </span><span class="o">-</span><span class="nx">heartbeat</span><span class="o">-</span><span class="nx">interval</span><span class="o">-</span><span class="nx">millis</span><span class="w"> </span><span class="mi">1000</span>
+</code></pre></div>
+<p>在执行gh-ost前，我先开启了general_log，最终在general log中发现有以下这几类SQL。</p>
+<ul>
+<li>create table like</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nx">create</span><span class="w"> </span><span class="cm">/* gh-ost */</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="s">`employees`</span><span class="p">.</span><span class="s">`_employees_bak_gho`</span><span class="w"> </span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="w">  </span><span class="nx">like</span><span class="w"> </span><span class="s">`employees`</span><span class="p">.</span><span class="s">`employees_bak`</span>
+</code></pre></div>
+<ul>
+<li>alter table</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="nx">alter</span><span class="w"> </span><span class="cm">/* gh-ost */</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="s">`employees`</span><span class="p">.</span><span class="s">`_employees_bak_gho`</span><span class="w"> </span><span class="nx">modify</span><span class="w"> </span><span class="nx">hire_date</span><span class="w"> </span><span class="nx">date</span>
+</code></pre></div>
+<ul>
+<li>select</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="k">select</span><span class="w">  </span><span class="cm">/* gh-ost `employees`.`employees_bak` iteration:0 */</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="w">    </span><span class="s">`emp_no`</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="nx">from</span><span class="w"> </span><span class="s">`employees`</span><span class="p">.</span><span class="s">`employees_bak`</span>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="nx">where</span><span class="w"> </span><span class="p">((</span><span class="s">`emp_no`</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="nx">_binary</span><span class="err">&#39;</span><span class="mi">10001</span><span class="err">&#39;</span><span class="p">)</span><span class="w"> </span><span class="nx">or</span><span class="w"> </span><span class="p">((</span><span class="s">`emp_no`</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">_binary</span><span class="err">&#39;</span><span class="mi">10001</span><span class="err">&#39;</span><span class="p">)))</span><span class="w"> </span>
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="nx">and</span><span class="w"> </span><span class="p">((</span><span class="s">`emp_no`</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nx">_binary</span><span class="err">&#39;</span><span class="mi">20000</span><span class="err">&#39;</span><span class="p">)</span><span class="w"> </span><span class="nx">or</span><span class="w"> </span><span class="p">((</span><span class="s">`emp_no`</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">_binary</span><span class="err">&#39;</span><span class="mi">20000</span><span class="err">&#39;</span><span class="p">)))</span>
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a><span class="nx">order</span><span class="w"> </span><span class="nx">by</span><span class="w"> </span><span class="s">`emp_no`</span><span class="w"> </span><span class="nx">asc</span>
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a><span class="nx">limit</span><span class="w"> </span><span class="mi">1</span>
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="nx">offset</span><span class="w"> </span><span class="mi">999</span>
+</code></pre></div>
+<ul>
+<li>insert ignore into</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="nx">insert</span><span class="w"> </span><span class="cm">/* gh-ost `employees`.`employees_bak` */</span><span class="w"> </span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="nx">ignore</span><span class="w"> </span><span class="nx">into</span><span class="w"> </span><span class="s">`employees`</span><span class="p">.</span><span class="s">`_employees_bak_gho`</span><span class="w"> </span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="p">(</span><span class="s">`emp_no`</span><span class="p">,</span><span class="w"> </span><span class="s">`birth_date`</span><span class="p">,</span><span class="w"> </span><span class="s">`first_name`</span><span class="p">,</span><span class="w"> </span><span class="s">`last_name`</span><span class="p">,</span><span class="w"> </span><span class="s">`gender`</span><span class="p">,</span><span class="w"> </span><span class="s">`hire_date`</span><span class="p">)</span>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="p">(</span><span class="w"> </span>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="w">  </span><span class="k">select</span><span class="w"> </span><span class="s">`emp_no`</span><span class="p">,</span><span class="w"> </span><span class="s">`birth_date`</span><span class="p">,</span><span class="w"> </span><span class="s">`first_name`</span><span class="p">,</span><span class="w"> </span><span class="s">`last_name`</span><span class="p">,</span><span class="w"> </span><span class="s">`gender`</span><span class="p">,</span><span class="w"> </span><span class="s">`hire_date`</span><span class="w"> </span>
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a><span class="w">  </span><span class="nx">from</span><span class="w"> </span><span class="s">`employees`</span><span class="p">.</span><span class="s">`employees_bak`</span><span class="w"> </span><span class="nx">force</span><span class="w"> </span><span class="nx">index</span><span class="w"> </span><span class="p">(</span><span class="s">`PRIMARY`</span><span class="p">)</span>
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a><span class="w">  </span><span class="nx">where</span><span class="w"> </span><span class="p">(((</span><span class="s">`emp_no`</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="nx">_binary</span><span class="err">&#39;</span><span class="mi">10001</span><span class="err">&#39;</span><span class="p">)</span><span class="w"> </span><span class="nx">or</span><span class="w"> </span><span class="p">((</span><span class="s">`emp_no`</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">_binary</span><span class="err">&#39;</span><span class="mi">10001</span><span class="err">&#39;</span><span class="p">)))</span>
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a><span class="w">  </span><span class="nx">and</span><span class="w"> </span><span class="p">((</span><span class="s">`emp_no`</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nx">_binary</span><span class="err">&#39;</span><span class="mi">11000</span><span class="err">&#39;</span><span class="p">)</span><span class="w"> </span><span class="nx">or</span><span class="w"> </span><span class="p">((</span><span class="s">`emp_no`</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">_binary</span><span class="err">&#39;</span><span class="mi">11000</span><span class="err">&#39;</span><span class="p">))))</span><span class="w"> </span>
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a><span class="w">  </span><span class="nx">lock</span><span class="w"> </span><span class="nx">in</span><span class="w"> </span><span class="nx">share</span><span class="w"> </span><span class="nx">mode</span>
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a><span class="p">)</span>
+</code></pre></div>
+<ul>
+<li>replace into</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="nx">replace</span><span class="w"> </span><span class="cm">/* gh-ost `employees`.`_employees_bak_gho` */</span><span class="w"> </span><span class="nx">into</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="w">    </span><span class="s">`employees`</span><span class="p">.</span><span class="s">`_employees_bak_gho`</span><span class="p">(</span><span class="s">`emp_no`</span><span class="p">,</span><span class="w"> </span><span class="s">`birth_date`</span><span class="p">,</span><span class="w"> </span><span class="s">`first_name`</span><span class="p">,</span><span class="w"> </span><span class="s">`last_name`</span><span class="p">,</span><span class="w"> </span><span class="s">`gender`</span><span class="p">,</span><span class="w"> </span><span class="s">`hire_date`</span><span class="p">)</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="nx">values</span><span class="w"> </span><span class="p">(</span><span class="mi">20001</span><span class="p">,</span><span class="w"> </span><span class="err">&#39;</span><span class="mi">1962</span><span class="o">-</span><span class="mo">05</span><span class="o">-</span><span class="mi">16</span><span class="err">&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">_binary</span><span class="err">&#39;</span><span class="nx">Atreye</span><span class="err">&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">_binary</span><span class="err">&#39;</span><span class="nx">Eppinger</span><span class="err">&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">ELT</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;M&#39;</span><span class="p">,</span><span class="sc">&#39;F&#39;</span><span class="p">),</span><span class="w"> </span><span class="err">&#39;</span><span class="mi">1990</span><span class="o">-</span><span class="mo">04</span><span class="o">-</span><span class="mi">18</span><span class="err">&#39;</span><span class="p">)</span>
+</code></pre></div>
+<ul>
+<li>rename table</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="nx">rename</span><span class="w"> </span><span class="cm">/* gh-ost */</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="s">`employees`</span><span class="p">.</span><span class="s">`employees_bak`</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="s">`employees`</span><span class="p">.</span><span class="s">`_employees_bak_del`</span><span class="p">,</span><span class="w"> </span><span class="s">`employees`</span><span class="p">.</span><span class="s">`_employees_bak_gho`</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="s">`employees`</span><span class="p">.</span><span class="s">`employees_bak`</span>
+</code></pre></div>
+<p>上面的这几类SQL，分别起到了什么作用？insert ignore into和replace into的执行顺序，对最终数据的一致性有影响吗？执行insert ignore into … select from … 的时候，为什么要加上lock in share mode？</p>
+<p>期待你的思考，欢迎在留言区中与我交流。如果今天的课程让你有所收获，也欢迎转发给有需要的朋友。我们下节课再见！</p>
 <div><strong>精选留言（6）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/15/8d/4d/992070e8.jpg" width="30px"><span>叶明</span> 👍（1） 💬（1）<div>insert ignore into用来同步全量数据，replace into是从binlog中解析出来的insert和update事件。binlog中的delete事件应该会解析成delete语句。我测试的结果是 update 语句并没有转为 replace into，仍旧是 update。全量日志如下
+<li><span>叶明</span> 👍（1） 💬（1）<div>insert ignore into用来同步全量数据，replace into是从binlog中解析出来的insert和update事件。binlog中的delete事件应该会解析成delete语句。我测试的结果是 update 语句并没有转为 replace into，仍旧是 update。全量日志如下
 
 2024-09-20T03:59:21.024359Z  1451 Query update employees_bak set first_name = &#39;2024-09-20&#39; where emp_no = 10001
 
@@ -13351,14 +13745,14 @@
 2、update -&gt; update，如果记录已经拷贝到影子表中，那么直接 update 影子表，影子表中记录达到最新；如果记录尚未拷贝到影子表，直接更新影子表，但此时影子表中没有这条记录，因此更新 0 行，待后面 insert ignore into 插入新的记录，影子表中对应的行仍旧为最新的记录
 3、delete -&gt; delete
 
-Binlog可见和事务可见之间存在一个时间差，这是两阶段提交导致的吧，innodb prepare -&gt; binlog write -&gt; innodb commit，binlog 比 innodb commit 提前完成，所以说 binlog 比事务可见早一点。</div>2024-09-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/f7/b9/f2eec64e.jpg" width="30px"><span>Shelly</span> 👍（1） 💬（1）<div>思考题：
+Binlog可见和事务可见之间存在一个时间差，这是两阶段提交导致的吧，innodb prepare -&gt; binlog write -&gt; innodb commit，binlog 比 innodb commit 提前完成，所以说 binlog 比事务可见早一点。</div>2024-09-23</li><br/><li><span>Shelly</span> 👍（1） 💬（1）<div>思考题：
 
 gh-ost做DDL变更期间，有三种操作：(1). 对原表的copy到影子表  (2). 应用binlog到影子表 (3). 业务对原表的DML操作  
 由于copy原表操作和应用binlog到影子表是交替进行的，所以：
 1. insert ingore into ...操作，如果业务先对原表进行了一些插入操作（注意此时对应的行还没有被copy到影子表），然后应用binlog到影子表，这时copy对应的行到影子表，如果不加ingore就会导致主键冲突错误 
 2. replace into 操作，如果业务对表进行了一些插入操作，对原表相应记录copy到影子表（此时对应的binlog还未被应用），后续在应用binlog时影子表已经有了相应记录，所以要加inplace into 覆盖掉copy操作的相应记录，否则会导致主键冲突错误
 3. insert ingore into ...操作和replace into 操作的顺序不会对最终的数据一致性有影响
-4. 个人理解查询时加lock in shared mode原因：假设一个场景主从半同步（after_sync），有个用户在主库对表进行了几行删除操作，此时从库由于某些原因没有回复ack，如果binlog已经被捕获，应用binlog到影子表时操作会被忽略（此时相应的记录还没有被copy到影子表），然后再copy相应原表记录到影子表（由于主库没有收到从库的ack，所以主库是可以查询到这些被删除的表），于是实际上已经被删除的数据却被拷贝到了影子表，导致原表和影子表的数据不一致。  如果在copy数据时，查询加上lock in shard mode共享锁，就会等待删除的事务提交后才能获取数据相应行的数据，防止了DDL变更前后数据不一致的情况发生。</div>2024-09-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/a1/d8/42252c48.jpg" width="30px"><span>123</span> 👍（1） 💬（7）<div>思考题：
+4. 个人理解查询时加lock in shared mode原因：假设一个场景主从半同步（after_sync），有个用户在主库对表进行了几行删除操作，此时从库由于某些原因没有回复ack，如果binlog已经被捕获，应用binlog到影子表时操作会被忽略（此时相应的记录还没有被copy到影子表），然后再copy相应原表记录到影子表（由于主库没有收到从库的ack，所以主库是可以查询到这些被删除的表），于是实际上已经被删除的数据却被拷贝到了影子表，导致原表和影子表的数据不一致。  如果在copy数据时，查询加上lock in shard mode共享锁，就会等待删除的事务提交后才能获取数据相应行的数据，防止了DDL变更前后数据不一致的情况发生。</div>2024-09-14</li><br/><li><span>123</span> 👍（1） 💬（7）<div>思考题：
 1 - create table like：创建临时表，复制表结构；
 2 - alter table：根据命令更改表表结构；
 3 - select：并发读取数据（看到了偏移量，应该是多线程）写入临时文件，使用_binary应该是可以忽略字符集，直接比较二进制文本，减少开销提升性能；
@@ -13368,7 +13762,7 @@ gh-ost做DDL变更期间，有三种操作：(1). 对原表的copy到影子表  
 
 insert into  应该是原表的数据，replace into 的是增量的数据，改变执行顺序，会导致数据不一致，特别是涉及删除操作的内容，如果仅仅是数据的插入和更新，更新本身就带有全量数据，插入后就代表了该行的最新数据，后续的insert into ignore也会忽略，觉得仅仅是replace into 和 insert into的替换感觉也不会出问题，望老师指正
 
-执行insert时需要lock in share mode加上共享锁，应该是防止进行数据更新，仅供查询。</div>2024-09-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/ee/46/7d65ae37.jpg" width="30px"><span>木几丶</span> 👍（0） 💬（2）<div>老师，请问下修改字段数据类型这些操作不能用OnlineDDL?</div>2024-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/22/42/11674804.jpg" width="30px"><span>陈星宇(2.11)</span> 👍（0） 💬（1）<div>老师，这些都是8.0才有的吧？innodb_online_alter_log_max_size</div>2024-09-25</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q3auHgzwzM59PTNiaDASVicbVaeWBU1WKmOgyHcqVtl85nDwAqDicib1EUKE2RRoU0x0vZctZO4kbPDUTTke8qKfAw/132" width="30px"><span>binzhang</span> 👍（0） 💬（1）<div>为啥有些inplace的ddl也显示rows affected是0？ 只有copy模式会显示非0 的rows affected吗？</div>2024-09-13</li><br/>
+执行insert时需要lock in share mode加上共享锁，应该是防止进行数据更新，仅供查询。</div>2024-09-14</li><br/><li><span>木几丶</span> 👍（0） 💬（2）<div>老师，请问下修改字段数据类型这些操作不能用OnlineDDL?</div>2024-12-19</li><br/><li><span>陈星宇(2.11)</span> 👍（0） 💬（1）<div>老师，这些都是8.0才有的吧？innodb_online_alter_log_max_size</div>2024-09-25</li><br/><li><span>binzhang</span> 👍（0） 💬（1）<div>为啥有些inplace的ddl也显示rows affected是0？ 只有copy模式会显示非0 的rows affected吗？</div>2024-09-13</li><br/>
 </ul>
 
 

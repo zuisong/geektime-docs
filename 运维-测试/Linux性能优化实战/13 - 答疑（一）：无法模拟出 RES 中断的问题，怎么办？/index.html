@@ -2220,6 +2220,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#2-stress-iowait" class="md-nav__link">
+    <span class="md-ellipsis">
+      问题2：使用 stress 命令，无法模拟 iowait 高的场景
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-res" class="md-nav__link">
+    <span class="md-ellipsis">
+      问题3：无法模拟出 RES 中断的问题
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4ioio" class="md-nav__link">
+    <span class="md-ellipsis">
+      问题4：无法模拟出I/O性能瓶颈，以及I/O压力过大的问题
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-vmstat" class="md-nav__link">
+    <span class="md-ellipsis">
+      问题5：性能工具（如 vmstat）输出中，第一行数据跟其他行差别巨大
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6052,6 +6088,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#2-stress-iowait" class="md-nav__link">
+    <span class="md-ellipsis">
+      问题2：使用 stress 命令，无法模拟 iowait 高的场景
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-res" class="md-nav__link">
+    <span class="md-ellipsis">
+      问题3：无法模拟出 RES 中断的问题
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4ioio" class="md-nav__link">
+    <span class="md-ellipsis">
+      问题4：无法模拟出I/O性能瓶颈，以及I/O压力过大的问题
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-vmstat" class="md-nav__link">
+    <span class="md-ellipsis">
+      问题5：性能工具（如 vmstat）输出中，第一行数据跟其他行差别巨大
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6085,17 +6157,99 @@
 <h2 id="1">问题1：性能工具版本太低，导致指标不全</h2>
 <p><img alt="" src="https://static001.geekbang.org/resource/image/19/ba/19084718d4682168fea4bb6cb27c4fba.png?wh=750%2A747" /></p>
 <p>这是使用 CentOS 的同学普遍碰到的问题。在文章中，我的 pidstat 输出里有一个 %wait 指标，代表进程等待 CPU 的时间百分比，这是 systat 11.5.5 版本才引入的新指标，旧版本没有这一项。而CentOS 软件库里的 sysstat 版本刚好比这个低，所以没有这项指标。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>不过，你也不用担心。前面我就强调过，工具只是查找分析的手段，指标才是我们重点分析的对象。如果你的pidstat 里没有显示，自然还有其他手段能找到这个指标。</p>
+<p>比如说，在讲解系统原理和性能工具时，我一般会介绍一些 <strong>proc 文件系统</strong>的知识，教你看懂 proc 文件系统提供的各项指标。之所以这么做，一方面，当然是为了让你更直观地理解系统的工作原理；另一方面，其实是想给你展示，性能工具上能看到的各项性能指标的原始数据来源。</p>
+<p>这样，在实际生产环境中，即使你很可能需要运行老版本的操作系统，还没有权限安装新的软件包，你也可以查看 proc 文件系统，获取自己想要的指标。</p>
+<p>但是，性能分析的学习，我还是建议你要用最新的性能工具来学。新工具有更全面的指标，让你更容易上手分析。这个绝对的优势，可以让你更直观地得到想要的数据，也不容易让你打退堂鼓。</p>
+<p>当然，初学时，你最好试着去理解性能工具的原理，或者熟悉了使用方法后，再回过头重新学习原理。这样，即使是在无法安装新工具的环境中，你仍然可以从 proc 文件系统或者其他地方，获得同样的指标，进行有效的分析。</p>
+<h2 id="2-stress-iowait">问题2：使用 stress 命令，无法模拟 iowait 高的场景</h2>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/34/43/34a354b22e351571e7f6a532e719fd43.png?wh=750%2A856" /> <img alt="" src="https://static001.geekbang.org/resource/image/e7/c5/e7ffb84e4c22b08c0b2db14e2f61fdc5.jpg?wh=750%2A856" /></p>
+<p>使用 stress 无法模拟 iowait 升高，但是却看到了 sys 升高。这是因为案例中 的stress -i 参数，它表示通过系统调用 sync() 来模拟 I/O 的问题，但这种方法实际上并不可靠。</p>
+<p>因为 sync() 的本意是刷新内存缓冲区的数据到磁盘中，以确保同步。如果缓冲区内本来就没多少数据，那读写到磁盘中的数据也就不多，也就没法产生 I/O 压力。</p>
+<p>这一点，在使用 SSD 磁盘的环境中尤为明显，很可能你的 iowait 总是 0，却单纯因为大量的系统调用，导致了系统CPU使用率 sys 升高。</p>
+<p>这种情况，我在留言中也回复过，推荐使用 stress-ng 来代替 stress。担心你没有看到留言，所以这里我再强调一遍。</p>
+<p>你可以运行下面的命令，来模拟 iowait 的问题。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a># -i的含义还是调用sync，而—hdd则表示读写临时文件
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>$ stress-ng -i 1 --hdd 1 --timeout 600
+</code></pre></div>
+<h2 id="3-res">问题3：无法模拟出 RES 中断的问题</h2>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/22/be/22d09f0924f7ae09a9dbcb7253b5b6be.jpg?wh=750%2A1053" /></p>
+<p>这个问题是说，即使运行了大量的线程，也无法模拟出重调度中断 RES 升高的问题。</p>
+<p>其实我在 CPU 上下文切换的案例中已经提到，重调度中断是调度器用来分散任务到不同 CPU 的机制，也就是可以唤醒空闲状态的 CPU ，来调度新任务运行，而这通常借助<strong>处理器间中断</strong>（Inter-Processor Interrupts，IPI）来实现。</p>
+<p>所以，这个中断在单核（只有一个逻辑 CPU）的机器上当然就没有意义了，因为压根儿就不会发生重调度的情况。</p>
+<p>不过，正如留言所说，上下文切换的问题依然存在，所以你会看到， cs（context switch）从几百增加到十几万，同时 sysbench 线程的自愿上下文切换和非自愿上下文切换也都会大幅上升，特别是非自愿上下文切换，会上升到十几万。根据非自愿上下文的含义，我们都知道，这是过多的线程在争抢 CPU。</p>
+<p>其实这个结论也可以从另一个角度获得。比如，你可以在 pidstat 的选项中，加入 -u 和 -t 参数，输出线程的 CPU 使用情况，你会看到下面的界面：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ pidstat -u -t 1
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>14:24:03      UID      TGID       TID    %usr %system  %guest   %wait    %CPU   CPU  Command
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>14:24:04        0         -      2472    0.99    8.91    0.00   77.23    9.90     0  |__sysbench
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>14:24:04        0         -      2473    0.99    8.91    0.00   68.32    9.90     0  |__sysbench
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>14:24:04        0         -      2474    0.99    7.92    0.00   75.25    8.91     0  |__sysbench
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>14:24:04        0         -      2475    2.97    6.93    0.00   70.30    9.90     0  |__sysbench
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>14:24:04        0         -      2476    2.97    6.93    0.00   68.32    9.90     0  |__sysbench
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>...
+</code></pre></div>
+<p>从这个 pidstat 的输出界面，你可以发现，每个 stress 线程的 %wait 高达 70%，而 CPU 使用率只有不到 10%。换句话说， stress 线程大部分时间都消耗在了等待 CPU 上，这也表明，确实是过多的线程在争抢 CPU。</p>
+<p>在这里顺便提一下，留言中很常见的一个错误。有些同学会拿 pidstat 中的 %wait 跟 top 中的 iowait% （缩写为wa）对比，其实这是没有意义的，因为它们是完全不相关的两个指标。</p>
 <ul>
-<li><img src="https://wx.qlogo.cn/mmopen/vi_32/PiajxSqBRaEKQMM4m7NHuicr55aRiblTSEWIYe0QqbpyHweaoAbG7j2v7UUElqqeP3Ihrm3UfDPDRb1Hv8LvPwXqA/132" width="30px"><span>ninuxer</span> 👍（44） 💬（4）<div>打卡day14
+<li>pidstat 中， %wait 表示进程等待 CPU 的时间百分比。</li>
+<li>top 中 ，iowait% 则表示等待 I/O 的 CPU 时间百分比。</li>
+</ul>
+<p>回忆一下我们学过的进程状态，你应该记得，等待 CPU 的进程已经在 CPU 的就绪队列中，处于运行状态；而等待 I/O 的进程则处于不可中断状态。</p>
+<p>另外，不同版本的 sysbench 运行参数也不是完全一样的。比如，在案例 Ubuntu 18.04 中，运行 sysbench 的格式为：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ sysbench --threads=10 --max-time=300 threads run
+</code></pre></div>
+<p>而在 Ubuntu 16.04 中，运行格式则为（感谢 Haku 留言分享的执行命令）：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ sysbench --num-threads=10 --max-time=300 --test=threads run
+</code></pre></div>
+<h2 id="4ioio">问题4：无法模拟出I/O性能瓶颈，以及I/O压力过大的问题</h2>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/9e/d8/9e235aca4e92b68e84dba03881c591d8.png?wh=750%2A1533" /></p>
+<p>这个问题可以看成是上一个问题的延伸，只是把 stress 命令换成了一个在容器中运行的 app 应用。</p>
+<p>事实上，在 I/O 瓶颈案例中，除了上面这个模拟不成功的留言，还有更多留言的内容刚好相反，说的是案例 I/O 压力过大，导致自己的机器出各种问题，甚至连系统都没响应了。</p>
+<p>之所以这样，其实还是因为每个人的机器配置不同，既包括了 CPU 和内存配置的不同，更是因为磁盘的巨大差异。比如，机械磁盘（HDD）、低端固态磁盘（SSD）与高端固态磁盘相比，性能差异可能达到数倍到数十倍。</p>
+<p>其实，我自己所用的案例机器也只是低端的 SSD，比机械磁盘稍微好一些，但跟高端固态磁盘还是比不了的。所以，相同操作下，我的机器上刚好出现 I/O 瓶颈，但换成一台使用机械磁盘的机器，可能磁盘 I/O 就被压死了（表现为使用率长时间100%），而换上好一些的 SSD 磁盘，可能又无法产生足够的 I/O 压力。</p>
+<p>另外，由于我在案例中只查找了 /dev/xvd 和 /dev/sd 前缀的磁盘，而没有考虑到使用其他前缀磁盘（比如 /dev/nvme）的同学。如果你正好用的是其他前缀，你可能会碰到跟Vicky 类似的问题，也就是app 启动后又很快退出，变成 exited 状态。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/a3/38/a30211eeb41194eb9b5aa193cda25238.png?wh=900%2A1359" /></p>
+<p>在这里，berryfl 同学提供了一个不错的建议：可以在案例中增加一个参数指定块设备，这样有需要的同学就不用自己编译和打包案例应用了。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/f3/2c/f351f346cbfc2b3c35d010536b23332c.png?wh=900%2A1050" /></p>
+<p>所以，在最新的案例中，我为 app 应用增加了三个选项。</p>
+<ul>
+<li>-d 设置要读取的磁盘，默认前缀为 <code>/dev/sd</code> 或者 <code>/dev/xvd</code> 的磁盘。</li>
+<li>-s 设置每次读取的数据量大小，单位为字节，默认为 67108864（也就是 64MB）。</li>
+<li>-c 设置每个子进程读取的次数，默认为 20 次，也就是说，读取 20*64MB 数据后，子进程退出。</li>
+</ul>
+<p>你可以点击 <a href="https://github.com/feiskyer/linux-perf-examples/tree/master/high-iowait-process">Github</a> 查看它的源码，使用方法我写在了这里：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ docker run --privileged --name=app -itd feisky/app:iowait /app -d /dev/sdb -s 67108864 -c 20
+</code></pre></div>
+<p>案例运行后，你可以执行 docker logs 查看它的日志。正常情况下，你可以看到下面的输出：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$ docker logs app
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>Reading data from disk /dev/sdb with buffer size 67108864 and count 20
+</code></pre></div>
+<h2 id="5-vmstat">问题5：性能工具（如 vmstat）输出中，第一行数据跟其他行差别巨大</h2>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ef/0f/efa8186b71c474bd40924a9038016e0f.png?wh=900%2A1404" /></p>
+<p>这个问题主要是说，在执行 vmstat 时，第一行数据跟其他行相比较，数值相差特别大。我相信不少同学都注意到了这个现象，这里我简单解释一下。</p>
+<p>首先还是要记住，我总强调的那句话，<strong>在碰到直观上解释不了的现象时，要第一时间去查命令手册</strong>。</p>
+<p>比如，运行 man vmstat 命令，你可以在手册中发现下面这句话：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>The first report produced gives averages since the last reboot.  Additional reports give information on a sam‐ 
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>pling period of length delay.  The process and memory reports are instantaneous in either case. 
+</code></pre></div>
+<p>也就是说，第一行数据是系统启动以来的平均值，其他行才是你在运行 vmstat 命令时，设置的间隔时间的平均值。另外，进程和内存的报告内容都是即时数值。</p>
+<p>你看，这并不是什么不得了的事故，但如果我们不清楚这一点，很可能卡住我们的思维，阻止我们进一步的分析。这里我也不得不提一下，文档的重要作用。</p>
+<p>授之以鱼，不如授之以渔。我们专栏的学习核心，一定是教会你<strong>性能分析的原理和思路</strong>，性能工具只是我们的路径和手段。所以，在提到各种性能工具时，我并没有详细解释每个工具的各种命令行选项的作用，一方面是因为你很容易通过文档查到这些，另一方面就是不同版本、不同系统中，个别选项的含义可能并不相同。</p>
+<p>所以，不管因为哪个因素，自己man一下，一定是最快速并且最准确的方式。特别是，当你发现某些工具的输出不符合常识时，一定记住，第一时间查文档弄明白。实在读不懂文档的话，再上网去搜，或者在专栏里向我提问。</p>
+<p>学习是一个“从薄到厚再变薄”的过程，我们从细节知识入手开始学习，积累到一定程度，需要整理成一个体系来记忆，这其中还要不断地对这个体系进行细节修补。有疑问、有反思才可以达到最佳的学习效果。</p>
+<p>最后，欢迎继续在留言区写下你的疑问，我会持续不断地解答。我的目的仍然不变，希望可以和你一起，把文章的知识变成你的能力，我们不仅仅在实战中演练，也要在交流中进步。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>ninuxer</span> 👍（44） 💬（4）<div>打卡day14
 之前一直理解有误，感谢指出！
 pidstat 中， %wait 表示进程等待 CPU 的时间百分比。此时进程是运行状态。
 top 中 ，iowait% 则表示等待 I&#47;O 的 CPU 时间百分比。此时进程处于不可中断睡眠态。
-等待 CPU 的进程已经在 CPU 的就绪队列中，处于运行状态；而等待 I&#47;O 的进程则处于不可中断状态。</div>2018-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/32/0b/981b4e93.jpg" width="30px"><span>念你如昔</span> 👍（18） 💬（1）<div>非常非常感谢，这钱花的值，之前没有对这些东西形成体系，老是感觉有力使不上的感觉，自从看了老师的文档，终于飘了，都想跳槽了？！。</div>2018-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/53/3d/1189e48a.jpg" width="30px"><span>微思</span> 👍（8） 💬（1）<div>老师，等待IO的不可中断进程是否一直占用CPU？</div>2018-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/0c/ca/6173350b.jpg" width="30px"><span>神奇小懒懒</span> 👍（8） 💬（1）<div>课程很系统，把自己以前的知识都串起来了，后续争取每个案例自己都做一次，并且融合自己的经验改进下案例</div>2018-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/12/b3/9e8f4b4f.jpg" width="30px"><span>MoFanDon</span> 👍（4） 💬（1）<div>做了几年运维一直想要掌握，却了解的很零散。这段时间的课程让我学习很多，感谢老师。</div>2018-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/64/05/6989dce6.jpg" width="30px"><span>我来也</span> 👍（2） 💬（1）<div>[D13打卡]
+等待 CPU 的进程已经在 CPU 的就绪队列中，处于运行状态；而等待 I&#47;O 的进程则处于不可中断状态。</div>2018-12-19</li><br/><li><span>念你如昔</span> 👍（18） 💬（1）<div>非常非常感谢，这钱花的值，之前没有对这些东西形成体系，老是感觉有力使不上的感觉，自从看了老师的文档，终于飘了，都想跳槽了？！。</div>2018-12-19</li><br/><li><span>微思</span> 👍（8） 💬（1）<div>老师，等待IO的不可中断进程是否一直占用CPU？</div>2018-12-19</li><br/><li><span>神奇小懒懒</span> 👍（8） 💬（1）<div>课程很系统，把自己以前的知识都串起来了，后续争取每个案例自己都做一次，并且融合自己的经验改进下案例</div>2018-12-19</li><br/><li><span>MoFanDon</span> 👍（4） 💬（1）<div>做了几年运维一直想要掌握，却了解的很零散。这段时间的课程让我学习很多，感谢老师。</div>2018-12-19</li><br/><li><span>我来也</span> 👍（2） 💬（1）<div>[D13打卡]
 多谢老师提出来, pidstat 和 top 中的 %wait 含义并不一样.
 之前只知道top是io的wait, 而新接触的pidstat的倒没有细想过.
 确实是应该多man一下,看下命令文档.
-刚开始要把工具用起来, 之后再查看命令的详细文档.</div>2018-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/46/1d/83021ef5.jpg" width="30px"><span>大哈</span> 👍（1） 💬（1）<div>老师，您好，我想知道像pidstat这样的工具是怎么获取到这些性能数据的，我自己去开发应该从那里获取呢？</div>2019-07-10</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqcQWfsAka5Y9wVIKTKuN1173m9N5MyiadEJ2mdaUv9eHreg2oOYnGKsib9xvLtQ2cdxTKicwF351eTQ/132" width="30px"><span>胡莉婷</span> 👍（1） 💬（2）<div>补充一点。我们的进程都是后台服务，机器1和机器2启动后都没有业务进来</div>2019-01-08</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqcQWfsAka5Y9wVIKTKuN1173m9N5MyiadEJ2mdaUv9eHreg2oOYnGKsib9xvLtQ2cdxTKicwF351eTQ/132" width="30px"><span>胡莉婷</span> 👍（1） 💬（1）<div>老师你好，我们有个问题，还请给个思路。同样的应用程序，部署在两台机器上，比如机器1和机器2.。top发现机器2上进程数据段大小是机器1上数据段的10倍大。还有一个情况是机器2的进程(有上百个)启动后，比较集中在某一个cpu上，而机器1上我们的进程分布就比较均匀。还请指点一下</div>2019-01-08</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/PiajxSqBRaEL5xnfuicbtRz4F87AAjZX6oCEjMtYiaIu4iaQichQmy0vEBA6Sumic1RDvUCeuBEqj6iatnt2kENbKYmuw/132" width="30px"><span>dexter</span> 👍（1） 💬（1）<div>[root@localhost ~]# docker run --name phpfpm -itd --network container:nginx feisky&#47;php-fpm
+刚开始要把工具用起来, 之后再查看命令的详细文档.</div>2018-12-19</li><br/><li><span>大哈</span> 👍（1） 💬（1）<div>老师，您好，我想知道像pidstat这样的工具是怎么获取到这些性能数据的，我自己去开发应该从那里获取呢？</div>2019-07-10</li><br/><li><span>胡莉婷</span> 👍（1） 💬（2）<div>补充一点。我们的进程都是后台服务，机器1和机器2启动后都没有业务进来</div>2019-01-08</li><br/><li><span>胡莉婷</span> 👍（1） 💬（1）<div>老师你好，我们有个问题，还请给个思路。同样的应用程序，部署在两台机器上，比如机器1和机器2.。top发现机器2上进程数据段大小是机器1上数据段的10倍大。还有一个情况是机器2的进程(有上百个)启动后，比较集中在某一个cpu上，而机器1上我们的进程分布就比较均匀。还请指点一下</div>2019-01-08</li><br/><li><span>dexter</span> 👍（1） 💬（1）<div>[root@localhost ~]# docker run --name phpfpm -itd --network container:nginx feisky&#47;php-fpm
 flag provided but not defined: --network
 See &#39;docker run --help&#39;.
 [root@localhost ~]# docker version
@@ -6109,37 +6263,9 @@ Server API version: 1.19
 Go version (server): go1.4.2
 Git commit (server): 786b29d&#47;1.7.1
 OS&#47;Arch (server): linux&#47;amd64
-centos6.10 安装发现没有--network参数</div>2018-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/04/ae/0118c132.jpg" width="30px"><span>辉晖</span> 👍（0） 💬（1）<div>我的机器出现最多的不是RES，而是Local timer interrupts</div>2019-06-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/e5/52/35bc9c07.jpg" width="30px"><span>Musisan</span> 👍（0） 💬（1）<div>Package man-pages-3.53-5.el7.noarch already installed and latest version。
+centos6.10 安装发现没有--network参数</div>2018-12-20</li><br/><li><span>辉晖</span> 👍（0） 💬（1）<div>我的机器出现最多的不是RES，而是Local timer interrupts</div>2019-06-27</li><br/><li><span>Musisan</span> 👍（0） 💬（1）<div>Package man-pages-3.53-5.el7.noarch already installed and latest version。
 No manual entry for vmstat，
-老师，这是为啥，centos7，6的。</div>2019-05-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/91/b4/d5d9e4fb.jpg" width="30px"><span>爱学习的小学生</span> 👍（0） 💬（1）<div>打卡</div>2019-02-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/89/71/03a99e56.jpg" width="30px"><span>、荒唐_戏_</span> 👍（0） 💬（1）<div>day2   昨晚排查一台机器load200+  8  core 觉得摸到一点思路了，但是还没查到具体问题，还要继续加油୧( ⁼̴̶̤̀ω⁼̴̶̤́ )૭</div>2019-01-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/2f/f4/2dede51a.jpg" width="30px"><span>小老鼠</span> 👍（0） 💬（1）<div>机械磁盘（HDD）、低端固态磁盘（SSD）与高端固态。性能差别有多大</div>2018-12-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/54/98/52ca7053.jpg" width="30px"><span>Vicky🐣🐣🐣</span> 👍（0） 💬（1）<div>老师好细心啊！
-去年毕业，运维岗一年半，还没遇到过线上这种比较复杂的案例，几乎都是top看一下，看到是研发在自己跑脚本捞数据导致的。看完老师的分享，感觉学到了很多，就是不知道真正需要用的时候，是否能想起来以及灵活应用</div>2018-12-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/97/61/34a0da09.jpg" width="30px"><span>Griffin</span> 👍（0） 💬（1）<div>写了10年的程序终于有机会系统学习linux远离和实战了。多谢老师。</div>2018-12-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/94/47/75875257.jpg" width="30px"><span>虎虎❤️</span> 👍（0） 💬（1）<div>虽然不讲各个工具的各项参数，我是很赞同的。但是，像从来没有接触过性能工具的我，根本没有意识到pidstat 和 top的wait是不同的。
-
-是不是pidstat所有输出，都是以进程时间为基础，而top中都是以cpu时间为基础呢？
-
-希望作者多提点一下我们新手哈。</div>2018-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/16/c4/53cdb3ec.jpg" width="30px"><span>奋斗的菜鸟</span> 👍（0） 💬（1）<div>打卡</div>2018-12-20</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83erJR5Kj0Xm6LykFHLaWqHjQiaroVxgdoGI7uHEGz2D3PfibWNkBYP23QLzFmcuicgKLbqUch0ZJ2ZNOA/132" width="30px"><span>湖湘志</span> 👍（0） 💬（1）<div> D13</div>2018-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/42/18/edc1b373.jpg" width="30px"><span>风飘，吾独思</span> 👍（0） 💬（1）<div>打卡</div>2018-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/84/70/6573ec64.jpg" width="30px"><span>0.0</span> 👍（0） 💬（1）<div>execsnoop无法安装</div>2018-12-19</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTL9hlAIKQ1sGDu16oWLOHyCSicr18XibygQSMLMjuDvKk73deDlH9aMphFsj41WYJh121aniaqBLiaMNg/132" width="30px"><span>腾达</span> 👍（0） 💬（1）<div>perf report 显示的swapper [kernel.kallsyms] 这类信息要排除吗？自己查了一下，是内核的符号，在排障的时候要忽略不看吗？</div>2018-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/56/a3/649d861c.jpg" width="30px"><span>淸曉</span> 👍（0） 💬（1）<div>老师你好，最近遇到一个问题：目录下的jar包，都安装好了，怎么用命令查看用到哪些应用或软件。所有应用&#47;软件都会显示版本号，路径，配置，等，是在一个页面显示的。
-只是知道进到jar包的目录下，然后执行命令，就会出现一个页面，包含用到，比如Redis，zookeeper等的路径，版本号，等一些信息。
-急需老师帮忙，这命令是什么？
-望老师回复，万分感谢！</div>2018-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f2/5b/9199c264.jpg" width="30px"><span>大兵</span> 👍（0） 💬（1）<div>@walker 你的阿里云服务是否用了Nginx做了反向代理?  这是由于nginx代理使用了短链接的方式和后端交互的原因，使得nginx和后端的 ESTABLISHED变得很少而TIME_WAIT很多. 解决方案可参考 (http:&#47;&#47;www.phpfans.net&#47;article&#47;htmls&#47;201010&#47;MzEyMTU0.html) 这篇文章.
-</div>2018-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/34/bb/0b971fca.jpg" width="30px"><span>walker</span> 👍（0） 💬（1）<div>在实际中遇到一个问题，阿里云的服务器，访问比较少TIME_WAIT已经达到阿里云设置的上限。但是负载，内存，io都不高，ESTABLISHED也只有300。si从0.3到3，这个应该从哪些方面入手去定位根源呢</div>2018-12-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/e0/99/5d603697.jpg" width="30px"><span>MJ</span> 👍（2） 💬（0）<div>虽然有很多地方不太懂（不熟Linux原理），但还是要跟下来，多过几遍。
-同时，私下学Linux原理</div>2019-03-28</li><br/><li><img src="" width="30px"><span>ch_ort</span> 👍（1） 💬（2）<div>“pidstat 中， %wait 表示进程等待 CPU 的时间百分比。
- top 中 ，iowait% 则表示等待 I&#47;O 的 CPU 时间百分比。
-”
-问题来了，现在通过top和mpstat发现是iowati高导致的，怎么通过pidstat找到iowait高的进程呢？</div>2021-09-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/99/af/d29273e2.jpg" width="30px"><span>饭粒</span> 👍（1） 💬（0）<div>测试跑的Q4 还是无法模拟出 I&#47;O 性能瓶颈，依然是要加了 --device-write-iops --device-read-iops 限制后才可以。
-
-[root@centos-7 ~]# docker run --privileged --name=app -itd feisky&#47;app:iowait &#47;app -d &#47;dev&#47;sda -s 67108864 -c 20
-e7a7deddba3d2845030515fbbe25785382306d3c600c474a22de54d543a2cf53
-[root@centos-7 ~]# docker logs app
-Reading data from disk &#47;dev&#47;sdb with buffer size 67108864 and count 20
-
-# 内核cpu时间sy，软中断cpu时间si升高明显
-top - 00:15:15 up 12 min,  2 users,  load average: 23.50, 7.07, 2.49
-Tasks: 148 total,  43 running, 104 sleeping,   1 stopped,   0 zombie
-%Cpu0  : 21.1 us, 54.9 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi, 24.0 si,  0.0 st
-%Cpu1  : 21.8 us, 76.8 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  1.4 si,  0.0 st
-KiB Mem :  3880792 total,   737592 free,  2880084 used,   263116 buff&#47;cache
-KiB Swap:        0 total,        0 free,        0 used.   764308 avail Mem 
-
-# docker run --privileged --name=app -itd --device-write-iops &#47;dev&#47;sda:3 --device-read-iops &#47;dev&#47;sda:3 feisky&#47;app:iowait &#47;app -d &#47;dev&#47;sda -s 67108864 -c </div>2019-08-27</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/d8/ee/6e7c2264.jpg" width="30px"><span>Only now</span> 👍（1） 💬（0）<div>mark </div>2018-12-27</li><br/>
+老师，这是为啥，centos7，6的。</div>2019-05-14</li><br/><li><span>爱学习的小学生</span> 👍（0） 💬（1）<div>打卡</div>2019-02-19</li><br/><li><span>、荒唐_戏_</span> 👍（0） 💬（1）<div>day2   昨晚排查一台机器load200+  8  core 觉得摸到一点思路了，但是还没查到具体问题，还要继续加油୧( ⁼̴̶̤̀ω⁼̴̶̤́ )૭</div>2019-01-26</li><br/><li><span>小老鼠</span> 👍（0） 💬（1）<div>机械磁盘（HDD）、低端固态磁盘（SSD）与高端固态。性能差别有多大</div>2018-12-26</li><br/>
 </ul>
 
 

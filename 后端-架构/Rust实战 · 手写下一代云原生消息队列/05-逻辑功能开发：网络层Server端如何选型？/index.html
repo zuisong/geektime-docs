@@ -3818,6 +3818,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#axum-http-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      基于 Axum 支持 HTTP Server
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tonic-grpc-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      基于 Tonic 实现 gRPC Server
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tokio" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tokio 并行运行多个服务
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12421,6 +12466,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#axum-http-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      基于 Axum 支持 HTTP Server
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tonic-grpc-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      基于 Tonic 实现 gRPC Server
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tokio" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tokio 并行运行多个服务
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12463,10 +12553,470 @@
 </ol>
 <p>所以从网络模块的角度来看，就需要能支持：<strong>较高的吞吐和并发能力</strong>。那协议怎么选择呢？</p>
 <p>从技术上来看，很多开源组件会选择 <strong>TCP + 自定义协议</strong>来完成网络 Server 的开发。我们最终选择的是<strong>基于 gRPC 协议来实现我们的 Server</strong>。考虑如下：</p>
-<div><strong>精选留言（2）</strong></div>
+<ol>
+<li>gRPC 是标准的网络通讯框架，具备现成的 Server 端库和多语言 SDK。基于 gRPC 框架实现网络 Server 会极大地降低开发成本。</li>
+<li>gRPC 协议底层是基于 HTTP2 和 Protobuf 来实现数据通信的，具备较高的吞吐性能。</li>
+<li>元数据服务是用来给 Broker 集群提供服务的，所以从业务特点上不会有非常高的数据量的吞吐。</li>
+<li>元数据服务是集群化部署，允许多节点快速横向部署扩容，不需要单机具备极高的性能。</li>
+</ol>
+<p>另外作为一个元数据存储服务，它一般<strong>需要提供 HTTP 协议的接口来给管控页面或者用户做一些管理操作</strong>。比如增删改查集群、用户、权限信息，查看集群运行的监控数据等等。所以我们还需要提供 HTTP 协议的 Server 来支持这类场景。</p>
+<p>总结来看，我们的元数据服务需要提供<strong>基于 gRPC 协议的数据面 Server</strong> 和<strong>基于 HTTP 协议的管控面 Server</strong>。</p>
+<p>接下来我们来看看如何基于 Axum 来实现 HTTP Server。</p>
+<h2 id="axum-http-server">基于 Axum 支持 HTTP Server</h2>
+<p>在 Rust 中，Axum 是实践中选择最多的框架。教程很齐全，就不展开细讲各个技术细节了，需要的话你可以看<a href="https://crates.io/crates/axum">《官方文档》</a>和<a href="https://github.com/tokio-rs/axum/tree/main/examples">《Demo 示例》</a>。 在 Demo 里面你几乎可以找到所有需要的用法。</p>
+<p>从元数据服务的管控功能来看，我们需要提供 HTTP 协议的对资源的增删改查接口。所以我们的 HTTP Server 需要具备以下四个功能：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/0f/70/cdef7a3d.jpg" width="30px"><span>Joe Black</span> 👍（0） 💬（0）<div>我觉得这里介绍编译protobuf文件时，最好顺带的说一点build.rs的作用。这个对于其它语言转过来的开发者而言还是挺新奇的。</div>2024-10-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/37/a9/9b/b114d348.jpg" width="30px"><span>吃饱喝足开始干活</span> 👍（0） 💬（0）<div>简单例子，最易吸收❤️</div>2024-09-21</li><br/>
+<li>支持 Restful 规范的 HTTP 接口。</li>
+<li>支持多版本接口的管理。</li>
+<li>返回 JSON 格式的请求和返回。</li>
+<li>支持在接口中处理各种业务逻辑，比如数据读写、缓存读取等。</li>
 </ul>
+<p>这四个功能基本包含了我们对一个 HTTP Server 的基本诉求，接下来我们从主要代码来讲解一下实现的逻辑。</p>
+<p>首先通过函数 start_http_server 来启动 HTTP Server。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pub async fn start_http_server(state: HttpServerState, stop_sx: broadcast::Sender&lt;bool&gt;) {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    # 读取配置
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    let config = placement_center_conf();
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    # 组装监听地址和端口
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    let ip: SocketAddr = match format!(&quot;0.0.0.0:{}&quot;, config.http_port).parse() {
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        Ok(data) =&gt; data,
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        Err(e) =&gt; {
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>            panic!(&quot;{}&quot;, e);
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        }
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    };
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    // 构建路由信息
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    let app = routes(state);
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    let mut stop_rx = stop_sx.subscribe();
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>        // 绑定端口，如果端口绑定失败，直接退出程序
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>        let listener = match tokio::net::TcpListener::bind(ip).await {
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>            Ok(data) =&gt; data,
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>            Err(e) =&gt; {
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>                panic!(&quot;{}&quot;, e);
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>            }
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>        };
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>        // 通过 select 来同时监听进程停止信号和 Server 运行
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>        select! {
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>            val = stop_rx.recv() =&gt;{
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>                match val{
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>                    Ok(flag) =&gt; {
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>                        if flag {
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>                            info!(&quot;HTTP Server stopped successfully&quot;);
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>                            break;
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>                        }
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>                    }
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>                    Err(_) =&gt; {}
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>                }
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>            },
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>            // 监听服务
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>            val = axum::serve(listener, app.clone())=&gt;{
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>                match val{
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>                    Ok(()) =&gt; {
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>                        // info!(&quot;HTTP Server started successfully, listening on port {}&quot;,config.http_port)
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>                    },
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>                    Err(e) =&gt; {
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>                        // HTTP 服务监听失败，直接退出程序
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>                        panic!(&quot;{}&quot;,e);
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>                    }
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>                }
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>            }
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>        }
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>}
+</code></pre></div>
+<p>上面的代码主要逻辑都在注释中，不再展开。我们主要关注select和panic这两个语法。</p>
+<ul>
+<li>在 Rust 中 select 的功能是等待多个并发分支，如果有一个分支返回，则取消剩余分支。在上面的代码中，如果接收到停止进程的信号或者 HTTP Server 停止，则 select 就会返回。因此，<strong>用 select 语法从功能上是为了能够正确处理进程停止信号</strong>。select 相关详细资料可以参考<a href="https://docs.rs/tokio/latest/tokio/macro.select.html">《Tokio Select》</a>。</li>
+<li>panic 是退出进程的信号，当出现不可逆异常时，可以通过这个语法退出进程。</li>
+</ul>
+<p>接下来，来看看定义路由的代码，这块属于 Axum Router 的官方语法的使用，细节可以参考这个文档<a href="https://docs.rs/axum/0.7.5/axum/struct.Router.html">《Axum Router》</a>。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>#[derive(Clone)]
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>pub struct HttpServerState {
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  mysql:DB
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>}
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>impl HttpServerState {
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    pub fn new(mysql:DB) -&gt; Self {
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        return Self {mysql};
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    }
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>}
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>fn routes(state: HttpServerState) -&gt; Router {
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    // 定义不同的http path 路径被哪个服务处理
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    let common = Router::new()
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>        .route(&amp;v1_path(&amp;path_list(ROUTE_ROOT)), get(index))
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>        .route(&amp;v1_path(&amp;path_create(ROUTE_ROOT)), post(index))
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>        .route(&amp;v1_path(&amp;path_update(ROUTE_ROOT)), put(index))
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>        .route(&amp;v1_path(&amp;path_delete(ROUTE_ROOT)), delete(index));
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    // 构建路由信息并返回，Axum的 merge 和 with_state 语法
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    let app = Router::new().merge(common);
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    return app.with_state(state);
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>}
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>// 业务处理逻辑 index 函数
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>pub async fn index(State(state): State&lt;HttpServerState&gt;) -&gt; String {
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>    state.mysql.query(&quot;select * .....&quot;);
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>    return success_response(&quot;{}&quot;);
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>}
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>// 通过 serde_json 返回json 格式的数据。
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>pub fn success_response&lt;T: Serialize&gt;(data: T) -&gt; String {
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>    let resp = Response {
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>        code: 0,
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a>        data: data,
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>    };
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a>    return serde_json::to_string(&amp;resp).unwrap();
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>}
+</code></pre></div>
+<p>在上面的代码中，需要关注的有 HttpServerState、Route merge、success_response 三个语法。</p>
+<ul>
+<li>HttpServerState <strong>是一个我们自定义的数据结构，它是和 app.with_state 结合起来用的，允许我们将自定义变量通过HttpServerState 传递给真正的业务逻辑</strong>。比如 HttpServerState 包含了一个变量 MySQL，它是 MySQL driver。所以我们在上面的 index 函数中，就可以通过 state.mysql 来获取到 MySQL driver，执行 SQL 进行数据查询。因此如果有其他的全局变量都可以通过这个 state 来传递给各个 HTTP Server 处理。</li>
+<li>Route merge 是一个官方语法，主要功能是方便你管理多个 route，直接参考<a href="https://docs.rs/axum/0.7.5/axum/struct.Router.html">《Axum Router》</a>即可。</li>
+<li>在success_response方法中，使用 serde_json 将数据编码成 json 格式进行返回。</li>
+</ul>
+<p>细心的同学会关注到类似 v1_path 和 path_get 两个函数。它是我们自定义的一个函数，用来实现 API 版本管理的。逻辑很简单，贴个代码你就懂了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pub(crate) fn v1_path(path: &amp;str) -&gt; String {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    return format!(&quot;/v1{}&quot;, path);
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>}
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>pub(crate) fn path_get(path: &amp;str) -&gt; String {
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    return format!(&quot;{}/get&quot;, path);
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>}
+</code></pre></div>
+<p>当完成上面的代码后，最后访问地址<a href="http://127.0.0.1:8971/v1/index/list">http://127.0.0.1:8971/v1/index/list</a>，效果如下：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/06/95/06c86fe3065407f4a174274e380dd895.png?wh=1543x458" /></p>
+<p>到了这里，我们就完成了满足上述 4 个需求的 HTTP Server 了，更多细节就需要你自己去扩展了。</p>
+<p>接下来我们来实现基于 gRPC 协议的数据面 Server。</p>
+<h2 id="tonic-grpc-server">基于 Tonic 实现 gRPC Server</h2>
+<p>从技术上来看，Rust 中 gRPC 的实现是比较成熟的，有现成的框架可以用。从实践来看，我建议使用<a href="https://github.com/hyperium/tonic">《Tonic 库》</a>来实现。我推荐两个 gRPC 代码示例库<a href="https://github.com/hyperium/tonic/tree/master/examples">《Example1》</a>和<a href="https://github.com/hyperium/tonic/tree/master/interop">《Example2》</a>，这里面有各种场景的 gRPC 示例。</p>
+<p>从编码角度来看，基于 Tonic 库实现 gRPC Server 主要包含五步：</p>
+<ol>
+<li>编写 protobuf 文件，即通过 protobuf 语法定义 RPC 的方法和参数</li>
+<li>编译 protobuf 文件</li>
+<li>在服务端，实现 RPC Service</li>
+<li>启动 gRPC Server</li>
+<li>运行测试用例</li>
+</ol>
+<p>首先来编写元数据服务的 gRPC Server 的 protobuf 文件。我们知道它的一个重要功能就是 KV 型数据的存储，所以 gRPC Server 就得支持 KV 中 set/delete/get/exists 四个功能。</p>
+<p>所以 Server 的 Protobuf 文件 placement_center.proto，内容如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>syntax = &quot;proto3&quot;;
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>package kv;
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>import &quot;common.proto&quot;;
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>service KvService {
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>  rpc set(SetRequest) returns(common.CommonReply){}
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>  rpc delete(DeleteRequest) returns(common.CommonReply){}
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>  rpc get(GetRequest) returns(GetReply){}
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>  rpc exists(ExistsRequest) returns(ExistsReply){} 
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>}
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>message SetRequest{
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    string key = 1;
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    string value = 2;
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>}
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>message GetRequest{
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    string key = 1;
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>}
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>message GetReply{
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>    string value = 1;
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>}
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>message DeleteRequest{
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>    string key = 1;
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>}
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>message ExistsRequest{
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>    string key = 1;
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>}
+<a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>
+<a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>
+<a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>message ExistsReply{
+<a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>    bool flag = 1;
+<a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>}
+</code></pre></div>
+<p>上面的语法很简单，定义了 set、delete、get、exists 四个 RPC 方法，以及对应的request/reply 参数。我们使用的是 protobuf 3 的语法，关于 protobuf 3 的语法，你可以去看<a href="https://protobuf.dev/programming-guides/proto3/">《protobuf 3 指南》</a>。</p>
+<p>接下来这一步是需要重点关注的：<strong>proto 文件只是定义 RPC 的调用信息，如果要在Rust 使用这个 proto 文件，则需要将其编译成 .rs 文件。</strong></p>
+<p>在 Rust 使用 protobuf，有两种方式。</p>
+<ol>
+<li>第一种方法：使用 tonic 库中的宏 tonic::include_proto!，使用姿势如下：</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pub mod placement_center_grpc {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    tonic::include_proto!(&quot;placement_center&quot;);
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>}
+</code></pre></div>
+<p>Rust 中宏的作用直观理解就是：<strong>翻译/填充代码</strong>。在上面的示例中，就是把placement_center.rs 文件编译成 Rust 的代码，然后把生成的代码填充到 placement_center_grpc 的模块中。<strong>为了代码简洁，基于宏是主流推荐的用法</strong>。</p>
+<ol>
+<li>第二种用法：手动使用<a href="https://crates.io/search?q=tonic_build">《tonic_build》</a>库将protobuf 代码编译成 Rust 代码。然后再正常 通过 use 使用编译完成的代码。为了让你能更加理解这个流程，我们的课程使用这种用法，下面是编译 protobuf 文件到 Rust 代码的代码示例。</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>fn build_pb() {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>        tonic_build::configure()
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>            .build_server(true)
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>            // 指定生成的rust 存放的目录
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>            .out_dir(&quot;src/&quot;) // you can change the generated code&#39;s location
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>            .compile(
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>                &amp;[
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>                  // 指定需要编译的 proto 文件
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>                  &quot;src/kv.proto&quot;,
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>                  ],
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>                   // 指定在哪个目录寻找 .proto 文件
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>                &amp;[&quot;src/&quot;], // specify the root location to search proto dependencies
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>            )
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>            .unwrap();
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    }
+</code></pre></div>
+<p>当执行完这个代码，就会自动在 src 目录下生成 kv.rs 的文件。如下所示：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/d4/d0/d47102f6ae5a4e084e619dc6d1512fd0.png?wh=530x262" /></p>
+<p>第二种方法相比第一种方法麻烦了许多，每次修改 proto 文件后都得手动编译一次。其实从底层来看，tonic::include_proto 宏本质上也是使用 tonic_build 编译的 proto 文件。只是通过 Rust 宏的特性，自动执行了这一步而已。这里需要注意的是，topic_build 底层是调用<a href="https://crates.io/crates/prost">《prost 库》</a>实现Protocol Buffers编译的。</p>
+<p>接下来我们来实现 gRPC Server 端的 KV Server，也就是 RPC 中的方法。代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>use protocol::kv::{
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    kv_service_server::KvService, CommonReply, DeleteRequest, ExistsReply, ExistsRequest, GetReply,
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    GetRequest, SetRequest,
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>};
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>use tonic::{Request, Response, Status};
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>// 定义GrpcBrokerServices结构体
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>pub struct GrpcBrokerServices {
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    // 初始化一个基于 DashMap 库的 HashMap
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    data: DashMap&lt;String, String&gt;,
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>}
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>impl GrpcBrokerServices {
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    pub fn new() -&gt; Self {
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>        return GrpcBrokerServices {
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>            data: DashMap::with_capacity(8),
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>        };
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>    }
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>}
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>// 在GrpcBrokerServices中实现 set/get/delete/exists 四个方法
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>// 当前实现是将数据保存在内存中的
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>#[tonic::async_trait]
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>impl KvService for GrpcBrokerServices {
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>    async fn set(&amp;self, request: Request&lt;SetRequest&gt;) -&gt; Result&lt;Response&lt;CommonReply&gt;, Status&gt; {
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>        let req = request.into_inner();
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>        self.data.insert(req.key, req.value);
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>        return Ok(Response::new(CommonReply::default()));
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>    }
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a>
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a>    async fn get(&amp;self, request: Request&lt;GetRequest&gt;) -&gt; Result&lt;Response&lt;GetReply&gt;, Status&gt; {
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a>        let req = request.into_inner();
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a>        if let Some(data) = self.data.get(&amp;req.key) {
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>            return Ok(Response::new(GetReply {
+<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a>                value: data.value().clone(),
+<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>            }));
+<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a>        }
+<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a>        return Ok(Response::new(GetReply::default()));
+<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a>    }
+<a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a>
+<a id="__codelineno-6-45" name="__codelineno-6-45" href="#__codelineno-6-45"></a>
+<a id="__codelineno-6-46" name="__codelineno-6-46" href="#__codelineno-6-46"></a>    async fn delete(
+<a id="__codelineno-6-47" name="__codelineno-6-47" href="#__codelineno-6-47"></a>        &amp;self,
+<a id="__codelineno-6-48" name="__codelineno-6-48" href="#__codelineno-6-48"></a>        request: Request&lt;DeleteRequest&gt;,
+<a id="__codelineno-6-49" name="__codelineno-6-49" href="#__codelineno-6-49"></a>    ) -&gt; Result&lt;Response&lt;CommonReply&gt;, Status&gt; {
+<a id="__codelineno-6-50" name="__codelineno-6-50" href="#__codelineno-6-50"></a>        let req = request.into_inner();
+<a id="__codelineno-6-51" name="__codelineno-6-51" href="#__codelineno-6-51"></a>        self.data.remove(&amp;req.key);
+<a id="__codelineno-6-52" name="__codelineno-6-52" href="#__codelineno-6-52"></a>        return Ok(Response::new(CommonReply::default()));
+<a id="__codelineno-6-53" name="__codelineno-6-53" href="#__codelineno-6-53"></a>    }
+<a id="__codelineno-6-54" name="__codelineno-6-54" href="#__codelineno-6-54"></a>
+<a id="__codelineno-6-55" name="__codelineno-6-55" href="#__codelineno-6-55"></a>
+<a id="__codelineno-6-56" name="__codelineno-6-56" href="#__codelineno-6-56"></a>    async fn exists(
+<a id="__codelineno-6-57" name="__codelineno-6-57" href="#__codelineno-6-57"></a>        &amp;self,
+<a id="__codelineno-6-58" name="__codelineno-6-58" href="#__codelineno-6-58"></a>        request: Request&lt;ExistsRequest&gt;,
+<a id="__codelineno-6-59" name="__codelineno-6-59" href="#__codelineno-6-59"></a>    ) -&gt; Result&lt;Response&lt;ExistsReply&gt;, Status&gt; {
+<a id="__codelineno-6-60" name="__codelineno-6-60" href="#__codelineno-6-60"></a>        let req = request.into_inner();
+<a id="__codelineno-6-61" name="__codelineno-6-61" href="#__codelineno-6-61"></a>        return Ok(Response::new(ExistsReply {
+<a id="__codelineno-6-62" name="__codelineno-6-62" href="#__codelineno-6-62"></a>            flag: self.data.contains_key(&amp;req.key),
+<a id="__codelineno-6-63" name="__codelineno-6-63" href="#__codelineno-6-63"></a>        }));
+<a id="__codelineno-6-64" name="__codelineno-6-64" href="#__codelineno-6-64"></a>    }
+<a id="__codelineno-6-65" name="__codelineno-6-65" href="#__codelineno-6-65"></a>}
+</code></pre></div>
+<p>上面的代码比较简单，基于 Tonic 的规范，实现了我们在 proto 文件中定义的 set/get/delete/exists 方法。细节比较简单，就不赘述了。</p>
+<p>接着来启动 gRPC Server。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>pub async fn start_grpc_server(stop_sx: broadcast::Sender&lt;bool&gt;) {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    let config = placement_center_conf();
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    let server = GrpcServer::new(config.grpc_port);
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    server.start(stop_sx).await;
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>}
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>pub struct GrpcServer {
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    port: usize,
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>}
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>impl GrpcServer {
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    pub fn new(port: usize) -&gt; Self {
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>        return Self { port };
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    }
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>    pub async fn start(&amp;self, stop_sx: broadcast::Sender&lt;bool&gt;) {
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>        let addr = format!(&quot;0.0.0.0:{}&quot;, self.port).parse().unwrap();
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>        info!(&quot;Broker Grpc Server start. port:{}&quot;, self.port);
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>        let service_handler = GrpcBrokerServices::new();
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>        let mut stop_rx = stop_sx.subscribe();
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>        select! {
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>            val = stop_rx.recv() =&gt;{
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>                match val{
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>                    Ok(flag) =&gt; {
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>                        if flag {
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>                            info!(&quot;HTTP Server stopped successfully&quot;);
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>                        }
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>                    }
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>                    Err(_) =&gt; {}
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>                }
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>            },
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>            val =  Server::builder().add_service(KvServiceServer::new(service_handler)).serve(addr)=&gt;{
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>                match val{
+<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>                    Ok(()) =&gt; {
+<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a>                    },
+<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a>                    Err(e) =&gt; {
+<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a>                        panic!(&quot;{}&quot;,e);
+<a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a>                    }
+<a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a>                }
+<a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a>            }
+<a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a>        }
+<a id="__codelineno-7-45" name="__codelineno-7-45" href="#__codelineno-7-45"></a>    }
+<a id="__codelineno-7-46" name="__codelineno-7-46" href="#__codelineno-7-46"></a>}
+</code></pre></div>
+<p>启动 Server 和上面启动 HTTP Server 差不多，核心是这行代码：</p>
+<blockquote>
+<p>Server::builder().add_service(KvServiceServer::new(service_handler)).serve(addr)</p>
+</blockquote>
+<p>即通过 Tonic 启动 gRPC Server，并增加 GrpcBrokerServices 处理逻辑。最后我们可以来写一个测试用例来测试 KV Server 是否运行正常。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a> #[tokio::test]
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    async fn kv_test() {
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>        let mut client = KvServiceClient::connect(&quot;http://127.0.0.1:8871&quot;)
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>            .await
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>            .unwrap();
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>        let key = &quot;mq&quot;.to_string();
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        let value = &quot;robustmq&quot;.to_string();
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        let request = tonic::Request::new(SetRequest {
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>            key: key.clone(),
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>            value: value.clone(),
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>        });
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>        let _ = client.set(request).await.unwrap();
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        let request = tonic::Request::new(ExistsRequest { key: key.clone() });
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>        let exist_reply = client.exists(request).await.unwrap().into_inner();
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>        assert!(exist_reply.flag);
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>        let request = tonic::Request::new(GetRequest { key: key.clone() });
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>        let get_reply = client.get(request).await.unwrap().into_inner();
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>        assert_eq!(get_reply.value, value);
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>        let request = tonic::Request::new(DeleteRequest { key: key.clone() });
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>        let _ = client.delete(request).await.unwrap().into_inner();
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>        let request = tonic::Request::new(ExistsRequest { key: key.clone() });
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>        let exist_reply = client.exists(request).await.unwrap().into_inner();
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>        assert!(!exist_reply.flag);
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>    }
+</code></pre></div>
+<p>至此，我们的 gRPC Server 的框架就基本搭建完成了。接下来就是按照上面的流程去添加自己的服务就可以了。</p>
+<p>需要注意的是，上面的代码只是最基本的 gRPC Server 的实现，在Rust gRPC Server 中，还有比如<strong>负载均衡、TLS、鉴权、拦截器、压缩</strong>等高级功能。这块就不展开讲了，直接看官网文档<a href="https://github.com/hyperium/tonic">《Tonic 库》</a>即可。</p>
+<p>细心的同学可能会关注到上面的代码有变量 stop_sx: broadcast::Sender，那它是起什么作用的呢？</p>
+<p>broadcast::Sender 是 Tokio 提供的 Channel，用于在多个Task之间通信，详细资料可以看<a href="https://rust-book.junmajinlong.com/ch100/05_task_communication.html">《Tokio Channel》</a>。可以看到 stop_sx 是 Tokio 中的 broadcast 类型，broadcast 是一种广播通道，可以有多个Sender端以及多个Receiver端，任何一个Sender发送的每一条数据都能被所有的Receiver端看到。所以我们通过 broadcast Channel 来接收进程停止信号，并分发给所有的broadcast Receiver，从而达到优雅停止所有线程的目的。</p>
+<h2 id="tokio">Tokio 并行运行多个服务</h2>
+<p>先来看一段代码，你能从下面这段代码中看出什么问题吗？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>pub async fn start_server(stop_sx: broadcast::Sender&lt;bool&gt;) {
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    let state = HttpServerState::new();
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    start_http_server(state, stop_sx.clone()).await;
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    start_grpc_server(stop_sx.clone()).await;
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>}
+</code></pre></div>
+<p>上面代码的问题是：<strong>运行到</strong> <strong>start_http_server</strong> <strong>函数会卡住，start_grpc_server</strong> <strong>是运行不到的</strong>。因为启动 HTTP Server 的代码和启动 gRPC Server 的代码都是卡住的。</p>
+<p>那怎么处理呢? 来看下面的代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>pub async fn start_server(stop_sx: broadcast::Sender&lt;bool&gt;) {
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    // 将 grpc server 运行在一个独立的 tokio task 中。
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    let raw_stop_sx = stop_sx.clone();
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    tokio::spawn(async move {
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>        start_grpc_server(raw_stop_sx).await;
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    });
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    // 将 http server 运行在一个独立的 tokio task 中。
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    let raw_stop_sx = stop_sx.clone();
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    tokio::spawn(async move {
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>        let state = HttpServerState::new();
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>        start_http_server(state, raw_stop_sx).await;
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    });
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>    // 等待进程信号
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    awaiting_stop(stop_sx.clone()).await;
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>}
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>pub async fn awaiting_stop(stop_send: broadcast::Sender&lt;bool&gt;) {
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>    // 等待接收 ctrl c 停止线程的信号。
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>    signal::ctrl_c().await.expect(&quot;failed to listen for event&quot;);
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>    // 当接手到 ctrl c 信号时，给http server 和 grpc server 线程发送停止信号
+<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>    match stop_send.send(true) {
+<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a>        Ok(_) =&gt; {
+<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a>            info!(
+<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a>                &quot;{}&quot;,
+<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a>                &quot;When ctrl + c is received, the service starts to stop&quot;
+<a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a>            );
+<a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a>            // 在这里允许执行相关回收逻辑。
+<a id="__codelineno-10-32" name="__codelineno-10-32" href="#__codelineno-10-32"></a>        }
+<a id="__codelineno-10-33" name="__codelineno-10-33" href="#__codelineno-10-33"></a>        Err(e) =&gt; {
+<a id="__codelineno-10-34" name="__codelineno-10-34" href="#__codelineno-10-34"></a>            panic!(&quot;{}&quot;, e);
+<a id="__codelineno-10-35" name="__codelineno-10-35" href="#__codelineno-10-35"></a>        }
+<a id="__codelineno-10-36" name="__codelineno-10-36" href="#__codelineno-10-36"></a>    }
+<a id="__codelineno-10-37" name="__codelineno-10-37" href="#__codelineno-10-37"></a>}
+</code></pre></div>
+<p>这里有两个重点：</p>
+<ol>
+<li>将 HTTP Server 和 gRPC Server 通过 tokio::spawn 异步运行在一个独立的 tokio task 中，让它不阻塞主进程。</li>
+<li>依赖 signal::ctrl_c() 来阻塞主进程，让主进程不退出，并且等待接收 ctrl + c 信号，当接收到信号时，就执行相关回收逻辑。</li>
+</ol>
+<p>服务成功启动后，当我们按 ctrl+c，服务接收到信号，发送停止信号给多个运行线程，停止HTTP 和 gRPC 服务。效果如下：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/7b/eb/7b64b92853fc1ed60dc39ec5f246bceb.png?wh=1920x350" /></p>
+<h2 id="_1">总结</h2>
+<blockquote>
+<p>tips：每节课的代码都能在项目 <a href="https://github.com/robustmq/robustmq-geek">https://github.com/robustmq/robustmq-geek</a> 中找到源码，有兴趣的同学可以下载源码来看。</p>
+</blockquote>
+<p>这节课我们首先讲了我们的元数据服务需要什么类型的 Server，这一步是很重要的，<strong>要根据我们的需求和场景选择合适的 Server</strong>。可以参考我们前面的选择思考逻辑。</p>
+<p>接下来我们讲了HTTP Server 和 gRPC Server 的实现要点以及主体框架的开发。这里总结下主要依赖的库：</p>
+<ul>
+<li>Tokio：Rust 异步运行的标准库。</li>
+<li>Axum：Rust 语言的 HTTP Web 框架。</li>
+<li>Tonic：Rust 语言的 gRPC 框架的实现。</li>
+<li>Prost：Protocol Buffers 的 Rust 语言的实现，Tonic 及其相关库（tonic_build）关于 Proto 部分都是用这个库。</li>
+</ul>
+<p>最后我们讲了基于 tokio spawn、tokio signal、tokioc broadcast channel 来实现<strong>并行运行多个服务</strong>和<strong>程序平滑退出</strong>的能力。</p>
+<p>另外，这节课我们只是讲了上面几个库的基本主体功能，课下还需要你深入去研究这几个库的文档，才能在实战中更好地使用它们。</p>
+<h2 id="_2">思考题</h2>
+<p>这里是本节课推荐的相关 issue 的任务列表，请点击查看<a href="http://www.robustmq.com/docs/robustmq-tutorial-cn/%e8%b4%a1%e7%8c%ae%e6%8c%87%e5%8d%97/good-first-issue/">《Good First Issue》</a>，任务列表会不间断地更新。欢迎给我的项目 <a href="https://github.com/robustmq/robustmq">https://github.com/robustmq/robustmq</a> 点个 Star 啊！</p>
 
 
 

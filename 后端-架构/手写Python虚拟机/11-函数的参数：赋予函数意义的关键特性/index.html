@@ -7847,6 +7847,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      参数默认值
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      一个复杂的例子
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12883,6 +12919,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      参数默认值
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      一个复杂的例子
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12946,10 +13018,287 @@
 <a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>         names ()
 <a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>         varnames (&#39;a&#39;, &#39;b&#39;)
 </code></pre></div>
-<div><strong>精选留言（2）</strong></div>
-<ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/26/eb/d7/90391376.jpg" width="30px"><span>ifelse</span> 👍（0） 💬（0）<div>学习打卡</div>2024-10-26</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/3b/59/44/727b90a8.jpg" width="30px"><span>冯某</span> 👍（0） 💬（0）<div>这里没有留言</div>2024-10-21</li><br/>
-</ul>
+<p>在上述反编译出的字节码里，CALL_FUNCTION 都是带有参数的。</p>
+<p>上一节课在实现 CALL_FUNCTION 的时候，我们并没有关注这个参数的值，因为当时的函数调用都没有带参数。在这一节课 add 的例子里，函数调用传递了两个参数，所以这个字节码的参数是 2（第 11 行）。print 函数则带有 1 个参数（第 12 行）。</p>
+<p>实际上，在 CALL_FUNCTION 之前的两个字节码已经把参数送到栈上了（第 9 行和第 10 行的两个 LOAD_CONST），我们所要做的只是根据 CALL_FUNCTION 的参数，把栈上的值取出来，再传给函数栈帧就好了。</p>
+<p>另外，add 函数中加载数据也出现了一个我们之前没有见过的字节码：<strong>LOAD_FAST</strong>。这个字节码用来访问函数的局部变量。局部变量和上一节课我们讲的 LOAD_NAME 不一样，它只依赖于位置下标，而不依赖于变量名称，所以局部变量不必使用 map 来维护，ArrayList 就足够了。</p>
+<p>使用下标来访问变量值比使用 map 快多了，这也正是 FAST 这个名字的体现。</p>
+<p>所以我们要在 FrameObject 里增加功能，让它可以接受参数，并且可以支持局部变量的快速访问。你可以看一下修改后的代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// runtime/FrameObject.cpp</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">FrameObject</span><span class="o">::</span><span class="n">FrameObject</span><span class="w"> </span><span class="p">(</span><span class="n">FunctionObject</span><span class="o">*</span><span class="w"> </span><span class="n">func</span><span class="p">,</span><span class="w"> </span><span class="n">ObjList</span><span class="w"> </span><span class="n">args</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="n">_codes</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="n">func</span><span class="o">-&gt;</span><span class="n">_func_code</span><span class="p">;</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="n">_consts</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">_codes</span><span class="o">-&gt;</span><span class="n">_consts</span><span class="p">;</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="n">_names</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="n">_codes</span><span class="o">-&gt;</span><span class="n">_names</span><span class="p">;</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="n">_locals</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">HiObject</span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="n">HiObject</span><span class="o">*&gt;</span><span class="p">();</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="n">_globals</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">func</span><span class="o">-&gt;</span><span class="n">_globals</span><span class="p">;</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="n">_fast_locals</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">nullptr</span><span class="p">;</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">args</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">        </span><span class="n">_fast_locals</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">HiObject</span><span class="o">*&gt;</span><span class="p">();</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">args</span><span class="o">-&gt;</span><span class="n">length</span><span class="p">();</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">            </span><span class="n">_fast_locals</span><span class="o">-&gt;</span><span class="n">set</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">args</span><span class="o">-&gt;</span><span class="n">get</span><span class="p">(</span><span class="n">i</span><span class="p">));</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">    </span><span class="n">_stack</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">HiObject</span><span class="o">*&gt;</span><span class="p">();</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="w">    </span><span class="n">_pc</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w">    </span><span class="n">_sender</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="p">}</span>
+</code></pre></div>
+<p>FrameObject 里新增了一个成员变量 _fast_locals（第 9 行），用来处理函数的局部变量。</p>
+<p>同时，我们还为 FrameObject 的构造函数增加了新的参数 args，用来表示调用函数时所使用的参数。在这个函数里，会把 args 中的值全部放到 _fast_locals 里去（第11行至第17行）。</p>
+<p>和上述代码相匹配，CALL_FUNCTION 的实现也需要处理函数的参数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1">// runtime/interpreter.cpp</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kt">void</span><span class="w"> </span><span class="nf">Interpreter::build_frame</span><span class="p">(</span><span class="n">HiObject</span><span class="o">*</span><span class="w"> </span><span class="n">callable</span><span class="p">,</span><span class="w"> </span><span class="n">ObjList</span><span class="w"> </span><span class="n">args</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="n">FrameObject</span><span class="o">*</span><span class="w"> </span><span class="n">frame</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">FrameObject</span><span class="p">((</span><span class="n">FunctionObject</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">callable</span><span class="p">,</span><span class="w"> </span><span class="n">args</span><span class="p">);</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">set_sender</span><span class="p">(</span><span class="n">_frame</span><span class="p">);</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="n">_frame</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">frame</span><span class="p">;</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="p">}</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="kt">void</span><span class="w"> </span><span class="nf">Interpreter::run</span><span class="p">(</span><span class="n">CodeObject</span><span class="o">*</span><span class="w"> </span><span class="n">codes</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">    </span><span class="n">_frame</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">FrameObject</span><span class="p">(</span><span class="n">codes</span><span class="p">);</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">_frame</span><span class="o">-&gt;</span><span class="n">has_more_codes</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">        </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">op_code</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">_frame</span><span class="o">-&gt;</span><span class="n">get_op_code</span><span class="p">();</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">        </span><span class="p">...</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">        </span><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="n">op_code</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="w">        </span><span class="p">...</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">ByteCode</span><span class="o">::</span><span class="no">CALL_FUNCTION</span><span class="p">:</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">op_arg</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="w">                    </span><span class="n">args</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">HiObject</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">op_arg</span><span class="p">);</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="w">                    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">op_arg</span><span class="o">--</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="w">                        </span><span class="n">args</span><span class="o">-&gt;</span><span class="n">set</span><span class="p">(</span><span class="n">op_arg</span><span class="p">,</span><span class="w"> </span><span class="n">POP</span><span class="p">());</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="w">                    </span><span class="p">}</span>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="w">                </span><span class="p">}</span>
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="w">                </span><span class="n">fo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">FunctionObject</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">POP</span><span class="p">());</span>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a><span class="w">                </span><span class="c1">// workaround for &#39;print&#39;</span>
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">fo</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">Universe</span><span class="o">::</span><span class="n">PrintFunc</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a><span class="w">                    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">args</span><span class="o">-&gt;</span><span class="n">length</span><span class="p">();</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a><span class="w">                        </span><span class="n">args</span><span class="o">-&gt;</span><span class="n">get</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">print</span><span class="p">();</span>
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a><span class="w">                    </span><span class="p">}</span>
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a><span class="w">                    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a><span class="w">                    </span><span class="n">PUSH</span><span class="p">(</span><span class="n">Universe</span><span class="o">::</span><span class="n">HiNone</span><span class="p">);</span>
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a><span class="w">                </span><span class="p">}</span>
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a><span class="w">                </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a><span class="w">                    </span><span class="n">build_frame</span><span class="p">(</span><span class="n">fo</span><span class="p">,</span><span class="w"> </span><span class="n">args</span><span class="p">);</span>
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a><span class="w">                </span><span class="p">}</span>
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">args</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a><span class="w">                    </span><span class="k">delete</span><span class="w"> </span><span class="n">args</span><span class="p">;</span>
+<a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a><span class="w">                    </span><span class="n">args</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span>
+<a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a><span class="w">                </span><span class="p">}</span>
+<a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>
+<a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a><span class="w">                </span><span class="k">break</span><span class="p">;</span>
+<a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a><span class="w">        </span><span class="p">...</span>
+<a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a><span class="p">}</span>
+</code></pre></div>
+<p>CALL_FUNCTION 总共做了三件事情。</p>
+<p>第一，根据 op_arg 去栈里取出参数，然后放到 args 列表里（第 16 至 21 行）。第二，判断是不是 print 函数，因为我们现在还没有实现 print 函数，所以只能以一种特殊的方法把它绕过去（第 25 至 31 行）。如果不是 print 函数，就通过 build_frame 来正常地创建函数栈帧，通过这种方式，就把函数的参数传递到了 FrameObject 中（第32至34行）。最后一步，是清理临时变量（第 36 至 40 行）。</p>
+<p>这样，我们就把函数的参数传入到函数栈帧中去了。</p>
+<p>当函数参数被传到 _fast_locals 里以后，接着就是执行函数了。前边我们已经分析过了，add 方法的前两条字节码是 LOAD_FAST，而 LOAD_FAST 与 LOAD_GLOBAL、LOAD_CONST 一样，都是往栈上加载一个值（本质上是一个对象）。区别在于，LOAD_CONST 是从常量表里加载， LOAD_GLOBAL 是从全局变量表里加载，而 LOAD_FAST则是从栈帧的局部变量表中加载。</p>
+<p>我们来看 LOAD_FAST 的具体实现。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">Interpreter::run</span><span class="p">(</span><span class="n">CodeObject</span><span class="o">*</span><span class="w"> </span><span class="n">codes</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="n">_frame</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">FrameObject</span><span class="p">(</span><span class="n">codes</span><span class="p">);</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">_frame</span><span class="o">-&gt;</span><span class="n">has_more_codes</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">        </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">op_code</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">_frame</span><span class="o">-&gt;</span><span class="n">get_op_code</span><span class="p">();</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">        </span><span class="p">...</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">        </span><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="n">op_code</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">        </span><span class="p">...</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">ByteCode</span><span class="o">::</span><span class="no">LOAD_FAST</span><span class="p">:</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">                </span><span class="n">PUSH</span><span class="p">(</span><span class="n">_frame</span><span class="o">-&gt;</span><span class="n">fast_locals</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">get</span><span class="p">(</span><span class="n">op_arg</span><span class="p">));</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">                </span><span class="k">break</span><span class="p">;</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">        </span><span class="p">...</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">ByteCode</span><span class="o">::</span><span class="no">STORE_FAST</span><span class="p">:</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">                </span><span class="n">_frame</span><span class="o">-&gt;</span><span class="n">_fast_locals</span><span class="o">-&gt;</span><span class="n">set</span><span class="p">(</span><span class="n">op_arg</span><span class="p">,</span><span class="w"> </span><span class="n">POP</span><span class="p">());</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">                </span><span class="k">break</span><span class="p">;</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">        </span><span class="p">...</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="p">}</span>
+</code></pre></div>
+<p>添加了这些修改以后，我们就可以进行测试了，这节课刚开始的时候那个 test_param 的例子可以正常执行了。</p>
+<p>运行以后可以正确打印出 3。到这里，我们就完成了函数调用的传参功能。</p>
+<h2 id="_1">参数默认值</h2>
+<p>在定义函数的时候，我们可以为函数的参数指定默认值。例如：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># test_default.py</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">def</span> <span class="nf">foo</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">2</span><span class="p">):</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span> <span class="o">+</span> <span class="n">c</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">foo</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span> <span class="c1"># 13</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">foo</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">))</span> <span class="c1"># 150</span>
+</code></pre></div>
+<p>在调用 foo 方法的时候，如果只传一个参数（第5行），这就意味着参数 a 的值为 10，b 的值则取默认值 1，c 取默认值 2。如果传三个参数（第6行），那么默认参数不起作用。</p>
+<p>从这个例子可以看出，参数默认值是函数的一个属性，所以它应该是在函数定义的时候就和函数绑在了一起，也就是说，应该在 MAKE_FUNCTION 字节码处实现默认值的功能。</p>
+<p>我们在 MAKE_FUNCTION 处创建了 FunctionObject ，所以默认值的最佳载体显然是 <strong>FunctionObject</strong>。如果你对这一点还有疑问，就跳转到<a href="https://time.geekbang.org/column/article/774409">第 7 节课</a>和<a href="https://time.geekbang.org/column/article/774417">第 8 节课</a>，搞清楚 CodeObject 和 FunctionObject 之间的区别和联系，再看后面的内容。</p>
+<p>这里我们只需要把默认值记录在 FunctionObject 里，当调用的时候再加以处理就可以了。</p>
+<p>接下来，我们就在 FunctionObject 里增加一个域，用来记录函数参数的默认值。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// runtime/functionObject.hpp</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">FunctionObject</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">HiObject</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">friend</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">FunctionKlass</span><span class="p">;</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="k">friend</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">FrameObject</span><span class="p">;</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="k">private</span><span class="o">:</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">    </span><span class="p">...</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">    </span><span class="n">ObjList</span><span class="w">     </span><span class="n">_defaults</span><span class="p">;</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="k">public</span><span class="o">:</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">    </span><span class="n">FunctionObject</span><span class="p">(</span><span class="n">Klass</span><span class="o">*</span><span class="w"> </span><span class="n">klass</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="w">        </span><span class="p">...</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w">        </span><span class="n">_defaults</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w">    </span><span class="p">...</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">set_default</span><span class="p">(</span><span class="n">ObjList</span><span class="w"> </span><span class="n">defaults</span><span class="p">);</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="w">    </span><span class="n">ObjList</span><span class="w"> </span><span class="nf">defaults</span><span class="p">()</span><span class="w">       </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">_defaults</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="p">};</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a><span class="c1">// runtime/functionObject.hpp</span>
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="kt">void</span><span class="w"> </span><span class="nf">FunctionObject::set_default</span><span class="p">(</span><span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">HiObject</span><span class="o">*&gt;*</span><span class="w"> </span><span class="n">defaults</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">defaults</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">NULL</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a><span class="w">        </span><span class="n">_defaults</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span>
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a><span class="w">        </span><span class="k">return</span><span class="p">;</span>
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a><span class="w"> </span>
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a><span class="w">    </span><span class="n">_defaults</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">HiObject</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">defaults</span><span class="o">-&gt;</span><span class="n">length</span><span class="p">());</span>
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a><span class="w"> </span>
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">defaults</span><span class="o">-&gt;</span><span class="n">length</span><span class="p">();</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a><span class="w">        </span><span class="n">_defaults</span><span class="o">-&gt;</span><span class="n">set</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">defaults</span><span class="o">-&gt;</span><span class="n">get</span><span class="p">(</span><span class="n">i</span><span class="p">));</span>
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a><span class="p">}</span>
+</code></pre></div>
+<p>这段代码的作用是在创建 FunctionObject 的时候，使用 set_default 方法设置好参数默认值。在这个方法中，我们创建了一个新的 ArrayList 对象，而不是把参数 defaults 的指针值直接赋给 FunctionObject 的 _defaults 域。</p>
+<p>这样做是为了方便后面实现自动内存管理，FunctionObject 所指向的对象都在 FunctionObject 的逻辑里创建，遵循这个规则方便我们分析和实现自动内存管理机制。</p>
+<p>在基础的数据结构功能完备以后，我们就可以考虑在 MAKE_FUNCTION 的实现中使用 set_default 方法了。</p>
+<p>在最早实现 MAKE_FUNCTION 的时候，我们就看到了 MAKE_FUNCTION 这个字节码是带有参数的。但在一开始，我们并没有关心这个参数。实际上，它的参数正是为了指明默认参数的数量。</p>
+<p>我们把这节课一开始的那个例子，test_default 的字节码打出来看一下。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>  2           0 LOAD_CONST               6 ((1, 2))
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>              2 LOAD_CONST               2 (&lt;code object foo&gt;)
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>              4 LOAD_CONST               3 (&#39;foo&#39;)
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>              6 MAKE_FUNCTION            1 (defaults)
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>              8 STORE_NAME               0 (foo)
+</code></pre></div>
+<p>可以看到，在这个例子里MAKE_FUNCTION 指令所带的参数就不再是 0 了，而是变成了 1。</p>
+<p>MAKE_FUNCTION 至少使用两个数据，一个是CodeObject（第2行），一个是函数名称（第3行）。而参数默认值则是由指令参数指定的。在这个例子里，参数值为1 就代表构建的这个函数带一个默认值。也就是上述代码里的第一条字节码，第一行的那个 LOAD_CONST。这条指令把常量列表 <code>(1，2)</code> 放到了栈顶。</p>
+<p>这里需要注意，不同版本的Python虚拟机MAKE_FUNCTION的实现是不同的，有一些版本里，参数的默认值不是以列表传递的，而是把列表里的值展开放到栈上。栈上有多少个数据则是由MAKE_FUNCTION的指令参数指定的。这种实现和Python 3.8中的实现本质是一样的，只不过区别在于默认值是整体传入还是分别传入的。</p>
+<p>经过这样的分析，我们就可以修改 MAKE_FUNCTION的实现了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>void Interpreter::run(CodeObject* codes) {
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    _frame = new FrameObject(codes);
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    while (_frame-&gt;has_more_codes()) {
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>        unsigned char op_code = _frame-&gt;get_op_code();
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>        ...
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>        switch (op_code) {
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        ...
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>            case ByteCode::MAKE_FUNCTION:
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>                w = POP(); // function name
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>                v = POP();
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>                fo = new FunctionObject(v);
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>                fo-&gt;set_globals(_frame-&gt;globals());
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>                if (op_arg == 1) {
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>                    HiList* t = (HiList*)POP();
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>                    args = new ArrayList&lt;HiObject*&gt;();
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>                    for (int i = 0; i &lt; t-&gt;length(); i++) {
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>                        args-&gt;add(t-&gt;get(i));
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>                    }
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>                }
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>                fo-&gt;set_default(args);
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>                PUSH(fo);
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>                if (args != NULL) {
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>                    delete args;
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>                    args = NULL;
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>                }
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>                break;
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>        ...
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>        }
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>    }
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>}
+</code></pre></div>
+<p>上述代码先根据 op_arg 的值去栈上获取默认参数，当 op_arg 为 1 的时候，默认参数是一个列表（第 13 行），我们把这个参数从栈上取出来，然后把它的内容都装到 args 数组里（第 14 至 18 行）。然后我们把默认值传递给 FunctionObject 对象（第 20、21 行）。最后再把临时变量释放掉（第23至26行）。</p>
+<p>这样，我们就完成了 MAKE_FUNCTION 的所有工作。要让默认参数生效，还差最后一步，那就是当调用者没有传实参的时候，使用默认参数代替实参。这个工作要在函数被调用的时候进行。</p>
+<p>传递参数的代码在 build_frame 和 FrameObject 的构造函数里，主要是通过操作_fast_locals 数据结构来传递参数。同时，默认参数也是使用 _fast_locals 传递。所以这里我们就来修改一下 FrameObject 的构造方法，让默认参数起作用。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">FrameObject</span><span class="o">::</span><span class="n">FrameObject</span><span class="w"> </span><span class="p">(</span><span class="n">FunctionObject</span><span class="o">*</span><span class="w"> </span><span class="n">func</span><span class="p">,</span><span class="w"> </span><span class="n">ObjList</span><span class="w"> </span><span class="n">args</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span><span class="p">...</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="n">_fast_locals</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">HiObject</span><span class="o">*&gt;</span><span class="p">();</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">func</span><span class="o">-&gt;</span><span class="n">_defaults</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">dft_cnt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">func</span><span class="o">-&gt;</span><span class="n">_defaults</span><span class="o">-&gt;</span><span class="n">length</span><span class="p">();</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">argcnt</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">_codes</span><span class="o">-&gt;</span><span class="n">_argcount</span><span class="p">;</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">dft_cnt</span><span class="o">--</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">            </span><span class="n">_fast_locals</span><span class="o">-&gt;</span><span class="n">set</span><span class="p">(</span><span class="o">--</span><span class="n">argcnt</span><span class="p">,</span><span class="w"> </span><span class="n">func</span><span class="o">-&gt;</span><span class="n">_defaults</span><span class="o">-&gt;</span><span class="n">get</span><span class="p">(</span><span class="n">dft_cnt</span><span class="p">));</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">args</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">args</span><span class="o">-&gt;</span><span class="n">length</span><span class="p">();</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="w">            </span><span class="n">_fast_locals</span><span class="o">-&gt;</span><span class="n">set</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">args</span><span class="o">-&gt;</span><span class="n">get</span><span class="p">(</span><span class="n">i</span><span class="p">));</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="w">    </span><span class="p">...</span>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="p">}</span>
+</code></pre></div>
+<p>这个函数做的第一件事情是设置默认参数（第 5 至 11 行）。</p>
+<p>我们在分析二进制文件结构时，就简单介绍过 CodeObject 的 argcount 属性了，这里是我们第一次使用这个属性。这个值代表了一个函数的参数个数。请注意，我们以倒序的方式把默认参数送入到 _fast_locals 里去（第 9 至 11 行），这是因为只有位于参数列表后面的几个参数才能使用默认值。</p>
+<p>函数做的第二件事情是处理实际传入的参数（第 14 至 18 行）。也就是说，默认参数与实际参数在这里汇合了。你可以通过我给出的示意图理解它们整合的过程。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/7f/be/7fcd114022ff43149a4c34d2185fa4be.png?wh=1744x812" /></p>
+<p>这里你可能会有疑问，有没有其他特殊情况呢？比如默认参数可不可能在实参之前。其实这是不用担心的，因为 Python 的语法规定默认参数必须定义在非默认参数之前。比如，以下的代码是不合法的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="o">//</span><span class="ne">SyntaxError</span><span class="p">:</span> <span class="n">non</span><span class="o">-</span><span class="n">default</span> <span class="n">argument</span> <span class="n">follows</span> <span class="n">default</span> <span class="n">argument</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="k">def</span> <span class="nf">foo</span><span class="p">(</span><span class="n">a</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span> 
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span> 
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="n">foo</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+</code></pre></div>
+<p>Python 的编译器会对这个方法定义报错，提示无默认值参数不能出现在默认值参数之后。这样的语法保证了我们在处理默认值的时候，从后往前填入默认值的做法是绝对正确的。</p>
+<h2 id="_2">一个复杂的例子</h2>
+<p>最后，我们来运行一个更加复杂的例子。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">def</span> <span class="nf">make_func</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">x</span><span class="p">):</span> 
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>        <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span> 
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="k">return</span> <span class="n">add</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="n">add5</span> <span class="o">=</span> <span class="n">make_func</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="nb">print</span> <span class="n">add5</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+</code></pre></div>
+<p>在这个例子里，我们向 make_func 函数传递了参数 5，然后又在 make_func 内部定义了一个函数为 add，函数 add 可以计算两个数的和。同时，它的第二个参数是以 5 为默认值的参数，所以 add5 就可以只接受一个参数，计算这个参数与 5 的和了。执行这个例子，结果就会是 15。</p>
+<p>在这个例子里，用了一个之前没用过的字节码：<strong>BUILD_TUPLE</strong>，它的作用是构建默认参数列表。在 test_default 例子里，默认参数列表是以常量值的方式直接加载到栈上，而这里因为 x 是变量，所以只能在运行时通过 BUILD_TUPLE 来构建。</p>
+<p>BUILD_TUPLE 做的事情是根据 op_arg 从栈上取参数，然后构造一个 tuple，到目前为止，我们还不能支持元组（tuple），但使用列表（list）来代替也是可以的。所以我们就提供一个简单的实现，等后面完全实现了列表和元组的功能以后，再完善这里的实现。</p>
+<p>你可以看一下BUILD_TUPLE 的代码实现。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">void</span> <span class="n">Interpreter</span><span class="p">::</span><span class="n">run</span><span class="p">(</span><span class="n">CodeObject</span><span class="o">*</span> <span class="n">codes</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    <span class="n">_frame</span> <span class="o">=</span> <span class="n">new</span> <span class="n">FrameObject</span><span class="p">(</span><span class="n">codes</span><span class="p">);</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    <span class="k">while</span> <span class="p">(</span><span class="n">_frame</span><span class="o">-&gt;</span><span class="n">has_more_codes</span><span class="p">())</span> <span class="p">{</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>        <span class="n">unsigned</span> <span class="n">char</span> <span class="n">op_code</span> <span class="o">=</span> <span class="n">_frame</span><span class="o">-&gt;</span><span class="n">get_op_code</span><span class="p">();</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>        <span class="o">...</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>        <span class="n">switch</span> <span class="p">(</span><span class="n">op_code</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>        <span class="o">...</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>            <span class="n">case</span> <span class="n">ByteCode</span><span class="p">::</span><span class="n">BUILD_TUPLE</span><span class="p">:</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>                <span class="n">lst</span> <span class="o">=</span> <span class="n">new</span> <span class="n">HiList</span><span class="p">();</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>                <span class="k">while</span> <span class="p">(</span><span class="n">op_arg</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>                    <span class="n">lst</span><span class="o">-&gt;</span><span class="n">append</span><span class="p">(</span><span class="n">POP</span><span class="p">());</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>                <span class="p">}</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>                <span class="n">PUSH</span><span class="p">(</span><span class="n">lst</span><span class="p">);</span>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>                <span class="k">break</span><span class="p">;</span>
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>        <span class="o">...</span>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>        <span class="p">}</span>
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>    <span class="p">}</span>
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a><span class="p">}</span>
+</code></pre></div>
+<p>这段代码做的事情是从栈上取多个对象（数量由op_arg决定），放入到列表中。</p>
+<p>补齐了这个字节码以后，make_func 的例子就可以正确执行了。</p>
+<h2 id="_3">总结</h2>
+<p>这节课我们实现了可以在调用函数时，向其传入参数的功能。在过去的两节课里，我们清晰地解释了 CodeObject、FunctionObject 和 FrameObject 之间的关系。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/ff/7c/ff5646ce3251214273a64yye20361e7c.png?wh=1920x514" /></p>
+<p>LOAD_CONST 把 CodeObject 加载到栈顶，MAKE_FUNCTION 则负责创建 FunctionObject，所以 CodeObject 和 FunctionObject 是一对多的关系。并且，CodeObject 中记录了代码的静态信息，例如字节码、常量表等等。而 FunctionObject 则多了很多动态信息，例如参数默认值等。</p>
+<p>CALL_FUNCTION 负责真正地执行函数，函数的动态记录是使用 FrameObject 维护的，所以 FunctionObject 与 FrameObject 也是一对多的关系。</p>
+<p>只要把图里的关系搞清楚了，这两节课的内容就全部掌握了。</p>
+<p>从<a href="https://time.geekbang.org/column/article/772694">第 4 节课</a>开始，遇到 print 函数的时候，我们都是使用一些手段规避了，作为 Python 语言中最重要的一个函数，下节课我们将正面地实现这个函数。</p>
+<h2 id="_4">思考题</h2>
+<p>函数的相关机制，我们已经实现了很多了。请你自己试验一下，你的虚拟机是否可以支持 Lambda 语句。欢迎你把你试验的结果分享到评论区，也欢迎你把这节课分享给其他朋友，邀他们一起学习，我们下节课再见！</p>
 
 
 

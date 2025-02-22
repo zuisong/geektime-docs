@@ -2083,8 +2083,44 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      操作和分析
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#execsnoop" class="md-nav__link">
+    <span class="md-ellipsis">
+      execsnoop
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考
+    </span>
+  </a>
   
 </li>
       
@@ -6077,8 +6113,44 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      操作和分析
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#execsnoop" class="md-nav__link">
+    <span class="md-ellipsis">
+      execsnoop
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      小结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考
+    </span>
+  </a>
   
 </li>
       
@@ -6120,10 +6192,242 @@
 <li>机器配置：2 CPU，8GB 内存</li>
 <li>预先安装 docker、sysstat、perf、ab 等工具，如 apt install <a href="http://docker.io">docker.io</a> sysstat linux-tools-common apache2-utils</li>
 </ul>
-<div><strong>精选留言（30）</strong></div>
+<p>前面我们讲到过，ab（apache bench）是一个常用的 HTTP 服务性能测试工具，这里同样用来模拟 Nginx 的客户端。由于 Nginx 和 PHP 的配置比较麻烦，我把它们打包成了两个 <a href="https://github.com/feiskyer/linux-perf-examples/tree/master/nginx-short-process">Docker 镜像</a>，这样只需要运行两个容器，就可以得到模拟环境。</p>
+<p>注意，这个案例要用到两台虚拟机，如下图所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/90/3d/90c30b4f555218f77241bfe2ac27723d.png?wh=408%2A258" /></p>
+<p>你可以看到，其中一台用作 Web 服务器，来模拟性能问题；另一台用作 Web 服务器的客户端，来给 Web 服务增加压力请求。使用两台虚拟机是为了相互隔离，避免“交叉感染”。</p>
+<p>接下来，我们打开两个终端，分别 SSH 登录到两台机器上，并安装上述工具。</p>
+<p>同样注意，下面所有命令都默认以 root 用户运行，如果你是用普通用户身份登陆系统，请运行 sudo su root 命令切换到 root 用户。</p>
+<p>走到这一步，准备工作就完成了。接下来，我们正式进入操作环节。</p>
+<blockquote>
+<p>温馨提示：案例中 PHP 应用的核心逻辑比较简单，你可能一眼就能看出问题，但实际生产环境中的源码就复杂多了。所以，我依旧建议，<strong>操作之前别看源码</strong>，避免先入为主，而要把它当成一个黑盒来分析。这样，你可以更好把握，怎么从系统的资源使用问题出发，分析出瓶颈所在的应用，以及瓶颈在应用中大概的位置。</p>
+</blockquote>
+<h3 id="_3">操作和分析</h3>
+<p>首先，我们在第一个终端，执行下面的命令运行 Nginx 和 PHP 应用：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$ docker run --name nginx -p 10000:80 -itd feisky/nginx:sp
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>$ docker run --name phpfpm -itd --network container:nginx feisky/php-fpm:sp
+</code></pre></div>
+<p>然后，在第二个终端，使用 curl 访问 http://[VM1的IP]:10000，确认 Nginx 已正常启动。你应该可以看到 It works! 的响应。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a># 192.168.0.10是第一台虚拟机的IP地址
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>$ curl http://192.168.0.10:10000/
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>It works!
+</code></pre></div>
+<p>接着，我们来测试一下这个 Nginx 服务的性能。在第二个终端运行下面的 ab 命令。要注意，与上次操作不同的是，这次我们需要并发100个请求测试Nginx性能，总共测试1000个请求。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a># 并发100个请求测试Nginx性能，总共测试1000个请求
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>$ ab -c 100 -n 1000 http://192.168.0.10:10000/
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>This is ApacheBench, Version 2.3 &lt;$Revision: 1706008 $&gt;
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>Copyright 1996 Adam Twiss, Zeus Technology Ltd, 
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>...
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>Requests per second:    87.86 [#/sec] (mean)
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>Time per request:       1138.229 [ms] (mean)
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>...
+</code></pre></div>
+<p>从ab的输出结果我们可以看到，Nginx能承受的每秒平均请求数，只有 87 多一点，是不是感觉它的性能有点差呀。那么，到底是哪里出了问题呢？我们再用 top 和 pidstat 来观察一下。</p>
+<p>这次，我们在第二个终端，将测试的并发请求数改成5，同时把请求时长设置为10分钟（-t 600）。这样，当你在第一个终端使用性能分析工具时， Nginx 的压力还是继续的。</p>
+<p>继续在第二个终端运行 ab 命令：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ ab -c 5 -t 600 http://192.168.0.10:10000/
+</code></pre></div>
+<p>然后，我们在第一个终端运行 top 命令，观察系统的 CPU 使用情况：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ top
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>...
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>%Cpu(s): 80.8 us, 15.1 sy,  0.0 ni,  2.8 id,  0.0 wa,  0.0 hi,  1.3 si,  0.0 st
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>...
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a> 6882 root      20   0    8456   5052   3884 S   2.7  0.1   0:04.78 docker-containe
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a> 6947 systemd+  20   0   33104   3716   2340 S   2.7  0.0   0:04.92 nginx
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a> 7494 daemon    20   0  336696  15012   7332 S   2.0  0.2   0:03.55 php-fpm
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a> 7495 daemon    20   0  336696  15160   7480 S   2.0  0.2   0:03.55 php-fpm
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>10547 daemon    20   0  336696  16200   8520 S   2.0  0.2   0:03.13 php-fpm
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>10155 daemon    20   0  336696  16200   8520 S   1.7  0.2   0:03.12 php-fpm
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>10552 daemon    20   0  336696  16200   8520 S   1.7  0.2   0:03.12 php-fpm
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>15006 root      20   0 1168608  66264  37536 S   1.0  0.8   9:39.51 dockerd
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a> 4323 root      20   0       0      0      0 I   0.3  0.0   0:00.87 kworker/u4:1
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>...
+</code></pre></div>
+<p>观察 top 输出的进程列表可以发现，CPU 使用率最高的进程也只不过才 2.7%，看起来并不高。</p>
+<p>然而，再看系统 CPU 使用率（ %Cpu ）这一行，你会发现，系统的整体 CPU 使用率是比较高的：用户 CPU 使用率（us）已经到了 80%，系统 CPU 为 15.1%，而空闲 CPU （id）则只有 2.8%。</p>
+<p>为什么用户 CPU 使用率这么高呢？我们再重新分析一下进程列表，看看有没有可疑进程：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/12/a4/39/6a5cd1d8.jpg" width="30px"><span>sotey</span> 👍（174） 💬（3）<div>对老师膜拜！今天一早生产tomcat夯住了，16颗cpu全部98%以上，使用老师的方法加上java的工具成功定位到了问题线程和问题函数。</div>2018-12-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/35/25/bab760a1.jpg" width="30px"><span>好好学习</span> 👍（78） 💬（1）<div>perf record -ag -- sleep 2;perf report
-一部到位</div>2018-12-10</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a0/39/ddcf26ac.jpg" width="30px"><span>bruceding</span> 👍（43） 💬（2）<div>http:&#47;&#47;blog.bruceding.com&#47;420.html  这个是之前的优化经历，通过 perf + 火焰图，定位热点代码，结合业务和网络分析，最终确定问题原因</div>2019-02-11</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/f9/3c/f75ab868.jpg" width="30px"><span>风</span> 👍（18） 💬（8）<div>老师好，我在实验的过程中，在最后使用 perf record -ag 的时候，发现记录下来的值，其中 stress 并不是消耗 CPU 最猛的进程，而是swapper，不知道什么原因？碰到这种情况时，该如何继续排查下去？以下是我的 perf report
+<li>docker-containerd 进程是用来运行容器的，2.7% 的 CPU 使用率看起来正常；</li>
+<li>Nginx 和 php-fpm 是运行 Web 服务的，它们会占用一些 CPU 也不意外，并且 2% 的 CPU 使用率也不算高；</li>
+<li>再往下看，后面的进程呢，只有 0.3% 的 CPU 使用率，看起来不太像会导致用户 CPU 使用率达到 80%。</li>
+</ul>
+<p>那就奇怪了，明明用户 CPU 使用率都80%了，可我们挨个分析了一遍进程列表，还是找不到高 CPU 使用率的进程。看来top是不管用了，那还有其他工具可以查看进程 CPU 使用情况吗？不知道你记不记得我们的老朋友 pidstat，它可以用来分析进程的 CPU 使用情况。</p>
+<p>接下来，我们还是在第一个终端，运行 pidstat 命令：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a># 间隔1秒输出一组数据（按Ctrl+C结束）
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>$ pidstat 1
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>...
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>04:36:24      UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>04:36:25        0      6882    1.00    3.00    0.00    0.00    4.00     0  docker-containe
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>04:36:25      101      6947    1.00    2.00    0.00    1.00    3.00     1  nginx
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>04:36:25        1     14834    1.00    1.00    0.00    1.00    2.00     0  php-fpm
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>04:36:25        1     14835    1.00    1.00    0.00    1.00    2.00     0  php-fpm
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>04:36:25        1     14845    0.00    2.00    0.00    2.00    2.00     1  php-fpm
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>04:36:25        1     14855    0.00    1.00    0.00    1.00    1.00     1  php-fpm
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>04:36:25        1     14857    1.00    2.00    0.00    1.00    3.00     0  php-fpm
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>04:36:25        0     15006    0.00    1.00    0.00    0.00    1.00     0  dockerd
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>04:36:25        0     15801    0.00    1.00    0.00    0.00    1.00     1  pidstat
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>04:36:25        1     17084    1.00    0.00    0.00    2.00    1.00     0  stress
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>04:36:25        0     31116    0.00    1.00    0.00    0.00    1.00     0  atopacctd
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>...
+</code></pre></div>
+<p>观察一会儿，你是不是发现，所有进程的 CPU 使用率也都不高啊，最高的 Docker 和 Nginx 也只有 4% 和 3%，即使所有进程的 CPU 使用率都加起来，也不过是 21%，离 80% 还差得远呢！</p>
+<p>最早的时候，我碰到这种问题就完全懵了：明明用户 CPU 使用率已经高达 80%，但我却怎么都找不到是哪个进程的问题。到这里，你也可以想想，你是不是也遇到过这种情况？还能不能再做进一步的分析呢？</p>
+<p>后来我发现，会出现这种情况，很可能是因为前面的分析漏了一些关键信息。你可以先暂停一下，自己往上翻，重新操作检查一遍。或者，我们一起返回去分析 top 的输出，看看能不能有新发现。</p>
+<p>现在，我们回到第一个终端，重新运行 top 命令，并观察一会儿：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$ top
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>top - 04:58:24 up 14 days, 15:47,  1 user,  load average: 3.39, 3.82, 2.74
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>Tasks: 149 total,   6 running,  93 sleeping,   0 stopped,   0 zombie
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>%Cpu(s): 77.7 us, 19.3 sy,  0.0 ni,  2.0 id,  0.0 wa,  0.0 hi,  1.0 si,  0.0 st
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>KiB Mem :  8169348 total,  2543916 free,   457976 used,  5167456 buff/cache
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>KiB Swap:        0 total,        0 free,        0 used.  7363908 avail Mem
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a> 6947 systemd+  20   0   33104   3764   2340 S   4.0  0.0   0:32.69 nginx
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a> 6882 root      20   0   12108   8360   3884 S   2.0  0.1   0:31.40 docker-containe
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>15465 daemon    20   0  336696  15256   7576 S   2.0  0.2   0:00.62 php-fpm
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>15466 daemon    20   0  336696  15196   7516 S   2.0  0.2   0:00.62 php-fpm
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>15489 daemon    20   0  336696  16200   8520 S   2.0  0.2   0:00.62 php-fpm
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a> 6948 systemd+  20   0   33104   3764   2340 S   1.0  0.0   0:00.95 nginx
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>15006 root      20   0 1168608  65632  37536 S   1.0  0.8   9:51.09 dockerd
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>15476 daemon    20   0  336696  16200   8520 S   1.0  0.2   0:00.61 php-fpm
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>15477 daemon    20   0  336696  16200   8520 S   1.0  0.2   0:00.61 php-fpm
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>24340 daemon    20   0    8184   1616    536 R   1.0  0.0   0:00.01 stress
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>24342 daemon    20   0    8196   1580    492 R   1.0  0.0   0:00.01 stress
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>24344 daemon    20   0    8188   1056    492 R   1.0  0.0   0:00.01 stress
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>24347 daemon    20   0    8184   1356    540 R   1.0  0.0   0:00.01 stress
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>...
+</code></pre></div>
+<p>这次从头开始看 top 的每行输出，咦？Tasks 这一行看起来有点奇怪，就绪队列中居然有 6 个 Running 状态的进程（6 running），是不是有点多呢？</p>
+<p>回想一下 ab 测试的参数，并发请求数是 5。再看进程列表里， php-fpm 的数量也是 5，再加上 Nginx，好像同时有 6 个进程也并不奇怪。但真的是这样吗？</p>
+<p>再仔细看进程列表，这次主要看 Running（R） 状态的进程。你有没有发现， Nginx 和所有的 php-fpm 都处于Sleep（S）状态，而真正处于 Running（R）状态的，却是几个 stress 进程。这几个 stress 进程就比较奇怪了，需要我们做进一步的分析。</p>
+<p>我们还是使用 pidstat 来分析这几个进程，并且使用 -p 选项指定进程的 PID。首先，从上面 top 的结果中，找到这几个进程的 PID。比如，先随便找一个 24344，然后用 pidstat 命令看一下它的 CPU 使用情况：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$ pidstat -p 24344
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>16:14:55      UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+</code></pre></div>
+<p>奇怪，居然没有任何输出。难道是pidstat 命令出问题了吗？之前我说过，<strong>在怀疑性能工具出问题前，最好还是先用其他工具交叉确认一下</strong>。那用什么工具呢？ ps 应该是最简单易用的。我们在终端里运行下面的命令，看看 24344 进程的状态：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a># 从所有进程中查找PID是24344的进程
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>$ ps aux | grep 24344
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>root      9628  0.0  0.0  14856  1096 pts/0    S+   16:15   0:00 grep --color=auto 24344
+</code></pre></div>
+<p>还是没有输出。现在终于发现问题，原来这个进程已经不存在了，所以 pidstat 就没有任何输出。既然进程都没了，那性能问题应该也跟着没了吧。我们再用 top 命令确认一下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$ top
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>...
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>%Cpu(s): 80.9 us, 14.9 sy,  0.0 ni,  2.8 id,  0.0 wa,  0.0 hi,  1.3 si,  0.0 st
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>...
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a> 6882 root      20   0   12108   8360   3884 S   2.7  0.1   0:45.63 docker-containe
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a> 6947 systemd+  20   0   33104   3764   2340 R   2.7  0.0   0:47.79 nginx
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a> 3865 daemon    20   0  336696  15056   7376 S   2.0  0.2   0:00.15 php-fpm
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>  6779 daemon    20   0    8184   1112    556 R   0.3  0.0   0:00.01 stress
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>...
+</code></pre></div>
+<p>好像又错了。结果还跟原来一样，用户 CPU 使用率还是高达 80.9%，系统 CPU 接近 15%，而空闲 CPU 只有 2.8%，Running 状态的进程有 Nginx、stress等。</p>
+<p>可是，刚刚我们看到stress 进程不存在了，怎么现在还在运行呢？再细看一下 top 的输出，原来，这次 stress 进程的 PID 跟前面不一样了，原来的 PID 24344 不见了，现在的是 6779。</p>
+<p>进程的 PID 在变，这说明什么呢？在我看来，要么是这些进程在不停地重启，要么就是全新的进程，这无非也就两个原因：</p>
+<ul>
+<li>第一个原因，进程在不停地崩溃重启，比如因为段错误、配置错误等等，这时，进程在退出后可能又被监控系统自动重启了。</li>
+<li>第二个原因，这些进程都是短时进程，也就是在其他应用内部通过 exec 调用的外面命令。这些命令一般都只运行很短的时间就会结束，你很难用 top 这种间隔时间比较长的工具发现（上面的案例，我们碰巧发现了）。</li>
+</ul>
+<p>至于 stress，我们前面提到过，它是一个常用的压力测试工具。它的 PID 在不断变化中，看起来像是被其他进程调用的短时进程。要想继续分析下去，还得找到它们的父进程。</p>
+<p>要怎么查找一个进程的父进程呢？没错，用 pstree 就可以用树状形式显示所有进程之间的关系：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$ pstree | grep stress
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>        |-docker-containe-+-php-fpm-+-php-fpm---sh---stress
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>        |         |-3*[php-fpm---sh---stress---stress]
+</code></pre></div>
+<p>从这里可以看到，stress 是被 php-fpm 调用的子进程，并且进程数量不止一个（这里是3个）。找到父进程后，我们能进入 app 的内部分析了。</p>
+<p>首先，当然应该去看看它的源码。运行下面的命令，把案例应用的源码拷贝到 app 目录，然后再执行 grep 查找是不是有代码再调用 stress 命令：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a># 拷贝源码到本地
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>$ docker cp phpfpm:/app .
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a># grep 查找看看是不是有代码在调用stress命令
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>$ grep stress -r app
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>app/index.php:// fake I/O with stress (via write()/unlink()).
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>app/index.php:$result = exec(&quot;/usr/local/bin/stress -t 1 -d 1 2&gt;&amp;1&quot;, $output, $status);
+</code></pre></div>
+<p>找到了，果然是 app/index.php 文件中直接调用了 stress 命令。</p>
+<p>再来看看 <a href="https://github.com/feiskyer/linux-perf-examples/blob/master/nginx-short-process/app/index.php">app/index.php</a> 的源代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$ cat app/index.php
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>&lt;?php
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>// fake I/O with stress (via write()/unlink()).
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>$result = exec(&quot;/usr/local/bin/stress -t 1 -d 1 2&gt;&amp;1&quot;, $output, $status);
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>if (isset($_GET[&quot;verbose&quot;]) &amp;&amp; $_GET[&quot;verbose&quot;]==1 &amp;&amp; $status != 0) {
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>  echo &quot;Server internal error: &quot;;
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>  print_r($output);
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>} else {
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>  echo &quot;It works!&quot;;
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>}
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>?&gt;
+</code></pre></div>
+<p>可以看到，源码里对每个请求都会调用一个 stress 命令，模拟 I/O 压力。从注释上看，stress 会通过 write() 和 unlink() 对 I/O 进程进行压测，看来，这应该就是系统 CPU 使用率升高的根源了。</p>
+<p>不过，stress 模拟的是 I/O 压力，而之前在 top 的输出中看到的，却一直是用户 CPU 和系统 CPU 升高，并没见到 iowait 升高。这又是怎么回事呢？stress 到底是不是 CPU 使用率升高的原因呢？</p>
+<p>我们还得继续往下走。从代码中可以看到，给请求加入 verbose=1 参数后，就可以查看 stress 的输出。你先试试看，在第二个终端运行：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>$ curl http://192.168.0.10:10000?verbose=1
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>Server internal error: Array
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>(
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    [0] =&gt; stress: info: [19607] dispatching hogs: 0 cpu, 0 io, 0 vm, 1 hdd
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    [1] =&gt; stress: FAIL: [19608] (563) mkstemp failed: Permission denied
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    [2] =&gt; stress: FAIL: [19607] (394) &lt;-- worker 19608 returned error 1
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    [3] =&gt; stress: WARN: [19607] (396) now reaping child worker processes
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    [4] =&gt; stress: FAIL: [19607] (400) kill error: No such process
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    [5] =&gt; stress: FAIL: [19607] (451) failed run completed in 0s
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>)
+</code></pre></div>
+<p>看错误消息 mkstemp failed: Permission denied ，以及 failed run completed in 0s。原来 stress 命令并没有成功，它因为权限问题失败退出了。看来，我们发现了一个 PHP 调用外部 stress 命令的 bug：没有权限创建临时文件。</p>
+<p>从这里我们可以猜测，正是由于权限错误，大量的 stress 进程在启动时初始化失败，进而导致用户 CPU 使用率的升高。</p>
+<p>分析出问题来源，下一步是不是就要开始优化了呢？当然不是！既然只是猜测，那就需要再确认一下，这个猜测到底对不对，是不是真的有大量的 stress 进程。该用什么工具或指标呢？</p>
+<p>我们前面已经用了 top、pidstat、pstree 等工具，没有发现大量的 stress 进程。那么，还有什么其他的工具可以用吗？</p>
+<p>还记得上一期提到的 perf 吗？它可以用来分析 CPU 性能事件，用在这里就很合适。依旧在第一个终端中运行 perf record -g 命令 ，并等待一会儿（比如15秒）后按 Ctrl+C 退出。然后再运行 perf report 查看报告：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a># 记录性能事件，等待大约15秒后按 Ctrl+C 退出
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>$ perf record -g
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a># 查看报告
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>$ perf report
+</code></pre></div>
+<p>这样，你就可以看到下图这个性能报告：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c9/33/c99445b401301147fa41cb2b5739e833.png?wh=720%2A527" /></p>
+<p>你看，stress 占了所有CPU时钟事件的 77%，而 stress 调用调用栈中比例最高的，是随机数生成函数 random()，看来它的确就是 CPU 使用率升高的元凶了。随后的优化就很简单了，只要修复权限问题，并减少或删除 stress 的调用，就可以减轻系统的 CPU 压力。</p>
+<p>当然，实际生产环境中的问题一般都要比这个案例复杂，在你找到触发瓶颈的命令行后，却可能发现，这个外部命令的调用过程是应用核心逻辑的一部分，并不能轻易减少或者删除。</p>
+<p>这时，你就得继续排查，为什么被调用的命令，会导致 CPU 使用率升高或 I/O 升高等问题。这些复杂场景的案例，我会在后面的综合实战里详细分析。</p>
+<p>最后，在案例结束时，不要忘了清理环境，执行下面的 Docker 命令，停止案例中用到的 Nginx 进程：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>$ docker rm -f nginx phpfpm
+</code></pre></div>
+<h2 id="execsnoop">execsnoop</h2>
+<p>在这个案例中，我们使用了 top、pidstat、pstree 等工具分析了系统 CPU 使用率高的问题，并发现 CPU 升高是短时进程 stress 导致的，但是整个分析过程还是比较复杂的。对于这类问题，有没有更好的方法监控呢？</p>
+<p><a href="https://github.com/brendangregg/perf-tools/blob/master/execsnoop">execsnoop</a> 就是一个专为短时进程设计的工具。它通过 ftrace 实时监控进程的 exec() 行为，并输出短时进程的基本信息，包括进程 PID、父进程 PID、命令行参数以及执行的结果。</p>
+<p>比如，用 execsnoop 监控上述案例，就可以直接得到 stress 进程的父进程 PID 以及它的命令行参数，并可以发现大量的 stress 进程在不停启动：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a># 按 Ctrl+C 结束
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>$ execsnoop
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>PCOMM            PID    PPID   RET ARGS
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>sh               30394  30393    0
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>stress           30396  30394    0 /usr/local/bin/stress -t 1 -d 1
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>sh               30398  30393    0
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>stress           30399  30398    0 /usr/local/bin/stress -t 1 -d 1
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>sh               30402  30400    0
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>stress           30403  30402    0 /usr/local/bin/stress -t 1 -d 1
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>sh               30405  30393    0
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>stress           30407  30405    0 /usr/local/bin/stress -t 1 -d 1
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>...
+</code></pre></div>
+<p>execsnoop 所用的 ftrace 是一种常用的动态追踪技术，一般用于分析 Linux 内核的运行时行为，后面课程我也会详细介绍并带你使用。</p>
+<h2 id="_4">小结</h2>
+<p>碰到常规问题无法解释的 CPU 使用率情况时，首先要想到有可能是短时应用导致的问题，比如有可能是下面这两种情况。</p>
+<ul>
+<li>第一，<strong>应用里直接调用了其他二进制程序，这些程序通常运行时间比较短，通过 top 等工具也不容易发现</strong>。</li>
+<li>第二，<strong>应用本身在不停地崩溃重启，而启动过程的资源初始化，很可能会占用相当多的 CPU</strong>。</li>
+</ul>
+<p>对于这类进程，我们可以用 pstree 或者 execsnoop 找到它们的父进程，再从父进程所在的应用入手，排查问题的根源。</p>
+<h2 id="_5">思考</h2>
+<p>最后，我想邀请你一起来聊聊，你所碰到的 CPU 性能问题。有没有哪个印象深刻的经历可以跟我分享呢？或者，在今天的案例操作中，你遇到了什么问题，又解决了哪些呢？你可以结合我的讲述，总结自己的思路。</p>
+<p>欢迎在留言区和我讨论，也欢迎把这篇文章分享给你的同事、朋友。我们一起在实战中演练，在交流中进步。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/56/52/565d66d658ad23b2f4997551db153852.jpg?wh=1110%2A549" /></p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>sotey</span> 👍（174） 💬（3）<div>对老师膜拜！今天一早生产tomcat夯住了，16颗cpu全部98%以上，使用老师的方法加上java的工具成功定位到了问题线程和问题函数。</div>2018-12-03</li><br/><li><span>好好学习</span> 👍（78） 💬（1）<div>perf record -ag -- sleep 2;perf report
+一部到位</div>2018-12-10</li><br/><li><span>bruceding</span> 👍（43） 💬（2）<div>http:&#47;&#47;blog.bruceding.com&#47;420.html  这个是之前的优化经历，通过 perf + 火焰图，定位热点代码，结合业务和网络分析，最终确定问题原因</div>2019-02-11</li><br/><li><span>风</span> 👍（18） 💬（8）<div>老师好，我在实验的过程中，在最后使用 perf record -ag 的时候，发现记录下来的值，其中 stress 并不是消耗 CPU 最猛的进程，而是swapper，不知道什么原因？碰到这种情况时，该如何继续排查下去？以下是我的 perf report
 Samples: 223K of event &#39;cpu-clock&#39;, Event count (approx.): 55956000000
   Children      Self  Command          Shared Object            Symbol
 +   11.54%     0.00%  swapper          [kernel.kallsyms]        [k] cpu_startup_entry
@@ -6138,8 +6442,8 @@ Samples: 223K of event &#39;cpu-clock&#39;, Event count (approx.): 55956000000
 +    3.43%     3.43%  stress           stress                   [.] 0x0000000000002eff
 +    3.20%     0.00%  stress           [kernel.kallsyms]        [k] page_fault
 +    3.20%     0.00%  stress           [kernel.kallsyms]        [k] do_page_fault
-+    3.15%     0.76%  stress           [kernel.kallsyms]        [k] __do_page_fault</div>2018-12-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/a0/39/ddcf26ac.jpg" width="30px"><span>bruceding</span> 👍（8） 💬（1）<div>对于内核函数的调试，4.0 的内核可以使用 eBPF 工具，2.6 或者 4.0 以下的工具，使用 systemtap。perf 是基于采样的原理。本文的例子 execsnoop 可以替换成 https:&#47;&#47;sourceware.org&#47;systemtap&#47;SystemTap_Beginners_Guide&#47;threadtimessect.html。systemtap 中文资料比较少，本人也翻译了相关文档，参考：http:&#47;&#47;systemtap.bruceding.com&#47;。</div>2019-02-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/24/7c/b76ad65d.jpg" width="30px"><span>每一段路都是一种领悟</span> 👍（6） 💬（2）<div>今天一个程序负载飙到140，最高点240，我们的服务器没有挂掉，真的是牛逼，另外使用这几天的方法，基本确认了程序的问题，质问开发后，他不好意思的告诉我，io高是因为自己程序偷了懒，好在这次找到证据了，作为以后的分析案例</div>2018-12-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/97/61/34a0da09.jpg" width="30px"><span>Griffin</span> 👍（6） 💬（1）<div>实际生产环境中的进程更多，stress藏在ps中根本不容易发现，pstree的结果也非常大。老师有空讲讲如何找到这些异常进程的方法和灵感。</div>2018-12-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/34/bb/0b971fca.jpg" width="30px"><span>walker</span> 👍（5） 💬（3）<div>execsnoop这个工具在centos里找不到，有类似的代替品吗</div>2018-12-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/39/38/4c962666.jpg" width="30px"><span>小贝_No_7</span> 👍（4） 💬（1）<div>最后的perf -g有疑问。这里并没有展示出明显的stress占比较高的情况。相反是swapper较多, stress的占比其实在10%一下。请问这个怎么解释? 我看到底下也有其他朋友有类似的疑问但是没得到很好的解析。谢谢啦。  </div>2019-05-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/57/6e/b6795c44.jpg" width="30px"><span>夜空中最亮的星</span> 👍（3） 💬（1）<div>execsnoop
-这个工具没找到</div>2018-12-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/3e/77/22843055.jpg" width="30px"><span>kingkang</span> 👍（2） 💬（3）<div>倪老师你好，我自己用go写了一套微服务框架（基本网络架构是 一台http server+一台grpc server +三台mongodb 副本集群）；如果grpc server不调用mongodb 查询的话，qps能稳定在36000左右，而且压测的时候，grpc server 的cpu使用率大概在60%左右，平均负载最高不会超过2.5（服务器都是四核8G的 ）。如果一旦调用了mongodb查询的话，cpu使用率基本都能达到95%，平均负载最高能到4.6，而qps也下降到了6k左右。两种情况的内存差别并不大，系统内存一直维持在800M上下。我用老师教的方法，mongol db  find方法cpu占用过高。这个方法并没办法做到进一步优化，请问老师我这个框架cpu使用率过高的情况是不是就没办法进一步优化了？另外就是，如果我在加一台grpc server,也就是http server 调用两个grpc server  对系统qps 增加并不大，这是为什么我一直想不明白？</div>2019-07-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/57/3c/081b89ec.jpg" width="30px"><span>rm -rf 😊ི</span> 👍（2） 💬（1）<div>想请教一下老师，running进程突然变多，突然变少的，是什么情况，主要是短时进程的问题吗？</div>2019-03-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/2a/6d/0e436c1c.jpg" width="30px"><span>梦回汉唐</span> 👍（2） 💬（1）<div>查看瞬时进程，还可以用这个方法：
++    3.15%     0.76%  stress           [kernel.kallsyms]        [k] __do_page_fault</div>2018-12-16</li><br/><li><span>bruceding</span> 👍（8） 💬（1）<div>对于内核函数的调试，4.0 的内核可以使用 eBPF 工具，2.6 或者 4.0 以下的工具，使用 systemtap。perf 是基于采样的原理。本文的例子 execsnoop 可以替换成 https:&#47;&#47;sourceware.org&#47;systemtap&#47;SystemTap_Beginners_Guide&#47;threadtimessect.html。systemtap 中文资料比较少，本人也翻译了相关文档，参考：http:&#47;&#47;systemtap.bruceding.com&#47;。</div>2019-02-12</li><br/><li><span>每一段路都是一种领悟</span> 👍（6） 💬（2）<div>今天一个程序负载飙到140，最高点240，我们的服务器没有挂掉，真的是牛逼，另外使用这几天的方法，基本确认了程序的问题，质问开发后，他不好意思的告诉我，io高是因为自己程序偷了懒，好在这次找到证据了，作为以后的分析案例</div>2018-12-24</li><br/><li><span>Griffin</span> 👍（6） 💬（1）<div>实际生产环境中的进程更多，stress藏在ps中根本不容易发现，pstree的结果也非常大。老师有空讲讲如何找到这些异常进程的方法和灵感。</div>2018-12-09</li><br/><li><span>walker</span> 👍（5） 💬（3）<div>execsnoop这个工具在centos里找不到，有类似的代替品吗</div>2018-12-03</li><br/><li><span>小贝_No_7</span> 👍（4） 💬（1）<div>最后的perf -g有疑问。这里并没有展示出明显的stress占比较高的情况。相反是swapper较多, stress的占比其实在10%一下。请问这个怎么解释? 我看到底下也有其他朋友有类似的疑问但是没得到很好的解析。谢谢啦。  </div>2019-05-03</li><br/><li><span>夜空中最亮的星</span> 👍（3） 💬（1）<div>execsnoop
+这个工具没找到</div>2018-12-03</li><br/><li><span>kingkang</span> 👍（2） 💬（3）<div>倪老师你好，我自己用go写了一套微服务框架（基本网络架构是 一台http server+一台grpc server +三台mongodb 副本集群）；如果grpc server不调用mongodb 查询的话，qps能稳定在36000左右，而且压测的时候，grpc server 的cpu使用率大概在60%左右，平均负载最高不会超过2.5（服务器都是四核8G的 ）。如果一旦调用了mongodb查询的话，cpu使用率基本都能达到95%，平均负载最高能到4.6，而qps也下降到了6k左右。两种情况的内存差别并不大，系统内存一直维持在800M上下。我用老师教的方法，mongol db  find方法cpu占用过高。这个方法并没办法做到进一步优化，请问老师我这个框架cpu使用率过高的情况是不是就没办法进一步优化了？另外就是，如果我在加一台grpc server,也就是http server 调用两个grpc server  对系统qps 增加并不大，这是为什么我一直想不明白？</div>2019-07-24</li><br/><li><span>rm -rf 😊ི</span> 👍（2） 💬（1）<div>想请教一下老师，running进程突然变多，突然变少的，是什么情况，主要是短时进程的问题吗？</div>2019-03-25</li><br/><li><span>梦回汉唐</span> 👍（2） 💬（1）<div>查看瞬时进程，还可以用这个方法：
 
 watch -n 1 -d &quot;ps -A -ostat,pid,ppid,cmd | grep -i &#39;^r&#39; | grep -v ps&quot;
 
@@ -6151,14 +6455,14 @@ R+   13308 13307 &#47;usr&#47;local&#47;bin&#47;stress -t 1 -d 1
 R+   13313 13312 &#47;usr&#47;local&#47;bin&#47;stress -t 1 -d 1
 R+   13314 13311 &#47;usr&#47;local&#47;bin&#47;stress -t 1 -d 1
 R+   13319 13317 &#47;usr&#47;local&#47;bin&#47;stress -t 1 -d 1
-R+   13320 13318 &#47;usr&#47;local&#47;bin&#47;stress -t 1 -d 1</div>2019-03-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/b7/e0/5fdb9fc2.jpg" width="30px"><span>刘韦菠</span> 👍（2） 💬（1）<div>我的perf record 里面 random 函数调用占比不是最高的, 最高的是一个叫做hoghdd 的函数, 这个函数里面包含了一些内存段错误和换页的函数. 这个是为什么呢? 
+R+   13320 13318 &#47;usr&#47;local&#47;bin&#47;stress -t 1 -d 1</div>2019-03-20</li><br/><li><span>刘韦菠</span> 👍（2） 💬（1）<div>我的perf record 里面 random 函数调用占比不是最高的, 最高的是一个叫做hoghdd 的函数, 这个函数里面包含了一些内存段错误和换页的函数. 这个是为什么呢? 
 我的机器是mac, 然后这个批次的mac ssd 性能有问题, 官方曾经给我发过返厂维修的通知邮件, 但是因为是公司的电脑, 所以我并没有弄去维修. hog hdd 是不是 占用hdd硬盘的意思呢?
 
 -   57.30%     0.03%  stress           stress                    [.] main                                                                                                                                  ▒
    - main                                                                                                                                                                                                  ▒
       + 21.77% hoghdd                                                                                                                                                                                      ▒
       + 16.12% random_r                                                                                                                                                                                    ▒
-      + 12.09% random                                                                                                                                                                                      ▒</div>2019-03-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/60/98/b519a361.jpg" width="30px"><span>Wind～</span> 👍（2） 💬（1）<div>之前给老师留言的问题已经自己搞定了，在后续的实验中我发现我的实验有些不太一样，还是希望老师看到后可以再指点一二，老师的ps和pidstat都没有输出，而我的则是有输出，但是分析的结果导向是一致的——线索都指向了stress
+      + 12.09% random                                                                                                                                                                                      ▒</div>2019-03-05</li><br/><li><span>Wind～</span> 👍（2） 💬（1）<div>之前给老师留言的问题已经自己搞定了，在后续的实验中我发现我的实验有些不太一样，还是希望老师看到后可以再指点一二，老师的ps和pidstat都没有输出，而我的则是有输出，但是分析的结果导向是一致的——线索都指向了stress
 
 ----通过pidstat
 [wind@aaa ~]$ pidstat -p 39945
@@ -6187,38 +6491,7 @@ wind      54077  0.0  0.0 112704   664 pts&#47;3    R+   06:38   0:00 grep --col
       - 5.49% 0x2f25                                                                                                                ▒
          - 3.75% 0xffffffffba116768                                                                                                 ▒
             - 3.74% 0xffffffffba11a925                                                                                              ▒
-               - 2.94% 0xffffffffba11a597</div>2019-01-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/d0/69/5dbdc245.jpg" width="30px"><span>张德</span> 👍（2） 💬（1）<div>每天都在进步  看来得好好熟悉docker了  打卡打卡</div>2018-12-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/99/af/d29273e2.jpg" width="30px"><span>饭粒</span> 👍（1） 💬（1）<div>这种实操案例真是太赞了。</div>2019-08-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/68/22/b9eb397f.jpg" width="30px"><span>孙志博</span> 👍（1） 💬（1）<div>确实遇到了第1种情况的问题，使用了此解决方案，点赞</div>2019-07-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/78/be/7bf3f1b0.jpg" width="30px"><span>Silver bullet</span> 👍（1） 💬（1）<div>老是您好 看了6篇文章学了不少工具  也跟着里面的案例联系了  但是有些不常用的工具容易忘  比如vmstat 前天学的 今天就忘了  有没有什么办法记住所学过的工具呢？</div>2019-04-01</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/ajNVdqHZLLDC4cj2XKjHPNdOiaZR6oxeO36umdW8cnuW0YfyKCfpia883ib4RheBicuL2TPhMY14HQ7e7Dl4Zvhd8w/132" width="30px"><span>Geek_32a1cf</span> 👍（1） 💬（1）<div>老师，有个疑问，咱们讨论的都是有问题导致了cpu使用率较高的情况，那怎么判断是程序本身调用就需要大量的耗费cpu（例如程序纯计算）还是说程序有问题才导致了cpu的升高呢</div>2019-03-27</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/S2RCl03ejxSqsShDO7uExD8AREBK5O4xroRXQMjBzFRtbEvcaGNKgIPlZJNBBa1C9QSXrhGFWtttukIAvrdoBQ/132" width="30px"><span>Geek_fce8cb</span> 👍（1） 💬（1）<div>老师，没太明白 这个分析app目录下调用了stress是啥意思，这不是用的ab命令测试的吗，怎么又扯上stress去了</div>2019-03-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/96/4e/2acbc3a8.jpg" width="30px"><span>vvsuperman</span> 👍（1） 💬（2）<div>登陆到docker环境中top看到的都是整个主机的信息，而不是docker自身的进程的信息，查看不到呀</div>2019-03-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/c2/1f/343f2dec.jpg" width="30px"><span>9527</span> 👍（1） 💬（1）<div>如果是短时间内有大量进程在不断重启，每秒的fork调用应该很多，如果能监控到一段内都调用了哪些系统函数，同样的问题应该也能先出来吧，有这样的查看一段时间内系统函数调用情况的工具吗？</div>2018-12-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/1b/36/abe6d066.jpg" width="30px"><span>付盼星</span> 👍（1） 💬（1）<div>老师好，之前就遇到过一次短进程的问题导致cpu使用率过高，因为我们发布应用用的是容器，把重启策略设置为always，结果容器启动时候调用java -jar 启动应用，因为配置原因，无法启动，然后它就不停启动，现象是cpu使用率过高，好在用top能发现，毕竟进程一直在。不过还有个场景就比较难搞了，系统被入侵，不停启动进程消耗资源，你杀掉之后，它又启动新的进程，pid也不同，这种情况，有处理办法么？</div>2018-12-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/b1/4d/10c75b34.jpg" width="30px"><span>Johnson</span> 👍（1） 💬（1）<div>曾经碰到CPU利用率很高，也知道是nginx造成的，整个团队都在优化，效果不理想啊</div>2018-12-03</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/e9/b2/6a9203b5.jpg" width="30px"><span>小苏</span> 👍（0） 💬（1）<div>老师我写了一个测试程序java的 (cpu密集型): 命令:top -g -p 27476
-    while (true) {
-         Math.pow(RandomUtils.nextInt(100), RandomUtils.nextInt(100));
-     }
-cpu升上来了但是并没有明确的显示是由于计算次方也就是pow方法造成的
-接下来我改如何用 perf  定位
-+   67.60%     0.00%  perf-27476.map      [.] 0x00007f8de749930c                                                                                                                                           ▒
--   67.27%     0.90%  libjvm.so           [.] JVM_GetStackTraceElement                                                                                                                                     ▒
-   - 11.07% JVM_GetStackTraceElement                                                                                                                                                                       ▒
-      - 15.16% java_lang_Throwable::get_stack_trace_element                                                                                                                                                ▒
-         - 23.20% java_lang_StackTraceElement::create                                                                                                                                                      ▒
-            - 14.01% StringTable::intern                                                                                                                                                                   ▒
-               + 9.21% StringTable::intern                                                                                                                                                                 ▒
-                 3.22% UTF8::convert_to_unicode                                                                                                                                                            ▒
-                 3.01% UTF8::unicode_length</div>2019-08-01</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/ec/8f/8299495a.jpg" width="30px"><span>少盐</span> 👍（0） 💬（1）<div>docker build -t feisky&#47;nginx:cpu -f Dockerfile.nginx .
-Sending build context to Docker daemon  32.26kB
-Step 1&#47;4 : FROM nginx
-Get https:&#47;&#47;registry-1.docker.io&#47;v2&#47;: net&#47;http: TLS handshake timeout
-Makefile:8: recipe for target &#39;build&#39; failed
-make: *** [build] Error 1
-为什么输入make build 出现这个错误</div>2019-07-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/f3/b7/d7377f0c.jpg" width="30px"><span>Vincent</span> 👍（0） 💬（1）<div>使用top时，如何只展示R状态的进程，或者按照状态排序也可以~</div>2019-05-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/83/1e/bdc4f811.jpg" width="30px"><span>强友谅</span> 👍（0） 💬（1）<div>在做相关的实验，由于环境中存在代理。
-1.make build报错无法拉取镜像Get https:&#47;&#47;registry-1.docker.io&#47;v2&#47;: dial tcp: lookup registry-1.docker.io on 127.0.0.53:53: read udp 127.0.0.1:40789-&gt;127.0.0.53:53: i&#47;o timeout
-2.在vim &#47;lib&#47;systemd&#47;system&#47;docker.service中添加仍报该错误。
-3.&#47;etc&#47;profile中通过export http_proxy=http:&#47;&#47;172.16.10.12:808
-export https_proxy=http:&#47;&#47;172.16.10.12:808配置代理 ，wget www.baidu.com验证可通
-
-4.一直纠结在我这种网络情况下如何欢畅的拖取镜像，官方文档也参照设置过，daocloud加速器也有尝试。
-问题：请问现在的问题是docker仓库的问题，还是网络配置仍有问题？期望大牛的回答^_^
-</div>2019-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/3f/5e/2fa1377d.jpg" width="30px"><span>Ignacio</span> 👍（0） 💬（1）<div>[root@rhel7 ~]# docker logs 6117d3a95fda
-[15-Mar-2019 12:33:07] ERROR: failed to create new listening socket: socket(): Address family not supported by protocol (97)
-[15-Mar-2019 12:33:07] ERROR: FPM initialization failed
-镜像都可以拉下来，nginx可以启动，php-fpm起不来。。</div>2019-03-15</li><br/>
+               - 2.94% 0xffffffffba11a597</div>2019-01-13</li><br/>
 </ul>
 
 

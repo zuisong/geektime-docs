@@ -13187,11 +13187,133 @@
 <li>–set-gtid-purged=off表示的是，不输出跟GTID相关的信息；</li>
 <li>–result-file指定了输出文件的路径，其中client表示生成的文件是在客户端机器上的。</li>
 </ol>
-<div><strong>精选留言（30）</strong></div>
+<p>通过这条mysqldump命令生成的t.sql文件中就包含了如图1所示的INSERT语句。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/8a/de/8acdcefcaf5c9940570bf7e8f73dbdde.png?wh=3034%2A192" /></p>
+<p>图1 mysqldump输出文件的部分结果</p>
+<p>可以看到，一条INSERT语句里面会包含多个value对，这是为了后续用这个文件来写入数据的时候，执行速度可以更快。</p>
+<p>如果你希望生成的文件中一条INSERT语句只插入一行数据的话，可以在执行mysqldump命令时，加上参数–skip-extended-insert。</p>
+<p>然后，你可以通过下面这条命令，将这些INSERT语句放到db2库里去执行。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>mysql -h127.0.0.1 -P13000  -uroot db2 -e &quot;source /client_tmp/t.sql&quot;
+</code></pre></div>
+<p>需要说明的是，source并不是一条SQL语句，而是一个客户端命令。mysql客户端执行这个命令的流程是这样的：</p>
+<ol>
+<li>打开文件，默认以分号为结尾读取一条条的SQL语句；</li>
+<li>将SQL语句发送到服务端执行。</li>
+</ol>
+<p>也就是说，服务端执行的并不是这个“source t.sql"语句，而是INSERT语句。所以，不论是在慢查询日志（slow log），还是在binlog，记录的都是这些要被真正执行的INSERT语句。</p>
+<h1 id="csv">导出CSV文件</h1>
+<p>另一种方法是直接将结果导出成.csv文件。MySQL提供了下面的语法，用来将查询结果导出到服务端本地目录：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>select * from db1.t where a&gt;900 into outfile &#39;/server_tmp/t.csv&#39;;
+</code></pre></div>
+<p>我们在使用这条语句时，需要注意如下几点。</p>
+<ol>
+<li>这条语句会将结果保存在服务端。如果你执行命令的客户端和MySQL服务端不在同一个机器上，客户端机器的临时目录下是不会生成t.csv文件的。</li>
+<li>
+<p>into outfile指定了文件的生成位置（/server_tmp/），这个位置必须受参数secure_file_priv的限制。参数secure_file_priv的可选值和作用分别是：</p>
+</li>
+<li>
+<p>如果设置为empty，表示不限制文件生成的位置，这是不安全的设置；</p>
+</li>
+<li>如果设置为一个表示路径的字符串，就要求生成的文件只能放在这个指定的目录，或者它的子目录；</li>
+<li>如果设置为NULL，就表示禁止在这个MySQL实例上执行select … into outfile 操作。</li>
+<li>这条命令不会帮你覆盖文件，因此你需要确保/server_tmp/t.csv这个文件不存在，否则执行语句时就会因为有同名文件的存在而报错。</li>
+<li>这条命令生成的文本文件中，原则上一个数据行对应文本文件的一行。但是，如果字段中包含换行符，在生成的文本中也会有换行符。不过类似换行符、制表符这类符号，前面都会跟上“\”这个转义符，这样就可以跟字段之间、数据行之间的分隔符区分开。</li>
+</ol>
+<p>得到.csv导出文件后，你就可以用下面的load data命令将数据导入到目标表db2.t中。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>load data infile &#39;/server_tmp/t.csv&#39; into table db2.t;
+</code></pre></div>
+<p>这条语句的执行流程如下所示。</p>
+<ol>
+<li>打开文件/server_tmp/t.csv，以制表符(\t)作为字段间的分隔符，以换行符（\n）作为记录之间的分隔符，进行数据读取；</li>
+<li>启动事务。</li>
+<li>
+<p>判断每一行的字段数与表db2.t是否相同：</p>
+</li>
+<li>
+<p>若不相同，则直接报错，事务回滚；</p>
+</li>
+<li>若相同，则构造成一行，调用InnoDB引擎接口，写入到表中。</li>
+<li>重复步骤3，直到/server_tmp/t.csv整个文件读入完成，提交事务。</li>
+</ol>
+<p>你可能有一个疑问，<strong>如果binlog_format=statement，这个load语句记录到binlog里以后，怎么在备库重放呢？</strong></p>
+<p>由于/server_tmp/t.csv文件只保存在主库所在的主机上，如果只是把这条语句原文写到binlog中，在备库执行的时候，备库的本地机器上没有这个文件，就会导致主备同步停止。</p>
+<p>所以，这条语句执行的完整流程，其实是下面这样的。</p>
+<ol>
+<li>主库执行完成后，将/server_tmp/t.csv文件的内容直接写到binlog文件中。</li>
+<li>往binlog文件中写入语句load data local infile ‘/tmp/SQL_LOAD_MB-1-0’ INTO TABLE `db2`.`t`。</li>
+<li>把这个binlog日志传到备库。</li>
+<li>备库的apply线程在执行这个事务日志时：<br />
+   a. 先将binlog中t.csv文件的内容读出来，写入到本地临时目录/tmp/SQL_LOAD_MB-1-0 中；<br />
+   b. 再执行load data语句，往备库的db2.t表中插入跟主库相同的数据。</li>
+</ol>
+<p>执行流程如图2所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/3a/fd/3a6790bc933af5ac45a75deba0f52cfd.jpg?wh=1142%2A880" /></p>
+<p>图2 load data的同步流程</p>
+<p>注意，这里备库执行的load data语句里面，多了一个“local”。它的意思是“将执行这条命令的客户端所在机器的本地文件/tmp/SQL_LOAD_MB-1-0的内容，加载到目标表db2.t中”。</p>
+<p>也就是说，<strong>load data命令有两种用法</strong>：</p>
+<ol>
+<li>不加“local”，是读取服务端的文件，这个文件必须在secure_file_priv指定的目录或子目录下；</li>
+<li>加上“local”，读取的是客户端的文件，只要mysql客户端有访问这个文件的权限即可。这时候，MySQL客户端会先把本地文件传给服务端，然后执行上述的load data流程。</li>
+</ol>
+<p>另外需要注意的是，<strong>select …into outfile方法不会生成表结构文件</strong>, 所以我们导数据时还需要单独的命令得到表结构定义。mysqldump提供了一个–tab参数，可以同时导出表结构定义文件和csv数据文件。这条命令的使用方法如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>mysqldump -h$host -P$port -u$user ---single-transaction  --set-gtid-purged=OFF db1 t --where=&quot;a&gt;900&quot; --tab=$secure_file_priv
+</code></pre></div>
+<p>这条命令会在$secure_file_priv定义的目录下，创建一个t.sql文件保存建表语句，同时创建一个t.txt文件保存CSV数据。</p>
+<h1 id="_1">物理拷贝方法</h1>
+<p>前面我们提到的mysqldump方法和导出CSV文件的方法，都是逻辑导数据的方法，也就是将数据从表db1.t中读出来，生成文本，然后再写入目标表db2.t中。</p>
+<p>你可能会问，有物理导数据的方法吗？比如，直接把db1.t表的.frm文件和.ibd文件拷贝到db2目录下，是否可行呢？</p>
+<p>答案是不行的。</p>
+<p>因为，一个InnoDB表，除了包含这两个物理文件外，还需要在数据字典中注册。直接拷贝这两个文件的话，因为数据字典中没有db2.t这个表，系统是不会识别和接受它们的。</p>
+<p>不过，在MySQL 5.6版本引入了<strong>可传输表空间</strong>(transportable tablespace)的方法，可以通过导出+导入表空间的方式，实现物理拷贝表的功能。</p>
+<p>假设我们现在的目标是在db1库下，复制一个跟表t相同的表r，具体的执行步骤如下：</p>
+<ol>
+<li>执行 create table r like t，创建一个相同表结构的空表；</li>
+<li>执行alter table r discard tablespace，这时候r.ibd文件会被删除；</li>
+<li>执行flush table t for export，这时候db1目录下会生成一个t.cfg文件；</li>
+<li>在db1目录下执行cp t.cfg r.cfg; cp t.ibd r.ibd；这两个命令（这里需要注意的是，拷贝得到的两个文件，MySQL进程要有读写权限）；</li>
+<li>执行unlock tables，这时候t.cfg文件会被删除；</li>
+<li>执行alter table r import tablespace，将这个r.ibd文件作为表r的新的表空间，由于这个文件的数据内容和t.ibd是相同的，所以表r中就有了和表t相同的数据。</li>
+</ol>
+<p>至此，拷贝表数据的操作就完成了。这个流程的执行过程图如下：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ba/a7/ba1ced43eed4a55d49435c062fee21a7.jpg?wh=1142%2A880" /></p>
+<p>图3 物理拷贝表</p>
+<p>关于拷贝表的这个流程，有以下几个注意点：</p>
+<ol>
+<li>在第3步执行完flsuh table命令之后，db1.t整个表处于只读状态，直到执行unlock tables命令后才释放读锁；</li>
+<li>在执行import tablespace的时候，为了让文件里的表空间id和数据字典中的一致，会修改r.ibd的表空间id。而这个表空间id存在于每一个数据页中。因此，如果是一个很大的文件（比如TB级别），每个数据页都需要修改，所以你会看到这个import语句的执行是需要一些时间的。当然，如果是相比于逻辑导入的方法，import语句的耗时是非常短的。</li>
+</ol>
+<h1 id="_2">小结</h1>
+<p>今天这篇文章，我和你介绍了三种将一个表的数据导入到另外一个表中的方法。</p>
+<p>我们来对比一下这三种方法的优缺点。</p>
+<ol>
+<li>
+<p>物理拷贝的方式速度最快，尤其对于大表拷贝来说是最快的方法。如果出现误删表的情况，用备份恢复出误删之前的临时库，然后再把临时库中的表拷贝到生产库上，是恢复数据最快的方法。但是，这种方法的使用也有一定的局限性：</p>
+</li>
+<li>
+<p>必须是全表拷贝，不能只拷贝部分数据；</p>
+</li>
+<li>需要到服务器上拷贝数据，在用户无法登录数据库主机的场景下无法使用；</li>
+<li>由于是通过拷贝物理文件实现的，源表和目标表都是使用InnoDB引擎时才能使用。</li>
+<li>用mysqldump生成包含INSERT语句文件的方法，可以在where参数增加过滤条件，来实现只导出部分数据。这个方式的不足之一是，不能使用join这种比较复杂的where条件写法。</li>
+<li>用select … into outfile的方法是最灵活的，支持所有的SQL写法。但，这个方法的缺点之一就是，每次只能导出一张表的数据，而且表结构也需要另外的语句单独备份。</li>
+</ol>
+<p>后两种方式都是逻辑备份方式，是可以跨引擎使用的。</p>
+<p>最后，我给你留下一个思考题吧。</p>
+<p>我们前面介绍binlog_format=statement的时候，binlog记录的load data命令是带local的。既然这条命令是发送到备库去执行的，那么备库执行的时候也是本地执行，为什么需要这个local呢？如果写到binlog中的命令不带local，又会出现什么问题呢？</p>
+<p>你可以把你的分析写在评论区，我会在下一篇文章的末尾和你讨论这个问题。感谢你的收听，也欢迎你把这篇文章分享给更多的朋友一起阅读。</p>
+<h1 id="_3">上期问题时间</h1>
+<p>我在上篇文章最后给你留下的思考题，已经在今天这篇文章的正文部分做了回答。</p>
+<p>上篇文章的评论区有几个非常好的留言，我在这里和你分享一下。</p>
+<p>@huolang 同学提了一个问题：如果sessionA拿到c=5的记录锁是写锁，那为什么sessionB和sessionC还能加c=5的读锁呢？</p>
+<p>这是因为next-key lock是先加间隙锁，再加记录锁的。加间隙锁成功了，加记录锁就会被堵住。如果你对这个过程有疑问的话，可以再复习一下<a href="https://time.geekbang.org/column/article/78427">第30篇文章</a>中的相关内容。</p>
+<p>@一大只 同学做了一个实验，验证了主键冲突以后，insert语句加间隙锁的效果。比我在上篇文章正文中提的那个回滚导致死锁的例子更直观，体现了他对这个知识点非常好的理解和思考，很赞。</p>
+<p>@roaming 同学验证了在MySQL 8.0版本中，已经能够用临时表处理insert … select写入原表的语句了。</p>
+<p>@老杨同志 的回答提到了我们本文中说到的几个方法。</p>
+<div><strong>精选留言（15）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/14/05/d4/e06bf86d.jpg" width="30px"><span>长杰</span> 👍（73） 💬（1）<div>课后题答案
-不加“local”，是读取服务端的文件，这个文件必须在 secure_file_priv 指定的目录或子目录下；而备库的apply线程执行时先讲csv内容读出生成tmp目录下的临时文件，这个目录容易受secure_file_priv的影响，如果备库改参数设置为Null或指定的目录，可能导致load操作失败，加local则不受这个影响。</div>2019-02-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/0c/48/ba59d28d.jpg" width="30px"><span>poppy</span> 👍（27） 💬（1）<div>关于思考题，我理解是备库的同步线程其实相当于备库的一个客户端，由于备库的会把binlog中t.csv的内容写到&#47;tmp&#47;SQL_LOAD_MB-1-0中，如果load data命令不加&#39;local&#39;表示读取服务端的文件，文件必须在secure_file_priv指定的目录或子目录，此时可能找不到该文件，主备同步执行会失败。而加上local的话，表示读取客户端的文件，既然备份线程都能在该目录下创建临时文件&#47;tmp&#47;SQL_LOAD_MB-1-0,必然也有权限访问，把该文件传给服务端执行。</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/07/1e/bdbe93f4.jpg" width="30px"><span>尘封</span> 👍（20） 💬（3）<div>老师mysqldump导出的文件里，单条sql里的value值有什么限制吗默认情况下，假如一个表有几百万，那mysql会分为多少个sql导出？
-问题：因为从库可能没有load的权限，所以local</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/cd/0f/fa810f69.jpg" width="30px"><span>☆appleう</span> 👍（16） 💬（2）<div>通知对方更新数据的意思是: 针对事务内的3个操作:插入和更新两个都是本地操作，第三个操作是远程调用，这里远程调用其实是想把本地操作的那两条通知对方(对方:远程调用)，让对方把数据更新，这样双方(我和远程调用方)的数据达到一致，如果对方操作失败，事务的前两个操作也会回滚，主要是想保证双方数据的一致性，因为远程调用可能会出现网络延迟超时等因素，极端情况会导致事务10s左右才能处理完毕，想问的是这样耗时的事务会带来哪些影响呢？
+<li><span>长杰</span> 👍（73） 💬（1）<div>课后题答案
+不加“local”，是读取服务端的文件，这个文件必须在 secure_file_priv 指定的目录或子目录下；而备库的apply线程执行时先讲csv内容读出生成tmp目录下的临时文件，这个目录容易受secure_file_priv的影响，如果备库改参数设置为Null或指定的目录，可能导致load操作失败，加local则不受这个影响。</div>2019-02-17</li><br/><li><span>poppy</span> 👍（27） 💬（1）<div>关于思考题，我理解是备库的同步线程其实相当于备库的一个客户端，由于备库的会把binlog中t.csv的内容写到&#47;tmp&#47;SQL_LOAD_MB-1-0中，如果load data命令不加&#39;local&#39;表示读取服务端的文件，文件必须在secure_file_priv指定的目录或子目录，此时可能找不到该文件，主备同步执行会失败。而加上local的话，表示读取客户端的文件，既然备份线程都能在该目录下创建临时文件&#47;tmp&#47;SQL_LOAD_MB-1-0,必然也有权限访问，把该文件传给服务端执行。</div>2019-02-15</li><br/><li><span>尘封</span> 👍（20） 💬（3）<div>老师mysqldump导出的文件里，单条sql里的value值有什么限制吗默认情况下，假如一个表有几百万，那mysql会分为多少个sql导出？
+问题：因为从库可能没有load的权限，所以local</div>2019-02-15</li><br/><li><span>☆appleう</span> 👍（16） 💬（2）<div>通知对方更新数据的意思是: 针对事务内的3个操作:插入和更新两个都是本地操作，第三个操作是远程调用，这里远程调用其实是想把本地操作的那两条通知对方(对方:远程调用)，让对方把数据更新，这样双方(我和远程调用方)的数据达到一致，如果对方操作失败，事务的前两个操作也会回滚，主要是想保证双方数据的一致性，因为远程调用可能会出现网络延迟超时等因素，极端情况会导致事务10s左右才能处理完毕，想问的是这样耗时的事务会带来哪些影响呢？
 
 设计的初衷是想这三个操作能原子执行，只要有不成功就可以回滚，保证两方数据的一致性
 
@@ -13199,7 +13321,7 @@
 
 
 
-</div>2019-02-15</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqibSwKPg7hiapc49qoM4dibhM3fYANPjfltF2ibBZ3dHX2hibjg5EIIcziahrmjO5R2XrcRibvU39TQS7jg/132" width="30px"><span>库淘淘</span> 👍（13） 💬（1）<div>如果不加local 如secure_file_priv 设置为null 或者路径 可能就不能成功,这样加了之后可以保证执行成功率不受参数secure_file_priv影响。 还有发现物理拷贝文件后，权限所属用户还得改下，不然import tablespace  会报错找不到文件，老师是不是应该补充上去，不然容易踩坑。</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4f/78/c3d8ecb0.jpg" width="30px"><span>undifined</span> 👍（10） 💬（4）<div>老师，用物理导入的方式执行 alter table r import tablespace 时 提示ERROR 1812 (HY000): Tablespace is missing for table `db1`.`r`. 此时 db1&#47; 下面的文件有 db.opt r.cfg  r.frm  r.ibd  t.frm  t.ibd；这个该怎么处理
+</div>2019-02-15</li><br/><li><span>库淘淘</span> 👍（13） 💬（1）<div>如果不加local 如secure_file_priv 设置为null 或者路径 可能就不能成功,这样加了之后可以保证执行成功率不受参数secure_file_priv影响。 还有发现物理拷贝文件后，权限所属用户还得改下，不然import tablespace  会报错找不到文件，老师是不是应该补充上去，不然容易踩坑。</div>2019-02-15</li><br/><li><span>undifined</span> 👍（10） 💬（4）<div>老师，用物理导入的方式执行 alter table r import tablespace 时 提示ERROR 1812 (HY000): Tablespace is missing for table `db1`.`r`. 此时 db1&#47; 下面的文件有 db.opt    r.cfg  r.frm  r.ibd  t.frm  t.ibd；这个该怎么处理
 
 执行步骤：
 
@@ -13221,7 +13343,7 @@ Query OK, 0 rows affected (0.01 sec)
 mysql&gt; alter table r import tablespace;
 ERROR 1812 (HY000): Tablespace is missing for table `db1`.`r`.
 
-</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/e5/39/951f89c8.jpg" width="30px"><span>信信</span> 👍（7） 💬（2）<div>老师好，唯一索引的加next-key lock时，会退化会记录锁。这中间会先拿到间隙锁再释放，还是从一开始就不会获取间隙锁，直接只获取记录锁呢？</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/cd/0f/fa810f69.jpg" width="30px"><span>☆appleう</span> 👍（7） 💬（1）<div>老师，我想问一个关于事务的问题，一个事务中有3个操作，插入一条数据(本地操作),更新一条数据(本地操作)，然后远程调用，通知对方更新上面数据(如果远程调用失败会重试，最多3次，如果遇到网络等问题，远程调用时间会达到5s,极端情况3次会达到15s)，那么极端情况事务将长达5-15s，这样会带来什么影响吗？</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/df/e7/4ce5ed27.jpg" width="30px"><span>lunung</span> 👍（6） 💬（1）<div>mysql&gt; select * from t;
+</div>2019-02-15</li><br/><li><span>信信</span> 👍（7） 💬（2）<div>老师好，唯一索引的加next-key lock时，会退化会记录锁。这中间会先拿到间隙锁再释放，还是从一开始就不会获取间隙锁，直接只获取记录锁呢？</div>2019-02-15</li><br/><li><span>☆appleう</span> 👍（7） 💬（1）<div>老师，我想问一个关于事务的问题，一个事务中有3个操作，插入一条数据(本地操作),更新一条数据(本地操作)，然后远程调用，通知对方更新上面数据(如果远程调用失败会重试，最多3次，如果遇到网络等问题，远程调用时间会达到5s,极端情况3次会达到15s)，那么极端情况事务将长达5-15s，这样会带来什么影响吗？</div>2019-02-15</li><br/><li><span>lunung</span> 👍（6） 💬（1）<div>mysql&gt; select * from t;
 +----+------+
 | id | name |
 +----+------+
@@ -13295,27 +13417,12 @@ ll 后 查看  tt.cfg 文件没有自动删除     5.7mysql
 -rw-r-----. 1 mysql mysql    380 2月  15 09:51 tt.cfg
 -rw-r-----. 1 mysql mysql   8586 2月  15 09:49 tt.frm
 -rw-r-----. 1 mysql mysql  98304 2月  15 09:51 tt.ibd
-</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/31/62/103e276b.jpg" width="30px"><span>小灰灰zyh</span> 👍（3） 💬（1）<div>老师您好，想问下如果是迁移5000W左右的一张表，使用导出CSV文件的方式效率高吗？</div>2019-04-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/e2/c7/d6a0927a.jpg" width="30px"><span>AstonPutting</span> 👍（3） 💬（3）<div>老师，mysqlpump能否在平时代替mysqldump的使用？</div>2019-02-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/f6/d1/dcafd7cf.jpg" width="30px"><span>PengfeiWang</span> 👍（3） 💬（1）<div>老师，您好：
+</div>2019-02-15</li><br/><li><span>小灰灰zyh</span> 👍（3） 💬（1）<div>老师您好，想问下如果是迁移5000W左右的一张表，使用导出CSV文件的方式效率高吗？</div>2019-04-16</li><br/><li><span>AstonPutting</span> 👍（3） 💬（3）<div>老师，mysqlpump能否在平时代替mysqldump的使用？</div>2019-02-22</li><br/><li><span>PengfeiWang</span> 👍（3） 💬（1）<div>老师，您好：
         文中“–add-locks 设置为 0，表示在输出的文件结果里，不增加&quot; LOCK TABLES t WRITE;&quot; 是否是笔误，--add-locks应该是在insert语句前后添加锁，我的理解此处应该是--skip-add-locks，不知道是否是这样？
-</div>2019-02-18</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/fJ5BEicRVnXAwCxkIYhJZ0woiaQ38ibUYkYH125bzL2Y2ib1YS9b7Q9S5qia2Cia9UWzUoDBGeWJibB7p9xSnib7iaU8kzw/132" width="30px"><span>千木</span> 👍（2） 💬（1）<div>老师您好，您在文章的物理拷贝里面写到的注意事项的第二点，说为了保持表空间的id和数据字典一致，会修改t.ibd的表空间id。
+</div>2019-02-18</li><br/><li><span>千木</span> 👍（2） 💬（1）<div>老师您好，您在文章的物理拷贝里面写到的注意事项的第二点，说为了保持表空间的id和数据字典一致，会修改t.ibd的表空间id。
 然后我理解从unlock tables；之后应该就不会对t表造成影响了，所以你的本意其实是会修改r.ibd的表空间id吗？
-</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/3a/28/cf707831.jpg" width="30px"><span>与狼共舞</span> 👍（1） 💬（2）<div>我们这边的运维使用 mysql 直接导出，这种和mysqldump有多大的区别？</div>2020-03-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/64/15/1960d773.jpg" width="30px"><span>佳</span> 👍（1） 💬（2）<div>老师好，这个&#47;tmp&#47;SQL_LOAD_MB-1-0 是应该在主库上面，还是备库上面？为啥我执行完是在主库上面出现了这个文件呢？
-</div>2019-03-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/96/8b/238176e3.jpg" width="30px"><span>xxj123go</span> 👍（0） 💬（1）<div>传输表空间方式对主从同步会有影响么</div>2019-03-12</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/ab/38/8f4f096b.jpg" width="30px"><span>王显伟</span> 👍（0） 💬（1）<div>第一位留言的朋友报错我也复现了，原因是用root复制的文件，没有修改属组导致的</div>2019-02-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/4f/78/c3d8ecb0.jpg" width="30px"><span>undifined</span> 👍（0） 💬（1）<div>老师 错误信息的截屏 https:&#47;&#47;www.dropbox.com&#47;s&#47;8wyet4bt9yfjsau&#47;mysqlerror.png?dl=0
-
-MySQL 5.7，Mac 上的 Docker 容器里面跑的，版本是 5.7.17</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/e9/8e/6dc15a91.jpg" width="30px"><span>晨思暮语</span> 👍（0） 💬（1）<div>老师好，由于字数限制，分两条：
-我用的是percona数据库，问题是第15章中的思考题。
-根据我做的实验，结论应该是：
-MySQL 调用了 InnoDB 引擎提供的“修改为 (1,2)”这个接口，但是引擎发现值与原来相同，不更新，直接返回
-一直没有想明白，老师再帮忙看看，谢谢！</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/df/e7/4ce5ed27.jpg" width="30px"><span>lunung</span> 👍（0） 💬（1）<div>@undifined  看下是否是 权限问题引起的  cp 完后 是不是mysql 权限</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/40/5e/b8fada94.jpg" width="30px"><span>Ryoma</span> 👍（0） 💬（2）<div>问老师一个主题无关的问题：现有数据库中有个表字段为text类型，但是目前发现text中的数据有点不太对。
-请问在MySQL中有没有办法确认在插入时是否发生截断数据的情况么？（因为该字段被修改过，我现在不方便恢复当时的现场）</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/57/6e/b6795c44.jpg" width="30px"><span>夜空中最亮的星</span> 👍（4） 💬（0）<div>学习完老师的课都想做dba了</div>2019-02-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/3b/55/ad/791d0f5e.jpg" width="30px"><span>joyboy</span> 👍（0） 💬（0）<div>学习收获：
-1.快速拷贝表的三种方式：导出成insert语句、导出成txt、直接物理拷贝原表。
-2.速度最快的事物理拷贝原表，但是需要登录到数据库服务器才行
-3.通过导出文件再导入的方式，主备同步的时候，会先把文件同步到备库，然后再执行同步语句</div>2024-07-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/10/e9/f5e55ccf.jpg" width="30px"><span>小鬼</span> 👍（0） 💬（0）<div>导出csv文件的时候会锁表吗？</div>2022-11-14</li><br/><li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/DYAIOgq83er5VuhrrJNlkIE226Odgp58WJ7jc1JMWOhHVQf6vKCXiaQASI5s85VF4P8Hzqsa1qxuAUu2nnT6Reg/132" width="30px"><span>君</span> 👍（0） 💬（0）<div>备库如何处理呢？</div>2022-05-13</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/57/4f/6fb51ff1.jpg" width="30px"><span>奕</span> 👍（0） 💬（0）<div>物理导入后，最后还有一个 r.cfg 文件，这个文件能删除吗？ 导入成功后还有什么作用的？</div>2021-11-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/ce/ff/1f12e3ab.jpg" width="30px"><span>XXX</span> 👍（0） 💬（0）<div>关于复制表，如果在不跨库的情况下也可以通过pt-tools中的online DDL工具pt-online-schema-change，配合--no-swap-tables --no-drop-old-table --no-drop-triggers参数实现表拷贝，并依赖触发器保持这个两个表实时同步，在需要的时候删除触发器，结束同步</div>2021-04-20</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/c9xpiakQ3OC1AlfCeW03lLnnb7mj5v35Hib8YDs66zpnVib2n2qFichFmFp2Ec4QDPR0dKh38MkBBLyD3bE4NiaanZQ/132" width="30px"><span>龙晓</span> 👍（0） 💬（0）<div>老师文中讲的物理拷贝方法，我在8.0主从环境中试了一下，发现备库在最后一步alter table r import tablespace;报错 Last_SQL_Error: Error &#39;Tablespace is missing for table `db1`.`r`.&#39; on query. Default database: &#39;db1&#39;. Query: &#39;alter table r import tablespace&#39;，导致主从同步中断，我是这么解决的：
-1、停止从库同步 stop slave
-2、将主库r.ibd文件scp到从库的db1目录下
-3、开启从库同步 start slave,然后同步就恢复正常了。
-
-我虽然侥幸解决了，但恐其中有疏漏，请老师帮忙解析一下，谢谢！</div>2021-03-28</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/91/b1/fb117c21.jpg" width="30px"><span>先听</span> 👍（0） 💬（1）<div>在rds这样的云数据库服务上，好像无法使用into outfile 命令。有没有什么好的解决办法呢？</div>2020-09-07</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIx1V1QAxC4NHaxYZGyuibBN8lcURJWc5nrnO4yic1kxnDemYV2FJGialf47kYX9qtDnZZOfe1SJeLicg/132" width="30px"><span>lleft</span> 👍（0） 💬（0）<div>load data infile部分，把csv文件的内容直接写到binlog，在测试的时候发现binlog中并没有关于csv的相关信息呀？是需要什么前提条件吗？</div>2020-08-05</li><br/>
+</div>2019-02-15</li><br/><li><span>与狼共舞</span> 👍（1） 💬（2）<div>我们这边的运维使用 mysql 直接导出，这种和mysqldump有多大的区别？</div>2020-03-02</li><br/><li><span>佳</span> 👍（1） 💬（2）<div>老师好，这个&#47;tmp&#47;SQL_LOAD_MB-1-0 是应该在主库上面，还是备库上面？为啥我执行完是在主库上面出现了这个文件呢？
+</div>2019-03-14</li><br/>
 </ul>
 
 

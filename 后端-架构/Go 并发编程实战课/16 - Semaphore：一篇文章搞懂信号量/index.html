@@ -1576,6 +1576,17 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    16   Semaphore：一篇文章搞懂信号量
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1585,6 +1596,34 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pv" class="md-nav__link">
+    <span class="md-ellipsis">
+      P/V操作
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -12562,6 +12601,23 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pv" class="md-nav__link">
+    <span class="md-ellipsis">
+      P/V操作
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -12589,10 +12645,245 @@
 <h1 id="_1">信号量是什么？都有什么操作？</h1>
 <p>信号量的概念是荷兰计算机科学家Edsger Dijkstra在1963年左右提出来的，广泛应用在不同的操作系统中。在系统中，会给每一个进程一个信号量，代表每个进程目前的状态。未得到控制权的进程，会在特定的地方被迫停下来，等待可以继续进行的信号到来。</p>
 <p>最简单的信号量就是一个变量加一些并发控制的能力，这个变量是0到n之间的一个数值。当goroutine完成对此信号量的等待（wait）时，该计数值就减1，当goroutine完成对此信号量的释放（release）时，该计数值就加1。当计数值为0的时候，goroutine调用wait等待该信号量是不会成功的，除非计数器又大于0，等待的goroutine才有可能成功返回。</p>
-<div><strong>精选留言（18）</strong></div>
+<p>更复杂的信号量类型，就是使用抽象数据类型代替变量，用来代表复杂的资源类型。实际上，大部分的信号量都使用一个整型变量来表示一组资源，并没有实现太复杂的抽象数据类型，所以你只要知道有更复杂的信号量就行了，我们这节课主要是学习最简单的信号量。</p>
+<p>说到这儿呢，我想借助一个生活中的例子，来帮你进一步理解信号量。</p>
+<p>举个例子，图书馆新购买了10本《Go并发编程的独家秘籍》，有1万个学生都想读这本书，“僧多粥少”。所以，图书馆管理员先会让这1万个同学进行登记，按照登记的顺序，借阅此书。如果书全部被借走，那么，其他想看此书的同学就需要等待，如果有人还书了，图书馆管理员就会通知下一位同学来借阅这本书。这里的资源是《Go并发编程的独家秘籍》这十本书，想读此书的同学就是goroutine，图书管理员就是信号量。</p>
+<p>怎么样，现在是不是很好理解了？那么，接下来，我们来学习下信号量的P/V操作。</p>
+<h2 id="pv">P/V操作</h2>
+<p>Dijkstra在他的论文中为信号量定义了两个操作P和V。P操作（descrease、wait、acquire）是减少信号量的计数值，而V操作（increase、signal、release）是增加信号量的计数值。</p>
+<p>使用伪代码表示如下（中括号代表原子操作）：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>function V(semaphore S, integer I):
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    [S ← S + I]
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>function P(semaphore S, integer I):
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    repeat:
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        [if S ≥ I:
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        S ← S − I
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        break]
+</code></pre></div>
+<p>可以看到，初始化信号量S有一个指定数量（<strong>n</strong>）的资源，它就像是一个有n个资源的池子。P操作相当于请求资源，如果资源可用，就立即返回；如果没有资源或者不够，那么，它可以不断尝试或者阻塞等待。V操作会释放自己持有的资源，把资源返还给信号量。信号量的值除了初始化的操作以外，只能由P/V操作改变。</p>
+<p>现在，我们来总结下信号量的实现。</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/15/a9/cb/a431bde5.jpg" width="30px"><span>木头发芽</span> 👍（5） 💬（1）<div>semaphore是用Mutex和Channel通知实现的,而Mutex又依赖于go内部的信号量实现,那这个内部的信号量又是用什么实现的?</div>2020-12-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/84/f8/c22d32b4.jpg" width="30px"><span>刚子</span> 👍（2） 💬（1）<div>不是很理解这句话 ：&quot;一次请求多个资源，这是通过 Channel 实现的信号量所不具备的。&quot;
-Channel 也可以开启多个goroutine 去请求多个资源</div>2020-11-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/31/1e/0a/159b2129.jpg" width="30px"><span>lufofire</span> 👍（0） 💬（1）<div>
+<li>初始化信号量：设定初始的资源的数量。</li>
+<li>P操作：将信号量的计数值减去1，如果新值已经为负，那么调用者会被阻塞并加入到等待队列中。否则，调用者会继续执行，并且获得一个资源。</li>
+<li>V操作：将信号量的计数值加1，如果先前的计数值为负，就说明有等待的P操作的调用者。它会从等待队列中取出一个等待的调用者，唤醒它，让它继续执行。</li>
+</ul>
+<p>讲到这里，我想再稍微说一个题外话，我们在<a href="https://time.geekbang.org/column/article/295850">第2讲</a>提到过饥饿，就是说在高并发的极端场景下，会有些goroutine始终抢不到锁。为了处理饥饿的问题，你可以在等待队列中做一些“文章”。比如实现一个优先级的队列，或者先入先出的队列，等等，保持公平性，并且照顾到优先级。</p>
+<p>在正式进入实现信号量的具体实现原理之前，我想先讲一个知识点，就是信号量和互斥锁的区别与联系，这有助于我们掌握接下来的内容。</p>
+<p>其实，信号量可以分为计数信号量（counting semaphore）和二进位信号量（binary semaphore）。刚刚所说的图书馆借书的例子就是一个计数信号量，它的计数可以是任意一个整数。在特殊的情况下，如果计数值只能是0或者1，那么，这个信号量就是二进位信号量，提供了互斥的功能（要么是0，要么是1），所以，有时候互斥锁也会使用二进位信号量来实现。</p>
+<p>我们一般用信号量保护一组资源，比如数据库连接池、一组客户端的连接、几个打印机资源，等等。如果信号量蜕变成二进位信号量，那么，它的P/V就和互斥锁的Lock/Unlock一样了。</p>
+<p>有人会很细致地区分二进位信号量和互斥锁。比如说，有人提出，在Windows系统中，互斥锁只能由持有锁的线程释放锁，而二进位信号量则没有这个限制（<a href="https://stackoverflow.com/questions/62814/difference-between-binary-semaphore-and-mutex">Stack Overflow</a>上也有相关的讨论）。实际上，虽然在Windows系统中，它们的确有些区别，但是对Go语言来说，互斥锁也可以由非持有的goroutine来释放，所以，从行为上来说，它们并没有严格的区别。</p>
+<p>我个人认为，没必要进行细致的区分，因为互斥锁并不是一个很严格的定义。实际在遇到互斥并发的问题时，我们一般选用互斥锁。</p>
+<p>好了，言归正传，刚刚我们掌握了信号量的含义和具体操作方式，下面，我们就来具体了解下官方扩展库的实现。</p>
+<h1 id="go">Go官方扩展库的实现</h1>
+<p>在运行时，Go内部使用信号量来控制goroutine的阻塞和唤醒。我们在学习基本并发原语的实现时也看到了，比如互斥锁的第二个字段：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>type Mutex struct {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>        state int32
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>        sema  uint32
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>}
+</code></pre></div>
+<p>信号量的P/V操作是通过函数实现的：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>func runtime_Semacquire(s *uint32)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>func runtime_SemacquireMutex(s *uint32, lifo bool, skipframes int)
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>func runtime_Semrelease(s *uint32, handoff bool, skipframes int)
+</code></pre></div>
+<p>遗憾的是，它是Go运行时内部使用的，并没有封装暴露成一个对外的信号量并发原语，原则上我们没有办法使用。不过没关系，Go在它的扩展包中提供了信号量<a href="https://godoc.org/golang.org/x/sync/semaphore">semaphore</a>，不过这个信号量的类型名并不叫Semaphore，而是叫Weighted。</p>
+<p>之所以叫做Weighted，我想，应该是因为可以在初始化创建这个信号量的时候设置权重（初始化的资源数），其实我觉得叫Semaphore或许会更好。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/1a/b0/1a13a551346cd6b910f38f5ed2bfc6b0.png?wh=702%2A174" /></p>
+<p>我们来分析下这个信号量的几个实现方法。</p>
+<ol>
+<li><strong>Acquire方法</strong>：相当于P操作，你可以一次获取多个资源，如果没有足够多的资源，调用者就会被阻塞。它的第一个参数是Context，这就意味着，你可以通过Context增加超时或者cancel的机制。如果是正常获取了资源，就返回nil；否则，就返回ctx.Err()，信号量不改变。</li>
+<li><strong>Release方法</strong>：相当于V操作，可以将n个资源释放，返还给信号量。</li>
+<li><strong>TryAcquire方法</strong>：尝试获取n个资源，但是它不会阻塞，要么成功获取n个资源，返回true，要么一个也不获取，返回false。</li>
+</ol>
+<p>知道了信号量的实现方法，在实际的场景中，我们应该怎么用呢？我来举个Worker Pool的例子，来帮助你理解。</p>
+<p>我们创建和CPU核数一样多的Worker，让它们去处理一个4倍数量的整数slice。每个Worker一次只能处理一个整数，处理完之后，才能处理下一个。</p>
+<p>当然，这个问题的解决方案有很多种，这一次我们使用信号量，代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>var (
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    maxWorkers = runtime.GOMAXPROCS(0)                    // worker数量
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    sema       = semaphore.NewWeighted(int64(maxWorkers)) //信号量
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    task       = make([]int, maxWorkers*4)                // 任务数，是worker的四倍
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>)
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>func main() {
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    ctx := context.Background()
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    for i := range task {
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        // 如果没有worker可用，会阻塞在这里，直到某个worker被释放
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        if err := sema.Acquire(ctx, 1); err != nil {
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>            break
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>        }
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>        // 启动worker goroutine
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>        go func(i int) {
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>            defer sema.Release(1)
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>            time.Sleep(100 * time.Millisecond) // 模拟一个耗时操作
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>            task[i] = i + 1
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>        }(i)
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>    }
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>    // 请求所有的worker,这样能确保前面的worker都执行完
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    if err := sema.Acquire(ctx, int64(maxWorkers)); err != nil {
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>        log.Printf(&quot;获取所有的worker失败: %v&quot;, err)
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>    }
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>    fmt.Println(task)
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>}
+</code></pre></div>
+<p>在这段代码中，main goroutine相当于一个dispatcher，负责任务的分发。它先请求信号量，如果获取成功，就会启动一个goroutine去处理计算，然后，这个goroutine会释放这个信号量（有意思的是，信号量的获取是在main goroutine，信号量的释放是在worker goroutine中），如果获取不成功，就等到有信号量可以使用的时候，再去获取。</p>
+<p>需要提醒你的是，其实，在这个例子中，还有一个值得我们学习的知识点，就是最后的那一段处理（第25行）。<strong>如果在实际应用中，你想等所有的Worker都执行完，就可以获取最大计数值的信号量</strong>。</p>
+<p>Go扩展库中的信号量是使用互斥锁+List实现的。互斥锁实现其它字段的保护，而List实现了一个等待队列，等待者的通知是通过Channel的通知机制实现的。</p>
+<p>我们来看一下信号量Weighted的数据结构：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>type Weighted struct {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>        size    int64         // 最大资源数
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        cur     int64         // 当前已被使用的资源
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        mu      sync.Mutex    // 互斥锁，对字段的保护
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        waiters list.List     // 等待队列
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>}
+</code></pre></div>
+<p>在信号量的几个实现方法里，Acquire是代码最复杂的一个方法，它不仅仅要监控资源是否可用，而且还要检测Context的Done是否已关闭。我们来看下它的实现代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>func (s *Weighted) Acquire(ctx context.Context, n int64) error {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>        s.mu.Lock()
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        // fast path, 如果有足够的资源，都不考虑ctx.Done的状态，将cur加上n就返回
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        if s.size-s.cur &gt;= n &amp;&amp; s.waiters.Len() == 0 {
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>            s.cur += n
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>            s.mu.Unlock()
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>            return nil
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        }
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        // 如果是不可能完成的任务，请求的资源数大于能提供的最大的资源数
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        if n &gt; s.size {
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>            s.mu.Unlock()
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>            // 依赖ctx的状态返回，否则一直等待
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>            &lt;-ctx.Done()
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>            return ctx.Err()
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>        }
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>        // 否则就需要把调用者加入到等待队列中
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>        // 创建了一个ready chan,以便被通知唤醒
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>        ready := make(chan struct{})
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>        w := waiter{n: n, ready: ready}
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>        elem := s.waiters.PushBack(w)
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>        s.mu.Unlock()
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>        // 等待
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>        select {
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>        case &lt;-ctx.Done(): // context的Done被关闭
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>            err := ctx.Err()
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>            s.mu.Lock()
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>            select {
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>            case &lt;-ready: // 如果被唤醒了，忽略ctx的状态
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>                err = nil
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>            default: 通知waiter
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>                isFront := s.waiters.Front() == elem
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>                s.waiters.Remove(elem)
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>                // 通知其它的waiters,检查是否有足够的资源
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>                if isFront &amp;&amp; s.size &gt; s.cur {
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a>                    s.notifyWaiters()
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>                }
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a>            }
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a>            s.mu.Unlock()
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>            return err
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a>        case &lt;-ready: // 被唤醒了
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a>            return nil
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a>        }
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a>    }
+</code></pre></div>
+<p>其实，为了提高性能，这个方法中的fast path之外的代码，可以抽取成acquireSlow方法，以便其它Acquire被内联。</p>
+<p>Release方法将当前计数值减去释放的资源数n，并唤醒等待队列中的调用者，看是否有足够的资源被获取。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>func (s *Weighted) Release(n int64) {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>        s.mu.Lock()
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>        s.cur -= n
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>        if s.cur &lt; 0 {
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>            s.mu.Unlock()
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>            panic(&quot;semaphore: released more than held&quot;)
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        }
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        s.notifyWaiters()
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>        s.mu.Unlock()
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>}
+</code></pre></div>
+<p>notifyWaiters方法就是逐个检查等待的调用者，如果资源不够，或者是没有等待者了，就返回：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>func (s *Weighted) notifyWaiters() {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>        for {
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>            next := s.waiters.Front()
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>            if next == nil {
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>                break // No more waiters blocked.
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>            }
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>            w := next.Value.(waiter)
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>            if s.size-s.cur &lt; w.n {
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>                //避免饥饿，这里还是按照先入先出的方式处理
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>                break
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>            }
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>            s.cur += w.n
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>            s.waiters.Remove(next)
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>            close(w.ready)
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>        }
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>    }
+</code></pre></div>
+<p>notifyWaiters方法是按照先入先出的方式唤醒调用者。当释放100个资源的时候，如果第一个等待者需要101个资源，那么，队列中的所有等待者都会继续等待，即使有的等待者只需要1个资源。这样做的目的是避免饥饿，否则的话，资源可能总是被那些请求资源数小的调用者获取，这样一来，请求资源数巨大的调用者，就没有机会获得资源了。</p>
+<p>好了，到这里，你就知道了官方扩展库的信号量实现方法，接下来你就可以使用信号量了。不过，在此之前呢，我想给你讲几个使用时的常见错误。这部分内容可是帮助你避坑的，我建议你好好学习。</p>
+<h1 id="_2">使用信号量的常见错误</h1>
+<p>保证信号量不出错的前提是正确地使用它，否则，公平性和安全性就会受到损害，导致程序panic。</p>
+<p>在使用信号量时，最常见的几个错误如下：</p>
+<ul>
+<li>请求了资源，但是忘记释放它；</li>
+<li>释放了从未请求的资源；</li>
+<li>长时间持有一个资源，即使不需要它；</li>
+<li>不持有一个资源，却直接使用它。</li>
+</ul>
+<p>不过，即使你规避了这些坑，在同时使用多种资源，不同的信号量控制不同的资源的时候，也可能会出现死锁现象，比如<a href="https://en.wikipedia.org/wiki/Dining_philosophers_problem">哲学家就餐问题</a>。</p>
+<p>就Go扩展库实现的信号量来说，在调用Release方法的时候，你可以传递任意的整数。但是，如果你传递一个比请求到的数量大的错误的数值，程序就会panic。如果传递一个负数，会导致资源永久被持有。如果你请求的资源数比最大的资源数还大，那么，调用者可能永远被阻塞。</p>
+<p>所以，<strong>使用信号量遵循的原则就是请求多少资源，就释放多少资源</strong>。你一定要注意，必须使用正确的方法传递整数，不要“耍小聪明”，而且，请求的资源数一定不要超过最大资源数。</p>
+<h1 id="_3">其它信号量的实现</h1>
+<p>除了官方扩展库的实现，实际上，我们还有很多方法实现信号量，比较典型的就是使用Channel来实现。</p>
+<p>根据之前的Channel类型的介绍以及Go内存模型的定义，你应该能想到，使用一个buffer为n的Channel很容易实现信号量，比如下面的代码，我们就是使用chan struct{}类型来实现的。</p>
+<p>在初始化这个信号量的时候，我们设置它的初始容量，代表有多少个资源可以使用。它使用Lock和Unlock方法实现请求资源和释放资源，正好实现了Locker接口。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>    // Semaphore 数据结构，并且还实现了Locker接口
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    type semaphore struct {
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>        sync.Locker
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>        ch chan struct{}
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    }
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    // 创建一个新的信号量
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    func NewSemaphore(capacity int) sync.Locker {
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        if capacity &lt;= 0 {
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>            capacity = 1 // 容量为1就变成了一个互斥锁
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>        }
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>        return &amp;semaphore{ch: make(chan struct{}, capacity)}
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    }
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    // 请求一个资源
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    func (s *semaphore) Lock() {
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        s.ch &lt;- struct{}{}
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>    }
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>    // 释放资源
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>    func (s *semaphore) Unlock() {
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>        &lt;-s.ch
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>    }
+</code></pre></div>
+<p>当然，你还可以自己扩展一些方法，比如在请求资源的时候使用Context参数（Acquire(ctx)）、实现TryLock等功能。</p>
+<p>看到这里，你可能会问，这个信号量的实现看起来非常简单，而且也能应对大部分的信号量的场景，为什么官方扩展库的信号量的实现不采用这种方法呢？其实，具体是什么原因，我也不知道，但是我必须要强调的是，官方的实现方式有这样一个功能：<strong>它可以一次请求多个资源，这是通过Channel实现的信号量所不具备的</strong>。</p>
+<p>除了Channel，<a href="https://github.com/marusama/semaphore">marusama/semaphore</a>也实现了一个可以动态更改资源容量的信号量，也是一个非常有特色的实现。如果你的资源数量并不是固定的，而是动态变化的，我建议你考虑一下这个信号量库。</p>
+<h1 id="_4">总结</h1>
+<p>这是一个很奇怪的现象：标准库中实现基本并发原语（比如Mutex）的时候，强烈依赖信号量实现等待队列和通知唤醒，但是，标准库中却没有把这个实现直接暴露出来放到标准库，而是通过第三库提供。</p>
+<p>不管怎样，信号量这个并发原语在多资源共享的并发控制的场景中被广泛使用，有时候也会被Channel类型所取代，因为一个buffered chan也可以代表n个资源。</p>
+<p>但是，官方扩展的信号量也有它的优势，就是可以一次获取多个资源。<strong>在批量获取资源的场景中，我建议你尝试使用官方扩展的信号量</strong>。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/67/73/674bc464d4e3d11c96fa1ac71d317e73.jpg?wh=2250%2A1413" /></p>
+<h1 id="_5">思考题</h1>
+<ol>
+<li>你能用Channel实现信号量并发原语吗？你能想到几种实现方式？</li>
+<li>为什么信号量的资源数设计成int64而不是uint64呢？</li>
+</ol>
+<p>欢迎在留言区写下你的思考和答案，我们一起交流讨论。如果你觉得有所收获，也欢迎你把今天的内容分享给你的朋友或同事。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>木头发芽</span> 👍（5） 💬（1）<div>semaphore是用Mutex和Channel通知实现的,而Mutex又依赖于go内部的信号量实现,那这个内部的信号量又是用什么实现的?</div>2020-12-14</li><br/><li><span>刚子</span> 👍（2） 💬（1）<div>不是很理解这句话 ：&quot;一次请求多个资源，这是通过 Channel 实现的信号量所不具备的。&quot;
+Channel 也可以开启多个goroutine 去请求多个资源</div>2020-11-16</li><br/><li><span>lufofire</span> 👍（0） 💬（1）<div>
 import (
     &quot;context&quot;
     &quot;errors&quot;
@@ -12639,7 +12930,7 @@ func (s *ChannelSemaphore) Release(ctx context.Context, n int64) error {
     }
     return nil
 }
-</div>2024-12-25</li><br/><li><img src="" width="30px"><span>Geek_2c2c44</span> 👍（0） 💬（1）<div>基于channel的lock实现这里， Lock和UnLock的实现互换一下顺序是不是也是可以的呢？如果寻Accquire（P）是减去信号量的规范的话， 是不是lock那里把channel写在右边会更好（从channel中拿出一个信号量）？PS：前面一节的Lock顺序和这里就是不同的</div>2024-01-24</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/28/d8/12/ff5037ef.jpg" width="30px"><span>白开d水</span> 👍（0） 💬（1）<div>打卡</div>2023-03-23</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/GJXKh8OG00U5ial64plAIibbIuwkzhPc8uYic9Hibl8SbqvhnS2JImHgCD4JGvTktiaVnCjHQWbA5wicaxRUN5aTEWnQ/132" width="30px"><span>Geek_a6104e</span> 👍（0） 💬（1）<div>return &amp;semaphore{ch: make(chan struct{}, capacity)} 请问一下最后一个例子semaphore结构初始化为啥会多个capacity</div>2022-07-31</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/bf/86/c0cb35f0.jpg" width="30px"><span>8.13.3.27.30</span> 👍（0） 💬（1）<div>打卡完成</div>2022-01-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/30/49/f9e37ced.jpg" width="30px"><span>伟伟</span> 👍（0） 💬（6）<div>type Semaphore chan struct{}
+</div>2024-12-25</li><br/><li><span>Geek_2c2c44</span> 👍（0） 💬（1）<div>基于channel的lock实现这里， Lock和UnLock的实现互换一下顺序是不是也是可以的呢？如果寻Accquire（P）是减去信号量的规范的话， 是不是lock那里把channel写在右边会更好（从channel中拿出一个信号量）？PS：前面一节的Lock顺序和这里就是不同的</div>2024-01-24</li><br/><li><span>白开d水</span> 👍（0） 💬（1）<div>打卡</div>2023-03-23</li><br/><li><span>Geek_a6104e</span> 👍（0） 💬（1）<div>return &amp;semaphore{ch: make(chan struct{}, capacity)} 请问一下最后一个例子semaphore结构初始化为啥会多个capacity</div>2022-07-31</li><br/><li><span>8.13.3.27.30</span> 👍（0） 💬（1）<div>打卡完成</div>2022-01-06</li><br/><li><span>伟伟</span> 👍（0） 💬（6）<div>type Semaphore chan struct{}
 
 func NewSemaphore(cap int) Semaphore {
     return make(chan struct{}, cap)
@@ -12675,12 +12966,12 @@ func (s Semaphore) Release2(n int) {
     for i := 0; i &lt; n; i++ {
         s &lt;- struct{}{}
     }
-}</div>2020-11-23</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/b6/5b/4486e4f9.jpg" width="30px"><span>虫子樱桃</span> 👍（0） 💬（1）<div>老师的例子里面，是通过 计算机的协程 runtime.GOMAXPROCS(0) 来模拟有限的资源（比喻例子里面的书），那么这个semaphore的场景是不是就是比较适用于请求有流量或者调用次数限制的场景呢？</div>2020-11-19</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/53/db/858337e3.jpg" width="30px"><span>Ethan Liu</span> 👍（0） 💬（3）<div>老师，Acquire函数为什么还会有第二个select语句？这部分逻辑是什么啊？</div>2020-11-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/83/c9/5d03981a.jpg" width="30px"><span>thomas</span> 👍（20） 💬（1）<div>补充说明下 信号量 p&#47;v的含义：
-P—— passeren，中文译为&quot;通过&quot;，V—— vrijgeven，中文译为&quot;释放&quot; （因为作者是荷兰人，上面单词为荷兰语）</div>2021-01-01</li><br/><li><img src="" width="30px"><span>myrfy</span> 👍（7） 💬（1）<div>第一个问题:
+}</div>2020-11-23</li><br/><li><span>虫子樱桃</span> 👍（0） 💬（1）<div>老师的例子里面，是通过 计算机的协程 runtime.GOMAXPROCS(0) 来模拟有限的资源（比喻例子里面的书），那么这个semaphore的场景是不是就是比较适用于请求有流量或者调用次数限制的场景呢？</div>2020-11-19</li><br/><li><span>Ethan Liu</span> 👍（0） 💬（3）<div>老师，Acquire函数为什么还会有第二个select语句？这部分逻辑是什么啊？</div>2020-11-17</li><br/><li><span>thomas</span> 👍（20） 💬（1）<div>补充说明下 信号量 p&#47;v的含义：
+P—— passeren，中文译为&quot;通过&quot;，V—— vrijgeven，中文译为&quot;释放&quot; （因为作者是荷兰人，上面单词为荷兰语）</div>2021-01-01</li><br/><li><span>myrfy</span> 👍（7） 💬（1）<div>第一个问题:
 至少两种，写入ch算获取，自己读取ch算获取
 
-第二个问题应该是防止错误获取或者释放信号量时，出现负数溢出到无穷大的问题。如果溢出到无穷大，就会让信号量失效，从而导致1被保护资源更大规模的破坏</div>2020-11-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/4b/69/c02eac91.jpg" width="30px"><span>大漠胡萝卜</span> 👍（4） 💬（0）<div>在日常开发中，没怎么使用信号量semaphore，一般使用channel来解决这种问题。
-另外，并发的时候使用池化技术感觉更加通用吧。</div>2020-11-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1d/1b/47/cf02e449.jpg" width="30px"><span>米琴香光</span> 👍（0） 💬（0）<div>type Semaphore struct {
+第二个问题应该是防止错误获取或者释放信号量时，出现负数溢出到无穷大的问题。如果溢出到无穷大，就会让信号量失效，从而导致1被保护资源更大规模的破坏</div>2020-11-16</li><br/><li><span>大漠胡萝卜</span> 👍（4） 💬（0）<div>在日常开发中，没怎么使用信号量semaphore，一般使用channel来解决这种问题。
+另外，并发的时候使用池化技术感觉更加通用吧。</div>2020-11-21</li><br/><li><span>米琴香光</span> 👍（0） 💬（0）<div>type Semaphore struct {
     c        chan struct{}
     acq, rel chan []struct{}
 }
@@ -12705,11 +12996,8 @@ func (s Semaphore) Release(n int) {
     for range &lt;-s.rel {
         &lt;-s.c
     }
-}</div>2024-01-15</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/b5/74/cd80b9f4.jpg" width="30px"><span>友</span> 👍（0） 💬（0）<div>https:&#47;&#47;github.com&#47;zzm996-zzm&#47;go-concurrent&#47;blob&#47;main&#47;semaphore&#47;semaphore.go
-基于chan实现的信号量 其实和文章中的思路是一样的 不过全都是自己实现的</div>2021-08-21</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/26/b5/74/cd80b9f4.jpg" width="30px"><span>友</span> 👍（0） 💬（0）<div>总结一下，阻塞的操作就是依靠读取无缓冲chan来的，唤醒的操作就是把chan close掉。为了避免饥饿需要严格遵守队列条件，不会因为小就放行，必须先满足队列的第一个的需求 才会开始第二个。
-两个select 就是为了双重检查，即使超时了也检查看看是否获取到了信号量。
-对比纯chan的优势是 ，chan一次就只能读取一个,但是这个只需要给一个int就可以获取到对应数量是信号量 
-</div>2021-08-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/15/d2/5e/f7f45406.jpg" width="30px"><span>容易</span> 👍（0） 💬（0）<div>老师的题还是有难度的</div>2020-11-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/17/6e/76b4aa3d.jpg" width="30px"><span>橙子888</span> 👍（0） 💬（0）<div>打卡。</div>2020-11-16</li><br/>
+}</div>2024-01-15</li><br/><li><span>友</span> 👍（0） 💬（0）<div>https:&#47;&#47;github.com&#47;zzm996-zzm&#47;go-concurrent&#47;blob&#47;main&#47;semaphore&#47;semaphore.go
+基于chan实现的信号量 其实和文章中的思路是一样的 不过全都是自己实现的</div>2021-08-21</li><br/>
 </ul>
 
 

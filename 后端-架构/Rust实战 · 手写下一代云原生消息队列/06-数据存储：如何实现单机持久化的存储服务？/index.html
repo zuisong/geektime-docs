@@ -3839,6 +3839,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#rocksdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      RocksDB 简介
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rust-rocksdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rust Rocksdb 入门
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rocksdb-kv" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用 RocksDB 存储 KV 数据
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12421,6 +12466,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#rocksdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      RocksDB 简介
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rust-rocksdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rust Rocksdb 入门
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rocksdb-kv" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用 RocksDB 存储 KV 数据
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -12462,10 +12552,332 @@
 </ol>
 <p>第一种方案很直观，可能也是我们在选型时首先想到的思路，但是<strong>这种方案是最不推荐的</strong>。因为从零开始写一个生产级别的存储层是非常困难的，周期很长，稳定性差。比如需要处理硬件和操作系统随时都有可能丢失或损坏数据的情况，另外写入性能优化需要大量时间投入，还得处理代码 Bug 等情况。</p>
 <p>第二种方案是常用的方案，依赖成熟的分布式存储引擎存储数据，是比较快速且稳定的方案。但是这种方案的缺点是需要依赖外部系统，会导致架构复杂，长期运维成本高，另外外部依赖组件的稳定性也会影响主系统的稳定。因为我们要实现的消息队列其中一个设计目标就是：<strong>高内聚和弱外部依赖</strong>。如果选择这种方案，就破坏了这个目标，长期来看，不太合理。</p>
-<div><strong>精选留言（1）</strong></div>
+<p>第三种方案从某种角度看和第一种是同一个思路。区别是存储层不是自己实现的，而是依赖现有的成熟、可靠、高性能的嵌入式键值存储来实现存储层。这种方案的开发成本低，性能和可靠性也有保证。目前业界主要的嵌入式键值存储有 RocksDB、LevelDB 等。目前使用较多的是 RocksDB，业界很多知名公司和开源项目都在使用它。比如 TiKV、CRDB都是基于 RocksDB 来实现的。</p>
+<p>所以，从实现难度、稳定性、性能等三个方面考虑，我们选择了第三种方案。从元数据存储服务(Placement Center) 的功能需求和业界嵌入式键值数据库的功能、稳定性、项目成熟度、社区活跃度来看，我认为 RocksDB 非常适合来当存储层。</p>
+<p>接下来我们从功能和架构上简单介绍一下 RocksDB。</p>
+<h2 id="rocksdb">RocksDB 简介</h2>
+<p>从功能层面来看，RocksDB 它是一个嵌入式的键值存储引擎，它提供了下面几个主要的功能函数调用：</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/0f/70/cdef7a3d.jpg" width="30px"><span>Joe Black</span> 👍（0） 💬（2）<div>读写rocksdb不需要mutex保护吗？只用了Arc</div>2024-10-10</li><br/>
+<li><strong>Put(Key, Value)</strong>：插入新的Key-Value对或更新现有 Key 的值。</li>
+<li><strong>Get(Key)</strong>：获取特定 Key 的值。</li>
+<li><strong>Delete(Key)</strong>：删除特定 Key 的值。</li>
+<li><strong>Merge(Key, Value)</strong>：将新值与给定 Key 的现有值合并。</li>
+<li><strong>Seek(key_prefix)</strong>：匹配指定 Key 的前缀或大于 Key 的前缀。</li>
 </ul>
+<p>从这几个函数来看，它是标准 KV 模型的存储，即 set/get/delete/search 类型的方法。</p>
+<p>从代码层面来看，<strong>RocksDB 就一个 Lib，不是一个 Server</strong>，是一个被项目引用的库。也就是说它没有独立的进程运行，是和主进程共享内存空间。比如在 Java 中它是 Maven 的 Package，在 Rust 中，它是一个 crate 上的 Lib，在 Go 中它是一个 Module。</p>
+<p>从底层存储的角度来看，RocksDB 的数据是<strong>存储在单机本地硬盘的文件中的</strong>，也就是说它是本地存储的。即通过 Put 函数写入的数据，都是存储在本机的文件中的。RocksDB 的本地文件存储结构如下，会包含 sst、log 等等信息。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/19/7a/19492a9925df38f2f5b2c7acec7a437a.png?wh=1148x460" /></p>
+<p>从底层原理来看，它是基于 <strong>LSM-Tree（Log-Structured Merge Tree）</strong>实现的一种本地存储引擎。如果对存储系统有了解的人，对 LSM 应该不会陌生。如果你希望对存储系统了解更多，建议你去研究一下 LSM，它是一种基于日志结构的数据结构，能够高效地存储和更新键值数据。LSM 这块的资料特别多，就不展开细讲了。</p>
+<p>因为接下来我们会用到 RocksDB 中的列簇（ColumnFamily） 的概念，所以我们先来了解一下它是什么。</p>
+<p>ColumnFamily 是 RocksDB 中的一个逻辑概念，它的功能是<strong>用于 Key 的组织。</strong>比如一部分的 key 存储在 A ColumnFamily，另外一部分 key 存储在 B ColumnFamily。ColumnFamily 和 key 的关系，有点像 MySQL 中 Database 和 table 的关系。Database 用于 table 的逻辑组织，table 一定要属于某个 Database。默认情况下，RocksDB 中所有的 key 都在一个默认的 ColumnFamily 中。</p>
+<p>了解了 RocksDB，接下来我们来看一下在元数据存储服务中，如何基于 RocksDB 实现存储层。</p>
+<h2 id="rust-rocksdb">Rust Rocksdb 入门</h2>
+<p>在 Rust 中，需要通过 Rust 库<a href="https://docs.rs/rocksdb/0.22.0/rocksdb/">《rocksdb》</a>来使用 RocksDB。从代码实现的层面看，主要包含下面七个部分：</p>
+<ul>
+<li>构建 RocksDB 配置</li>
+<li>初始化 RocksDB 实例</li>
+<li>写数据（Write）</li>
+<li>根据 Key 读取数据（Get）</li>
+<li>根据 Key 删除数据（Delete）</li>
+<li>判断 Key 是否存在（Exists）</li>
+<li>根据前缀读取数据（read_prefix）</li>
+</ul>
+<p>接下来我们主要跟随代码实现来一个一个讲解。</p>
+<ol>
+<li>构建 RocksDB 配置</li>
+</ol>
+<p>构建配置的主要工作是设置 RocksDB 实例的配置选项（Options）。代码实现很简单，难点在于：<strong>要理解 RocksDB 的运行原理，每个配置项的意义，然后根据自己的场景和要求进行配置优化</strong>，这个是和语言无关的。</p>
+<p>配置初始化代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a> fn open_db_opts(config: &amp;PlacementCenterConfig) -&gt; Options {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>        let mut opts = Options::default();
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        opts.create_if_missing(true);
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        opts.create_missing_column_families(true);
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        opts.set_max_open_files(1000);
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        opts.set_use_fsync(false);
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        opts.set_bytes_per_sync(8388608);
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        opts.optimize_for_point_lookup(1024);
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        opts.set_table_cache_num_shard_bits(6);
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        opts.set_max_write_buffer_number(32);
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        opts.set_write_buffer_size(536870912);
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        opts.set_target_file_size_base(1073741824);
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        opts.set_min_write_buffer_number_to_merge(4);
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        opts.set_level_zero_stop_writes_trigger(2000);
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        opts.set_level_zero_slowdown_writes_trigger(0);
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        opts.set_compaction_style(DBCompactionStyle::Universal);
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        opts.set_disable_auto_compactions(true);
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        let transform = SliceTransform::create_fixed_prefix(10);
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>        opts.set_prefix_extractor(transform);
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>        opts.set_memtable_prefix_bloom_ratio(0.2);
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>        return opts;
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    }
+</code></pre></div>
+<p>这段代码很简单，直接看这个<a href="https://docs.rs/rocksdb/0.22.0/rocksdb/struct.Options.html">《Rust RocksDB Options》</a>文档即可。默认情况下，使用 Options::default() 可得到默认配置，这些配置可以满足大部分场景。</p>
+<p>因为 RocksDB 的配置优化是一个很大和很复杂的话题，如果要进行针对性的配置调优，你就需要去看一下这个文档<a href="https://github.com/facebook/rocksdb/wiki/RocksDB-Overview">《RocksDB 官方 wiki》</a>，去对 RocksDB 的底层运行原理（主要是LSM-Tree）、配置项所表达的意义有更多的了解，才能找到最适合自己场景的配置项。</p>
+<ol>
+<li>初始化 RocksDB 实例</li>
+</ol>
+<p>这一步的目的是<strong>初始化一个可以操作 RocksDB 的对象实例</strong>。主要流程是构建配置，判断是否已经初始化过 RocksDB，如果没有就初始化 DB，然后打开需要操作的列簇（ColumnFamily）即可。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>// 初始化RocksDB 配置
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>let opts: Options = Self::open_db_opts(config);
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>// 配置 RocksDB 的数据目录
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>let db_path = format!(&quot;{}/{}&quot;, config.data_path, &quot;_storage_rocksdb&quot;);
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>// 判断 RocksDB 是否初始化成功，否则进行初始化。
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>if !Path::new(&amp;db_path).exists() {
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>  DB::open(&amp;opts, db_path.clone()).unwrap();
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>}
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>// 初始化 RocksDB 中的列簇。
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>let cf_list = rocksdb::DB::list_cf(&amp;opts, &amp;db_path).unwrap();
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>let mut instance = DB::open_cf(&amp;opts, db_path.clone(), &amp;cf_list).unwrap();
+</code></pre></div>
+<p>上面这段代码需要关注的点是：<strong>初始化后的 instance 全局只能有一个。即一个 RocksDB 目录只能同时被一个实例持有，不能多次 Open 一个 RocksDB 目录，否则就会报下面的错误</strong>。</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/3f/f2/3fc756d1b737bd6a66c530f0dyy209f2.png?wh=1580x292" /></p>
+<p>所以在实际使用中，需要<strong>通过 Arc 在多线程之间共享 RocksDB instance</strong>，即 <strong>Arc</strong>，代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>let rocksdb_engine_handler: Arc&lt;RocksDBEngine&gt; = Arc::new(RocksDBEngine::new(&amp;config));
+</code></pre></div>
+<p>在这里，你就会用到智能指针的 Arc ，通过它可以让同一个 RocksDBEngine 在多个线程中共享。</p>
+<ol>
+<li>写数据（Write）</li>
+</ol>
+<p>写数据代码实现比较简单。流程是先选择ColumnFamily，通过 serde_json 序列化数据，最后通过 put_cf 方法将数据写入到 RocksDB 中。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  pub fn write&lt;T: Serialize + std::fmt::Debug&gt;(
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>        &amp;self,
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        cf: &amp;ColumnFamily,
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        key: &amp;str,
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        value: &amp;T,
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    ) -&gt; Result&lt;(), String&gt; {
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        match serde_json::to_string(&amp;value) {
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>            Ok(serialized) =&gt; self
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>                .db
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>                .put_cf(cf, key, serialized.into_bytes())
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>                .map_err(|err| format!(&quot;Failed to put to ColumnFamily:{:?}&quot;, err)),
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>            Err(err) =&gt; Err(format!(
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>                &quot;Failed to serialize to String. T: {:?}, err: {:?}&quot;,
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>                value, err
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>            )),
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>        }
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    }
+</code></pre></div>
+<p>上面这段代码需要注意的是，写入数据必须选择ColumnFamily，原因是<strong>作为元数据服务，它需要存储不同类型的数据，并且长期可能有较大的数据量。为了长期扩容、拆分、隔离的方便，就需要将数据进行逻辑拆分</strong>。</p>
+<ol>
+<li>读（Get）/ 删除（Delete）数据，并判断数据是否存在（Exists）</li>
+</ol>
+<p>读数据是通过RocksDB 的 get_cf 方法来获取到数据，Decord 后返回即可。</p>
+<p>删除和判断数据是否存在是通过 delete、key_may_exist_cf 函数来完成功能。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>// Read data from the RocksDB
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>pub fn read&lt;T: DeserializeOwned&gt;(
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        &amp;self,
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        cf: &amp;ColumnFamily,
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        key: &amp;str,
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    ) -&gt; Result&lt;Option&lt;T&gt;, String&gt; {
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        match self.db.get_cf(cf, key) {
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>            Ok(opt) =&gt; match opt {
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>                Some(found) =&gt; match String::from_utf8(found) {
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>                    Ok(s) =&gt; match serde_json::from_str::&lt;T&gt;(&amp;s) {
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>                        Ok(t) =&gt; Ok(Some(t)),
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>                        Err(err) =&gt; Err(format!(&quot;Failed to deserialize: {:?}&quot;, err)),
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>                    },
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>                    Err(err) =&gt; Err(format!(&quot;Failed to deserialize: {:?}&quot;, err)),
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>                },
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>                None =&gt; Ok(None),
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>            },
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>            Err(err) =&gt; Err(format!(&quot;Failed to get from ColumnFamily: {:?}&quot;, err)),
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>        }
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    }
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>// 根据 key 删除数据
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>pub fn delete(&amp;self, cf: &amp;ColumnFamily, key: &amp;str) -&gt; Result&lt;(), RobustMQError&gt; {
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>     return Ok(self.db.delete_cf(cf, key)?);
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>}
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>// 判断 key 是否存在
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>pub fn exist(&amp;self, cf: &amp;ColumnFamily, key: &amp;str) -&gt; bool {
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>    self.db.key_may_exist_cf(cf, key)
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>}
+</code></pre></div>
+<ol>
+<li>根据前缀读取数据（read_prefix）</li>
+</ol>
+<p>在实际项目中，除了 Set 和 Get 的需求，还有一个需求你经常会用到，就是<strong>前缀搜索</strong>。即根据某个 Key 的前缀来获取这个 Key 对应的所有数据。</p>
+<p>比如我们需要存储集群中的 User，每个 User 的 key 如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pub fn storage_key_mqtt_user(cluster_name: &amp;String, user_name: &amp;String) -&gt; String {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    return format!(&quot;/mqtt/user/{}/{}&quot;, cluster_name, user_name);
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>}
+</code></pre></div>
+<p>如果要获取集群中所有的用户列表，肯定不能找一个地方存储所有的客户信息，然后 foreach 循环一个一个去获取。此时就可以用前缀搜索，前缀搜索的 key 如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pub fn storage_key_mqtt_user_cluster_prefix(cluster_name: &amp;String) -&gt; String {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    return format!(&quot;/mqtt/user/{}&quot;, cluster_name);
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>}
+</code></pre></div>
+<p>接下来，我们来看一下如何实现前缀搜索。</p>
+<p>RocksDB 中提供了前缀搜索的功能。因为 RocksDB 底层存储数据时是根据 Key 排序存储的，所以前缀搜索的底层逻辑是：<strong>先通过 seek 方法找到该前缀对应的第一个 Key，再通过next 方法一个一个往后获取数据，从而得到该前缀对应的所有Key</strong>。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>   // Search data by prefix
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    pub fn read_prefix(
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>        &amp;self,
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>        cf: &amp;ColumnFamily,
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>        search_key: &amp;str,
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    ) -&gt; Vec&lt;HashMap&lt;String, Vec&lt;u8&gt;&gt;&gt; {
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>        // 获取 ColumnFamily 的迭代器
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>        let mut iter = self.db.raw_iterator_cf(cf);
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>        // 搜索到第一个匹配这个前缀的 key
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>        iter.seek(search_key);
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>        let mut result = Vec::new();
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>        // 获取下一个 key 的值
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>        while iter.valid() {
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>            let key = iter.key();
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>            let value = iter.value();
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>            let mut raw = HashMap::new();
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>            // 如果 key 和 value 都为空，则退出循环
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>            if key == None || value == None {
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>                 break;
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>            }
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>            let result_key = match String::from_utf8(key.unwrap().to_vec()) {
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>                Ok(s) =&gt; s,
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>                Err(_) =&gt; continue,
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>            };
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>            // 如果key 不匹配前缀，说明已经获取到所有这个前缀的 key，则退出循环。
+<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>            if !result_key.starts_with(search_key) {
+<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a>                break;
+<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a>            }
+<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a>            raw.insert(result_key, value.unwrap().to_vec());
+<a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a>            result.push(raw);
+<a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a>            iter.next();
+<a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a>        }
+<a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a>        return result;
+<a id="__codelineno-7-45" name="__codelineno-7-45" href="#__codelineno-7-45"></a>    }
+</code></pre></div>
+<p>这里，不知道你是否注意到下面这几行代码，代码的语意是：<strong>判断获取到的数据的Key 是否是搜索的前缀，否则，退出循环</strong>。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a> if !result_key.starts_with(search_key) {
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    break;
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>}
+</code></pre></div>
+<p>这段代码非常重要，也是前缀搜索的核心。前面说到 RocksDB 的底层数据是根据 Key 顺序存储的，所以先通过 seek 定位到匹配前缀的第一个 key，然后往后逐个获取。</p>
+<p>但是需要注意的是：<strong>next 方法不会判断数据的 Key 是否匹配这个前缀</strong>。如果不加这个判断，则会从 seek 到的 key 开始一直往后获取到整个 RocksDB 的所有数据。</p>
+<p>所以每一次拿到数据后，就需要判断 Key 是否匹配我们需要的前缀，如果不匹配，就说明已经获取到同一个前缀的所有数据了，就可以退出循环。</p>
+<p>到这里，我们就完成了 RocksDB 基础库的集成使用。从某种意义上来说，我们也就完成了单机存储层的开发。</p>
+<p>比想象中简单非常多是吧，<strong>这就是使用现成的嵌入式键值库的好处</strong>，也是开源项目 RocksDB、LevelDB 设计的初衷，大大地简化高性能高可靠单机存储层的开发。</p>
+<p>接下来我们来完成我们需要的功能：<strong>KV 型的数据存储</strong>。</p>
+<h2 id="rocksdb-kv">使用 RocksDB 存储 KV 数据</h2>
+<p>我先来问一个问题，我们要存储一个 KV 数据，即 name= “mq”，此时底层应该怎么存储数据呢？</p>
+<p>直观来讲，以 name 为 Key，mq 为 Value 存储就可以了。但是扩展一下：<strong>我们是不是需要知道数据的写入时间、数据来源（即来源 IP）等等信息</strong>。因此我们在底层存储数据时，就需要对数据进行包装，存储一些通用的数据，比如创建时间。</p>
+<p>所以我们在底层存储数据的时候，是通过数据结构 StorageDataWrap 来包装保存数据的。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>#[derive(Serialize, Deserialize, Debug)]
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>pub struct StorageDataWrap {
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    pub data: Vec&lt;u8&gt;,
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    pub create_time: u64,
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>}
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>impl StorageDataWrap {
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    pub fn new(data: Vec&lt;u8&gt;) -&gt; Self {
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>        return StorageDataWrap {
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>            data,
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>            create_time: now_second(),
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>        };
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    }
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>}
+</code></pre></div>
+<p>接下来我们以保存数据为例，来看一下我们是如何完成 KV 模型数据存储的。来看下面的代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>fn engine_save&lt;T&gt;(
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    rocksdb_engine_handler: Arc&lt;RocksDBEngine&gt;,
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    rocksdb_cluster: &amp;str,
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    key_name: String,
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    value: T,
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>) -&gt; Result&lt;(), RobustMQError&gt;
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>where
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    T: Serialize,
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>{
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    let cf = if rocksdb_cluster.to_string() == DB_COLUMN_FAMILY_CLUSTER.to_string() {
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>        rocksdb_engine_handler.cf_cluster()
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    } else {
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>        return Err(RobustMQError::ClusterNoAvailableNode);
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    };
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    let content = match serde_json::to_vec(&amp;value) {
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>        Ok(data) =&gt; data,
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>        Err(e) =&gt; return Err(RobustMQError::CommmonError(e.to_string())),
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>    };
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>    let data = StorageDataWrap::new(content);
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>    match rocksdb_engine_handler.write(cf, &amp;key_name, &amp;data) {
+<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>        Ok(_) =&gt; {
+<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a>            return Ok(());
+<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a>        }
+<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a>        Err(e) =&gt; {
+<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a>            return Err(RobustMQError::CommmonError(e));
+<a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a>        }
+<a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a>    }
+<a id="__codelineno-10-32" name="__codelineno-10-32" href="#__codelineno-10-32"></a>}
+</code></pre></div>
+<p>这里有 4 个关注点：</p>
+<ol>
+<li>RocksDBEngine 是封装了 RocksDB 读写的一个Struct，里面封装了对RocksDB的打开、读、写等操作。</li>
+<li>rocksdb_engine_handler: Arc：你会发现这是通过智能指针 Arc 在多线程之间共享 RocksDBEngine。原因就是我们上面提到的，一个 RocksDB 只能由一个RocksDB对象持有，故需要在进程启动时，通过RocksDB 提供的DB::open_cf打开 RocksDB，然后通过智能指针 Arc 在多个线程中共享使用 RocksDBEngine。</li>
+<li>为了后续的拆分隔离方便，数据默认是写入到名为 cluster 的 ColumnFamily。</li>
+<li>数据值 Value 是一个泛型，它可以接收任何类型的数据，然后持久化存储。泛型 T 需要通过 Where 关键字限制 Value 必须实现 Serialize Trait。因为只有实现 Trait，它才能进行序列化。</li>
+</ol>
+<blockquote>
+<p>tips：在这部分，你就需要去复习泛型、Arc、Where 的语法，从实际编码角度来看，这三种语法的应用非常广泛。</p>
+</blockquote>
+<p>这里留一个思考题： <strong>我们在</strong> <strong>engine_save</strong> <strong>和 write 方法中都有使用</strong> <strong>serde_json</strong> <strong>执行序列化，是不是重复了？是不是可以简化代码？</strong></p>
+<p>接下来我们可以封装一个 Struct 来根据 Key 保存数据。来看下面的代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>pub struct KvStorage {
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    rocksdb_engine_handler: Arc&lt;RocksDBEngine&gt;,
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>}
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>impl KvStorage {
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    pub fn new(rocksdb_engine_handler: Arc&lt;RocksDBEngine&gt;) -&gt; Self {
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>        KvStorage {
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>            rocksdb_engine_handler,
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>        }
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    }
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>    pub fn set(&amp;self, key: String, value: String) -&gt; Result&lt;(), RobustMQError&gt; {
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>        return engine_save_by_cluster(self.rocksdb_engine_handler.clone(), key, value);
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    }
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>}
+</code></pre></div>
+<p>这段代码比较简单，Key 和 Value 都是 String 类型，直接调用engine_save_by_cluster保存即可。</p>
+<p>在业务逻辑上，保存数据直接用 KvStorage 即可，如下所示：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>pub fn set(&amp;self, value: Vec&lt;u8&gt;) -&gt; Result&lt;(), CommonError&gt; {
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    let req: SetRequest = SetRequest::decode(value.as_ref())?;
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    let kv_storage = KvStorage::new(rocksdb_engine_handler.clone());
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    return kv_storage.set(req.key, req.value);
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>}
+</code></pre></div>
+<p>其他 Get、Delete、List、Exists 方法，思路都是类似的，就不展开了，你可以查看 Demo 中的代码，了解更多。</p>
+<h2 id="_2">总结</h2>
+<blockquote>
+<p>tips：每节课的代码都能在项目 <a href="https://github.com/robustmq/robustmq-geek">https://github.com/robustmq/robustmq-geek</a> 中找到源码，有兴趣的同学可以下载源码来看。</p>
+</blockquote>
+<p>这节课我们从选型考量开始讲起，讨论了为什么要选择 RocksDB，Rust RocksDB 的使用细节，以及如何使用 RocksDB 来存储 KV 型数据，进而实现了元数据存储服务的单机存储层。</p>
+<p>从技术上来看，我们需要去重点理解为什么要用 RocksDB，有没有其他的选项。因为这个思路是通用的，我们实现其他存储系统的时候都可以借鉴。</p>
+<p>在业界，使用 RocksDB 来实现单机存储层，是一个应用非常广泛的方案，如果你有类似的需求，建议优先考虑 RocksDB。</p>
+<p>从 Rust 语法方面，泛型、序列化、智能指针等语法都会用到，需要你继续加深对这些语法的理解。</p>
+<h2 id="_3">思考题</h2>
+<p>这里是本节课推荐的相关 issue 的任务列表，请点击查看<a href="http://www.robustmq.com/docs/robustmq-tutorial-cn/%e8%b4%a1%e7%8c%ae%e6%8c%87%e5%8d%97/good-first-issue/">《Good First Issue》</a>，任务列表会不间断地更新。欢迎给我的项目 <a href="https://github.com/robustmq/robustmq">https://github.com/robustmq/robustmq</a> 点个 Star 啊！</p>
 
 
 

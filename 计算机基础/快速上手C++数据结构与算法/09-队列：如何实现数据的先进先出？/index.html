@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -2225,6 +2230,19 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    09 队列：如何实现数据的先进先出？
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
         
@@ -2235,6 +2253,43 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      基础实现代码
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      循环队列
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -5575,6 +5630,34 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      基础实现代码
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      循环队列
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -5597,8 +5680,6 @@
   
 
 
-  <h1>09 队列：如何实现数据的先进先出？</h1>
-
 <p>你好，我是王健伟。</p>
 <p>上节课我们提到的“栈”，用的是“桶”和“抽屉”做类比，实现的是先进后出。这节课我们来聊“队列”，根据名字想象一下，它实现的是不是<strong>先进先出</strong>了呢？</p>
 <p>是的。队列也是一种受限的线性表，它的特点是在一端进行插入操作，在另一端进行删除操作（与栈刚好相反）。把允许进行插入操作的一端称为<strong>队尾</strong>，允许删除操作的一端称为<strong>队头</strong>。</p>
@@ -5608,10 +5689,503 @@
 <p><img alt="" src="https://static001.geekbang.org/resource/image/a1/fb/a1ed04cayy5e1e124d5134cc2ebb32fb.jpg?wh=2284x364" title="图1  队列存取数据示意图" /></p>
 <p>如果我们分别将数据a1、a2、a3、a4、a5入队，那么在将数据出队的时候，顺序同样是a1、a2、a3、a4、a5，和入队顺序是一样的。</p>
 <p>队列支持的操作和栈非常类似，一般包括队列的创建、入队（插入/增加数据）、出队（删除数据）、获取队头元素（查找数据）、判断队列是否为空或者是否已满等等操作。</p>
-<div><strong>精选留言（3）</strong></div>
+<p>接下来，我们就看下这些操作的实现。</p>
+<h1 id="_1">队列的顺序存储（顺序队列）</h1>
+<p>所谓顺序队列，就是顺序存储，也就是用一段连续的内存空间，去依次存储队列中的数据。和顺序栈一样，为了数据存满时可以对队列进行扩容，顺序队列也会采用为一维数组动态分配内存的方案来编写实现代码。</p>
+<h2 id="_2">基础实现代码</h2>
+<p>先来看一些基础的实现代码：类定义、初始化以及释放操作。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>#define MaxSize 10       //数组的尺寸    
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>template &lt;typename T&gt; //T代表数组中元素的类型
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>class SeqQueue
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>{
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>public:
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    SeqQueue();                          //构造函数
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    ~SeqQueue();                         //析构函数
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>public:
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    bool EnQueue(const T&amp; e);            //入队列（增加数据）
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    bool DeQueue(T&amp; e);                  //出队列（删除数据）
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    bool GetHead(T&amp; e); //读取队头元素，但该元素并没有出队列而是依旧在队列中
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    void ClearQueue();                   //将队列清空
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    void DispList();                     //输出顺序队列中的所有元素
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    int  ListLength();                  //获取顺序队列的长度（实际拥有的元素数量）          
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    bool IsEmpty();                      //判断顺序队列是否为空
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    bool IsFull();                       //判断顺序队列是否已满
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>private:
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    T* m_data;                           //存放顺序队列中的元素               
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    int m_front;                         //队头指针(数组下标)，允许删除的一端，如果队列不为空，则指向队列头元素
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    int m_rear;                          //队尾指针(数组下标)，允许插入的一端 ，如果队列不为空，则指向队尾元素的下一个位置
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>};
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>//通过构造函数对顺序队列进行初始化
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>template &lt;typename T&gt;
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>SeqQueue&lt;T&gt;::SeqQueue()
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>{
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    m_data = new T[MaxSize];  //为一维数组动态分配内存
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    //空队列约定m_front和m_rear都为0
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>    m_front = 0;             
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>    m_rear = 0;
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>}
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>//通过析构函数对顺序队列进行资源释放
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>template &lt;typename T&gt;
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>SeqQueue&lt;T&gt;::~SeqQueue()
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>{
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>    delete[] m_data;
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>}
+</code></pre></div>
+<p>之后，就是入队列、出队列、读取队头元素操作代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>//入队列（增加数据），也就是从队尾增加数据
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>template &lt;typename T&gt;
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>bool SeqQueue&lt;T&gt;::EnQueue(const T&amp; e)
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>{
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    if (IsFull() == true)
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    {
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        cout &lt;&lt; &quot;顺序队列已满，不能再进行入队操作了!&quot; &lt;&lt; endl;
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        return false;
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    }
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    m_data[m_rear] = e; //将数据放入队尾 
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    m_rear++;//队尾指针向后走，本行和上一行可以合并写成一行代码：m_data[m_rear++] = e;
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    return true;
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>}
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>//出队列（删除数据），也就是删除队头数据
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>template &lt;typename T&gt;
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>bool SeqQueue&lt;T&gt;::DeQueue(T&amp; e)
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>{
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    if (IsEmpty() == true)
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    {
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>        cout &lt;&lt; &quot;当前顺序队列为空，不能进行出队操作!&quot; &lt;&lt; endl;
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>        return false;
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    }
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>    e = m_data[m_front];  //队头元素值返回到e中。
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>    m_front++;//本行和上一行可以合并写成一行代码：e = m_data[m_front++];
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    return true;
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>}
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>//读取队头元素，但该元素并没有出队列而是依旧在队列中
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>template &lt;typename T&gt;
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>bool SeqQueue&lt;T&gt;::GetHead(T&amp; e)
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>{
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>    if (IsEmpty() == true)
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>    {
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>        cout &lt;&lt; &quot;当前顺序队列为空，不能读取队头元素!&quot; &lt;&lt; endl;
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>        return false;
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>    }
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a>
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>    e = m_data[m_front];  //队头元素返回到e中。
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a>    return true;
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>}
+</code></pre></div>
+<p>最后，是一些顺序队列的常用操作，比如输出所有元素、获取长度、判断是否为空、是否已满、将队列清空。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>//输出顺序队列中的所有元素，时间复杂度为O(n)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>template&lt;class T&gt;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>void SeqQueue&lt;T&gt;::DispList()
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>{
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    //按照从队头到队尾的顺序来显示数据
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    for (int i = m_front; i &lt; m_rear ; ++i)
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    {
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        cout &lt;&lt; m_data[i] &lt;&lt; &quot; &quot;;  //每个数据之间以空格分隔
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    }
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    cout &lt;&lt; endl; //换行
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>}
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>//获取顺序队列的长度（实际拥有的元素数量），时间复杂度为O(1)
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>template&lt;class T&gt;
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>int SeqQueue&lt;T&gt;::ListLength()
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>{
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    return m_rear - m_front;
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>}
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>//判断顺序队列是否为空，时间复杂度为O(1)
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>template&lt;class T&gt;
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>bool SeqQueue&lt;T&gt;::IsEmpty()
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>{
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    if (m_front == m_rear)
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    {
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>        return true;
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>    }
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>    return false;
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>}
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>//判断顺序队列是否已满，时间复杂度为O(1)
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>template&lt;class T&gt;
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>bool SeqQueue&lt;T&gt;::IsFull()
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>{       
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>    if(m_rear &gt;= MaxSize) //队尾指针和数组容量做比较
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>    {
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>        return true;
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>    }
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>    return false;
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a>}
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a>
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a>//将队列清空
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a>template&lt;class T&gt;
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a>void SeqQueue&lt;T&gt;::ClearQueue()
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a>{
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a>    m_front = m_rear = 0;
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a>    }
+</code></pre></div>
+<p>在main主函数中，我们可以加入下面的测试代码，实现4个数据的入队列。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>SeqQueue&lt;int&gt; seqobj;
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>seqobj.EnQueue(150);
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>seqobj.EnQueue(200);
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>seqobj.EnQueue(300);
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>seqobj.EnQueue(400);
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>seqobj.DispList();
+</code></pre></div>
+<p>执行结果为：<br />
+<img alt="图片" src="https://static001.geekbang.org/resource/image/19/89/19452d7d2f1d430f11ff0c83a38cfe89.jpg?wh=1296x61" /></p>
+<p>此时，队列的情形如2所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/ff/89/ffdd1823162a134499b0e6f4798cf089.jpg?wh=2284x790" title="图2 4个元素进入到顺序队列后的示意图" /></p>
+<p>之后，我们可以继续在main中加入下面的代码来将2个元素出队。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>cout &lt;&lt; &quot;---------&quot; &lt;&lt; endl;
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>int eval = 0;
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>seqobj.DeQueue(eval);
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>seqobj.DeQueue(eval);   
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>seqobj.DispList();
+</code></pre></div>
+<p>新增代码的执行结果如下：<br />
+<img alt="图片" src="https://static001.geekbang.org/resource/image/e5/ca/e5dc3fc40097098ca8008287b527d6ca.jpg?wh=1329x127" /></p>
+<p>从结果中可以看到，队头的两个元素出队（被删除）了，此时，队列的情形如图3所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c7/a6/c7f37e490e01f7647996670329c735a6.jpg?wh=2284x790" title="图3 将2个元素从顺序队列中出队后的示意图" /></p>
+<p>从图3可以看到，将两个元素出队后，队头指针m_front从0变成了2。而此时m_data[0]和m_data[1]这两个能够容纳元素的位置实际上是空出来了。但如果此时继续将新的元素入队，那么m_rear值会不断增加，元素会被继续放入m_data[4]、m_data[5]、m_data[6]… m_data[9]等位置。</p>
+<p>试想，当m_data[9]被放入了元素后，继续向队列中放入元素，就会导致IsFull成员函数返回true，意味着队列已满，无法入队更多元素，而实际上此时m_data[0]和m_data[1]这两个位置还是可以容纳两个元素的。所以，<strong>此时队列的满，是一种虚假的满。</strong></p>
+<p>那要如何解决这个问题呢？也许你会想在入队并发现数组头还有空闲位置的时候，通过数据搬运的方式来填补空闲位置，不过这并不是一个好办法，会大大增加入队的时间复杂度，所以解决的办法是对上述代码做适当改进，引入循环队列的概念。</p>
+<h2 id="_3">循环队列</h2>
+<p>什么是循环队列？在图3中，即便IsFull成员函数返回true，但实际上队列也并没有满。因为m_data[0]和m_data[1]这两个位置还是可以容纳新元素的。所以必须让m_rear指针指回到m_data[0]去，这样才可以继续从m_data[0]开始保存新元素。</p>
+<p>为了做到这一点，我们可以修改EnQueue这个入队成员函数，下面是修改后的代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>//入队列（增加数据），也就是从队尾增加数据
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>template &lt;typename T&gt;
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>bool SeqQueue&lt;T&gt;::EnQueue(const T&amp; e)
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>{
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    if (IsFull() == true)
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    {
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        cout &lt;&lt; &quot;顺序队列已满，不能再进行入队操作了!&quot; &lt;&lt; endl;
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        return false;
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    }
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    m_data[m_rear] = e; //将数据放入队尾 
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    //m_rear++; //队尾指针向后走，本行和上一行可以合并写成一行代码：m_data[m_rear++] = e;
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    m_rear = (m_rear + 1) % MaxSize; //队尾指针加1并取余，这样m_data的下标就控制在了0到(MaxSize-1)之间了
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    return true;
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    }
+</code></pre></div>
+<p>可以看到，这里是对m_rear这个队尾指针加1后取余，这样，当m_rear到达9（MaxSize-1）后再次入队元素时，m_rear就会变为0，就正好可以在m_data[0]这个位置继续保存新入队的元素。</p>
+<p>换句话说，此时随着新元素的入队，在队列不满的情况下，m_rear值的变化就是从0到9，然后再变回0，不断增加到9……如此反复。显然，我们可以<strong>把顺序队列看成是一个环状的队列，队列首尾相连，保存数据元素的空间就好像是一个环状空间，这种头尾相接的队列，就叫做循环队列。</strong></p>
+<p>之后，继续在main中加入代码行来向队列中继续增加5个元素。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>cout &lt;&lt; &quot;---------&quot; &lt;&lt; endl;
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>seqobj.EnQueue(500);
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>seqobj.EnQueue(600);
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>seqobj.EnQueue(700);
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>seqobj.EnQueue(800);
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>seqobj.EnQueue(900);
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    seqobj.DispList();
+</code></pre></div>
+<p>新增代码的执行结果如下：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/f7/2e/f73bf5a373c8779666ec6dc3450dc22e.jpg?wh=1334x63" /></p>
+<p>此时的循环队列示意图，如图4所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/7c/ab/7c2cee26c8431971fe2fd3d4765624ab.jpg?wh=2284x1173" title="图4  4个元素入队、2个元素出队、再5个元素入队后的循环队列示意图" /></p>
+<p>如果此时再入队1个元素，那么这个元素将保存在m_data[9]的位置且m_rear将等于0。这样再次入队新元素时，m_data[0]、m_data[1]这样的空闲位置就可以被使用了。</p>
+<p>不过，问题又来了。要怎么判断循环队列什么时候满了呢？目前判断队列是否已满的成员函数IsFull的判满条件是只要m_rear &gt;= MaxSize，也就是只要队尾指针达到了数组容量，就认为队列满了，这显然不行。我们之前已经看到，m_rear的值因为取余的原因，永远都小于MaxSize，也就是队列永远不会满，这显然是不对的。</p>
+<p>想象一下，如果把图4中的m_data[0]到m_data[9]全部存满数据，那队列显然就是满的了，此时m_rear == m_front就会成立。我们知道，判断队列是否为空的成员函数IsEmpty的判断条件同样是m_front == m_rear，这意味着判断队列空和队列满的代码是相同的，这是不可以的。</p>
+<p>为此，一个比较常用的判断循环队列是否满的方法，就是通过牺牲一个保存元素的空间来判断，如图5所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/07/75/079f9b6c2e89966bb0b3375ded06f275.jpg?wh=2284x1173" title="图5  循环队列满的情形示意图" /></p>
+<p>你看，在图5中，队列中一共有10个位置，但只保存了9个元素，留出了1个空闲位置不允许插入元素，这个时候，就满足条件m_rear+1 == m_front，或者更严谨地说，应该是(m_rear + 1) % MaxSize == m_front，也就是说，当该条件成立时，就认为队列满了（即使该队列还有一个空闲位置）。</p>
+<p>下面是修改后的IsFull成员函数代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>//判断顺序队列是否已满，时间复杂度为O(1)
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>template&lt;class T&gt;
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>bool SeqQueue&lt;T&gt;::IsFull()
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>{       
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    //if(m_rear &gt;= MaxSize) //队尾指针和数组容量做比较
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    if((m_rear + 1) % MaxSize == m_front)
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    {
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>        return true;
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    }
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    return false;
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>}   
+</code></pre></div>
+<p>当然，出队列成员函数DeQueue也必须做出修改以控制m_front的取值范围，下面是修改后的代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>//出队列（删除数据），也就是删除队头数据
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>template &lt;typename T&gt;
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>bool SeqQueue&lt;T&gt;::DeQueue(T&amp; e)
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>{
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    if (IsEmpty() == true)
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    {
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        cout &lt;&lt; &quot;当前顺序队列为空，不能进行出队操作!&quot; &lt;&lt; endl;
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        return false;
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    }
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    e = m_data[m_front];  //队头元素值返回到e中。
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    //m_front++;//本行和上一行可以合并写成一行代码：e = m_data[m_front++];
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    m_front = (m_front +1) % MaxSize; //队头指针加1并取余
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    return true;
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    }
+</code></pre></div>
+<p>其他一些需要修改的成员函数代码这里也给出了参考。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>//获取顺序队列的长度（实际拥有的元素数量），时间复杂度为O(1)
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>template&lt;class T&gt;
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>int SeqQueue&lt;T&gt;::ListLength()
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>{
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    //return m_rear - m_front;
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    return (m_rear + MaxSize - m_front) % MaxSize;
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>}
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>//输出顺序队列中的所有元素，时间复杂度为O(n)
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>template&lt;class T&gt;
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>void SeqQueue&lt;T&gt;::DispList()
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>{
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    //按照从队头到队尾的顺序来显示数据
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    //for (int i = m_front; i &lt; m_rear ; ++i)
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    for (int i = m_front; i != m_rear;)
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>    {
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>        cout &lt;&lt; m_data[i] &lt;&lt; &quot; &quot;;  //每个数据之间以空格分隔
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>        i = (i + 1) % MaxSize;
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>    }
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>    cout &lt;&lt; endl; //换行
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>    }
+</code></pre></div>
+<p>如果你认为，就为了判断队列是不是满了，就浪费了一个空闲队列的位置，实在是不值得，那么你还可以引入其他的方法，这里列举两种。</p>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/11/c9/f9/39492855.jpg" width="30px"><span>阿阳</span> 👍（1） 💬（1）<div>请问老师双端队列的应用场景一般是什么？能否举个例子</div>2023-05-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/b2/98/82b76c88.jpg" width="30px"><span>Se7en</span> 👍（0） 💬（1）<div>此处留言由我来占领</div>2023-04-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/c9/f9/39492855.jpg" width="30px"><span>阿阳</span> 👍（0） 💬（0）<div>基础的线性结构过了一遍，手敲代码，很大的收获。线性结构是基础，后面的树和图，难度更大。</div>2023-05-25</li><br/>
+<li>引入一个int类型的成员变量m_size，初始值为0，当成功入队列一个元素时，m_size自加1，当成功出队列一个元素时，m_size自减1，那么，就可以通过m_size的值来判断队列是满还是空了（m_size==0为空，m_size== MaxSize为满）。</li>
+<li>引入一个char（一个字节够了）类型的成员变量m_tag，初始值为0。当执行出队列（删除）操作时，把该变量的值设置为0，当执行入队列（插入）操作时，把该变量的值设置为1，这样就标记了最近是执行了删除操作还是插入操作。注意，只有出队列操作才会导致队列为空，只有入队列操作才会导致队列变满，所以，代码大概就会是下面的样子。</li>
 </ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>template &lt;typename T&gt;
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>bool SeqQueue&lt;T&gt;::EnQueue(const T&amp; e) //入队列操作
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>{
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    if (IsFull() == true)
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    {
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>        cout &lt;&lt; &quot;顺序队列已满，不能再进行入队操作了!&quot; &lt;&lt; endl;
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>        return false;
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    }
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    m_tag = 1; //入队
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    ......
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>}
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>template&lt;class T&gt;
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>bool SeqQueue&lt;T&gt;::IsFull()//判断顺序队列是否已满
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>{
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>    if (m_front == m_rear &amp;&amp; tag == 1)
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>        return true;
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    return false;
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>}
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>template &lt;typename T&gt;
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>bool SeqQueue&lt;T&gt;::DeQueue(T&amp; e) //出队列操作
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>{
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>    if (IsEmpty() == true)
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>    {
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>        cout &lt;&lt; &quot;顺序队列为空，不能进行出队操作!&quot; &lt;&lt; endl;
+<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>        return false;
+<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a>    }
+<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a>    m_tag = 0; //出队
+<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a>    ......
+<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a>}
+<a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a>template&lt;class T&gt;
+<a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a>bool SeqQueue&lt;T&gt;::IsEmpty()//判断顺序队列是否为空
+<a id="__codelineno-10-32" name="__codelineno-10-32" href="#__codelineno-10-32"></a>{
+<a id="__codelineno-10-33" name="__codelineno-10-33" href="#__codelineno-10-33"></a>    if (m_front == m_rear &amp;&amp; tag == 0)
+<a id="__codelineno-10-34" name="__codelineno-10-34" href="#__codelineno-10-34"></a>    {
+<a id="__codelineno-10-35" name="__codelineno-10-35" href="#__codelineno-10-35"></a>        return true;
+<a id="__codelineno-10-36" name="__codelineno-10-36" href="#__codelineno-10-36"></a>    }
+<a id="__codelineno-10-37" name="__codelineno-10-37" href="#__codelineno-10-37"></a>    return false;
+<a id="__codelineno-10-38" name="__codelineno-10-38" href="#__codelineno-10-38"></a>    }
+</code></pre></div>
+<h1 id="_4">队列的链式存储（链式队列）</h1>
+<p>一般来讲，如果队列长度的最大值比较确定的情况下，可以考虑使用顺序队列（循环队列），否则，就可以考虑使用链式队列了。</p>
+<p>所谓链式队列，就是用链式存储的方式来实现的队列。你可以把它理解成一个操作受限的单链表，只允许在尾部插入元素，只允许在头部删除元素。之前学习过单链表的你，这里再学习链式队列，就会非常容易。</p>
+<p>和单链表一样，链式队列可以带头结点，也可以不带头结点，同样为编程方便，这里我会采用带头节点的实现方式去讲解。</p>
+<p>先来看一些基础的实现代码。先说类定义、初始化以及释放操作。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>//链式队列中每个节点的定义
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>template &lt;typename T&gt; //T代表数据元素的类型
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>struct QueueNode
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>{
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    T data;       //数据域，存放数据元素
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    QueueNode&lt;T&gt;* next;  //指针域，指向下一个同类型（和本节点类型相同）节点
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>};
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>//链式队列的定义
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>template &lt;typename T&gt; //T代表数组中元素的类型
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>class LinkQueue
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>{
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>public:
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>    LinkQueue();                          //构造函数
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>    ~LinkQueue();                         //析构函数
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>public:     
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>    bool EnQueue(const T&amp; e);            //入队列（增加数据）        
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>    bool DeQueue(T&amp; e);                  //出队列（删除数据）
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>    bool GetHead(T&amp; e);   //读取队头元素，但该元素并没有出队列而是依旧在队列中       
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>    void DispList();                     //输出链式队列中的所有元素
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>    int  ListLength();                  //获取链式队列的长度（实际拥有的元素数量）          
+<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>    bool IsEmpty();                      //判断链式队列是否为空
+<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>
+<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>private:
+<a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>    QueueNode&lt;T&gt;* m_front;              //头指针（指向头结点），这一端允许出队（删除）
+<a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>    QueueNode&lt;T&gt;* m_rear;                //专门引入尾指针以方便入队（插入）操作
+<a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>    int m_length;                        //记录长度，方便获取长度
+<a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a>};
+<a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>
+<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a>//通过构造函数对链式队列进行初始化
+<a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a>template &lt;typename T&gt;
+<a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a>LinkQueue&lt;T&gt;::LinkQueue()
+<a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a>{       
+<a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a>    m_front = new QueueNode&lt;T&gt;; //先创建一个头结点
+<a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a>    m_front-&gt;next = nullptr;
+<a id="__codelineno-11-38" name="__codelineno-11-38" href="#__codelineno-11-38"></a>    m_rear = m_front;
+<a id="__codelineno-11-39" name="__codelineno-11-39" href="#__codelineno-11-39"></a>    m_length = 0;
+<a id="__codelineno-11-40" name="__codelineno-11-40" href="#__codelineno-11-40"></a>
+<a id="__codelineno-11-41" name="__codelineno-11-41" href="#__codelineno-11-41"></a>    //若不带头节点的链式队列初始化代码应该如下，供参考
+<a id="__codelineno-11-42" name="__codelineno-11-42" href="#__codelineno-11-42"></a>    /*m_front = nullptr;
+<a id="__codelineno-11-43" name="__codelineno-11-43" href="#__codelineno-11-43"></a>    m_rear = nullptr;*/
+<a id="__codelineno-11-44" name="__codelineno-11-44" href="#__codelineno-11-44"></a>}
+<a id="__codelineno-11-45" name="__codelineno-11-45" href="#__codelineno-11-45"></a>
+<a id="__codelineno-11-46" name="__codelineno-11-46" href="#__codelineno-11-46"></a>//通过析构函数对链式队列进行资源释放
+<a id="__codelineno-11-47" name="__codelineno-11-47" href="#__codelineno-11-47"></a>template &lt;typename T&gt;
+<a id="__codelineno-11-48" name="__codelineno-11-48" href="#__codelineno-11-48"></a>LinkQueue&lt;T&gt;::~LinkQueue()
+<a id="__codelineno-11-49" name="__codelineno-11-49" href="#__codelineno-11-49"></a>{
+<a id="__codelineno-11-50" name="__codelineno-11-50" href="#__codelineno-11-50"></a>    QueueNode&lt;T&gt;* pnode = m_front-&gt;next;
+<a id="__codelineno-11-51" name="__codelineno-11-51" href="#__codelineno-11-51"></a>    QueueNode&lt;T&gt;* ptmp;
+<a id="__codelineno-11-52" name="__codelineno-11-52" href="#__codelineno-11-52"></a>    while (pnode != nullptr) //该循环负责释放数据节点
+<a id="__codelineno-11-53" name="__codelineno-11-53" href="#__codelineno-11-53"></a>    {
+<a id="__codelineno-11-54" name="__codelineno-11-54" href="#__codelineno-11-54"></a>        ptmp = pnode;
+<a id="__codelineno-11-55" name="__codelineno-11-55" href="#__codelineno-11-55"></a>        pnode = pnode-&gt;next;
+<a id="__codelineno-11-56" name="__codelineno-11-56" href="#__codelineno-11-56"></a>        delete ptmp;
+<a id="__codelineno-11-57" name="__codelineno-11-57" href="#__codelineno-11-57"></a>    }       
+<a id="__codelineno-11-58" name="__codelineno-11-58" href="#__codelineno-11-58"></a>    delete m_front;             //释放头结点     
+<a id="__codelineno-11-59" name="__codelineno-11-59" href="#__codelineno-11-59"></a>    m_front = m_rear = nullptr; //非必须
+<a id="__codelineno-11-60" name="__codelineno-11-60" href="#__codelineno-11-60"></a>    m_length = 0;               //非必须
+<a id="__codelineno-11-61" name="__codelineno-11-61" href="#__codelineno-11-61"></a>}
+</code></pre></div>
+<p>之后，就是入队列、出队列、读取队头元素操作代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>//入队列（增加数据），也就是从队尾增加数据
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>template &lt;typename T&gt;
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>bool LinkQueue&lt;T&gt;::EnQueue(const T&amp; e)
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>{
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    QueueNode&lt;T&gt;* node = new QueueNode&lt;T&gt;;
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    node-&gt;data = e;
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    node-&gt;next = nullptr;
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>    m_rear-&gt;next = node; //新节点插入到m_rear后面
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>    m_rear = node;       //更新队列尾指针
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>    m_length++;
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>    return true;
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>}
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>//出队列（删除数据），也就是删除队头数据
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>template &lt;typename T&gt;
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>bool LinkQueue&lt;T&gt;::DeQueue(T&amp; e)
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>{
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>    if (IsEmpty() == true)
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>    {
+<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a>        cout &lt;&lt; &quot;当前链式队列为空，不能进行出队操作!&quot; &lt;&lt; endl;
+<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a>        return false;
+<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a>    }
+<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a>
+<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a>    QueueNode&lt;T&gt;* p_willdel = m_front-&gt;next;
+<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a>    e = p_willdel-&gt;data;
+<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a>
+<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a>    m_front-&gt;next = p_willdel-&gt;next;
+<a id="__codelineno-12-30" name="__codelineno-12-30" href="#__codelineno-12-30"></a>    if (m_rear == p_willdel) //队列中只有一个元素节点（被删除后，整个队列就为空了）
+<a id="__codelineno-12-31" name="__codelineno-12-31" href="#__codelineno-12-31"></a>        m_rear = m_front;  //设置队列为空(尾指针指向头指针)
+<a id="__codelineno-12-32" name="__codelineno-12-32" href="#__codelineno-12-32"></a>
+<a id="__codelineno-12-33" name="__codelineno-12-33" href="#__codelineno-12-33"></a>    delete p_willdel;
+<a id="__codelineno-12-34" name="__codelineno-12-34" href="#__codelineno-12-34"></a>    m_length--;
+<a id="__codelineno-12-35" name="__codelineno-12-35" href="#__codelineno-12-35"></a>    return true;
+<a id="__codelineno-12-36" name="__codelineno-12-36" href="#__codelineno-12-36"></a>}
+<a id="__codelineno-12-37" name="__codelineno-12-37" href="#__codelineno-12-37"></a>
+<a id="__codelineno-12-38" name="__codelineno-12-38" href="#__codelineno-12-38"></a>//读取队头元素，但该元素并没有出队列而是依旧在队列中
+<a id="__codelineno-12-39" name="__codelineno-12-39" href="#__codelineno-12-39"></a>template &lt;typename T&gt;
+<a id="__codelineno-12-40" name="__codelineno-12-40" href="#__codelineno-12-40"></a>bool LinkQueue&lt;T&gt;::GetHead(T&amp; e)
+<a id="__codelineno-12-41" name="__codelineno-12-41" href="#__codelineno-12-41"></a>{
+<a id="__codelineno-12-42" name="__codelineno-12-42" href="#__codelineno-12-42"></a>    if (IsEmpty() == true)
+<a id="__codelineno-12-43" name="__codelineno-12-43" href="#__codelineno-12-43"></a>    {
+<a id="__codelineno-12-44" name="__codelineno-12-44" href="#__codelineno-12-44"></a>        cout &lt;&lt; &quot;当前链式队列为空，不能读取队头元素!&quot; &lt;&lt; endl;
+<a id="__codelineno-12-45" name="__codelineno-12-45" href="#__codelineno-12-45"></a>        return false;
+<a id="__codelineno-12-46" name="__codelineno-12-46" href="#__codelineno-12-46"></a>    }
+<a id="__codelineno-12-47" name="__codelineno-12-47" href="#__codelineno-12-47"></a>
+<a id="__codelineno-12-48" name="__codelineno-12-48" href="#__codelineno-12-48"></a>    e = m_front-&gt;next-&gt;data;
+<a id="__codelineno-12-49" name="__codelineno-12-49" href="#__codelineno-12-49"></a>    return true;
+<a id="__codelineno-12-50" name="__codelineno-12-50" href="#__codelineno-12-50"></a>}
+</code></pre></div>
+<p>最后，是一些链式队列的常用操作，比如输出所有元素、获取长度、判断是否为空。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>//输出链式队列中的所有元素，时间复杂度为O(n)
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>template&lt;class T&gt;
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>void LinkQueue&lt;T&gt;::DispList()
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>{
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    QueueNode&lt;T&gt;* p = m_front-&gt;next;
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    while (p != nullptr) 
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    {
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>        cout &lt;&lt; p-&gt;data &lt;&lt; &quot; &quot;;  //每个数据之间以空格分隔
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>        p = p-&gt;next;
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    }
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>    cout &lt;&lt; endl; //换行
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>}
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>//获取链式队列的长度（实际拥有的元素数量），时间复杂度为O(1)
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>template&lt;class T&gt;
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>int LinkQueue&lt;T&gt;::ListLength()
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>{
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>    return m_length;
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>}
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>//判断链式队列是否为空，时间复杂度为O(1)
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>template&lt;class T&gt;
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>bool LinkQueue&lt;T&gt;::IsEmpty()
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>{
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>    //当然，换一种判断方式也行：if(m_front-&gt;next == nullptr) return true;
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>    if (m_front == m_rear) 
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>    {
+<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a>        return true;
+<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>    }
+<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a>    return false;
+<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a>    }
+</code></pre></div>
+<p>之后，在main中加入代码行。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>LinkQueue&lt;int&gt; lnobj;
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>lnobj.EnQueue(150);
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>int eval2 = 0;
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>lnobj.DeQueue(eval2);   
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>lnobj.EnQueue(200); 
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>lnobj.EnQueue(700);
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    lnobj.DispList();
+</code></pre></div>
+<p>执行结果为：<br />
+<img alt="图片" src="https://static001.geekbang.org/resource/image/a4/dd/a498974732b15d16da7489a196497ddd.jpg?wh=1332x62" /></p>
+<p>从代码中可以看到，引入的两个指针，分别是头指针和尾指针。在构造函数中，需要将这两个指针进行初始化，初始化后的头尾指针分别指向头结点，这也意味着此时该链式队列为空，如图6所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/54/bf/548b6bdb669f3be2bea0ae5276cb88bf.jpg?wh=2284x430" title="图6  刚被初始化的链式队列（带头节点）示意图" /></p>
+<p>入队新元素需要在链的末尾（队尾）进行。图7是入队两个元素的情形，注意，尾指针始终要保持指向最后一个元素节点。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/21/ab/21bef7e88df586113a9e9c42ff7df5ab.jpg?wh=2284x465" title="图7  分别入队100和200两个元素后的链式队列元素示意图" /></p>
+<p>代码中引入了成员变量m_length以快速获取队列的长度（通过成员函数ListLength），时间复杂度仅为O(1)，如果用传统的从头指针遍历到尾指针的方法来计算队列长度，那么时间复杂度就会变成O(n)。所以，如果需要频繁获取队列长度，引入m_length就会明显提升效率。</p>
+<p>另一个值得说的是，顺序队列存在队列满的问题，而链式队列因为是通过new来创建元素节点，所以不存在队列满的问题，除非物理内存不足。而如果不是软件导致内存泄漏，通常物理内存不会不足，一旦物理内存不足，就会导致整个程序运行崩溃，此时必须全面对程序进行排错。</p>
+<h1 id="_5">双端队列</h1>
+<p>前面所讨论的顺序或者链式队列可以看成是普通队列，其实，还有一些变种的队列——双端队列。双端队列允许在两端插入数据，也允许在两端删除数据。它的存取数据示意图，如图8所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/94/37/94d29911b639e65b8b3d5757def15237.jpg?wh=2284x305" title="图8  双端队列存取数据示意图" /></p>
+<p>当然，我们也可以对双端队列存取数据进行一定的限制，这样就可以得到“输入受限的双端队列”和“输出受限的双端队列”两种情况。</p>
+<p>所谓输入受限的双端队列，指的是数据只能从一端插入但可以从两端删除的双端队列，如图9所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/07/ca/070c676690942cd053413e0de758e8ca.jpg?wh=2284x356" title="图9  输入受限的双端队列存取数据示意图" /></p>
+<p>而输出受限的双端队列，指的是数据可以从两端插入但只能从一端删除的双端队列，如图10所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/73/ed/73fe18bce28196665eb3f5e7c7e568ed.jpg?wh=2284x336" title="图10  输出受限的双端队列存取数据示意图" /></p>
+<p>从功能上来讲，双端队列的功能既包括了栈功能，又包括了队列功能，灵活性大大增强，但从实用性来讲，人们更经常使用的是栈和普通队列而不是双端队列。有兴趣的话，你也可以利用前面学习过的知识，尝试实现自己的双端队列。</p>
+<h1 id="_6">小结</h1>
+<p>这节课，我们学习了队列这种常用的数据结构，分别用代码实现了队列的顺序存储（顺序队列）和链式存储（链式队列）。此外，还引出了双端队列的概念。在后面的课程中，会多次用到队列这种数据结构来保存数据，相信那时你会对队列的用途有更深刻的理解。</p>
+<p>队列是一种与栈相对的数据结构，之所以这样讲，是因为<strong>栈</strong>是一种<strong>后进先出</strong>的数据结构，而<strong>队列</strong>是一种<strong>先进先出</strong>的数据结构。</p>
+<p>队列的应用十分广泛，这里我们举两个典型应用的例子。</p>
+<ol>
+<li>去营业大厅办理业务时使用的叫号系统就是一个队列，办理业务的人要先取号后等待叫号，号码按照取号的顺序保存在队列中，叫号时最先取号的人会被最先叫到。</li>
+<li>多人同时使用网络打印机打印文件，因为打印机的速度很慢，所以每个人提交的打印任务需要在一个队列中进行排队（打印队列），打印机根据先进先出（先来先服务）的原则，依次从打印队列中取出打印任务并进行打印工作。</li>
+</ol>
+<p>其实，<strong>对于许多服务资源有限的场合，都可以通过队列来实现对服务请求的排队。</strong></p>
+<p>在STL（标准模板库）中，提供了一个名字叫做queue的容器，该容器实现了队列的功能，有兴趣可以对其源码做适当研究。队列同栈一样，也分为顺序存储和链式存储。同样，STL中也提供了名字叫做deque的容器——一个典型的双端队列，有兴趣的话，你也可以读一读它的实现代码。</p>
+<h1 id="_7">归纳思考</h1>
+<p>你可以使用一下STL中提供的deque容器，了解一下它提供的各种调用接口，参考这些调用接口，自己尝试实现一个双端队列。</p>
+<p>欢迎你在留言区和我分享实践的成果，如果觉得有所收获，也可以把课程分享给更多的朋友一起学习进步，我们下节课见！</p>
 
 
 

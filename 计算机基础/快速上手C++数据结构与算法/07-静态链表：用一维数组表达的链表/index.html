@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -2182,6 +2187,8 @@
       
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
+      
+        
       
       
       <a href="./" class="md-nav__link md-nav__link--active">
@@ -5575,6 +5582,8 @@
   
   
   
+    
+  
   
 </nav>
                   </div>
@@ -5597,8 +5606,6 @@
   
 
 
-  <h1>07 静态链表：用一维数组表达的链表</h1>
-
 <p>你好，我是王健伟。</p>
 <p>前面已经聊了很多种链表，今天我们再来聊一聊最后一种链表——“静态链表”。</p>
 <p>有些早期的高级语言，并没有指针这种概念，之前我们探讨的链表实现方法在这些高级语言中并不适用。于是，用<strong>一维数组</strong>代替<strong>指针</strong>来描述单链表的想法应运而生，这种用一维数组描述的链表，就称为<strong>静态链表</strong>。</p>
@@ -5607,9 +5614,387 @@
 <p>你会发现，说是内存空间紧密相连，但是链表中的各个节点却是并不需要紧密地连在一起的。</p>
 <p>每个数组元素都是由两个数据域组成：data和cur。其中data用来存储链表中每个节点的数据，cur用来存储链表中后继节点所属的数组元素的下标（cur也称为<strong>游标</strong>，用来<strong>模拟指针</strong>）。比如图8中存储数据a2的区域就是data域，存储数字6的区域就是cur域。</p>
 <p>注意，如果cur域的值为“末尾（一个负数作为标记）”，则表示该cur所代表的数组元素是链表中的最后一个节点，比如图8中存储数据a5的节点。下标为0的数组元素可以看成是链表的头节点，其cur域的值（数字2）用于指示链表第一个数据节点对应的数组下标。所以，数据a1所在的节点，其实就是静态链表的第一个数据节点。</p>
+<p>理解之后，我们就来说具体的实现方式了。静态链表的实现代码有很多种，这里我选择一种从代码可读性上比较好理解的实现方法来讲解。在后面的课后思考中，我会让你实现一个稍微复杂点的静态链表。</p>
+<h1 id="_1">静态链表的类定义、初始化操作</h1>
+<p>还是先说类定义和初始化操作。</p>
+<p>下面是静态链表的类定义、初始化操作的相关实现代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>#define MaxSize 201 //静态链表的尺寸，可以根据实际需要设定该值。可用数组下标为0-200
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>//节点使用情况枚举标记值
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>enum NODEUSE 
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>{
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    //这些枚举值都给负值，以免和数组下标（从0开始的正值）冲突
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    e_NOUSE = -1,  //未使用（未用）
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    e_LAST  = -2   //最后一个节点（末尾）
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>};
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>//静态链表中每个节点的定义
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>template &lt;typename T&gt; //T代表数据元素的类型
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>struct Node
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>{
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    T        data;  //元素数据域，存放数据元素
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    int      cur;   //游标，记录下个静态链表节点的数组下标
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>};
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>//静态链表的定义
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>template &lt;typename T&gt;
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>class StaticLinkList
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>{
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>public:
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    StaticLinkList();                    //构造函数
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    ~StaticLinkList() {};                //析构函数
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>public:
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>    int  findAnIdlePos();                //找到一个空闲位置用于保存数据
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>    bool ListInsert(int i, const T&amp; e);  //在第i个位置插入指定元素e
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    bool ListDelete(int i);              //删除第i个位置的元素
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>    bool GetElem(int i, T&amp; e);           //获得第i个位置的元素值
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    int  LocateElem(const T&amp; e);       //按元素值查找其在静态链表中第一次出现的位置
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>    void DispList();                     //输出静态链表中的所有元素
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>    int  ListLength();                   //获取静态链表的长度
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>    bool Empty();                        //判断静态链表是否为空
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>private:
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>    Node&lt;T&gt; m_data[MaxSize]; //保存节点数据的数组
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>    int m_length;            //当前长度，也就是当前保存的数据节点数目
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>};
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>//通过构造函数对静态链表进行初始化
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>template &lt;typename T&gt;
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>StaticLinkList&lt;T&gt;::StaticLinkList()
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>{   
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>    for (int i = 1; i &lt; MaxSize; ++i) //从下标1开始的节点用于保存实际的数据，这些节点的cur有必要设置值，而头节点其实不用给任何初值
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>    {
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>        m_data[i].cur = e_NOUSE; //标记这些节点都没使用
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>    }
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>    m_length = 0; //还未向其中存入任何数据元素
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>}
+</code></pre></div>
+<p>之后，我们在main主函数中，可以加入下面的代码创建一个静态链表对象。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>StaticLinkList&lt;int&gt; slinkobj;
+</code></pre></div>
+<p>这个时候，所创建的静态链表对象应该如图9所示，静态链表已经创建完毕，只不过这个链表中目前还没有存储任何数据，可以认为是一个空链表。</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/dc/bd/dc7219222fea3yy033aaffea3a79f7bd.jpg?wh=2284x1280" title="图9  新初始化的静态链表存储数据的情形" /></p>
+<h1 id="_2">静态链表元素插入操作</h1>
+<p>在指定位置插入元素的操作，可以分为4个核心步骤。</p>
+<ol>
+<li>找到一个空闲位置代表新插入的节点，在其中存入数据元素。</li>
+<li>从头节点开始，找到待插入位置的前一个（前趋）节点。</li>
+<li>设置新插入节点的cur值以指向前趋节点所指向的节点，设置前趋节点的cur值以指向这个新插入的节点。</li>
+<li>如果新插入的节点是最后一个节点，要设置其cur标记为“末尾”。</li>
+</ol>
+<p>下面是插入操作ListInsert的实现代码（同时引入辅助函数findAnIdlePos）。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>//在m_data中找到一个空闲位置用于保存数据，若没有找到（静态链表满了），则返回-1
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>template &lt;typename T&gt;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>int StaticLinkList&lt;T&gt;::findAnIdlePos()
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>{
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    for (int i = 1; i &lt; MaxSize; ++i) //因为下标0是头节点，不能用于保存数据，所以循环变量从1开始
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    {
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        if (m_data[i].cur == e_NOUSE) //未使用
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>            return i;
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    }
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    return -1;
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>}
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>//在第iPos个位置（位置编号从1开始）插入指定元素e
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>template &lt;typename T&gt;
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>bool StaticLinkList&lt;T&gt;::ListInsert(int iPos, const T&amp; e)
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>{
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    if (iPos &lt; 1 || iPos &gt; (m_length + 1))
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    {
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>        cout &lt;&lt; &quot;元素&quot; &lt;&lt; e &lt;&lt; &quot;插入的位置&quot; &lt;&lt; iPos &lt;&lt; &quot;不合法，合法的位置是1到&quot; &lt;&lt; m_length + 1 &lt;&lt; &quot;之间!&quot; &lt;&lt; endl;
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>        return false;
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    }
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    int iIdx;
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    if ((iIdx = findAnIdlePos()) == -1) //静态链表满了
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    { 
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>        cout &lt;&lt; &quot;静态链表已满!&quot; &lt;&lt; endl;
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>        return false;
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>    }
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>    //既然需要在第iPos个位置插入元素，那么肯定要找到第iPos-1个位置。
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>    int iDataCount = 1; //统计静态链表中元素数量
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>    int iIdxPrev;       //保存第iPos-1个位置对应的m_data数组的下标
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>    if (iPos == 1) //向第一个位置插入元素，要单独处理
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>    {                       
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>        m_data[iIdx].data = e;
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>        if (m_length == 0) //空表
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>        {                   
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>            m_data[iIdx].cur = e_LAST;
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a>        }
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a>        else //非空表
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a>        {               
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a>            m_data[iIdx].cur = m_data[0].cur;
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a>        }
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a>        m_data[0].cur = iIdx;
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a>    }
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a>    else
+<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a>    {           
+<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a>        int iPosCount = 0; //位置计数
+<a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a>        int tmpcur = m_data[0].cur;
+<a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a>
+<a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a>        //前面已经判断过插入位置合法，所以一定可以找到合适的位置，while(true)循环肯定可以正常退出
+<a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a>        while (true) 
+<a id="__codelineno-2-54" name="__codelineno-2-54" href="#__codelineno-2-54"></a>        {   
+<a id="__codelineno-2-55" name="__codelineno-2-55" href="#__codelineno-2-55"></a>            iPosCount++;
+<a id="__codelineno-2-56" name="__codelineno-2-56" href="#__codelineno-2-56"></a>            if (iPosCount &gt;= (iPos - 1)) //找到了第iPos-1个位置
+<a id="__codelineno-2-57" name="__codelineno-2-57" href="#__codelineno-2-57"></a>            {
+<a id="__codelineno-2-58" name="__codelineno-2-58" href="#__codelineno-2-58"></a>                iIdxPrev = tmpcur;
+<a id="__codelineno-2-59" name="__codelineno-2-59" href="#__codelineno-2-59"></a>                break;
+<a id="__codelineno-2-60" name="__codelineno-2-60" href="#__codelineno-2-60"></a>            }
+<a id="__codelineno-2-61" name="__codelineno-2-61" href="#__codelineno-2-61"></a>            tmpcur = m_data[tmpcur].cur;
+<a id="__codelineno-2-62" name="__codelineno-2-62" href="#__codelineno-2-62"></a>
+<a id="__codelineno-2-63" name="__codelineno-2-63" href="#__codelineno-2-63"></a>        } //end while
+<a id="__codelineno-2-64" name="__codelineno-2-64" href="#__codelineno-2-64"></a>
+<a id="__codelineno-2-65" name="__codelineno-2-65" href="#__codelineno-2-65"></a>        int iTmpCurr = m_data[iIdxPrev].cur;
+<a id="__codelineno-2-66" name="__codelineno-2-66" href="#__codelineno-2-66"></a>        m_data[iIdxPrev].cur = iIdx;
+<a id="__codelineno-2-67" name="__codelineno-2-67" href="#__codelineno-2-67"></a>        m_data[iIdx].data = e;
+<a id="__codelineno-2-68" name="__codelineno-2-68" href="#__codelineno-2-68"></a>        m_data[iIdx].cur = iTmpCurr;
+<a id="__codelineno-2-69" name="__codelineno-2-69" href="#__codelineno-2-69"></a>    }
+<a id="__codelineno-2-70" name="__codelineno-2-70" href="#__codelineno-2-70"></a>    cout &lt;&lt; &quot;成功在位置为&quot; &lt;&lt; iPos &lt;&lt; &quot;处插入元素&quot; &lt;&lt; e &lt;&lt; &quot;!&quot; &lt;&lt; endl;
+<a id="__codelineno-2-71" name="__codelineno-2-71" href="#__codelineno-2-71"></a>    m_length++;    //实际表长+1
+<a id="__codelineno-2-72" name="__codelineno-2-72" href="#__codelineno-2-72"></a>    return true;
+<a id="__codelineno-2-73" name="__codelineno-2-73" href="#__codelineno-2-73"></a>}   
+</code></pre></div>
+<p>在main主函数中，我们继续加入测试代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>slinkobj.ListInsert(1, 12);     
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>slinkobj.ListInsert(1, 24); 
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>slinkobj.ListInsert(3, 48); 
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>slinkobj.ListInsert(2, 100);
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>slinkobj.ListInsert(5, 190);
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>slinkobj.ListInsert(4, 300);
+</code></pre></div>
+<p>执行上述代码后，静态链表存储数据的情形以及对应的单链表应该如图10所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/2f/f8/2f015635cb7bd5143389d3bb99c024f8.jpg?wh=2478x1280" title="图10  插入一系列数据后静态链表存储数据的情形以及对应的单链表" /></p>
+<p>执行结果为：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/2d/8a/2d32421c60ae2bfeeded90e61b9f0f8a.png?wh=1251x274" /></p>
+<h1 id="_3">静态链表元素显示、获取等操作</h1>
+<p>静态链表元素的显示、获取操作相关的函数一共有三个，分别为DispList、GetElem、LocateElem。取得静态链表长度的是ListLength函数，判断静态链表是否为空的为Empty函数。我们分别看一看。</p>
+<p>首先，输出静态链表中的所有元素。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>//输出静态链表中的所有元素，时间复杂度为O(n)
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>template&lt;class T&gt;
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>void StaticLinkList&lt;T&gt;::DispList()
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>{
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    if (m_length &lt; 1)
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    {
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        //静态链表为空
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        return;
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    }
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    int tmpcur = m_data[0].cur;
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    while (true)
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    {
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>        cout &lt;&lt; m_data[tmpcur].data &lt;&lt; &quot; &quot;;
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>        if ((tmpcur = m_data[tmpcur].cur) == e_LAST)
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>            break;
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    } //end while
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    cout &lt;&lt; endl; //换行  
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>}
+</code></pre></div>
+<p>再来，是按照位置，或按照元素值查找。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>//获得第i个位置的元素值，时间复杂度为O(n)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>template&lt;class T&gt;
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>bool StaticLinkList&lt;T&gt;::GetElem(int i, T&amp; e)
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>{   
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    if (m_length &lt; 1)
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    {
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        //静态链表为空
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        cout &lt;&lt; &quot;当前静态链表为空，不能获取任何数据!&quot; &lt;&lt; endl;
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        return false;
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    }
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    if (i &lt; 1 || i &gt; m_length)
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    {
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>        cout &lt;&lt; &quot;获取元素的位置&quot; &lt;&lt; i &lt;&lt; &quot;不合法，合法的位置是1到&quot; &lt;&lt; m_length &lt;&lt; &quot;之间!&quot; &lt;&lt; endl;
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>        return false;
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    }
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    int tmpcur = m_data[0].cur;
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    int iPos = 0;
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>    while (true)
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>    {
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>        iPos++;
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>        if (iPos == i)
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>        {
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>            e = m_data[tmpcur].data;
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>            cout &lt;&lt; &quot;成功获取位置为&quot; &lt;&lt; i &lt;&lt; &quot;的元素，该元素的值为&quot; &lt;&lt; e &lt;&lt; &quot;!&quot; &lt;&lt; endl;
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>            return true;
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>        }
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>        tmpcur = m_data[tmpcur].cur;
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>    }
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>    return false;       
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>}
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>//按元素值查找其在静态链表中第一次出现的位置，时间复杂度为O(n)
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>template&lt;class T&gt;
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>int StaticLinkList&lt;T&gt;::LocateElem(const T&amp; e)
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>{
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>    if (m_length &lt; 1)
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>    {
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a>        //静态链表为空
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>        cout &lt;&lt; &quot;当前静态链表为空，不能获取任何数据!&quot; &lt;&lt; endl;
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a>        return -1;
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a>    }
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>    int tmpcur = m_data[0].cur;
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a>    int iPos = 0;
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a>    while (true)
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a>    {
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a>        iPos++;
+<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a>        if (m_data[tmpcur].data == e &amp;&amp; m_data[tmpcur].cur != e_NOUSE)
+<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a>        {
+<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a>            cout &lt;&lt; &quot;值为&quot; &lt;&lt; e &lt;&lt; &quot;的元素在静态链表中第一次出现的位置为&quot; &lt;&lt; iPos &lt;&lt; &quot;!&quot; &lt;&lt; endl;
+<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a>            return tmpcur;
+<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a>        }
+<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a>        if (m_data[tmpcur].cur == e_LAST)
+<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a>        {
+<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a>            //这是没找到
+<a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a>            break;
+<a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a>        }
+<a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a>        tmpcur = m_data[tmpcur].cur;
+<a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a>    }
+<a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a>    cout &lt;&lt; &quot;值为&quot; &lt;&lt; e &lt;&lt; &quot;的元素在静态链表中没有找到!&quot; &lt;&lt; endl;
+<a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a>    return -1;  //返回-1表示查找失败
+<a id="__codelineno-5-62" name="__codelineno-5-62" href="#__codelineno-5-62"></a>}   
+</code></pre></div>
+<p>最后，是两个其他操作，获取长度以及判断链表是否为空。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>//获取静态链表的长度，时间复杂度为O(1)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>template&lt;class T&gt;
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>int  StaticLinkList&lt;T&gt;::ListLength()
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>{
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    return m_length;        
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>}
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>//判断静态链表是否为空，时间复杂度为O(1)
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>template&lt;class T&gt;
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>bool StaticLinkList&lt;T&gt;::Empty()
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>{       
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    if (m_length &lt; 1)
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    {
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>        return true;
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    }
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    return false;
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>}
+</code></pre></div>
+<p>在main主函数中，继续增加代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>slinkobj.DispList();
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>slinkobj.LocateElem(190);
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>slinkobj.LocateElem(24); 
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>slinkobj.LocateElem(300);
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>cout &lt;&lt; &quot;----------------&quot; &lt;&lt; endl;
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>int eval = 0;
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>slinkobj.GetElem(0, eval); //如果GetElem()返回true，则eval中保存着获取到的元素值
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>slinkobj.GetElem(1, eval);
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>slinkobj.GetElem(3, eval);
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>slinkobj.GetElem(6, eval);
+</code></pre></div>
+<p>新增代码的执行结果为：<br />
+<img alt="图片" src="https://static001.geekbang.org/resource/image/8e/6f/8e63bcf177cebbdd44ba33ba3147c36f.jpg?wh=1267x401" /></p>
+<h1 id="_4">静态链表元素删除操作</h1>
+<p>删除指定位置元素的操作核心步骤我们可以分为3步。</p>
+<ol>
+<li>从头节点开始，找到待删除节点的前一个（前趋）节点。</li>
+<li>设置前趋节点的cur值等于当前待删除节点的cur值以指向当前节点所指向的节点。</li>
+<li>设置被删除节点的状态为“未用”状态。</li>
+</ol>
+<p>下面是删除操作ListDelete的实现代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>//删除第iPos个位置的元素
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>template &lt; typename T&gt;
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>bool StaticLinkList&lt;T&gt;::ListDelete(int iPos)
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>{
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    if (m_length &lt; 1)
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    {
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        cout &lt;&lt; &quot;当前静态链表为空，不能删除任何数据!&quot; &lt;&lt; endl;
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        return false;
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    }
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    if (iPos &lt; 1 || iPos &gt; m_length)
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    {
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>        cout &lt;&lt; &quot;删除的位置&quot; &lt;&lt; iPos &lt;&lt; &quot;不合法，合法的位置是1到&quot; &lt;&lt; m_length &lt;&lt; &quot;之间!&quot; &lt;&lt; endl;
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>        return false;
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    }
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    int tmpcur = m_data[0].cur; //第一个数据节点的数组下标
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>    if (iPos == 1) //删除第一个位置元素，要单独处理
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>    {
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>        if (m_length != 1) 
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>        {               
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>            //这个静态链表里有多个元素，那么
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>            m_data[0].cur = m_data[tmpcur].cur; //头节点指向第二个数据节点的数组下标
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>        }
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>        m_data[tmpcur].cur = e_NOUSE;
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>        cout &lt;&lt; &quot;成功删除位置为&quot; &lt;&lt; iPos &lt;&lt; &quot;的元素，该元素的值为&quot; &lt;&lt; m_data[tmpcur].data &lt;&lt; &quot;!&quot; &lt;&lt; endl;
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>    }
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>    else
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>    {           
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>        int iIdxPrev; //第iPos-1个位置对应的m_data数组的下标
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>        int iPosCount = 0; //位置计数
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>        //前面已经判断过删除位置合法，所以一定可以找到合适的位置，while(true)循环肯定可以正常退出
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>        while (true)
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>        {
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a>            iPosCount++;
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>            if (iPosCount &gt;= (iPos - 1)) //找到了第i-1个位置
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a>            {
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a>                iIdxPrev = tmpcur;
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a>                break;
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a>            }
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a>            tmpcur = m_data[tmpcur].cur;
+<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a>        } //end while
+<a id="__codelineno-8-43" name="__codelineno-8-43" href="#__codelineno-8-43"></a>
+<a id="__codelineno-8-44" name="__codelineno-8-44" href="#__codelineno-8-44"></a>        int iTmpCurr = m_data[iIdxPrev].cur; //当前要删除的这个节点的数组下标
+<a id="__codelineno-8-45" name="__codelineno-8-45" href="#__codelineno-8-45"></a>        m_data[iIdxPrev].cur = m_data[iTmpCurr].cur;//前一个节点的cur指向当前要删除节点的cur
+<a id="__codelineno-8-46" name="__codelineno-8-46" href="#__codelineno-8-46"></a>        m_data[iTmpCurr].cur = e_NOUSE; //标记被删除数据节点的数组下标为未用状态
+<a id="__codelineno-8-47" name="__codelineno-8-47" href="#__codelineno-8-47"></a>        cout &lt;&lt; &quot;成功删除位置为&quot; &lt;&lt; iPos &lt;&lt; &quot;的元素，该元素的值为&quot; &lt;&lt; m_data[iTmpCurr].data &lt;&lt; &quot;!&quot; &lt;&lt; endl;
+<a id="__codelineno-8-48" name="__codelineno-8-48" href="#__codelineno-8-48"></a>    } //end if (iPos == 1)
+<a id="__codelineno-8-49" name="__codelineno-8-49" href="#__codelineno-8-49"></a>    m_length--;       //实际表长-1
+<a id="__codelineno-8-50" name="__codelineno-8-50" href="#__codelineno-8-50"></a>    return true;
+<a id="__codelineno-8-51" name="__codelineno-8-51" href="#__codelineno-8-51"></a>}
+</code></pre></div>
+<p>在main主函数中，继续增加代码测试。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>cout &lt;&lt; &quot;----------------&quot; &lt;&lt; endl;
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>slinkobj.ListDelete(1);
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>slinkobj.ListDelete(5);
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>slinkobj.ListDelete(10);
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>slinkobj.DispList();
+</code></pre></div>
+<p>新增加代码行的执行结果为：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/ff/8e/ff0dc48a193b356dc7cdb8fa2e63398e.jpg?wh=1208x276" /></p>
+<p>此时，静态链表存储数据的情形应该如图11所示：</p>
+<p><img alt="" src="https://static001.geekbang.org/resource/image/c7/c3/c73ff6f0c56aa82617a8441beab6a8c3.jpg?wh=2478x1280" title="图11  删除两个数据后静态链表存储数据的情形" /></p>
+<p>在图11中，删除了两个数据后，原来值为24和190的位置已经被标记为“未用”状态，此时，该位置的数字就没有任何存在的意义了，因为该位置已经是一个未被使用的位置，下次插入新数据时，findAnIdlePos函数会直接找到并使用这些“未用”的位置。</p>
+<p>我们在main主函数中继续增加代码行。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>cout &lt;&lt; &quot;----------------&quot; &lt;&lt; endl;
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>slinkobj.ListInsert(1, 500);
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>slinkobj.ListInsert(3, 600);
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>slinkobj.ListInsert(4, 700);
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>slinkobj.DispList();
+</code></pre></div>
+<p>新增加代码行的执行结果为：</p>
+<p><img alt="图片" src="https://static001.geekbang.org/resource/image/b3/ff/b3427cf61b8ccbf175b8706a933f41ff.jpeg?wh=1329x264" /></p>
+<p>结合图11，想一想，这个时候的静态链表存储数据的情形如何呢？就留给你思考和亲测吧。</p>
+<h1 id="_5">小结</h1>
+<p>这节课我们讲解了静态链表。静态链表的实现代码有很多种，非常灵活。</p>
+<p>在今天的讲解中，我们是通过findAnIdlePos函数寻找了一个空闲位置，保存数据的时候，每次也都是从头节点的后继节点开始寻找，这就导致，当链表中数据较多的时候，恐怕会影响效率。</p>
+<p>因此，你也可以采用不同的静态链表实现方式——比如将静态链表中的第一个和最后一个节点作为特殊节点来使用（不保存数据）。</p>
+<ul>
+<li>第一个节点的cur存放第一个未被使用的节点所对应的数组下标（这些未被使用的节点可以通过cur串起来，构成一个未被使用的节点链）。</li>
+<li>最后一个节点的cur存放第一个有数据的节点对应的数组下标（相当于头节点），该值为0相当于链表为空。</li>
+</ul>
+<p>这样的静态链表实现方式，虽然代码会更加繁琐，但在插入数据的时候可以明显提高寻找空闲节点的效率，时间复杂度会从O(n)变为O(1)。如果你有兴趣，也可以自行实现相关的代码。</p>
+<p>静态链表中，元素的插入和删除操作并不需要移动元素，仅仅是修改游标。所以仍旧具备链表的主要优点——插入和删除节点非常方便，同时，也避免了顺序表要求所有数据元素在内存中必须紧挨在一起的缺点。</p>
+<p>另外，存取数据时，静态链表无法进行随机存取，只能从头节点开始依次向后查找。而且静态链表的大小是固定的，无法扩容，所以静态链表往往比较适合<strong>不支持指针的程序开发语言环境且数据最大容量是固定不变的场合</strong>，目前的应用并不是十分广泛，但其中代码的实现方式，绝对值得我们学习和借鉴。</p>
+<p>最后，我们来总结一下目前为止所讲过的各种数据结构保存数据的特点。</p>
+<ul>
+<li>顺序表：所分配的内存空间连续，其中保存的各个数据节点也紧密相连。</li>
+<li>单（双）链表、单（双）循环链表：分配的内存空间不连续（每个数据节点单独分配内存），当然链表中的数据节点也就不可能紧密相连。</li>
+<li>静态链表：所分配的内存空间连续，所有的数据节点都会保存在这块内存空间中，但因为引入了游标来寻找各个数据节点，所以静态链表中各个数据节点并不要求紧密相连。</li>
+</ul>
+<h1 id="_6">归纳思考</h1>
+<p>在小结中，我们提到了一种不同的静态链表实现方式——将静态链表中的第一个和最后一个节点作为特殊节点来使用，你可以尝试自行实现这种静态链表相关的代码。</p>
+<p>欢迎你在留言区和我互动。如果觉得有所收获，也可以把课程分享给更多的朋友一起学习进步。我们下节课见！</p>
 <div><strong>精选留言（2）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/13/8d/36/912be6bc.jpg" width="30px"><span>RIVER</span> 👍（1） 💬（1）<div>老师可不可以把一些关键词的定义带上（英文），便于后续阅读英文资料</div>2023-03-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/36/05/04/8deca125.jpg" width="30px"><span>Fang</span> 👍（0） 💬（0）<div>应用并不是十分广泛</div>2024-07-29</li><br/>
+<li><span>RIVER</span> 👍（1） 💬（1）<div>老师可不可以把一些关键词的定义带上（英文），便于后续阅读英文资料</div>2023-03-06</li><br/><li><span>Fang</span> 👍（0） 💬（0）<div>应用并不是十分广泛</div>2024-07-29</li><br/>
 </ul>
 
 

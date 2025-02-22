@@ -3493,6 +3493,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#bag-of-words-inverted-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      Bag of Words 和 Inverted Index
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lru" class="md-nav__link">
+    <span class="md-ellipsis">
+      LRU 和多重继承
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13135,6 +13171,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#bag-of-words-inverted-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      Bag of Words 和 Inverted Index
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lru" class="md-nav__link">
+    <span class="md-ellipsis">
+      LRU 和多重继承
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      思考题
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -13168,9 +13240,344 @@
 <p>引擎一词尤如其名，听起来非常酷炫。搜索引擎，则是新世纪初期互联网发展最重要的入口之一，依托搜索引擎，中国和美国分别诞生了百度、谷歌等巨型公司。</p>
 <p>搜索引擎极大地方便了互联网生活，也成为上网必不可少的刚需工具。依托搜索引擎发展起来的互联网广告，则成了硅谷和中国巨头的核心商业模式；而搜索本身，也在持续进步着， Facebook 和微信也一直有意向在自家社交产品架设搜索平台。</p>
 <p>关于搜索引擎的价值我不必多说了，今天我们主要来看一下搜索引擎的核心构成。</p>
-<div><strong>精选留言（30）</strong></div>
+<p>听Google的朋友说，他们入职培训的时候，有一门课程叫做 The life of a query，内容是讲用户在浏览器中键入一串文字，按下回车后发生了什么。今天我也按照这个思路，来简单介绍下。</p>
+<p>我们知道，<strong>一个搜索引擎由搜索器、索引器、检索器和用户接口四个部分组成</strong>。</p>
+<p>搜索器，通俗来讲就是我们常提到的爬虫（scrawler），它能在互联网上大量爬取各类网站的内容，送给索引器。索引器拿到网页和内容后，会对内容进行处理，形成索引（index），存储于内部的数据库等待检索。</p>
+<p>最后的用户接口很好理解，是指网页和 App 前端界面，例如百度和谷歌的搜索页面。用户通过用户接口，向搜索引擎发出询问（query），询问解析后送达检索器；检索器高效检索后，再将结果返回给用户。</p>
+<p>爬虫知识不是我们今天学习的重点，这里我就不做深入介绍了。我们假设搜索样本存在于本地磁盘上。</p>
+<p>为了方便，我们只提供五个文件的检索，内容我放在了下面这段代码中：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a># 1.txt
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>I have a dream that my four little children will one day live in a nation where they will not be judged by the color of their skin but by the content of their character. I have a dream today.
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a># 2.txt
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>I have a dream that one day down in Alabama, with its vicious racists, . . . one day right there in Alabama little black boys and black girls will be able to join hands with little white boys and white girls as sisters and brothers. I have a dream today.
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a># 3.txt
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>I have a dream that one day every valley shall be exalted, every hill and mountain shall be made low, the rough places will be made plain, and the crooked places will be made straight, and the glory of the Lord shall be revealed, and all flesh shall see it together.
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a># 4.txt
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>This is our hope. . . With this faith we will be able to hew out of the mountain of despair a stone of hope. With this faith we will be able to transform the jangling discords of our nation into a beautiful symphony of brotherhood. With this faith we will be able to work together, to pray together, to struggle together, to go to jail together, to stand up for freedom together, knowing that we will be free one day. . . .
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a># 5.txt
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>And when this happens, and when we allow freedom ring, when we let it ring from every village and every hamlet, from every state and every city, we will be able to speed up that day when all of God&#39;s children, black men and white men, Jews and Gentiles, Protestants and Catholics, will be able to join hands and sing in the words of the old Negro spiritual: &quot;Free at last! Free at last! Thank God Almighty, we are free at last!&quot;
+</code></pre></div>
+<p>我们先来定义 SearchEngineBase 基类。这里我先给出了具体的代码，你不必着急操作，还是那句话，跟着节奏慢慢学，再难的东西也可以啃得下来。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>class SearchEngineBase(object):
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    def __init__(self):
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>        pass
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    def add_corpus(self, file_path):
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        with open(file_path, &#39;r&#39;) as fin:
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>            text = fin.read()
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        self.process_corpus(file_path, text)
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    def process_corpus(self, id, text):
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        raise Exception(&#39;process_corpus not implemented.&#39;)
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    def search(self, query):
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        raise Exception(&#39;search not implemented.&#39;)
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>def main(search_engine):
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    for file_path in [&#39;1.txt&#39;, &#39;2.txt&#39;, &#39;3.txt&#39;, &#39;4.txt&#39;, &#39;5.txt&#39;]:
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>        search_engine.add_corpus(file_path)
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    while True:
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>        query = input()
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>        results = search_engine.search(query)
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>        print(&#39;found {} result(s):&#39;.format(len(results)))
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>        for result in results:
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>            print(result)
+</code></pre></div>
+<p>SearchEngineBase 可以被继承，继承的类分别代表不同的算法引擎。每一个引擎都应该实现 process_corpus()和search()两个函数，对应我们刚刚提到的索引器和检索器。main()函数提供搜索器和用户接口，于是一个简单的包装界面就有了。</p>
+<p>具体来看这段代码，其中，</p>
 <ul>
-<li><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTJJOlibibPFEWOib8ib7RtfAtxND5FUqCxxoeTuLAbBI9ic23xuwdXT4IyiaWq3Fic9RgEAYI0lBTbEp2rcg/132" width="30px"><span>Jingxiao</span> 👍（30） 💬（3）<div>思考题答案：
+<li>add_corpus() 函数负责读取文件内容，将文件路径作为 ID，连同内容一起送到 process_corpus 中。</li>
+<li>process_corpus 需要对内容进行处理，然后文件路径为 ID ，将处理后的内容存下来。处理后的内容，就叫做索引（index）。</li>
+<li>search 则给定一个询问，处理询问，再通过索引检索，然后返回。</li>
+</ul>
+<p>好，理解这些概念后，接下来，我们实现一个最基本的可以工作的搜索引擎，代码如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>class SimpleEngine(SearchEngineBase):
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    def __init__(self):
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>        super(SimpleEngine, self).__init__()
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        self.__id_to_texts = {}
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    def process_corpus(self, id, text):
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        self.__id_to_texts[id] = text
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    def search(self, query):
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        results = []
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        for id, text in self.__id_to_texts.items():
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>            if query in text:
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>                results.append(id)
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        return results
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>search_engine = SimpleEngine()
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>main(search_engine)
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>########## 输出 ##########
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>simple
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>found 0 result(s):
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>little
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>found 2 result(s):
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>1.txt
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>2.txt
+</code></pre></div>
+<p>你可能很惊讶，只需要短短十来行代码居然就可以了吗？</p>
+<p>没错，正是如此，这段代码我们拆开来看一下：</p>
+<p>SimpleEngine 实现了一个继承 SearchEngineBase 的子类，继承并实现了 process_corpus 和 search 接口，同时，也顺手继承了 add_corpus 函数（当然你想重写也是可行的），因此我们可以在 main() 函数中直接调取。</p>
+<p>在我们新的构造函数中，<code>self.__id_to_texts = {}</code> 初始化了自己的私有变量，也就是这个用来存储文件名到文件内容的字典。</p>
+<p>process_corpus() 函数则非常直白地将文件内容插入到字典中。这里注意，ID 需要是唯一的，不然相同ID的新内容会覆盖掉旧的内容。</p>
+<p>search 直接枚举字典，从中找到要搜索的字符串。如果能够找到，则将 ID 放到结果列表中，最后返回。</p>
+<p>你看，是不是非常简单呢？这个过程始终贯穿着面向对象的思想，这里我为你梳理成了几个问题，你可以自己思考一下，当成是一个小复习。</p>
+<ul>
+<li>现在你对父类子类的构造函数调用顺序和方法应该更清楚了吧？</li>
+<li>继承的时候，函数是如何重写的？</li>
+<li>基类是如何充当接口作用的（你可以自行删掉子类中的重写函数，抑或是修改一下函数的参数，看一下会报什么错）？</li>
+<li>方法和变量之间又如何衔接起来的呢？</li>
+</ul>
+<p>好的，我们重新回到搜索引擎这个话题。</p>
+<p>相信你也能看得出来，这种实现方式简单，但显然是一种很低效的方式：每次索引后需要占用大量空间，因为索引函数并没有做任何事情；每次检索需要占用大量时间，因为所有索引库的文件都要被重新搜索一遍。如果把语料的信息量视为 n，那么这里的时间复杂度和空间复杂度都应该是 O(n) 级别的。</p>
+<p>而且，还有一个问题：这里的 query 只能是一个词，或者是连起来的几个词。如果你想要搜索多个词，它们又分散在文章的不同位置，我们的简单引擎就无能为力了。</p>
+<p>这时应该怎么优化呢？</p>
+<p>最直接的一个想法，就是把语料分词，看成一个个的词汇，这样就只需要对每篇文章存储它所有词汇的 set 即可。根据齐夫定律（Zipf’s law，<a href="https://en.wikipedia.org/wiki/Zipf%27s_law">https://en.wikipedia.org/wiki/Zipf%27s_law</a>），在自然语言的语料库里，一个单词出现的频率与它在频率表里的排名成反比，呈现幂律分布。因此，语料分词的做法可以大大提升我们的存储和搜索效率。</p>
+<p>那具体该如何实现呢？</p>
+<h2 id="bag-of-words-inverted-index">Bag of Words 和 Inverted Index</h2>
+<p>我们先来实现一个名叫 Bag of Words 的搜索模型。请看下面的代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>import re
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>class BOWEngine(SearchEngineBase):
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    def __init__(self):
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        super(BOWEngine, self).__init__()
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        self.__id_to_words = {}
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    def process_corpus(self, id, text):
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        self.__id_to_words[id] = self.parse_text_to_words(text)
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    def search(self, query):
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        query_words = self.parse_text_to_words(query)
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>        results = []
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>        for id, words in self.__id_to_words.items():
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>            if self.query_match(query_words, words):
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>                results.append(id)
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>        return results
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    @staticmethod
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    def query_match(query_words, words):
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>        for query_word in query_words:
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>            if query_word not in words:
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>                return False
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>        return True
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>    @staticmethod
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>    def parse_text_to_words(text):
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>        # 使用正则表达式去除标点符号和换行符
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>        text = re.sub(r&#39;[^\w ]&#39;, &#39; &#39;, text)
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>        # 转为小写
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>        text = text.lower()
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>        # 生成所有单词的列表
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>        word_list = text.split(&#39; &#39;)
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>        # 去除空白单词
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>        word_list = filter(None, word_list)
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>        # 返回单词的 set
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>        return set(word_list)
+<a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>
+<a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>search_engine = BOWEngine()
+<a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>main(search_engine)
+<a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>
+<a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>
+<a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a>########## 输出 ##########
+<a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a>
+<a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a>
+<a id="__codelineno-3-46" name="__codelineno-3-46" href="#__codelineno-3-46"></a>i have a dream
+<a id="__codelineno-3-47" name="__codelineno-3-47" href="#__codelineno-3-47"></a>found 3 result(s):
+<a id="__codelineno-3-48" name="__codelineno-3-48" href="#__codelineno-3-48"></a>1.txt
+<a id="__codelineno-3-49" name="__codelineno-3-49" href="#__codelineno-3-49"></a>2.txt
+<a id="__codelineno-3-50" name="__codelineno-3-50" href="#__codelineno-3-50"></a>3.txt
+<a id="__codelineno-3-51" name="__codelineno-3-51" href="#__codelineno-3-51"></a>freedom children
+<a id="__codelineno-3-52" name="__codelineno-3-52" href="#__codelineno-3-52"></a>found 1 result(s):
+<a id="__codelineno-3-53" name="__codelineno-3-53" href="#__codelineno-3-53"></a>5.txt
+</code></pre></div>
+<p>你应该发现，代码开始变得稍微复杂些了。</p>
+<p>这里我们先来理解一个概念，BOW Model，即 <a href="https://en.wikipedia.org/wiki/Bag-of-words_model">Bag of Words Model</a>，中文叫做词袋模型。这是 NLP 领域最常见最简单的模型之一。</p>
+<p>假设一个文本，不考虑语法、句法、段落，也不考虑词汇出现的顺序，只将这个文本看成这些词汇的集合。于是相应的，我们把 id_to_texts 替换成 id_to_words，这样就只需要存这些单词，而不是全部文章，也不需要考虑顺序。</p>
+<p>其中，process_corpus() 函数调用类静态函数 parse_text_to_words，将文章打碎形成词袋，放入 set 之后再放到字典中。</p>
+<p>search() 函数则稍微复杂一些。这里我们假设，想得到的结果，是所有的搜索关键词都要出现在同一篇文章中。那么，我们需要同样打碎 query 得到一个 set，然后把 set 中的每一个词，和我们的索引中每一篇文章进行核对，看一下要找的词是否在其中。而这个过程由静态函数 query_match 负责。</p>
+<p>你可以回顾一下上节课学到的静态函数，我们看到，这两个函数都是没有状态的，它们不涉及对象的私有变量（没有 self 作为参数），相同的输入能够得到完全相同的输出结果。因此设置为静态，可以方便其他的类来使用。</p>
+<p>可是，即使这样做，每次查询时依然需要遍历所有ID，虽然比起 Simple 模型已经节约了大量时间，但是互联网上有上亿个页面，每次都全部遍历的代价还是太大了。到这时，又该如何优化呢？</p>
+<p>你可能想到了，我们每次查询的 query 的单词量不会很多，一般也就几个、最多十几个的样子。那可不可以从这里下手呢？</p>
+<p>再有，词袋模型并不考虑单词间的顺序，但有些人希望单词按顺序出现，或者希望搜索的单词在文中离得近一些，这种情况下词袋模型现任就无能为力了。</p>
+<p>针对这两点，我们还能做得更好吗？显然是可以的，请看接下来的这段代码。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>import re
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>class BOWInvertedIndexEngine(SearchEngineBase):
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    def __init__(self):
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        super(BOWInvertedIndexEngine, self).__init__()
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        self.inverted_index = {}
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    def process_corpus(self, id, text):
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        words = self.parse_text_to_words(text)
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        for word in words:
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>            if word not in self.inverted_index:
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>                self.inverted_index[word] = []
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>            self.inverted_index[word].append(id)
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    def search(self, query):
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>        query_words = list(self.parse_text_to_words(query))
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>        query_words_index = list()
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>        for query_word in query_words:
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>            query_words_index.append(0)
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>        # 如果某一个查询单词的倒序索引为空，我们就立刻返回
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>        for query_word in query_words:
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>            if query_word not in self.inverted_index:
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>                return []
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>        result = []
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>        while True:
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>            # 首先，获得当前状态下所有倒序索引的 index
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>            current_ids = []
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>            for idx, query_word in enumerate(query_words):
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>                current_index = query_words_index[idx]
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>                current_inverted_list = self.inverted_index[query_word]
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>                # 已经遍历到了某一个倒序索引的末尾，结束 search
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>                if current_index &gt;= len(current_inverted_list):
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>                    return result
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>                current_ids.append(current_inverted_list[current_index])
+<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>
+<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>            # 然后，如果 current_ids 的所有元素都一样，那么表明这个单词在这个元素对应的文档中都出现了
+<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>            if all(x == current_ids[0] for x in current_ids):
+<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>                result.append(current_ids[0])
+<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a>                query_words_index = [x + 1 for x in query_words_index]
+<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a>                continue
+<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a>
+<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a>            # 如果不是，我们就把最小的元素加一
+<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a>            min_val = min(current_ids)
+<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a>            min_val_pos = current_ids.index(min_val)
+<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a>            query_words_index[min_val_pos] += 1
+<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a>
+<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a>    @staticmethod
+<a id="__codelineno-4-54" name="__codelineno-4-54" href="#__codelineno-4-54"></a>    def parse_text_to_words(text):
+<a id="__codelineno-4-55" name="__codelineno-4-55" href="#__codelineno-4-55"></a>        # 使用正则表达式去除标点符号和换行符
+<a id="__codelineno-4-56" name="__codelineno-4-56" href="#__codelineno-4-56"></a>        text = re.sub(r&#39;[^\w ]&#39;, &#39; &#39;, text)
+<a id="__codelineno-4-57" name="__codelineno-4-57" href="#__codelineno-4-57"></a>        # 转为小写
+<a id="__codelineno-4-58" name="__codelineno-4-58" href="#__codelineno-4-58"></a>        text = text.lower()
+<a id="__codelineno-4-59" name="__codelineno-4-59" href="#__codelineno-4-59"></a>        # 生成所有单词的列表
+<a id="__codelineno-4-60" name="__codelineno-4-60" href="#__codelineno-4-60"></a>        word_list = text.split(&#39; &#39;)
+<a id="__codelineno-4-61" name="__codelineno-4-61" href="#__codelineno-4-61"></a>        # 去除空白单词
+<a id="__codelineno-4-62" name="__codelineno-4-62" href="#__codelineno-4-62"></a>        word_list = filter(None, word_list)
+<a id="__codelineno-4-63" name="__codelineno-4-63" href="#__codelineno-4-63"></a>        # 返回单词的 set
+<a id="__codelineno-4-64" name="__codelineno-4-64" href="#__codelineno-4-64"></a>        return set(word_list)
+<a id="__codelineno-4-65" name="__codelineno-4-65" href="#__codelineno-4-65"></a>
+<a id="__codelineno-4-66" name="__codelineno-4-66" href="#__codelineno-4-66"></a>search_engine = BOWInvertedIndexEngine()
+<a id="__codelineno-4-67" name="__codelineno-4-67" href="#__codelineno-4-67"></a>main(search_engine)
+<a id="__codelineno-4-68" name="__codelineno-4-68" href="#__codelineno-4-68"></a>
+<a id="__codelineno-4-69" name="__codelineno-4-69" href="#__codelineno-4-69"></a>
+<a id="__codelineno-4-70" name="__codelineno-4-70" href="#__codelineno-4-70"></a>########## 输出 ##########
+<a id="__codelineno-4-71" name="__codelineno-4-71" href="#__codelineno-4-71"></a>
+<a id="__codelineno-4-72" name="__codelineno-4-72" href="#__codelineno-4-72"></a>
+<a id="__codelineno-4-73" name="__codelineno-4-73" href="#__codelineno-4-73"></a>little
+<a id="__codelineno-4-74" name="__codelineno-4-74" href="#__codelineno-4-74"></a>found 2 result(s):
+<a id="__codelineno-4-75" name="__codelineno-4-75" href="#__codelineno-4-75"></a>1.txt
+<a id="__codelineno-4-76" name="__codelineno-4-76" href="#__codelineno-4-76"></a>2.txt
+<a id="__codelineno-4-77" name="__codelineno-4-77" href="#__codelineno-4-77"></a>little vicious
+<a id="__codelineno-4-78" name="__codelineno-4-78" href="#__codelineno-4-78"></a>found 1 result(s):
+<a id="__codelineno-4-79" name="__codelineno-4-79" href="#__codelineno-4-79"></a>2.txt
+</code></pre></div>
+<p>首先我要强调一下，<strong>这次的算法并不需要你完全理解</strong>，这里的实现有一些超出了本章知识点。但希望你不要因此退缩，这个例子会告诉你，面向对象编程是如何把算法复杂性隔离开来，而保留接口和其他的代码不变。</p>
+<p>我们接着来看这段代码。你可以看到，新模型继续使用之前的接口，仍然只在 <code>__init__()</code>、<code>process_corpus()</code>和<code>search()</code>三个函数进行修改。</p>
+<p>这其实也是大公司里团队协作的一种方式，<strong>在合理的分层设计后，每一层的逻辑只需要处理好分内的事情即可</strong>。在迭代升级我们的搜索引擎内核时， main 函数、用户接口没有任何改变。当然，如果公司招了新的前端工程师，要对用户接口部分进行修改，新人也不需要过分担心后台的事情，只要做好数据交互就可以了。</p>
+<p>继续看代码，你可能注意到了开头的Inverted Index。Inverted Index Model，即倒序索引，是非常有名的搜索引擎方法，接下来我简单介绍一下。</p>
+<p>倒序索引，一如其名，也就是说这次反过来，我们保留的是 word -&gt; id 的字典。于是情况就豁然开朗了，在 search 时，我们只需要把想要的 query_word 的几个倒序索引单独拎出来，然后从这几个列表中找共有的元素，那些共有的元素，即 ID，就是我们想要的查询结果。这样，我们就避免了将所有的 index 过一遍的尴尬。</p>
+<p>process_corpus 建立倒序索引。注意，这里的代码都是非常精简的。在工业界领域，需要一个 unique ID 生成器，来对每一篇文章标记上不同的 ID，倒序索引也应该按照这个 unique_id 来进行排序。</p>
+<p>至于search() 函数，你大概了解它做的事情即可。它会根据 query_words 拿到所有的倒序索引，如果拿不到，就表示有的 query word 不存在于任何文章中，直接返回空；拿到之后，运行一个“合并K个有序数组”的算法，从中拿到我们想要的 ID，并返回。</p>
+<blockquote>
+<p>注意，这里用到的算法并不是最优的，最优的写法需要用最小堆来存储 index。这是一道有名的 leetcode hard 题，有兴趣请参考：<a href="https://blog.csdn.net/qqxx6661/article/details/77814794">https://blog.csdn.net/qqxx6661/article/details/77814794</a>）</p>
+</blockquote>
+<p>遍历的问题解决了，那第二个问题，如果我们想要实现搜索单词按顺序出现，或者希望搜索的单词在文中离得近一些呢？</p>
+<p>我们需要在 Inverted Index 上，对于每篇文章也保留单词的位置信息，这样一来，在合并操作的时候处理一下就可以了。</p>
+<p>倒序索引我就介绍到这里了，如果你感兴趣可以自行查阅资料。还是那句话，我们的重点是面向对象的抽象，别忘了体会这一思想。</p>
+<h2 id="lru">LRU 和多重继承</h2>
+<p>到这一步，终于，你的搜索引擎上线了，有了越来越多的访问量（QPS）。欣喜骄傲的同时，你却发现服务器有些“不堪重负”了。经过一段时间的调研，你发现大量重复性搜索占据了 90% 以上的流量，于是，你想到了一个大杀器——给搜索引擎加一个缓存。</p>
+<p>所以，最后这部分，我就来讲讲缓存和多重继承的内容。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>import pylru
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>class LRUCache(object):
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    def __init__(self, size=32):
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        self.cache = pylru.lrucache(size)
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    def has(self, key):
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        return key in self.cache
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    def get(self, key):
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        return self.cache[key]
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    def set(self, key, value):
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>        self.cache[key] = value
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>class BOWInvertedIndexEngineWithCache(BOWInvertedIndexEngine, LRUCache):
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    def __init__(self):
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>        super(BOWInvertedIndexEngineWithCache, self).__init__()
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>        LRUCache.__init__(self)
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>    def search(self, query):
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>        if self.has(query):
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>            print(&#39;cache hit!&#39;)
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>            return self.get(query)
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>        result = super(BOWInvertedIndexEngineWithCache, self).search(query)
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>        self.set(query, result)
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>        return result
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>search_engine = BOWInvertedIndexEngineWithCache()
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>main(search_engine)
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>########## 输出 ##########
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>little
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a>found 2 result(s):
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>1.txt
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a>2.txt
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a>little
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>cache hit!
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a>found 2 result(s):
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a>1.txt
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a>2.txt
+</code></pre></div>
+<p>它的代码很简单，LRUCache 定义了一个缓存类，你可以通过继承这个类来调用其方法。LRU 缓存是一种很经典的缓存（同时，LRU的实现也是硅谷大厂常考的算法面试题，这里为了简单，我直接使用 pylru 这个包），它符合自然界的局部性原理，可以保留最近使用过的对象，而逐渐淘汰掉很久没有被用过的对象。</p>
+<p>因此，这里的缓存使用起来也很简单，调用 has() 函数判断是否在缓存中，如果在，调用 get 函数直接返回结果；如果不在，送入后台计算结果，然后再塞入缓存。</p>
+<p>我们可以看到，BOWInvertedIndexEngineWithCache 类，多重继承了两个类。首先，你需要注意的是构造函数（上节课的思考题，你思考了吗？）。多重继承有两种初始化方法，我们分别来看一下。</p>
+<p>第一种方法，用下面这行代码，直接初始化该类的第一个父类：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>super(BOWInvertedIndexEngineWithCache, self).__init__()
+</code></pre></div>
+<p>不过使用这种方法时，要求继承链的最顶层父类必须要继承 object。</p>
+<p>第二种方法，对于多重继承，如果有多个构造函数需要调用， 我们必须用传统的方法<code>LRUCache.__init__(self)</code> 。</p>
+<p>其次，你应该注意，search() 函数被子类 BOWInvertedIndexEngineWithCache 再次重载，但是我还需要调用 BOWInvertedIndexEngine 的 search() 函数，这时该怎么办呢？请看下面这行代码：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>super(BOWInvertedIndexEngineWithCache, self).search(query)
+</code></pre></div>
+<p>我们可以强行调用被覆盖的父类的函数。</p>
+<p>这样一来，我们就简洁地实现了缓存，而且还是在不影响 BOWInvertedIndexEngine 代码的情况下。这部分内容希望你多读几遍，自己揣摩清楚，通过这个例子多多体会继承的优势。</p>
+<h2 id="_2">总结</h2>
+<p>今天这节课是面向对象的实战应用，相比起前面的理论知识，内容其实不那么友好。不过，若你能静下心来，仔细学习，理清楚整个过程的要点，对你理解面向对象必将有所裨益。比如，你可以根据下面两个问题，来检验今天这节课的收获。</p>
+<ul>
+<li>你能把这节课所有的类的属性和函数抽取出来，自己在纸上画一遍继承关系吗？</li>
+<li>迭代开发流程是怎样的？</li>
+</ul>
+<p>其实于我而言，通过构造搜索引擎这么一个例子来讲面向对象，也是颇费了一番功夫。这其中虽然涉及一些搜索引擎的专业知识和算法，但篇幅有限，也只能算是抛砖引玉，你若有所收获，我便欣然满足。</p>
+<h2 id="_3">思考题</h2>
+<p>最后给你留一道思考题。私有变量能被继承吗？如果不能，你想继承应该怎么去做呢？欢迎留言与我分享、讨论，也欢迎你把这篇文章分享给你的同事、朋友，一起交流与进步。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>Jingxiao</span> 👍（30） 💬（3）<div>思考题答案：
 John Si 的评论说的很对，如果想要强行访问父类的私有类型，做法是 self._ParentClass__var，这是非常不推荐的 hacky method。以下是示范代码：
 class A:
     __a = 1
@@ -13179,7 +13586,7 @@ class B(A):
     pass
 
 b = B()
-print(b._A__a)</div>2019-06-09</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/30/29/d6816ebf.jpg" width="30px"><span>小侠龙旋风</span> 👍（48） 💬（2）<div>和面向对象无关的关键词整理：
+print(b._A__a)</div>2019-06-09</li><br/><li><span>小侠龙旋风</span> 👍（48） 💬（2）<div>和面向对象无关的关键词整理：
 1.一个搜索引擎由搜索器、索引器、检索器和用户接口四个部分组成。
 2.Bag of Words Model，词袋模型。
 3.Inverted Index Model，倒序索引。
@@ -13191,12 +13598,12 @@ print(b._A__a)</div>2019-06-09</li><br/><li><img src="https://static001.geekbang
 Python并没有真正的私有化支持，但可用下划线得到伪私有：
 （1）_xxx      &quot;单下划线 &quot; 开始的成员变量叫做保护变量，意思是只有类对象和子类对象自己能访问到这些变量，需通过类提供的接口进行访问；
 （2）__xxx    类中的私有变量&#47;方法名，只有类对象自己能访问，连子类对象也不能访问到这个数据。
-（3）__xxx__ 魔法函数，前后均有一个“双下划线” 代表python里特殊方法专用的标识，如 __init__() 代表类的构造函数。</div>2019-06-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/84/55/1e40bd61.jpg" width="30px"><span>shiziwen</span> 👍（21） 💬（5）<div>第二种方法，对于多重继承，如果有多个构造函数需要调用， 我们必须用传统的方法LRUCache.__init__(self) 。
+（3）__xxx__ 魔法函数，前后均有一个“双下划线” 代表python里特殊方法专用的标识，如 __init__() 代表类的构造函数。</div>2019-06-08</li><br/><li><span>shiziwen</span> 👍（21） 💬（5）<div>第二种方法，对于多重继承，如果有多个构造函数需要调用， 我们必须用传统的方法LRUCache.__init__(self) 。
 
 这里的两句话没有很明白，LRUCache为什么必须使用第二种方法？
 
 
-</div>2020-04-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/1c/ec/4b/442dd5f1.jpg" width="30px"><span>及時行樂</span> 👍（9） 💬（2）<div>看到这，我发现我五十元买的课程简直血赚！！！看条评论说看不懂不睡觉，建议你善良删除，我直接被你搞的睡衣全无，感觉能战到天亮</div>2020-04-29</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/13/0c/8d/5293d44d.jpg" width="30px"><span>头像我老婆</span> 👍（8） 💬（3）<div>class BOWInvertedIndexEngineWithCache(BOWInvertedIndexEngine, LRUCache): 
+</div>2020-04-04</li><br/><li><span>及時行樂</span> 👍（9） 💬（2）<div>看到这，我发现我五十元买的课程简直血赚！！！看条评论说看不懂不睡觉，建议你善良删除，我直接被你搞的睡衣全无，感觉能战到天亮</div>2020-04-29</li><br/><li><span>头像我老婆</span> 👍（8） 💬（3）<div>class BOWInvertedIndexEngineWithCache(BOWInvertedIndexEngine, LRUCache): 
                   def __init__(self): 
                        super(BOWInvertedIndexEngineWithCache, self).__init__() 
                        LRUCache.__init__(self)
@@ -13238,10 +13645,10 @@ enter C
 enter A
 leave A
 leave C
-leave D</div>2020-03-22</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/0f/ee/ee/1cd89270.jpg" width="30px"><span>quanxyun</span> 👍（4） 💬（1）<div>Python并没有真正的私有化支持，但可用下划线得到伪私有：
+leave D</div>2020-03-22</li><br/><li><span>quanxyun</span> 👍（4） 💬（1）<div>Python并没有真正的私有化支持，但可用下划线得到伪私有：
 （1）_xxx &quot;单下划线 &quot; 开始的成员变量叫做保护变量，意思是只有类对象和子类对象自己能访问到这些变量，需通过类提供的接口进行访问；
 （2）__xxx 类中的私有变量&#47;方法名，只有类对象自己能访问，连子类对象也不能访问到这个数据。
-（3）__xxx__ 魔法函数，前后均有一个“双下划线” 代表python里特殊方法专用的标识，如 __init__() 代表类的构造函数。</div>2019-11-14</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/22/89/73397ccb.jpg" width="30px"><span>响雨</span> 👍（2） 💬（1）<div>私有属性不可以被继承，但是可以创建一个普通的方法，在方法中操作私有属性。因为普通的方法是可以操作的。</div>2019-06-25</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/44/3d/35d6670d.jpg" width="30px"><span>Claywoow</span> 👍（0） 💬（1）<div>老师可以拓展一下元类吗，它是面向对象编程中一个重要的类型吗？</div>2019-06-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/c1/43/50c4cd22.jpg" width="30px"><span>益达</span> 👍（77） 💬（9）<div>看不懂不睡觉</div>2019-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/77/da/54c663f3.jpg" width="30px"><span>Wing·三金</span> 👍（65） 💬（1）<div>思考题：子类继承父类私有变量的方法
+（3）__xxx__ 魔法函数，前后均有一个“双下划线” 代表python里特殊方法专用的标识，如 __init__() 代表类的构造函数。</div>2019-11-14</li><br/><li><span>响雨</span> 👍（2） 💬（1）<div>私有属性不可以被继承，但是可以创建一个普通的方法，在方法中操作私有属性。因为普通的方法是可以操作的。</div>2019-06-25</li><br/><li><span>Claywoow</span> 👍（0） 💬（1）<div>老师可以拓展一下元类吗，它是面向对象编程中一个重要的类型吗？</div>2019-06-08</li><br/><li><span>益达</span> 👍（77） 💬（9）<div>看不懂不睡觉</div>2019-06-05</li><br/><li><span>Wing·三金</span> 👍（65） 💬（1）<div>思考题：子类继承父类私有变量的方法
 - 通过定义 get&#47;set 函数来间接操作私有变量
 - 通过 实例名._父类名__私有变量名 来直接调用，所以事实上 python 并不直接私有变量
 
@@ -13266,7 +13673,7 @@ leave D</div>2020-03-22</li><br/><li><img src="https://static001.geekbang.org/ac
 - 构建一个通用的基本框架
 - 从最简单的情况考虑起，搭建一个能运行的极简版本
 - 按照实际需要不断对具体的实现过程进行优化：如在本讲的例子中，先考虑了单个搜索词 + 小搜索量的情况，构建了 ver 1；然后考虑了多个搜索词，构建了词袋的 ver 2；再考虑了大搜索量，构建了词袋 + 逆序索引的 ver 3（提了 搜索词排序与间隔 情况下的处理思路）；最后考虑了负载与重复性搜索问题，构建了使用 LRU 缓存策略的 ver 4
-- 如果回过头来看最初的框架，还能发现 add_corpus 的方法并不适用于文件较大的情况，结合前面第六讲的内容可以做些改进；以及 main 函数直接用了 for 循环来找所有的文件，实际使用时用的是诸如 os.walk 的方法</div>2019-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/2d/5a/cc637589.jpg" width="30px"><span></span> 👍（50） 💬（1）<div>这篇文章就值回票价了。</div>2019-06-07</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/8a/11/8e9fc7e7.jpg" width="30px"><span>风居住的街</span> 👍（23） 💬（1）<div>Python3.x 和 Python2.x 的一个区别是: Python 3 可以使用直接使用 super().xxx 代替 super(Class, self).xxx</div>2019-06-17</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/48/e7/da93cbec.jpg" width="30px"><span>chuan_chen</span> 👍（14） 💬（0）<div>感觉这篇好难。。。</div>2019-09-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/4b/53/67c08006.jpg" width="30px"><span>John Si</span> 👍（10） 💬（0）<div>关于思考题,子类不能继承父类私有属性，只可透过self._Parent__varname去读取该私有属性的值，或在父类创建方法返回私有属性的值，然后子类调用父类方法去取得该私有属性的值
+- 如果回过头来看最初的框架，还能发现 add_corpus 的方法并不适用于文件较大的情况，结合前面第六讲的内容可以做些改进；以及 main 函数直接用了 for 循环来找所有的文件，实际使用时用的是诸如 os.walk 的方法</div>2019-06-05</li><br/><li><span></span> 👍（50） 💬（1）<div>这篇文章就值回票价了。</div>2019-06-07</li><br/><li><span>风居住的街</span> 👍（23） 💬（1）<div>Python3.x 和 Python2.x 的一个区别是: Python 3 可以使用直接使用 super().xxx 代替 super(Class, self).xxx</div>2019-06-17</li><br/><li><span>chuan_chen</span> 👍（14） 💬（0）<div>感觉这篇好难。。。</div>2019-09-04</li><br/><li><span>John Si</span> 👍（10） 💬（0）<div>关于思考题,子类不能继承父类私有属性，只可透过self._Parent__varname去读取该私有属性的值，或在父类创建方法返回私有属性的值，然后子类调用父类方法去取得该私有属性的值
 
 class Animal():
 
@@ -13302,214 +13709,8 @@ Hello, John, age: 35, weight:70
 Sex: M
 Achieve sex information for parent method: M
 
-</div>2019-06-05</li><br/><li><img src="http://thirdwx.qlogo.cn/mmopen/vi_32/rsQcAfBYSwPWRNTSv0ax21faoBic53FxKiaEEbx6CibuXlzL4g6nzEftdMFjWUGNf17RwwOHso8YoiaE5Fg1GNtmbg/132" width="30px"><span>zhuanghua</span> 👍（8） 💬（0）<div>Python 3 中继承写法 super().__init__()
-Python 2 中继承写法 super(子类名, self).__init__()，且在父类定义时要在括号内指定 object。</div>2019-08-04</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/18/43/dc/4f70c936.jpg" width="30px"><span>一只眼看世界</span> 👍（7） 💬（1）<div>        query_list = []
-        for word in query_words:
-            if word in self.inverted_index:
-                query_list.append(self.inverted_index[word])
-        # 取集合的交集
-        result = set(reduce(lambda x, y: set(x) &amp; set(y), query_list))
-        return result
-用交集会省去N行代码的判断</div>2019-08-02</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/b6/e7/460a6870.jpg" width="30px"><span>我是传奇</span> 👍（7） 💬（1）<div>图不错</div>2019-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/54/b2/5ea0b709.jpg" width="30px"><span>Danpier</span> 👍（5） 💬（1）<div>BOWInvertedIndexEngine search函数后半部分少了缩进，第40行开始</div>2019-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/19/dc/38/719040a4.jpg" width="30px"><span>old Z</span> 👍（4） 💬（1）<div>开始也看不太懂for循环后面的操作，最后调试了一段时间发现while true中的for循环做了很多次，这个次数根据用户输入来定，做这么多循环位感觉只是为了得到搜索结果的个数和list，自我感觉不是很利于理解，而且循环次数过多，如果用户输入过多，势必会造成时间的巨大消耗。所以我根据自己的想法，只通过一次for循环，代码如下：
-class OLDZBOWInvertedIndexEngine(SearchEngineBase):
-    def __init__(self):
-        super(OLDZBOWInvertedIndexEngine, self).__init__()
-        self.inverted_index = {}
-
-    def process_corpus(self, id, text):
-        # set
-        words = self.parse_text_to_words(text)
-        for word in words:
-            if word not in self.inverted_index:
-                self.inverted_index[word] = []
-            self.inverted_index[word].append(id)
-
-    def search(self, query):
-
-        query_words = list(self.parse_text_to_words(query))
-        query_words_index = list()
-        for query_word in query_words:
-            query_words_index.append(0)
-        for query_word in query_words:
-            if query_word not in self.inverted_index:
-                return []
-        while True:
-            input_inverted_list=[]
-            for idx, query_word in enumerate(query_words):
-
-                current_inverted_list = self.inverted_index[query_word]
-                input_inverted_list.append(current_inverted_list)
-
-            result=self.l_output_same(input_inverted_list)
-            return result
-
-    # 对L中的元素进行计数，将最多的元素输出
-    @staticmethod
-    def l_output_same(L):
-        L_ALL = []
-        L_SAME = []
-        for l in L:
-            L_ALL += l
-        count_dict = Counter(L_ALL)
-        count_dict_sort = sorted(count_dict.items(), key=lambda x: x[1], reverse=True)
-        max_count = count_dict_sort[0][1]
-        for id, count in count_dict_sort:
-            if count == max_count:
-                L_SAME.append(id)
-        return L_SAME
-
-具体时间和老师的相比我没有测试，只是觉得我这个方法可能更利于新手理解吧，有不对的地方欢迎指出，代码中省略了parse_text_to_words(text)这个函数，因为字数太多发不了评论，需要的自己加上测试</div>2019-10-16</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/10/75/1c/0238b794.jpg" width="30px"><span>luyang</span> 👍（4） 💬（0）<div>是search（）又被重载了，不是query（）</div>2019-06-06</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/8c/b3/a74a7125.jpg" width="30px"><span>tux</span> 👍（4） 💬（1）<div>运行文中代码，始终在运行状态!
-
-修改了一处：
-class SearchEngineBase(object):
-    ...
-    def add_corpus(self, file_path):
-        with open(&#39;文件的目录&#39; + file_path, &#39;r&#39;) as fin:  #修改了此处
-            text = fin.read()
-            print(&#39;text:&#39;, text)   #能打印出内容
-
-
-不修改代码，报FileNotFoundError。去查资料，应该用全路径。 总有个想先看到反馈结果的 强迫症。</div>2019-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/98/fc/b1d22b7e.jpg" width="30px"><span>闲人</span> 👍（3） 💬（5）<div>BOWInvertedIndexEngine类的search函数中：
-query_words_index = list()
-for query_word in query_words:
-    query_words_index.append(0)
-这一段没看明白：
-query_words_index是一个全为0的列表？
-有什么作用？</div>2019-06-20</li><br/><li><img src="https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83epbRibsic15KXfGEN3SSjnLhXGyhK2Uyrj5ibBJsKAjicNqtafDaQOLH4xpSJRZD1vmibFPJER1ySmwP9A/132" width="30px"><span>farFlight</span> 👍（3） 💬（0）<div>按照我之前的理解，Python是没有严格的private变量的。子类确实无法直接访问父类&quot;self.__var&quot;变量，但是可以通过&quot;self._Superclass__var&quot;访问。要想比较好地访问或者修改这些变量，可以像JAVA一样写getter和setter吧？
-另外我有两个问题：
-1. 一些手册中说python的多重继承非常混乱不可靠，尤其涉及很多重载的时候，因此需要避免，或者采用composition的方式。实际工程中是否会有这样的考虑呢？
-2. 以搜索引擎为例，如何规划各个类以及函数的功能，是否是 设计模式 方面的知识呢？</div>2019-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/14/8a/bc/cb39ed38.jpg" width="30px"><span>自由民</span> 👍（2） 💬（0）<div>小结:
-①用super函数，先运行父类构造函数，再运行子类的构造函数。
-②集成的时候，父类里抛出异常，如果子类不实现，就会出现异常。
-③子类实现父类的函数需按同样的函数名和参数列表来实现。
-④变量在构造函数中声明，其它方法可以使用。变量定义为私有的(__变量名)则非成员方法不能访问。
-静态函数没有状态，不涉及对象的私有变量，相同的输入能得到完全相同的输出结果。静态的，方便其他的类来使用。
-在合理分层设计后，每一层的逻辑只需要处理好份内的事情即可。
-迭代开发的流程，先定义基类，规划好接口，在根据需要进一步完善，通过继承基类添加功能或修改设计。这个时候就不用修改调用该功能的代码了。
-思考题:私有变量不能被继承，要继承可以定义为静态变量。
-类的继承关系见github主页里的图片文件
-课程的练习代码: https:&#47;&#47;github.com&#47;zwdnet&#47;PythonPractice</div>2019-09-30</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/3b/fc/04a75cd0.jpg" width="30px"><span>taoist</span> 👍（2） 💬（0）<div>python3 在functools 模块里 引入了装饰器 lru_cache
-可以直接 导入并使用
-from functools import lru_cache
-
- @lru_cache()
- def search(self, query):
-    pass</div>2019-06-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/11/14/0f/91f0194d.jpg" width="30px"><span>海生</span> 👍（2） 💬（0）<div>可不可以讲解一些开源的框架什么的，python 这边深度学习框架很多。这些框架的代码很优秀，也是语言的核心技术运用最多的地方。</div>2019-06-05</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/24/73/47/c85c8941.jpg" width="30px"><span>极好</span> 👍（1） 💬（0）<div>倒置索引中的search实现的有点晦涩，实现一个常规思路，帮助大家跳过这个坑，去专注于面向对象的思想
-def search(self, query): 
-    query_words = list(self.parse_text_to_words(query)) 
-    # 存放结果
-    result = set()
-    # 当前词袋中有哪些单词
-    word_list = self.self.inverted_index.keys()
-    # 遍历要查找的词 
-    for idx, query_word in enumerate(query_words): 
-        # 遇到不在列表中的单词，直接返回空
-        if query_word not in word_list:
-            return []
-        # 没有返回，说明下一行的取值肯定不会异常
-        current_inverted_list = set(self.inverted_index[query_word])
-        # 如果是第0个单词，就把result设成查找的列表
-        if idx == 0:
-            result = current_inverted_list
-        # 如果是后面的单词，result与查找的列表取交集，即新的范围
-        else:
-            result = result &amp; current_inverted_list
-        # 如果取交集为空，返回空
-        if not result:
-            return []
-    return list(result)
-</div>2023-12-08</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/2f/83/81e146e4.jpg" width="30px"><span>大海</span> 👍（1） 💬（0）<div>倒排索引的这段查找逻辑开始没看懂，自己用注释模拟过了一遍思路，看懂了！
-
-        result = []
-        while True:
-            current_ids = []
-            # 查询词示例： &#39;hello&#39;,&#39;world&#39;
-            # 倒排索引内容示例{&#39;hello&#39;:[&#39;1.txt&#39;,&#39;2.txt&#39;,&#39;4.txt&#39;,&#39;6.txt&#39;,&#39;7.txt&#39;] , &#39;world&#39;:[&#39;3.txt&#39;,&#39;4.txt&#39;,&#39;5.txt&#39;]}
-            for idx, query_word in enumerate(query_words): # 2个查询词，因此下方的循环体中注释两次值用逗号分隔
-                # idx: 0,1
-                # query_word: &#39;hello&#39;,&#39;world&#39;
-                current_index = query_words_index[idx]  # current_index: 0,0 =&gt; 1,0 =&gt; 2,0 =&gt; 2,1 =&gt; 3,2 =&gt; 3,3
-                current_inverted_list = self.inverted_index[query_word]
-                # hello: [&#39;1.txt&#39;,&#39;2.txt&#39;,&#39;4.txt&#39;,&#39;6.txt&#39;,&#39;7.txt&#39;]
-                # world: [&#39;3.txt&#39;,&#39;4.txt&#39;,&#39;5.txt&#39;]
-
-                # 已经遍历到了某一个倒序索引的末尾，结束 search
-                if current_index &gt;= len(current_inverted_list):  # condition: F,F =&gt; F,F =&gt; F,F =&gt; F,F =&gt; F,F =&gt;F,T
-                    return result                                # T:return [&#39;4.txt&#39;] 这里程序返回并结束
-
-                current_ids.append(current_inverted_list[current_index])
-                # current_ids: 1.txt,3.txt =&gt; 2.txt,3.txt =&gt; 4.txt,3.txt =&gt; 4.txt,4.txt =&gt; 6.txt,5.txt
-
-            # 然后，如果 current_ids 的所有元素都一样，那么表明这个单词在这个元素对应的文档中都出现了
-            if all(x == current_ids[0] for x in current_ids):     # condition: F =&gt; F =&gt; F =&gt; T &gt; F
-                result.append(current_ids[0])
-                query_words_index = [x + 1 for x in query_words_index]  # T:3,2
-                continue
-
-            # 如果不是，我们就把最小的元素加一
-            min_val = min(current_ids)                  # min_val: 1.txt =&gt; 2.txt =&gt; 3.txt =&gt; T =&gt; 5.txt
-            min_val_pos = current_ids.index(min_val)    # min_val_pos: 0 =&gt; 0 =&gt; 1 =&gt; T =&gt; 1
-            query_words_index[min_val_pos] += 1         # query_words_index: 1,0 =&gt; 2,0 =&gt; 2,1 =&gt; T =&gt; 3,3
-
-</div>2021-11-18</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/17/2e/60/4fa1f3bd.jpg" width="30px"><span>rs勿忘初心</span> 👍（1） 💬（0）<div>Python：类的继承，调用父类的属性和方法基础详解，可以参考：https:&#47;&#47;blog.csdn.net&#47;yilulvxing&#47;article&#47;details&#47;85374142</div>2021-10-12</li><br/><li><img src="" width="30px"><span>Geek_f6bfca</span> 👍（1） 💬（0）<div># 一.父类
-class SearchEngineBase(object):# 父类
-    def __init__(self):# 构造函数，传递参数
-        pass
-
-    # 以下是需要实现的方法
-    # 1.读取文件内容
-    def add_corpus(self, file_path):
-        with open(file_path,&#39;r&#39;,encoding=&#39;utf-8&#39;) as file:
-            context = file.read()
-        self.process_corpus(file_path, context) # 调用类内部的方法 process_corpus
-
-    # 2.处理文件内容
-    # 如果父类实例化后调用 process_corpus 方法则会报错，该处理方式强制要求子类重写父类函数来覆盖父类原有函数,所以这里什么功能都没有
-    # id 等同于 file_path
-    def process_corpus(self, id, text):
-        raise Exception(&#39;process corpus not implement&#39;)
-
-    # 3.输入需要检索的单词
-    def search(self, query):
-        raise Exception(&#39;search corpus not implement&#39;)
-
-# 二.子类
-class SimpleSearchEngine(SearchEngineBase):
-    def __init__(self):
-        super().__init__() # 对继承自父类的属性初始化
-        self.__id_to_text = {} # 增加初始化变量，设定为空字典，用来储存文件地址、内容
-
-    # 父类中该方法是个空，只能在实例化后报错，所以我在子类中重写该方法，以实现真正的目的
-    def process_corpus(self, id, text):
-        self.__id_to_text[id] = text
-
-    def search(self, query):
-        results = []
-        for id, text in self.__id_to_text.items():
-            if query in text:
-                results.append(id)
-
-        return results
-
-# 三.主函数
-# search_engine 实例
-def main():
-    search_engine = SimpleSearchEngine()
-    for file_path in [&#39;1.txt&#39;, &#39;2.txt&#39;, &#39;3.txt&#39;, &#39;4.txt&#39;, &#39;5.txt&#39;]:
-        search_engine.add_corpus(file_path)
-
-    while True:
-        query = input(f&#39;Input your word：&#39;)
-        results = search_engine.search(query)
-        print(f&#39;found {len(results)} results.&#39;)
-        for result in results:
-            print(result)
-
-
-# search_engine = SimpleSearchEngine()
-main()
-
-</div>2021-08-26</li><br/>
+</div>2019-06-05</li><br/><li><span>zhuanghua</span> 👍（8） 💬（0）<div>Python 3 中继承写法 super().__init__()
+Python 2 中继承写法 super(子类名, self).__init__()，且在父类定义时要在括号内指定 object。</div>2019-08-04</li><br/>
 </ul>
 
 

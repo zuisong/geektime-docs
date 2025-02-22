@@ -81,6 +81,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -2480,6 +2485,17 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    31 规则引擎：自定义爬虫处理规则
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -2489,6 +2505,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      静态规则引擎
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      动态规则引擎
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -13309,6 +13378,50 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      静态规则引擎
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      动态规则引擎
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      课后题
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -13352,20 +13465,414 @@
 <li>当前的爬虫任务还是需要手动初始化才能运行，可配置化程度比较低。我们希望这些写好的静态任务在程序初始化时能够自动加载。而通过外部接口，或者只要在配置文件中指定一个任务名就能将任务调度起来。</li>
 <li>更进一步，我们当前的任务和规则都是静态的，静态指的是代码需要提前写好，重新编译运行才能够在运行中被调用。我们能否动态地增加任务和任务的规则，让程序能够动态地解析我们的规则呢？</li>
 </ul>
+<p>为了解决上面这些问题，我们需要有专门负责规则管理的模块，并完成静态规则与动态规则的解析。</p>
+<h2 id="_1">静态规则引擎</h2>
+<p>静态规则处理的确定性强，它适合对性能要求高的爬虫任务。我们可以把一个任务的规则抽象如下：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>type RuleTree struct {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    Root  func() []*Request // 根节点(执行入口)
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    Trunk map[string]*Rule  // 规则哈希表
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>}
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>// 采集规则节点
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>type Rule struct {
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    ParseFunc func(*Context) ParseResult // 内容解析函数
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>}
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>type Context struct {
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    Body []byte
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    Req  *Request
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>}
+</code></pre></div>
+<p>其实规则引擎就像一棵树。RuleTree.Root 是一个函数，用于生成爬虫的种子网站，而RuleTree.Trunk是一个规则哈希表，用于存储当前任务所有的规则，哈希表的Key为规则名，Value为具体的规则。每一个规则就是一个ParseFunc解析函数。参数Context为自定义结构体，用于传递上下文信息，也就是当前的请求参数以及要解析的内容字节数组。后续还会添加请求中的临时数据等上下文数据。</p>
+<p>下面我们沿用之前爬取租房信息的例子，将处理规则替换为使用新的静态规则引擎。</p>
+<p><strong>第一步，定义任务与规则。</strong></p>
+<p>我们在Task中加入了Name字段，将其作为一个任务唯一的标识。Task里除了之前具有的最大深度、等待时间等属性，我们还加入了规则条件， 规则条件中Root生成了初始化的爬虫任务。Trunk为爬虫任务中的所有规则。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>type Task struct {
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>   ...
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>   Rule        RuleTree
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>}
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>var DoubangroupTask = &amp;collect.Task{
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    Name:     &quot;find_douban_sun_room&quot;,
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    WaitTime: 1 * time.Second,
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    MaxDepth: 5,
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    Cookie:  &quot;xxx&quot;,
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    Rule: collect.RuleTree{
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>        Root: func() []*collect.Request {
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>            var roots []*collect.Request
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>            for i := 0; i &lt; 25; i += 25 {
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>                str := fmt.Sprintf(&quot;&lt;https://www.douban.com/group/szsh/discussion?start=%d&gt;&quot;, i)
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>                roots = append(roots, &amp;collect.Request{
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>                    Priority: 1,
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>                    Url:      str,
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>                    Method:   &quot;GET&quot;,
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>                    RuleName: &quot;解析网站URL&quot;,
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>                })
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>            }
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>            return roots
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>        },
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>        Trunk: map[string]*collect.Rule{
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>            &quot;解析网站URL&quot;: &amp;collect.Rule{ParseURL},
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>            &quot;解析阳台房&quot;:   &amp;collect.Rule{GetSunRoom},
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>        },
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>    },
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>}
+</code></pre></div>
+<p>当前任务规则包括了“解析网站URL” 和“解析阳台房” 这两个规则，分别对应了处理函数ParseURL和GetSunRoom，如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>const urlListRe = `(&lt;https://www.douban.com/group/topic/[0-9a-z]+/&gt;)&quot;[^&gt;]*&gt;([^&lt;]+)&lt;/a&gt;`
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>const ContentRe = `&lt;div class=&quot;topic-content&quot;&gt;[\s\S]*?阳台[\s\S]*?&lt;div class=&quot;aside&quot;&gt;`
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>func ParseURL(ctx *collect.Context) collect.ParseResult {
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    re := regexp.MustCompile(urlListRe)
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    matches := re.FindAllSubmatch(ctx.Body, -1)
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    result := collect.ParseResult{}
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    for _, m := range matches {
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        u := string(m[1])
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        result.Requesrts = append(
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>            result.Requesrts, &amp;collect.Request{
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>                Method:   &quot;GET&quot;,
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>                Task:     ctx.Req.Task,
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>                Url:      u,
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>                Depth:    ctx.Req.Depth + 1,
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>                RuleName: &quot;解析阳台房&quot;,
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>            })
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    }
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    return result
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>}
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>func GetSunRoom(ctx *collect.Context) collect.ParseResult {
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    re := regexp.MustCompile(ContentRe)
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>    ok := re.Match(ctx.Body)
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>    if !ok {
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>        return collect.ParseResult{
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>            Items: []interface{}{},
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>        }
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>    }
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>    result := collect.ParseResult{
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>        Items: []interface{}{ctx.Req.Url},
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>    }
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>    return result
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>}
+</code></pre></div>
+<p><strong>第二步，初始化任务与规则。</strong></p>
+<p>在engine/schedule.go文件中，init函数中的Store.Add函数将任务加载到全局的任务队列中。在Go中，init函数是一个特殊的函数，它会在main函数之前自动执行。注意，当添加的任务越来越多之后，代码会变得臃肿，这不是一种优雅的写法。后面我们还会优化它。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>// engine/schedule.go
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>func init() {
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    Store.Add(doubangroup.DoubangroupTask)
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>}
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>func (c *CrawlerStore) Add(task *collect.Task) {
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    c.hash[task.Name] = task
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    c.list = append(c.list, task)
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>}
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>// 全局爬虫任务实例
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>var Store = &amp;CrawlerStore{
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    list: []*collect.Task{},
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    hash: map[string]*collect.Task{},
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>}
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>type CrawlerStore struct {
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    list []*collect.Task
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    hash map[string]*collect.Task
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>}
+</code></pre></div>
+<p><strong>第三步，启动任务。</strong></p>
+<p>启动爬虫任务的方式可以分为两种，一种是加载配置文件，另一种是在调用用户接口时，传递任务名称和参数。不过在这里我们先用硬编码的形式来实现。而通过配置文件和用户接口来操作任务的方式我们会有专门的课程来实现。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>func main(){
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    ...
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    seeds = append(seeds, &amp;collect.Task{
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>            Name:    &quot;find_douban_sun_room&quot;,
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>            Fetcher: f,
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        })
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    s := engine.NewEngine(
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>            engine.WithFetcher(f),
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>            engine.WithLogger(logger),
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>            engine.WithWorkCount(5),
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>            engine.WithSeeds(seeds),
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>            engine.WithScheduler(engine.NewSchedule()),
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>        )
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>        s.Run()
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>}
+</code></pre></div>
+<p><strong>第四步，加载任务。</strong><br />
+在调度器启动时，通过task.Rule.Root()获取初始化任务，并加入到任务队列中。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>func (e *Crawler) Schedule() {
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    var reqs []*collect.Request
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    for _, seed := range e.Seeds {
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>        task := Store.hash[seed.Name]
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        // 获取初始化任务
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>        rootreqs := task.Rule.Root()
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        reqs = append(reqs, rootreqs...)
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    }
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    go e.scheduler.Schedule()
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    go e.scheduler.Push(reqs...)
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>}
+</code></pre></div>
+<p>在Worker处理请求时，需要从Rule.Trunk中获取当前请求的解析规则，并将内容和请求包装到Context中，调用ParseFunc对内容进行解析。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>func (s *Crawler) CreateWork() {
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    for {
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>     ...
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>     //获取当前任务对应的规则
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    rule := req.Task.Rule.Trunk[req.RuleName]
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    // 内容解析
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    result := rule.ParseFunc(&amp;collect.Context{
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>        body,
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>        req,
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    })
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    // 新的任务加入队列中
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    if len(result.Requesrts) &gt; 0 {
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>            go s.scheduler.Push(result.Requesrts...)
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>        }
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    }
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>}
+</code></pre></div>
+<p>完整的代码位于<a href="https://github.com/dreamerjackson/crawler">v0.2.4</a>。</p>
+<h2 id="_2">动态规则引擎</h2>
+<p>对Go语言这样的静态语言来说，我们需要在编译前就明确规则。这保证了程序的安全性与高性能，但是也失去了一些灵活性。像Javascript、Python、Lua这样的动态语言与Go有显著不同，它们不需要提前进行编译，能够比较灵活地书写并执行动态的规则。这一功能依赖于一种语言解释器，这种解释器一般是静态的语言编写的，例如C/C++，解释器会解析这些动态语言的语法，然后执行相应规则。</p>
+<p>和你分享一个实际企业中的例子。一家人工智能企业的核心产品之一是对视频流进行人脸识别。完成视频中人脸的解析涉及到视频的解码、 人脸的识别、人脸的矫正、特征的提取等多个阶段。这整个过程被称为一个pipeline。pipeline中的每一个阶段可能是串行的也可能是并行的。在过去，人脸、人群、物体的识别都需要单独来开发，这样开发的周期比较长，也缺乏灵活性。</p>
+<p>为了应对未来灵活多变的检测需求，例如监测人是否摔倒，工人是否佩戴安全帽等，我们需要更短的开发周期，需要用更灵活的方式把这些阶段串联起来。这时这家公司就在Go中使用了Lua虚拟机。开发者遇到一个新的长尾需求时，通过书写Lua脚本来定义新的规则。在Go程序中通过动态加载Lua脚本来实现灵活性。</p>
+<p>我们现在的爬虫项目其实也面邻着一样的问题。网站和规则是多种多样的，我们无法穷尽所有的规则，如果每次遇到新网站都要重新写代码，写爬取规则然后重启程序，这会比较繁琐，所以我们希望能够动态地在程序运行过程中加载规则。</p>
+<p>动态规则带来的另一个好处是，降低了书写代码规则的门槛，它甚至可以让业务人员也能书写简单的规则。<strong>说到在爬虫项目中实现动态规则的引擎，我们首先想到的就是使用Javascript虚拟机了。因为使用JS操作网页有天然的优势。</strong></p>
+<p>自己要在短时间内实现一个工业级的虚拟机可能比较困难，我们可以使用一些开源的项目，例如<a href="https://github.com/robertkrimen/otto">otto</a>。otto 是用 Go 编写的 JavaScript 虚拟机，用于在Go中执行Javascript语法。</p>
+<p>下面是用otto编写的一个简单的例子。在这个例子中，script字符串即为要执行的Javascript语法，console.log是JS中的函数，用于打印变量。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>package main
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>import (
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    &quot;fmt&quot;
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    &quot;github.com/robertkrimen/otto&quot;
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>)
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>func main() {
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    vm := otto.New()
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    script := `
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>        var n = 100;
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>        console.log(&quot;hello-&quot; + n);   
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    n;
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    `
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    value, _ := vm.Run(script)
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    fmt.Println(&quot;value:&quot;, value.String()) 
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>}
+</code></pre></div>
+<p>最终结果为：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>hello-100
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>value: 100
+</code></pre></div>
+<p>这样，我们就实现了在Go语言中执行JS脚本的目的。实际上，otto内部解析了这一串字符串，并按照JS语法中对应的规则进行了相应的处理，例如脚本中的console.log函数最终其实也调用了Go中的fmt函数，实现将文本打印到控制台。不过我们要注意的是，不一定JS的所有语法JS虚拟机都是支持的，是否支持取决于当前虚拟机的实现。例如当前otto支持JS5语法，但是不支持JS6语法。</p>
+<p>下面我们我们仍然以爬取租房信息为例，借助otto库实现的JS虚拟机来实现动态的规则引擎。</p>
+<p><strong>第一步，构建动态规则模型TaskModle。</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>type (
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    TaskModle struct {
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>        Name     string        `json:&quot;name&quot;` // 任务名称，应保证唯一性
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>        Url      string        `json:&quot;url&quot;`
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        Cookie   string        `json:&quot;cookie&quot;`
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>        WaitTime time.Duration `json:&quot;wait_time&quot;`
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>        Reload   bool          `json:&quot;reload&quot;` // 网站是否可以重复爬取
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>        MaxDepth int64         `json:&quot;max_depth&quot;`
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>        Root  string           `json:&quot;root_script&quot;`
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>        Rules []RuleModle      `json:&quot;rule&quot;`
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    }
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    RuleModle struct {
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>        Name      string `json:&quot;name&quot;`
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>        ParseFunc string `json:&quot;parse_script&quot;`
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>    }
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>)
+</code></pre></div>
+<p>为什么这里要单独构建一个任务的结构体呢？主要原因在于，现在我们的规则都是字符串了，这和之前的静态规则引擎有本质的不同。其中，TaskModle.Root为初始化种子节点的JS脚本，TaskModle.Rules为具体爬虫任务的规则树。</p>
+<p><strong>第二步，书写动态爬虫规则。</strong></p>
+<p>示例代码如下。其中，Root脚本就是我们要生成的种子网站URL。在这里我们构建了一个JS数组arr，将生成的请求数组添加到arr之后，又调用了AddJsReq函数。AddJsReq函数其实是一个Go函数，用于最终生成Go中的请求数组。在这里我们可以看到，在Go的JS虚拟机中，还可以灵活地调用原生的Go函数。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>var DoubangroupJSTask = &amp;collect.TaskModle{
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    Property: collect.Property{
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>        Name:     &quot;js_find_douban_sun_room&quot;,
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>        WaitTime: 1 * time.Second,
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>        MaxDepth: 5,
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>        Cookie:   &quot;xxx&quot;,
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    },
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    Root: `
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>        var arr = new Array();
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>        for (var i = 25; i &lt;= 25; i+=25) {
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>            var obj = {
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>               Url: &quot;&lt;https://www.douban.com/group/szsh/discussion?start=&gt;&quot; + i,
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>               Priority: 1,
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>               RuleName: &quot;解析网站URL&quot;,
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>               Method: &quot;GET&quot;,
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>           };
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>            arr.push(obj);
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>        };
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>        console.log(arr[0].Url);
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>        AddJsReq(arr);
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>            `,
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>    Rules: []collect.RuleModle{
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>        {
+<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>            Name: &quot;解析网站URL&quot;,
+<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>            ParseFunc: `
+<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>            ctx.ParseJSReg(&quot;解析阳台房&quot;,&quot;(&lt;https://www.douban.com/group/topic/[0-9a-z]+/&gt;)\\&quot;[^&gt;]*&gt;([^&lt;]+)&lt;/a&gt;&quot;);
+<a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>            `,
+<a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>        },
+<a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>        {
+<a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a>            Name: &quot;解析阳台房&quot;,
+<a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>            ParseFunc: `
+<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a>            //console.log(&quot;parse output&quot;);
+<a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a>            ctx.OutputJS(&quot;&lt;div class=\\&quot;topic-content\\&quot;&gt;[\\\\s\\\\S]*?阳台[\\\\s\\\\S]*?&lt;div class=\\&quot;aside\\&quot;&gt;&quot;);
+<a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a>            `,
+<a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a>        },
+<a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a>    },
+<a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a>}
+</code></pre></div>
+<p>而在Rules脚本中，我们加入了两个爬虫规则，分别是“解析网站URL”和 “解析阳台房”，他们都可以使用非常简单的规则来实现。在这里我们调用了 ctx.ParseJSReg 来解析请求，调用了 ctx.OutputJS 来解析并输出找到的内容，注意这里的ctx.ParseJSReg与ctx.OutputJS也是Go原生的函数，下面我们会看到他们的实现。</p>
+<p><strong>第三步，书写动态规则中的Go函数。</strong></p>
+<p>AddJsReqs函数将在JS脚本中的请求数据变为Go结构中的数组[]*collect.Request，而ctx.ParseJSReg方法则会动态解析JS中传递的正则表达式并生成新的请求, ctx.OutputJS负责解析传递过来的正则表达式并完成结果的输出。注意JS虚拟机会自动将JS脚本中的参数转换为函数参数中对应的结构。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>// 用于动态规则添加请求。
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>func AddJsReqs(jreqs []map[string]interface{}) []*collect.Request {
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    reqs := make([]*collect.Request, 0)
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    for _, jreq := range jreqs {
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>        req := &amp;collect.Request{}
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>        u, ok := jreq[&quot;Url&quot;].(string)
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>        if !ok {
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>            return nil
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>        }
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>        req.Url = u
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>        req.RuleName, _ = jreq[&quot;RuleName&quot;].(string)
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>        req.Method, _ = jreq[&quot;Method&quot;].(string)
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>        req.Priority, _ = jreq[&quot;Priority&quot;].(int64)
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>        reqs = append(reqs, req)
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>    }
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>    return reqs
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>}
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>// 动态解析JS中的正则表达式
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>func (c *Context) ParseJSReg(name string, reg string) ParseResult {
+<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a>    re := regexp.MustCompile(reg)
+<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a>
+<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a>    matches := re.FindAllSubmatch(c.Body, -1)
+<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a>    result := ParseResult{}
+<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a>
+<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a>    for _, m := range matches {
+<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a>        u := string(m[1])
+<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a>        result.Requesrts = append(
+<a id="__codelineno-12-30" name="__codelineno-12-30" href="#__codelineno-12-30"></a>            result.Requesrts, &amp;Request{
+<a id="__codelineno-12-31" name="__codelineno-12-31" href="#__codelineno-12-31"></a>                Method:   &quot;GET&quot;,
+<a id="__codelineno-12-32" name="__codelineno-12-32" href="#__codelineno-12-32"></a>                Task:     c.Req.Task,
+<a id="__codelineno-12-33" name="__codelineno-12-33" href="#__codelineno-12-33"></a>                Url:      u,
+<a id="__codelineno-12-34" name="__codelineno-12-34" href="#__codelineno-12-34"></a>                Depth:    c.Req.Depth + 1,
+<a id="__codelineno-12-35" name="__codelineno-12-35" href="#__codelineno-12-35"></a>                RuleName: name,
+<a id="__codelineno-12-36" name="__codelineno-12-36" href="#__codelineno-12-36"></a>            })
+<a id="__codelineno-12-37" name="__codelineno-12-37" href="#__codelineno-12-37"></a>    }
+<a id="__codelineno-12-38" name="__codelineno-12-38" href="#__codelineno-12-38"></a>    return result
+<a id="__codelineno-12-39" name="__codelineno-12-39" href="#__codelineno-12-39"></a>}
+<a id="__codelineno-12-40" name="__codelineno-12-40" href="#__codelineno-12-40"></a>
+<a id="__codelineno-12-41" name="__codelineno-12-41" href="#__codelineno-12-41"></a>// 解析内容并输出结果
+<a id="__codelineno-12-42" name="__codelineno-12-42" href="#__codelineno-12-42"></a>func (c *Context) OutputJS(reg string) ParseResult {
+<a id="__codelineno-12-43" name="__codelineno-12-43" href="#__codelineno-12-43"></a>    re := regexp.MustCompile(reg)
+<a id="__codelineno-12-44" name="__codelineno-12-44" href="#__codelineno-12-44"></a>    ok := re.Match(c.Body)
+<a id="__codelineno-12-45" name="__codelineno-12-45" href="#__codelineno-12-45"></a>    if !ok {
+<a id="__codelineno-12-46" name="__codelineno-12-46" href="#__codelineno-12-46"></a>        return ParseResult{
+<a id="__codelineno-12-47" name="__codelineno-12-47" href="#__codelineno-12-47"></a>            Items: []interface{}{},
+<a id="__codelineno-12-48" name="__codelineno-12-48" href="#__codelineno-12-48"></a>        }
+<a id="__codelineno-12-49" name="__codelineno-12-49" href="#__codelineno-12-49"></a>    }
+<a id="__codelineno-12-50" name="__codelineno-12-50" href="#__codelineno-12-50"></a>    result := ParseResult{
+<a id="__codelineno-12-51" name="__codelineno-12-51" href="#__codelineno-12-51"></a>        Items: []interface{}{c.Req.Url},
+<a id="__codelineno-12-52" name="__codelineno-12-52" href="#__codelineno-12-52"></a>    }
+<a id="__codelineno-12-53" name="__codelineno-12-53" href="#__codelineno-12-53"></a>    return result
+<a id="__codelineno-12-54" name="__codelineno-12-54" href="#__codelineno-12-54"></a>}
+</code></pre></div>
+<p><strong>第四步，初始化任务与规则。</strong></p>
+<p>初始化动态规则这一步更复杂一些，因为我们需要将JS脚本放入paesrFunc函数中，供otto库解析，代码如下所示。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>func init() {
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    ...
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    Store.AddJSTask(doubangroup.DoubangroupJSTask)
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>}
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>func (c *CrawlerStore) AddJSTask(m *collect.TaskModle) {
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    task := &amp;collect.Task{
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>        Property: m.Property,
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    }
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>    task.Rule.Root = func() ([]*collect.Request, error) {
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>        vm := otto.New()
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>        vm.Set(&quot;AddJsReq&quot;, AddJsReqs)
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>        v, err := vm.Eval(m.Root)
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>        e, err := v.Export()
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>        return e.([]*collect.Request), nil
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>    }
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>    for _, r := range m.Rules {
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>        paesrFunc := func(parse string) func(ctx *collect.Context) (collect.ParseResult, error) {
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>            return func(ctx *collect.Context) (collect.ParseResult, error) {
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>                vm := otto.New()
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>                vm.Set(&quot;ctx&quot;, ctx)
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>                v, err := vm.Eval(parse)
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>                e, err := v.Export()
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>                return e.(collect.ParseResult), err
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>            }
+<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a>        }(r.ParseFunc)
+<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>        if task.Rule.Trunk == nil {
+<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a>            task.Rule.Trunk = make(map[string]*collect.Rule, 0)
+<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a>        }
+<a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a>        task.Rule.Trunk[r.Name] = &amp;collect.Rule{
+<a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a>            paesrFunc,
+<a id="__codelineno-13-34" name="__codelineno-13-34" href="#__codelineno-13-34"></a>        }
+<a id="__codelineno-13-35" name="__codelineno-13-35" href="#__codelineno-13-35"></a>    }
+<a id="__codelineno-13-36" name="__codelineno-13-36" href="#__codelineno-13-36"></a>
+<a id="__codelineno-13-37" name="__codelineno-13-37" href="#__codelineno-13-37"></a>    c.hash[task.Name] = task
+<a id="__codelineno-13-38" name="__codelineno-13-38" href="#__codelineno-13-38"></a>    c.list = append(c.list, task)
+<a id="__codelineno-13-39" name="__codelineno-13-39" href="#__codelineno-13-39"></a>}
+</code></pre></div>
+<p>在这里，用于生成种子网站的Root函数中的 vm.Eval(m.Root) 执行了配置中的root脚本，然后返回了生成的请求数组。vm.Set(“AddJsReq”, AddJsReqs) 可以将Go原生函数注册到 JS 虚拟机中，这样我们才能在JS脚本中调用Go函数。paesrFunc函数也是一样，在这里我们使用了闭包，方便后续执行parse脚本并最后返回解析后的collect.ParseResult结果。</p>
+<p><strong>第五步，启动并加载任务。</strong></p>
+<p>启动任务和加载任务与静态规则引擎代码完全一致，完全复用就可以了。到这里，我们只需要指定一个任务名js_find_douban_sun_room就可以利用动态规则引擎将爬虫任务跑起来了。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>func main(){
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    ...
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    seeds = append(seeds, &amp;collect.Task{
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>            Property: collect.Property{
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>                Name: &quot;js_find_douban_sun_room&quot;,
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>            },
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>            Fetcher: f,
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>        })
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>        s := engine.NewEngine(
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>            engine.WithFetcher(f),
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>            engine.WithLogger(logger),
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>            engine.WithWorkCount(5),
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>            engine.WithSeeds(seeds),
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>            engine.WithScheduler(engine.NewSchedule()),
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>        )
+<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>
+<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>        s.Run()
+<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>}
+</code></pre></div>
+<p>完整的代码位于<a href="https://github.com/dreamerjackson/crawler">v0.2.5</a>。</p>
+<h2 id="_3">总结</h2>
+<p>在本节课程中，为了更好地对爬虫任务进行管理，我们构建了规则引擎模块来管理静态和动态的规则。</p>
+<p>静态的规则指的是需要在Go代码中提前写好的解析规则，这些规则固定、性能更高。但是由于我们无法穷尽所有的网站和规则，所以每加入一个网站都需要修改代码，还要重新启动程序，过程比较繁琐。动态的规则构建了Javascript的虚拟机，它会动态解析JS的语法规则。</p>
+<p>其实从我们现在的实现来看，用这些简单的规则就可以支持许多简单的爬取规则。在JS语法中，我们实现了调用Go函数的能力，这让书写JS脚本变得更加简单。我们甚至可以想象这样一个场景，用户只要在页面中选择自己希望爬取的内容，就足够我们生成动态的规则满足客户的爬取需求了。这种商业模式是成立的，用我们现在的技术完全可以实现。</p>
+<p>不过，动态的规则当前的性能确实比不上静态的规则，因为它内部有大量运算、内存分配还有反射的使用。但是在爬虫项目中，很多时候真正的瓶颈是来自于网络I/O。因此通常动态规则带来的灵活性收益要大于其性能的损耗。</p>
+<h2 id="_4">课后题</h2>
+<p>你认为下面这个最基本的JS脚本，在JS虚拟机内部是如何实现的？</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>    script := `
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>        var n = 1+2;
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>        console.log(&quot;hello-&quot; + n);   
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    n;
+</code></pre></div>
+<p>欢迎你在留言区与我交流讨论，我们下节课再见！</p>
 <div><strong>精选留言（3）</strong></div>
 <ul>
-<li><img src="https://static001.geekbang.org/account/avatar/00/10/7f/d3/b5896293.jpg" width="30px"><span>Realm</span> 👍（0） 💬（1）<div>课程渐入佳境了，知识越来越有趣味了。老师，有时间可以把每节课的思考题答疑下，那就更好了。
+<li><span>Realm</span> 👍（0） 💬（1）<div>课程渐入佳境了，知识越来越有趣味了。老师，有时间可以把每节课的思考题答疑下，那就更好了。
 
 思考题：
 猜测是用AST抽象语法树+反射，解析js，转成Golang语法。
 
 疑问：
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>type CrawlerStore struct {
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    list []*collect.Task
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    hash map[string]*collect.Task
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>}
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>type CrawlerStore struct {
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>    list []*collect.Task
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    hash map[string]*collect.Task
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>}
 </code></pre></div>
-这个list的设计是用于做什么？好像程序中没有提到。</div>2022-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/16/18/4f/9e4d5591.jpg" width="30px"><span>翡翠虎</span> 👍（0） 💬（1）<div>设计一个这样的引擎有什么好处？如果把xpath规则或者正则放到数据库，运行的时候随着任务传递给程序，程序按几个预设配置处理，会不会更好？</div>2022-12-20</li><br/><li><img src="https://static001.geekbang.org/account/avatar/00/12/f0/6d/3e570bb8.jpg" width="30px"><span>一打七</span> 👍（1） 💬（0）<div>不明白为什么是动态的？看着还是写死的代码</div>2024-01-10</li><br/>
+这个list的设计是用于做什么？好像程序中没有提到。</div>2022-12-20</li><br/><li><span>翡翠虎</span> 👍（0） 💬（1）<div>设计一个这样的引擎有什么好处？如果把xpath规则或者正则放到数据库，运行的时候随着任务传递给程序，程序按几个预设配置处理，会不会更好？</div>2022-12-20</li><br/><li><span>一打七</span> 👍（1） 💬（0）<div>不明白为什么是动态的？看着还是写死的代码</div>2024-01-10</li><br/>
 </ul>
 
 
