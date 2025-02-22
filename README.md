@@ -16,8 +16,15 @@
 
 > tips: 在线文档支持 PC 浏览器，也支持移动端浏览器
 
-### markdown 本地文档
+### 本地部署
 
+#### docker方式
+```shell
+docker run -d -p 8091:8091 --restart always  --name geektime-docs  zkep/geektime-docs
+```
+浏览器访问：<http://127.0.0.1:8091/>
+
+#### 源码方式
 ```shell
 git clone https://github.com/uaxe/geektime-docs.git  --depth 1
 
@@ -38,7 +45,7 @@ mkdocs serve
 
 #### 1. http Referer导致的裂图，图片不显示 
 
-方案1： 某鱼买7天会员，部署mygeektime服务，缓存对应的VIP课程 
+方案1： VIP用户，部署[mygeektime](https://github.com/zkep/mygeektime)服务，缓存对应的VIP课程 
 
 方案2： 推荐本地使用中间代理人服务，拦截请求，改写 http 请求的 Referer 的思路
 

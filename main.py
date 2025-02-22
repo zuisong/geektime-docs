@@ -164,7 +164,7 @@ def http_get_base64(uri, timeout) -> (str, str):
     default=8000,
     help="mkdocs port. Default value is 8000",
 )
-def make_all_pdf(source, output, timeout, compress, power, port):
+def  make_all_pdf(source, output, timeout, compress, power, port):
     webdriver_options = Options()
     webdriver_prefs = {
         'profile.default_content_setting_values': {
