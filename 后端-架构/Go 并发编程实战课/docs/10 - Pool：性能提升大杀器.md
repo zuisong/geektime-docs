@@ -459,3 +459,65 @@ Pool是一个通用的概念，也是解决对象重用和预先分配的一个�
 在标准库net/rpc包中，Server端需要解析大量客户端的请求（[Request](https://github.com/golang/go/blob/master/src/net/rpc/server.go#L171)），这些短暂使用的Request是可以重用的。请你检查相关的代码，看看Go开发者都使用了什么样的方式来重用这些对象。
 
 欢迎在留言区写下你的思考和答案，我们一起交流讨论。如果你觉得有所收获，也欢迎你把今天的内容分享给你的朋友或同事。
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>末班车</span> 👍（28） 💬（3）<div>之前用到去看过，好像是通过一个链表的形式，把request存起来，最新的在链表的头，最旧的在链表的尾部，可是不懂的是，为什么每次取出了req，还要重新赋零值呢，这和我每次new一个有什么区别么？求大佬指点。</div>2020-11-02</li><br/><li><span>那时刻</span> 👍（4） 💬（7）<div>请问老师, sync.Pool会有内存泄漏，怎么理解因为 Pool 回收的机制，这些大的 Buffer 可能不被回收？</div>2020-11-03</li><br/><li><span>lesserror</span> 👍（1） 💬（1）<div>老师的文章讲解的非常细致。 请问一下：
+
+1. 三色并发标记算法 这个 链接地址 Not found 了。
+2. 举例大的buffer 不被回收的 第一个 源码 函数：putEncodeState ，我没找到。请问一下在哪个文件里面呀。
+</div>2021-08-21</li><br/><li><span>冰糕不冰</span> 👍（0） 💬（1）<div>讲的太好了！ 真的是开启了新世界的大门。 感谢大佬</div>2022-03-26</li><br/><li><span>tingting</span> 👍（0） 💬（1）<div>请问老师，RPC request 池化的实现为什么不用sync.Map，而是选择使用链表实现呢？</div>2022-01-24</li><br/><li><span>授人以🐟，不如授人以渔</span> 👍（0） 💬（1）<div>「因为 Pool 回收的机制，这些大的 Buffer 可能不被回收」是什么原因？</div>2021-11-04</li><br/><li><span>Junes</span> 👍（13） 💬（1）<div>分享一下我的理解，主要分为回收和获取两个函数：
+
+func (server *Server) freeRequest(req *Request) {
+	server.reqLock.Lock()
+	&#47;&#47; 将req放在freeReq的头部，指向原先的链表头
+	&#47;&#47; 至于为什么放在头部、而不是尾部，我觉得是放在尾部需要遍历完这个链表(增加时间复杂度)、或者要额外维护一个尾部Request的指针(增加空间复杂度)，权衡下放在头部更方便
+	req.next = server.freeReq
+	server.freeReq = req
+	server.reqLock.Unlock()
+}
+
+func (server *Server) getRequest() *Request {
+	server.reqLock.Lock()
+	&#47;&#47; freeReq是一个链表，保存空闲的Request
+	req := server.freeReq
+	if req == nil {
+		&#47;&#47; 初始状态：freeReq为空时，在heap上重新分配一个对象
+		req = new(Request)
+	} else {
+		server.freeReq = req.next
+		&#47;&#47; 复用的关键在这里，这里并不是新建一个对象 new(Request)
+		&#47;&#47; 这里的思想类似于Reset，将原先有数据的Request设置为空
+		*req = Request{}
+	}
+	server.reqLock.Unlock()
+	return req
+}</div>2020-11-02</li><br/><li><span>Yayu</span> 👍（8） 💬（0）<div>谢谢老师，喜欢老师这篇文章中通过外链的方式列出一些老师常用的三方库，很有用！</div>2020-11-03</li><br/><li><span>大布丁</span> 👍（1） 💬（0）<div>一文解决之前组长问我的一个问题：除了使用更多的goroutine来干更多的活之外，还有什么设计与优化的思想？当时没往线程池跟sync.Pool去思考，现在感触很深了！身为年轻人，代码功底不足的情况，我还是喜欢阅读源码后，动手实现里面的几个方法，以便于自己能够更深刻的去理解第三方库！</div>2022-03-20</li><br/><li><span>虫子樱桃</span> 👍（1） 💬（2）<div>思考题的奥秘感觉在这两个函数 
+```
+&#47;&#47; ServeRequest is like ServeCodec but synchronously serves a single request.
+&#47;&#47; It does not close the codec upon completion.
+func (server *Server) ServeRequest(codec ServerCodec) error {
+	sending := new(sync.Mutex)
+	service, mtype, req, argv, replyv, keepReading, err := server.readRequest(codec)
+	if err != nil {
+		if !keepReading {
+			return err
+		}
+		&#47;&#47; send a response if we actually managed to read a header.
+		if req != nil {
+			server.sendResponse(sending, req, invalidRequest, codec, err.Error())
+			server.freeRequest(req)
+		}
+		return err
+	}
+	service.call(server, sending, nil, mtype, req, argv, replyv, codec)
+	return nil
+} 
+
+func (server *Server) freeRequest(req *Request) {
+	server.reqLock.Lock()
+	req.next = server.freeReq
+	server.freeReq = req
+	server.reqLock.Unlock()
+}
+```
+</div>2020-11-02</li><br/><li><span>怎么睡才能做这种梦</span> 👍（0） 💬（0）<div>请问老师, sync.Pool会有内存泄漏，怎么理解因为 Pool 回收的机制，这些大的 Buffer 可能不被回收？</div>2023-03-02</li><br/><li><span>Geek_b8670e</span> 👍（0） 💬（0）<div>数据库连接池上有没有必要再做多路复用？</div>2021-06-10</li><br/><li><span>Panda</span> 👍（0） 💬（0）<div>减少跟 OS 的 IO 次数  用池化手段来优化系统 </div>2021-01-27</li><br/><li><span>党</span> 👍（0） 💬（0）<div>可以用池化技术做任务队列么?尤其是worker pool这几个库</div>2020-11-03</li><br/><li><span>党</span> 👍（0） 💬（1）<div>那像websocke这种长连接，每个ws用一个goroutine来维护，是不是就没必要用池化技术了。</div>2020-11-03</li><br/>
+</ul>

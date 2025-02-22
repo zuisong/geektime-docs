@@ -94,3 +94,17 @@ public class Context {
 下一步将要如何重构已有代码？
 
 欢迎把你的思考和想法分享在留言区，也欢迎你扫描详情页的二维码加入读者交流群。我们下节课再见！
+<div><strong>精选留言（2）</strong></div><ul>
+<li><span>JC</span> 👍（5） 💬（0）<div>第二段视频最后，是不是用 Stream.noneMatch 语义上更好些</div>2022-05-01</li><br/><li><span>肖韬</span> 👍（0） 💬（1）<div>老师，第一段视频中，按照您的 test case，我觉得应该报错。我自己写了相同的代码，确实报错了，但是您的测试用例却没报错，对此百思不得其解。
+
+在 should_bind_type_to_a_class_with_inject_constructor 中，测试用例是这样的：
+
+      Dependency dependency = new Dependency() {};
+      context.bind(Component.class, ComponentWithInjectConstructor.class);
+      context.bind(Dependency.class, dependency);
+
+在 Context#bind(Component.class, ComponentWithInjectConstructor.class) 的实现代码中，会根据依赖类型 Dependency.class，要求context中返回它的一个实例。
+
+
+但是很明显，在测试用例调用 context.bind(Component.class, ComponentWithInjectConstructor.class) 时，dependency 实例此时还不在容器中。所以这里应该报错，但是视频中却没有报错。请老师解答。</div>2023-02-12</li><br/>
+</ul>

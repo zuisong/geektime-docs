@@ -240,3 +240,81 @@ SVG和Canvas在使用上的不同主要可以分为两点，分别是**写法上
 ## 源码
 
 [用SVG绘制层次关系图和给层次关系图增加鼠标控制的完整代码.](https://github.com/akira-cn/graphics/tree/master/svg)
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>Link</span> 👍（36） 💬（4）<div>1. 使用 CSS 设置样式的好处：可以将样式和节点解耦，有利于样式的模块化和复用，比如多种主题色，一键换色等。
+2. 先用 SVG 生成层级关系图，再用 Canvas 来完成绘制，此时 SVG 将作为一张静态图片被绘制在 Canvas 中。和单独使用 Canvas 绘图相比，这种混合方式代码量更少，代码更加可读，易维护。</div>2020-06-27</li><br/><li><span>Geek_3469f6</span> 👍（7） 💬（4）<div>if(target.nodeName === &#39;text&#39;) target = target.parentNode;
+ 
+请问，这句代码是不是有问题？找到文本节点的父节点，是group节点。设置了fill，有什么用处？</div>2020-06-26</li><br/><li><span>Frojan</span> 👍（5） 💬（1）<div>canvas绘制svg，和单独用svg对比，好处是可以规避svg节点过多时的性能瓶颈，但是也失去了svg方便的可交互性。和单独用canvas对比，写法就由写一堆绘制指令变成了写声明式svg加一句绘图指令，单纯绘制性能在绘制指令多且复杂的情况貌似有比较大的提升？(这个不确定svg的解析时间是不是可以忽略) ，但是交互还得使用canvas的方式实现，如果要做动画也会变得麻烦。</div>2020-09-06</li><br/><li><span>Geek_00734e</span> 👍（4） 💬（2）<div>SVG画出来的效果看着更加清晰，canvas画出来的好模糊，这是什么原因啊。尺寸都是一样的</div>2021-01-10</li><br/><li><span>Cailven</span> 👍（4） 💬（2）<div>关于svg，我补充一点，如今微信公众号互动图文支持使用svg制作交互和动画，但不支持js语言，因此掌握原生svg语言非常重要，并不是任何场景都可以使用js来声明和调用该系统的。</div>2020-06-28</li><br/><li><span>coder</span> 👍（3） 💬（1）<div>做可视化组件，从性能的角度来讲，是SVG好一些，还是Canvas好一些？</div>2020-07-03</li><br/><li><span>Geek_07ad60</span> 👍（3） 💬（2）<div>还是不太理解声明式和指令式，请老师再详解一下，谢谢！</div>2020-06-29</li><br/><li><span>特异型大光头</span> 👍（2） 💬（2）<div>&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+
+&lt;head&gt;
+    &lt;meta charset=&quot;UTF-8&quot;&gt;
+    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
+    &lt;title&gt;Document&lt;&#47;title&gt;
+&lt;&#47;head&gt;
+
+&lt;body&gt;
+    &lt;svg xmlns=&quot;http:&#47;&#47;www.w3.org&#47;2000&#47;svg&quot; version=&quot;1.1&quot;&gt;
+    &lt;&#47;svg&gt;
+    &lt;script&gt;
+        const svgroot = document.querySelector(&#39;svg&#39;);
+        const circle = document.createElementNS(&#39;http:&#47;&#47;http:&#47;&#47;www.w3.org&#47;2000&#47;svg&#39;, &#39;circle&#39;);
+        circle.setAttribute(&#39;cx&#39;, 100);
+        circle.setAttribute(&#39;cy&#39;, 100);
+        circle.setAttribute(&#39;r&#39;, 50);
+        circle.setAttribute(&#39;fill&#39;, &#39;#ff0000&#39;);
+        svgroot.appendChild(circle);
+    &lt;&#47;script&gt;
+&lt;&#47;body&gt;
+
+&lt;&#47;html&gt;
+老师为何我创建后,控制台也生成了svg,和circle,但就是页面上显示不出来...
+</div>2020-06-26</li><br/><li><span>姚凯伦</span> 👍（2） 💬（1）<div>最近也遇到过用svg绘制元素太多导致渲染卡顿问题，后来改用使用一条 path 绘制所有元素，但是 path 一长也同样存在渲染卡顿问题，不知道老师有没有遇到过类似的问题</div>2020-06-26</li><br/><li><span>段亚东</span> 👍（0） 💬（1）<div>这两个案例，为什么不直接用div css画呢？</div>2020-12-09</li><br/><li><span>颖</span> 👍（4） 💬（2）<div>老师能否多做一些svg交互的课程，不用js操作，我们有很大需求，愿意买课</div>2020-08-02</li><br/><li><span>胖橘猫</span> 👍（1） 💬（0）<div>只有我存在获取省市县三级json数据的问题吗？获取数据时候出现net::ERR_NAME_NOT_RESOLVED，ping 也无法ping通</div>2021-07-02</li><br/><li><span>Geek_12e8fd</span> 👍（0） 💬（0）<div>如果你选择先用SVG生成层级关系图，然后再用Canvas来完成绘制，与单独使用它们绘图的主要区别体现在以下几个方面：
+
+绘图过程与交互性：
+使用SVG生成层级关系图时，每个图形元素（如圆形、文本等）都是独立的DOM元素，这使得添加用户交互（如鼠标悬停高亮、点击事件等）变得非常简单直接。你可以像操作普通的HTML元素一样给SVG元素绑定事件[2]。
+相比之下，Canvas绘图则更加底层，所有的图形都是通过绘图指令在画布上直接绘制的，没有独立的DOM元素与之对应。因此，实现用户交互通常需要更多的计算和逻辑判断，比如通过计算鼠标位置与图形元素的相对位置来确定交互[2]。
+性能考虑：
+SVG的性能主要取决于DOM操作的开销。当图形复杂或需要频繁更新时，大量的SVG节点可能会导致性能下降[2]。然而，SVG在处理少量或静态图形时通常表现良好。
+Canvas则更适合处理大量或频繁更新的图形。由于它直接操作像素，不依赖于DOM树，因此在渲染大量图形或动画时通常具有更好的性能[2]。
+灵活性与可维护性：
+SVG是声明式的，通过定义图形元素的属性和样式来绘图，这种方式更接近于HTML和CSS的编写方式，对于前端工程师来说更加直观和易于理解[1]。此外，SVG文件可以独立于其他代码存在，方便单独编辑和测试。
+Canvas是命令式的，通过JavaScript代码执行绘图指令来绘制图形。这种方式提供了更大的灵活性，可以实现更复杂的视觉效果和动画效果。但是，这也意味着Canvas绘图代码通常与业务逻辑紧密耦合，维护和修改可能更加复杂。
+结合使用的优势：
+将SVG和Canvas结合使用可以充分发挥两者的优势。例如，你可以使用SVG生成复杂的静态图形或需要高交互性的部分，然后将它们作为图像绘制到Canvas上，以便利用Canvas的高性能渲染能力来处理大量动态图形或动画[4]。
+综上所述，选择先用SVG生成层级关系图再用Canvas绘制，还是单独使用它们绘图，取决于具体的应用场景和需求。如果图形复杂且需要高交互性，SVG可能是更好的选择；如果图形数量众多或需要高性能渲染，Canvas则更具优势。而在某些情况下，结合使用两者可以达到最佳效果。</div>2024-06-14</li><br/><li><span>Geek_12e8fd</span> 👍（0） 💬（0）<div>当使用SVG创建图形时，确实可以通过CSS来设置SVG元素的样式，包括circle元素的背景色和文字属性。以下是如何使用CSS来设置层级关系图中circle的背景色和文字属性的示例，以及这样做的好处：
+
+设置样式
+假设你的SVG层级关系图在HTML文档中看起来像这样：
+
+html
+&lt;svg id=&quot;hierarchy-svg&quot; ...&gt;  
+  &lt;!-- SVG内容，包括circle和text元素 --&gt;  
+&lt;&#47;svg&gt;
+你可以通过CSS来设置样式：
+
+css
+#hierarchy-svg circle {  
+  fill: #ddd; &#47;* 设置circle的背景色 *&#47;  
+  stroke: #000; &#47;* 设置circle的边框颜色 *&#47;  
+  stroke-width: 2px; &#47;* 设置circle的边框宽度 *&#47;  
+}  
+  
+#hierarchy-svg circle:hover {  
+  fill: #f00; &#47;* 鼠标悬停时改变circle的背景色 *&#47;  
+}  
+  
+#hierarchy-svg text {  
+  fill: #333; &#47;* 设置text的颜色 *&#47;  
+  font-family: Arial, sans-serif; &#47;* 设置字体 *&#47;  
+  font-size: 12px; &#47;* 设置字体大小 *&#47;  
+}
+这样做的好处
+统一样式管理：通过将SVG样式放在CSS文件中，你可以更容易地管理和维护样式。这意味着你可以在一个地方更改所有circle或text元素的样式，而不是在每个SVG元素中单独设置。
+代码复用：CSS的复用性意味着你可以为SVG元素定义通用的样式规则，并在多个SVG实例中应用这些规则。
+响应式设计：使用CSS媒体查询，你可以轻松地调整SVG元素的样式以适应不同的屏幕尺寸和分辨率，实现响应式设计。
+易于阅读和维护：将样式与结构分离可以使HTML和SVG代码更易于阅读和维护。CSS文件本身也更容易组织和管理。
+动画和过渡效果：CSS还支持动画和过渡效果，这意味着你可以很容易地为SVG元素添加动态效果，如颜色变化、大小缩放等。
+与现有工具集成：许多现有的前端工具，如预处理器（如Sass或Less）、CSS框架（如Bootstrap）和CSS-in-JS库（如styled-components或emotion），都可以与CSS一起使用来增强SVG样式的开发体验。
+通过结合使用SVG和CSS，你可以创建出既功能强大又视觉吸引人的可视化图表和图形。</div>2024-06-14</li><br/><li><span>南风知我意NY</span> 👍（0） 💬（0）<div>老师，获取地区数据接口报错怎么办？</div>2021-11-30</li><br/>
+</ul>

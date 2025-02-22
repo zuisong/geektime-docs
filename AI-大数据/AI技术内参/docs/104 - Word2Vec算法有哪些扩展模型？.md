@@ -51,3 +51,6 @@
 2\. Jian Tang, Meng Qu, Mingzhe Wang, Ming Zhang, Jun Yan, and Qiaozhu Mei. [LINE: Large-scale Information Network Embedding](http://www.www2015.it/documents/proceedings/proceedings/p1067.pdf). Proceedings of the 24th International Conference on World Wide Web (WWW '15). International World Wide Web Conferences Steering Committee, Republic and Canton of Geneva, Switzerland, 1067-1077, 2015.
 
 3\. Mihajlo Grbovic, Nemanja Djuric, Vladan Radosavljevic, Fabrizio Silvestri, and Narayan Bhamidipati. [Context- and Content-aware Embeddings for Query Rewriting in Sponsored Search](https://astro.temple.edu/~tua95067/grbovic2015sigirconf.pdf). Proceedings of the 38th International ACM SIGIR Conference on Research and Development in Information Retrieval (SIGIR '15). ACM, New York, NY, USA, 383-392, 2015.
+<div><strong>精选留言（1）</strong></div><ul>
+<li><span>韩 * *</span> 👍（0） 💬（0）<div>能想到的一个就是将数据离散化，并同时用出不同的离散粒度来捕捉不同层级的内在联系，最终将结果拼接起来。反过来想，如果是用户id等有规律增长离散数据，类似将前n位分别做嵌入再合并是否也会有些收益？</div>2019-08-05</li><br/>
+</ul>

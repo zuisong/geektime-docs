@@ -220,3 +220,60 @@ Containers:
 然后再来修改 Pod，在运行容器时执行 “touch /data/config.txt” 命令来创建这个配置文件，再观察一下 Pod 的运行情况。
 
 相信经过动手实践，会让你对知识的理解更加深刻。
+<div><strong>精选留言（2）</strong></div><ul>
+<li><span>Y</span> 👍（0） 💬（1）<div>1.设置启动探针
+# my-pod-probe.yaml 
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod-probe
+spec:
+  containers:
+  - name: nginx-c-probe
+    image: swr.cn-north-4.myhuaweicloud.com&#47;ddn-k8s&#47;docker.io&#47;nginx:1.26.1-alpine
+    startupProbe:
+      exec:
+        command:
+        - cat
+        - &#47;root&#47;config.txt
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 3
+
+2.然后再来修改 Pod，在运行容器时执行 “touch &#47;data&#47;config.txt” 命令来创建这个配置文件，再观察一下 Pod 的运行情况
+
+这个试了半天都没成功。不知道哪里出问题了。请老师帮看一下。
+# my-pod-probe.yaml 
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod-probe
+spec:
+  containers:
+  - name: nginx-c-probe
+    image: swr.cn-north-4.myhuaweicloud.com&#47;ddn-k8s&#47;docker.io&#47;nginx:1.26.1-alpine
+    command: [&quot;&#47;bin&#47;sh&quot;, &quot;-c&quot;]
+    args: [&quot;touch &#47;root&#47;config.txt&quot;]
+    startupProbe:
+      exec:
+        command:
+        - cat
+        - &#47;root&#47;config.txt
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 3
+
+</div>2024-08-21</li><br/><li><span>抱紧我的小鲤鱼</span> 👍（0） 💬（1）<div>
+    readinessProbe:
+      exec:
+        command:
+        - cat
+        - &#47;data&#47;config.txt
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 3
+</div>2024-07-27</li><br/>
+</ul>

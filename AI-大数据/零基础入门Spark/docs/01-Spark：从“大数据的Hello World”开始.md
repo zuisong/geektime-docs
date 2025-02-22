@@ -239,3 +239,115 @@ wordCounts.map{case (k, v) => (v, k)}.sortByKey(false).take(5)
 欢迎你把答案分享到评论区，我在评论区等你。
 
 如果这一讲对你有帮助，也欢迎你分享给自己的朋友，我们下一讲再见！
+<div><strong>精选留言（15）</strong></div><ul>
+<li><span>Alvin-L</span> 👍（21） 💬（6）<div>在Python中运行:
+``` 
+from pyspark import SparkContext
+
+textFile = SparkContext().textFile(&quot;.&#47;wikiOfSpark.txt&quot;)
+wordCount = (
+    textFile.flatMap(lambda line: line.split(&quot; &quot;))
+    .filter(lambda word: word != &quot;&quot;)
+    .map(lambda word: (word, 1))
+    .reduceByKey(lambda x, y: x + y)
+    .sortBy(lambda x: x[1], False)
+    .take(5)
+)
+print(wordCount)
+#显示: [(&#39;the&#39;, 67), (&#39;Spark&#39;, 63), (&#39;a&#39;, 54), (&#39;and&#39;, 51), (&#39;of&#39;, 50)]
+``` 
+</div>2021-09-20</li><br/><li><span>liugddx</span> 👍（44） 💬（4）<div>我是一个大数据小白，我想咨询下spark和hadoop在大数据体系下的关系？</div>2021-09-07</li><br/><li><span>Neo-dqy</span> 👍（26） 💬（5）<div>老师好！wordCounts.map{case (k, v) =&gt; (v, k)}.sortByKey(false).take(5)这行代码我还存在疑问，为什么这里的map函数使用了花括号{ }而不是上面一些算子的( )，同时这个case又是什么意思？这一行代码非常像我曾经在Python中使用字典数据结构，然后根据字典值的升序排序。最后，貌似Scala语言本身就可以实现wordcount案例，那么它本身的实现和spark实现相比，spark有什么优势呢？</div>2021-09-18</li><br/><li><span>Vic</span> 👍（8） 💬（9）<div>遇到这个问题
+scala&gt; val rootPath: String = _
+&lt;console&gt;:24: error: unbound placeholder parameter
+       val rootPath: String = _
+网上搜一下，说这是汇编错误。
+要把val 改成var , 但会遇到&quot;_&quot;这default值是null。
+org.apache.hadoop.mapred.InvalidInputException: Input path does not exist: file:&#47;Users&#47;vic&#47;src&#47;data&#47;null&#47;wikiOfSpark.txt
+这一段就先跳过root_path，直接给file一个路径，是可以成功运行&quot;word count&quot;,得到和老师一样的结果:
+[Stage 0:&gt;                                                          (0 + 2) &#47;                                                                               res0: Array[(Int, String)] = Array((67,the), (63,Spark), (54,a), (51,and), (50,of))</div>2021-09-07</li><br/><li><span>Neo-dqy</span> 👍（6） 💬（1）<div>老师我可以再问一下，如果我是用IDEA创建Spark项目，是不是只要配置好Scala的SDK，然后在pom文件中加入对应版本号的spark依赖，就会自动下载spark包了？这个时候不需要再去官网下载spark了吗，同时也不再需要使用spark-shell了吗？</div>2021-09-18</li><br/><li><span>Abigail</span> 👍（6） 💬（1）<div>前排占座！三年前接触过 Spark 今天从头再学！</div>2021-09-07</li><br/><li><span>浮生若梦</span> 👍（4） 💬（4）<div>Java实现：
+
+SparkConf sparkConf = new SparkConf().setAppName(&quot;Test&quot;).setMaster(&quot;local[*]&quot;);
+        JavaSparkContext JSC = new JavaSparkContext(sparkConf);
+
+        &#47;&#47; 读取文件内容
+        JavaRDD&lt;String&gt; lineRDD = JSC.textFile(&quot;wikiOfSpark.txt&quot;);
+        &#47;&#47; 以行为单位做分词
+        JavaRDD&lt;String&gt; wordRDD = lineRDD.flatMap(new FlatMapFunction&lt;String, String&gt;() {
+            @Override
+            public Iterator&lt;String&gt; call(String s) throws Exception {
+                return  Arrays.asList(s.split(&quot; &quot;)).iterator();
+            }
+        });
+        JavaRDD&lt;String&gt; cleanWordRDD = wordRDD.filter(new Function&lt;String, Boolean&gt;() {
+            @Override
+            public Boolean call(String s) throws Exception {
+                return !s.equals(&quot;&quot;);
+            }
+        });
+
+        &#47;&#47; 把RDD元素转换为（Key，Value）的形式
+        JavaPairRDD&lt;String, Integer&gt; kvRDD = cleanWordRDD.mapToPair(new PairFunction&lt;String, String, Integer&gt;() {
+            @Override
+            public Tuple2&lt;String, Integer&gt; call(String s) throws Exception {
+                return new Tuple2&lt;String, Integer&gt;(s,1);
+            }
+        });
+        &#47;&#47; 按照单词做分组计数
+        JavaPairRDD&lt;String, Integer&gt; wordCounts = kvRDD.reduceByKey(new Function2&lt;Integer, Integer, Integer&gt;() {
+            @Override
+            public Integer call(Integer integer, Integer integer2) throws Exception {
+                return integer+integer2;
+            }
+        });
+        &#47;&#47; 打印词频最高的5个词汇(先将元组的key value交换一下顺序，然后在调用sortByKey())
+        wordCounts.mapToPair((row)-&gt;  new Tuple2&lt;&gt;(row._2,row._1)).sortByKey(false).foreach(new VoidFunction&lt;Tuple2&lt;Integer, String&gt;&gt;() {
+            @Override
+            public void call(Tuple2&lt;Integer, String&gt; stringIntegerTuple2) throws Exception {
+                System.out.println(stringIntegerTuple2._1 + &quot;:&quot; + stringIntegerTuple2._2);
+            }
+        });
+
+        &#47;&#47;关闭context
+        JSC.close();</div>2021-12-24</li><br/><li><span>火炎焱燚</span> 👍（3） 💬（2）<div>Python版代码为：
+
+file=&#39;~~~&#47;wikiOfSpark.txt&#39;
+lineRDD=sc.textFile(file)
+lineRDD.first() # 会打印出lineRDD的第一行： u&#39;Apache Spark&#39;，如果出错则不打印
+wordRDD=lineRDD.flatMap(lambda line: line.split(&quot; &quot;))
+cleanWordRDD=wordRDD.filter(lambda word: word!=&#39;&#39;)
+kvRDD=cleanWordRDD.map(lambda word:(word,1))
+wordCounts=kvRDD.reduceByKey(lambda x,y:x+y)
+wordCounts.map(lambda (k,v):(v,k)).sortByKey(False).take(5)</div>2021-09-17</li><br/><li><span>Unknown element</span> 👍（3） 💬（1）<div>问下执行 val lineRDD: RDD[String] = spark.sparkContext.textFile(file) 报错error: not found: value spark是怎么回事？</div>2021-09-17</li><br/><li><span>国度</span> 👍（2） 💬（1）<div>2022年2月5号学习打卡记录
+机器环境：ROG14
+操作系统：win11 + wsl Ubuntu20.04
+环境变量：
+----------------------------
+
+export SPARK_HOME=&#47;mnt&#47;c&#47;spark&#47;spark-2.4.8-bin-hadoop2.7
+export JAVA_HOME=&#47;mnt&#47;c&#47;linux_environment&#47;jdk&#47;jdk1.8.0_321
+export M2_HOME=&#47;mnt&#47;c&#47;linux_environment&#47;apache-maven-3.8.4
+export SCALA_HOME=&#47;mnt&#47;c&#47;linux_environment&#47;scala3-3.1.1
+
+export PATH=$SPARK_HOME&#47;bin:$SCALA_HOME&#47;bin:$M2_HOME&#47;bin:$JAVA_HOME&#47;bin:$PATH
+
+---------------------------
+希望帮助和我一样从零开始一起学习的同学躲避一些坑：
+
+坑1：jdk版本不兼容：
+一开始使用jdk17版本，在启动过程中一直报错，降为1.8后启动成功；
+
+坑2：hadoop版本问题：
+hadoop3.2.1 逐步使用Dataset，报错类型转换异常；
+由于scala经验不足，暂时无法大规模改写老师的代码，降低版本为spark2.4.8
+下载地址：https:&#47;&#47;dlcdn.apache.org&#47;spark&#47; 可以选择适合的版本下载
+
+原理性的还没有搞懂，目前在第一阶段，读懂，简单改写为主；
+
+感谢吴磊老师的课</div>2022-02-05</li><br/><li><span>猫太太</span> 👍（2） 💬（1）<div>请问在本地部署spark环境不需要先安装hadoop么</div>2021-11-18</li><br/><li><span>巴普洛夫的</span> 👍（1） 💬（2）<div>wordCounts.map{case (k, v) =&gt; (v, k)}.sortByKey(false) 
+这一步是做了什么呢，没有见过的语法</div>2021-09-12</li><br/><li><span>Z</span> 👍（1） 💬（1）<div>为啥我的结果是单个字母呢？</div>2021-09-08</li><br/><li><span>钱鹏 Allen</span> 👍（1） 💬（1）<div>注意空格“ ”，和空字符串“”，前者有空格，后者没有
+
+书写的时候，根据自己的文件所在目录来，比如我的是 &#47;input&#47;wikiOfSpark.txt
+不要遗漏后缀名。
+
+学习的过程，需要给自己一些耐心和鼓励，一起加油把！</div>2021-09-07</li><br/><li><span>GAC·DU</span> 👍（1） 💬（1）<div>Spark RDD算子分为Transformation算子和Action算子，Transformation算子基本上都是延迟计算，需要通过调用Action算子进行触发。</div>2021-09-07</li><br/>
+</ul>

@@ -87,3 +87,6 @@ Cocos2d-JS是Cocos2d-x的一个分支，只要对HTML5游戏有所了解的话�
 现在流行的微信小游戏，目前只支持3M左右的大小，否则就审核不过，那么如果在游戏资源大的情况下，有什么方案可以让游戏维持在3M大小呢？
 
 欢迎留言说出你的看法。我在下一节的挑战中等你！
+<div><strong>精选留言（10）</strong></div><ul>
+<li><span>chen</span> 👍（6） 💬（1）<div>资源从网络上加载</div>2018-06-23</li><br/><li><span>Geek_2yt3sd</span> 👍（4） 💬（1）<div>白鹭，cocos都快凉了，目前国内稍微好一些的是laya了</div>2018-06-24</li><br/><li><span>叶Da</span> 👍（0） 💬（1）<div>cocos creator不谈论吗</div>2018-08-07</li><br/><li><span>💦 Peter Pan</span> 👍（2） 💬（0）<div>LayaAir引擎怎么样</div>2018-06-23</li><br/><li><span>jacky</span> 👍（1） 💬（0）<div>请问有可以用做gis引擎吗？</div>2020-05-12</li><br/><li><span>三硝基甲苯</span> 👍（1） 💬（0）<div>那些图形材质，声音文件可以选择需要时再从网络下载到本地   本地的缓存好像可以到10M，每次加载的时候 都先清除不需要的。</div>2018-06-26</li><br/><li><span>ifelse</span> 👍（0） 💬（0）<div>资源动态加载</div>2024-04-06</li><br/><li><span>神马*涛💋</span> 👍（0） 💬（0）<div>这个课程初的时候。CocosCreator应该还没诞生！</div>2021-09-07</li><br/><li><span>LFR</span> 👍（0） 💬（0）<div>实时从远程按需加载</div>2018-07-15</li><br/><li><span>小宝儿</span> 👍（0） 💬（0）<div>只留下最基本加载，其余的包括图片，声音和脚本全部下载</div>2018-07-02</li><br/>
+</ul>

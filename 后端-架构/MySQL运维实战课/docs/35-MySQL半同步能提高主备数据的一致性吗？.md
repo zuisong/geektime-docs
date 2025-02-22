@@ -291,3 +291,7 @@ rpl\_semi\_sync\_master\_wait\_point可以设置为AFTER\_SYNC或AFTER\_COMMIT�
 那么怎么检查主备库之间的数据是不是一致的呢？
 
 期待你的思考，欢迎在留言区中与我交流。如果今天的课程让你有所收获，也欢迎转发给有需要的朋友。我们下节课再见。
+<div><strong>精选留言（2）</strong></div><ul>
+<li><span>叶明</span> 👍（3） 💬（1）<div>可以用 pt-table-checksum 工具来校验主备数据的一致性。主要原理是让主备处于理论上数据一致的视图里，利用事务的可重复读以及函数 WAIT_FOR_EXECUTED_GTID_SET(gtid_set[, timeout]) &#47; MASTER_POS_WAIT(log_name,log_pos[,timeout][,channel]) 来拿到主备理论上的一致性视图，
+然后分别计算主备上表分批的 checksum，不同就代表这段范围的数据不一致，再到行级别比对数据。</div>2024-11-12</li><br/><li><span>binzhang</span> 👍（2） 💬（1）<div>Question: in chapter &quot;事务怎么回滚（上）&quot;, you mention in undo segment header save TrxID, XA XID, GTID.  what&#39;s difference between TrxID and XA XID and this chapter&#39;s XID?  looks like innodb also write GTID to undo header during two-phase commit?</div>2024-11-21</li><br/>
+</ul>

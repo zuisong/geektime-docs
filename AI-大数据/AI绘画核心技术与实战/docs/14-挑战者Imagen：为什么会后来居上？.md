@@ -218,3 +218,30 @@ image[0].save("./if_stage_III.png")
 在课程的最后，我给你布置了一道思考题。除了我们今天学习的Google T5模型，你还知道哪些优秀的大语言模型，可以用于AI绘画模型的文本编码？
 
 欢迎你在评论区里记录自己的思考或者疑问，我们可以一起留言讨论，共同进步！
+<div><strong>精选留言（5）</strong></div><ul>
+<li><span>Toni</span> 👍（1） 💬（3）<div>在Colab A100 下跑 DeepFloyd IF 的代码会出现下列报错:
+
+ModuleNotFoundError                       Traceback (most recent call last)
+&lt;ipython-input-8-1bb975dcc2d2&gt; in &lt;cell line: 7&gt;()
+      5 # stage 1
+      6 stage_1 = DiffusionPipeline.from_pretrained(&quot;DeepFloyd&#47;IF-I-M-v1.0&quot;, variant=&quot;fp16&quot;, torch_dtype=torch.float16)
+----&gt; 7 stage_1.enable_xformers_memory_efficient_attention()  # remove line if torch.__version__ &gt;= 2.0.0
+      8 stage_1.enable_model_cpu_offload()
+      9 
+
+8 frames
+&#47;usr&#47;local&#47;lib&#47;python3.10&#47;dist-packages&#47;diffusers&#47;models&#47;attention_processor.py in set_use_memory_efficient_attention_xformers(self, use_memory_efficient_attention_xformers, attention_op)
+    191                 )
+    192             if not is_xformers_available():
+--&gt; 193                 raise ModuleNotFoundError(
+    194                     (
+    195                         &quot;Refer to https:&#47;&#47;github.com&#47;facebookresearch&#47;xformers for more information on how to install&quot;
+
+ModuleNotFoundError: Refer to https:&#47;&#47;github.com&#47;facebookresearch&#47;xformers for more information on how to install xformers
+
+--------------------
+
+再装 xformers 后报错依旧，什么原因?
+pip install -U xformers</div>2023-08-18</li><br/><li><span>Eric.Sui</span> 👍（0） 💬（1）<div>边缘重绘用什么方案？算是变体吗？</div>2023-08-24</li><br/><li><span>Geek_7401d2</span> 👍（0） 💬（1）<div>老师您好，DeepFloyd IF模型和stable diffusion 1.5、stable diffusion 2.0等是什么关系呢，他们是两类扩散模型吗？生成效果哪个更好呢</div>2023-08-22</li><br/><li><span>cmsgoogle</span> 👍（0） 💬（1）<div>运行上面这段代码，需要至少 20G 以上的显存。如果需要降低显存占用，可以用 xFormer 优化 Transformer 的计算效率，或者释放已经完成推理的模型资源等。
+- TextinImage的示例代码没有给出。</div>2023-08-20</li><br/><li><span>zhihai.tu</span> 👍（0） 💬（1）<div>在哪里可以体验下imagen绘画呢？</div>2023-08-18</li><br/>
+</ul>
