@@ -6460,6 +6460,162 @@
 <p>2.对于我们今天学过的4个算子，再加上没有详细解释的mapPartitionsWithIndex，你能说说，它们之间有哪些共性或是共同点吗？</p>
 <p>3.你能说一说，在日常的工作中，还遇到过哪些可以在mapPartitions中初始化的共享对象呢？</p>
 <p>欢迎你在评论区回答这些练习题。你也可以把这一讲分享给更多的朋友或者同事，和他们一起讨论讨论，交流是学习的催化剂。我在评论区等你。</p>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>qinsi</span> 👍（45） 💬（11）<div>不是很懂spark。mapPartitions()那里，光从代码上来看的话，在map()的闭包里可以访问到外面mapPartitions()闭包里的同一个md5实例，从而达到共享实例的效果。那么有没有可能在最外层创建一个全局的md5实例，这样就算只用map()，在闭包里访问的也是这同一个实例？这样会有什么问题吗？或者说在这种情况下mapPartitions()相比map()还有什么优势？</div>2021-09-16</li><br/><li><span>Unknown element</span> 👍（22） 💬（1）<div>老师您回答一楼的问题时提到的序列化意思是不是对象在不同节点间传输的时候只能序列化为字符串传输？如果是的话那我觉得 在mapPartitions里面创建MD5实例，map引用这个对象，Spark却没有报“Task not Serializable”错误 是因为driver把这段代码分发到了各个executor，而创建对象这个工作是由executor完成的，所以不会报错？</div>2021-09-24</li><br/><li><span>Geek_eb2d3d</span> 👍（8） 💬（1）<div>老师，我在 map 里面使用 SparkContext 或 SparkSession 创建新的 RDD，这样是可以的么？</div>2021-09-28</li><br/><li><span>Alvin-L</span> 👍（7） 💬（3）<div>Python版,虽然能跑,但是不知道对不对:
+#哈希值计数
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>from hashlib import md5
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>from pyspark import SparkContext
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>def f(partition):
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    m = md5()
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    for word in partition:
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>        m.update(word.encode(&amp;quot;utf8&amp;quot;))
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>        yield m.hexdigest()
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>lineRDD = SparkContext().textFile(&amp;quot;.&amp;#47;wikiOfSpark.txt&amp;quot;)
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>kvRDD = (
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    lineRDD.flatMap(lambda line: line.split(&amp;quot; &amp;quot;))
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    .filter(lambda word: word != &amp;quot;&amp;quot;)
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>    .mapPartitions(f)
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>    .map(lambda word: (word, 1))
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>)
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>kvRDD.foreach(print)
+</code></pre></div>
+
+#相邻+过滤特殊字符
+``` 
+from pyspark import SparkContext
+
+# 定义特殊字符列表
+special_char_list = [&quot;&amp;&quot;, &quot;|&quot;, &quot;#&quot;, &quot;^&quot;, &quot;@&quot;]
+# 定义判定函数f
+def f(s):
+    words = s.split(&quot;-&quot;)
+    b1 = words[0] in special_char_list
+    b2 = words[1] in special_char_list
+    return (not b1) and (not b2)
+
+
+# 定义拼接函数word_pair
+def word_pair(line):
+    words = line.split(&quot; &quot;)
+    for i in range(len(words) - 1):
+        yield words[i] + &quot;-&quot; + words[i + 1]
+
+
+lineRDD = SparkContext().textFile(&quot;.&#47;wikiOfSpark.txt&quot;)
+cleanedPairRDD = lineRDD.flatMap(word_pair).filter(f)
+cleanedPairRDD.foreach(print)
+
+``` </div>2021-09-21</li><br/><li><span>Geek_a30533</span> 👍（4） 💬（1）<div>对scala的函数定义格式不是很清楚，那边绕了好几次，有一个小疑问，在flatMap里的匿名函数f
+
+line =&gt; {  
+            val words: Array[String] = line.split(&quot; &quot;)  
+            for (i &lt;- 0 until words.length - 1) yield words(i) + &quot;-&quot; + words(i+1)
+        }
+
+只定义了形参是line，那出参是整个花括号么？主要是没有return，让我一下迷了，难道是最后一个是Array[String]所以返回值就是这个？不用声明吗？</div>2021-10-14</li><br/><li><span>子兮</span> 👍（4） 💬（1）<div>老师，请问，一个变量m被filter 算子内部计算时使用，若m定义在了filter算子所在函数内，也就是变量和算子在同一个函数里，就不会报序列化问题，若定义在了函数之外就会报序列化问题，这是为什么？看了一些解释，说是函数闭包，也不是很理解</div>2021-09-26</li><br/><li><span>木之上</span> 👍（3） 💬（1）<div>老师，在学习这些算子的时候，像map，flatmap是否可以类比JAVA8的lambda表达式+stream流去学习</div>2022-02-23</li><br/><li><span>DMY</span> 👍（3） 💬（3）<div>数据做map映射是以元素为粒度，执行f函数；
+这里业务场景中，f函数需要调用rpc，每个数据调一次rpc+数据量大就会非常耗时。
+所以想把一组数据打包成一个list减少rpc调用，来提高效率，这里要怎么处理呢</div>2021-10-20</li><br/><li><span>大叮当</span> 👍（3） 💬（4）<div>同问老师,AIK问的问题，什么时候用小括号什么时候用花括号啊，感觉scala实在有点过于灵活</div>2021-09-16</li><br/><li><span>孙浩</span> 👍（2） 💬（1）<div>有疑问，吴老师，PariedRDD中的（K，V），1.对应的数据类型应该是scala中的元组吧？2.reduceByKey为啥不支持元素是map类型？或者如果我存在一个RDD[Map[String,Int]]，我想做reduceByKey操作，应该怎么实现？</div>2021-11-05</li><br/><li><span>Geek_390836</span> 👍（2） 💬（1）<div>参考map和mapPartitions，为什么mapPartitions中的map，是对record进行getbytes而不是word.getbytes操作，刚学spark，求老师解答</div>2021-09-16</li><br/><li><span>钱鹏 Allen</span> 👍（1） 💬（1）<div>mapPartitionsWithIndex  需要结合分区索引使用
+map filter flatMap mapPartitions mapPartitionsWithIndex  通过函数，传递参数，返回新的RDD
+mapPartitions 采集系统中，只需实例化一次电表号，可读其他各类读数</div>2021-09-18</li><br/><li><span>艾利特-G</span> 👍（0） 💬（1）<div>&#47;&#47; 相邻词汇计数统计
+package com.shouneng
+
+import org.apache.spark.rdd.RDD
+import org.apache.spark.{SparkConf, SparkContext}
+
+object NeighboringWordCount {
+  def main(args: Array[String]) {
+    try {
+      val conf =
+        new SparkConf().setAppName(&quot;NeighboringWordCount&quot;).setMaster(&quot;local[1]&quot;)
+      val sparkContext = new SparkContext(conf)
+      val rootPath: String = &quot;file:&#47;&#47;&quot;
+      val file: String =
+        s&quot;${rootPath}&#47;home&#47;shouneng&#47;geektime&#47;Getting_Started_with_Spark&#47;chapter01&#47;wikiOfSpark.txt&quot;
+
+      &#47;&#47; 读取文件内容
+      val lineRDD: RDD[String] = sparkContext.textFile(file)
+      &#47;&#47;   val wordRDD: RDD[String] = lineRDD.flatMap(line =&gt; line.split(&quot; &quot;))
+      &#47;&#47;   val cleanWordRDD: RDD[String] = wordRDD.filter(word =&gt; !word.equals(&quot;&quot;))
+
+      val wordPairRDD: RDD[String] = lineRDD.flatMap(line =&gt; {
+        val words: Array[String] =
+          line.split(&quot; &quot;).filter(word =&gt; !word.equals(&quot;&quot;))
+        for (i &lt;- 0 until words.length - 1) yield words(i) + &quot;-&quot; + words(i + 1)
+      })
+      val kvRDD: RDD[(String, Int)] = wordPairRDD.map(wordPair =&gt; (wordPair, 1))
+      val wordCounts: RDD[(String, Int)] = kvRDD.reduceByKey((x, y) =&gt; x + y)
+
+      wordCounts
+        .map { case (k, v) =&gt; (v, k) }
+        .sortByKey(false)
+        .take(5)
+        .foreach(println)
+    } catch {
+      case ex: Exception =&gt; {
+        ex.printStackTrace() &#47;&#47; 打印到标准err
+        System.err.println(&quot;exception===&gt;: ...&quot;) &#47;&#47; 打印到标准err
+      }
+    }
+  }
+}</div>2022-01-03</li><br/><li><span>孙浩</span> 👍（0） 💬（1）<div>吴老师，mapPartitions的是不是也避免了对象锁的问题，因为partitions对应的也是任务数。</div>2021-11-05</li><br/><li><span>小强</span> 👍（0） 💬（1）<div>import org.apache.spark.rdd.RDD
+
+&#47;&#47; 这里的下划线&quot;_&quot;是占位符，代表数据文件的根目录
+val rootPath: String = &quot;&#47;home&#47;gxchen&#47;Spark&#47;01-wordCount&quot;
+val file: String = s&quot;${rootPath}&#47;wikiOfSpark.txt&quot;
+
+&#47;&#47; 读取文件内容
+val lineRDD: RDD[String] = spark.sparkContext.textFile(file)
+
+&#47;&#47; 以行为单位做分词
+val wordPairRDD: RDD[String] = lineRDD.flatMap(line =&gt; {
+    val words: Array[String] = line.split(&quot; &quot;)
+    for (i &lt;- 0 until words.length - 1) yield words(i) + &quot;-&quot; + words(i+1)
+})
+
+
+
+&#47;&#47; 定义特殊字符列表
+val list: List[String] = List(&quot;&amp;&quot;, &quot;|&quot;, &quot;#&quot;, &quot;^&quot;, &quot;@&quot;)
+
+&#47;&#47; 定义判定函数f
+def f(s: String): Boolean = {
+    val words: Array[String] = s.split(&quot;-&quot;)
+    val b1: Boolean = list.contains(words(0))
+    val b2: Boolean = list.contains(words(1))
+    return !b1 &amp;&amp; !b2 &#47;&#47; 返回不在特殊字符列表中的词汇对
+}
+
+&#47;&#47; 使用filter(f)对RDD进行过滤
+val cleanWordPairRDD: RDD[String] = wordPairRDD.filter(f)
+
+&#47;&#47; 把RDD元素转换为（Key，Value）的形式
+val kvRDD: RDD[(String, Int)] = cleanWordPairRDD.map(wordPair =&gt; (wordPair, 1))
+&#47;&#47; 按照单词做分组计数
+val wordPairCounts: RDD[(String, Int)] = kvRDD.reduceByKey((x, y) =&gt; x + y)
+
+&#47;&#47; 打印词频最高的5个词汇
+wordPairCounts.map{case (k, v) =&gt; (v, k)}.sortByKey(false).take(5)
+
+
+运行了以上代码后，报错。想了半天也没弄明白，求助一下！
+21&#47;10&#47;24 04:58:42 ERROR Executor: Exception in task 1.0 in stage 2.0 (TID 3)
+java.lang.ArrayIndexOutOfBoundsException: 1
+        at $line33.$read$$iw$$iw$$iw$$iw$$iw$$iw$$iw$$iw$$iw.f(&lt;console&gt;:29)
+        at $line34.$read$$iw$$iw$$iw$$iw$$iw$$iw$$iw$$iw$$iw.$anonfun$cleanWordPairRDD$1(&lt;console&gt;:27)
+
+21&#47;10&#47;24 04:58:42 WARN TaskSetManager: Lost task 1.0 in stage 2.0 (TID 3) (localhost executor driver): java.lang.ArrayIndexOutOfBoundsException: 1
+
+21&#47;10&#47;24 04:58:42 ERROR TaskSetManager: Task 1 in stage 2.0 failed 1 times; aborting job
+21&#47;10&#47;24 04:58:42 ERROR Executor: Exception in task 0.0 in stage 2.0 (TID 2)
+
+21&#47;10&#47;24 04:58:42 WARN TaskSetManager: Lost task 0.0 in stage 2.0 (TID 2) (localhost executor driver): java.lang.ArrayIndexOutOfBoundsException: 0</div>2021-10-24</li><br/>
+</ul>
 
 
 

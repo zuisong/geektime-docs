@@ -13980,6 +13980,245 @@
 <li>Atomic Usize 是 usize 的原子类型： <a href="https://doc.rust-lang.org/std/sync/atomic/index.html">std::sync::atomic 的文档</a></li>
 <li>内部可变性：除了 RefCell 之外，Rust 还提供了 Cell。如果你想对 RefCell 和 Cell 进一步了解，可以看 Rust 标准库里<a href="https://doc.rust-lang.org/std/cell/index.html">cell 的文档</a>。</li>
 </ol>
+<div><strong>精选留言（15）</strong></div>
+<ul>
+<li><span>清风徐来</span> 👍（14） 💬（6）<div>老师问一个额外的问题
+以anyhow、clap库为例，通篇看rust技术文档有一种很蒙蔽的感觉，感觉文档只是把技术点拆的很零碎进行说明（如：有哪些struct、trait等），外加一个没有实质性帮助的为例文档代码，感觉和其他语言的技术文档很不一样；一句话来说明：文档描述拆的很零碎，并没有一个清晰地整体的统一使用说明，致使无从下手；这个问题如何解决？？？</div>2022-03-18</li><br/><li><span>有铭</span> 👍（69） 💬（7）<div>今天这章我看完以后感觉有一股非常遗憾的情绪：
+我原本以为rust真的用编译时检查解决了当年C++面临的那些问题。结果最后还是妥协撕开了一道口子开了后门，而且这个后门开的很复杂，我的感觉，这个特性，将来要么就是没什么人用，要么就是被人滥用。这个东西对人的自控要求太高了</div>2021-09-11</li><br/><li><span>lisiur</span> 👍（39） 💬（3）<div>老师您好，在代码3里，把内部作用域去掉会导致运行时错误，但是如果使用普通的借用方式像这样：
+
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">fn</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="k">mut</span><span class="w"> </span><span class="n">data</span><span class="p">;</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">    </span><span class="o">*</span><span class="n">v</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;</span><span class="n">data</span><span class="p">:</span><span class="w"> </span><span class="p">{:</span><span class="o">?</span><span class="p">}</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">data</span><span class="p">);</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="p">}</span>
+</code></pre></div>
+
+却不需要使用多余的作用域。
+
+我的理解是普通的借用方式走的是编译期检查，编译器标记借用的生命期的粒度比作用域要小，比如上述代码的 mut 借用，正常的生命期应该是到main函数结束，但是编译器应该是把它缩小到了 println 代码之前的位置，所以 println 的不可变借用并不和上面的可变借用冲突。但是运行时的&quot;生命期检查&quot;应该就是作用域粒度的，所以需要使用额外的作用域来达到手动 drop 可变借用的效果。
+
+我的想法是，既然编译期能够做到尽可能小的缩小借用的生命周期，那编译器能不能自动对这种特殊的内部可变性的借用在合适的位置插入drop代码，使得不使用额外的作用域也能满足运行时检查呢？</div>2021-09-10</li><br/><li><span>千回百转无劫山</span> 👍（37） 💬（3）<div>1. 错误为线程借用的arr生命周期可能会长于main函数中的arr，简单处理的话把main中arr的所有权move到线程里即可，编译器对此有详尽的提示：
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">fn</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">arr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="fm">vec!</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">    </span><span class="n">std</span><span class="p">::</span><span class="n">thread</span><span class="p">::</span><span class="n">spawn</span><span class="p">(</span><span class="k">move</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">        </span><span class="fm">println!</span><span class="p">(</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;{:</span><span class="o">?</span><span class="p">}</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;,</span><span class="w"> </span><span class="n">arr</span><span class="p">);</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">    </span><span class="p">});</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="p">}</span>
+</code></pre></div>
+2. 这个问题其实是第1个问题的延续，如果将main中变量的所有权move到线程中，那么在main中将无法访问，所以使用Arc这个智能指针即可实现共享所有权：
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">use</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">sync</span><span class="p">::</span><span class="n">Arc</span><span class="p">;</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="k">fn</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Arc</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;</span><span class="n">rust</span><span class="w"> </span><span class="n">rocks</span><span class="o">!&amp;</span><span class="n">quot</span><span class="p">;);</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">s1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">clone</span><span class="p">();</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">thread</span><span class="p">::</span><span class="n">spawn</span><span class="p">(</span><span class="k">move</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">        </span><span class="fm">println!</span><span class="p">(</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;</span><span class="n">thread</span><span class="p">:</span><span class="w"> </span><span class="p">{:</span><span class="o">?</span><span class="p">}</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;,</span><span class="w"> </span><span class="n">s1</span><span class="p">);</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">    </span><span class="p">});</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;</span><span class="n">main</span><span class="p">:</span><span class="w"> </span><span class="p">{:</span><span class="o">?</span><span class="p">}</span><span class="o">&amp;</span><span class="n">quot</span><span class="p">;,</span><span class="w"> </span><span class="n">s</span><span class="p">);</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="w">    </span><span class="n">handler</span><span class="p">.</span><span class="n">join</span><span class="p">().</span><span class="n">unwrap</span><span class="p">();</span>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="p">}</span>
+</code></pre></div>
+3. 不太确定，查文档看调用链是inner方法返回了RcBox，RcBox调用的inc_strong是RcInnerPtr这个trait的方法，它会通过调用该trait的strong_ref方法返回cell，而cell是一个可变的共享容器，即最终通过cell共享内存来改变内部数据。
+
+看完这一小节产生一个疑问，本小节介绍的智能指针都是为了突破rust编译期的所有权规则限制。那为什么要先做限制再提供突破限制的方法呢？这样做的意义是否可以理解为就像unsafe或者最小权限原则一样，大部分情况下，遵循所有权规则，仅在必要的时候使用智能指针来突破限制？如果用户滥用了智能指针，那么是否就像滥用了unsafe一样，rust内存安全等特性就无法保证了？</div>2021-09-10</li><br/><li><span>dotfiles</span> 👍（17） 💬（1）<div>1. rust由于所有权以及默认不可变等限制,导致最常见的数据结构---链表的实现变得相当复杂,常见的实现使用了3层结构体.
+Option&lt;&gt;提供空和非空,相关: Some&#47;None
+Rc&lt;T&gt;提供引用计数,相关: New&#47;clone; 如果为了避免循环引用,还要考虑downgrade&#47;upgrade; 这块和cpp的shared_ptr&#47;weak_ptr类似.
+RefCell&lt;T&gt;提供内部可变性,基于unsafe机制,提供运行时检查. 相关: borrow&#47;borrow_mut
+
+2. 内部可变性
+Rc的引用计数器和RefCell中的数据可变,都是基于unsafe实现的.
+我们以Rc引用计数器的更新为例:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>impl&amp;lt;T&amp;gt; Cell&amp;lt;T&amp;gt; {
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    pub fn replace(&amp;amp;self, val: T) -&amp;gt; T {
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>        mem::replace(unsafe { &amp;amp;mut *self.value.get() }, val)
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    }
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>}
+</code></pre></div>
+如上可以看到,即使replace的参数self是不可变的,也可以通过unsafe去改变其中的值.也就是说rust通过unsafe具有完全的c&#47;c++类似的能力.
+同理,可以看到Refcell获取可变引用,也是通过unsafe将指针直接转成可变引用.可以想象的是,在RefCell中,还需要通过额外的代码来处理可读不可写,可写不可读的类似读写锁的问题.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>impl&amp;lt;T: ?Sized&amp;gt; RefCell&amp;lt;T&amp;gt; {
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    pub fn try_borrow_mut(&amp;amp;self) -&amp;gt; Result&amp;lt;RefMut&amp;lt;&amp;#39;_, T&amp;gt;, BorrowMutError&amp;gt; {
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>                ...
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>                Ok(RefMut { value: unsafe { &amp;amp;mut *self.value.get() }, borrow: b })
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>                ...
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>}
+</code></pre></div>
+在rust的设计中,明显推崇将问题尽量在静态编译期解决.实在搞不定的,就是通过unsafe和额外的处理推迟到运行期解决.</div>2021-10-12</li><br/><li><span>noisyes</span> 👍（10） 💬（1）<div>fn main() {
+    &#47;*let data = RefCell::new(1);
+
+    let mut v = data.borrow_mut();
+    *v += 1;
+
+    println!(&quot;data: {:?}&quot;, data.borrow());
+    *&#47;
+    let mut v = vec![1, 2, 3];
+    let data1 = &amp;mut v[1];
+    *data1 = 2;
+    let data2 = &amp;v[1];
+    println!(&quot;{}&quot;, data2);
+}
+
+老师这段代码注释的部分，运行时不能通过，可变借用和不可变借用并没有冲突呀（v并没在borrow之后使用，同一时刻并没有同时有可变借用和不可变借用），我自己写的这部分就是可以编译运行的。</div>2021-09-10</li><br/><li><span>Marvichov</span> 👍（6） 💬（3）<div>为啥要week == 0的时候才deallocate所有内存呢? 这样是不是不太高效?
+
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>fn drop(&amp;amp;mut self) {
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    unsafe {
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>        self.inner().dec_strong();
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>        if self.inner().strong() == 0 {
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>            &amp;#47;&amp;#47; destroy the contained object
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>            ptr::drop_in_place(Self::get_mut_unchecked(self));
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>            &amp;#47;&amp;#47; remove the implicit &amp;quot;strong weak&amp;quot; pointer now that we&amp;#39;ve
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>            &amp;#47;&amp;#47; destroyed the contents.
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>            self.inner().dec_weak();
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>            if self.inner().weak() == 0 {
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>                Global.deallocate(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>            }
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>        }
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>    }
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>}
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>```&lt;/div&gt;2021-09-12&lt;/li&gt;&lt;br/&gt;&lt;li&gt;&lt;span&gt;枸杞红茶&lt;/span&gt; 👍（5） 💬（2）&lt;div&gt;1. 线程的运行时间可能会比当前函数还要长，而闭包中又借用了arr，使用move将当前函数的arr所有权转移给线程。
+</code></pre></div>
+use std::thread;
+
+fn main() {
+    let arr = vec![1];
+
+    let handler = thread::spawn(move || {
+        println!(&quot;{:?}&quot;, arr);
+    });
+    handler.join().unwrap();
+}
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>2. 
+</code></pre></div>
+use std::thread;
+use std::sync::Arc;
+
+fn main() {
+    let five = Arc::new(&quot;hello Tyr&quot;);
+
+    {
+        let give_me_five = five.clone();
+        let handler = thread::spawn(move || {
+            println!(&quot;thread greeting: {:?}&quot;, give_me_five);
+        });
+        handler.join().unwrap();
+    }
+    println!(&quot;main greeting: {:?}&quot;, five);
+}
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>3. Rc源码中有这么一段，
+</code></pre></div>
+#[doc(hidden)]
+trait RcInnerPtr {
+    fn weak_ref(&amp;self) -&gt; &amp;Cell&lt;usize&gt;;
+    fn strong_ref(&amp;self) -&gt; &amp;Cell&lt;usize&gt;;
+
+    #[inline]
+    fn strong(&amp;self) -&gt; usize {
+        self.strong_ref().get()
+    }
+
+    #[inline]
+    fn inc_strong(&amp;self) {
+        let strong = self.strong();
+
+        &#47;&#47; We want to abort on overflow instead of dropping the value.
+        &#47;&#47; The reference count will never be zero when this is called;
+        &#47;&#47; nevertheless, we insert an abort here to hint LLVM at
+        &#47;&#47; an otherwise missed optimization.
+        if strong == 0 || strong == usize::MAX {
+            abort();
+        }
+        self.strong_ref().set(strong + 1);
+    }
+    ...
+}
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>增加计数器```self.inner().inc_strong();```调用的```inc_strong```函数修改的是```strong_ref()```，属于Cell类型，Shareable mutable containers，可共享可修改的容器。&lt;/div&gt;2021-10-10&lt;/li&gt;&lt;br/&gt;&lt;li&gt;&lt;span&gt;Kerry&lt;/span&gt; 👍（4） 💬（2）&lt;div&gt;课后思考题：
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>1. 生命周期问题，主线程可能比派生线程更早结束，导致派生线程引用了过期的值。
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>你也许会想到加上join强制派生线程先于主线程结束，以此解决编译问题。然而这是行不通的。这里的问题是语法层面的，而不是语义层面的。
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>解决方法有两种：一是move，二是用ARC。方法一的代码如下：
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>fn main() {
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>    let arr = vec![1];
+<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>
+<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>    std::thread::spawn(move || {
+<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>        println!(&amp;quot;{:?}&amp;quot;, arr);
+<a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a>    }).join().unwrap();
+<a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>}
+<a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a>
+<a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a>方法二参考思考题2即可。
+<a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a>
+<a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a>2. 如下所示，用ARC包一下要共享的资源：
+<a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a>
+<a id="__codelineno-18-21" name="__codelineno-18-21" href="#__codelineno-18-21"></a>use std::sync::{Arc, RwLock};
+<a id="__codelineno-18-22" name="__codelineno-18-22" href="#__codelineno-18-22"></a>use std::rc::Rc;
+<a id="__codelineno-18-23" name="__codelineno-18-23" href="#__codelineno-18-23"></a>
+<a id="__codelineno-18-24" name="__codelineno-18-24" href="#__codelineno-18-24"></a>fn main() {
+<a id="__codelineno-18-25" name="__codelineno-18-25" href="#__codelineno-18-25"></a>    let s = Arc::new(RwLock::new(&amp;quot;Hello&amp;quot;));
+<a id="__codelineno-18-26" name="__codelineno-18-26" href="#__codelineno-18-26"></a>
+<a id="__codelineno-18-27" name="__codelineno-18-27" href="#__codelineno-18-27"></a>    let r = s.clone();
+<a id="__codelineno-18-28" name="__codelineno-18-28" href="#__codelineno-18-28"></a>    std::thread::spawn(move || {
+<a id="__codelineno-18-29" name="__codelineno-18-29" href="#__codelineno-18-29"></a>        println!(&amp;quot;{:?}&amp;quot;, r.as_ref().read().unwrap());
+<a id="__codelineno-18-30" name="__codelineno-18-30" href="#__codelineno-18-30"></a>    }).join().unwrap();
+<a id="__codelineno-18-31" name="__codelineno-18-31" href="#__codelineno-18-31"></a>
+<a id="__codelineno-18-32" name="__codelineno-18-32" href="#__codelineno-18-32"></a>    println!(&amp;quot;{:?}&amp;quot;, s.as_ref().read().unwrap());
+<a id="__codelineno-18-33" name="__codelineno-18-33" href="#__codelineno-18-33"></a>}
+<a id="__codelineno-18-34" name="__codelineno-18-34" href="#__codelineno-18-34"></a>
+<a id="__codelineno-18-35" name="__codelineno-18-35" href="#__codelineno-18-35"></a>3. 是时候步入unsafe的世界了~编译器终究只是帮我们干活，规则再严格，那都是死的。为了提供一定灵活性，会像RefCell这样提供一些机制给我们做一些不安全的操作。通过阅读self.inner().inc_strong()的源码，可以知道底层是通过unsafe实现不可变转可变引用的：
+<a id="__codelineno-18-36" name="__codelineno-18-36" href="#__codelineno-18-36"></a>
+<a id="__codelineno-18-37" name="__codelineno-18-37" href="#__codelineno-18-37"></a>unsafe { &amp;amp;mut *self.value.get() }
+<a id="__codelineno-18-38" name="__codelineno-18-38" href="#__codelineno-18-38"></a>
+<a id="__codelineno-18-39" name="__codelineno-18-39" href="#__codelineno-18-39"></a>
+<a id="__codelineno-18-40" name="__codelineno-18-40" href="#__codelineno-18-40"></a>&lt;/div&gt;2021-09-12&lt;/li&gt;&lt;br/&gt;&lt;li&gt;&lt;span&gt;Arthur&lt;/span&gt; 👍（4） 💬（1）&lt;div&gt;老师好，关于使用花括号提前结束生命周期这点有一点不明白
+<a id="__codelineno-18-41" name="__codelineno-18-41" href="#__codelineno-18-41"></a>```rust
+<a id="__codelineno-18-42" name="__codelineno-18-42" href="#__codelineno-18-42"></a>fn main() {
+<a id="__codelineno-18-43" name="__codelineno-18-43" href="#__codelineno-18-43"></a>    let mut v = vec![1, 2, 3];
+<a id="__codelineno-18-44" name="__codelineno-18-44" href="#__codelineno-18-44"></a>    {
+<a id="__codelineno-18-45" name="__codelineno-18-45" href="#__codelineno-18-45"></a>        v            &amp;#47;&amp;#47; 编译不通过
+<a id="__codelineno-18-46" name="__codelineno-18-46" href="#__codelineno-18-46"></a>        v.push(3); &amp;#47;&amp;#47;编译通过
+<a id="__codelineno-18-47" name="__codelineno-18-47" href="#__codelineno-18-47"></a>    };
+<a id="__codelineno-18-48" name="__codelineno-18-48" href="#__codelineno-18-48"></a>    v.push(4);
+<a id="__codelineno-18-49" name="__codelineno-18-49" href="#__codelineno-18-49"></a>}
+</code></pre></div>
+花括号中的两种写法，一种不通过，报错error[E0382]: borrow of moved value: `v`；一种又可以通过，是为什么呢？使用一个花括号增加了一个作用域以后，对于作用域内使用的外部变量的所有权到底产生了怎样的影响呢？</div>2021-09-11</li><br/><li><span>夏洛克Moriaty</span> 👍（4） 💬（2）<div>终于理解了Rc的本质了，以前只是知道实现二叉树这种数据结构必须用Rc，因为他允许有多个所有者。但是不理解或者说不知道为什么要有内部可变性和运行时检查这个东西，今天看了Box::leak() 机制的解释终于明白了。</div>2021-09-10</li><br/><li><span>noisyes</span> 👍（2） 💬（1）<div>思考题：
+1. fn main() {
+    let arr = vec![1];
+    let handler = std::thread::spawn(move || {
+        println!(&quot;{:?}&quot;, arr);
+    });
+    handler.join().unwrap();
+}
+
+2. fn main() {
+    let ss = Arc::new(String::from(&quot;hello world&quot;));
+    let ss1 = ss.clone();
+    let handler = std::thread::spawn(move || {
+        println!(&quot;{}&quot;, ss1);
+    });
+    println!(&quot;{}&quot;, ss);
+    handler.join().unwrap();
+}
+
+3. 还没看源码 应该就是内部可变性吧</div>2021-09-10</li><br/><li><span>葡萄</span> 👍（2） 💬（1）<div>3. Rc类创建
+Box::leak(box RcBox { strong: Cell::new(1), weak: Cell::new(1), value })
+self.inner().inc_strong()
+获得了Rc里 strong, 也就是Cell对象，Cell是内部可变的，使用set方法进行修改。
+fn inc_strong(&amp;self) {
+        let strong = self.strong();
+        self.strong_ref().set(strong + 1);
+    }</div>2021-09-10</li><br/><li><span>chyuwei</span> 👍（1） 💬（1）<div>个人感觉就是 所有权导致不能出现多个可变引用， 
+借鉴了多线程里面的mutex，所以有了这个所谓的内部可变性。
+对于mutex，操作系统可以保证独占性，
+对于refcell应该就是库代码去保证。
+
+至于有些同学说撕口子这个事， safe rust可以写绝大多数程序了。
+当你不得不去撕口子，写unsafe时，其实和c++就没什么区别了</div>2022-01-13</li><br/><li><span>dch666</span> 👍（1） 💬（1）<div>在代码1中，我把 self.downstream.as_ref().map(|v| v.clone()) 改成了 self.downstream.clone() 看到 print 输出结果是一样的，想问下这两种写法有区别吗？</div>2021-11-27</li><br/>
+</ul>
 
 
 
