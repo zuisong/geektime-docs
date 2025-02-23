@@ -179,8 +179,7 @@ def  make_all_pdf(source, output, timeout, compress, power, port):
     webdriver_options.add_experimental_option("prefs", webdriver_prefs)
     webdriver_options.add_experimental_option("excludeSwitches", ['enable-automation'])
 
-    http_client = requests.Session()
-    download_manager = WDMDownloadManager(http_client=http_client)
+    download_manager = WDMDownloadManager(http_client=reqsession)
     service = Service(ChromeDriverManager(download_manager=download_manager).install())
     host = f"http://127.0.0.1:{port}/"
     for dirname, _, file_lst in os.walk(source):
@@ -399,8 +398,7 @@ def make_pdf(source, output, timeout, compress, power, port):
     webdriver_options.add_argument("--disable-dev-shm-usage")
     webdriver_options.experimental_options["prefs"] = webdriver_prefs
 
-    http_client = requests.Session()
-    download_manager = WDMDownloadManager(http_client=http_client)
+    download_manager = WDMDownloadManager(http_client=reqsession)
     service = Service(ChromeDriverManager(download_manager=download_manager).install())
     host = f"http://127.0.0.1:{port}/"
     source = os.path.abspath(source)
