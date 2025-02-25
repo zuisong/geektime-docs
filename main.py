@@ -433,7 +433,7 @@ def make_pdf(source, output, timeout, compress, power, port):
                 matches = re.findall(pattern, mk_data)
                 images = []
                 for match in matches:
-                    if 'static001.geekbang.org' not in match:
+                    if 'static001.geekbang.org/' not in match:
                         continue
                     match = match if match.count(')') <= 0 else match[:match.index(')')]
                     if match.count('('):
