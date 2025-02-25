@@ -140,7 +140,7 @@ DevOps工程师做的事情，就是帮助团队基于DevOps原则来做事，�
 
 感谢阅读，如果你觉得这篇文章对你有一些启发，也欢迎把它分享给你的朋友。
 
-![](https!%5B://static001.g%5D%28https://static001.geekbang.org/resource/image/78/9c/788180c8c6dd9b69b2784d2a780a239c.jpg%29eekbang.org/resource/image/78/9c/788180c8c6dd9b69b2784d2a780a239c.jpg)
+![](https://static001.geekbang.org/resource/image/78/9c/788180c8c6dd9b69b2784d2a780a239c.jpg)
 <div><strong>精选留言（12）</strong></div><ul>
 <li><span>林云</span> 👍（13） 💬（1）<p>需要指出“Devops工程师”是一个概念错误。事实上Devops并不是一个职位，如果按照文中所说：“Devops工程师帮助团队搭建CI&#47;CD工具”则应该叫做持续交付工具架构师，而这与文首所说：“运维工程师纷纷改名Devops工程师”在工程师的技术栈领域互相矛盾，难道所有持续交付系统都是由运维工程师搭建的吗？
 
