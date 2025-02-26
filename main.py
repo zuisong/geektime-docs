@@ -254,7 +254,10 @@ def  make_all_pdf(source, output, timeout, compress, power, port):
                                 for future in futures:
                                     bs, im_uri = future.result()
                                     if bs and im_uri:
-                                        format = parse.urlparse(im_uri).path.split('.')[1]
+                                        uri_path = parse.urlparse(im_uri).path
+                                        if '.' not in uri_path:
+                                            continue
+                                        format = uri_path.split('.')[1]
                                         format =  'png' if not format else format
                                         mk_data = mk_data.replace(im_uri, f'data:image/{format};base64,{bs}')
                                         print('replace image', format, len(bs), im_uri, mk_path)
