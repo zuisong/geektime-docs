@@ -38,7 +38,7 @@ mkdocs serve
 浏览器访问：<http://127.0.0.1:8000/>
 
 
-#### 本项目markdown文档全部由 [mygeektime](https://github.com/zkep/my-geektime) 生成
+#### 本项目markdown文档全部由 [my-geektime](https://github.com/zkep/my-geektime) 生成
 
 
 ### 问题汇总
@@ -47,7 +47,7 @@ mkdocs serve
 
 方案1： 直接看pdf吧 [geektime-pdfs](https://github.com/uaxe/geektime-pdfs)
 
-方案2： VIP用户，部署[mygeektime](https://github.com/zkep/my-geektime)服务，缓存对应的VIP课程 
+方案2： VIP用户，部署[my-geektime](https://github.com/zkep/my-geektime)服务，缓存对应的VIP课程 
 
 方案3： 推荐本地使用中间代理人服务，拦截请求，改写 http 请求的 Referer 的思路
 
