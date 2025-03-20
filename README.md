@@ -10,8 +10,8 @@
 
 ###  markdown 在线文档
 
- * [netlify](https://geektime-docs.netlify.app/)
- * [github](https://uaxe.github.io/geektime-docs/)
+ * [github](https://uaxe.github.io/geektime-docs/) （推荐）
+ * [netlify](https://geektime-docs.netlify.app/)   (可能有裂图问题)
 
 
 > tips: 在线文档支持 PC 浏览器，也支持移动端浏览器
