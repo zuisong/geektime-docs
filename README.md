@@ -8,6 +8,9 @@
 * 看 pdf文档，推荐: https://github.com/uaxe/geektime-pdfs 🌟🌟🌟
 * 看 音视频，推荐: https://github.com/zkep/my-geektime 🌟🌟🌟🌟🌟
 
+### [全文搜索](https://github.com/uaxe/geektime-docs/blob/master/fultext-search/README.md)
+感谢 [KonghaYao](https://github.com/KonghaYao) 全文搜索功能
+
 ###  markdown 在线文档
 
  * [github](https://uaxe.github.io/geektime-docs/) （可能有裂图问题，可以在仓库里直接看markdown）
