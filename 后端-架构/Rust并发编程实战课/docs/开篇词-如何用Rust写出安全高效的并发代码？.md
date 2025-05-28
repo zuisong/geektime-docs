@@ -61,6 +61,10 @@ Rust的并发单元是线程。线程是基础，我们应该牢牢掌握线程�
 希望通过这门课程的学习，你能够深入理解Rust的并发模型和机制，熟练使用Rust的并发原语和API，最终能够独立解决常见的并发问题，具备使用Rust进行高并发系统开发的能力。我相信，只要你一步一个脚印地跟学跟练，就一定能够驾驭并发之美，构建出高效、可靠的Rust并发应用程序。好了，就从今天开始，跟着鸟窝老师一起开启这段精彩的Rust并发编程之旅吧！
 
 ![图片](https://static001.geekbang.org/resource/image/7e/fb/7e5901e52232c0459fc07336b9f978fb.png?wh=1920x1421)
-<div><strong>精选留言（4）</strong></div><ul>
-<li><span>大布丁</span> 👍（0） 💬（1）<p>支持！</p>2025-02-17</li><br/><li><span>Porter Zhang</span> 👍（0） 💬（1）<p>老师能给一些并发环境下写rust单测的例子吗，如果有的话，这块比较碎片化，所以想看看老师平时怎么做的。</p>2025-02-17</li><br/><li><span>Shopman</span> 👍（0） 💬（1）<p>统计单元测试覆盖率很不方便系统范围内缺少单测的执行顺序功能给测试环准备带来了不方便，pprof支持不如golang，并发代码的基准测试也不方便，希望老师在后面提一嘴</p>2025-02-17</li><br/><li><span>Vincent_Li</span> 👍（0） 💬（1）<p>惊喜，前几天还在看老师的Rust并发编程文档。这会已经上新了课程</p>2025-02-16</li><br/>
+
+⏰ 小编提醒：第四次直播时间在五一假期之后，进[课程交流群](https://jsj.top/f/TbrrN2)蹲直播链接🔗，直播答疑问题提交[点这里](https://jsj.top/f/hZr5FK)
+
+课程配套代码仓库链接：[https://github.com/smallnest/rust-concurrency\_code](https://github.com/smallnest/rust-concurrency_code)
+<div><strong>精选留言（5）</strong></div><ul>
+<li><span>大布丁</span> 👍（0） 💬（1）<p>支持！</p>2025-02-17</li><br/><li><span>Porter Zhang</span> 👍（0） 💬（1）<p>老师能给一些并发环境下写rust单测的例子吗，如果有的话，这块比较碎片化，所以想看看老师平时怎么做的。</p>2025-02-17</li><br/><li><span>Shopman</span> 👍（0） 💬（1）<p>统计单元测试覆盖率很不方便系统范围内缺少单测的执行顺序功能给测试环准备带来了不方便，pprof支持不如golang，并发代码的基准测试也不方便，希望老师在后面提一嘴</p>2025-02-17</li><br/><li><span>Vincent_Li</span> 👍（0） 💬（1）<p>惊喜，前几天还在看老师的Rust并发编程文档。这会已经上新了课程</p>2025-02-16</li><br/><li><span>孔令飞</span> 👍（0） 💬（1）<p>一直很佩服鸟窝老师，能踏踏实实，搞这么多年技术。也支持下鸟窝老师的 Rust 并发编程实战课，跟「深入理解Go并发编程」书一样，内容很干货，学了很受益！</p>2025-04-10</li><br/>
 </ul>

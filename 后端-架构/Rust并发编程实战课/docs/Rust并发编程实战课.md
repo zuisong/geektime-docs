@@ -30,3 +30,5 @@
 **第四章：同步原语**
 
 最后是 Rust 标准库中各种常见的同步原语，如互斥锁、读写锁、Once、条件变量等等。学习各个同步原语的特性、它们的使用场景、常见的坑点等等，帮助你在日常工作中规避这些问题。
+
+**课程代码：[https://github.com/smallnest/rust-concurrency\_code](https://github.com/smallnest/rust-concurrency_code)**
