@@ -29,7 +29,7 @@ docker run -d -p 8091:8091 --restart always  --name geektime-docs  zkep/geektime
 
 #### 源码方式
 ```shell
-git clone https://github.com/uaxe/geektime-docs.git  --depth 1
+git clone --single-branch --branch master --depth 1 https://github.com/uaxe/geektime-docs.git
 
 pip install mkdocs-material
 
