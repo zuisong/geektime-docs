@@ -13,15 +13,17 @@
 
 ###  markdown 在线文档
 
- * [github](https://uaxe.github.io/geektime-docs/) （可能有裂图问题，可以在仓库里直接看markdown）
- * [netlify](https://geektime-docs.netlify.app/)   (可能有裂图问题，可以在仓库里直接看markdown)
-
+ * [github](https://uaxe.github.io/geektime-docs/) 
+ * [netlify](https://geektime-docs.netlify.app/)  
 
 > tips: 在线文档支持 PC 浏览器，也支持移动端浏览器
+> 
+> 第三方托管在线文档可能有裂图问题，可以在仓库里直接看markdown，或使用docker方式本地部署
 
 ### 本地部署
 
 #### docker方式
+> 该方式实现了服务端代理请求图片，解决裂图，放心使用
 ```shell
 docker run -d -p 8091:8091 --restart always  --name geektime-docs  zkep/geektime-docs
 ```
@@ -50,7 +52,7 @@ mkdocs serve
 
 方案1： 直接看pdf吧 [geektime-pdfs](https://github.com/uaxe/geektime-pdfs)
 
-方案2： VIP用户，部署[my-geektime](https://github.com/zkep/my-geektime)服务，缓存对应的VIP课程 
+方案2： VIP用户，部署[my-geektime](https://github.com/zkep/my-geektime)服务，缓存对应的VIP课程, 支持播放下载音视频 
 
 方案3： 推荐本地使用中间代理人服务，拦截请求，改写 http 请求的 Referer 的思路
 

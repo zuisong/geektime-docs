@@ -6,7 +6,7 @@ WORKDIR /app
 
 COPY . ./
 
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt  -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 RUN python mkdocs.py
 
@@ -16,8 +16,11 @@ FROM python:3.11-slim  AS production
 
 WORKDIR /app
 
+RUN pip install fastapi uvicorn requests  -i https://pypi.tuna.tsinghua.edu.cn/simple
+
 COPY --from=builder-base /app/site ./site
+ADD  app.py .
 
 EXPOSE 8091
 
-CMD python -m http.server 8091 --directory /app/site
+CMD python app.py

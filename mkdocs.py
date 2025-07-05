@@ -1,19 +1,20 @@
 import os
+import re
 import shutil
 from pathlib import Path
-
 import yaml
 
 
 def _main():
-    dirs = [
-        'AI-大数据',
-        '产品-运营',
-        '前端-移动',
-        '后端-架构',
-        '管理-成长',
-        '计算机基础',
-        '运维-测试',
+    dirs = ['AI-大数据','产品-运营','前端-移动','后端-架构','管理-成长','计算机基础','运维-测试']
+    patterns = [
+        re.compile(r'!\[\]\((https?://\S+?)\)'),
+        re.compile(r'!$.*?$$(https?://[^\s$]+)'),
+    ]
+    proxy_url = "http://127.0.0.1:8091/proxy?url={url}"
+    proxy_urls = [
+        "https://static001.geekbang.org/resource/image",
+        "https://static001.geekbang.org/resource/avatar",
     ]
     all = []
     docs_dir = Path(__file__).parent.joinpath('dist')
@@ -32,7 +33,20 @@ def _main():
                         real_nav_path = os.path.join(docs_dir, nav_path)
                         src_nav_path = os.path.join(item_dir, "docs", nav)
                         os.makedirs(os.path.dirname(real_nav_path), exist_ok=True)
-                        shutil.copyfile(src_nav_path, real_nav_path)
+                        dst_raw = ''
+                        with open(src_nav_path, 'r') as ff:
+                            for line in ff.readlines():
+                                line = line.strip()
+                                for pattern in patterns:
+                                    for uri in pattern.findall(line):
+                                        for purl in proxy_urls:
+                                            if purl in uri:
+                                                dst_url = proxy_url.format(url=uri)
+                                                line = line.replace(uri, dst_url)
+                                dst_raw += line
+                                dst_raw += "\n"
+                        with open(real_nav_path, 'w') as fi:
+                            fi.write(dst_raw)
                         items.append(nav_path)
                     index_text += f'\n[{os.path.basename(item_dir)}]({os.path.basename(item_dir)}/{os.path.basename(item_dir)})\n'
                 navs.append({sub_dir: items})
