@@ -8,13 +8,16 @@ import yaml
 def _main():
     dirs = ['AI-大数据','产品-运营','前端-移动','后端-架构','管理-成长','计算机基础','运维-测试']
     patterns = [
-        re.compile(r'!\[\]\((https?://\S+?)\)'),
+        re.compile(r'!?\[.*?\]\((https?://.*?)\)'),
         re.compile(r'!$.*?$$(https?://[^\s$]+)'),
     ]
     proxy_url = "http://127.0.0.1:8091/proxy?url={url}"
     proxy_urls = [
         "https://static001.geekbang.org/resource/image",
         "https://static001.geekbang.org/resource/avatar",
+        "https://static001-test.geekbang.org/resource/image",
+        "https://static001.infoq.cn/resource/image",
+        "https://static001.geekbang.org/con",
     ]
     all = []
     docs_dir = Path(__file__).parent.joinpath('dist')
@@ -41,6 +44,7 @@ def _main():
                                     for uri in pattern.findall(line):
                                         for purl in proxy_urls:
                                             if purl in uri:
+                                                print(uri)
                                                 dst_url = proxy_url.format(url=uri)
                                                 line = line.replace(uri, dst_url)
                                 dst_raw += line
