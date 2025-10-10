@@ -13,11 +13,6 @@ def _main():
     ]
     proxy_url = "http://127.0.0.1:8091/proxy?url={url}"
     proxy_urls = [
-        "https://static001.geekbang.org/resource/image",
-        "https://static001.geekbang.org/resource/avatar",
-        "https://static001-test.geekbang.org/resource/image",
-        "https://static001.infoq.cn/resource/image",
-        "https://static001.geekbang.org/con",
     ]
     all = []
     docs_dir = Path(__file__).parent.joinpath('dist')
