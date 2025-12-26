@@ -11,8 +11,12 @@ def _main():
         re.compile(r'!?\[.*?\]\((https?://.*?)\)'),
         re.compile(r'!$.*?$$(https?://[^\s$]+)'),
     ]
-    proxy_url = "http://127.0.0.1:8091/proxy?url={url}"
-    proxy_urls = [
+    no_referrer_urls = [
+        'https://static001.geekbang.org/resource/image',
+        'https://static001.geekbang.org/resource/avatar',
+        'https://static001-test.geekbang.org/resource/image',
+        'https://static001.infoq.cn/resource/image',
+        'https://static001.geekbang.org/con'
     ]
     all = []
     docs_dir = Path(__file__).parent.joinpath('dist')
@@ -37,11 +41,10 @@ def _main():
                                 line = line.strip()
                                 for pattern in patterns:
                                     for uri in pattern.findall(line):
-                                        for purl in proxy_urls:
+                                        for purl in no_referrer_urls:
                                             if purl in uri:
-                                                print(uri)
-                                                dst_url = proxy_url.format(url=uri)
-                                                line = line.replace(uri, dst_url)
+                                                line = f'{line}{{:referrerpolicy="no-referrer"}}'
+                                    
                                 dst_raw += line
                                 dst_raw += "\n"
                         with open(real_nav_path, 'w') as fi:
