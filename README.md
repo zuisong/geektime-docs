@@ -9,7 +9,7 @@
 * 看 音视频，推荐: https://github.com/zkep/my-geektime 🌟🌟🌟🌟🌟
 
 ### [全文搜索](https://github.com/uaxe/geektime-docs/blob/master/fultext-search/README.md)
-感谢 [KonghaYao](https://github.com/KonghaYao) 全文搜索功能
+感谢 [KonghaYao](https://github.com/KonghaYao) 提供全文搜索功能
 
 ###  markdown 在线文档
 
@@ -45,19 +45,9 @@ mkdocs serve
 
 
 
+## 贡献者
 
-#### 贡献代码
-欢迎提交PR，修复错误或添加新的文档
-
-欢迎提交Issue，报告错误或建议改进
-
-感谢所有贡献者，以下是他们的名单
-
-[zkep](https://github.com/zkep)
-[yywmrz](https://github.com/yywmrz)
-[KonghaYao](https://github.com/KonghaYao)
-[lrh3321](https://github.com/lrh3321)
-[zhyjor](https://github.com/zhyjor)
+<a href="https://github.com/uaxe/geektime-docs/graphs/contributors"><img src="https://opencollective.com/geektime-docs/contributors.svg?width=890" /></a>
 
    
 
